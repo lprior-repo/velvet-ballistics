@@ -1433,7 +1433,7 @@ fn bypass_attempt_rejects_unknown_node_kind() {
     let result = validate(&parts);
 
     // Should pass since Nop is valid
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 /// Bypass attempt: using reserved ID is rejected.

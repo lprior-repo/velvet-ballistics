@@ -48,7 +48,7 @@ proptest! {
                 Err(XtaskCommandError::DependencyBoundaryViolation { .. })
             ), "expected DependencyBoundaryViolation for protected runtime forbidden dependency");
         } else {
-            prop_assert!(result.is_ok());
+            prop_assert_eq!(result, Ok(()));
         }
     }
 }

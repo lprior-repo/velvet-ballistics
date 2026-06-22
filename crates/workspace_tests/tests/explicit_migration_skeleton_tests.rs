@@ -620,7 +620,10 @@ proptest! {
     fn vb_aoah_runtime_open_version_classification(f in fixture_strategy()) {
         let result = runtime_open_result(f.version);
         if is_supported_old_version(f.version) {
-            prop_assert!(result.is_err());
+            prop_assert!(
+                matches!(result, Err(_)),
+                "expected Err result, got {:?}", result
+            );
         } else if is_current_version(f.version) {
             prop_assert_eq!(result, Ok(()));
         }
@@ -656,7 +659,10 @@ proptest! {
             );
         } else {
             // Current or future version
-            prop_assert!(result.is_err());
+            prop_assert!(
+                matches!(result, Err(_)),
+                "expected Err result, got {:?}", result
+            );
         }
     }
 
@@ -670,7 +676,10 @@ proptest! {
         let result = validate_advance(f.phase);
         match f.phase {
             Phase::Planned | Phase::Copied => {
-                prop_assert!(result.is_err());
+                prop_assert!(
+                matches!(result, Err(_)),
+                "expected Err result, got {:?}", result
+            );
             }
             Phase::Verified | Phase::Cleaned => {
                 prop_assert_eq!(result, Ok(Phase::Committed));
@@ -695,13 +704,13 @@ proptest! {
             n if n <= MAX_RECORDS => {
                 match result {
                     CleanupResult::Success(deleted) => prop_assert_eq!(deleted, old_records),
-                    _ => prop_assert!(false, "expected Success for records within MAX_RECORDS"),
+                    _ => panic!("expected Success for records within MAX_RECORDS"),
                 }
             }
             _ => {
                 match result {
                     CleanupResult::Failed { remaining } => prop_assert_eq!(remaining, old_records),
-                    _ => prop_assert!(false, "expected Failed for records exceeding MAX_RECORDS"),
+                    _ => panic!("expected Failed for records exceeding MAX_RECORDS"),
                 }
             }
         }
@@ -723,7 +732,7 @@ proptest! {
                 Err(MigErr::MigrationCleanupFailed { remaining }) => {
                     prop_assert_eq!(remaining, f.old_records);
                 }
-                _ => prop_assert!(false, "expected MigrationCleanupFailed"),
+                _ => panic!("expected MigrationCleanupFailed"),
             }
         }
     }
@@ -812,7 +821,7 @@ proptest! {
                 // Within bounds: must succeed with exact total
                 match result {
                     Ok(actual) => prop_assert_eq!(actual, total),
-                    _ => prop_assert!(false, "expected Ok for valid addition"),
+                    _ => panic!("expected Ok for valid addition"),
                 }
             }
             _ => {
@@ -820,7 +829,7 @@ proptest! {
                 // For u64::MAX limit and any overflow, must return BatchLimitExceeded
                 match result {
                     Err(MigErr::MigrationBatchLimitExceeded { .. }) => {}
-                    _ => prop_assert!(false, "expected MigrationBatchLimitExceeded for overflow/limit-exceeded"),
+                    _ => panic!("expected MigrationBatchLimitExceeded for overflow/limit-exceeded"),
                 }
             }
         }
@@ -1194,11 +1203,17 @@ fn runtime_open_never_invokes_cold_path() {
 
     // For old store: detection returns error, not Ok
     let result = runtime_open_result(LEGACY_V1_VERSION);
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(MigErr::MigrationRequired { .. })),
+        "old store must return MigrationRequired, got {result:?}"
+    );
 
     // For future store: detection returns error
     let result = runtime_open_result(CURRENT_SCHEMA_VERSION + 1);
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(MigErr::UnsupportedSchemaVersion { .. })),
+        "future version must return UnsupportedSchemaVersion, got {result:?}"
+    );
 
     // Only current store returns Ok
     let result = runtime_open_result(CURRENT_SCHEMA_VERSION);

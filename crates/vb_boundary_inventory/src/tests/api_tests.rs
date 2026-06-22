@@ -3,12 +3,11 @@
 //! Tests 5 pub fns: discover_boundaries, classify_boundary, required_evidence,
 //! validate_inventory, inventory_completion_status
 
-// `assert!(false, ...)` appears inside `let-else`/`match` arms whose opposite arm
-// already established the variant. The assertion is the documented "this branch
-// is unreachable" marker with a clear diagnostic message. `panic!`/`unreachable!`
-// are forbidden by workspace lints, so we suppress the `assertions_on_constants`
-// lint at module scope rather than scattering `#[allow(...)]` everywhere.
-#![allow(clippy::assertions_on_constants)]
+// `panic!(...)` markers appear inside `let-else`/`match` arms whose opposite arm
+// already established the variant. The panic is the documented "this branch is
+// unreachable" marker with a clear diagnostic message. Tests are allowed to panic
+// at the workspace level, so we use `panic!` for the unreachable-arm marker.
+#![allow(clippy::panic, clippy::assertions_on_constants)]
 
 use std::fs;
 use std::path::PathBuf;
@@ -35,7 +34,7 @@ fn path_parent(path: &std::path::Path) -> &std::path::Path {
     match path.parent() {
         Some(parent) => parent,
         None => {
-            assert!(false, "path must have a parent: {path:?}");
+            panic!("path must have a parent: {path:?}");
             path
         }
     }
@@ -104,9 +103,9 @@ fn discover_boundaries_finds_markers_in_crates() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(!candidates.is_empty());
     assert!(candidates.iter().any(|c| c.marker == "extern-c-boundary"));
@@ -128,9 +127,9 @@ fn discover_boundaries_finds_markers_in_fuzz() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(!candidates.is_empty());
     assert!(
@@ -156,9 +155,9 @@ fn discover_boundaries_finds_markers_in_scripts() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(!candidates.is_empty());
     assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
@@ -239,10 +238,8 @@ fn discover_boundaries_all_marker_types() {
     }
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let Ok(result) = discover_boundaries(workspace) else {
-        assert!(false, "discover_boundaries must succeed for valid markers");
-        return;
-    };
+    let result =
+        discover_boundaries(workspace).expect("discover_boundaries must succeed for valid markers");
     assert_eq!(result.len(), markers.len());
 }
 
@@ -254,9 +251,9 @@ fn discover_boundaries_all_marker_types() {
 fn classify_boundary_c_abi() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::CAbi);
     assert!(classified.id.starts_with("vb-y1zq-CAbi-"));
@@ -266,9 +263,9 @@ fn classify_boundary_c_abi() {
 fn classify_boundary_ffi() {
     let candidate = BoundaryCandidate::new("fuzz/fuzz_1.rs", "foreign-function-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::Ffi);
 }
@@ -277,9 +274,9 @@ fn classify_boundary_ffi() {
 fn classify_boundary_ipc() {
     let candidate = BoundaryCandidate::new("scripts/run.sh", "ipc-frame-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::Ipc);
 }
@@ -288,9 +285,9 @@ fn classify_boundary_ipc() {
 fn classify_boundary_external_binary() {
     let candidate = BoundaryCandidate::new("crates/bin/src/main.rs", "external-binary-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::ExternalBinary);
 }
@@ -300,9 +297,9 @@ fn classify_boundary_decoder() {
     let candidate =
         BoundaryCandidate::new("crates/decoder/src/lib.rs", "decoder-byte-ingest-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::Decoder);
 }
@@ -311,9 +308,9 @@ fn classify_boundary_decoder() {
 fn classify_boundary_generated_code() {
     let candidate = BoundaryCandidate::new("crates/gen/src/lib.rs", "generated-interface-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::GeneratedCode);
 }
@@ -325,9 +322,9 @@ fn classify_boundary_unsafe_adjacent() {
         "unsafe-adjacent-dependency-boundary",
     );
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::UnsafeAdjacentDependency);
 }
@@ -336,14 +333,8 @@ fn classify_boundary_unsafe_adjacent() {
 fn classify_boundary_id_stability() {
     let candidate1 = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let candidate2 = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(classified1) = classify_boundary(candidate1) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
-    let Ok(classified2) = classify_boundary(candidate2) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let classified1 = classify_boundary(candidate1).expect("classify_boundary must succeed");
+    let classified2 = classify_boundary(candidate2).expect("classify_boundary must succeed");
     assert_eq!(classified1.id, classified2.id);
 }
 
@@ -352,14 +343,8 @@ fn classify_boundary_id_path_normalization() {
     // Slashes and dots normalize to the same ID — path separator is stripped
     let candidate1 = BoundaryCandidate::new("crates/test.src/lib.rs", "extern-c-boundary");
     let candidate2 = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(classified1) = classify_boundary(candidate1) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
-    let Ok(classified2) = classify_boundary(candidate2) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let classified1 = classify_boundary(candidate1).expect("classify_boundary must succeed");
+    let classified2 = classify_boundary(candidate2).expect("classify_boundary must succeed");
     // Both paths normalize to "crates-test-src-lib-rs" in the ID
     assert_eq!(classified1.id, classified2.id);
 }
@@ -367,10 +352,7 @@ fn classify_boundary_id_path_normalization() {
 #[test]
 fn classify_boundary_exposure_is_risky() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(classified) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let classified = classify_boundary(candidate).expect("classify_boundary must succeed");
     // Multiple risk classification
     assert_eq!(classified.exposure.risk, BoundaryRisk::Multiple);
 }
@@ -419,10 +401,7 @@ fn required_evidence_risky_boundary_ok() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for risky boundary");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for risky boundary");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -435,10 +414,7 @@ fn required_evidence_generated_code_risky() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for generated code");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for generated code");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -451,10 +427,7 @@ fn required_evidence_unsafe_adjacent_risky() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for unsafe adjacent");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for unsafe adjacent");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -584,12 +557,9 @@ fn validate_inventory_valid_single_record() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(
-            false,
-            "validate_inventory must succeed for single record: {result:?}"
-        );
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed for single record"),
     };
     assert_eq!(validated.records.len(), 1);
     assert_eq!(validated.schema_version, 1);
@@ -605,12 +575,9 @@ fn validate_inventory_valid_multiple_records() {
     let inventory = BoundaryInventory::new(Some(1), vec![record1, record2], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(
-            false,
-            "validate_inventory must succeed for multiple records: {result:?}"
-        );
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed for multiple records"),
     };
     assert_eq!(validated.records.len(), 2);
     assert_eq!(validated.schema_version, 1);
@@ -622,40 +589,28 @@ fn validate_inventory_valid_multiple_records() {
 fn classify_boundary_preserves_source_path() {
     let path = "crates/test/src/lib.rs";
     let candidate = BoundaryCandidate::new(path, "extern-c-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     assert_eq!(result.source_path, PathBuf::from(path));
 }
 
 #[test]
 fn classify_boundary_generated_code_exposure() {
     let candidate = BoundaryCandidate::new("crates/gen/src/lib.rs", "generated-interface-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     assert_eq!(result.exposure.risk, BoundaryRisk::Multiple);
 }
 
 #[test]
 fn classify_boundary_decoder_exposure() {
     let candidate = BoundaryCandidate::new("crates/dec/src/lib.rs", "decoder-byte-ingest-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     assert_eq!(result.exposure.risk, BoundaryRisk::Multiple);
 }
 
 #[test]
 fn classify_boundary_external_binary_exposure() {
     let candidate = BoundaryCandidate::new("crates/bin/src/main.rs", "external-binary-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     assert_eq!(result.exposure.risk, BoundaryRisk::Multiple);
 }
 
@@ -668,10 +623,7 @@ fn required_evidence_process_limit_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -684,10 +636,7 @@ fn required_evidence_language_limit_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -700,10 +649,7 @@ fn required_evidence_external_bytes_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -715,12 +661,9 @@ fn validate_inventory_empty_records_valid() {
     let inventory = BoundaryInventory::new(Some(1), Vec::new(), None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(
-            false,
-            "validate_inventory must succeed for empty records: {result:?}"
-        );
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed for empty records"),
     };
     assert!(validated.records.is_empty());
     assert_eq!(validated.schema_version, 1);
@@ -733,12 +676,9 @@ fn inventory_completion_status_multiple_caabi_boundaries() {
     let validated = ValidatedBoundaryInventory::from_records(vec![record1, record2]);
 
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -750,10 +690,7 @@ fn inventory_completion_status_multiple_caabi_boundaries() {
 #[test]
 fn classify_boundary_id_format() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     // ID should start with vb-y1zq-CAbi-
     assert!(result.id.starts_with("vb-y1zq-CAbi-"));
 }
@@ -775,10 +712,8 @@ fn classify_boundary_all_marker_types_have_risky_exposure() {
 
     for (marker, _class) in markers {
         let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker);
-        let Ok(result) = classify_boundary(candidate) else {
-            assert!(false, "classify_boundary must succeed for marker {marker}");
-            return;
-        };
+        let result = classify_boundary(candidate)
+            .expect("classify_boundary must succeed for marker {marker}");
         assert!(matches!(
             result.exposure.risk,
             BoundaryRisk::Multiple | BoundaryRisk::None
@@ -832,12 +767,9 @@ fn validate_inventory_waived_with_waiver() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(
-            false,
-            "validate_inventory must succeed for waived with waiver: {result:?}"
-        );
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed for waived with waiver"),
     };
     assert_eq!(validated.records.len(), 1);
     assert_eq!(validated.schema_version, 1);
@@ -892,12 +824,9 @@ fn inventory_completion_status_complete_ok() {
     let validated = ValidatedBoundaryInventory::from_records(vec![record]);
 
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -914,12 +843,9 @@ fn inventory_completion_status_third_party_unsafe_allowed() {
     validated.records.push(record);
 
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -996,14 +922,10 @@ fn make_record_with_class(class: BoundaryClass) -> BoundaryRecord {
 #[test]
 fn classify_boundary_stability_idempotent() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(result1) = classify_boundary(candidate.clone()) else {
-        assert!(false, "classify_boundary must succeed for first call");
-        return;
-    };
-    let Ok(result2) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed for second call");
-        return;
-    };
+    let result1 = classify_boundary(candidate.clone())
+        .expect("classify_boundary must succeed for first call");
+    let result2 =
+        classify_boundary(candidate).expect("classify_boundary must succeed for second call");
     assert_eq!(result1.id, result2.id);
     assert_eq!(result1.class, result2.class);
     assert_eq!(result1.source_path, result2.source_path);
@@ -1038,9 +960,9 @@ fn discover_boundaries_decoder_surface_present_continues() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(!candidates.is_empty());
 }
@@ -1059,9 +981,9 @@ fn discover_boundaries_finds_marker_in_cargo_toml() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(
         candidates
@@ -1088,9 +1010,9 @@ fn discover_boundaries_finds_markers_in_nested_subdirectories() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
 }
@@ -1136,9 +1058,9 @@ fn classify_boundary_rejects_unrecognized_marker() {
 fn classify_boundary_external_binary_marker_to_correct_class() {
     let candidate = BoundaryCandidate::new("crates/bin/src/app.rs", "external-binary-boundary");
     let result = classify_boundary(candidate);
-    let Ok(classified) = result else {
-        assert!(false, "classify_boundary must succeed: {result:?}");
-        return;
+    let classified = match result {
+        Ok(v) => v,
+        Err(e) => panic!("classify_boundary must succeed"),
     };
     assert_eq!(classified.class, BoundaryClass::ExternalBinary);
 }
@@ -1146,10 +1068,7 @@ fn classify_boundary_external_binary_marker_to_correct_class() {
 #[test]
 fn classify_boundary_id_path_contains_name_of_class() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
-    let Ok(result) = classify_boundary(candidate) else {
-        assert!(false, "classify_boundary must succeed");
-        return;
-    };
+    let result = classify_boundary(candidate).expect("classify_boundary must succeed");
     assert!(result.id.contains("CAbi"));
 }
 
@@ -1166,10 +1085,7 @@ fn required_evidence_risky_by_process_limit() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for process limit");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for process limit");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -1182,10 +1098,7 @@ fn required_evidence_risky_by_language_limit() {
         exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for language limit");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for language limit");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -1198,10 +1111,7 @@ fn required_evidence_safe_class_but_risky_exposure() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for risky exposure");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for risky exposure");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -1214,10 +1124,7 @@ fn required_evidence_risky_class_but_none_risk() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    let Ok(req) = result else {
-        assert!(false, "required_evidence must succeed for risky class");
-        return;
-    };
+    let req = result.expect("required_evidence must succeed for risky class");
     assert_eq!(req, EvidenceRequirement::FuzzOrIsolationOrManualQa);
 }
 
@@ -1388,12 +1295,9 @@ fn validate_inventory_approved_with_external_evidence_ok() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(
-            false,
-            "validate_inventory must succeed for external evidence: {result:?}"
-        );
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed for external evidence"),
     };
     assert_eq!(validated.records.len(), 1);
     assert_eq!(validated.schema_version, 1);
@@ -1411,9 +1315,9 @@ fn validate_inventory_approved_with_sha256_external_evidence_ok() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    let Ok(validated) = result else {
-        assert!(false, "validate_inventory must succeed: {result:?}");
-        return;
+    let validated = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_inventory must succeed"),
     };
     assert_eq!(validated.records.len(), 1);
     assert_eq!(validated.schema_version, 1);
@@ -1427,12 +1331,9 @@ fn validate_inventory_approved_with_sha256_external_evidence_ok() {
 fn inventory_completion_status_empty_records_zero_discovered() {
     let validated = ValidatedBoundaryInventory::from_records(Vec::new());
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -1446,12 +1347,9 @@ fn inventory_completion_status_single_valid_record() {
     let record = make_valid_record("test-id");
     let validated = ValidatedBoundaryInventory::from_records(vec![record]);
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -1467,12 +1365,9 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_fuzz_allowed() {
     record.source_path = PathBuf::from("fuzz/vendor_sdk/src/lib.rs");
     validated.records.push(record);
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -1488,12 +1383,9 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_scripts_allowed() 
     record.source_path = PathBuf::from("scripts/vendor_tool.sh");
     validated.records.push(record);
     let result = inventory_completion_status(validated);
-    let Ok(status) = result else {
-        assert!(
-            false,
-            "inventory_completion_status must succeed: {result:?}"
-        );
-        return;
+    let status = match result {
+        Ok(v) => v,
+        Err(e) => panic!("inventory_completion_status must succeed"),
     };
     match status {
         UnsafeIsolationStatus::Complete { boundary_count } => {
@@ -1529,9 +1421,9 @@ fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    let Ok(candidates) = result else {
-        assert!(false, "discover_boundaries must succeed: {result:?}");
-        return;
+    let candidates = match result {
+        Ok(v) => v,
+        Err(e) => panic!("discover_boundaries must succeed"),
     };
     assert!(!candidates.is_empty());
 }

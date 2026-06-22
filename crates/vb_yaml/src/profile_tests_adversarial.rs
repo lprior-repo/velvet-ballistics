@@ -4,13 +4,9 @@
 use super::*;
 use crate::{YamlError, YamlLimits};
 
-fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
-    false
-}
-
 macro_rules! fail_assert {
     ($($arg:tt)*) => {
-        assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        panic!($($arg)*)
     };
 }
 

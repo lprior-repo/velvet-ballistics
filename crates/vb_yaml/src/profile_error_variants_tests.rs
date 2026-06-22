@@ -11,13 +11,9 @@ use crate::parse_workflow_source;
 use crate::profile::{reject_forbidden_features, validate_yaml_profile};
 use crate::{YamlError, profile::reject_anchors_aliases_merges};
 
-fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
-    false
-}
-
 macro_rules! fail_assert {
     ($($arg:tt)*) => {
-        assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
+        panic!($($arg)*)
     };
 }
 

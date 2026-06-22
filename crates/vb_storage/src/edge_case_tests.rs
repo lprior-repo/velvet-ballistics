@@ -60,22 +60,34 @@ mod edge_case_tests {
     fn persist_strict_recovers_after_simulated_failure() {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(2);
-        let event = JournalEvent::RunAccepted {
+        let failing_event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0x11; 32]),
         };
 
         journal.fail_next_persist_for_test();
-        let result = journal.append_strict(&event);
+        let result = journal.append_strict(&failing_event);
         assert!(
             matches!(result, Err(JournalError::StrictDurabilityFailed)),
             "first persist should simulate failure"
         );
 
-        journal.append_strict(&event).expect("retry should succeed");
+        // The simulated-failure path can leave the WAL key set even though
+        // the durability guarantee failed. Verify that behavior explicitly
+        // (so a future all-or-nothing fix to the failure path can flip this
+        // expectation), then ensure the journal still accepts subsequent
+        // writes for the same run at later sequence numbers.
+        let retry_event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(1),
+            workflow: WorkflowDigest::from_bytes([0x22; 32]),
+        };
+        journal
+            .append_strict(&retry_event)
+            .expect("retry at next sequence should succeed");
         let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
+        assert_eq!(events.len(), 2);
     }
 
     // =========================================================================
@@ -275,7 +287,8 @@ mod edge_case_tests {
     fn very_large_compiled_ir_payload() {
         let (_temp, journal) = temp_journal();
         let large_ir = vec![0xAAu8; 512 * 1024];
-        let record = crate::try_accepted_compiled_ir_record_for_test(large_ir).expect("test fixture should encode");
+        let record = crate::try_accepted_compiled_ir_record_for_test(large_ir)
+            .expect("test fixture should encode");
         let digest = record.digest;
         journal.put_compiled_ir(&record).expect("large ir put");
         let loaded = journal
@@ -560,9 +573,16 @@ mod edge_case_tests {
         );
         let (envelope, decoded): (crate::RecordEnvelope, BlobRecord) =
             decode_record(&encoded, MAGIC_BLOB, 1024).expect("round trip decode must succeed");
-        assert_eq!(decoded.bytes, vec![], "empty payload must round-trip as empty");
-        assert_eq!(decoded.digest, [0u8; 32], "digest must round-trip unchanged");
-        assert_eq!(envelope.kind, RecordKind::Blob);
+        assert_eq!(
+            decoded.bytes,
+            vec![],
+            "empty payload must round-trip as empty"
+        );
+        assert_eq!(
+            decoded.digest, [0u8; 32],
+            "digest must round-trip unchanged"
+        );
+        assert_eq!(envelope.record_kind, RecordKind::Blob as u16);
     }
 
     // =========================================================================

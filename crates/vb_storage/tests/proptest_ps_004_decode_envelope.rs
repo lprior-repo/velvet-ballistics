@@ -234,9 +234,7 @@ proptest! {
         let decoded: Result<AcceptedArtifact, _> = postcard::from_bytes(truncated);
         match decoded {
             Ok(ref bad) => {
-                prop_assert!(false,
-                    "truncated envelope must NOT decode as AcceptedArtifact, got gate_count={}",
-                    bad.verification.gate_count);
+                panic!("placeholder");
             }
             Err(_) => {
                 prop_assert!(true, "truncated envelope correctly failed decode");

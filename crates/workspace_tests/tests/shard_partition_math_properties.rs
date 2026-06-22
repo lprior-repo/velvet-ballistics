@@ -317,7 +317,7 @@ proptest! {
             n if n > MAX_SHARD_COUNT => {
                 assert!(matches!(result, Err(PartitionError::ShardCountExceedsMax { .. })));
             }
-            _ => assert!(result.is_ok()),
+            _ => assert_eq!(result, Ok(ShardCount(raw))),
         }
     }
 }
@@ -334,7 +334,9 @@ proptest! {
             assert!(matches!(result, Err(PartitionError::InvalidKeyRange { start, end })
                 if start == a && end == b));
         } else {
-            assert!(result.is_ok());
+            let range = result.expect("valid range must succeed");
+            assert_eq!(range.start(), a);
+            assert_eq!(range.end(), b);
         }
     }
 }

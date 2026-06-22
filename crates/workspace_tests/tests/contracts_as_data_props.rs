@@ -327,7 +327,7 @@ proptest! {
         let result = parse_schema_version(&version);
         match result {
             Ok(v) => prop_assert_eq!(v, version, "Accepted version must equal input"),
-            Err(e) => prop_assert!(false, "parse_schema_version should accept '{}', got Err: {}", version, e),
+            Err(e) => panic!("placeholder"),
         }
     }
 
@@ -387,8 +387,8 @@ proptest! {
 
         match result2 {
             Ok(Ok(v)) => prop_assert_eq!(v, version, "parse_schema_version should be idempotent for valid input"),
-            Ok(Err(e)) => prop_assert!(false, "Second parse should succeed for '{}': {}", version, e),
-            Err(e) => prop_assert!(false, "First parse should succeed for '{}': {}", version, e),
+            Ok(Err(e)) => panic!("placeholder"),
+            Err(e) => panic!("placeholder"),
         }
     }
 
@@ -477,14 +477,14 @@ proptest! {
         let json1 = match serde_json::to_string(&map1) {
             Ok(j) => j,
             Err(e) => {
-                prop_assert!(false, "JSON serialization should not fail: {}", e);
+                panic!("placeholder");
                 String::new()
             }
         };
         let json2 = match serde_json::to_string(&map2) {
             Ok(j) => j,
             Err(e) => {
-                prop_assert!(false, "JSON serialization should not fail: {}", e);
+                panic!("placeholder");
                 String::new()
             }
         };
@@ -511,7 +511,7 @@ proptest! {
         let json = match serde_json::to_string(&map) {
             Ok(j) => j,
             Err(e) => {
-                prop_assert!(false, "JSON serialization should not fail: {}", e);
+                panic!("placeholder");
                 String::new()
             }
         };
@@ -519,7 +519,7 @@ proptest! {
         let json_value = match serde_json::from_str(&json) {
             Ok(v) => v,
             Err(e) => {
-                prop_assert!(false, "JSON deserialization should succeed: {}", e);
+                panic!("placeholder");
                 serde_json::Value::Null
             }
         };
@@ -530,7 +530,7 @@ proptest! {
             prop_assert_eq!(keys, sorted_keys,
                 "BTreeMap JSON keys must be in sorted order");
         } else {
-            prop_assert!(false, "Expected JSON object");
+            panic!("Expected JSON object");
         }
     }
 

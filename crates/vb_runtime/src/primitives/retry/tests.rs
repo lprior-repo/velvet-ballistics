@@ -55,9 +55,9 @@ fn retry_policy_default_policy_matches_default_trait() {
 
 #[test]
 fn retry_policy_new_with_max_u16_attempts() {
-    let policy = RetryPolicy::new(u16::MAX, 1000, 1, DelayStrategy::None);
-    assert!(policy.is_ok());
-    assert_eq!(policy.ok().expect("must succeed").max_attempts(), u16::MAX);
+    let policy = RetryPolicy::new(u16::MAX, 1000, 1, DelayStrategy::None)
+        .expect("RetryPolicy::new must accept max u16 attempts");
+    assert_eq!(policy.max_attempts(), u16::MAX);
 }
 
 // ── RetryState construction ───────────────────────────────────────

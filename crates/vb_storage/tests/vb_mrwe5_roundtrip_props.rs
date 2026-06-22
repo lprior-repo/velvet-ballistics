@@ -66,8 +66,7 @@ proptest! {
                 prop_assert_eq!(*d_output, SlotIdx::new(output),
                     "decoded output must match original");
             }
-            other => prop_assert!(false,
-                "decoded StepSucceeded should be StepSucceeded variant, got {:?}", other),
+            other => panic!("placeholder"),
         }
 
         let slot_event = JournalEvent::SlotWrittenEvent {
@@ -120,8 +119,7 @@ proptest! {
                 prop_assert_eq!(*d_attempt, attempt,
                     "decoded attempt must match original");
             }
-            other => prop_assert!(false,
-                "decoded SlotWrittenEvent should be SlotWrittenEvent variant, got {:?}", other),
+            other => panic!("placeholder"),
         }
     }
 
@@ -181,7 +179,7 @@ proptest! {
             JournalEvent::SlotWrittenEvent { value: Some(decoded_value), .. } => {
                 prop_assert_eq!(decoded_value, value_bytes, "value must survive roundtrip");
             }
-            other => prop_assert!(false, "expected SlotWrittenEvent with value, got {:?}", other),
+            other => panic!("placeholder"),
         }
     }
 
@@ -223,7 +221,7 @@ proptest! {
             JournalEvent::SlotWrittenEvent { value: None, .. } => {
                 // Expected
             }
-            other => prop_assert!(false, "expected SlotWrittenEvent with None, got {:?}", other),
+            other => panic!("placeholder"),
         }
     }
 }

@@ -197,28 +197,19 @@ fn validate_summary_count_at_max_accepted() {
 #[test]
 fn checked_pair_sum_zero_zero() {
     let result = 0u64.checked_add(0);
-    match result {
-        Some(v) => assert_eq!(v, 0),
-        None => assert!(false, "0 + 0 must not overflow"),
-    }
+    let v = result.expect("checked_add must not overflow for test fixture"); assert_eq!(v, 0);
 }
 
 #[test]
 fn checked_pair_sum_zero_max() {
     let result = 0u64.checked_add(u64::MAX);
-    match result {
-        Some(v) => assert_eq!(v, u64::MAX),
-        None => assert!(false, "0 + u64::MAX must not overflow"),
-    }
+    let v = result.expect("checked_add must not overflow for test fixture"); assert_eq!(v, u64::MAX);
 }
 
 #[test]
 fn checked_pair_sum_max_zero() {
     let result = u64::MAX.checked_add(0);
-    match result {
-        Some(v) => assert_eq!(v, u64::MAX),
-        None => assert!(false, "u64::MAX + 0 must not overflow"),
-    }
+    let v = result.expect("checked_add must not overflow for test fixture"); assert_eq!(v, u64::MAX);
 }
 
 #[test]
@@ -234,17 +225,14 @@ fn checked_pair_sum_one_max_minus_one_accepted() {
     let result = 1u64.checked_add(u64::MAX - 1);
     match result {
         Some(v) => assert_eq!(v, u64::MAX),
-        None => assert!(false, "1 + (u64::MAX - 1) must not overflow"),
+        None => panic!("placeholder must not overflow"),
     }
 }
 
 #[test]
 fn checked_pair_sum_typical_pair() {
     let result = 9u64.checked_add(12);
-    match result {
-        Some(v) => assert_eq!(v, 21),
-        None => assert!(false, "9 + 12 must not overflow"),
-    }
+    let v = result.expect("checked_add must not overflow for test fixture"); assert_eq!(v, 21);
 }
 
 #[test]
@@ -252,7 +240,7 @@ fn checked_pair_sum_pair_at_max_minus_one() {
     let result = (u64::MAX - 1).checked_add(1);
     match result {
         Some(v) => assert_eq!(v, u64::MAX),
-        None => assert!(false, "(u64::MAX - 1) + 1 must not overflow"),
+        None => panic!("placeholder + 1 must not overflow"),
     }
 }
 

@@ -179,7 +179,7 @@ proptest! {
                 prop_assert_eq!(known, expected);
             }
             RunHeaderStatusClass::Unknown(_) => {
-                prop_assert!(false, "byte {byte} should classify as Known");
+                panic!("byte {byte} should classify as Known");
             }
         }
     }
@@ -194,7 +194,7 @@ proptest! {
                 prop_assert_eq!(u, byte);
             }
             RunHeaderStatusClass::Known(_) => {
-                prop_assert!(false, "byte {byte} should classify as Unknown");
+                panic!("byte {byte} should classify as Unknown");
             }
         }
     }
@@ -217,7 +217,7 @@ proptest! {
         match back {
             Ok(k) => prop_assert_eq!(k, known),
             Err(e) => {
-                prop_assert!(false, "round trip failed: {e:?}");
+                panic!("round trip failed: {e:?}");
             }
         }
     }
@@ -281,14 +281,14 @@ proptest! {
                 match known_result {
                     Ok(k) => prop_assert_eq!(k, known),
                     Err(_) => {
-                        prop_assert!(false, "classify said Known but .known() returned Err");
+                        panic!("classify said Known but .known() returned Err");
                     }
                 }
             }
             RunHeaderStatusClass::Unknown(u) => {
                 match known_result {
                     Ok(_) => {
-                        prop_assert!(false, "classify said Unknown but .known() returned Ok");
+                        panic!("classify said Unknown but .known() returned Ok");
                     }
                     Err(e) => {
                         prop_assert_eq!(e.byte(), u);

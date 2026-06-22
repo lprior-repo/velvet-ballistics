@@ -216,7 +216,10 @@ fn test_runtime_result_ok() {
     let config = ShardConfig::default();
     let result: RuntimeResult<Runtime> =
         Runtime::new(NonZeroUsize::new(2).expect("non-zero"), config);
-    assert!(result.is_ok());
+    assert!(
+        matches!(result, Ok(_)),
+        "Runtime::new must succeed with valid config"
+    );
 }
 
 /// Test RuntimeResult err path.
@@ -224,5 +227,8 @@ fn test_runtime_result_ok() {
 fn test_runtime_result_err() {
     let err = RuntimeError::ActiveRunCapacityExceeded { capacity: 100 };
     let result: RuntimeResult<()> = Err(err);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 100 })
+    ));
 }

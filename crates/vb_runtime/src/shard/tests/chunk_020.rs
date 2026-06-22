@@ -169,7 +169,7 @@ fn shard_pending_timer_fields_are_correct() -> Result<(), RuntimeError> {
             assert_eq!(t.step, vb_core::ids::StepIdx::new(1)); // WaitUntil is at step 1
             assert_eq!(t.kind, crate::shard::types::PendingTimerKind::Wait);
         }
-        None => assert!(false, "expected pending timer"),
+        None => panic!("placeholder"),
     }
     Ok(())
 }

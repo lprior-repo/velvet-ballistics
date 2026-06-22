@@ -405,7 +405,10 @@ fn recovery_detects_unsupported_slot_taint() {
 
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_runtime::RuntimeError::UnsupportedFullRecoveryHydration)
+    ));
 }
 
 // ---------------------------------------------------------------------------

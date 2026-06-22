@@ -122,6 +122,7 @@ fn vb_ajc40_query_post_decode_semantics() {
         | Err(QueryParseError::YbBudgetExceeded { .. })
         | Err(QueryParseError::QueryPathTooDeep { .. })
         | Err(QueryParseError::TooManyQueries { .. })
+        | Err(QueryParseError::PayloadTooLarge { .. })
         | Err(QueryParseError::YieldCostOverflow)
         | Err(QueryParseError::TotalYieldCostMismatch { .. }) => {}
     }

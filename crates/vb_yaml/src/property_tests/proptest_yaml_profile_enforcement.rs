@@ -88,7 +88,10 @@ proptest! {
             Err(YamlError::DuplicateKey { key }) => {
                 prop_assert_eq!(key.as_ref(), last_two[0].as_str());
             }
-            other => prop_assert!(false, "expected DuplicateKey, got {other:?}"),
+            other => prop_assert!(
+                matches!(other, Err(YamlError::DuplicateKey { .. })),
+                "expected DuplicateKey, got {other:?}"
+            ),
         }
     }
 
@@ -121,7 +124,10 @@ proptest! {
             Err(YamlError::AmbiguousScalar { scalar }) => {
                 prop_assert_eq!(scalar.as_ref(), word);
             }
-            other => prop_assert!(false, "expected AmbiguousScalar({word}), got {other:?}"),
+            other => prop_assert!(
+                matches!(other, Err(YamlError::AmbiguousScalar { .. })),
+                "expected AmbiguousScalar({word}), got {other:?}"
+            ),
         }
     }
 
@@ -178,7 +184,10 @@ proptest! {
             Err(YamlError::DuplicateKey { key: k }) => {
                 prop_assert_eq!(k.as_ref(), key);
             }
-            other => prop_assert!(false, "expected DuplicateKey, got {other:?}"),
+            other => prop_assert!(
+                matches!(other, Err(YamlError::DuplicateKey { .. })),
+                "expected DuplicateKey, got {other:?}"
+            ),
         }
     }
 
@@ -193,7 +202,10 @@ proptest! {
         let result = validate_yaml_profile(&yaml);
         match result {
             Err(YamlError::AmbiguousScalar { .. }) => {}
-            other => prop_assert!(false, "expected AmbiguousScalar, got {other:?}"),
+            other => prop_assert!(
+                matches!(other, Err(YamlError::AmbiguousScalar { .. })),
+                "expected AmbiguousScalar, got {other:?}"
+            ),
         }
     }
 
@@ -303,7 +315,10 @@ proptest! {
             (Err(ea), Err(eb)) => {
                 prop_assert_eq!(ea, eb);
             }
-            _ => prop_assert!(false, "divergent outcomes for same input"),
+            (oa, ob) => prop_assert!(
+                matches!((&oa, &ob), (Err(_), Err(_))),
+                "divergent outcomes for same input: a={oa:?}, b={ob:?}"
+            ),
         }
     }
 }

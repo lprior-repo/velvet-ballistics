@@ -237,7 +237,7 @@ proptest! {
                 prop_assert_eq!(*ritem, SlotIdx::new(item), "item_slot must round-trip");
                 prop_assert_eq!(*rlimit, limit, "limit must round-trip identically");
             }
-            _ => prop_assert!(false, "expected ForEachStart variant after round-trip"),
+            _ => panic!("expected ForEachStart variant after round-trip"),
         }
     }
 
@@ -264,13 +264,13 @@ proptest! {
                 prop_assert_eq!(*body, StepIdx::new(1), "body must round-trip");
                 prop_assert_eq!(*done, StepIdx::new(2), "done must round-trip");
             }
-            _ => prop_assert!(false, "expected ForEachNext variant after round-trip"),
+            _ => panic!("expected ForEachNext variant after round-trip"),
         }
         match &recovered.nodes[2].kind {
             CompiledNodeKind::ForEachJoin { output: o } => {
                 prop_assert_eq!(*o, SlotIdx::new(output), "join output slot must round-trip");
             }
-            _ => prop_assert!(false, "expected ForEachJoin variant after round-trip"),
+            _ => panic!("expected ForEachJoin variant after round-trip"),
         }
     }
 

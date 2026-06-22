@@ -272,7 +272,22 @@ pub mod trimming;
 pub mod types;
 
 #[cfg(test)]
+#[path = "edge_case_tests.rs"]
+mod edge_case_tests;
+#[cfg(test)]
 mod hydrate_tests;
+#[cfg(test)]
+#[path = "process_lock_tests.rs"]
+mod process_lock_tests;
+#[cfg(test)]
+#[path = "record_tests.rs"]
+mod record_tests;
+#[cfg(test)]
+#[path = "recovery_type_tests.rs"]
+mod recovery_type_tests;
+#[cfg(test)]
+#[path = "replay_core_tests.rs"]
+mod replay_core_tests;
 #[cfg(test)]
 mod security_tests;
 #[cfg(test)]

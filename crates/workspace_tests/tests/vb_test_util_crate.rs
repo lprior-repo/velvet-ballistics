@@ -204,7 +204,10 @@ fn empty_workflow_fixture() {
     // An empty workflow fixture uses minimal valid IR: just a zero-capacity
     // builder that is rejected, proving the error path works.
     let result = FixtureCapacity::new(0);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_test_util::TestSetupError::InvalidCapacity(_))
+    ));
 }
 
 #[test]

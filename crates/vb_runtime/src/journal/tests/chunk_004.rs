@@ -303,7 +303,7 @@ fn storage_journal_events_for_run_bounded_enforces_limit() {
     }
 
     let Some(limit) = vb_storage::EventReplayLimit::new(3) else {
-        assert!(false, "limit of 3 must be Some");
+        panic!("limit of 3 must be Some");
         return;
     };
     let result = journal.events_for_run_bounded(run, limit);

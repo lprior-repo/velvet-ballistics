@@ -71,8 +71,7 @@ proptest! {
                 "encode_record must be deterministic for same inputs");
         } else {
             // Both must be consistently Ok or Err, not mixed.
-            prop_assert!(false,
-                "encode_record must be consistently Ok or Err, not mixed");
+            panic!("encode_record must be consistently Ok or Err, not mixed");
         }
     }
     #[test]

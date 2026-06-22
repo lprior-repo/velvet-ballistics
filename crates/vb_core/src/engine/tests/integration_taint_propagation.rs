@@ -2797,7 +2797,7 @@ mod proptests {
 
             let result = eval_workflow_with_slots(ops, Vec::new(), constants);
             let Ok((_value, taint)) = result else {
-                prop_assert!(false, "eval of LoadConst must succeed: {:?}", result);
+                panic!("placeholder");
                 return Ok(());
             };
             prop_assert_eq!(taint, Taint::Clean);
@@ -2833,7 +2833,7 @@ mod proptests {
 
             let result = eval_workflow_with_slots(ops, slots, Vec::new());
             let Ok((_value, out_taint)) = result else {
-                prop_assert!(false, "eval of Add(small, small) must succeed: {:?}", result);
+                panic!("placeholder must succeed: {:?}", result);
                 return Ok(());
             };
 
@@ -2879,7 +2879,7 @@ mod proptests {
 
             let result = eval_workflow_with_slots(ops, slots, Vec::new());
             let Ok((_value, out_taint)) = result else {
-                prop_assert!(false, "eval of Add(small, small) must succeed: {:?}", result);
+                panic!("placeholder must succeed: {:?}", result);
                 return Ok(());
             };
 

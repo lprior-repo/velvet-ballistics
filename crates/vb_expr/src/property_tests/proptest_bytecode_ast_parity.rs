@@ -218,7 +218,7 @@ proptest! {
                 prop_assert_eq!(f, e, "fold and eval must agree for I64");
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -236,7 +236,7 @@ proptest! {
                 prop_assert_eq!(f, e, "fold and eval must agree for Bool");
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -267,7 +267,7 @@ proptest! {
                 // Both agree that the operation is unavailable.
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -285,7 +285,7 @@ proptest! {
                 prop_assert_eq!(f, e, "fold and eval must agree for comparison");
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -316,7 +316,7 @@ proptest! {
                 // Both agree the operation is unavailable.
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -356,7 +356,7 @@ proptest! {
         match (folded, evaluated) {
             (Some(ConstValue::Null), Ok(vb_core::SlotValue::Null)) => {}
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -386,7 +386,7 @@ proptest! {
                 prop_assert_eq!(f1.to_bits(), f2.to_bits(), "fold and eval must agree for F64");
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -454,7 +454,7 @@ proptest! {
                 prop_assert_eq!(f, e, "fold and eval must agree for boolean short-circuit");
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }
@@ -488,7 +488,7 @@ proptest! {
                 // Both agree the operation is unavailable.
             }
             (other_f, other_e) => {
-                prop_assert!(false, "fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
+                panic!("fold/eval parity broken: fold={other_f:?} eval={other_e:?}");
             }
         }
     }

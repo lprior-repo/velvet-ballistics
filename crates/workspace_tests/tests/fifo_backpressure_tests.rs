@@ -150,7 +150,7 @@
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_runtime::action_queue::{
-    BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+    ActionQueueError, BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };
 
 // ---------------------------------------------------------------------------
@@ -415,14 +415,14 @@ fn capacity_reported_for_edge_values() {
 #[test]
 fn zero_capacity_constructor_rejected() {
     let res = BoundedActionCompletionQueue::new(0);
-    assert!(res.is_err());
+    assert!(matches!(res, Err(ActionQueueError::InvalidCapacity { .. })));
 }
 
 /// Over-maximum capacity is rejected with typed error.
 #[test]
 fn over_maximum_capacity_rejected() {
     let res = BoundedActionCompletionQueue::new(MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1);
-    assert!(res.is_err());
+    assert!(matches!(res, Err(ActionQueueError::InvalidCapacity { .. })));
 }
 
 /// Enqueue after all items drained works (no queue corruption).

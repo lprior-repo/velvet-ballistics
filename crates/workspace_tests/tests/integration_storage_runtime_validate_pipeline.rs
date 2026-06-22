@@ -352,7 +352,10 @@ fn runtime_boundary_rejects_unsupported_slot_taint_in_pipeline() {
 
     // Then - it rejects the unsupported state
     let result = boundary.hydrate_run_frame();
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_runtime::RuntimeError::UnsupportedFullRecoveryHydration)
+    ));
 }
 
 #[test]
@@ -379,7 +382,7 @@ fn validation_detects_slot_out_of_bounds_in_workflow_parts() {
     let result = validate(&parts);
 
     // Then - the result should be ok
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 // ---------------------------------------------------------------------------

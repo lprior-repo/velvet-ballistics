@@ -109,7 +109,7 @@ proptest! {
                 };
                 prop_assert_eq!(resource, expected, "wrong resource name");
             }
-            other => prop_assert!(false, "expected LimitRequired, got {other:?}"),
+            other => panic!("expected LimitRequired, got {other:?}"),
         }
     }
 
@@ -184,10 +184,7 @@ proptest! {
             Err(ValidationError::LimitExceeded { resource }) => {
                 prop_assert_eq!(resource, "max_retry_attempts");
             }
-            other => prop_assert!(
-                false,
-                "expected LimitExceeded(max_retry_attempts), got {other:?}"
-            ),
+            other => panic!("expected LimitExceeded(max_retry_attempts), got {other:?}"),
         }
     }
 
@@ -229,10 +226,7 @@ proptest! {
             Err(ValidationError::LimitExceeded { resource }) => {
                 prop_assert_eq!(resource, "max_steps");
             }
-            other => prop_assert!(
-                false,
-                "expected LimitExceeded(max_steps), got {other:?}"
-            ),
+            other => panic!("expected LimitExceeded(max_steps), got {other:?}"),
         }
     }
 
@@ -331,7 +325,7 @@ proptest! {
             Ok(())
             | Err(ValidationError::LimitRequired { .. })
             | Err(ValidationError::LimitExceeded { .. }) => {}
-            other => prop_assert!(false, "unexpected error variant: {other:?}"),
+            other => panic!("unexpected error variant: {other:?}"),
         }
     }
 }

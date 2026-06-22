@@ -106,7 +106,6 @@
     clippy::unwrap_or_default,
     clippy::default_trait_access
 )]
-
 #![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(
@@ -119,12 +118,12 @@
     clippy::unwrap_used
 )]
 mod recovery_type_tests {
-    use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredStepEntry,
-        RecoveredStepState, RecoveryRuntimeSummary, RecoveryTerminalState,
-        UnsupportedRecoveryState, RecoveryFrameSeed, RecoveredSlotEntry, RecoveryHydration,
-    };
     use crate::EventSeq;
+    use crate::recovery::{
+        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
+        RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
+        RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    };
     use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
     #[test]
@@ -240,7 +239,6 @@ mod recovery_type_tests {
         assert!(!s.slot_values);
         assert!(!s.slot_taint);
         assert!(!s.action_payloads);
-        assert!(!s.pending_actions);
     }
 
     #[test]
@@ -249,7 +247,6 @@ mod recovery_type_tests {
         assert!(!s.slot_values);
         assert!(s.slot_taint);
         assert!(!s.action_payloads);
-        assert!(!s.pending_actions);
     }
 
     #[test]
@@ -258,16 +255,14 @@ mod recovery_type_tests {
         assert!(s.slot_values);
         assert!(!s.slot_taint);
         assert!(!s.action_payloads);
-        assert!(!s.pending_actions);
     }
 
     #[test]
-    fn unsupported_recovery_state_pending_actions_unsupported() {
-        let s = UnsupportedRecoveryState::pending_actions_unsupported();
+    fn unsupported_recovery_state_action_payloads_unsupported() {
+        let s = UnsupportedRecoveryState::action_payloads_unsupported();
         assert!(!s.slot_values);
         assert!(!s.slot_taint);
-        assert!(!s.action_payloads);
-        assert!(s.pending_actions);
+        assert!(s.action_payloads);
     }
 
     #[test]
@@ -278,7 +273,6 @@ mod recovery_type_tests {
         assert!(c.slot_values);
         assert!(c.slot_taint);
         assert!(!c.action_payloads);
-        assert!(!c.pending_actions);
     }
 
     #[test]
@@ -324,7 +318,6 @@ mod recovery_type_tests {
             pc: StepIdx::new(1),
             steps: vec![],
             slots: vec![],
-            pending_actions: vec![],
             unsupported: UnsupportedRecoveryState::SUPPORTED,
         };
         assert_eq!(seed.step_count, 2);

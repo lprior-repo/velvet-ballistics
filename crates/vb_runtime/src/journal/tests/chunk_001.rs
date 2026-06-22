@@ -64,7 +64,7 @@ fn require_ok<T>(result: Result<T, String>, context: &'static str) -> Option<T> 
     match result {
         Ok(value) => Some(value),
         Err(error) => {
-            assert!(false, "{context}: {error}");
+            panic!("{context}: {error}");
             None
         }
     }

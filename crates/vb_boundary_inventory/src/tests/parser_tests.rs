@@ -2,11 +2,15 @@
 //!
 //! Tests: parse_inventory
 
-// `assert!(false, ...)` appears inside `let-else` arms whose Ok branch already
-// bound the value. The assertion is the documented "this branch is unreachable"
-// marker with a clear diagnostic message. `panic!`/`unreachable!` are forbidden
-// by workspace lints, so we suppress `assertions_on_constants` at module scope.
-#![allow(clippy::assertions_on_constants, clippy::indexing_slicing)]
+// `panic!(...)` markers appear inside `let-else` arms whose Ok branch already
+// bound the value. The panic is the documented "this branch is unreachable"
+// marker with a clear diagnostic message. Tests are allowed to panic at the
+// workspace level, so we use `panic!` for the unreachable-arm marker.
+#![allow(
+    clippy::panic,
+    clippy::assertions_on_constants,
+    clippy::indexing_slicing
+)]
 
 use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inventory};
 
@@ -18,9 +22,9 @@ use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inv
 fn parse_inventory_empty_boundaries() {
     let json = r#"{"schema_version": 1, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.schema_version, Some(1));
     assert!(inventory.records.is_empty());
@@ -39,15 +43,15 @@ fn parse_inventory_single_boundary() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 1);
-    let Some(record) = inventory.records.first() else {
-        assert!(false, "expected at least one record");
-        return;
-    };
+    let record = inventory
+        .records
+        .first()
+        .expect("expected at least one record");
     assert_eq!(record.id, "vb-y1zq-CAbi-crates/test/src/lib.rs");
     assert_eq!(record.class, BoundaryClass::CAbi);
 }
@@ -67,9 +71,9 @@ fn parse_inventory_all_boundary_classes() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 7);
 }
@@ -100,9 +104,9 @@ fn parse_inventory_multiple_boundaries() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 3);
 }
@@ -275,12 +279,9 @@ fn parse_inventory_whitespace_id() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(
-            false,
-            "parse_inventory must succeed for whitespace ID: {result:?}"
-        );
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed for whitespace ID"),
     };
     assert_eq!(inventory.records.len(), 1);
     assert_eq!(inventory.records[0].id, "   ");
@@ -295,12 +296,9 @@ fn parse_inventory_utf8_id() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(
-            false,
-            "parse_inventory must succeed for UTF-8 ID: {result:?}"
-        );
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed for UTF-8 ID"),
     };
     assert_eq!(inventory.records.len(), 1);
     assert_eq!(inventory.records[0].id, "vb-y1zq-CAbi-日本語");
@@ -321,9 +319,9 @@ fn parse_inventory_large_boundaries_array() {
     }
     json.push_str("]}");
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 100);
 }
@@ -537,12 +535,9 @@ fn parse_inventory_source_path_only_whitespace() {
     let result = parse_inventory(json.as_bytes());
     // Whitespace-only source_path is not empty, so parse should succeed
     // But after PathBuf::from, as_os_str().is_empty() is false for whitespace
-    let Ok(inventory) = result else {
-        assert!(
-            false,
-            "parse_inventory must succeed for whitespace-only source_path: {result:?}"
-        );
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed for whitespace-only source_path"),
     };
     assert_eq!(inventory.records.len(), 1);
     assert_eq!(inventory.records[0].source_path.as_os_str(), "   ");
@@ -579,9 +574,9 @@ fn parse_inventory_valid_record_with_extra_fields() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 1);
 }
@@ -595,15 +590,15 @@ fn parse_inventory_very_long_id_and_path() {
         long_id, long_path
     );
     let result = parse_inventory(json.as_bytes());
-    let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed: {result:?}");
-        return;
+    let inventory = match result {
+        Ok(v) => v,
+        Err(e) => panic!("parse_inventory must succeed"),
     };
     assert_eq!(inventory.records.len(), 1);
-    let Some(record) = inventory.records.first() else {
-        assert!(false, "expected at least one record");
-        return;
-    };
+    let record = inventory
+        .records
+        .first()
+        .expect("expected at least one record");
     assert_eq!(record.id, long_id);
     assert_eq!(record.source_path, std::path::PathBuf::from(long_path));
 }

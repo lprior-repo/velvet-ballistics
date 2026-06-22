@@ -278,48 +278,48 @@ mod tests {
     #[test]
     fn write_version_stdout_succeeds() {
         let result = write_version_stdout();
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_help_stdout_succeeds() {
         let result = write_help_stdout();
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_error_stderr_formats_missing_argument() {
         let err = ParseError::MissingArgument("test");
         let result = write_error_stderr(&err);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_error_stderr_formats_unknown_emit_target() {
         let err = ParseError::UnknownEmitTarget("json".into());
         let result = write_error_stderr(&err);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_error_stderr_formats_unknown_durability() {
         let err = ParseError::UnknownDurability("fast".into());
         let result = write_error_stderr(&err);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_error_stderr_formats_unknown_command() {
         let err = ParseError::UnknownCommand("foo".into());
         let result = write_error_stderr(&err);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]
     fn write_error_stderr_formats_no_command() {
         let err = ParseError::NoCommand;
         let result = write_error_stderr(&err);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(())));
     }
 
     #[test]

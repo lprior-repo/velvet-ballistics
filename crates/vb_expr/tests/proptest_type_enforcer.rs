@@ -82,7 +82,7 @@ proptest! {
             Ok(recovered) => prop_assert_eq!(recovered, input),
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                prop_assert!(false, "expect_bool must accept Bool: {}", err_msg);
+                panic!("placeholder");
             }
         }
     }
@@ -101,11 +101,11 @@ proptest! {
             }
             Err(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expected TypeMismatch, got {}", msg);
+                panic!("placeholder");
             }
             Ok(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expect_bool must reject {:?}, got Ok({})", value, msg);
+                panic!("placeholder: value={value:?}, msg={msg}");
             }
         }
     }
@@ -130,7 +130,7 @@ proptest! {
             Ok(recovered) => prop_assert_eq!(recovered, input),
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                prop_assert!(false, "expect_i64 must accept I64: {}", err_msg);
+                panic!("placeholder");
             }
         }
     }
@@ -150,11 +150,11 @@ proptest! {
             }
             Err(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expected TypeMismatch, got {}", msg);
+                panic!("placeholder");
             }
             Ok(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expect_i64 must reject {:?}, got Ok({})", value, msg);
+                panic!("placeholder: value={value:?}, msg={msg}");
             }
         }
     }
@@ -174,7 +174,7 @@ proptest! {
             }
             other => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "F64 must be rejected, got {}", msg);
+                panic!("placeholder");
             }
         }
     }
@@ -200,7 +200,7 @@ proptest! {
             Ok(recovered) => prop_assert_eq!(recovered, symbol_id),
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                prop_assert!(false, "expect_symbol must accept Symbol: {}", err_msg);
+                panic!("placeholder");
             }
         }
     }
@@ -219,11 +219,11 @@ proptest! {
             }
             Err(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expected TypeMismatch, got {}", msg);
+                panic!("placeholder");
             }
             Ok(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expect_symbol must reject {:?}, got Ok({})", value, msg);
+                panic!("placeholder: value={value:?}, msg={msg}");
             }
         }
     }
@@ -249,7 +249,7 @@ proptest! {
             Ok(recovered) => prop_assert_eq!(recovered, list_id),
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                prop_assert!(false, "expect_list must accept List: {}", err_msg);
+                panic!("placeholder");
             }
         }
     }
@@ -268,11 +268,11 @@ proptest! {
             }
             Err(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expected TypeMismatch, got {}", msg);
+                panic!("placeholder");
             }
             Ok(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expect_list must reject {:?}, got Ok({})", value, msg);
+                panic!("placeholder: value={value:?}, msg={msg}");
             }
         }
     }
@@ -298,7 +298,7 @@ proptest! {
             Ok(recovered) => prop_assert_eq!(recovered, object_id),
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                prop_assert!(false, "expect_object must accept Object: {}", err_msg);
+                panic!("placeholder");
             }
         }
     }
@@ -317,11 +317,11 @@ proptest! {
             }
             Err(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expected TypeMismatch, got {}", msg);
+                panic!("placeholder");
             }
             Ok(other) => {
                 let msg = format!("{:?}", other);
-                prop_assert!(false, "expect_object must reject {:?}, got Ok({})", value, msg);
+                panic!("placeholder: value={value:?}, msg={msg}");
             }
         }
     }

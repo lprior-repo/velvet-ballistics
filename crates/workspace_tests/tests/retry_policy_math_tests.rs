@@ -74,10 +74,8 @@ proptest! {
         let right = policy.delay_for_attempt(max_interval_ms, attempt);
         if attempt <= policy.max_attempts {
             prop_assert_eq!(left, right);
-            prop_assert!(left.is_ok());
-            if let Ok(delay) = left {
-                prop_assert!(delay <= max_interval_ms);
-            }
+            let delay = left.expect("delay must succeed within max_attempts");
+            prop_assert!(delay <= max_interval_ms);
         } else {
             prop_assert_eq!(left, Err(RetryPolicyMathError::AttemptExceeded));
         }

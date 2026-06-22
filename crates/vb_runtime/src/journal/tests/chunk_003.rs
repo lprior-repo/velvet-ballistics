@@ -86,7 +86,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), Runtime
     let run = RunId::new(49);
     let workflow = WorkflowDigest::from_bytes([12; 32]);
     let Some(shard_count) = NonZeroUsize::new(1) else {
-        assert!(false, "invalid shard count");
+        panic!("invalid shard count");
         return Ok(());
     };
     let mut config = ShardConfig {
@@ -193,7 +193,7 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
 #[test]
 fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
-        assert!(false, "test capacity must be non-zero");
+        panic!("test capacity must be non-zero");
         return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
@@ -215,7 +215,7 @@ fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Resul
 #[test]
 fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(1) else {
-        assert!(false, "test capacity must be non-zero");
+        panic!("test capacity must be non-zero");
         return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
@@ -237,7 +237,7 @@ fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capa
 #[test]
 fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
-        assert!(false, "test capacity must be non-zero");
+        panic!("test capacity must be non-zero");
         return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);

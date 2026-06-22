@@ -26,11 +26,11 @@
 use std::sync::Arc;
 
 use vb_core::ids::RunId;
-use vb_storage::{types::EventSeq as StorageEventSeq, JournalError};
+use vb_storage::{JournalError, types::EventSeq as StorageEventSeq};
 
+use crate::RuntimeError;
 use crate::journal::RuntimeJournalEvent;
 use crate::shard::types::{RuntimeEvent, RuntimeState, Shard, ShardConfig};
-use crate::RuntimeError;
 
 // =========================================================================
 // Bounded generators

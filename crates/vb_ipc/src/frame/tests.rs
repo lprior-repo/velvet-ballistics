@@ -137,20 +137,9 @@
 
 use super::*;
 
-macro_rules! assert_ok {
-    ($result:expr $(, $($arg:tt)+)?) => {{
-        match &$result {
-            Ok(_) => (),
-            Err(_) => assert_eq!(Some("Err(..)"), None::<&str> $(, $($arg)+)?),
-        }
-    }};
-}
-
 fn assert_command_roundtrip(command: IpcCommand) {
     let frame_result = encode_frame(command, 0, 7, b"");
-    assert_ok!(frame_result, "encode should succeed for {command:?}");
-    let frame_bytes =
-        frame_result.unwrap_or_else(|e| panic!("encode should succeed for {command:?}: {e:?}"));
+    let frame_bytes = frame_result.expect("encode should succeed for {command:?}");
 
     let header_slice = frame_bytes
         .get(..IPC_HEADER_LEN)
@@ -160,17 +149,14 @@ fn assert_command_roundtrip(command: IpcCommand) {
         .unwrap_or_else(|_| panic!("header slice wrong size for {command:?}"));
     let header = decode_frame_header(&header_arr);
 
-    assert_ok!(header, "header should decode for {command:?}");
-    let header = header.unwrap_or_else(|e| panic!("header should decode for {command:?}: {e:?}"));
+    let header = header.expect("header should decode for {command:?}");
     assert_eq!(header.command, command, "command should roundtrip");
 }
 
 fn assert_payload_roundtrip(command: IpcCommand) {
     let payload = b"test";
     let frame = encode_frame(command, 0, 42, payload);
-    assert_ok!(frame, "encode should succeed for {command:?}");
-    let frame_bytes =
-        frame.unwrap_or_else(|e| panic!("encode should succeed for {command:?}: {e:?}"));
+    let frame_bytes = frame.expect("encode should succeed for {command:?}");
 
     let header_arr: [u8; IPC_HEADER_LEN] = frame_bytes
         .get(..IPC_HEADER_LEN)
@@ -179,8 +165,7 @@ fn assert_payload_roundtrip(command: IpcCommand) {
         .unwrap_or_else(|_| panic!("header slice wrong size for {command:?}"));
     let decoded = decode_frame_header(&header_arr);
 
-    assert_ok!(decoded, "decode should succeed for {command:?}");
-    let header = decoded.unwrap_or_else(|e| panic!("decode should succeed for {command:?}: {e:?}"));
+    let header = decoded.expect("decode should succeed for {command:?}");
     assert_eq!(
         header.command, command,
         "command should roundtrip for {command:?}"
@@ -208,10 +193,7 @@ fn assert_bad_magic_rejected(bad_magic: u32) {
 fn encode_frame_produces_valid_header_and_payload() {
     let payload = b"test-data";
     let result = encode_frame(IpcCommand::Health, 0, 99, payload);
-    assert_ok!(result, "encode_frame should succeed");
-    let Ok(frame) = result else {
-        return;
-    };
+    let frame = result.expect("encode_frame should succeed");
 
     assert!(
         frame.len() > IPC_HEADER_LEN,
@@ -226,10 +208,7 @@ fn encode_frame_produces_valid_header_and_payload() {
         Err(_) => panic!("header slice wrong size"),
     };
     let header_result = decode_frame_header(&header_bytes);
-    assert_ok!(header_result, "header should decode");
-    let Ok(header) = header_result else {
-        panic!("header should decode")
-    };
+    let header = header_result.expect("header should decode");
     assert_eq!(header.command, IpcCommand::Health);
     assert_eq!(header.correlation, 99);
     let payload_len = match usize::try_from(header.payload_len) {
@@ -261,10 +240,7 @@ fn fuzz_decode_frame_rejects_bad_magic() {
 fn fuzz_decode_frame_rejects_oversized_payload() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 9999);
     let encoded = header.encode();
-    assert_ok!(encoded, "header should encode");
-    let Ok(encoded) = encoded else {
-        return;
-    };
+    let encoded = encoded.expect("header should encode");
     let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
     let result = IpcFrameHeader::decode(&encoded, tiny_max);
 
@@ -313,10 +289,7 @@ fn encode_frame_produces_correct_magic_bytes() {
     // Given: a valid command and empty payload
     // When: encoding a frame
     let result = encode_frame(IpcCommand::Health, 0, 1, b"");
-    assert_ok!(result, "encode_frame should succeed");
-    let Ok(frame) = result else {
-        return;
-    };
+    let frame = result.expect("encode_frame should succeed");
 
     // Then: bytes 0..4 are IPC_MAGIC in little-endian
     let magic_slice = frame.get(..4);
@@ -328,10 +301,7 @@ fn encode_frame_produces_correct_version_byte() {
     // Given: a valid command and empty payload
     // When: encoding a frame
     let result = encode_frame(IpcCommand::Health, 0, 1, b"");
-    assert_ok!(result, "encode_frame should succeed");
-    let Ok(frame) = result else {
-        return;
-    };
+    let frame = result.expect("encode_frame should succeed");
 
     // Then: bytes 4..6 are IPC_VERSION in little-endian
     let version_slice = frame.get(4..6);
@@ -346,10 +316,7 @@ fn encode_frame_produces_correct_command_byte() {
     // Given: a DrainTrace command (id=9)
     // When: encoding a frame
     let result = encode_frame(IpcCommand::DrainTrace, 0, 1, b"");
-    assert_ok!(result, "encode_frame should succeed");
-    let Ok(frame) = result else {
-        return;
-    };
+    let frame = result.expect("encode_frame should succeed");
 
     // Then: bytes 6..8 are command id 9 in little-endian
     let cmd_slice = frame.get(6..8);
@@ -363,10 +330,7 @@ fn encode_frame_produces_correct_payload_length() {
 
     // When: encoding a frame
     let result = encode_frame(IpcCommand::Health, 0, 1, payload);
-    assert_ok!(result, "encode_frame should succeed");
-    let Ok(frame) = result else {
-        return;
-    };
+    let frame = result.expect("encode_frame should succeed");
 
     // Then: bytes 20..24 contain payload length 5 in little-endian
     let len_slice = frame.get(20..24);
@@ -380,10 +344,7 @@ fn encode_frame_roundtrip_with_empty_payload() {
 
     // When: encoding then decoding
     let frame_result = encode_frame(IpcCommand::Health, 0, 42, payload);
-    assert_ok!(frame_result, "encode should succeed");
-    let Ok(frame_bytes) = frame_result else {
-        panic!("encode should succeed")
-    };
+    let frame_bytes = frame_result.expect("encode should succeed");
 
     let header_bytes_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
         Some(s) => s,
@@ -394,10 +355,7 @@ fn encode_frame_roundtrip_with_empty_payload() {
         Err(_) => panic!("header slice wrong size"),
     };
     let header = decode_frame_header(&header_arr);
-    assert_ok!(header, "header should decode");
-    let Ok(header) = header else {
-        panic!("header should decode")
-    };
+    let header = header.expect("header should decode");
 
     // Then: command, correlation, and payload_len match
     assert_eq!(header.command, IpcCommand::Health);
@@ -414,10 +372,7 @@ fn encode_frame_roundtrip_with_large_payload() {
 
     // When: encoding then decoding
     let frame_result = encode_frame(IpcCommand::SubmitRun, 0, 99, &payload);
-    assert_ok!(frame_result, "encode should succeed");
-    let Ok(frame_bytes) = frame_result else {
-        panic!("encode should succeed")
-    };
+    let frame_bytes = frame_result.expect("encode should succeed");
 
     let header_bytes_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
         Some(s) => s,
@@ -428,10 +383,7 @@ fn encode_frame_roundtrip_with_large_payload() {
         Err(_) => panic!("header slice wrong size"),
     };
     let header = decode_frame_header(&header_arr);
-    assert_ok!(header, "header should decode");
-    let Ok(header) = header else {
-        panic!("header should decode")
-    };
+    let header = header.expect("header should decode");
 
     // Then: all header fields and payload match
     assert_eq!(header.command, IpcCommand::SubmitRun);
@@ -613,10 +565,7 @@ fn read_frame_payload_returns_exact_bytes_when_available() {
     let result = read_frame_payload(&mut cursor, &header);
 
     // Then: the exact payload bytes are returned
-    assert_ok!(result, "payload should read");
-    let Ok(payload) = result else {
-        return;
-    };
+    let payload = result.expect("payload should read");
     assert_eq!(payload.as_slice(), b"test");
 }
 
@@ -643,7 +592,7 @@ fn write_frame_produces_valid_frame_on_writer() {
     let result = write_frame(&mut writer, IpcCommand::Shutdown, 0, 55, b"bye");
 
     // Then: write succeeds and the output can be decoded
-    assert_ok!(result, "write_frame should succeed");
+    let result = result.expect("write_frame should succeed");
     assert!(
         writer.len() > IPC_HEADER_LEN,
         "should contain header + payload"
@@ -657,10 +606,7 @@ fn write_frame_produces_valid_frame_on_writer() {
         Err(_) => return,
     };
     let header = decode_frame_header(&header_arr);
-    assert_ok!(header, "written header should decode");
-    let Ok(header) = header else {
-        return;
-    };
+    let header = header.expect("written header should decode");
     assert_eq!(header.command, IpcCommand::Shutdown);
     assert_eq!(header.correlation, 55);
 }
@@ -691,10 +637,7 @@ fn encode_frame_with_nonzero_flags() {
     let result = encode_frame(IpcCommand::SubmitRun, 0x1234, 1, b"");
 
     // When: encoding
-    assert_ok!(result, "encode should succeed");
-    let Ok(frame) = result else {
-        panic!("encode should succeed")
-    };
+    let frame = result.expect("encode should succeed");
 
     // Then: flags bytes at offset 8..10 match
     let flags_slice = frame.get(8..10);
@@ -708,10 +651,7 @@ fn encode_frame_with_max_correlation() {
     let result = encode_frame(IpcCommand::Health, 0, corr, b"");
 
     // When: encoding
-    assert_ok!(result, "encode should succeed");
-    let Ok(frame) = result else {
-        panic!("encode should succeed")
-    };
+    let frame = result.expect("encode should succeed");
 
     // Then: correlation bytes at offset 12..20 match
     let corr_slice = frame.get(12..20);
@@ -1103,8 +1043,7 @@ fn adversarial_encode_empty_payload_succeeds() {
     let result = encode_frame(IpcCommand::Health, 0, 1, payload);
 
     // Then: encoding succeeds with header-only frame
-    assert_ok!(result, "empty payload should encode");
-    let Ok(frame) = result else { return };
+    let frame = result.expect("empty payload should encode");
     assert_eq!(frame.len(), IPC_HEADER_LEN);
 }
 
@@ -1118,8 +1057,7 @@ fn adversarial_encode_payload_at_max_boundary_succeeds() {
     let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
 
     // Then: encoding succeeds
-    assert_ok!(result, "max-size payload should encode");
-    let Ok(frame) = result else { return };
+    let frame = result.expect("max-size payload should encode");
     assert_eq!(
         frame.len(),
         IPC_HEADER_LEN.checked_add(max).map_or(0, |v| v)
@@ -1152,8 +1090,7 @@ fn adversarial_read_frame_header_bounded_enforces_limit() {
     // Given: a valid header with payload_len=50
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 50);
     let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
+    let encoded = encoded.expect("must be Ok");
     let mut cursor = std::io::Cursor::new(encoded.as_slice());
 
     // When: reading with a tiny max (1 byte)
@@ -1212,8 +1149,7 @@ fn encode_frame_produces_exact_byte_layout() {
 fn encode_frame_with_large_u32_payload_length() {
     let payload = vec![0xCC_u8; 70000];
     let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
-    assert_ok!(result, "encode should succeed for large payload");
-    let Ok(frame) = result else { return };
+    let frame = result.expect("encode should succeed for large payload");
     let len_slice = frame.get(20..24);
     assert_eq!(len_slice, Some(70000u32.to_le_bytes().as_slice()));
 }
@@ -1277,16 +1213,10 @@ fn validate_frame_bounds_with_default_max_plus_one() {
 fn read_frame_header_with_exact_header_bytes() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 42, 0);
     let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else {
-        panic!("header should encode")
-    };
+    let encoded = encoded.expect("must be Ok");
     let mut cursor = std::io::Cursor::new(encoded.as_slice());
     let result = read_frame_header(&mut cursor);
-    assert_ok!(result);
-    let Ok(decoded) = result else {
-        panic!("header should decode")
-    };
+    let decoded = result.expect("must be Ok");
     assert_eq!(decoded.command, IpcCommand::Health);
     assert_eq!(decoded.correlation, 42);
 }
@@ -1303,16 +1233,10 @@ fn read_frame_header_with_zero_bytes() {
 fn read_frame_header_bounded_with_payload_within_max() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
     let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else {
-        panic!("header should encode")
-    };
+    let encoded = encoded.expect("must be Ok");
     let mut cursor = std::io::Cursor::new(encoded.as_slice());
     let result = read_frame_header_bounded(&mut cursor, MaxPayloadBytes::DEFAULT);
-    assert_ok!(result);
-    let Ok(decoded) = result else {
-        panic!("header should decode")
-    };
+    let decoded = result.expect("must be Ok");
     assert_eq!(decoded.payload_len, 100);
 }
 
@@ -1322,8 +1246,7 @@ fn read_frame_payload_bounded_with_payload_within_max() {
     let payload_data = b"test";
     let mut cursor = std::io::Cursor::new(payload_data.as_slice());
     let result = read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
-    assert_ok!(result);
-    let Ok(payload) = result else { return };
+    let payload = result.expect("must be Ok");
     assert_eq!(payload.as_slice(), b"test");
 }
 
@@ -1332,7 +1255,7 @@ fn write_frame_produces_correct_frame_bytes() {
     let mut writer = Vec::new();
     let payload = b"hello";
     let result = write_frame(&mut writer, IpcCommand::Health, 0x1234, 42, payload);
-    assert_ok!(result);
+    let result = result.expect("must be Ok");
     assert_eq!(writer.len(), IPC_HEADER_LEN + payload.len());
     let magic_slice = writer.get(..4);
     assert_eq!(magic_slice, Some(crate::IPC_MAGIC.to_le_bytes().as_slice()));
@@ -1350,7 +1273,7 @@ fn write_frame_produces_correct_frame_bytes() {
 fn write_frame_with_empty_payload_produces_header_only_frame() {
     let mut writer = Vec::new();
     let result = write_frame(&mut writer, IpcCommand::Shutdown, 0, 99, b"");
-    assert_ok!(result);
+    let result = result.expect("must be Ok");
     assert_eq!(writer.len(), IPC_HEADER_LEN);
     let header_slice = match writer.get(..IPC_HEADER_LEN) {
         Some(s) => s,
@@ -1361,8 +1284,7 @@ fn write_frame_with_empty_payload_produces_header_only_frame() {
         Err(_) => return,
     };
     let header = decode_frame_header(&header_arr);
-    assert_ok!(header);
-    let Ok(header) = header else { return };
+    let header = header.expect("must be Ok");
     assert_eq!(header.command, IpcCommand::Shutdown);
     assert_eq!(header.correlation, 99);
     assert_eq!(header.payload_len, 0);
@@ -1374,20 +1296,14 @@ fn read_frame_payload_with_zero_length_payload() {
     let empty_data: &[u8] = b"";
     let mut cursor = std::io::Cursor::new(empty_data);
     let result = read_frame_payload(&mut cursor, &header);
-    assert_ok!(result);
-    let Ok(payload) = result else {
-        panic!("payload should read")
-    };
+    let payload = result.expect("must be Ok");
     assert_eq!(payload.len(), 0);
 }
 
 #[test]
 fn encode_frame_with_all_flags_set() {
     let result = encode_frame(IpcCommand::Health, u16::MAX, 1, b"");
-    assert_ok!(result);
-    let Ok(frame) = result else {
-        panic!("encode should succeed")
-    };
+    let frame = result.expect("must be Ok");
     let flags_slice = frame.get(8..10);
     assert_eq!(flags_slice, Some(u16::MAX.to_le_bytes().as_slice()));
 }
@@ -1397,15 +1313,9 @@ fn decode_frame_header_preserves_all_fields() {
     // GAP-5: SubmitRun accepts the full low byte; 0x00FF is the contract max.
     let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00FF, 0x1234_5678_9ABC_DEF0, 4096);
     let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else {
-        panic!("header should encode")
-    };
+    let encoded = encoded.expect("must be Ok");
     let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else {
-        panic!("header should decode")
-    };
+    let decoded = decoded.expect("must be Ok");
     assert_eq!(decoded.command, IpcCommand::SubmitRun);
     assert_eq!(decoded.flags, 0x00FF);
     assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);

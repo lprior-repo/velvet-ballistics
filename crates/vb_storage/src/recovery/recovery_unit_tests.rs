@@ -797,11 +797,7 @@ mod tests {
     fn recover_runtime_frame_seed_from_events_empty_returns_error() {
         let events: Vec<JournalEvent> = vec![];
         let result = recover_runtime_frame_seed_from_events(&events);
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            RecoveryError::NoRecoveryData { .. }
-        ));
+        assert!(matches!(result, Err(RecoveryError::NoRecoveryData { .. })));
     }
 
     // =========================================================================

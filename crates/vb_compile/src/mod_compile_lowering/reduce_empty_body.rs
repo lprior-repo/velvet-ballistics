@@ -145,7 +145,7 @@ mod tests {
                 }
                 Err(_) => {
                     // Should not happen for overhead < u16::MAX
-                    assert!(false, "empty body should not overflow");
+                    panic!("empty body should not overflow");
                 }
             }
         }

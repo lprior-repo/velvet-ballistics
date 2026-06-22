@@ -1273,8 +1273,7 @@ proptest! {
                 if decoded.is_ok() && decoded.as_ref().unwrap().verification.gate_count == 15 {
                     // This means admission passed despite mismatched source — implementation gap.
                     // The test documents this as a failing invariant.
-                    prop_assert!(false,
-                        "mismatched source was accepted — must be rejected before commit");
+                    panic!("mismatched source was accepted — must be rejected before commit");
                 }
             }
         }

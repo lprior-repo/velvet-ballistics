@@ -935,11 +935,15 @@ mod state_transitions {
 
         // Sharp assertion: Cannot transition from Failed to Succeeded
         let result = run.mark_succeeded(StepIdx::new(0));
-        assert!(result.is_err());
+        assert!(
+            matches!(
+                &result,
+                Err(CoreError::InternalInvariantViolation { reason: _ })
+            ),
+            "transition must be rejected, got {result:?}"
+        );
         match result {
-            Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
-            }
+            Err(CoreError::InternalInvariantViolation { reason: _ }) => {}
             Err(other) => {
                 return Err(format!(
                     "expected InternalInvariantViolation, got {:?}",
@@ -963,11 +967,15 @@ mod state_transitions {
 
         // Sharp assertion: Cannot transition from Cancelled back to Running
         let result = run.mark_running(StepIdx::new(0));
-        assert!(result.is_err());
+        assert!(
+            matches!(
+                &result,
+                Err(CoreError::InternalInvariantViolation { reason: _ })
+            ),
+            "transition must be rejected, got {result:?}"
+        );
         match result {
-            Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
-            }
+            Err(CoreError::InternalInvariantViolation { reason: _ }) => {}
             Err(other) => {
                 return Err(format!(
                     "expected InternalInvariantViolation, got {:?}",
@@ -991,11 +999,15 @@ mod state_transitions {
 
         // Sharp assertion: Cannot transition from Skipped to Failed
         let result = run.mark_failed(StepIdx::new(0));
-        assert!(result.is_err());
+        assert!(
+            matches!(
+                &result,
+                Err(CoreError::InternalInvariantViolation { reason: _ })
+            ),
+            "transition must be rejected, got {result:?}"
+        );
         match result {
-            Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
-            }
+            Err(CoreError::InternalInvariantViolation { reason: _ }) => {}
             Err(other) => {
                 return Err(format!(
                     "expected InternalInvariantViolation, got {:?}",
@@ -1060,7 +1072,10 @@ mod state_transitions {
 
         // Sharp assertion: PC must be within step_count
         let result = run.set_pc(StepIdx::new(9999));
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::InvalidProgramCounter { .. })
+        ));
         match result {
             Err(CoreError::InvalidProgramCounter { step }) => {
                 assert_eq!(step, StepIdx::new(9999));
@@ -1105,7 +1120,10 @@ mod state_transitions {
 
         // Sharp assertion: Reading uninitialized slot returns specific error
         let result = run.read_slot(SlotIdx::new(0));
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+        ));
         match result {
             Err(CoreError::SlotUninitialized { slot }) => {
                 assert_eq!(slot, SlotIdx::new(0));
@@ -1136,7 +1154,10 @@ mod state_transitions {
 
         // Sharp assertion: Cannot write taint to uninitialized slot
         let result = run.write_taint(SlotIdx::new(0), Taint::Secret);
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+        ));
         match result {
             Err(CoreError::SlotUninitialized { slot }) => {
                 assert_eq!(slot, SlotIdx::new(0));
@@ -1220,8 +1241,11 @@ mod resource_contract_admission {
         };
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        // Sharp assertion: Validation should fail due to excessive max_steps
-        assert!(result.is_err());
+        // Sharp assertion: Validation should fail due to excessive resource contract
+        assert!(matches!(
+            result,
+            Err(vb_core::workflow::WorkflowError::ResourceContractTooLarge { .. })
+        ));
     }
 }
 

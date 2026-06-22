@@ -259,11 +259,11 @@ proptest! {
         } else {
             match next_case {
                 NextCase::Terminal => {
-                    prop_assert!(result.is_ok());
+                    prop_assert_eq!(result, Ok(()));
                     prop_assert_eq!(state.frame.pc(), before);
                 }
                 NextCase::Valid { next } => {
-                    prop_assert!(result.is_ok());
+                    prop_assert_eq!(result, Ok(()));
                     prop_assert_eq!(state.frame.pc(), StepIdx::new(next));
                 }
                 NextCase::Invalid => {

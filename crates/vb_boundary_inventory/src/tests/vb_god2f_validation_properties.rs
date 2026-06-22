@@ -12,8 +12,8 @@ use proptest::strategy::Strategy;
 use crate::boundary_inventory::{
     BoundaryCandidate, BoundaryClass, BoundaryInventory, BoundaryInventoryError,
     BoundaryRecordDraft, BoundaryRecordParts, EvidenceKind, EvidenceReference, FieldState,
-    FreshnessMarker, Owner, ReviewStatus, ThreatStatement, ValidatedBoundaryInventory,
-    WorkspaceRoot, classify_boundary, inventory_completion_status,
+    FreshnessMarker, Owner, ReviewStatus, ThreatStatement, UnsafeIsolationStatus,
+    ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary, inventory_completion_status,
     validate_evidence_reference_bytes, validate_inventory,
 };
 
@@ -172,7 +172,10 @@ proptest! {
         let inventory = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(count);
         let status = inventory_completion_status(inventory);
         if count == 0 {
-            prop_assert!(status.is_ok());
+            prop_assert_eq!(
+                status,
+                Ok(UnsafeIsolationStatus::Complete { boundary_count: 0 })
+            );
         } else {
             prop_assert!(matches!(status, Err(BoundaryInventoryError::IncompleteDiscoveryInput)));
         }

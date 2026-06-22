@@ -1,11 +1,14 @@
-#![cfg(flux)]
-
-//! Flux refinement artifact for obl-vb-mrwe-6-queue-intent-flux-009.
-//! Bound to crate::mrwe6_seams production class/intent classifiers. Residual
-//! support boundary: Flux refines the seam-view intent; bridge tests exercise
-//! production JournalEvent values.
-
-use crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind};
+/// Flux refinement artifact for obl-vb-mrwe-6-queue-intent-flux-009.
+/// Bound to crate::mrwe6_seams production class/intent classifiers. Residual
+/// support boundary: Flux refines the seam-view intent; bridge tests exercise
+/// production JournalEvent values.
+///
+/// NOTE: `Mrwe6EventClass` and `Mrwe6IntentKind` are imported once at the crate
+/// level (see `vb_mrwe6_atomic_index_refinements.rs`); the flux-rs crate-level
+/// scan of `src/verification/flux/vb_mrwe6_*_refinements.rs` merges the three
+/// files into a single module, so re-importing the same names here would cause
+/// E0252 "name defined multiple times" errors. All references below use the
+/// fully-qualified path `crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind}`.
 #[flux_rs::refined_by(kind: int)]
 pub enum Mrwe6QueuedIntent {
     #[flux_rs::variant(Mrwe6QueuedIntent[0])]
@@ -32,14 +35,14 @@ pub fn invalid_queued_relevant_event_without_intent_rejected(intent: Mrwe6Queued
     }
 }
 
-#[flux_rs::sig(fn(Mrwe6EventClass, Mrwe6IntentKind) -> Mrwe6QueuedIntent)]
+#[flux_rs::sig(fn(crate::mrwe6_seams::Mrwe6EventClass, crate::mrwe6_seams::Mrwe6IntentKind) -> Mrwe6QueuedIntent)]
 pub fn queued_intent_from_production_seam(
-    class: Mrwe6EventClass,
-    required: Mrwe6IntentKind,
+    class: crate::mrwe6_seams::Mrwe6EventClass,
+    required: crate::mrwe6_seams::Mrwe6IntentKind,
 ) -> Mrwe6QueuedIntent {
     match (class, required) {
-        (Mrwe6EventClass::Scheduled, Mrwe6IntentKind::PutPending) => Mrwe6QueuedIntent::PutPending,
-        (Mrwe6EventClass::Resolution, Mrwe6IntentKind::RemovePending) => {
+        (crate::mrwe6_seams::Mrwe6EventClass::Scheduled, crate::mrwe6_seams::Mrwe6IntentKind::PutPending) => Mrwe6QueuedIntent::PutPending,
+        (crate::mrwe6_seams::Mrwe6EventClass::Resolution, crate::mrwe6_seams::Mrwe6IntentKind::RemovePending) => {
             Mrwe6QueuedIntent::RemovePending
         }
         _ => Mrwe6QueuedIntent::None,

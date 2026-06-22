@@ -121,6 +121,7 @@ fn vb_ajc40_slug_post_decode_semantics() {
         | Err(SlugParseError::YbBudgetExceeded { .. })
         | Err(SlugParseError::SlugPathTooDeep { .. })
         | Err(SlugParseError::TooManySlugs { .. })
+        | Err(SlugParseError::PayloadTooLarge { .. })
         | Err(SlugParseError::YieldCostOverflow)
         | Err(SlugParseError::TotalYieldCostMismatch { .. }) => {}
     }

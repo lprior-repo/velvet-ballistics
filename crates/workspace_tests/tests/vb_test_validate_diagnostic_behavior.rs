@@ -1547,31 +1547,46 @@ mod diagnostic_code_parsing {
     #[test]
     fn diagnostic_code_rejects_missing_prefix() {
         let result = DiagnosticCode::from_str("0101");
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::diagnostic::DiagnosticCodeParseError::InvalidFormat)
+        ));
     }
 
     #[test]
     fn diagnostic_code_rejects_too_short() {
         let result = DiagnosticCode::from_str("E01");
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::diagnostic::DiagnosticCodeParseError::InvalidFormat)
+        ));
     }
 
     #[test]
     fn diagnostic_code_rejects_too_long() {
         let result = DiagnosticCode::from_str("E01010");
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::diagnostic::DiagnosticCodeParseError::InvalidFormat)
+        ));
     }
 
     #[test]
     fn diagnostic_code_rejects_invalid_hex() {
         let result = DiagnosticCode::from_str("E010G");
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::diagnostic::DiagnosticCodeParseError::InvalidFormat)
+        ));
     }
 
     #[test]
     fn diagnostic_code_rejects_empty() {
         let result = DiagnosticCode::from_str("");
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::diagnostic::DiagnosticCodeParseError::InvalidFormat)
+        ));
     }
 
     #[test]

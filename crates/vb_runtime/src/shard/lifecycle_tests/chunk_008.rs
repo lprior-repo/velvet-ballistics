@@ -324,7 +324,7 @@
                 let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
                 let result = reject_taint_downgrade(frame_taint, &contract, Taint::Clean);
                 match result {
-                    Ok(()) => prop_assert!(false, "DeterministicPure + {input_taint:?} input must reject, got Ok(())"),
+                    Ok(()) => panic!("DeterministicPure + {input_taint:?} input must reject, got Ok(())"),
                     Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                         prop_assert_eq!(required, Taint::Clean);
                         prop_assert_eq!(supplied, input_taint);

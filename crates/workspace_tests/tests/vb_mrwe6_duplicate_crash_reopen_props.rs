@@ -201,7 +201,7 @@ proptest! {
         if divergent {
             prop_assert!(matches!(result, Err(JournalError::DuplicateEvent { .. })), "divergent retry must return duplicate conflict");
         } else {
-            prop_assert!(result.is_ok());
+            prop_assert_eq!(result, Ok(()));
         }
         let key = vb_storage::keys::index_action_key(action, run, step).expect("key");
         prop_assert!(reopened.has_action_index_entry(key).expect("index read"));

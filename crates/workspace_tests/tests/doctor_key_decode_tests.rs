@@ -161,7 +161,10 @@ use vb_storage::{JournalError, KeyDecodeError, ReadOnlyJournal};
 #[test]
 fn preview_config_accepts_valid_limits() {
     let config = PreviewConfig::new(100, 4096);
-    assert!(config.is_ok());
+    assert!(
+        config.is_ok(),
+        "PreviewConfig::new(100, 4096) must accept valid limits, got {config:?}"
+    );
 }
 
 #[test]

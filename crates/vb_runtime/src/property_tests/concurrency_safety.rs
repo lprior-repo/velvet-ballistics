@@ -620,7 +620,7 @@ proptest! {
                 // Infrastructure failure (poisoned mutex, slot out of
                 // bounds, etc.) is a Holzman violation. Surface it as
                 // a property-test failure with full diagnostic.
-                prop_assert!(false, "worker execution failed: {error}");
+                panic!("worker execution failed: {error}");
                 return Ok(());
             }
         };
@@ -629,7 +629,7 @@ proptest! {
         match verify_worker_invariants(&states) {
             Ok(()) => {}
             Err(error) => {
-                prop_assert!(false, "per-worker bookkeeping inconsistent before drain: {error}");
+                panic!("per-worker bookkeeping inconsistent before drain: {error}");
                 return Ok(());
             }
         }
@@ -664,14 +664,14 @@ proptest! {
         let registry = match fixture.registry.lock() {
             Ok(guard) => guard,
             Err(_) => {
-                prop_assert!(false, "registry mutex poisoned at post-drain check");
+                panic!("registry mutex poisoned at post-drain check");
                 return Ok(());
             }
         };
         let visible = match collect_visible_runs(&registry) {
             Ok(visible) => visible,
             Err(error) => {
-                prop_assert!(false, "visibility scan failed: {error}");
+                panic!("visibility scan failed: {error}");
                 return Ok(());
             }
         };
@@ -713,16 +713,12 @@ proptest! {
         let (stale_handle, first_outcome) = match registry.register_with_overlap_policy(run) {
             Ok(pair) => pair,
             Err(error) => {
-                prop_assert!(false, "first register_with_overlap_policy failed: {error:?}");
+                panic!("first register_with_overlap_policy failed: {error:?}");
                 return Ok(());
             }
         };
         if first_outcome.is_err() {
-            prop_assert!(
-                false,
-                "first overlap registration must succeed, got {:?}",
-                first_outcome
-            );
+            panic!("placeholder");
             return Ok(());
         }
         let stale_epoch = stale_handle.epoch();
@@ -732,7 +728,7 @@ proptest! {
         let (fresh_handle, second_outcome) = match registry.register_with_overlap_policy(run) {
             Ok(pair) => pair,
             Err(error) => {
-                prop_assert!(false, "second register_with_overlap_policy failed: {error:?}");
+                panic!("second register_with_overlap_policy failed: {error:?}");
                 return Ok(());
             }
         };
@@ -796,10 +792,7 @@ proptest! {
             let handle = match registry.register(run) {
                 Ok(handle) => handle,
                 Err(error) => {
-                    prop_assert!(
-                        false,
-                        "register on an empty slot must succeed, got {error:?}"
-                    );
+                    panic!("register on an empty slot must succeed, got {error:?}");
                     return Ok(());
                 }
             };
@@ -874,14 +867,14 @@ proptest! {
         let mut states = match run_workers(&fixture, 0xDEAD_BEEF_CAFE_BABE) {
             Ok(states) => states,
             Err(error) => {
-                prop_assert!(false, "smoke worker execution failed: {error}");
+                panic!("smoke worker execution failed: {error}");
                 return Ok(());
             }
         };
         match verify_worker_invariants(&states) {
             Ok(()) => {}
             Err(error) => {
-                prop_assert!(false, "smoke per-worker invariants failed: {error}");
+                panic!("smoke per-worker invariants failed: {error}");
                 return Ok(());
             }
         }
@@ -905,14 +898,14 @@ proptest! {
         let registry = match fixture.registry.lock() {
             Ok(guard) => guard,
             Err(_) => {
-                prop_assert!(false, "smoke registry mutex poisoned");
+                panic!("smoke registry mutex poisoned");
                 return Ok(());
             }
         };
         let visible = match collect_visible_runs(&registry) {
             Ok(visible) => visible,
             Err(error) => {
-                prop_assert!(false, "smoke visibility scan failed: {error}");
+                panic!("smoke visibility scan failed: {error}");
                 return Ok(());
             }
         };

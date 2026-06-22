@@ -3532,7 +3532,11 @@ mod hydrate_run_frame_tests {
     }
 
     #[test]
-    fn hydrate_run_frame_from_events_accepts_legacy_prefixed_bytes() {
+    fn hydrate_run_frame_from_events_rejects_corrupt_legacy_prefixed_envelope() {
+        // vb-7ol6y / Bug 1: legacy bytes whose first five bytes match the
+        // SLOT_WRITTEN_EXTRA_PREFIX but whose trailing postcard payload is
+        // corrupt must be rejected with RecoveryError::CorruptSlotTaint
+        // instead of being silently accepted as legacy frame-extra.
         let run = RunId::new(1);
         let slot = SlotIdx::new(0);
         let events = vec![
@@ -3561,8 +3565,12 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
         assert!(
-            result.is_ok(),
-            "legacy bytes with v1 prefix are accepted as legacy frame-extra, got: {result:?}"
+            matches!(
+                &result,
+                Err(RecoveryError::CorruptSlotTaint { slot: observed })
+                    if *observed == slot
+            ),
+            "legacy bytes with v1 prefix must fail closed with CorruptSlotTaint, got: {result:?}"
         );
     }
 

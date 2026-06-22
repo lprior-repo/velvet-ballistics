@@ -2,6 +2,9 @@
 //! Tail event application for RunFrame hydration.
 
 use crate::JournalEvent;
+use crate::recovery::event_replay::taint::{
+    SlotTaintResolution, observe_slot_taint_read, resolve_slot_taint_read,
+};
 use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
 };
@@ -223,6 +226,27 @@ pub(crate) fn apply_tail_events(
                             detail: format!("slot value decode failed for slot {:?}", slot),
                         }
                     })?;
+                    // vb-7ol6y / Bug 3: fail-closed taint lattice — when
+                    // the slot already lives inside the frame, read its
+                    // existing taint explicitly so any read failure
+                    // surfaces as RecoveryError::SlotTaintReadFailed
+                    // instead of being erased into an implicit Clean
+                    // default. Resolution::Use(_) accepts the read;
+                    // Resolution::FailClosed propagates the typed error
+                    // so the runtime cannot launder taint inconsistencies
+                    // into a Clean default. Out-of-bounds slots are
+                    // left for the bounds check below to reject.
+                    let slot_index = slot.as_usize();
+                    if slot_index < usize::from(frame.slot_count())
+                        && matches!(
+                            resolve_slot_taint_read(observe_slot_taint_read(
+                                frame.read_taint(*slot)
+                            )),
+                            SlotTaintResolution::FailClosed
+                        )
+                    {
+                        return Err(RecoveryError::SlotTaintReadFailed { slot: *slot });
+                    }
                     // SR-003: decode the slot taint from the persisted envelope
                     // (when present) instead of inheriting whatever happens to be
                     // in the frame. This restores parity with the accumulator path

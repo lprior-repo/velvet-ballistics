@@ -117,7 +117,7 @@ fn compile_or_diagnose(yaml: &str, primitive: &str) -> Result<vb_core::CompiledW
 
 /// Bit-exact IR roundtrip via postcard. Returns `Err` with a descriptive
 /// message when the roundtrip fails. Caller converts that into a
-/// proptest assertion failure via `prop_assert!(false, ...)`.
+/// proptest assertion failure via `panic!("placeholder")`.
 fn roundtrip_workflow_parts(workflow: &vb_core::CompiledWorkflow) -> Result<(), String> {
     let parts = workflow.to_parts();
     let bytes = postcard::to_allocvec(&parts).map_err(|e| format!("serialize: {e}"))?;
@@ -151,10 +151,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "set") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "set roundtrip failed: {e}");
+            panic!("set roundtrip failed: {e}");
         }
     }
 
@@ -166,10 +166,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "do") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "do roundtrip failed: {e}");
+            panic!("do roundtrip failed: {e}");
         }
     }
 
@@ -190,10 +190,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "choose") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "choose roundtrip failed: {e}");
+            panic!("choose roundtrip failed: {e}");
         }
     }
 
@@ -212,10 +212,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "for_each") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "for_each roundtrip failed: {e}");
+            panic!("for_each roundtrip failed: {e}");
         }
     }
 
@@ -251,10 +251,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "together") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "together roundtrip failed: {e}");
+            panic!("together roundtrip failed: {e}");
         }
     }
 
@@ -273,10 +273,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "collect") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "collect roundtrip failed: {e}");
+            panic!("collect roundtrip failed: {e}");
         }
     }
 
@@ -296,10 +296,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "reduce") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "reduce roundtrip failed: {e}");
+            panic!("reduce roundtrip failed: {e}");
         }
     }
 
@@ -317,10 +317,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "repeat") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "repeat roundtrip failed: {e}");
+            panic!("repeat roundtrip failed: {e}");
         }
     }
 
@@ -336,10 +336,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "wait") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "wait roundtrip failed: {e}");
+            panic!("wait roundtrip failed: {e}");
         }
     }
 
@@ -355,10 +355,10 @@ proptest! {
         );
         let workflow = match compile_or_diagnose(&yaml, "ask") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "ask roundtrip failed: {e}");
+            panic!("ask roundtrip failed: {e}");
         }
     }
 
@@ -371,10 +371,10 @@ proptest! {
         let yaml = format!("{HEADER}  - id: {id}\n    finish:\n      result: 0\n");
         let workflow = match compile_or_diagnose(&yaml, "finish") {
             Ok(w) => w,
-            Err(e) => { prop_assert!(false, "{e}"); return Ok(()); }
+            Err(e) => { panic!("{e}"); return Ok(()); }
         };
         if let Err(e) = roundtrip_workflow_parts(&workflow) {
-            prop_assert!(false, "finish roundtrip failed: {e}");
+            panic!("finish roundtrip failed: {e}");
         }
     }
 }
@@ -444,7 +444,7 @@ proptest! {
         match compile_workflow(yaml.as_bytes()) {
             Ok(workflow) => {
                 if let Err(e) = roundtrip_workflow_parts(&workflow) {
-                    prop_assert!(false, "compat[{name}] roundtrip failed: {e}");
+                    panic!("compat[{name}] roundtrip failed: {e}");
                 }
             }
             Err(CompileErrors(errors)) => {

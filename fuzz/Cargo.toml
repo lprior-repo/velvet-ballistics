@@ -812,3 +812,33 @@ test = false
 doc = false
 bench = false
 
+# === vb-7ol6y Recovery Hydration Fuzz Targets ===
+
+[[bin]]
+name = "recovered_slot_taint_corrupt_envelope"
+path = "fuzz_targets/recovered_slot_taint_corrupt_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recovered_slot_taint_legacy_non_prefix"
+path = "fuzz_targets/recovered_slot_taint_legacy_non_prefix.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recovered_slot_taint_legacy_random_bytes"
+path = "fuzz_targets/recovered_slot_taint_legacy_random_bytes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hydrate_run_frame_from_events_invariants"
+path = "fuzz_targets/hydrate_run_frame_from_events_invariants.rs"
+test = false
+doc = false
+bench = false
+

@@ -328,3 +328,157 @@ Current proof obligations in the ledger that map to Flux:
 3. Re-run `cargo flux -p vb_compile` — should then process the declared modules
 4. For .flux files in `mod_compile_lowering/`, add to include list and verify processing
 5. Begin replacing `#[flux_rs::trusted]` on vb_runtime production model functions
+
+---
+
+# Wave 3A: Formal Re-verification After Wave 1/2 Production Fixes — 2026-06-22
+
+## Scope
+
+Re-run the four formal-verification obligations that were parked while Wave 1/2 production fixes (B-001-P dispatch coalesce flush, C-R6-4 EventSeq::MAX → MAX_ENCODABLE) landed.
+
+| Bead   | Obligation | Tool        | Target                                     | Classification |
+|--------|-----------|-------------|--------------------------------------------|----------------|
+| vb-27nz7 | KANI-001 | cargo-kani  | vb_runtime (B-001-P follow-up)             | FAIL_LOCAL     |
+| vb-sasf7 | FLUX-001 | cargo-flux  | vb_storage (C-R6-4 follow-up)              | PASS           |
+| vb-qmbvs | FLUX-002 | cargo-flux  | vb_runtime (B-001-P follow-up)             | FAIL_GLOBAL    |
+| vb-3tt54 | VERUS-001 | verus      | vb_storage recovery + vb_runtime journal   | PASS           |
+
+## Verdict Matrix
+
+| Bead   | Tool        | Command                                                  | Exit | Counts                                                          | Result   | Follow-up bead |
+|--------|-------------|----------------------------------------------------------|------|------------------------------------------------------------------|----------|----------------|
+| vb-27nz7 | cargo-kani | `bash scripts/kani-list.sh vb_runtime`                   |   0  | 78 harnesses enumerated (incl. 3 B-001-K)                        | FAIL_LOCAL | vb-mzmk9, vb-z66rh |
+| vb-27nz7 | cargo-kani | `cargo kani -p vb_runtime --features kani-flush-coalesce-buffer` |  1  | "none of the selected packages contains this feature"            | FAIL_LOCAL | vb-mzmk9       |
+| vb-27nz7 | cargo-kani | `cargo kani -p vb_runtime`                               |  1  | 2 E0004 non-exhaustive patterns (PayloadTooLarge)                | FAIL_LOCAL | vb-z66rh       |
+| vb-sasf7 | cargo-flux | `bash scripts/flux-check-package.sh vb_storage`          |   0  | 1540 functions; **19 checked**; 1521 trusted; 0 ignored           | PASS     | —              |
+| vb-qmbvs | cargo-flux | `bash scripts/flux-check-package.sh vb_runtime`          |   0  | 1506 functions; **0 checked**; 1506 trusted; 0 ignored (vacuous)  | FAIL_GLOBAL | vb-5iuag      |
+| vb-qmbvs | cargo-flux | `bash scripts/flux-check-package.sh vb_runtime --features vb-mrwe6-flux-refinements` | 101 | 19 errors E0753 + E0252 (Mrwe6EventClass/Mrwe6IntentKind duplicate) | FAIL_GLOBAL | vb-5iuag       |
+| vb-3tt54 | verus      | `bash scripts/verify-verus.sh`                           |   0  | 19 registry targets; **187 verified total**, 0 errors             | PASS     | —              |
+
+## Per-Bead Evidence
+
+### vb-27nz7 — KANI-001 (FAIL_LOCAL)
+
+The `kani-list.sh` scan enumerates 78 harnesses for vb_runtime, including the 3 new B-001-K harnesses in `crates/vb_runtime/src/kani_flush_coalesce_buffer.rs`:
+
+```
+flush_coalesce_buffer_drains_buffer_on_every_dispatch_path
+flush_coalesce_buffer_no_op_when_empty
+flush_coalesce_buffer_idempotent_across_calls
+```
+
+However, `kani-list.sh` is a *source-scan* — it does not invoke `cargo kani`. The harness file is **dead code** in the build:
+
+- `kani_flush_coalesce_buffer` is **NOT declared** in `crates/vb_runtime/src/lib.rs` nor `crates/vb_runtime/src/verification/mod.rs` (verified by `grep`).
+- The harness file declares `#![cfg(kani)]` at the top (line 37).
+- The Cargo.toml feature `kani-flush-coalesce-buffer` **does not exist** (verified: `crates/vb_runtime/Cargo.toml` features list 41-70 omits it).
+
+`cargo kani -p vb_runtime --features kani-flush-coalesce-buffer`:
+```
+error: Failed to get cargo metadata.: error: none of the selected packages contains this feature: kani-flush-coalesce-buffer
+```
+
+Even with the harness wired in, the broader vb_runtime Kani lane is blocked by a pre-existing vb_core compile error under `cfg(kani)`:
+
+```
+error[E0004]: non-exhaustive patterns: `Err(workflow::compiled_query::errors::QueryParseError::PayloadTooLarge { .. })` not covered
+   --> crates/vb_core/src/workflow/compiled_query_kani.rs:106:11
+error[E0004]: non-exhaustive patterns: `Err(workflow::compiled_slug::types::SlugParseError::PayloadTooLarge { .. })` not covered
+   --> crates/vb_core/src/workflow/compiled_slug_kani.rs:105:11
+```
+
+The `PayloadTooLarge` variant was added to `compiled_query/errors.rs:44` and `compiled_slug/types.rs:117` but the Kani harness modules were not updated. This pre-existing error blocks ALL Kani verification for vb_runtime.
+
+**Follow-ups filed:**
+- `vb-mzmk9` — Wire B-001-K harness into Cargo.toml feature + lib.rs mod declaration.
+- `vb-z66rh` — Fix pre-existing vb_core Kani compile error in `compiled_query_kani.rs` / `compiled_slug_kani.rs`.
+
+### vb-sasf7 — FLUX-001 (PASS)
+
+```
+$ bash scripts/flux-check-package.sh vb_storage
+Checking vb_storage v0.1.0
+summary. 1540 functions processed: 19 checked; 1521 trusted; 0 ignored. 0 constraints solved. Finished in 1.41s
+EXIT=0
+```
+
+After C-R6-4 (`EventSeq::MAX` → `MAX_ENCODABLE`), the Flux refinements in vb_storage still hold: 19 functions actively checked, no errors, no ignored. No new flux refinement was required for this rename.
+
+### vb-qmbvs — FLUX-002 (FAIL_GLOBAL)
+
+Default flux check:
+```
+$ bash scripts/flux-check-package.sh vb_runtime
+Checking vb_runtime v0.1.0
+summary. 1506 functions processed: 0 checked; 1506 trusted; 0 ignored. 0 constraints solved.
+EXIT=0  ← vacuous, not real coverage
+```
+
+The script exits 0 but verifies **zero** refinements relevant to B-001-P (coalesce_window_ticks / flush_coalesce_buffer). `Cargo.toml [package.metadata.flux]` include patterns target only `vb_mrwe6_*` and `vb_egysa*` files; none of these files model `coalesce_window_ticks`. A grep across all Flux files confirms zero references to "coalesce".
+
+Enabling the Flux refinement feature also fails to compile:
+```
+$ bash scripts/flux-check-package.sh vb_runtime --features vb-mrwe6-flux-refinements
+error[E0753]: expected outer doc comment
+error[E0252]: the name `Mrwe6EventClass` is defined multiple times
+error[E0252]: the name `Mrwe6IntentKind` is defined multiple times
+...
+EXIT=101
+```
+
+The pre-existing `Mrwe6EventClass` / `Mrwe6IntentKind` duplicate-declaration errors in `crates/vb_runtime/src/verification/flux/vb_mrwe6_*_refinements.rs` are unrelated to B-001-P but block the entire vb_runtime Flux lane when features are enabled.
+
+**Follow-up filed:**
+- `vb-5iuag` — Write a Flux refinement for `coalesce_window_ticks` / `flush_coalesce_buffer` (binding to production), AND resolve the pre-existing `Mrwe6EventClass` / `Mrwe6IntentKind` E0252 collisions so `--features vb-mrwe6-flux-refinements` builds.
+
+### vb-3tt54 — VERUS-001 (PASS)
+
+```
+$ bash scripts/verify-verus.sh
+verus 0.2026.05.05.d03e906, verusfmt available
+VERUS_TARGET_COUNT=19
+VERUS_TRUST_SCAN_OK
+EXIT=0
+```
+
+All 19 registry-driven Verus targets verified with 0 errors. Coverage of the requested scope:
+
+| Target file                                              | Verified |
+|----------------------------------------------------------|----------|
+| verification/verus/vb_mrwe6_recovery_reliance.rs         | 8        |
+| verification/verus/vb_cli_commands_journal_trace.rs      | 7        |
+| verification/verus/vb_jpq724_events_for_run_production.rs| 11       |
+| verification/verus/idempotency_replay_tracker.rs         | 8        |
+| crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs | 24 |
+| (16 other registry targets)                              | 129      |
+| **Total verified**                                       | **187**  |
+
+Two `compute` warnings emitted by `vb_y9d3v_action_fence.rs:226` and `:239` (failed to simplify `result.is_ok() ==> result.unwrap() >= 1` before Z3). These warnings do not affect verification success — the proofs still complete with 0 errors.
+
+## Tooling Health Discovered
+
+1. **Kani feature gate contract violation:** B-001-K harness file exists at `crates/vb_runtime/src/kani_flush_coalesce_buffer.rs` but is not wired into either `lib.rs` or `Cargo.toml`. The script `kani-list.sh` enumerates 78 harnesses including these 3, but `cargo kani -p vb_runtime --features kani-flush-coalesce-buffer` rejects the feature as not present. Per AGENTS.md rule "Kani harness isolation: Bulky or stale harness groups must be behind package features", this is a contract violation. (Filed as vb-mzmk9.)
+
+2. **Pre-existing vb_core Kani compile blocker:** `compiled_query_kani.rs:106` and `compiled_slug_kani.rs:105` do not handle the `PayloadTooLarge` variant that was added to `compiled_query/errors.rs:44` and `compiled_slug/types.rs:117`. Blocks the entire vb_runtime Kani lane. Not introduced by Wave 1/2 — predates it. (Filed as vb-z66rh.)
+
+3. **Pre-existing vb_runtime Flux mrwe6 E0252 collisions:** `vb_mrwe6_atomic_index_refinements.rs`, `vb_mrwe6_completion_policy_refinements.rs`, `vb_mrwe6_queue_intent_refinements.rs` all re-declare `Mrwe6EventClass` and `Mrwe6IntentKind`. With `--features vb-mrwe6-flux-refinements` the build emits 19 errors (E0252 + E0753). Without the feature, the default scan matches 0 flux refinements and returns vacuously. (Filed as vb-5iuag.)
+
+4. **No Flux refinement for `coalesce_window_ticks`:** Neither the B-001-K follow-up nor the existing Flux module set models the B-001-P fix. Cargo.toml metadata.flux include list does not include any coalesce-related file. A `grep -r coalesce crates/vb_runtime/src/verification/` returns only one match in a Kani harness comment.
+
+## Follow-up Beads Filed (do not close originals)
+
+| Bead ID  | Title                                                                                                          | Priority |
+|----------|----------------------------------------------------------------------------------------------------------------|----------|
+| vb-mzmk9 | FIX-KANI-001-A: Wire kani_flush_coalesce_buffer.rs into vb_runtime lib.rs and add kani-flush-coalesce-buffer Cargo.toml feature | P1       |
+| vb-z66rh | FIX-KANI-001-B: vb_core Kani compile error: QueryParseError::PayloadTooLarge / SlugParseError::PayloadTooLarge not handled in compiled_query_kani.rs and compiled_slug_kani.rs | P1       |
+| vb-5iuag | FIX-FLUX-002-A: Write Flux refinement for vb_runtime coalesce_window_ticks / flush_coalesce_buffer after B-001-P fix (and resolve pre-existing mrwe6 E0252 collisions) | P1       |
+
+## Bead Disposition
+
+| Bead   | Result   | Action                                |
+|--------|----------|----------------------------------------|
+| vb-27nz7 | FAIL_LOCAL | **NOT closed.** Notes added. Follow-ups: vb-mzmk9, vb-z66rh. |
+| vb-sasf7 | PASS     | Closed with evidence.                  |
+| vb-qmbvs | FAIL_GLOBAL | **NOT closed.** Notes added. Follow-up: vb-5iuag. |
+| vb-3tt54 | PASS     | Closed with evidence.                  |

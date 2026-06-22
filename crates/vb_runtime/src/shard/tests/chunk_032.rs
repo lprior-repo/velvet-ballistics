@@ -142,11 +142,10 @@ fn command_queue_new_rejects_zero_capacity() {
 #[test]
 fn command_queue_new_rejects_exceeding_max() {
     let result = ShardCommandQueue::new(MAX_COMMAND_QUEUE_CAPACITY + 1);
-    assert!(result.is_err());
-    match result {
-        Err(RuntimeError::CommandQueueCapacityExceeded { .. }) => {}
-        _other => panic!("unexpected result constructing queue"),
-    }
+    assert!(matches!(
+        result,
+        Err(RuntimeError::CommandQueueCapacityExceeded { .. })
+    ));
 }
 
 #[test]

@@ -194,7 +194,7 @@ proptest! {
                 prop_assert_eq!(reported_max, max);
             }
             other => {
-                prop_assert!(false, "expected PayloadTooLarge, got {other:?}");
+                panic!("expected PayloadTooLarge, got {other:?}");
             }
         }
     }

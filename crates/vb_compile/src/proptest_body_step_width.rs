@@ -225,7 +225,7 @@ proptest! {
         match (result1, result2) {
             (Ok(w1), Ok(w2)) => prop_assert_eq!(w1, w2, "deterministic width for same input"),
             (Err(_), Err(_)) => {}, // both error → deterministic
-            _ => prop_assert!(false, "inconsistent results for same input"),
+            _ => panic!("inconsistent results for same input"),
         }
     }
 }

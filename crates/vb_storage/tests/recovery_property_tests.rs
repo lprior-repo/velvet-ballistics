@@ -151,7 +151,7 @@ proptest! {
             (None, Ok(count)) => prop_assert_eq!(count, 0),
             (Some(u16::MAX), Err(_)) => {}
             (Some(index), Ok(count)) => prop_assert_eq!(count, index + 1),
-            other => prop_assert!(false, "unexpected dimension result: {other:?}"),
+            other => panic!("unexpected dimension result: {other:?}"),
         }
     }
 

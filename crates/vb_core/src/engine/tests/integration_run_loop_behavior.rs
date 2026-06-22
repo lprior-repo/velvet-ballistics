@@ -898,12 +898,12 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(value)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { panic!("workflow creation failed"); return; }
         };
 
         let mut run_bulk = match test_frame(RunId::new(100), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return; }
+            Err(_) => { panic!("bulk frame creation failed"); return; }
         };
         let mut store_bulk = test_store();
 
@@ -914,24 +914,24 @@ proptest::proptest! {
             &mut store_bulk,
         ) {
             Ok(sig) => (sig, run_bulk.executed()),
-            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return; }
+            Err(_) => { panic!("bulk execution failed"); return; }
         };
 
         let mut run_step = match test_frame(RunId::new(101), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return; }
+            Err(_) => { panic!("step frame creation failed"); return; }
         };
         let mut store_step = test_store();
 
         let s0 = match step_once(&workflow, &mut run_step, &mut store_step) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "step0 failed"); return; }
+            Err(_) => { panic!("step0 failed"); return; }
         };
         proptest::prop_assert_eq!(s0, EngineSignal::Continue);
 
         let s1 = match step_once(&workflow, &mut run_step, &mut store_step) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "step1 failed"); return; }
+            Err(_) => { panic!("step1 failed"); return; }
         };
         proptest::prop_assert_eq!(s1, bulk_signal);
         proptest::prop_assert_eq!(run_step.executed(), bulk_executed);
@@ -944,11 +944,11 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(42)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { panic!("workflow creation failed"); return; }
         };
         let mut run = match test_frame(RunId::new(200), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return; }
+            Err(_) => { panic!("frame creation failed"); return; }
         };
         let mut store = test_store();
         let mut budget = StepBudget::new(budget_value);
@@ -963,11 +963,11 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(42)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { panic!("workflow creation failed"); return; }
         };
         let mut run = match test_frame(RunId::new(300), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return; }
+            Err(_) => { panic!("frame creation failed"); return; }
         };
         let mut store = test_store();
 
@@ -987,12 +987,12 @@ proptest::proptest! {
             ConstValue::I64(v2),
         ]) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { panic!("workflow creation failed"); return; }
         };
 
         let mut run_bulk = match test_frame(RunId::new(400), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return; }
+            Err(_) => { panic!("bulk frame creation failed"); return; }
         };
         let mut store_bulk = test_store();
 
@@ -1003,12 +1003,12 @@ proptest::proptest! {
             &mut store_bulk,
         ) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return; }
+            Err(_) => { panic!("bulk execution failed"); return; }
         };
 
         let mut run_step = match test_frame(RunId::new(401), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return; }
+            Err(_) => { panic!("step frame creation failed"); return; }
         };
         let mut store_step = test_store();
 
@@ -1016,7 +1016,7 @@ proptest::proptest! {
         for _ in 0..4 {
             let sig = match step_once(&workflow, &mut run_step, &mut store_step) {
                 Ok(sig) => sig,
-                Err(_) => { proptest::prop_assert!(false, "step_once failed"); return; }
+                Err(_) => { panic!("step_once failed"); return; }
             };
             match sig {
                 EngineSignal::Continue => {

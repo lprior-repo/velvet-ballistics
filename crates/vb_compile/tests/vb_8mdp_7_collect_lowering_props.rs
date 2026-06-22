@@ -298,8 +298,7 @@ proptest! {
                     prop_assert_eq!(done.get(), 3,
                         "CollectStart.done must be id+3");
                 }
-                other => prop_assert!(false,
-                    "expected CollectStart, got {:?}", other),
+                other => panic!("placeholder"),
             }
 
             // CollectPage has collector_slot == source, body+done offsets
@@ -318,8 +317,7 @@ proptest! {
                     prop_assert_eq!(done.get(), 3,
                         "CollectPage.done = id+3");
                 }
-                other => prop_assert!(false,
-                    "expected CollectPage, got {:?}", other),
+                other => panic!("placeholder"),
             }
 
             // CollectFinish has collector_slot == source
@@ -330,8 +328,7 @@ proptest! {
                     prop_assert_eq!(collector_slot.get(), expected_slot,
                         "CollectFinish.collector_slot must match source");
                 }
-                other => prop_assert!(false,
-                    "expected CollectFinish, got {:?}", other),
+                other => panic!("placeholder"),
             }
     }
 }

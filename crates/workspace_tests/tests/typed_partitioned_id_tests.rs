@@ -203,7 +203,7 @@ proptest! {
             );
             match decoded {
                 Err(JournalError::UnknownRecordKind { kind: found }) => prop_assert_eq!(found, kind),
-                other => prop_assert!(false, "expected UnknownRecordKind, got {other:?}"),
+                other => panic!("expected UnknownRecordKind, got {other:?}"),
             }
         }
     }

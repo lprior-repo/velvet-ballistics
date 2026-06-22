@@ -435,10 +435,10 @@ fn server_processes_health_command_from_client() {
         match decoded {
             Ok(IpcResponse::Healthy) => {}
             Ok(other) => {
-                assert!(false, "expected Healthy response, got {other:?}");
+                panic!("expected Healthy response, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "response payload decode failed: {e}");
+                panic!("response payload decode failed: {e}");
             }
         }
     }
@@ -684,10 +684,10 @@ fn server_responds_with_error_for_unsupported_version() {
                 );
             }
             Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
+                panic!("expected FrameError, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "error response decode failed: {e}");
+                panic!("error response decode failed: {e}");
             }
         }
     }
@@ -939,10 +939,10 @@ fn server_responds_with_permission_denied_for_missing_capability_envelope() {
                 );
             }
             Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
+                panic!("expected FrameError, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "error response decode failed: {e}");
+                panic!("error response decode failed: {e}");
             }
         }
     }
@@ -1188,7 +1188,7 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
                 );
             }
             Err(e) => {
-                assert!(false, "response payload decode failed: {e}");
+                panic!("response payload decode failed: {e}");
             }
         }
     }
@@ -1599,8 +1599,7 @@ fn sequential_clients_each_get_health_response() {
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
             Err(_) => {
-                assert!(false, "payload_len overflow for client {i}");
-                return;
+                panic!("payload_len overflow for client {i}");
             }
         };
         if payload_len_usize > 0 {
@@ -1616,10 +1615,10 @@ fn sequential_clients_each_get_health_response() {
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
                 Ok(other) => {
-                    assert!(false, "expected Healthy for client {i}, got {other:?}");
+                    panic!("expected Healthy for client {i}, got {other:?}");
                 }
                 Err(e) => {
-                    assert!(false, "response decode failed for client {i}: {e}");
+                    panic!("response decode failed for client {i}: {e}");
                 }
             }
         }

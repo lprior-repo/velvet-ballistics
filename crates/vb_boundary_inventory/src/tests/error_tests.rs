@@ -155,7 +155,6 @@ fn error_in_result_inventory_parse_failure() {
         result,
         Err(BoundaryInventoryError::InventoryParseFailure)
     ));
-    assert!(result.is_err());
 }
 
 #[test]
@@ -166,7 +165,6 @@ fn error_in_result_schema_version_unsupported() {
         result,
         Err(BoundaryInventoryError::SchemaVersionUnsupported)
     ));
-    assert!(result.is_err());
 }
 
 // =============================================================================

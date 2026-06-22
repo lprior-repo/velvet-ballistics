@@ -2,11 +2,11 @@
 //!
 //! Uses proptest to generate arbitrary inputs for comprehensive coverage
 
-// `assert!(false, ...)` appears inside `match` arms whose Ok branch already
-// bound the value. The assertion is the documented "this branch is unreachable"
-// marker with a clear diagnostic message. `panic!`/`unreachable!` are forbidden
-// by workspace lints, so we suppress `assertions_on_constants` at module scope.
-#![allow(clippy::assertions_on_constants)]
+// `panic!(...)` markers appear inside `match` arms whose Ok branch already
+// bound the value. The panic is the documented "this branch is unreachable"
+// marker with a clear diagnostic message. Tests are allowed to panic at the
+// workspace level, so we use `panic!` for the unreachable-arm marker.
+#![allow(clippy::panic, clippy::assertions_on_constants)]
 
 use std::path::PathBuf;
 
@@ -102,7 +102,10 @@ proptest! {
                 prop_assert_eq!(classified.exposure.risk, BoundaryRisk::Multiple);
             }
             Err(_) => {
-                prop_assert!(false, "kani harness assertion");
+                prop_assert!(
+                    result.is_ok(),
+                    "expected classify_boundary to succeed for risky marker, got {result:?}"
+                );
             }
         }
     }
@@ -116,14 +119,20 @@ proptest! {
         let id1 = match &result1 {
             Ok(classified) => classified.id.clone(),
             Err(_) => {
-                prop_assert!(false, "kani harness assertion");
+                prop_assert!(
+                    result1.is_ok(),
+                    "expected classify_boundary to succeed, got {result1:?}"
+                );
                 String::new()
             }
         };
         let id2 = match &result2 {
             Ok(classified) => classified.id.clone(),
             Err(_) => {
-                prop_assert!(false, "kani harness assertion");
+                prop_assert!(
+                    result2.is_ok(),
+                    "expected classify_boundary to succeed, got {result2:?}"
+                );
                 String::new()
             }
         };
@@ -207,14 +216,22 @@ proptest! {
                 prop_assert_eq!(p, std::path::PathBuf::from(path));
                 prop_assert_eq!(k, kind);
             }
-            _ => prop_assert!(false), }
+            _ => prop_assert!(
+                matches!(reference, EvidenceReference::RepoLocal { .. }),
+                "expected RepoLocal variant, got {reference:?}"
+            ),
+        }
     }
 
     fn field_state_from_option_some(value: String) {
         let state: FieldState<String> = FieldState::from(Some(value.clone()));
         match state {
             FieldState::Present(v) => prop_assert_eq!(v, value),
-            FieldState::Missing => prop_assert!(false), }
+            FieldState::Missing => prop_assert!(
+                matches!(state, FieldState::Present(_)),
+                "expected FieldState::Present, got {state:?}"
+            ),
+        }
     }
 
     fn field_state_as_ref(value: String) {
@@ -222,7 +239,11 @@ proptest! {
         let ref_state = state.as_ref();
         match ref_state {
             FieldState::Present(v) => prop_assert_eq!(v, &value),
-            FieldState::Missing => prop_assert!(false), }
+            FieldState::Missing => prop_assert!(
+                matches!(ref_state, FieldState::Present(_)),
+                "expected FieldState::Present, got {ref_state:?}"
+            ),
+        }
     }
 
     fn field_state_map(value: String) {
@@ -230,7 +251,11 @@ proptest! {
         let mapped = state.map(|v| v.len());
         match mapped {
             FieldState::Present(len) => prop_assert_eq!(len, value.len()),
-            FieldState::Missing => prop_assert!(false), }
+            FieldState::Missing => prop_assert!(
+                matches!(mapped, FieldState::Present(_)),
+                "expected FieldState::Present, got {mapped:?}"
+            ),
+        }
     }
 
     fn validated_inventory_with_schema_version(schema: u32) {
@@ -337,10 +362,7 @@ fn boundary_class_all_variants() {
             },
         );
         let result = classify_boundary(candidate);
-        let Ok(classified) = result else {
-            assert!(false, "classify_boundary must succeed for valid class");
-            return;
-        };
+        let classified = result.expect("classify_boundary must succeed for valid class");
         assert_eq!(classified.class, class);
     }
 }
@@ -389,7 +411,7 @@ fn evidence_kind_all_variants() {
             EvidenceReference::RepoLocal { kind: k, .. } => {
                 assert_eq!(k, kind);
             }
-            _ => assert!(false, "Expected RepoLocal"),
+            _ => panic!("Expected RepoLocal"),
         }
     }
 }

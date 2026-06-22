@@ -1018,18 +1018,18 @@ fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
     // Slot 0 has a clean value.
     let write_clean =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
-    assert!(write_clean.is_ok());
+    assert_eq!(write_clean, Ok(()));
     // Slot 1 has a secret-tainted value.
     let write_secret =
         frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
-    assert!(write_secret.is_ok());
+    assert_eq!(write_secret, Ok(()));
     // Slot 2 has a derived-from-secret value.
     let write_derived = frame.write_slot_with_taint(
         SlotIdx::new(2),
         SlotValue::I64(30),
         Taint::DerivedFromSecret,
     );
-    assert!(write_derived.is_ok());
+    assert_eq!(write_derived, Ok(()));
 
     // Clean key passes.
     let result_clean = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
@@ -1064,10 +1064,10 @@ fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secr
     let mut frame = frame.ok().expect("test setup");
     let write_clean =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
-    assert!(write_clean.is_ok());
+    assert_eq!(write_clean, Ok(()));
     let write_secret =
         frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
-    assert!(write_secret.is_ok());
+    assert_eq!(write_secret, Ok(()));
     // Key slots: [clean, secret]. Should reject on the second slot.
     let result = verify_idempotency(&action, &[SlotIdx::new(0), SlotIdx::new(1)], &frame);
     assert_eq!(result, Err(IdempotencyViolation::SecretInKey(1)));
@@ -1147,9 +1147,9 @@ fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
     let mut frame = frame.ok().expect("test setup");
     // Populate both input and output slots before dispatch.
     let write_input = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
-    assert!(write_input.is_ok());
+    assert_eq!(write_input, Ok(()));
     let write_output = frame.write_slot(SlotIdx::new(1), SlotValue::I64(0)); // Output must be initialized too.
-    assert!(write_output.is_ok());
+    assert_eq!(write_output, Ok(()));
     let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(1));
     assert_eq!(result, Ok(()));
 }

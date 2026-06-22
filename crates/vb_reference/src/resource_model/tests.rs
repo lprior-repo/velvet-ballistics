@@ -73,7 +73,8 @@ fn test_policy_violation() {
     let model = ResourceModel::new();
     let result = model.validate_against_policy(&budget, &policy);
 
-    assert!(result.is_err());
-    let violations = result.unwrap_err();
-    assert!(violations.iter().any(|v| v.contains("max_action_tickets")));
+    assert!(matches!(
+        result,
+        Err(ref violations) if violations.iter().any(|v| v.contains("max_action_tickets"))
+    ));
 }

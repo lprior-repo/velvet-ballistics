@@ -691,9 +691,10 @@ mod behavior_slot_management {
         let result = frame.read_slot(SlotIdx::new(0));
 
         // THEN: Returns SlotUninitialized error
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(matches!(err, CoreError::SlotUninitialized { slot } if slot == SlotIdx::new(0)));
+        assert!(matches!(
+            result,
+            Err(CoreError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+        ));
     }
 
     #[test]
@@ -727,9 +728,10 @@ mod behavior_slot_management {
         let result = frame.read_slot(SlotIdx::new(99));
 
         // THEN: Returns SlotOutOfBounds error
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(matches!(err, CoreError::SlotOutOfBounds { slot } if slot == SlotIdx::new(99)));
+        assert!(matches!(
+            result,
+            Err(CoreError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99)
+        ));
     }
 
     #[test]
@@ -807,9 +809,10 @@ mod behavior_slot_management {
         let result = frame.write_taint(SlotIdx::new(0), Taint::Secret);
 
         // THEN: Returns SlotUninitialized error
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(matches!(err, CoreError::SlotUninitialized { slot } if slot == SlotIdx::new(0)));
+        assert!(matches!(
+            result,
+            Err(CoreError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+        ));
     }
 
     #[test]
@@ -994,7 +997,10 @@ mod behavior_step_state_transitions {
         let result = frame.mark_running(StepIdx::new(99));
 
         // THEN: Returns StepStateOutOfBounds error
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::StepStateOutOfBounds { .. })
+        ));
     }
 
     #[test]
@@ -1101,7 +1107,12 @@ mod behavior_run_frame_reinitialize {
         let result = frame.reinitialize(RunId::new(99), StepIdx::new(0), 3, 1);
 
         // THEN: Returns error (dimension mismatch)
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::InvalidCompiledWorkflow {
+                reason: "frame_dimension_mismatch"
+            })
+        ));
     }
 
     #[test]
@@ -1114,7 +1125,10 @@ mod behavior_run_frame_reinitialize {
         let result = frame.reinitialize(RunId::new(99), StepIdx::new(99), 2, 1);
 
         // THEN: Returns InvalidProgramCounter error
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::InvalidProgramCounter { .. })
+        ));
     }
 }
 
@@ -1205,7 +1219,10 @@ mod behavior_error_propagation {
         let result = validate_compiled_workflow(&parts);
 
         // THEN: Returns error (EmptyNodes)
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::workflow::WorkflowError::EmptyNodes)
+        ));
     }
 }
 
@@ -1290,7 +1307,10 @@ mod behavior_parallel_in_flight {
         let result = frame.sub_parallel_in_flight(1);
 
         // THEN: Returns InternalInvariantViolation (underflow)
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::InternalInvariantViolation { .. })
+        ));
     }
 }
 
@@ -1445,7 +1465,10 @@ mod behavior_validate_compiled_workflow {
         let result = validate_compiled_workflow(&parts);
 
         // THEN: Returns Ok
-        assert!(result.is_ok());
+        assert!(
+            result.is_ok(),
+            "valid parts must pass validate_compiled_workflow, got {result:?}"
+        );
     }
 
     #[test]
@@ -1466,7 +1489,10 @@ mod behavior_validate_compiled_workflow {
         });
 
         // THEN: Construction fails
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(vb_core::workflow::WorkflowError::EmptyNodes)
+        ));
     }
 }
 
@@ -1555,7 +1581,7 @@ mod behavior_taint_propagation {
         let result = frame.write_taint(SlotIdx::new(99), Taint::Secret);
 
         // THEN: Returns SlotOutOfBounds error
-        assert!(result.is_err());
+        assert!(matches!(result, Err(CoreError::SlotOutOfBounds { .. })));
     }
 }
 
@@ -1631,7 +1657,7 @@ mod behavior_pc_manipulation {
         let result = frame.set_pc(StepIdx::new(3));
 
         // THEN: PC is updated
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
         assert_eq!(frame.pc(), StepIdx::new(3));
     }
 
@@ -1685,7 +1711,10 @@ mod behavior_pc_manipulation {
         let result = frame.set_pc(StepIdx::new(99));
 
         // THEN: Returns error, PC unchanged
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(CoreError::InvalidProgramCounter { .. })
+        ));
         assert_eq!(frame.pc(), original_pc);
     }
 }

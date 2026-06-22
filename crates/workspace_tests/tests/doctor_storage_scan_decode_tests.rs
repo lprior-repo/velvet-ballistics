@@ -870,7 +870,10 @@ mod bounded_scan_tests {
 
         // Then: either header decoding fails (UnexpectedEof) or some other typed error
         // No panic, no UB
-        assert!(result.is_err());
+        assert!(
+            matches!(result, Err(JournalError::UnexpectedEof) | Err(_)),
+            "expected Err result, got {result:?}"
+        );
     }
 
     /// T8-BS-07: An overflow limit (usize::MAX) does not panic, hang, or OOM.
@@ -1054,7 +1057,15 @@ mod skip_decode_tests {
         );
 
         // Then: typed error (PostcardDecodeFailed, CRC mismatch, or digest mismatch)
-        assert!(result.is_err(), "expected error on malformed payload");
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::PostcardDecodeFailed)
+                    | Err(JournalError::HeaderChecksumMismatch)
+                    | Err(JournalError::PayloadDigestMismatch)
+            ),
+            "expected typed error on malformed payload, got {result:?}"
+        );
 
         match result {
             Err(JournalError::PostcardDecodeFailed)
@@ -1240,7 +1251,10 @@ mod safe_numeric_tests {
         let result = "-1".parse::<u64>();
 
         // Then: parse fails (no negative u64 values)
-        assert!(result.is_err(), "negative number must fail u64 parse");
+        assert!(
+            result.is_err(),
+            "negative number must fail u64 parse, got {result:?}"
+        );
     }
 
     /// T8-SN-08: Non-numeric sequence values are rejected at parse time.
@@ -1250,7 +1264,10 @@ mod safe_numeric_tests {
         let result = "abc".parse::<u64>();
 
         // Then: parse fails
-        assert!(result.is_err(), "non-numeric string must fail u64 parse");
+        assert!(
+            result.is_err(),
+            "non-numeric string must fail u64 parse, got {result:?}"
+        );
     }
 }
 
@@ -1360,8 +1377,14 @@ mod parse_decode_error_tests {
         );
 
         // Then: both succeed, but produce different output types
-        assert!(header_result.is_ok());
-        assert!(full_result.is_ok());
+        assert!(
+            header_result.is_ok(),
+            "header decode must succeed, got {header_result:?}"
+        );
+        assert!(
+            full_result.is_ok(),
+            "full decode must succeed, got {full_result:?}"
+        );
 
         // Full decode returns more information (the decoded event)
         let header = header_result?;
@@ -1473,7 +1496,10 @@ mod parse_decode_error_tests {
             decode_record_header(&noise, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 
         // Then: error is returned (typed JournalError, no panic)
-        assert!(result.is_err(), "random noise must be rejected");
+        assert!(
+            result.is_err(),
+            "random noise must be rejected, got {result:?}"
+        );
     }
 }
 
@@ -1694,7 +1720,6 @@ proptest! {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         if bytes.len() < RECORD_HEADER_BYTES {
-            prop_assert!(result.is_err());
             prop_assert!(matches!(
                 result,
                 Err(JournalError::UnexpectedEof)
@@ -1745,7 +1770,10 @@ proptest! {
                 cap as u32,
             );
             if value_len > cap {
-                prop_assert!(result.is_err());
+                prop_assert!(matches!(
+                    result,
+                    Err(JournalError::HeaderChecksumMismatch)
+                ));
             }
         }
     }
@@ -1818,7 +1846,7 @@ proptest! {
             (Ok(_), Ok(_)) => { }
             (Err(_e1), Err(_e2)) => { }
             (Ok(_), Err(_)) | (Err(_), Ok(_)) => {
-                prop_assert!(false, "decode_journal_event must be deterministic");
+                panic!("decode_journal_event must be deterministic");
             }
         }
     }

@@ -1,6 +1,6 @@
 {
   "discovery_root": "crates/vb_runtime/src",
-  "harness_count": 75,
+  "harness_count": 78,
   "harnesses": [
     {
       "cfg_kani": true,
@@ -9,7 +9,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -19,7 +19,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -29,7 +29,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -39,7 +39,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -49,7 +49,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -59,7 +59,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -69,7 +69,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -79,7 +79,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -89,7 +89,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -99,7 +99,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -109,7 +109,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -119,7 +119,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -129,7 +129,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -139,7 +139,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -149,7 +149,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -159,7 +159,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -169,7 +169,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -179,7 +179,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -189,7 +189,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -199,7 +199,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -209,7 +209,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_engine_signals.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -219,7 +219,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -229,7 +229,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -239,7 +239,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -249,7 +249,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_action_queue.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -259,7 +259,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_admission_store.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -269,7 +269,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_admission_store.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -279,7 +279,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_admission_store.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -289,7 +289,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_admission_store.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -299,7 +299,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -309,7 +309,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -319,7 +319,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -329,7 +329,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -339,7 +339,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -349,7 +349,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -359,7 +359,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -369,7 +369,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -379,7 +379,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -389,7 +389,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -399,7 +399,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -409,7 +409,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -419,7 +419,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -429,7 +429,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -439,7 +439,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -449,7 +449,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -459,7 +459,37 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
+      ]
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "flush_coalesce_buffer_drains_buffer_on_every_dispatch_path",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_flush_coalesce_buffer.rs",
+      "required_features": [
+        "kani-flush-coalesce-buffer"
+      ]
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "flush_coalesce_buffer_no_op_when_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_flush_coalesce_buffer.rs",
+      "required_features": [
+        "kani-flush-coalesce-buffer"
+      ]
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "flush_coalesce_buffer_idempotent_across_calls",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_flush_coalesce_buffer.rs",
+      "required_features": [
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -469,7 +499,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_trace_ring.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -479,7 +509,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_trace_ring.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -489,7 +519,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_trace_ring.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -499,7 +529,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -509,7 +539,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -519,7 +549,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -529,7 +559,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -539,7 +569,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -549,7 +579,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -559,7 +589,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -569,7 +599,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -579,7 +609,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -589,7 +619,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -599,7 +629,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -609,7 +639,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -619,7 +649,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -629,7 +659,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -639,7 +669,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -649,7 +679,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -659,7 +689,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -669,7 +699,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -679,7 +709,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -689,7 +719,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -699,7 +729,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -709,7 +739,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -719,7 +749,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_engine_signals.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -729,7 +759,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -739,7 +769,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     },
     {
@@ -749,7 +779,7 @@
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
       "required_features": [
-        "kani-fzgdn-timer-harnesses"
+        "kani-flush-coalesce-buffer"
       ]
     }
   ],

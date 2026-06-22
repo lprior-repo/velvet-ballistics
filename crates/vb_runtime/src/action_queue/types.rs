@@ -6,6 +6,14 @@ use std::time::Duration;
 use crossbeam_queue::ArrayQueue;
 use vb_core::action::ActionTicket;
 
+/// Maximum spin iterations per backoff cycle in [`BackpressureReceiver::recv_timeout`].
+///
+/// Bounded to prevent unbounded CPU burn if the producer is stuck. Each `spin_loop()`
+/// emits a PAUSE on x86 (yields to SMT) without a syscall, which is the proper
+/// way to wait briefly in a hot path. The outer loop re-checks the deadline, so
+/// a missed producer cannot pin a core.
+const BACKPRESSURE_RECV_SPIN_BUDGET: u32 = 1024;
+
 /// Maximum accepted action completion queue capacity.
 pub const MAX_ACTION_COMPLETION_QUEUE_CAPACITY: usize = 65_536;
 
@@ -122,7 +130,18 @@ impl BackpressureReceiver {
                 Some(r) => r,
                 None => return Err(BackpressureRecvTimeoutError::Timeout),
             };
-            std::thread::sleep(remaining.min(Duration::from_millis(1)));
+            // Holzmann Power-of-10 §5: spin in lieu of `std::thread::sleep` on a hot
+            // wait path. `spin_loop()` lowers to a PAUSE instruction on x86 (which
+            // yields to the SMT hyperthread without entering the kernel), avoiding
+            // the wall-clock syscall cost. The iteration count is bounded by
+            // `BACKPRESSURE_RECV_SPIN_BUDGET` so a stuck producer cannot pin the
+            // caller thread; the enclosing `loop` re-checks `deadline` and bails
+            // out as soon as the budget expires.
+            if remaining >= Duration::from_micros(1) {
+                for _ in 0..BACKPRESSURE_RECV_SPIN_BUDGET {
+                    std::hint::spin_loop();
+                }
+            }
         }
     }
 }

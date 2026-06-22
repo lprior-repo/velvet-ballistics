@@ -363,11 +363,11 @@ fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
         RetryPolicy::NEVER,
     );
 
-    assert!(result.is_err());
-    let err = result.unwrap_err();
     assert!(matches!(
-        err,
-        RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { .. })
+        result,
+        Err(RuntimeEngineError::Core(
+            vb_core::errors::EngineError::CapabilityDenied { .. }
+        ))
     ));
 }
 
@@ -395,8 +395,7 @@ fn execute_do_succeeds_when_required_capability_is_granted() {
         RetryPolicy::DEFAULT,
     );
 
-    assert!(result.is_ok());
-    assert!(matches!(result.unwrap(), RuntimeSignal::AwaitingAction(_)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAction(_))));
 }
 
 // =====================================================================

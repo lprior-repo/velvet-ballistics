@@ -275,3 +275,17 @@ impl Drop for FjallJournal {
         // Drop only releases the process lock here.
     }
 }
+
+// Manual Debug impl: FjallJournal holds an open `File` inside `ProcessLock`
+// and `fjall::Database`/`Keyspace` types that do not implement Debug. A
+// derived Debug impl would force all fields to be Debug; instead, emit a
+// stable shape so error-path format strings (`{result:?}` on
+// `Result<FjallJournal, _>`) compile and surface the underlying
+// `JournalError` rather than panicking on a missing Debug impl.
+impl std::fmt::Debug for FjallJournal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FjallJournal")
+            .field("events_approximate_len", &self.events.approximate_len())
+            .finish_non_exhaustive()
+    }
+}

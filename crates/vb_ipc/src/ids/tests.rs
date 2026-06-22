@@ -130,7 +130,7 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&original) else { return };
         let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
-            Err(_) => { assert!(false, "decode should succeed"); return; }
+            Err(_) => { panic!("decode should succeed"); return; }
         };
         assert_eq!(decoded.wire_value(), original.wire_value());
     }
@@ -141,7 +141,7 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&original) else { return };
         let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
-            Err(_) => { assert!(false, "decode should succeed"); return; }
+            Err(_) => { panic!("decode should succeed"); return; }
         };
         assert_eq!(decoded.wire_value(), original.wire_value());
     }
@@ -153,7 +153,7 @@ mod tests {
             let Ok(encoded) = postcard::to_allocvec(&original) else { return };
             let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
                 Ok(d) => d,
-                Err(_) => { assert!(false, "decode should succeed"); return; }
+                Err(_) => { panic!("decode should succeed"); return; }
             };
             assert_eq!(decoded, original);
         }
@@ -166,7 +166,7 @@ mod tests {
             let Ok(encoded) = postcard::to_allocvec(&original) else { return };
             let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
                 Ok(d) => d,
-                Err(_) => { assert!(false, "decode should succeed"); return; }
+                Err(_) => { panic!("decode should succeed"); return; }
             };
             assert_eq!(decoded, original);
         }
@@ -288,7 +288,7 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&original) else { return };
         let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
-            Err(_) => { assert!(false, "decode should succeed"); return; }
+            Err(_) => { panic!("decode should succeed"); return; }
         };
         assert_eq!(decoded.wire_value(), original.wire_value());
     }
@@ -299,7 +299,7 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&original) else { return };
         let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
-            Err(_) => { assert!(false, "decode should succeed"); return; }
+            Err(_) => { panic!("decode should succeed"); return; }
         };
         assert_eq!(decoded.wire_value(), original.wire_value());
     }
@@ -311,7 +311,7 @@ mod tests {
             let Ok(encoded) = postcard::to_allocvec(&original) else { return };
             let decoded: AskTicketId = match postcard::from_bytes(&encoded) {
                 Ok(d) => d,
-                Err(_) => { assert!(false, "decode should succeed"); return; }
+                Err(_) => { panic!("decode should succeed"); return; }
             };
             assert_eq!(decoded, original);
         }
@@ -324,7 +324,7 @@ mod tests {
             let Ok(encoded) = postcard::to_allocvec(&original) else { return };
             let decoded: ActionTicketId = match postcard::from_bytes(&encoded) {
                 Ok(d) => d,
-                Err(_) => { assert!(false, "decode should succeed"); return; }
+                Err(_) => { panic!("decode should succeed"); return; }
             };
             assert_eq!(decoded, original);
         }

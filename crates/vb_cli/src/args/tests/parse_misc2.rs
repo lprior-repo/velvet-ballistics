@@ -408,7 +408,7 @@ fn parse_args_empty_vec_returns_no_command_not_unknown() {
     match parsed {
         Err(ParseError::NoCommand) => {}
         #[allow(clippy::assertions_on_constants)]
-        other => assert!(false, "unreachable: expected NoCommand, got {other:?}"),
+        other => panic!("placeholder"),
     }
 }
 

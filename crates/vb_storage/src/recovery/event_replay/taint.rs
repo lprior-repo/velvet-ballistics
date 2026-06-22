@@ -1,8 +1,16 @@
 #![forbid(unsafe_code)]
 //! Slot taint resolution for fail-closed replay.
+//!
+//! These helpers allow the recovery layer to read existing slot taints
+//! without erasing read failures into implicit defaults. A failed read
+//! must surface as [`RecoveryError::SlotTaintReadFailed`] so callers
+//! cannot silently launder taint inconsistencies into a Clean default
+//! (vb-7ol6y / Bug 3).
+//!
+//! Types and helpers are also `#[cfg(kani)]` accessible for the
+//! bounded-model harnesses.
 
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
-#[cfg(kani)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintReadObservation {
     /// Existing taint was read successfully.
@@ -14,7 +22,6 @@ pub(crate) enum SlotTaintReadObservation {
 }
 
 /// Copy-only taint resolution decision for slot replay.
-#[cfg(kani)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintResolution {
     /// Continue with the selected taint value.
@@ -24,7 +31,6 @@ pub(crate) enum SlotTaintResolution {
 }
 
 /// Resolves a taint read without allocating or mutating the frame.
-#[cfg(kani)]
 #[must_use]
 pub(crate) const fn resolve_slot_taint_read(
     observation: SlotTaintReadObservation,
@@ -36,7 +42,6 @@ pub(crate) const fn resolve_slot_taint_read(
     }
 }
 
-#[cfg(kani)]
 pub(crate) fn observe_slot_taint_read(
     result: Result<vb_core::Taint, vb_core::CoreError>,
 ) -> SlotTaintReadObservation {

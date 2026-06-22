@@ -21,6 +21,16 @@ pub mod mrwe6_flux {
     include!("flux/vb_mrwe6_queue_intent_refinements.rs");
 }
 
+// Flux refinement for `coalesce_window_ticks` and the post-condition of
+// `Shard::flush_coalesce_buffer()` (vb-5iuag, FIX-FLUX-002-A). Bound to
+// `shard/config.rs::is_valid_coalesce_window_ticks` and
+// `shard/impl_parts/journal_helpers.rs::flush_coalesce_buffer`. See the file
+// header for obligation details (OBL-CW-WIN-001 / OBL-CW-WIN-002).
+#[cfg(all(flux, feature = "vb-coalesce-window-ticks-flux-refinements"))]
+pub mod coalesce_window_ticks_flux {
+    include!("flux/vb_coalesce_window_ticks_refinements.rs");
+}
+
 #[cfg(all(flux, feature = "vb-egysa-flux-refinements"))]
 pub mod vb_egysa_flux {
     include!("flux/vb_egysa_runtime_facade_refinements.rs");

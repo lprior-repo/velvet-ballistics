@@ -441,8 +441,8 @@ fn bounded_action_queue_emits_backpressure_warning_at_80_percent_capacity() {
     // Then: Returns Ok(())
     // And: A backpressure warning notification is emitted
     let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
-    assert!(warning.is_ok());
-    let w = warning.unwrap();
+    warning.expect("warning must be received");
+    let w = warning;
     assert_eq!(w.depth, 8);
     assert_eq!(w.capacity, 10);
 }
@@ -457,14 +457,14 @@ fn bounded_action_queue_emits_backpressure_warning_just_above_80_percent() {
     }
     // Drain the channel
     let drained_warning = rx.try_recv();
-    assert!(drained_warning.is_ok());
+    drained_warning.expect("drain must yield the previously emitted warning");
     // When: A 9th action completion is enqueued (90%)
     queue.enqueue(make_ticket(8)).unwrap();
     // Then: Returns Ok(())
     // And: A backpressure warning notification is emitted
     let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
-    assert!(warning.is_ok());
-    let w = warning.unwrap();
+    warning.expect("warning must be received");
+    let w = warning;
     assert_eq!(w.depth, 9);
     assert_eq!(w.capacity, 10);
 }
@@ -482,7 +482,7 @@ fn bounded_action_queue_does_not_emit_warning_below_80_percent() {
     // Then: No backpressure warning is emitted
     // Note: At exactly 80%, warning IS emitted (per spec)
     let threshold_warning = rx.try_recv();
-    assert!(threshold_warning.is_ok());
+    threshold_warning.expect("threshold warning must be emitted at 80%");
     // Actually 8/10 = 80% should emit - let's verify below threshold first
     // For 70% case (7 items), try_recv should be empty
     let (queue2, rx2) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
@@ -505,8 +505,8 @@ fn bounded_action_queue_backpressure_warning_contains_depth_and_capacity() {
     queue.enqueue(make_ticket(4)).unwrap();
     // Then: The backpressure warning contains depth (4) and capacity (5)
     let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
-    assert!(warning.is_ok());
-    let w = warning.unwrap();
+    warning.expect("warning must be received");
+    let w = warning;
     assert_eq!(w.depth, 4); // depth before the enqueue that triggered
     assert_eq!(w.capacity, 5);
 }
@@ -535,7 +535,7 @@ fn bounded_action_queue_backpressure_threshold_is_exclusive() {
     // At 4 out of 5 = 80%, warning fires
     queue.enqueue(make_ticket(3)).unwrap();
     let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
-    assert!(warning.is_ok());
+    warning.expect("warning must be received");
 }
 
 // =============================================================================
@@ -678,7 +678,7 @@ fn bounded_action_queue_large_capacity_backpressure_fires_at_80_percent() {
     // 80% = 80 items
     queue.enqueue(make_ticket(79)).unwrap();
     let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
-    assert!(warning.is_ok());
+    warning.expect("warning must be received");
 }
 
 // =============================================================================

@@ -311,7 +311,10 @@ fn gate_count_zero_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(
@@ -337,7 +340,10 @@ fn gate_count_fourteen_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(
@@ -363,7 +369,10 @@ fn gate_count_sixteen_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(
@@ -412,7 +421,10 @@ fn bounded_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "bounded"),
@@ -433,7 +445,10 @@ fn taint_safe_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "taint_safe"),
@@ -454,7 +469,10 @@ fn retry_safe_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "retry_safe"),
@@ -475,7 +493,10 @@ fn durable_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "durable"),
@@ -496,7 +517,10 @@ fn replayable_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "replayable"),
@@ -517,7 +541,10 @@ fn idempotency_verified_false_rejected() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "idempotency_verified"),
@@ -544,7 +571,10 @@ fn artifact_digest_mismatch_rejected() {
         requested_digest,
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(
@@ -609,16 +639,12 @@ steps:
 ";
     let compiler = YamlCompiler::default();
     let result = compiler.compile(yaml);
-    assert!(result.is_err());
-    let errors: CompileErrors = result.unwrap_err();
-    let first_error = errors.first();
     assert!(
         matches!(
-            first_error,
-            Some(CompileError::UnsupportedStepPrimitive { .. })
+            result,
+            Err(CompileErrors(ref errors)) if errors.first().is_some_and(|e| matches!(e, CompileError::UnsupportedStepPrimitive { .. }))
         ),
-        "expected UnsupportedStepPrimitive, got {:?}",
-        errors
+        "expected UnsupportedStepPrimitive, got {result:?}"
     );
 }
 
@@ -665,7 +691,10 @@ fn missing_artifact_rejected_under_strict_policy() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "expected Err result, got {result:?}"
+    );
     let err = result.unwrap_err();
     assert!(
         matches!(err, AdmissionError::ArtifactNotFound { .. }),

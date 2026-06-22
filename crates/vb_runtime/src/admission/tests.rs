@@ -90,7 +90,7 @@ fn admission_capability_denied_error_fields() {
             assert_eq!(g, granted);
         }
         other => {
-            assert!(false, "expected CapabilityDenied, got {other:?}");
+            panic!("expected CapabilityDenied, got {other:?}");
         }
     }
 }

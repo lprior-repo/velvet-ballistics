@@ -106,7 +106,6 @@
     clippy::unwrap_or_default,
     clippy::default_trait_access
 )]
-
 #![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(
@@ -201,7 +200,11 @@ mod record_tests {
         let mut sorted = ids.clone();
         sorted.sort();
         sorted.dedup();
-        assert_eq!(ids.len(), sorted.len(), "all record kind IDs must be unique");
+        assert_eq!(
+            ids.len(),
+            sorted.len(),
+            "all record kind IDs must be unique"
+        );
     }
 
     #[test]
@@ -221,9 +224,11 @@ mod record_tests {
         let record = CompiledIrRecord {
             digest,
             ir: b"test ir".to_vec(),
+            metadata_hash: None,
         };
         assert_eq!(record.digest, digest);
         assert_eq!(record.ir, b"test ir".to_vec());
+        assert_eq!(record.metadata_hash, None);
     }
 
     #[test]

@@ -86,6 +86,9 @@ pub mod kani_admission_store;
 #[cfg(all(kani, feature = "kani-shard-lifecycle"))]
 pub mod kani_shard_lifecycle;
 
+#[cfg(all(kani, feature = "kani-flush-coalesce-buffer"))]
+pub mod kani_flush_coalesce_buffer;
+
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;

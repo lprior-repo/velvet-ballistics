@@ -830,7 +830,10 @@ fn resource_command_queue_fifo_ordering() {
 fn resource_command_queue_rejects_excessive_capacity() {
     const EXCESSIVE: usize = vb_runtime::shard::types::MAX_COMMAND_QUEUE_CAPACITY + 1;
     let result = vb_runtime::shard::types::ShardCommandQueue::new(EXCESSIVE);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_runtime::RuntimeError::CommandQueueCapacityExceeded { .. })
+    ));
 }
 
 /// Given a command queue at exactly MAX_COMMAND_QUEUE_CAPACITY,

@@ -1,9 +1,14 @@
-#![cfg(flux)]
-
-//! Flux refinement artifact for obl-vb-mrwe-6-atomic-index-flux-003.
-//! Bound to crate::mrwe6_seams production classifiers. Residual support
-//! boundary: Flux refines the seam-view atom; Rust bridge tests call actual
-//! JournalEvent constructors and seam functions.
+/// Flux refinement artifact for obl-vb-mrwe-6-atomic-index-flux-003.
+/// Bound to crate::mrwe6_seams production classifiers. Residual support
+/// boundary: Flux refines the seam-view atom; Rust bridge tests call actual
+/// JournalEvent constructors and seam functions.
+///
+/// NOTE: `Mrwe6EventClass` and `Mrwe6IntentKind` are imported ONCE here (this
+/// is the lexicographically-first file in the `vb_mrwe6_*_refinements.rs`
+/// glob). The other two refinement files (`vb_mrwe6_completion_policy_*` and
+/// `vb_mrwe6_queue_intent_*`) reference the same types via their fully-
+/// qualified path `crate::mrwe6_seams::{...}` so the flux-rs crate-level scan
+/// does not produce E0252 "name defined multiple times".
 
 use crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind};
 #[flux_rs::refined_by(kind: int)]

@@ -81,7 +81,7 @@
 //             if let PathSegment::Field(sym) = segment {
 //                 if sym.get() >= parts.symbols_count {
 //                     let result = crate::gate_08_accessor::validate_gate_08_accessor_path_segments(parts);
-//                     assert!(result.is_err());
+//                     assert: returns Err variant
 //                 }
 //             }
 //         }

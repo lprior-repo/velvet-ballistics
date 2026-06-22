@@ -94,11 +94,7 @@ fn append_sequenced_batch_commits_all_events_atomically() {
             return;
         };
         let Some(_bytes) = bytes else {
-            assert!(
-                false,
-                "event at offset {offset} (seq={expected_seq}) must be committed"
-            );
-            return;
+            panic!("event at offset {offset} (seq={expected_seq}) must be committed");
         };
     }
 
@@ -115,7 +111,7 @@ fn append_sequenced_batch_commits_all_events_atomically() {
         return;
     };
     let Some(bytes) = bytes else {
-        assert!(false, "seq 100 must be committed");
+        panic!("seq 100 must be committed");
         return;
     };
     let Some(decoded) = require_ok(

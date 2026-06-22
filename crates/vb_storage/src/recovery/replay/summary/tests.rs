@@ -1190,16 +1190,18 @@ fn legacy_slot_taint_classifies_every_value_as_secret() {
     }
 }
 
-/// SR-013: legacy frame-extra envelope (no modern taint envelope) must also
-/// fail closed to `Taint::Secret`.
+/// vb-7ol6y: legacy frame-extra payloads (no versioned envelope prefix)
+/// are not taint metadata — legacy runtime used this slot for collect
+/// pagination state and other non-taint payloads. They must classify as
+/// `Taint::Clean`, not `Taint::Secret`.
 #[test]
-fn legacy_frame_extra_slot_taint_classifies_as_secret() {
+fn legacy_frame_extra_slot_taint_classifies_as_clean() {
     assert_eq!(
         legacy_frame_extra_slot_taint(SlotValue::Bool(false)),
-        Taint::Secret
+        Taint::Clean
     );
     assert_eq!(
         legacy_frame_extra_slot_taint(SlotValue::I64(7)),
-        Taint::Secret
+        Taint::Clean
     );
 }

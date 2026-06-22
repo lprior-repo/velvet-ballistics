@@ -1,6 +1,6 @@
 {
   "discovery_root": "crates/vb_storage/src",
-  "harness_count": 127,
+  "harness_count": 135,
   "harnesses": [
     {
       "cfg_kani": true,
@@ -480,6 +480,70 @@
       "harness": "vb_eepg_unknown_record_kind_error_contract",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_storage/src/kani_typed_partitioned_ids.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "recovered_slot_taint_corrupt_envelope_returns_err",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "recovered_slot_taint_legacy_non_prefix_returns_clean",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "recovered_slot_taint_legacy_random_bytes_returns_clean",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "legacy_slot_taint_returns_secret",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "slot_taint_resolution_fails_closed_on_read_failure",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "slot_taint_resolution_defaults_clean_only_for_uninitialized",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "slot_taint_resolution_preserves_existing_taint",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "hydrate_run_frame_workflow_invariants",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_7ol6y_recovery_hydrate.rs",
       "required_features": []
     },
     {

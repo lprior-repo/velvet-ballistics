@@ -3281,7 +3281,7 @@ mod tests {
             let value = SlotValue::Bool(input);
             match expect_bool(value) {
                 Ok(recovered) => prop_assert_eq!(recovered, input),
-                Err(err) => prop_assert!(false, "expect_bool must accept Bool: got {:?}", err),
+                Err(err) => panic!("placeholder"),
             }
         }
 
@@ -3295,7 +3295,7 @@ mod tests {
                     prop_assert_eq!(expected, "boolean");
                     prop_assert_eq!(found, value.type_name());
                 }
-                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+                other => panic!("placeholder"),
             }
         }
     }
@@ -3308,7 +3308,7 @@ mod tests {
             let value = SlotValue::I64(input);
             match expect_i64(value) {
                 Ok(recovered) => prop_assert_eq!(recovered, input),
-                Err(err) => prop_assert!(false, "expect_i64 must accept I64: got {:?}", err),
+                Err(err) => panic!("placeholder"),
             }
         }
 
@@ -3322,7 +3322,7 @@ mod tests {
                     prop_assert_eq!(expected, "number");
                     prop_assert_eq!(found, value.type_name());
                 }
-                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+                other => panic!("placeholder"),
             }
         }
     }
@@ -3337,7 +3337,7 @@ mod tests {
             let result: ExprResult<SymbolId> = expect_symbol(value);
             match result {
                 Ok(recovered) => prop_assert_eq!(recovered, symbol_id),
-                Err(err) => prop_assert!(false, "expect_symbol must accept Symbol: got {:?}", err),
+                Err(err) => panic!("placeholder"),
             }
         }
 
@@ -3351,7 +3351,7 @@ mod tests {
                     prop_assert_eq!(expected, "text");
                     prop_assert_eq!(found, value.type_name());
                 }
-                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+                other => panic!("placeholder"),
             }
         }
     }
@@ -3366,7 +3366,7 @@ mod tests {
             let result: ExprResult<ListId> = expect_list(value);
             match result {
                 Ok(recovered) => prop_assert_eq!(recovered, list_id),
-                Err(err) => prop_assert!(false, "expect_list must accept List: got {:?}", err),
+                Err(err) => panic!("placeholder"),
             }
         }
 
@@ -3380,7 +3380,7 @@ mod tests {
                     prop_assert_eq!(expected, "list");
                     prop_assert_eq!(found, value.type_name());
                 }
-                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+                other => panic!("placeholder"),
             }
         }
     }
@@ -3395,7 +3395,7 @@ mod tests {
             let result: ExprResult<ObjectId> = expect_object(value);
             match result {
                 Ok(recovered) => prop_assert_eq!(recovered, object_id),
-                Err(err) => prop_assert!(false, "expect_object must accept Object: got {:?}", err),
+                Err(err) => panic!("placeholder"),
             }
         }
 
@@ -3409,7 +3409,7 @@ mod tests {
                     prop_assert_eq!(expected, "object");
                     prop_assert_eq!(found, value.type_name());
                 }
-                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+                other => panic!("placeholder"),
             }
         }
     }

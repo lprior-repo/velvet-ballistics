@@ -264,7 +264,7 @@ mod tests {
                 assert!(evts.is_empty(), "no events should produce empty response");
             }
             other => {
-                assert!(false, "expected Events, got {other:?}");
+                panic!("expected Events, got {other:?}");
             }
         }
     }
@@ -283,7 +283,7 @@ mod tests {
                 assert_eq!(evts[1].sequence, 1);
             }
             other => {
-                assert!(false, "expected Events, got {other:?}");
+                panic!("expected Events, got {other:?}");
             }
         }
     }
@@ -303,7 +303,7 @@ mod tests {
                 assert_eq!(evts[1].sequence, 2);
             }
             other => {
-                assert!(false, "expected Events, got {other:?}");
+                panic!("expected Events, got {other:?}");
             }
         }
     }
@@ -320,7 +320,7 @@ mod tests {
                 );
             }
             other => {
-                assert!(false, "expected Events, got {other:?}");
+                panic!("expected Events, got {other:?}");
             }
         }
     }
@@ -344,7 +344,7 @@ mod tests {
                 );
             }
             other => {
-                assert!(false, "expected Events, got {other:?}");
+                panic!("expected Events, got {other:?}");
             }
         }
     }
@@ -372,7 +372,7 @@ mod tests {
                 assert_eq!(limit, u32::MAX);
             }
             other => {
-                assert!(false, "expected CountOutOfRange, got {other:?}");
+                panic!("expected CountOutOfRange, got {other:?}");
             }
         }
     }

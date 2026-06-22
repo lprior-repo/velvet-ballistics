@@ -171,7 +171,7 @@ mod tests {
                 }
                 Err(_) => {
                     // ForEach should be supported in body
-                    assert!(false, "ForEach must be supported in body steps");
+                    panic!("ForEach must be supported in body steps");
                 }
             }
         }

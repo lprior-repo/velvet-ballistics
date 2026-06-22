@@ -1,13 +1,12 @@
 //! Validation tests for vb_boundary_inventory
 //!
 //! Tests: validate_evidence_reference_bytes
-
-// `assert!(false, ...)` appears inside `let-else` arms and match arms whose
-// opposite arm already established the variant. The assertion is the documented
-// "this branch is unreachable" marker with a clear diagnostic message.
-// `panic!`/`unreachable!` are forbidden by workspace lints, so we suppress
-// `assertions_on_constants` at module scope.
-#![allow(clippy::assertions_on_constants)]
+// `panic!(...)` markers appear inside `let-else` arms and match arms whose
+// opposite arm already established the variant. The panic is the documented
+// "this branch is unreachable" marker with a clear diagnostic message. Tests
+// are allowed to panic at the workspace level, so we use `panic!` (not
+// panic markers) for clarity.
+#![allow(clippy::panic, clippy::assertions_on_constants)]
 
 use crate::boundary_inventory::{
     BoundaryInventoryError, EvidenceReference, validate_evidence_reference_bytes,
@@ -21,18 +20,15 @@ use crate::boundary_inventory::{
 fn validate_external_with_sha256() {
     let text = "external:vb-abc123#sha256=abcdef123456";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(
-            false,
-            "validate_evidence_reference_bytes must succeed: {result:?}"
-        );
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_evidence_reference_bytes must succeed"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance"),
+        _ => panic!("Expected ExternalProvenance"),
     }
 }
 
@@ -41,18 +37,15 @@ fn validate_bead_id_valid() {
     // Valid bead ID format: vb-{suffix}
     let text = "vb-abc123";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(
-            false,
-            "validate_evidence_reference_bytes must succeed: {result:?}"
-        );
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_evidence_reference_bytes must succeed"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance"),
+        _ => panic!("Expected ExternalProvenance"),
     }
 }
 
@@ -71,15 +64,15 @@ fn validate_bead_id_uppercase_rejected() {
 fn validate_bead_id_with_hyphens() {
     let text = "vb-a1b2c3";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(false, "vb-a1b2c3 is valid bead ID: {result:?}");
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("vb-a1b2c3 is valid bead ID"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance for valid bead ID"),
+        _ => panic!("Expected ExternalProvenance for valid bead ID"),
     }
 }
 
@@ -87,15 +80,15 @@ fn validate_bead_id_with_hyphens() {
 fn validate_bead_id_numbers_only() {
     let text = "vb-12345";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(false, "vb-12345 is valid bead ID: {result:?}");
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("vb-12345 is valid bead ID"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance for valid bead ID"),
+        _ => panic!("Expected ExternalProvenance for valid bead ID"),
     }
 }
 
@@ -169,15 +162,15 @@ fn validate_path_with_dots_at_start() {
 fn validate_external_multiple_colons() {
     let text = "external:many:colons#sha256=abc123";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(false, "multiple-colon external is valid: {result:?}");
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("multiple-colon external is valid"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance for external provenance"),
+        _ => panic!("Expected ExternalProvenance for external provenance"),
     }
 }
 
@@ -188,18 +181,15 @@ fn validate_external_multiple_colons() {
 #[test]
 fn validate_empty_bytes_resolves_as_repo_local() {
     let result = validate_evidence_reference_bytes(b"");
-    let Ok(reference) = result else {
-        assert!(
-            false,
-            "validate_evidence_reference_bytes must succeed: {result:?}"
-        );
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("validate_evidence_reference_bytes must succeed"),
     };
     match reference {
         EvidenceReference::RepoLocal { path, .. } => {
             assert!(path.as_os_str().is_empty());
         }
-        _ => assert!(false, "Expected RepoLocal"),
+        _ => panic!("Expected RepoLocal"),
     }
 }
 
@@ -228,16 +218,16 @@ fn validate_very_long_bead_id() {
     let suffix = "a".repeat(500);
     let text = format!("vb-{}", suffix);
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(false, "long bead ID must be valid: {result:?}");
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("long bead ID must be valid"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
             assert_eq!(val.len(), 503); // "vb-" (3) + 500 chars
         }
-        _ => assert!(false, "Expected ExternalProvenance"),
+        _ => panic!("Expected ExternalProvenance"),
     }
 }
 
@@ -279,18 +269,15 @@ fn validate_bead_id_multiple_hyphens_rejected() {
 fn validate_bead_id_single_letter_suffix() {
     let text = "vb-a";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(
-            false,
-            "single-letter bead ID suffix must be valid: {result:?}"
-        );
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("single-letter bead ID suffix must be valid"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance"),
+        _ => panic!("Expected ExternalProvenance"),
     }
 }
 
@@ -298,18 +285,15 @@ fn validate_bead_id_single_letter_suffix() {
 fn validate_bead_id_single_digit_suffix() {
     let text = "vb-7";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    let Ok(reference) = result else {
-        assert!(
-            false,
-            "single-digit bead ID suffix must be valid: {result:?}"
-        );
-        return;
+    let reference = match result {
+        Ok(v) => v,
+        Err(e) => panic!("single-digit bead ID suffix must be valid"),
     };
     match reference {
         EvidenceReference::ExternalProvenance(val) => {
             assert_eq!(val, text);
         }
-        _ => assert!(false, "Expected ExternalProvenance"),
+        _ => panic!("Expected ExternalProvenance"),
     }
 }
 

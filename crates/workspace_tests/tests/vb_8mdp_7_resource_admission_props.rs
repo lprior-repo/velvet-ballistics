@@ -970,7 +970,7 @@ fn enqueue_then_tick_consumes_command() {
     assert_eq!(shard.command_queue_len(), 1);
 
     let tick_result = shard.tick();
-    assert!(tick_result.is_ok());
+    assert_eq!(tick_result, Ok(true));
     assert_eq!(
         shard.command_queue_len(),
         0,

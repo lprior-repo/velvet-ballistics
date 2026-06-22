@@ -171,7 +171,7 @@ override:
 "#;
     let result = validate_yaml_profile(yaml);
     // Merge keys should be rejected
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)));
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ steps:
       result: 0
 ";
     let result = compiler.compile(source);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
@@ -215,7 +215,7 @@ steps:
       result: this_scalar_value_is_waaaay_too_long
 "#;
     let result = compiler.compile(source);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 // ---------------------------------------------------------------------------
@@ -235,35 +235,41 @@ steps:
 name: duplicate
 "#;
     let result = parse_workflow_source(yaml);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_yaml::YamlError::DuplicateKey { .. })
+    ));
 }
 
 #[test]
 fn reject_duplicate_keys_helper_empty() {
     let keys: Vec<&str> = vec![];
     let result = reject_duplicate_keys(&keys);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
 fn reject_duplicate_keys_helper_single() {
     let keys = vec!["key1"];
     let result = reject_duplicate_keys(&keys);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
 fn reject_duplicate_keys_helper_multiple_unique() {
     let keys = vec!["key1", "key2", "key3"];
     let result = reject_duplicate_keys(&keys);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
 fn reject_duplicate_keys_helper_multiple_duplicate() {
     let keys = vec!["key1", "key2", "key1"];
     let result = reject_duplicate_keys(&keys);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(vb_yaml::YamlError::DuplicateKey { .. })
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +289,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(yaml);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
@@ -299,7 +305,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(yaml);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +325,10 @@ steps:
 "#;
     // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert!(
+        matches!(result, Ok(_)),
+        "compile_workflow must accept any version string, got {result:?}"
+    );
 }
 
 #[test]
@@ -333,7 +342,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(yaml);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
@@ -349,7 +358,10 @@ steps:
 "#;
     // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert!(
+        matches!(result, Ok(_)),
+        "compile_workflow must accept any version string, got {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -371,7 +383,7 @@ steps:
 "#;
     let result = compile_workflow(yaml);
     // Empty event string should be rejected
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
@@ -385,7 +397,7 @@ steps:
     # Missing primitive - neither finish, set, copy, etc.
 "#;
     let result = compile_workflow(yaml);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 // ---------------------------------------------------------------------------
@@ -395,17 +407,22 @@ steps:
 #[test]
 fn compile_rejects_completely_empty_source() {
     let result = compile_workflow(b"");
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
 fn compile_rejects_whitespace_only_source() {
-    let result = compile_workflow(b"   \n\n   \n");
-    assert!(result.is_err());
+    let result = compile_workflow(
+        b"   
+
+   
+",
+    );
+    assert!(matches!(result, Err(vb_compile::CompileErrors(_))));
 }
 
 #[test]
 fn parse_yaml_events_rejects_empty() {
     let result = parse_yaml_events("");
-    assert!(result.is_err());
+    assert!(matches!(result, Err(vb_yaml::YamlError::EmptySource)));
 }

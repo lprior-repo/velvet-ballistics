@@ -312,7 +312,7 @@ proptest! {
             prop_assert_eq!(keys, sorted_keys,
                 "BTreeMap JSON keys must be in sorted order");
         } else {
-            prop_assert!(false, "Expected JSON object");
+            panic!("Expected JSON object");
         }
     }
 

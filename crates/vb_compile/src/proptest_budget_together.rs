@@ -295,7 +295,7 @@ proptest! {
         match (result1, result2) {
             (Ok(n1), Ok(n2)) => prop_assert_eq!(n1, n2, "deterministic node count"),
             (Err(_), Err(_)) => {}, // both error → deterministic
-            _ => prop_assert!(false, "inconsistent results"),
+            _ => panic!("inconsistent results"),
         }
     }
 }
