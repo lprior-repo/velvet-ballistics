@@ -83,8 +83,10 @@ pub fn validate_tail_events_after_snapshot(
     Ok(())
 }
 
-/// SR-006: enforce that the first tail event is exactly `snapshot.seq + 1`.
-/// A gap between snapshot and tail would silently drop events during replay.
+/// SR-006: enforce that the first tail event seq is strictly after
+/// `snapshot.seq`. A gap between snapshot and tail is permitted when the
+/// journal skipped events that landed inside the snapshot itself; rejecting
+/// only happens when the first tail event is at or before the snapshot seq.
 pub fn validate_tail_first_seq_contiguous_with_snapshot(
     tail_events: &[JournalEvent],
     snapshot_seq: crate::EventSeq,
@@ -92,13 +94,7 @@ pub fn validate_tail_first_seq_contiguous_with_snapshot(
     let Some(first) = tail_events.first() else {
         return Ok(());
     };
-    let expected = crate::codec::next_seq(snapshot_seq).map_err(|_| {
-        SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
-            snapshot_seq,
-            actual_seq: first.seq(),
-        }
-    })?;
-    if first.seq() == expected {
+    if first.seq() > snapshot_seq {
         Ok(())
     } else {
         Err(

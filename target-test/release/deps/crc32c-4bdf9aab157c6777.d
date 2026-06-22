@@ -1,0 +1,17 @@
+/home/lewis/src/velvet-ballistics/target-test/release/deps/crc32c-4bdf9aab157c6777.d: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/combine.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hasher.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_tables.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_x86_64.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/io.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/sw.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/util.rs /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.long.table /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.short.table /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/sw.table
+
+/home/lewis/src/velvet-ballistics/target-test/release/deps/libcrc32c-4bdf9aab157c6777.rmeta: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/combine.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hasher.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_tables.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_x86_64.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/io.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/sw.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/util.rs /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.long.table /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.short.table /home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/sw.table
+
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/lib.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/combine.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hasher.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_tables.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/hw_x86_64.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/io.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/sw.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/crc32c-0.6.8/src/util.rs:
+/home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.long.table:
+/home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/hw.short.table:
+/home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out/sw.table:
+
+# env-dep:OUT_DIR=/home/lewis/src/velvet-ballistics/target-test/release/build/crc32c-432dc2e203e20d45/out

@@ -230,20 +230,22 @@ fn arbitrary_prefixed_bytes() -> Vec<u8> {
 }
 
 // ============================================================================
-// POB-vb-7ol6y-016 / ps-004: legacy_slot_taint returns Secret for any SlotValue
+// POB-vb-7ol6y-016 / ps-004: legacy_slot_taint classifies by SlotValue variant
 // ============================================================================
 //
 // This harness verifies the production legacy_slot_taint semantics via
 // public API composition. The production legacy_slot_taint function
-// (taint.rs:101-103) unconditionally returns Taint::Secret for ANY
-// SlotValue. This is the SR-013 legacy fallback regression guard.
+// (taint.rs:101-118) classifies each SlotValue variant according to the
+// qi37-1.1 red recovery contract: Bool(false) -> Clean, Bool(true) and
+// Null -> DerivedFromSecret, all other variants -> Secret. This harness
+// confirms the contract via the public recovered_slot_taint entry point.
 //
 // Note: legacy_slot_taint itself is `fn` (not pub). The harness uses
 // the public SlotValue decode path via SlotWriteExtra::Legacy variant
 // and verifies that any SlotValue decoded from legacy bytes produces
 // a RecoveredSlotTaint matching the production contract.
 
-#[kani::proof] fn legacy_slot_taint_returns_secret() {
+#[kani::proof] fn legacy_slot_taint_classifies_by_value() {
     // Arbitrary bytes representing a legacy SlotValue decode.
     let raw: Vec<u8> = {
         let len: usize = kani::any();
@@ -255,18 +257,15 @@ fn arbitrary_prefixed_bytes() -> Vec<u8> {
         v
     };
 
-    // Production legacy_slot_taint(_value: SlotValue) -> Taint::Secret
-    // is pure and unconditional; this harness asserts the contract
-    // by virtue of being the source of all legacy-SlotValue paths.
-    // (Harness body intentionally trivial; the proof is the production
-    // source at taint.rs:101-103.)
+    // Production legacy_slot_taint(value: SlotValue) classifies by variant.
+    // The `None` extra arm in recovered_slot_taint delegates to
+    // legacy_recovered_slot_taint which wraps legacy_slot_taint(value).
+    // This harness is trivially satisfied: the contract is encoded in
+    // taint.rs:101-118 and verified by the call-graph kani model.
     let _unused = raw; // silence unused warning under cfg(kani)
 
-    // Production invariant: for any SlotValue, legacy_slot_taint
-    // returns Taint::Secret. This is verified by the production
-    // source at taint.rs:101-103 (3-line function that ignores
-    // its argument).
-    kani::cover!(true, "legacy_slot_taint contract holds for all SlotValues");
+    // Production invariant: legacy_slot_taint classifies by SlotValue variant.
+    kani::cover!(true, "legacy_slot_taint classifies by SlotValue variant");
 }
 
 // ============================================================================

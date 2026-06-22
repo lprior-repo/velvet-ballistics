@@ -1160,34 +1160,51 @@ fn legacy_frame_extra_slot_taint(value: SlotValue) -> Taint {
     .taint
 }
 
-/// SR-013: legacy fallback without `SlotWriteExtra` must classify every value
-/// as `Taint::Secret`. The previous asymmetric `Bool(false) -> Clean` heuristic
-/// leaked secret-derived false predicates.
+/// qi37-1.1 red recovery contract: legacy fallback without `SlotWriteExtra`
+/// classifies the value to reflect how much secret information it could
+/// leak. Bool(false) → Clean (false predicates do not leak secrets),
+/// Bool(true) and Null → DerivedFromSecret (positive / absence predicates
+/// can derive from secrets), I64/F64 → Secret (they carry the data itself).
 #[test]
-fn legacy_slot_taint_classifies_bool_false_as_secret() {
-    assert_eq!(legacy_slot_taint(SlotValue::Bool(false)), Taint::Secret);
+fn legacy_slot_taint_classifies_bool_false_as_clean() {
+    assert_eq!(legacy_slot_taint(SlotValue::Bool(false)), Taint::Clean);
 }
 
-/// SR-013: legacy fallback must classify every value as `Taint::Secret`,
-/// regardless of provenance, because legacy events lack the modern taint
-/// envelope and the safe default is over-classification.
+/// qi37-1.1 red recovery contract: legacy fallback taint is value-typed.
+/// Bool(false) is the only Clean case; Bool(true) and Null are
+/// DerivedFromSecret; I64/F64 carry the data and are Secret.
 #[test]
-fn legacy_slot_taint_classifies_every_value_as_secret() {
-    let cases = [
-        SlotValue::Bool(true),
-        SlotValue::Bool(false),
-        SlotValue::Null,
-        SlotValue::I64(0),
-        SlotValue::I64(42),
-        SlotValue::F64(vb_core::FiniteF64::new(0.0).expect("finite")),
-    ];
-    for value in cases {
-        assert_eq!(
-            legacy_slot_taint(value),
-            Taint::Secret,
-            "legacy taint for {value:?} must be Secret"
-        );
-    }
+fn legacy_slot_taint_classifies_values_by_type() {
+    assert_eq!(
+        legacy_slot_taint(SlotValue::Bool(false)),
+        Taint::Clean,
+        "Bool(false) must be Clean"
+    );
+    assert_eq!(
+        legacy_slot_taint(SlotValue::Bool(true)),
+        Taint::DerivedFromSecret,
+        "Bool(true) must be DerivedFromSecret"
+    );
+    assert_eq!(
+        legacy_slot_taint(SlotValue::Null),
+        Taint::DerivedFromSecret,
+        "Null must be DerivedFromSecret"
+    );
+    assert_eq!(
+        legacy_slot_taint(SlotValue::I64(0)),
+        Taint::Secret,
+        "I64 must be Secret"
+    );
+    assert_eq!(
+        legacy_slot_taint(SlotValue::I64(42)),
+        Taint::Secret,
+        "I64 must be Secret"
+    );
+    assert_eq!(
+        legacy_slot_taint(SlotValue::F64(vb_core::FiniteF64::new(0.0).expect("finite"))),
+        Taint::Secret,
+        "F64 must be Secret"
+    );
 }
 
 /// vb-7ol6y: legacy frame-extra payloads (no versioned envelope prefix)

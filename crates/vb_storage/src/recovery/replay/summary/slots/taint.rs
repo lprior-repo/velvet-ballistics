@@ -17,8 +17,11 @@
 //!   used this slot for collect pagination state and other non-taint
 //!   payloads; classifying those bytes as `Taint::Secret` would be a
 //!   false positive.
-//! - `None` extra → legacy default [`Taint::Secret`] (no envelope means
-//!   the safe choice is over-classification).
+//! - `None` extra → legacy taint classification by value type. Bool(false)
+//!   maps to `Taint::Clean` (false predicates do not leak secrets), Bool(true)
+//!   and Null map to `Taint::DerivedFromSecret` (positive / absence predicates
+//!   can derive from secrets), and I64/F64/Symbol/Object/List values map to
+//!   `Taint::Secret` because they carry the data itself.
 
 use crate::constants::MAX_FRAME_EXTRA_BYTES;
 use crate::events::SlotWriteExtra;
@@ -98,6 +101,27 @@ fn legacy_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTaint {
     }
 }
 
-fn legacy_slot_taint(_value: SlotValue) -> Taint {
-    Taint::Secret
+/// Derives the taint for a legacy slot write (no `SlotWriteExtra` envelope).
+///
+/// The mapping follows the qi37 contract: the taint reflects how much secret
+/// information a value could leak. Bool(false) is the only clean case because
+/// a "no" predicate does not reveal secret bits. Bool(true) and Null are
+/// treated as derived from a secret because a "yes" predicate and an absence
+/// predicate can both depend on secret inputs. I64/F64/Symbol values are
+/// classified as Secret because they carry the data itself.
+fn legacy_slot_taint(value: SlotValue) -> Taint {
+    match value {
+        SlotValue::Bool(false) => Taint::Clean,
+        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
+        SlotValue::I64(_)
+        | SlotValue::F64(_)
+        | SlotValue::Symbol(_)
+        | SlotValue::Object(_)
+        | SlotValue::List(_)
+        | SlotValue::Blob(_) => Taint::Secret,
+        // SlotValue is #[non_exhaustive]; the conservative default for any
+        // future variant is to over-classify as Secret (qi37 / vb-7ol6y
+        // contract: prefer false positives to silent under-classification).
+        _ => Taint::Secret,
+    }
 }
