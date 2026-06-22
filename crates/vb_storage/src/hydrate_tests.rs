@@ -284,9 +284,8 @@ mod hydrate_tests {
             EventSeq::new(5),
         );
         assert!(
-            result.is_ok(),
-            "seq 6 must be contiguous with snapshot seq 5, got {:?}",
-            result
+            matches!(result, Ok(())),
+            "seq 6 must validate as Ok(()) when contiguous with snapshot seq 5 (no gap), got {result:?}"
         );
     }
 
@@ -294,9 +293,8 @@ mod hydrate_tests {
     fn validate_tail_first_seq_contiguous_accepts_empty_tail() {
         let result = validate_tail_first_seq_contiguous_with_snapshot(&[], EventSeq::new(5));
         assert!(
-            result.is_ok(),
-            "empty tail must succeed (nothing to verify), got {:?}",
-            result
+            matches!(result, Ok(())),
+            "empty tail must validate as Ok(()) (no events to verify), got {result:?}"
         );
     }
 
@@ -385,9 +383,8 @@ mod hydrate_tests {
         let tail = vec![event_at(run, EventSeq::new(4))];
         let result = validate_snapshot_recovery_inputs(&snapshot, &tail, run);
         assert!(
-            result.is_ok(),
-            "contiguous tail should validate, got {:?}",
-            result
+            matches!(result, Ok(())),
+            "contiguous tail must validate as Ok(()) for matching run with non-empty events, got {result:?}"
         );
     }
 

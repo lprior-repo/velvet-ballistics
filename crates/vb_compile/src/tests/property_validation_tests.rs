@@ -3,7 +3,7 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use crate::compile_workflow;
+use crate::{CompileError, CompileErrors, compile_workflow};
 
 #[test]
 fn together_empty_branches() {
@@ -11,7 +11,10 @@ fn together_empty_branches() {
     let result = compile_workflow(yaml.as_bytes());
     match result {
         Ok(_) => panic!("GAP EXPOSED: Together with 0 branches compiled successfully. Validation missing."),
-        Err(e) => println!("PASS (validation exists): Empty Together rejected: {:?}", e),
+        Err(CompileErrors(errors)) => assert!(
+            errors.iter().any(|e| matches!(e, CompileError::StepFieldShape { field, .. } if *field == "together.branches")),
+            "empty Together branches must surface CompileError::StepFieldShape with field=together.branches, got {errors:?}"
+        ),
     }
 }
 
@@ -21,7 +24,10 @@ fn reduce_empty_body() {
     let result = compile_workflow(yaml.as_bytes());
     match result {
         Ok(_) => panic!("GAP EXPOSED: Reduce with 0 body steps compiled successfully. Validation missing."),
-        Err(e) => println!("PASS (validation exists): Empty Reduce body rejected: {:?}", e),
+        Err(CompileErrors(errors)) => assert!(
+            errors.iter().any(|e| matches!(e, CompileError::StepFieldShape { field, .. } if *field == "steps")),
+            "empty Reduce body must surface CompileError::StepFieldShape with field=steps, got {errors:?}"
+        ),
     }
 }
 

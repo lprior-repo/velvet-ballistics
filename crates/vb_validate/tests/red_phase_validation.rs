@@ -160,9 +160,10 @@ fn pipeline_validate_accepts_accessor_symbols_in_bounds() {
         accessor(1, vec![PathSegment::Field(SymbolId::new(9))]),
     ]);
 
-    assert!(
-        validate(&parts).is_ok(),
-        "expected Ok for valid accessor symbols"
+    assert_eq!(
+        validate(&parts),
+        Ok(()),
+        "expected Ok(()) for valid accessor symbols (in-bounds symbols + correct slot root)"
     );
 }
 
@@ -218,9 +219,10 @@ fn pipeline_validate_all_gates_disabled_accepts_anything() {
 
     let pipeline = ValidationPipeline::no_gates();
     // With all gates disabled, validate should return Ok (no gates run)
-    assert!(
-        pipeline.validate(&parts).is_ok(),
-        "pipeline with no gates should return Ok even for malformed parts"
+    assert_eq!(
+        pipeline.validate(&parts),
+        Ok(()),
+        "pipeline with no gates must return Ok(()) even for malformed parts (contract: no_gates disables every gate)"
     );
 }
 
@@ -328,8 +330,9 @@ fn pipeline_validate_does_not_produce_workflow_error() {
     // vb_validate accepts parts with any resource contract; resource contract
     // validation happens at vb_core level, not vb_validate level.
     // So this should pass vb_validate (only gate 8 checks accessors, which are empty).
-    assert!(
-        result.is_ok(),
-        "vb_validate pipeline should not reject parts based on resource contract; that is vb_core's job"
+    assert_eq!(
+        result,
+        Ok(()),
+        "vb_validate pipeline must return Ok(()) for parts with invalid resource contract (contract: resource contract is vb_core's job, not vb_validate's)"
     );
 }

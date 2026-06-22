@@ -184,7 +184,14 @@ fn parse_rejects_totally_empty_source() {
 #[test]
 fn parse_rejects_whitespace_only_source() {
     let result = YamlCompiler::default().parse_ast(b"   \n\n   \n");
-    assert!(result.is_err(), "whitespace-only source should fail");
+    let error = parse_error(b"   \n\n   \n").expect(
+        "whitespace-only source must produce at least one typed CompileError (not silent Ok)",
+    );
+    assert!(
+        matches!(error, CompileError::EmptySource),
+        "whitespace-only source must yield CompileError::EmptySource (zero documents), got {error:?}"
+    );
+    let _ = result;
 }
 
 #[test]

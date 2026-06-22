@@ -531,8 +531,8 @@ fn encode_accepts_payload_at_exact_max_boundary() -> Result<(), JournalError> {
         max_len,
     );
     assert!(
-        result.is_ok(),
-        "payload at exact max boundary should be accepted"
+        matches!(result, Ok(ref bytes) if bytes.len() >= RECORD_HEADER_BYTES),
+        "payload at exact max boundary should be accepted with non-trivial envelope, got {result:?}"
     );
     Ok(())
 }
@@ -670,9 +670,10 @@ fn validate_replayed_event_accepts_matching_run_and_seq() {
         workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
     };
     let result = validate_replayed_event(run, EventSeq::new(0), &event);
-    assert!(
-        result.is_ok(),
-        "matching run and seq should pass validation"
+    assert_eq!(
+        result,
+        Ok(()),
+        "matching run and seq must validate as Ok(()) (contract: replay validation surfaces typed Ok only on identity match), got {result:?}"
     );
 }
 
@@ -1753,8 +1754,8 @@ fn encode_accepts_run_header_kind_with_index_record_magic() -> Result<(), Journa
         MAX_RUN_HEADER_BYTES,
     );
     assert!(
-        result.is_ok(),
-        "RunHeader (kind 3) should be accepted by MAGIC_INDEX_RECORD"
+        matches!(result, Ok(ref bytes) if bytes.len() >= RECORD_HEADER_BYTES),
+        "RunHeader (kind 3) should be accepted by MAGIC_INDEX_RECORD with non-trivial envelope, got {result:?}"
     );
     Ok(())
 }
@@ -2456,8 +2457,8 @@ fn encode_with_empty_source_and_generous_max_succeeds() -> Result<(), JournalErr
         128,
     );
     assert!(
-        result.is_ok(),
-        "empty source with generous max should succeed, got {result:?}"
+        matches!(result, Ok(ref bytes) if bytes.len() >= RECORD_HEADER_BYTES),
+        "empty source with generous max should produce non-trivial envelope, got {result:?}"
     );
     Ok(())
 }
@@ -2652,8 +2653,8 @@ fn magic_journal_event_accepts_all_journal_event_kinds() -> Result<(), JournalEr
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         assert!(
-            result.is_ok(),
-            "MAGIC_JOURNAL_EVENT should accept kind {:?} (id {}), got {:?}",
+            matches!(result, Ok(ref bytes) if bytes.len() >= RECORD_HEADER_BYTES),
+            "MAGIC_JOURNAL_EVENT should accept kind {:?} (id {}) with non-trivial envelope, got {:?}",
             kind,
             kind.id(),
             result
@@ -2736,8 +2737,8 @@ fn encode_accepts_index_update_kind_with_index_record_magic() {
         1024,
     );
     assert!(
-        result.is_ok(),
-        "IndexUpdate (kind 50) should be accepted by MAGIC_INDEX_RECORD, got {:?}",
+        matches!(result, Ok(ref bytes) if bytes.len() >= RECORD_HEADER_BYTES),
+        "IndexUpdate (kind 50) should be accepted by MAGIC_INDEX_RECORD with non-trivial envelope, got {:?}",
         result
     );
 }
@@ -2859,9 +2860,10 @@ fn verify_digest_match_empty_payload() {
     let empty: &[u8] = &[];
     let digest: [u8; DIGEST_BYTES] = blake3::hash(empty).into();
     let result = verify_digest_match(empty, digest);
-    assert!(
-        result.is_ok(),
-        "empty payload with correct digest should pass"
+    assert_eq!(
+        result,
+        Ok(()),
+        "empty payload with correct digest must verify as Ok(()), got {result:?}"
     );
 }
 
@@ -2993,8 +2995,11 @@ fn decode_exact_payload_without_trailing_bytes_succeeds() -> Result<(), JournalE
     let result =
         decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
-        result.is_ok(),
-        "record without trailing bytes should decode successfully, got {:?}",
+        matches!(
+            &result,
+            Ok((envelope, _event)) if envelope.magic == MAGIC_JOURNAL_EVENT
+        ),
+        "record without trailing bytes must decode with MAGIC_JOURNAL_EVENT envelope, got {:?}",
         result
     );
     Ok(())

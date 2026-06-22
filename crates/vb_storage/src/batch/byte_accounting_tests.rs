@@ -783,8 +783,10 @@ fn e2e_many_events_under_limit_committed_and_replayable() {
 }
 
 #[test]
-fn e2e_aborted_batch_commit_succeeds_with_no_persist() {
-    // E03: Aborted batch (duplicate) commit succeeds as no-op.
+fn e2e_aborted_batch_commit_surfaces_typed_error() {
+    // E03: Aborted batch (duplicate) commit must surface a typed error per
+    // SA-002, NOT silently return Ok(()) — the test name reflects the new
+    // contract: commit on an aborted batch is an error, not a no-op success.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(402);
     let event = make_event(run, 0);
