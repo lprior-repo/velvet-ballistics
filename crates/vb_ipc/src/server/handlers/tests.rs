@@ -407,6 +407,145 @@ fn handle_cancel_run_without_reason_records_no_reason_on_journal() {
 }
 
 #[test]
+fn handle_cancel_run_with_empty_string_reason_records_some_empty_on_journal() {
+    use crate::IpcPayload;
+    use vb_runtime::journal::RuntimeJournalEvent;
+
+    let run_id = RunId::new(3203);
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shard_count = NonZeroUsize::new(1);
+    let shard_count = match shard_count {
+        Some(value) => value,
+        None => return,
+    };
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone())
+        .expect("runtime config is valid");
+    let workflow = ask_then_finish_workflow();
+    let workflow = match workflow {
+        Some(w) => w,
+        None => return,
+    };
+    assert_eq!(runtime.submit_compiled(run_id, workflow), Ok(()));
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    // B-013: empty-string reason (Some(b"")) must be preserved as Some("")
+    // in the journal — NOT collapsed to None. Operators rely on the
+    // distinction: None means "caller did not supply a reason",
+    // Some("") means "caller explicitly provided an empty reason".
+    let payload = postcard::to_allocvec(&IpcPayload::CancelRun {
+        run_id,
+        reason: Some(Vec::new()),
+    });
+    let payload = match payload {
+        Ok(bytes) => bytes,
+        Err(_) => return,
+    };
+
+    assert_eq!(
+        handle_cancel_run(&payload, &mut runtime),
+        IpcResponse::AcceptedRun { run_id: 3203 }
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let snap = journal.snapshot();
+    let events = snap.expect("journal snapshot must succeed for valid run state");
+    let matched = events.iter().any(|event| {
+        matches!(
+            event,
+            RuntimeJournalEvent::RunCancelled { run, reason: Some(r) }
+                if *run == run_id && r.is_empty()
+        )
+    });
+    assert!(
+        matched,
+        "durable RunCancelled event must record Some(empty-string), not None — caller explicitly provided empty reason"
+    );
+    let collapsed = events.iter().any(|event| {
+        matches!(
+            event,
+            RuntimeJournalEvent::RunCancelled { run, reason: None } if *run == run_id
+        )
+    });
+    assert!(
+        !collapsed,
+        "Some(empty-string) must NOT be collapsed to None in the journal"
+    );
+}
+
+#[test]
+fn handle_cancel_run_on_already_terminal_run_is_typed_noop() {
+    use crate::IpcPayload;
+    use vb_runtime::journal::RuntimeJournalEvent;
+
+    let run_id = RunId::new(3204);
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shard_count = NonZeroUsize::new(1);
+    let shard_count = match shard_count {
+        Some(value) => value,
+        None => return,
+    };
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone())
+        .expect("runtime config is valid");
+    let workflow = ask_then_finish_workflow();
+    let workflow = match workflow {
+        Some(w) => w,
+        None => return,
+    };
+    assert_eq!(runtime.submit_compiled(run_id, workflow), Ok(()));
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    // First cancel: drives the run to terminal state, records one RunCancelled.
+    let payload1 = postcard::to_allocvec(&IpcPayload::CancelRun {
+        run_id,
+        reason: None,
+    });
+    let payload1 = match payload1 {
+        Ok(bytes) => bytes,
+        Err(_) => return,
+    };
+    assert_eq!(
+        handle_cancel_run(&payload1, &mut runtime),
+        IpcResponse::AcceptedRun { run_id: 3204 }
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    // Second cancel on the now-terminal run: must be a typed no-op per
+    // RQ-W0-17 / RQ-W0-19. Exactly one RunCancelled event in the journal;
+    // counters do not advance. This is the design contract that the
+    // shard-level cancel_after_kill_is_typed_noop and
+    // cancel_kill_alternating_keeps_terminalization_idempotent tests assert.
+    let payload2 = postcard::to_allocvec(&IpcPayload::CancelRun {
+        run_id,
+        reason: Some(b"second cancel".to_vec()),
+    });
+    let payload2 = match payload2 {
+        Ok(bytes) => bytes,
+        Err(_) => return,
+    };
+    assert_eq!(
+        handle_cancel_run(&payload2, &mut runtime),
+        IpcResponse::AcceptedRun { run_id: 3204 }
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let snap = journal.snapshot();
+    let events = snap.expect("journal snapshot must succeed for valid run state");
+    let cancel_event_count = events
+        .iter()
+        .filter(|event| {
+            matches!(
+                event,
+                RuntimeJournalEvent::RunCancelled { run, .. } if *run == run_id
+            )
+        })
+        .count();
+    assert_eq!(
+        cancel_event_count, 1,
+        "exactly one RunCancelled journal event must be recorded; second cancel on terminal run is a typed no-op"
+    );
+}
+
+#[test]
 fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation() {
     let run_id = RunId::new(3104);
     let journal = Arc::new(VolatileRuntimeJournal::new());

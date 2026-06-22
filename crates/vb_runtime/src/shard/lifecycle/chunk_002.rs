@@ -181,16 +181,31 @@ impl Shard {
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
+        // RQ-W0-17 / RQ-W0-19: cancel on an already-terminal run is a typed
+        // no-op. The first cancel wins; subsequent cancels must not produce a
+        // new journal event or increment counters. This preserves the
+        // idempotency contract exercised by
+        // cancel_after_kill_is_typed_noop and
+        // cancel_kill_alternating_keeps_terminalization_idempotent.
+        if self.terminal_runs_contains(run) {
+            return Ok(());
+        }
         self.pending_timer_remove(run);
+        // B-012: journal the RunCancelled event BEFORE state removal so the
+        // terminal event is durable on disk. If the journal append fails,
+        // we propagate the typed error and leave state intact for retry
+        // (no event recorded, run not removed — caller can retry cancel).
+        // The durable variant bypasses the coalesce buffer to guarantee
+        // synchronous durability per RS-005 / RQ-W0-19.
+        self.append_journal_event_durable(RuntimeJournalEvent::RunCancelled { run, reason })?;
         if let Some(state) = self.run_state_remove(run) {
-            // RS-005: drop any coalesce-buffer entries for this run before
-            // appending the terminal event. A previous flush failure (e.g.
-            // the journal permanently rejecting a `StepStarted` event)
-            // leaves buffered events in `coalesce_buffer` per RQ-W0-19 so a
-            // retry could persist them; once the operator cancels, those
-            // entries are orphans and would block the terminal flush.
+            // RS-005: drop any coalesce-buffer entries for this run. A
+            // previous flush failure (e.g. the journal permanently rejecting a
+            // `StepStarted` event) leaves buffered events in `coalesce_buffer`
+            // per RQ-W0-19 so a retry could persist them; once the operator
+            // cancels, those entries are orphans and would block the terminal
+            // flush.
             self.discard_buffered_events_for_run(run);
-            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Cancelled);
