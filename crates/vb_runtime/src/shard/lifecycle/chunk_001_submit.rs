@@ -250,21 +250,12 @@ impl Shard {
         // window would defer the failure (when the journal rejects the
         // header) until a later flush, masking the rejection as
         // `StorageJournalAppend` instead of `AdmissionHeaderPersistenceFailed`.
-        let seq = self
-            .journal_sequences
-            .get(&run)
-            .copied()
-            .unwrap_or(vb_storage::EventSeq::ZERO);
-        let next_seq = vb_storage::EventSeq::new(
-            seq.get()
-                .checked_add(1)
-                .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?,
-        );
-        match self.journal.append_sequenced(event, seq) {
-            Ok(()) => {
-                self.journal_sequences.insert(run, next_seq);
-                Ok(())
-            }
+        // Reuses `append_journal_event_durable` for the seq read + overflow
+        // check + synchronous write + sequence advance; only the error
+        // mapping differs from the buffered path.
+        let durable_result = self.append_journal_event_durable(event);
+        match durable_result {
+            Ok(()) => Ok(()),
             Err(error) => {
                 self.discard_journal_sequence(run);
                 Err(RuntimeError::admission_header_persistence_failed(error))
