@@ -131,8 +131,19 @@ pub fn admit_artifact_run_with_certificate_floor(
                 });
             }
 
-            // Check that granted capabilities cover the artifact's required capabilities.
-            if caps.len() != artifact.required_capabilities.len() {
+            // RA-002: check that granted capabilities cover the artifact's required
+            // capabilities. Use SUPERSET semantics (matching `check_capability` /
+            // `validate_artifact_capabilities`): the granted set MUST contain every
+            // required capability, but MAY contain additional capabilities beyond
+            // what the artifact requires. The earlier exact-count check (`!=`) was
+            // inconsistent with the per-capability subset check and rejected valid
+            // supersets (e.g., a caller granting both `http_get` and `metrics` when
+            // the artifact only requires `http_get`).
+            //
+            // If `caps.len() < required.len()`, the per-capability loop below
+            // cannot possibly cover every required capability, so we still bail
+            // early with a typed error to avoid a useless iteration.
+            if caps.len() < artifact.required_capabilities.len() {
                 return Err(capability_count_mismatch_error(
                     &artifact.required_capabilities,
                     &caps,

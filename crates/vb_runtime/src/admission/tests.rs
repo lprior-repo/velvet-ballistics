@@ -159,7 +159,12 @@ fn admission_check_capability_rejects_partial_prefix_grant() {
 }
 
 #[test]
-fn admit_artifact_run_rejects_excess_grants() {
+fn admit_artifact_run_accepts_excess_grants_superset_semantics() {
+    // RA-002: granting MORE capabilities than the artifact requires is
+    // valid (superset semantics, matching `validate_artifact_capabilities`
+    // and `check_capability`). A caller may pre-grant a broader capability
+    // set (e.g., to cover multiple artifacts) and admission must succeed
+    // as long as every required capability is present in the granted set.
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let extra = Capability::new("storage".into(), ActionId::new(8));
@@ -176,13 +181,40 @@ fn admit_artifact_run_rejects_excess_grants() {
         granted.clone(),
     );
 
-    assert_eq!(
-        result,
-        Err(AdmissionError::CapabilityDenied {
-            action,
-            required,
-            granted,
-        })
+    assert!(
+        result.is_ok(),
+        "RA-002: admit_artifact_run must accept a superset of required capabilities, got {:?}",
+        result
+    );
+    let admission = result.expect("admission must succeed for superset grants");
+    assert_eq!(admission.granted_capabilities(), &granted);
+}
+
+#[test]
+fn admit_artifact_run_rejects_missing_grants_via_capability_denied() {
+    // RA-002 (negative case): when a required capability is NOT in the
+    // granted set, admission must reject with CapabilityDenied, matching
+    // the per-capability check semantics (no silent acceptance just because
+    // the granted set is non-empty).
+    let network = Capability::new("network.github".into(), ActionId::new(7));
+    let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([network.clone()]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    assert!(
+        matches!(result, Err(AdmissionError::CapabilityDenied { .. })),
+        "admit_artifact_run must reject when a required capability is missing, got {:?}",
+        result
     );
 }
 
