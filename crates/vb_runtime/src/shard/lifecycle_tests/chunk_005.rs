@@ -639,3 +639,204 @@ fn rs105_non_retryable_failure_with_handler_journals_action_failed_before_handle
     );
     Ok(())
 }
+
+// =======================================================================
+// RS-104: AskAnswered journal record must precede frame/timer mutations.
+// =======================================================================
+
+/// RS-104 regression: the durable `AskAnswered` (and `SlotWritten`) journal
+/// records must be appended BEFORE the frame slot write and the pending
+/// timer removal. If the durable append fails, the frame must NOT be
+/// mutated and the timer must NOT be removed — the run stays suspendable
+/// for a caller retry. Mirrors the B-012 fix pattern used by
+/// `handle_cancel` / `handle_kill` and the RS-105 ordering guarantee for
+/// `handle_action_failure`.
+struct RejectAskAnsweredJournal {
+    events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,
+}
+
+impl RejectAskAnsweredJournal {
+    fn shared() -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            events: std::sync::Mutex::new(Vec::new()),
+        })
+    }
+
+    fn snapshot(&self) -> Result<Vec<RuntimeJournalEvent>, RuntimeError> {
+        self.events
+            .lock()
+            .map(|events| events.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
+}
+
+impl crate::journal::RuntimeJournal for RejectAskAnsweredJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> Result<(), RuntimeError> {
+        if matches!(event, RuntimeJournalEvent::AskAnswered { .. }) {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
+        Ok(())
+    }
+
+    fn probe(&self) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+}
+
+#[test]
+fn rs104_durable_ask_answered_journaled_before_frame_mutation() -> Result<(), String> {
+    // RS-104 happy-path durability: the SlotWritten and AskAnswered events
+    // must be present in the journal BEFORE the frame is mutated. We use
+    // the volatile journal and assert the events are appended in the
+    // required order (SlotWritten before AskAnswered) per the existing
+    // PO-vb282my-AA-FLUX-001 refinement, AND that both are present
+    // before the run drives to completion.
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)
+        .map_err(|e| format!("shard construction: {:?}", e))?;
+    let wf = require_workflow("ask", ask_workflow())?;
+    let run = RunId::new(700);
+    submit_run(&mut shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+    // The run is now suspended on the ask with a pending timer.
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: StepIdx::new(2),
+            resume_step: StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: SlotValue::I64(77),
+        taint: Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    // First tick buffers the answer sequence plus StepSucceeded.
+    assert_eq!(shard.tick(), Ok(true));
+    // Second tick flushes the coalesce buffer.
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = require_snapshot(&journal)?;
+    let slot_written_pos = events
+        .iter()
+        .position(|e| matches!(
+            e,
+            RuntimeJournalEvent::SlotWritten { run: r, slot, .. }
+                if *r == run && *slot == SlotIdx::new(2)
+        ))
+        .ok_or_else(|| format!("SlotWritten for slot 2 not found: {events:?}"))?;
+    let ask_answered_pos = events
+        .iter()
+        .position(|e| matches!(e, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run))
+        .ok_or_else(|| format!("AskAnswered event not found: {events:?}"))?;
+    assert!(
+        slot_written_pos < ask_answered_pos,
+        "SlotWritten (pos={slot_written_pos}) must precede AskAnswered (pos={ask_answered_pos}); \
+         PO-vb282my-AA-FLUX-001 SlotWritten-before-AskAnswered ordering: {events:?}"
+    );
+    // After RS-104 + drive_run, the run completed via the AskResume →
+    // Finish path; the answer sequence is durable before any frame
+    // mutation, so the run drove to completion cleanly.
+    assert_eq!(
+        shard.counters().snapshot().runs_completed,
+        1,
+        "ask answer must drive the run to completion"
+    );
+    Ok(())
+}
+
+#[test]
+fn rs104_ask_answered_journal_failure_preserves_frame_and_timer() -> Result<(), String> {
+    // RS-104 failure-path durability: when the durable `AskAnswered`
+    // append fails, the frame slot write and the pending timer removal
+    // must NOT happen. The pre-fix anti-pattern (mutate first, journal
+    // second) would have left the run with an unsynchronized frame and
+    // no pending ask authority; recovery would have no durable evidence
+    // that an answer was ever attempted.
+    let journal = RejectAskAnsweredJournal::shared();
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)
+        .map_err(|e| format!("shard construction: {:?}", e))?;
+    let wf = require_workflow("ask", ask_workflow())?;
+    let run = RunId::new(701);
+    submit_run(&mut shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+    // Pre-answer sanity: the run is suspended on the ask with a pending
+    // timer; the answer slot is empty (no SlotWritten for slot 2 yet).
+    assert_eq!(shard.pending_timers.len(), 1);
+    let pre_answer_pc = shard
+        .run_state_get(run)
+        .map(|state| state.frame.pc())
+        .ok_or_else(|| "run must exist before ask answer".to_string())?;
+
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: StepIdx::new(2),
+            resume_step: StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: SlotValue::I64(77),
+        taint: Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    // Tick must fail because the durable AskAnswered append is rejected.
+    let tick_result = shard.tick();
+    assert!(
+        tick_result.is_err(),
+        "tick must fail when durable AskAnswered append fails, got {tick_result:?}"
+    );
+
+    // RS-104: the run must STILL exist in run_states so the caller can retry.
+    assert_eq!(
+        shard.run_state_contains(run),
+        true,
+        "RS-104: run must remain in run_states after durable AskAnswered append fails; \
+         pre-fix bug would silently drop the run from run_states"
+    );
+    // RS-104: the pending ask timer must NOT be removed (the answer was
+    // not durable, so the run is still authorized to receive the answer).
+    assert_eq!(
+        shard.pending_timers.len(),
+        1,
+        "RS-104: pending ask timer must not be removed when durable AskAnswered append fails"
+    );
+    // RS-104: the frame PC must NOT have been advanced to the resume step.
+    let post_answer_pc = shard
+        .run_state_get(run)
+        .map(|state| state.frame.pc())
+        .ok_or_else(|| "run state must still be readable".to_string())?;
+    assert_eq!(
+        post_answer_pc, pre_answer_pc,
+        "RS-104: frame PC must be unchanged when durable AskAnswered append fails"
+    );
+
+    // Journal must contain SlotWritten (durable, succeeded) but NOT
+    // AskAnswered (durable, failed). This proves the failure happened
+    // at the AskAnswered append and the state mutation guard above it
+    // never executed.
+    let events = journal.snapshot().map_err(|e| format!("snapshot: {e:?}"))?;
+    let slot_written_present = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
+    let ask_answered_present = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run));
+    assert!(
+        slot_written_present,
+        "SlotWritten must have been durably appended before the failing AskAnswered"
+    );
+    assert!(
+        !ask_answered_present,
+        "AskAnswered must NOT be in the journal when its durable append failed"
+    );
+    Ok(())
+}

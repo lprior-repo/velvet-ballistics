@@ -3,11 +3,24 @@ use crate::shard::types::TerminalOutcome;
 impl Shard {
     /// Handles an ask answer for a suspended run.
     ///
+    /// # RS-104 durability ordering (B-012 pattern):
+    /// The answer sequence (`SlotWritten` followed by `AskAnswered`) is
+    /// appended to the journal BEFORE any frame or timer state mutation.
+    /// If either durable `append_journal_event_durable` call fails, the
+    /// function returns the typed error WITHOUT touching the frame or
+    /// the pending timer, leaving the run suspendable so the caller can
+    /// retry the answer. This matches the B-012 fix used by
+    /// `handle_cancel` and prevents a journal failure from leaving the
+    /// run with an unsynchronized in-memory progress (frame advanced,
+    /// timer removed) and no durable answer evidence.
+    ///
     /// # Flux refinement (PO-vb282my-AA-FLUX-001):
     /// SlotWritten-before-AskAnswered ordering guarantee:
-    /// The AskAnswered journal append at line 50-54 is only reachable
-    /// AFTER a successful SlotWritten journal append at line 38-44.
-    /// If SlotWritten fails (returns Err), AskAnswered is never attempted.
+    /// The AskAnswered journal append is only reachable AFTER a
+    /// successful SlotWritten journal append. Both appends use
+    /// `append_journal_event_durable` (synchronous, buffer-bypassing)
+    /// so the events are committed before any state mutation. If
+    /// SlotWritten fails (returns Err), AskAnswered is never attempted.
     ///
     /// Flux signature (requires flux-rs toolchain):
     /// ```flux
@@ -28,13 +41,13 @@ impl Shard {
         {
             return Err(RuntimeError::InvalidActionCompletion);
         }
-        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
-        // RS-103 fix: derive the canonical resume step and answer slot
-        // from the workflow's AskResume node and reject answers whose
-        // supplied ticket fields do not match the workflow authority.
-        // The pending_timer only constrains `step` and `kind`; this
-        // preflight closes the gap where `answer.answer_slot` and
-        // `answer.ticket.resume_step` were trusted from the caller.
+        // RS-103 preflight + RS-104: read-only access to the run state so
+        // the validation below does not hold a mutable borrow across the
+        // journal appends. The durable appends happen BEFORE any frame or
+        // timer mutation; on failure the function returns Err and the run
+        // stays suspendable for retry (mirrors the B-012 fix in
+        // `handle_cancel` / `handle_kill`).
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         let resume_step = state
             .workflow
             .node(pending_timer.step)
@@ -63,10 +76,46 @@ impl Shard {
                 max: contract.max_ipc_payload_bytes,
             });
         }
+        // RS-104: pre-encode the answer value and capture the slot/step
+        // BEFORE any in-memory mutation so the journal appends below can
+        // succeed without depending on frame state. The `?` operator on
+        // both appends propagates the typed error WITHOUT touching the
+        // frame or the pending timer — the run stays suspendable for a
+        // retry on journal failure.
+        let encoded_answer_value =
+            postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let answer_step = answer.ticket.ask_step;
+        let answer_slot = answer.answer_slot;
+        // RS-104 / PO-vb282my-AA-FLUX-001: append SlotWritten first
+        // (durable variant bypasses the coalesce buffer per RS-107),
+        // then AskAnswered. Both appends happen BEFORE any frame or
+        // timer state mutation, so a journal failure leaves the run
+        // suspendable: the caller can retry the answer without an
+        // inconsistent in-memory state.
+        self.append_journal_event_durable(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot: answer_slot,
+            value: encoded_answer_value,
+            taint: answer.taint,
+            extra: None,
+        })?;
+        self.append_journal_event_durable(RuntimeJournalEvent::AskAnswered {
+            run,
+            step: answer_step,
+            slot: answer_slot,
+        })?;
+        // RS-104: state mutations now occur AFTER the answer sequence is
+        // durable. A failure here (frame write rejected, etc.) leaves
+        // the journal evidence intact; recovery can replay by reading
+        // the SlotWritten record and re-applying the slot write. The
+        // pending timer is removed only after the answer sequence is
+        // durable so a journal failure does not orphan a timer the run
+        // can no longer authorize.
         {
+            let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
             state
                 .frame
-                .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
+                .write_slot_with_taint(answer_slot, answer.value, answer.taint)
                 .map_err(|_| RuntimeError::RunNotFound)?;
             state
                 .frame
@@ -74,25 +123,11 @@ impl Shard {
                 .map_err(|_| RuntimeError::RunNotFound)?;
         }
         self.pending_timer_remove(run);
-        let encoded_answer_value =
-            postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
-        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
-            run,
-            slot: answer.answer_slot,
-            value: encoded_answer_value,
-            taint: answer.taint,
-            extra: None,
-        })?;
         self.trace_ring.push(TraceEvent::AskAnswered {
             run,
-            step: answer.ticket.ask_step,
-            slot: answer.answer_slot,
+            step: answer_step,
+            slot: answer_slot,
         });
-        self.append_journal_event(RuntimeJournalEvent::AskAnswered {
-            run,
-            step: answer.ticket.ask_step,
-            slot: answer.answer_slot,
-        })?;
         // RS-004: derive the live per-step attempt counter from
         // `state.action_attempts` so the durable journal record matches
         // the same source as `ActionFailed`. Ask steps do not currently
@@ -230,23 +265,41 @@ impl Shard {
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        self.pending_timer_remove(run);
-        if let Some(state) = self.run_state_remove(run) {
-            // RS-005: drop any coalesce-buffer entries for this run before
-            // appending the terminal event. Symmetric with `handle_cancel`:
-            // orphaned buffered events must not block the terminal flush.
-            self.discard_buffered_events_for_run(run);
-            self.release_frame(state.frame);
-            self.terminal_runs_insert(run);
-            self.terminal_outcome_record(run, TerminalOutcome::Killed);
-            // RQ-W0-17: kill is no longer conflated with fail, but the
-            // legacy `runs_failed` counter still counts every non-successful
-            // terminal lifecycle so historical observability contracts hold.
-            self.counters.inc_killed();
-            self.counters.inc_failed();
-            self.trace_ring.push(TraceEvent::RunKilled { run });
-            self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
+        // RQ-W0-17 / RQ-W0-19: kill on an already-terminal run is a typed
+        // no-op. The first terminalization wins; subsequent kills must not
+        // produce a new journal event or increment counters. Mirrors the
+        // handle_cancel idempotency guard. After the first terminalization
+        // (Cancel or Kill), the run lives in `terminal_runs` but NOT in
+        // `runs`, so this guard short-circuits before any journaling.
+        if self.terminal_runs_contains(run) {
+            return Ok(());
         }
+        // RS-102 / B-012: journal the RunKilled event BEFORE state removal
+        // so the terminal event is durable on disk. If the journal append
+        // fails, we propagate the typed error and leave state intact for
+        // retry (no event recorded, run not removed — caller can retry
+        // kill). Mirrors the B-012 fix in `handle_cancel` and the
+        // RS-104 fix in `handle_ask_answer`. The durable variant
+        // bypasses the coalesce buffer to guarantee synchronous
+        // durability per RS-005 / RQ-W0-19.
+        self.append_journal_event_durable(RuntimeJournalEvent::RunKilled { run, reason: reason.clone() })?;
+        self.pending_timer_remove(run);
+        let state = self
+            .run_state_remove(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        // RS-005: drop any coalesce-buffer entries for this run before
+        // appending the terminal event. Symmetric with `handle_cancel`:
+        // orphaned buffered events must not block the terminal flush.
+        self.discard_buffered_events_for_run(run);
+        self.release_frame(state.frame);
+        self.terminal_runs_insert(run);
+        self.terminal_outcome_record(run, TerminalOutcome::Killed);
+        // RQ-W0-17: kill is no longer conflated with fail, but the
+        // legacy `runs_failed` counter still counts every non-successful
+        // terminal lifecycle so historical observability contracts hold.
+        self.counters.inc_killed();
+        self.counters.inc_failed();
+        self.trace_ring.push(TraceEvent::RunKilled { run });
         // RS-101: route the kill through the FSM TerminalRemove event so
         // `runtime_states` is cleared consistently with the other terminal
         // paths (fail/finish/done). Without this, the FSM map retains a
