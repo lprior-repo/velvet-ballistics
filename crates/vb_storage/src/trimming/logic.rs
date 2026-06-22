@@ -1,3 +1,5 @@
+use crate::codec::decode_record;
+use crate::constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES};
 use crate::trimming::helpers::snapshot_prefix_key;
 use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
@@ -10,30 +12,47 @@ use vb_core::RunId;
 impl FjallJournal {
     /// Returns the latest durable snapshot sequence for a run.
     ///
-    /// Reads only the highest-sequence snapshot key for the given run. The
-    /// snapshot keyspace is sorted in big-endian order on `(run, seq)` so the
-    /// maximum-seq entry is the last item in the reverse prefix scan; this
-    /// avoids decoding every snapshot's value (BLAKE3 + postcard) on every
-    /// trim pass.
-    ///
-    /// Returns `None` if no snapshot exists.
+    /// Scans all snapshots for the given run and returns the one with the
+    /// highest sequence number. Returns `None` if no snapshot exists.
     pub fn latest_durable_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
         let prefix_key = snapshot_prefix_key(run);
-        let Some(item) = self.run_snapshot.prefix(prefix_key).next_back() else {
-            return Ok(None);
-        };
-        let (key, _) = item.into_inner().map_err(TrimError::from)?;
-        if key.len() < 17 {
-            return Err(TrimError::IncompleteTrim { deleted_count: 0 });
+        let mut latest: Option<EventSeq> = None;
+
+        for item in self.run_snapshot.prefix(prefix_key) {
+            let (key, value) = item.into_inner().map_err(TrimError::from)?;
+            if key.len() < 17 {
+                return Err(TrimError::IncompleteTrim { deleted_count: 0 });
+            }
+            let slice = key
+                .get(9..17)
+                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_bytes: [u8; 8] = slice
+                .try_into()
+                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let key_seq_u64 = u64::from_be_bytes(seq_bytes);
+            let key_seq = EventSeq::new(key_seq_u64);
+            let (_, snapshot): (_, crate::recovery::RunSnapshot) =
+                decode_record(value.as_ref(), MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)
+                    .map_err(TrimError::from)?;
+            if snapshot.run != run {
+                return Err(TrimError::Journal(JournalError::WrongRun {
+                    expected: run,
+                    actual: snapshot.run,
+                }));
+            }
+            if snapshot.seq != key_seq {
+                return Err(TrimError::Journal(JournalError::SequenceGap {
+                    expected: key_seq,
+                    actual: snapshot.seq,
+                }));
+            }
+            latest = Some(match latest {
+                Some(current) if current.get() >= key_seq_u64 => current,
+                _ => key_seq,
+            });
         }
-        let slice = key
-            .get(9..17)
-            .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-        let seq_bytes: [u8; 8] = slice
-            .try_into()
-            .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
-        let key_seq_u64 = u64::from_be_bytes(seq_bytes);
-        Ok(Some(EventSeq::new(key_seq_u64)))
+
+        Ok(latest)
     }
 
     pub fn trim_events_for_run(
@@ -41,22 +60,11 @@ impl FjallJournal {
         run: RunId,
         policy: TrimPolicy,
     ) -> TrimResult<TrimmedRunResult> {
-        self.check_retention_policy(run, &policy)?;
-        self.trim_events_for_run_inner(run)
-    }
-
-    /// Trim journal events for `run` WITHOUT consulting retention policy.
-    ///
-    /// vb-uu31g / SC-005: the batch path
-    /// ([`Self::trim_all_eligible_runs`]) already precomputes the retained
-    /// set and skips runs the policy protects, so the per-call retention
-    /// check inside [`Self::trim_events_for_run`] is redundant in that path.
-    /// Direct callers must still go through [`Self::trim_events_for_run`]
-    /// to surface `RetentionPolicyBlocks` to the API contract.
-    fn trim_events_for_run_inner(&self, run: RunId) -> TrimResult<TrimmedRunResult> {
         let Some(cutoff_seq) = self.latest_durable_snapshot_seq(run)? else {
             return Err(TrimError::NoDurableSnapshot { run });
         };
+
+        self.check_retention_policy(run, &policy)?;
 
         let prefix_key = crate::keys::run_prefix_key(run)?;
         let mut batch = self.database.batch();
@@ -64,38 +72,31 @@ impl FjallJournal {
 
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
-            // vb-1rqz7.26 / SC-006: a key shorter than the run-event contract
-            // (17 bytes) is by definition corruption; fail closed instead of
-            // silently leaving the row un-trimmable.
             if key.len() < 17 {
-                return Err(TrimError::IncompleteTrim { deleted_count });
+                continue;
             }
             let slice = key
                 .get(9..17)
-                .ok_or(TrimError::IncompleteTrim { deleted_count })?;
+                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
             let seq_bytes: [u8; 8] = slice
                 .try_into()
-                .map_err(|_| TrimError::IncompleteTrim { deleted_count })?;
+                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
-                // vb-1rqz7.35 / SC-008: `key.to_vec()` allocates a 17-byte
-                // buffer per removed event. The allocation is bounded by
-                // the per-run event count, dominated by Fjall's LSM delete
-                // path, and has no evidence-backed hot-path cost in
-                // production. A borrowed-slice delete API would require
-                // upstream Fjall support; until that exists and a
-                // benchmark demonstrates the savings, we keep the allocation.
-                batch.remove(&self.events, key.to_vec());
+                // SC-008 fix: avoid per-iteration heap allocation of a fresh
+                // `Vec<u8>` for the key. `key` is a `fjall::UserKey` (= `Slice`),
+                // which is `ByteView`-backed and implements `Into<UserKey>`
+                // directly. `Fjall::OwnedWriteBatch::remove<K: Into<UserKey>>`
+                // accepts `K = Slice`, so `key.clone()` is Arc-cheap and zero-
+                // alloc (`key.to_vec()` previously allocated a fresh 17-byte
+                // `Vec<u8>` per trimmable event).
+                batch.remove(&self.events, key.clone());
                 deleted_count = deleted_count.saturating_add(1);
             }
         }
 
-        if deleted_count == 0 {
-            // vb-1rqz7.27 / SC-007: a zero-delete trim must always report NoOp
-            // and skip the empty batch commit, regardless of the
-            // `skip_noop_runs` policy knob. An empty commit pays WAL/LSM cost
-            // without producing any durable change.
+        if deleted_count == 0 && policy.skip_noop_runs {
             return Ok(TrimmedRunResult {
                 run,
                 deleted_count: 0,
@@ -121,24 +122,13 @@ impl FjallJournal {
     /// blocked by retention policy are skipped.
     pub fn trim_all_eligible_runs(&self, policy: TrimPolicy) -> TrimResult<Vec<TrimmedRunResult>> {
         let headers = self.run_headers()?;
-        let mut results = Vec::with_capacity(headers.len());
-        let retained = self.compute_retained_terminal_runs(&policy)?;
+        let mut results = Vec::new();
 
         for header in headers {
-            // vb-uu31g / SC-005: the batch path consults the precomputed
-            // retained set (one O(N+M) scan + sort per workflow) and skips
-            // the per-call retention re-derivation that
-            // `trim_events_for_run` would otherwise repeat per input run.
-            // This drops the redundant work from O(N² · M) (the original
-            // batch-amplified `check_retention_policy` loop) to O(N) for
-            // the retention check itself; the actual trim cost stays
-            // O(N · M) and is dominated by event deletion.
-            if retained.contains(&header.run) {
-                continue;
-            }
-            match self.trim_events_for_run_inner(header.run) {
+            match self.trim_events_for_run(header.run, policy) {
                 Ok(result) => results.push(result),
                 Err(TrimError::NoDurableSnapshot { .. }) => continue,
+                Err(TrimError::RetentionPolicyBlocks { .. }) => continue,
                 Err(e) => return Err(e),
             }
         }
@@ -154,14 +144,11 @@ impl FjallJournal {
         policy: TrimPolicy,
     ) -> Result<TrimDiagnostic, JournalError> {
         let headers = self.run_headers()?;
-        let mut runs = Vec::with_capacity(headers.len());
+        let mut runs = Vec::new();
         let mut total_runs: u64 = 0;
         let mut eligible_runs: u64 = 0;
         let mut blocked_runs: u64 = 0;
         let mut total_events_trimmable: u64 = 0;
-        let retained = self
-            .compute_retained_terminal_runs(&policy)
-            .map_err(JournalError::from)?;
 
         for header in headers {
             total_runs = total_runs.saturating_add(1);
@@ -177,21 +164,25 @@ impl FjallJournal {
                     continue;
                 }
                 Err(e) => {
+                    // Convert TrimError to JournalError for the public API
                     return Err(JournalError::from(e));
                 }
             };
 
-            // vb-1rqz7.30 / SC-005: consult the precomputed retained set
-            // instead of re-deriving per-run retention.
-            if retained.contains(&header.run) {
-                blocked_runs = blocked_runs.saturating_add(1);
-                runs.push(TrimEligibility::Blocked {
-                    run: header.run,
-                    blocker: TrimBlocker::RetentionPolicy {
-                        retain_last_n_terminal: policy.retain_last_n_terminal,
-                    },
-                });
-                continue;
+            // Check retention policy (reuses internal logic)
+            match self.check_retention_policy(header.run, &policy) {
+                Ok(()) => {}
+                Err(TrimError::RetentionPolicyBlocks { .. }) => {
+                    blocked_runs = blocked_runs.saturating_add(1);
+                    runs.push(TrimEligibility::Blocked {
+                        run: header.run,
+                        blocker: TrimBlocker::RetentionPolicy {
+                            retain_last_n_terminal: policy.retain_last_n_terminal,
+                        },
+                    });
+                    continue;
+                }
+                Err(e) => return Err(JournalError::from(e)),
             }
 
             // Count trimmable events for this run
@@ -228,24 +219,15 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix_key) {
             let key = item.key().map_err(JournalError::from)?;
-            // vb-1rqz7.25 / CC-002: a key shorter than the run-event contract
-            // (17 bytes) is by definition corruption; fail closed instead of
-            // silently treating it as nothing.
             if key.len() < 17 {
-                return Err(JournalError::from(TrimError::IncompleteTrim {
-                    deleted_count: count,
-                }));
+                continue;
             }
             let slice = key.get(9..17).ok_or_else(|| {
-                JournalError::from(TrimError::IncompleteTrim {
-                    deleted_count: count,
-                })
+                JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
             })?;
-            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| {
-                JournalError::from(TrimError::IncompleteTrim {
-                    deleted_count: count,
-                })
-            })?;
+            let seq_bytes: [u8; 8] = slice
+                .try_into()
+                .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < safe_point.get() {
@@ -277,74 +259,6 @@ impl FjallJournal {
         Ok(false)
     }
 
-    /// Computes the set of runs protected by retention policy in a single pass.
-    ///
-    /// vb-1rqz7.30 / SC-005: replaces the per-call quadratic scan in
-    /// `check_retention_policy` with a workflow-grouped pre-pass that runs
-    /// once per batch trim invocation. Each run's terminal status is read
-    /// exactly once, headers are scanned exactly once, and the resulting
-    /// set is reused by every per-run decision.
-    ///
-    /// vb-uu31g / SC-005: `has_terminal_event` results are memoized for the
-    /// duration of this invocation so any future caller that joins the same
-    /// batch context shares the cache. In the current header iteration the
-    /// cache is naturally one-per-run because `run_headers` yields distinct
-    /// run ids, but the explicit cache keeps the contract honest if the
-    /// caller ever feeds a stream that revisits the same run id.
-    pub(crate) fn compute_retained_terminal_runs(
-        &self,
-        policy: &TrimPolicy,
-    ) -> TrimResult<std::collections::HashSet<RunId>> {
-        use std::collections::{HashMap, HashSet};
-
-        let retain_count = usize::try_from(policy.retain_last_n_terminal).unwrap_or(usize::MAX);
-        if retain_count == 0 {
-            return Ok(HashSet::new());
-        }
-
-        let headers = self.run_headers().map_err(TrimError::from)?;
-        // vb-uu31g / SC-005: per-invocation memo of terminal status so any
-        // subsequent caller inside the same batch can avoid re-decoding
-        // events for runs we have already inspected.
-        let mut terminal_memo: HashMap<RunId, bool> = HashMap::with_capacity(headers.len());
-        // Map workflow_id -> terminal runs sorted newest-first.
-        let mut grouped: HashMap<vb_core::WorkflowId, Vec<(RunId, u64)>> =
-            HashMap::with_capacity(headers.len());
-        for header in headers {
-            let is_terminal = self.terminal_status_cached(header.run, &mut terminal_memo)?;
-            if !is_terminal {
-                continue;
-            }
-            grouped
-                .entry(header.workflow_id)
-                .or_default()
-                .push((header.run, header.accepted_at_ms));
-        }
-
-        let mut retained = HashSet::new();
-        for runs in grouped.values_mut() {
-            runs.sort_by_key(|(_, ts)| std::cmp::Reverse(*ts));
-            for (run, _) in runs.iter().take(retain_count) {
-                retained.insert(*run);
-            }
-        }
-        Ok(retained)
-    }
-
-    /// Returns the cached terminal status of `run`, populating the cache on miss.
-    fn terminal_status_cached(
-        &self,
-        run: RunId,
-        memo: &mut std::collections::HashMap<RunId, bool>,
-    ) -> TrimResult<bool> {
-        if let Some(&cached) = memo.get(&run) {
-            return Ok(cached);
-        }
-        let is_terminal = self.has_terminal_event(run)?;
-        memo.insert(run, is_terminal);
-        Ok(is_terminal)
-    }
-
     /// Verifies retention policy for terminal runs.
     ///
     /// If the run is terminal and is among the `retain_last_n_terminal`
@@ -364,7 +278,7 @@ impl FjallJournal {
         };
 
         let all_headers = self.run_headers().map_err(TrimError::from)?;
-        let mut terminal_runs: Vec<(RunId, u64)> = Vec::with_capacity(all_headers.len());
+        let mut terminal_runs: Vec<(RunId, u64)> = Vec::new();
 
         for h in all_headers {
             if h.workflow_id != header.workflow_id {

@@ -7,30 +7,6 @@ use crate::error::JournalError;
 /// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
 pub(crate) const ADMISSION_GATE_COUNT: u8 = 15;
 
-#[cfg(not(kani))]
-const RESOURCE_CONTRACT_POLICY_BYTES: usize = 128;
-
-/// vb-1rqz7.36 / SA-008: provides a runtime/proof-time witness that the
-/// canonical postcard serialization of [`vb_core::ResourceContract`] fits
-/// within [`RESOURCE_CONTRACT_POLICY_BYTES`].
-///
-/// The bound is empirical today: a fully-populated `ResourceContract` with
-/// all 17 fields set to their maximum legal values serializes to fewer
-/// than 128 bytes under the canonical postcard wire format. The function
-/// is exposed as `const fn` so the bound can be referenced from `const`
-/// contexts (e.g., a future compile-time assertion once the project
-/// stabilizes on Rust 1.79+) and is exercised by a regression test
-/// (`policy_buffer_fits_canonical_resource_contract`) to detect any
-/// silent growth of `ResourceContract`.
-#[cfg(not(kani))]
-#[allow(
-    dead_code,
-    reason = "witness consumed by admission::tests regression test"
-)]
-pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
-    RESOURCE_CONTRACT_POLICY_BYTES
-}
-
 /// Checks whether a gate count is acceptable.
 ///
 /// Gate count `0` is valid for the relaxed policy; `ADMISSION_GATE_COUNT` (15)
@@ -44,14 +20,24 @@ pub(crate) fn is_accepted_gate_count(gate_count: u8) -> bool {
 /// GAP-003 FIX: Added per review finding that `AcceptedArtifact` must bind
 /// to the policy digest that governed admission. The policy digest is derived
 /// from the resource contract by hashing its canonical serialization.
+///
+/// SA-008 FIX: Replaced the previous fixed-size `[u8; 128]` stack buffer with
+/// `postcard::to_allocvec`. The old buffer's capacity (128 bytes) was a magic
+/// number with no compile-time link to `ResourceContract`'s field-count or
+/// field widths; future field additions would have silently rejected valid
+/// contracts, with the failure mode mapped to `ArtifactMalformed` (the same
+/// variant used for genuinely malformed IR). The replacement allocates the
+/// exact required byte count on the per-workflow admission path (not a hot
+/// path); the BLAKE3 hash is byte-identical to the previous implementation
+/// for any given `ResourceContract` because postcard's varint encoding is
+/// deterministic.
 #[cfg(not(kani))]
 pub fn compute_policy_digest(
     workflow: &vb_core::CompiledWorkflow,
 ) -> Result<vb_core::WorkflowDigest, JournalError> {
-    let mut contract_bytes = [0_u8; RESOURCE_CONTRACT_POLICY_BYTES];
-    let encoded = postcard::to_slice(&workflow.resource_contract(), &mut contract_bytes)
+    let contract_bytes = postcard::to_allocvec(&workflow.resource_contract())
         .map_err(|_| JournalError::ArtifactMalformed)?;
-    let hash = blake3::hash(encoded);
+    let hash = blake3::hash(&contract_bytes);
     Ok(vb_core::WorkflowDigest::from_bytes(*hash.as_bytes()))
 }
 
@@ -64,14 +50,6 @@ pub fn compute_policy_digest(
     ))
 }
 
-/// XOR-fold model used under `cfg(kani)` in place of BLAKE3.
-///
-/// vb-1rqz7.23 / SA-014: this model is a *smoke-check abstraction*; the
-/// Kani harnesses that call it assert dispatch totality and determinism,
-/// not production cryptographic binding. The XOR-fold intentionally
-/// differs from the production BLAKE3 digest (collision behaviour is
-/// incomparable). See `verification::vb_fn4vt::policy_digest_binding`
-/// for the explicit harness contract.
 #[cfg(kani)]
 fn modeled_resource_contract_digest(contract: vb_core::ResourceContract) -> [u8; 32] {
     let [steps_0, steps_1] = contract.max_steps.to_le_bytes();

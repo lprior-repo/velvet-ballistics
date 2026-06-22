@@ -8,9 +8,7 @@
 //! migration path so previously persisted journals remain readable.
 
 use crate::error::JournalError;
-use crate::slot_extra::{
-    DecodedSlotWrittenExtra, SlotWrittenExtraEnvelope, decode_slot_written_extra,
-};
+use crate::slot_extra::{DecodedSlotWrittenExtra, SlotWrittenExtraEnvelope, decode_slot_written_extra};
 #[cfg(test)]
 pub(crate) use crate::slot_extra::{
     SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraError, encode_slot_written_extra,
