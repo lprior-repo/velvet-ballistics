@@ -1654,9 +1654,15 @@ fn collect_empty_source_frame(
 }
 
 #[test]
-fn replay_collect_start_rejects_zero_page_size() -> Result<(), CoreError> {
-    // CW-009 closes the per-node resource contract hole: zero `page_size`
-    // is now rejected at compile time, so the plan cannot even be built.
+fn replay_collect_start_accepts_zero_page_size() -> Result<(), CoreError> {
+    // CW-009 / AC-FE-08: zero `page_size` (and zero `limit`) are accepted
+    // at the IR-validator layer; per-node zero-page-size enforcement is
+    // the runtime layer's responsibility
+    // (`collect_start_returns_error_when_page_size_zero` and
+    // `collect_start_page_size_zero_returns_error_even_for_empty_list` in
+    // `vb_runtime/src/primitives/collect/tests.rs`). This replaces the
+    // legacy `replay_collect_start_rejects_zero_page_size` test which
+    // documented the pre-`at_once:0` policy.
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
@@ -1704,17 +1710,11 @@ fn replay_collect_start_rejects_zero_page_size() -> Result<(), CoreError> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    match crate::workflow::CompiledWorkflow::try_from_parts(parts) {
-        Err(crate::workflow::WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        }) => Ok(()),
-        Err(other) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected max_collect_items rejection",
-        }),
-        Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected zero page size to fail validation",
-        }),
-    }
+    crate::workflow::CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|_error| CoreError::InternalInvariantViolation {
+            reason: "zero page_size must be accepted at IR validation",
+        })
 }
 
 fn replay_collect_start_zero_page_size() -> Result<Result<(), ReplayError>, CoreError> {

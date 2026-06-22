@@ -232,6 +232,10 @@ mod exports;
 // --- Convenience wrappers + test helpers (implementation in convenience.rs) ---
 mod convenience;
 
+// --- vb-7ol6y Kani harnesses (Recovery hydration fail-closed bugs P0) ---
+#[cfg(all(kani, feature = "kani-vb-7ol6y"))]
+pub mod kani_vb_7ol6y_recovery_hydrate;
+
 pub mod keys;
 pub mod preview;
 pub mod process_lock;

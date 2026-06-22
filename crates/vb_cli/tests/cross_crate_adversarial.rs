@@ -782,9 +782,13 @@ fn runtime_to_storage_fjall_journal_open_and_close_temp_dir() {
 
 #[test]
 fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
+    // Contract §2.1: flags word has reserved bits at 0xFF00 (must be zero).
+    // 0x0034 is a valid SubmitRun flag value (low byte within 0x00FF mask)
+    // chosen to retain the test's intent of round-tripping a non-zero,
+    // multi-byte flag pattern through encode → decode.
     let header = vb_ipc::IpcFrameHeader::new(
         vb_ipc::IpcCommand::SubmitRun,
-        0x1234,
+        0x0034,
         0xDEAD_BEEF_CAFE_1234u64,
         0,
     );
@@ -801,7 +805,7 @@ fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
     match vb_ipc::IpcFrameHeader::decode(&encoded, max_payload) {
         Ok(decoded) => {
             assert_eq!(decoded.command, vb_ipc::IpcCommand::SubmitRun);
-            assert_eq!(decoded.flags, 0x1234);
+            assert_eq!(decoded.flags, 0x0034);
             assert_eq!(decoded.correlation, 0xDEAD_BEEF_CAFE_1234u64);
             assert_eq!(decoded.payload_len, 0);
         }

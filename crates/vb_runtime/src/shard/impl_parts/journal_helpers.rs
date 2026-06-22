@@ -35,14 +35,27 @@ impl Shard {
             .map(EventSeq::new)
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
 
-        if self.current_coalesce_window_remaining > 0 {
+        // B-014 / RE-016 regression fix: when the shard is configured with
+        // `coalesce_window_ticks == 1`, skip buffering entirely and write
+        // each event synchronously via `append_sequenced`. Buffering in
+        // this configuration would still trigger the end-of-tick flush in
+        // `dispatch.rs`, which calls `append_sequenced_batch` and
+        // increments the batch-append counter; the contract for
+        // `coalesce_window_ticks == 1` is "no batch appends", which the
+        // benchmark `coalescing_ratio_at_least_three` enforces.
+        //
+        // For `coalesce_window_ticks >= 2`, the buffered path is taken
+        // whenever the per-tick counter is still positive (window active),
+        // and the immediate path is taken when the counter has expired.
+        if self.coalesce_window_ticks > 1 && self.current_coalesce_window_remaining > 0 {
             // Coalesce window is active: buffer the event with its starting
             // sequence. Sequence advancement is deferred to flush_coalesce_buffer
             // so a partial flush failure does not desynchronise the in-memory
             // sequence map from durable persistence.
             self.coalesce_buffer.push((event, seq));
         } else {
-            // No coalescing: write immediately and advance the sequence.
+            // No coalescing (window == 1 OR window expired): write immediately
+            // and advance the sequence.
             self.journal.append_sequenced(event, seq)?;
             let next_seq = EventSeq::new(
                 seq.get()

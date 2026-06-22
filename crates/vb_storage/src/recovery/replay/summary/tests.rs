@@ -1201,7 +1201,9 @@ fn legacy_slot_taint_classifies_values_by_type() {
         "I64 must be Secret"
     );
     assert_eq!(
-        legacy_slot_taint(SlotValue::F64(vb_core::FiniteF64::new(0.0).expect("finite"))),
+        legacy_slot_taint(SlotValue::F64(
+            vb_core::FiniteF64::new(0.0).expect("finite")
+        )),
         Taint::Secret,
         "F64 must be Secret"
     );

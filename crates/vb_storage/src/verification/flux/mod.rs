@@ -5,6 +5,14 @@ pub mod vb_mrwe5_decode_reject;
 pub mod vb_mrwe5_kind_parity;
 pub mod vb_mrwe5_roundtrip;
 
+// --- vb-7ol6y Flux refinement artifacts (Recovery hydration fail-closed P0) ---
+// Wired in at State 5 REDO so cargo flux -p vb_storage analyzes them.
+// The flux metadata include list in Cargo.toml also lists these files.
+pub mod vb_7ol6y_recovered_slot_taint;
+pub mod vb_7ol6y_slot_taint_resolution;
+pub mod vb_7ol6y_legacy_none;
+pub mod vb_7ol6y_workflow_invariants;
+
 #[cfg(test)]
 mod tests {
     use super::{

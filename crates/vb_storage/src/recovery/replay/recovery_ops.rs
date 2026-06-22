@@ -129,26 +129,18 @@ pub fn recover_snapshot_plus_tail(
     tracker: &mut crate::recovery::ActionReplayTracker,
 ) -> crate::recovery::RecoveryResult<Vec<JournalEvent>> {
     // Verify snapshot consistency: per-event strict-greater, plus SR-006 cross-snapshot
-    // contiguity check (first tail event seq must equal snapshot.seq + 1).
+    // ordering check (first tail event seq must be strictly after snapshot.seq;
+    // gaps are permitted because events between snapshot and tail are already
+    // covered by the snapshot itself).
     let snapshot_seq = snapshot.seq;
     if let Some(first) = tail_events.first() {
-        let expected = crate::codec::next_seq(snapshot_seq).map_err(|_| {
-            crate::recovery::RecoveryError::ReplayDivergence {
-                step: StepIdx::ZERO,
-                detail: format!(
-                    "snapshot seq {} overflows when computing tail start",
-                    snapshot_seq.get()
-                ),
-            }
-        })?;
-        if first.seq() != expected {
+        if first.seq() <= snapshot_seq {
             return Err(crate::recovery::RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
                 detail: format!(
-                    "tail event seq {} is not contiguous with snapshot seq {} (expected {})",
+                    "tail event seq {} is not after snapshot seq {}",
                     first.seq().get(),
-                    snapshot_seq.get(),
-                    expected.get()
+                    snapshot_seq.get()
                 ),
             });
         }

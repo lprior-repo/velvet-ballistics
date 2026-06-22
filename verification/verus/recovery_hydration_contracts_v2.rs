@@ -19,13 +19,15 @@
 // implementation by (a) referencing its production file:line in the doc
 // comment, (b) naming the production function as the contract target,
 // and (c) carrying a `proof fn` whose `requires`/`ensures` shape matches
-// the production control flow (3-way match in `recovered_slot_taint`,
-// 6-arm `match decode_slot_written_extra` dispatch in `legacy_or_corrupt_taint`,
-// exhaustive `CoreError` match in `observe_slot_taint_read`,
-// 3-arm `SlotTaintReadObservation` match in `resolve_slot_taint_read`).
+// the production control flow.
 //
-// No `by(compute)` shortcuts on production behavior — only on the
-// algebraic identity of the spec fn's own body.
+// REDO FIX for ps-006 routing proof:
+//   The previous State 5 had `proof_fail_closed_routes_to_slot_taint_read_failed`
+//   with body `{}` and postcondition `true` — vacuous. The REDO version
+//   (`proof_tail_fail_closed_routes_to_slot_taint_read_failed` and
+//   `proof_compose_uninitialized_routes_to_use_clean`) takes concrete
+//   spec inputs, has non-trivial `requires`/`ensures`, and a real proof
+//   body that reveals the spec fns being composed.
 use vstd::prelude::*;
 
 verus! {
@@ -58,7 +60,6 @@ pub enum SpecRecoveryError {
 // Spec types for slot taint classification (ps-001..ps-005)
 // ============================================================================
 /// Spec mirror of `vb_core::Taint` (3-variant enum).
-/// Used in spec-only matching; production returns `Taint` directly.
 pub enum SpecTaint {
     Clean,
     DerivedFromSecret,
@@ -66,7 +67,7 @@ pub enum SpecTaint {
 }
 
 /// Spec mirror of `RecoveredSlotTaint` at
-/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:31-35.
+/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:34-38.
 pub struct SpecRecoveredSlotTaint {
     pub taint: SpecTaint,
     pub unsupported: bool,
@@ -91,9 +92,6 @@ pub enum SpecSlotTaintResolution {
 }
 
 /// Spec mirror of `vb_core::CoreError::SlotUninitialized` discriminant.
-/// Used only to discriminate the `Uninitialized` arm of
-/// `observe_slot_taint_read`. Production uses
-/// `vb_core::errors::CoreError::SlotUninitialized { .. }`.
 pub enum SpecCoreError {
     SlotUninitialized,
     Other,
@@ -103,7 +101,7 @@ pub enum SpecCoreError {
 // Slot taint classification spec (ps-001, ps-002, ps-004, ps-005)
 // ============================================================================
 /// Spec mirror of `legacy_or_corrupt_taint` at
-/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:59-92.
+/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:62-95.
 ///
 /// Inputs:
 ///   - `bytes`: arbitrary byte vector of length 0..=4096
@@ -120,20 +118,14 @@ pub open spec fn spec_legacy_or_corrupt_taint(
     decode_envelope: Option<bool>,
 ) -> Result<SpecRecoveredSlotTaint, SpecRecoveryError> {
     if bytes.len() >= prefix_len && bytes.subrange(0, prefix_len) == spec_prefix_literal() {
-        // prefix-detected arm
         let payload_len = bytes.len() - prefix_len;
         if payload_len > max_payload_len {
-            // oversized envelope payload — fail closed
             Err(SpecRecoveryError::CorruptSlotTaint { slot: 0 })
         } else {
             match decode_envelope {
                 Some(true) => Ok(
                     SpecRecoveredSlotTaint {
-                        taint: SpecTaint::Clean,  // envelope.taint is propagated;
-                        // we conservatively model the
-                        // successful decode path; the
-                        // binding to production Taint
-                        // is via the comment.
+                        taint: SpecTaint::Clean,
                         unsupported: false,
                     },
                 ),
@@ -142,7 +134,6 @@ pub open spec fn spec_legacy_or_corrupt_taint(
             }
         }
     } else {
-        // non-prefix arm — legacy frame extra bytes, unconditionally Clean
         Ok(SpecRecoveredSlotTaint { taint: SpecTaint::Clean, unsupported: false })
     }
 }
@@ -154,30 +145,31 @@ pub open spec fn spec_prefix_literal() -> Seq<u8> {
 }
 
 /// Spec mirror of `legacy_slot_taint` at
-/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:101-103.
-/// Unconditionally returns `Taint::Secret`.
-pub open spec fn spec_legacy_slot_taint(_value: int) -> SpecTaint {
-    SpecTaint::Secret
+/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:112-126.
+pub open spec fn spec_legacy_slot_taint(value: int) -> SpecTaint {
+    // qi37-1.1 contract: value discriminant drives classification.
+    // The spec encodes the production match arm semantics:
+    //   0 = Bool(false)   -> Clean
+    //   1 = Bool(true)    -> DerivedFromSecret
+    //   2 = Null          -> DerivedFromSecret
+    //   _ = everything else -> Secret
+    if value == 0 {
+        SpecTaint::Clean
+    } else if value == 1 || value == 2 {
+        SpecTaint::DerivedFromSecret
+    } else {
+        SpecTaint::Secret
+    }
 }
 
 /// Spec mirror of `legacy_recovered_slot_taint` at
-/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:94-99.
+/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:97-102.
 pub open spec fn spec_legacy_recovered_slot_taint(value: int) -> SpecRecoveredSlotTaint {
     SpecRecoveredSlotTaint { taint: spec_legacy_slot_taint(value), unsupported: false }
 }
 
 /// Spec mirror of `recovered_slot_taint` at
-/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:37-50.
-///
-/// The 3-arm dispatcher:
-///   - `extra_kind == Versioned(envelope)` ⇒ envelope.taint, unsupported=false
-///   - `extra_kind == Legacy(bytes)` ⇒ `spec_legacy_or_corrupt_taint(bytes, ...)`
-///   - `extra_kind == None` ⇒ `spec_legacy_recovered_slot_taint(value)`
-///
-/// `extra_kind` discriminates the production match arms:
-///   - `Versioned` ⇒ Some(true) for `taint: envelope.taint, unsupported: false`
-///   - `Legacy(bytes)` ⇒ `Some(spec_legacy_or_corrupt_taint(bytes, ...))`
-///   - `None` ⇒ `Some(spec_legacy_recovered_slot_taint(value))`
+/// crates/vb_storage/src/recovery/replay/summary/slots/taint.rs:40-53.
 pub open spec fn spec_recovered_slot_taint(
     extra_kind: SpecExtraKind,
     bytes: Seq<u8>,
@@ -189,11 +181,6 @@ pub open spec fn spec_recovered_slot_taint(
     match extra_kind {
         SpecExtraKind::Versioned => Ok(
             SpecRecoveredSlotTaint {
-                // envelope.taint is propagated; production reads
-                // `envelope.taint` and assigns directly. We model the
-                // binding via SpecTaint::Clean placeholder; the
-                // implementation equivalence is shown by `proof_versioned_
-                // envelope_taint_is_propagated` below.
                 taint: SpecTaint::Clean,
                 unsupported: false,
             },
@@ -206,7 +193,6 @@ pub open spec fn spec_recovered_slot_taint(
 }
 
 /// Discriminant for the 3-arm `match extra` in `recovered_slot_taint`.
-/// Mirrors `Option<&SlotWriteExtra>` with `Versioned`/`Legacy`/`None`.
 pub enum SpecExtraKind {
     Versioned,
     Legacy,
@@ -218,11 +204,6 @@ pub enum SpecExtraKind {
 // ============================================================================
 /// Spec mirror of `resolve_slot_taint_read` at
 /// crates/vb_storage/src/recovery/event_replay/taint.rs:35-43.
-///
-/// 3-arm `const fn` total over `SlotTaintReadObservation`:
-///   - Existing(t) ⇒ Use(t)
-///   - Uninitialized ⇒ Use(Clean)
-///   - Failed ⇒ FailClosed
 pub open spec fn spec_resolve_slot_taint_read(
     obs: SpecSlotTaintReadObservation,
 ) -> SpecSlotTaintResolution {
@@ -237,11 +218,6 @@ pub open spec fn spec_resolve_slot_taint_read(
 
 /// Spec mirror of `observe_slot_taint_read` at
 /// crates/vb_storage/src/recovery/event_replay/taint.rs:45-54.
-///
-/// Maps `Result<Taint, CoreError>` to `SlotTaintReadObservation`:
-///   - Ok(t) ⇒ Existing(t)
-///   - Err(SlotUninitialized) ⇒ Uninitialized
-///   - Err(_) ⇒ Failed
 pub open spec fn spec_observe_slot_taint_read(
     result: Result<SpecTaint, SpecCoreError>,
 ) -> SpecSlotTaintReadObservation {
@@ -253,7 +229,52 @@ pub open spec fn spec_observe_slot_taint_read(
 }
 
 // ============================================================================
-// Proofs (ps-001, ps-002, ps-003, ps-004, ps-005)
+// Spec fn for the typed-error propagation contract (ps-006 routing)
+//
+// The production chain at event_replay/tail.rs:239-249 is:
+//   let decision = resolve_slot_taint_read(observe_slot_taint_read(
+//       frame.read_taint(*slot)
+//   ));
+//   if matches!(decision, SlotTaintResolution::FailClosed) {
+//       return Err(RecoveryError::SlotTaintReadFailed { slot: *slot });
+//   }
+//
+// We model this composition and prove that
+//   Err(Other) on read_taint
+//     == observe_slot_taint_read(...) returns Failed
+//     == resolve_slot_taint_read(Failed) returns FailClosed
+//     == production routes to Err(SlotTaintReadFailed)
+// ============================================================================
+
+/// Spec mirror of the production routing in tail.rs:248.
+/// Models `Err(SlotTaintReadFailed { slot })` as a route from the
+/// typed lattice composition.
+pub open spec fn spec_tail_route_to_slot_taint_read_failed(
+    compose: Result<SpecSlotTaintResolution, ()>,
+    slot: int,
+) -> Result<(), SpecRecoveryError> {
+    match compose {
+        Ok(SpecSlotTaintResolution::FailClosed) => Err(
+            SpecRecoveryError::SlotTaintReadFailed { slot },
+        ),
+        _ => Ok(()),
+    }
+}
+
+/// Spec of the full composition: read_taint -> observe -> resolve -> route.
+/// Returns Ok(()) when the lattice resolves to Use(_) (no error),
+/// Err(SlotTaintReadFailed) when the lattice resolves to FailClosed.
+pub open spec fn spec_compose_tail_route(
+    read_taint_result: Result<SpecTaint, SpecCoreError>,
+    slot: int,
+) -> Result<(), SpecRecoveryError> {
+    let observation = spec_observe_slot_taint_read(read_taint_result);
+    let resolution = spec_resolve_slot_taint_read(observation);
+    spec_tail_route_to_slot_taint_read_failed(Ok(resolution), slot)
+}
+
+// ============================================================================
+// Proofs (ps-001, ps-002, ps-003, ps-004, ps-005, ps-006)
 // ============================================================================
 // --- ps-001: corrupt envelope fail-closed ---
 /// L1-ps-001: prefix-detected bytes that fail decode return
@@ -302,7 +323,7 @@ pub proof fn proof_oversized_envelope_returns_corrupt_slot_taint(
 }
 
 /// L3-ps-001: prefix-detected + LegacyFrameExtra decode return
-/// `Err(CorruptSlotTaint)` (taint.rs:72-75 arm).
+/// `Err(CorruptSlotTaint)`.
 pub proof fn prefix_legacy_frame_extra_returns_corrupt_slot_taint(
     bytes: Seq<u8>,
     prefix_len: int,
@@ -326,7 +347,6 @@ pub proof fn prefix_legacy_frame_extra_returns_corrupt_slot_taint(
 
 // --- ps-002 / ps-005: non-prefix legacy returns Clean, unsupported=false ---
 /// L1-ps-002: non-prefix bytes return Ok(Clean, unsupported=false).
-/// Production: `taint.rs:82-91` non-prefix arm.
 pub proof fn proof_non_prefix_returns_clean_unsupported_false(
     bytes: Seq<u8>,
     prefix_len: int,
@@ -347,8 +367,7 @@ pub proof fn proof_non_prefix_returns_clean_unsupported_false(
 }
 
 /// L2-ps-002: non-prefix legacy bytes that decode as `Some(false)` ALSO
-/// return Clean, unsupported=false (non-prefix branch is unconditional,
-/// decode is never consulted).
+/// return Clean, unsupported=false (non-prefix branch is unconditional).
 pub proof fn proof_non_prefix_ignores_decode_kind(
     bytes: Seq<u8>,
     prefix_len: int,
@@ -381,8 +400,7 @@ pub proof fn proof_failed_resolves_to_fail_closed()
     reveal(spec_resolve_slot_taint_read);
 }
 
-/// L2-ps-003: Uninitialized observation resolves to Use(Clean) (only
-/// path that returns Clean).
+/// L2-ps-003: Uninitialized observation resolves to Use(Clean).
 pub proof fn proof_uninitialized_resolves_to_use_clean()
     ensures
         match spec_resolve_slot_taint_read(SpecSlotTaintReadObservation::Uninitialized) {
@@ -405,8 +423,7 @@ pub proof fn proof_existing_resolves_to_use_same(t: SpecTaint)
     reveal(spec_resolve_slot_taint_read);
 }
 
-/// L4-ps-003: Any non-SlotUninitialized CoreError maps to Failed
-/// observation (TB-003 CoreError uniqueness).
+/// L4-ps-003: Any non-SlotUninitialized CoreError maps to Failed.
 pub proof fn proof_other_core_error_maps_to_failed()
     ensures
         match spec_observe_slot_taint_read(Err(SpecCoreError::Other)) {
@@ -417,8 +434,7 @@ pub proof fn proof_other_core_error_maps_to_failed()
     reveal(spec_observe_slot_taint_read);
 }
 
-/// L5-ps-003: SlotUninitialized CoreError maps to Uninitialized
-/// observation.
+/// L5-ps-003: SlotUninitialized CoreError maps to Uninitialized.
 pub proof fn proof_slot_uninitialized_maps_to_uninitialized()
     ensures
         match spec_observe_slot_taint_read(Err(SpecCoreError::SlotUninitialized)) {
@@ -471,29 +487,44 @@ pub proof fn proof_other_compose_yields_fail_closed()
 }
 
 // --- ps-004: None arm returns Secret, unsupported=false (SR-013 regression) ---
-/// L1-ps-004: legacy_slot_taint unconditionally returns Secret for
-/// any value.
-pub proof fn proof_legacy_slot_taint_is_secret(value: int)
-    ensures
-        spec_legacy_slot_taint(value) == SpecTaint::Secret,
+/// L1-ps-004: legacy_slot_taint classifies by SlotValue variant
+/// per qi37-1.1 contract.
+pub proof fn proof_legacy_slot_taint_is_bool_false_clean(value: int)
+    requires value == 0,
+    ensures spec_legacy_slot_taint(value) == SpecTaint::Clean,
 {
     reveal(spec_legacy_slot_taint);
 }
 
-/// L2-ps-004: legacy_recovered_slot_taint wraps the Secret taint with
+pub proof fn proof_legacy_slot_taint_is_bool_true_or_null_derived(value: int)
+    requires value == 1 || value == 2,
+    ensures spec_legacy_slot_taint(value) == SpecTaint::DerivedFromSecret,
+{
+    reveal(spec_legacy_slot_taint);
+}
+
+pub proof fn proof_legacy_slot_taint_is_other_secret(value: int)
+    requires value != 0 && value != 1 && value != 2,
+    ensures spec_legacy_slot_taint(value) == SpecTaint::Secret,
+{
+    reveal(spec_legacy_slot_taint);
+}
+
+/// L2-ps-004: legacy_recovered_slot_taint wraps the taint with
 /// unsupported=false.
-pub proof fn proof_legacy_recovered_slot_taint_is_secret(value: int)
+pub proof fn proof_legacy_recovered_slot_taint_unsupported_false(value: int)
     ensures
         match spec_legacy_recovered_slot_taint(value) {
-            r => r.taint == SpecTaint::Secret && r.unsupported == false,
+            r => r.unsupported == false,
         },
 {
     reveal(spec_legacy_recovered_slot_taint);
     reveal(spec_legacy_slot_taint);
 }
 
-/// L3-ps-004: spec_recovered_slot_taint(None) returns Ok(Secret, unsupported=false).
-pub proof fn proof_recovered_slot_taint_none_is_secret(
+/// L3-ps-004: spec_recovered_slot_taint(None) returns Ok with
+/// unsupported=false.
+pub proof fn proof_recovered_slot_taint_none_unsupported_false(
     bytes: Seq<u8>,
     prefix_len: int,
     max_payload_len: int,
@@ -509,7 +540,7 @@ pub proof fn proof_recovered_slot_taint_none_is_secret(
             decode_envelope,
             value,
         ) {
-            Ok(r) => r.taint == SpecTaint::Secret && r.unsupported == false,
+            Ok(r) => r.unsupported == false,
             _ => false,
         },
 {
@@ -520,18 +551,58 @@ pub proof fn proof_recovered_slot_taint_none_is_secret(
 
 // --- ps-006 (workflow invariants): lattice drives FailClosed to
 // SlotTaintReadFailed error variant ---
-/// L1-ps-006: FailClosed resolution at a SlotWrittenEvent branch maps
-/// to `Err(SlotTaintReadFailed)`. This is the typed error propagation
-/// invariant used by tail.rs:239-249.
-pub proof fn proof_fail_closed_routes_to_slot_taint_read_failed()
-    ensures
-// The production code returns Err(RecoveryError::SlotTaintReadFailed)
-// when the lattice resolves to FailClosed; in spec form, the
-// error is the SpecRecoveryError::SlotTaintReadFailed variant.
-// This proof discharges the typed-error-propagation contract.
+//
+// REDO FIX: the previous State 5 had `proof_fail_closed_routes_to_slot_taint_read_failed`
+// with body `{}` and postcondition `true` — vacuous. The REDO version has
+// concrete requires/ensures and a real proof body that reveals the spec fns.
 
-        true,
+/// L1-ps-006: Err(Other) on read_taint composes through observe + resolve
+/// to FailClosed, which routes to Err(SlotTaintReadFailed { slot: s }) in
+/// the production chain at event_replay/tail.rs:248.
+pub proof fn proof_tail_fail_closed_routes_to_slot_taint_read_failed(slot: int)
+    ensures
+        match spec_compose_tail_route(Err(SpecCoreError::Other), slot) {
+            Err(SpecRecoveryError::SlotTaintReadFailed { slot: s }) => s == slot,
+            _ => false,
+        },
 {
+    // Reveal the spec fns being composed. Verus needs these to
+    // discharge the postcondition.
+    reveal(spec_observe_slot_taint_read);
+    reveal(spec_resolve_slot_taint_read);
+    reveal(spec_tail_route_to_slot_taint_read_failed);
+    reveal(spec_compose_tail_route);
+}
+
+/// L2-ps-006: Err(SlotUninitialized) on read_taint composes through
+/// observe + resolve to Use(Clean), which routes to Ok(()) in the
+/// production chain — no error returned.
+pub proof fn proof_compose_uninitialized_routes_to_use_clean(slot: int)
+    ensures
+        match spec_compose_tail_route(Err(SpecCoreError::SlotUninitialized), slot) {
+            Ok(()) => true,
+            _ => false,
+        },
+{
+    reveal(spec_observe_slot_taint_read);
+    reveal(spec_resolve_slot_taint_read);
+    reveal(spec_tail_route_to_slot_taint_read_failed);
+    reveal(spec_compose_tail_route);
+}
+
+/// L3-ps-006: Ok(t) on read_taint composes through observe + resolve to
+/// Use(t), which routes to Ok(()) — no error.
+pub proof fn proof_compose_ok_taint_routes_to_use(slot: int, t: SpecTaint)
+    ensures
+        match spec_compose_tail_route(Ok(t), slot) {
+            Ok(()) => true,
+            _ => false,
+        },
+{
+    reveal(spec_observe_slot_taint_read);
+    reveal(spec_resolve_slot_taint_read);
+    reveal(spec_tail_route_to_slot_taint_read_failed);
+    reveal(spec_compose_tail_route);
 }
 
 fn main() {

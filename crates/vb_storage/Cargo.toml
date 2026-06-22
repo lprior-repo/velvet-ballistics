@@ -11,6 +11,10 @@ include = [
   "src/mrwe6_flux_storage/*.rs",
   "src/journal/append/intent.rs",
   "src/journal/append/decision.rs",
+  "src/verification/flux/vb_7ol6y_recovered_slot_taint.rs",
+  "src/verification/flux/vb_7ol6y_slot_taint_resolution.rs",
+  "src/verification/flux/vb_7ol6y_legacy_none.rs",
+  "src/verification/flux/vb_7ol6y_workflow_invariants.rs",
 ]
 
 [dependencies]
@@ -52,6 +56,11 @@ vb-mrwe6-flux-negative-probes = []
 test-support = []
 # Enable fuzzing support modules (fuzz_access) for use with cargo-fuzz
 fuzzing = []
+# vb-7ol6y: Recovery hydration fail-closed bugs (P0).
+# Activates kani_vb_7ol6y_recovery_hydrate.rs harnesses.
+kani-vb-7ol6y = []
+# vb-7ol6y: Enable flux analysis of the recovery hydration refinement files.
+vb-7ol6y-flux-refinements = ["dep:flux-rs"]
 
 [lints]
 workspace = true

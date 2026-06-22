@@ -563,17 +563,21 @@ fn workflow_parts_reject_for_each_limit_over_max_collect_items() -> Result<(), S
 }
 
 #[test]
-fn workflow_parts_reject_for_each_zero_limit() -> Result<(), String> {
-    // CW-009: zero limit means no items are ever processed; treat it as
-    // rejected at the contract boundary.
+fn workflow_parts_accept_for_each_zero_limit() -> Result<(), String> {
+    // CW-009 / AC-FE-08: zero limit (the `at_once: 0` YAML construct) is a
+    // valid compile-time feature meaning "execute the foreach body zero
+    // times". The runtime `for_each_start` handles `limit == 0` by
+    // immediately transitioning to `done` (see
+    // `for_each_start_limit_zero_allows_empty_list` in
+    // `vb_runtime/src/primitives/for_each/tests.rs`). The IR validator
+    // therefore does NOT reject zero; per-iteration budget enforcement is
+    // a runtime concern. This replaces the legacy
+    // `workflow_parts_reject_for_each_zero_limit` test which documented the
+    // pre-`at_once:0` policy.
     let parts = make_for_each_parts(0, 100, 3, 2);
-    match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        }) => Ok(()),
-        Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("zero ForEachStart limit must be rejected")),
-    }
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| format!("zero ForEachStart limit must be accepted: {error:?}"))
 }
 
 #[test]
@@ -661,29 +665,35 @@ fn workflow_parts_reject_collect_start_limit_over_max_collect_items() -> Result<
 }
 
 #[test]
-fn workflow_parts_reject_collect_start_zero_limit() -> Result<(), String> {
-    // CW-009: zero limit is not a valid collect cap.
+fn workflow_parts_accept_collect_start_zero_limit() -> Result<(), String> {
+    // CW-009: zero limit is a valid construct at the IR layer. The
+    // runtime layer's `validate_page_bound` enforces a non-zero limit at
+    // execution time (when page_size > 0 exceeds the zero budget and
+    // returns `CollectPageLimitExceeded`). See
+    // `collect_start_with_zero_limit_*` tests in
+    // `vb_runtime/src/primitives/collect/tests.rs` for the runtime
+    // contract. This replaces the legacy
+    // `workflow_parts_reject_collect_start_zero_limit` test which
+    // documented the pre-`at_once:0` policy.
     let parts = make_collect_start_parts(0, 10, 1_000, 3, 2);
-    match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        }) => Ok(()),
-        Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("zero collect limit must be rejected")),
-    }
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| format!("zero collect limit must be accepted: {error:?}"))
 }
 
 #[test]
-fn workflow_parts_reject_collect_start_zero_page_size() -> Result<(), String> {
-    // CW-009: zero page_size means no items can ever be paged in.
+fn workflow_parts_accept_collect_start_zero_page_size() -> Result<(), String> {
+    // CW-009: zero page_size is a valid construct at the IR layer. The
+    // runtime layer rejects `page_size == 0` at the execution boundary
+    // (see `collect_start_returns_error_when_page_size_zero` and
+    // `collect_start_page_size_zero_returns_error_even_for_empty_list` in
+    // `vb_runtime/src/primitives/collect/tests.rs`). This replaces the
+    // legacy `workflow_parts_reject_collect_start_zero_page_size` test
+    // which documented the pre-`at_once:0` policy.
     let parts = make_collect_start_parts(100, 0, 1_000, 3, 2);
-    match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        }) => Ok(()),
-        Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("zero collect page_size must be rejected")),
-    }
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| format!("zero collect page_size must be accepted: {error:?}"))
 }
 
 #[test]

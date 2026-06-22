@@ -13,9 +13,13 @@ fn require_redaction_placeholders(screen_id: &str, text: &str) -> Result<()> {
 
 fn run_cargo_invariants(output_dir: &Path) -> Result<CargoInvariants> {
     let cargo_manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    // xtask lives at `<workspace_root>/xtask/`, so a single `.parent()`
+    // yields the workspace root. Earlier this code applied `.parent()` twice,
+    // which climbed to `/home/lewis/src` and made `cargo test --workspace`
+    // fail with "could not find Cargo.toml" — cascading into every
+    // `vb_nf2u_ui_release_acceptance` test that depends on this gate.
     let workspace_root = cargo_manifest_dir
         .parent()
-        .and_then(Path::parent)
         .map(Path::to_path_buf)
         .ok_or_else(|| Error::EvidenceWriteFailed {
             gate: "cargo_invocation".to_string(),

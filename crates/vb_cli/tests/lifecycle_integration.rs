@@ -1452,14 +1452,18 @@ fn replay_with_malformed_event_returns_replay_corruption() {
     // Create a run header so replay's run_headers() iteration finds this run
     create_run_header(&journal, run);
 
-    // Write journal events to derive Active state (required for cancel to succeed)
+    // Write a RunAccepted event at seq=0 so the run has a known-good anchor.
+    // write_run_accepted is sufficient on its own: replay's contract is about
+    // detecting malformed event bytes regardless of the surrounding event mix,
+    // so we do not need to drive the lifecycle through cancel — that path
+    // would consume seq=1 and clash with the malformed-injection seq below.
     write_run_accepted(&journal, run);
 
-    // Write a valid cancel event at seq=1
-    let _ = vb_cli::lifecycle::cancel(run, &journal);
-
-    // Inject malformed bytes at seq=1
-    // This corrupts the journal - decode_record will fail on these bytes
+    // Inject malformed bytes at seq=1. The record envelope is well-formed
+    // (correct magic, kind, seq), but the postcard payload ([0xDE, 0xAD,
+    // 0xBE, 0xEF]) cannot be deserialized as a JournalEvent. events_for_run
+    // surfaces this as a postcard-decode error and replay() converts it
+    // into ReplayCorruption.
     journal
         .inject_raw_event(
             run,

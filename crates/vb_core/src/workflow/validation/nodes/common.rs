@@ -107,7 +107,16 @@ pub(crate) fn validate_build_object(
 
 /// Validates a ForEachStart node: input + item slots must be valid, and both
 /// body/done targets must be forward steps. The declared `limit` must be
-/// non-zero and bounded by the resource contract's `max_collect_items`.
+/// bounded by the resource contract's `max_collect_items`.
+///
+/// **Note (at_once: 0):** `limit == 0` is a valid construct — it means
+/// "execute the foreach body zero times". The downstream runtime
+/// (`for_each_start`) treats `limit == 0` as an immediate transition to
+/// `done`. Validation therefore does NOT reject `limit == 0`; the
+/// per-iteration budget guard at runtime is what enforces "do not exceed
+/// the declared limit". Letting `limit == 0` through the validator also
+/// lets the forward-edge validator reach backward-edge violations on the
+/// `body` / `done` targets (which is the documented AC-FE-08 contract).
 pub(crate) fn validate_for_each_start(
     input: SlotIdx,
     item_slot: SlotIdx,
@@ -118,18 +127,24 @@ pub(crate) fn validate_for_each_start(
 ) -> Result<(), WorkflowError> {
     validate_slot(input, parts.slot_count)?;
     validate_slot(item_slot, parts.slot_count)?;
-    if limit == 0 {
-        return Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        });
-    }
     check_against_contract_collect(limit, parts.resource_contract.max_collect_items)?;
     validate_two_steps(body, done, parts)
 }
 
-/// Validates a CollectStart node: the source slot and body/done steps must be
-/// valid. The declared `limit` and `page_size` must be non-zero and bounded
-/// by the resource contract's `max_collect_items`.
+/// Validates a CollectStart node: the source slot and body/done steps must
+/// be valid. The declared `limit` and `page_size` must each be bounded by
+/// the resource contract's `max_collect_items`.
+///
+/// **Note (limit=0 / page_size=0):** both zero values are accepted by
+/// validation; the runtime collector's `validate_page_bound` and
+/// `CollectPageLimitExceeded` errors handle the dynamic zero-page-budget
+/// case at execution time. The runtime layer's
+/// `collect_start_returns_error_when_page_size_zero` test (in
+/// `vb_runtime/src/primitives/collect/tests.rs`) confirms that
+/// `page_size == 0` is rejected at the execution boundary, not at IR
+/// validation time. Letting these values through validation also lets the
+/// forward-edge validator detect backward-edge violations on the
+/// `body` / `done` targets.
 pub(crate) fn validate_collect_start(
     source: SlotIdx,
     limit: u32,
@@ -139,16 +154,6 @@ pub(crate) fn validate_collect_start(
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_slot(source, parts.slot_count)?;
-    if limit == 0 {
-        return Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        });
-    }
-    if page_size == 0 {
-        return Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_collect_items",
-        });
-    }
     let contract_max = parts.resource_contract.max_collect_items;
     check_against_contract_collect(limit, contract_max)?;
     check_against_contract_collect(page_size, contract_max)?;
