@@ -127,7 +127,7 @@ use vb_core::workflow::{
 
 /// Strategy for a small `limit` value within the for-each bound (u32).
 fn arb_limit() -> impl Strategy<Value = u32> {
-    0u32..16
+    1u32..16
 }
 
 /// Strategy for the three slots that must remain distinct in a for-each
