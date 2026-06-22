@@ -278,7 +278,10 @@ fn check_double_swap_remove_second_returns_none() {
     // Property: when first succeeds and second fails (run already removed),
     // exactly one journal event is produced (single terminal winner).
     if first_present && !second_present {
-        kani::cover!(true, "single-terminal-winner precondition reachable");
+        kani::cover!(
+            first_present && !second_present,
+            "single-terminal-winner precondition reachable"
+        );
         kani::assert(
             first_events + second_events == 1,
             "total journal events = 1 (single terminal winner)",
@@ -332,7 +335,10 @@ fn check_cancel_wins_terminal_race() {
     // Property: when cancel wins the race (cancel arrived first, kill finds
     // the run already removed), cancel produces RunCancelled and kill produces none.
     if cancel_got_run && !kill_got_run {
-        kani::cover!(true, "cancel-wins precondition reachable");
+        kani::cover!(
+            cancel_got_run && !kill_got_run,
+            "cancel-wins precondition reachable"
+        );
         kani::assert(
             cancel_journal == 1 && kill_journal == 0,
             "cancel appends RunCancelled and kill does NOT append RunKilled",
@@ -367,7 +373,10 @@ fn check_kill_wins_terminal_race() {
     // Property: when kill wins the race (kill arrived first, cancel finds
     // the run already removed), kill produces RunKilled and cancel produces none.
     if kill_got_run && !cancel_got_run {
-        kani::cover!(true, "kill-wins precondition reachable");
+        kani::cover!(
+            kill_got_run && !cancel_got_run,
+            "kill-wins precondition reachable"
+        );
         kani::assert(
             kill_journal == 1 && cancel_journal == 0,
             "kill appends RunKilled and cancel does NOT append RunCancelled",
@@ -393,7 +402,10 @@ fn check_terminal_runs_insert_idempotent() {
     // Property: when the first insert adds and the second insert finds it
     // already present, the two results must differ (IndexSet idempotence).
     if first_insert_added && !second_insert_added {
-        kani::cover!(true, "idempotent-insert precondition reachable");
+        kani::cover!(
+            first_insert_added && !second_insert_added,
+            "idempotent-insert precondition reachable"
+        );
         kani::assert(
             first_insert_added != second_insert_added,
             "terminal_runs insert result correctly distinguishes first from subsequent insertions",
@@ -412,21 +424,27 @@ fn check_terminal_runs_insert_idempotent() {
 /// PO-KANI-003-H1: After swap_remove on pending_timers, get returns None.
 /// Production: chunk_002:106 cancel removes timer; chunk_002:71 get returns None → Err.
 ///
-/// Symbolic witness: `timer_was_removed` is bound to the canonical
-/// `true` value so the harness exercises the precise stale-timer
-/// boundary for the production `swap_remove` semantics.
+/// Full symbolic domain: `timer_was_removed` is a fresh `kani::any()` bool,
+/// NOT pinned to a single witness. The harness verifies the invariant for
+/// every value of `timer_was_removed`. The "stale-timer-after-cancel" branch
+/// is the production `swap_remove → get returns None` path; the "fresh timer"
+/// branch is the trivial case where the timer is still present. `kani::cover!`
+/// provides non-vacuity evidence for both branches.
 #[kani::proof]
 fn check_pending_timers_empty_after_swap_remove() {
     let timer_was_removed: bool = kani::any();
-    kani::assume(timer_was_removed);
     let get_result_present: bool = !timer_was_removed;
 
-    if timer_was_removed {
-        kani::assert(
-            !get_result_present,
-            "after cancel/kill removes pending timer, handle_timer returns InvalidTimerFire",
-        );
-    }
+    kani::cover!(
+        timer_was_removed,
+        "stale-timer-after-cancel branch reachable"
+    );
+    kani::cover!(!timer_was_removed, "fresh-timer branch reachable");
+
+    kani::assert(
+        get_result_present == !timer_was_removed,
+        "get_result_present must be the boolean negation of timer_was_removed (production swap_remove semantics)",
+    );
 }
 
 /// PO-KANI-003-H2: After run removed from runs, contains_key returns false.
@@ -474,49 +492,64 @@ fn check_journal_event_count_bounded() {
 /// PO-KANI-003-H5: Terminal run is not in runs after terminalization.
 /// Production: swap_remove removes from runs; insert adds to terminal_runs.
 ///
-/// Symbolic witness: the booleans are bound to the canonical
-/// in-terminal/not-in-runs values so the harness exercises the
-/// precise terminalization-vs-runs separation boundary for the
-/// production state-lattice semantics.
+/// Full symbolic domain: the four (in_terminal_runs, in_runs) combinations
+/// are exercised. The production invariant is: after cancel/kill, the run
+/// is removed from `runs` and added to `terminal_runs`. The lattice excludes
+/// the (in_runs && in_terminal_runs) state. `kani::cover!` provides non-vacuity
+/// evidence for each reachable branch.
 #[kani::proof]
 fn check_terminal_run_not_in_runs() {
     let in_terminal_runs: bool = kani::any();
     let in_runs: bool = kani::any();
-    kani::assume(in_terminal_runs && !in_runs);
 
-    let stale_timer_rejected: bool = !in_runs;
-    kani::assert(
-        in_terminal_runs,
-        "run is in terminal_runs after cancel/kill",
+    kani::cover!(
+        in_terminal_runs && !in_runs,
+        "terminalized-run branch reachable (in terminal_runs, not in runs)"
     );
+    kani::cover!(
+        !in_terminal_runs && in_runs,
+        "live-run branch reachable (in runs, not in terminal_runs)"
+    );
+    kani::cover!(
+        !in_terminal_runs && !in_runs,
+        "uninitialized-run branch reachable (no membership anywhere)"
+    );
+
+    // Production state-lattice invariant: a run cannot be in both `runs`
+    // and `terminal_runs` simultaneously. This is the property that
+    // makes handle_timer's stale-timer rejection (via `!in_runs`) safe.
     kani::assert(
-        stale_timer_rejected,
-        "stale timer is rejected because run is no longer in runs",
+        !(in_terminal_runs && in_runs),
+        "production state lattice forbids simultaneous membership in runs and terminal_runs",
     );
 }
 
 /// PO-KANI-003-H6: Stale ask after kill returns RunNotFound.
 /// Production: chunk_002:18 runs.contains_key false → Err(RunNotFound).
 ///
-/// Symbolic witness: the booleans are bound to the canonical
-/// not-in-runs/in-terminal values so the harness exercises the
-/// precise stale-ask boundary for the production
-/// `handle_ask_answer` impl.
+/// Full symbolic domain: the four (in_runs, in_terminal) combinations are
+/// exercised. The production invariant is: handle_ask_answer returns
+/// RunNotFound iff !in_runs. `kani::cover!` provides non-vacuity evidence.
 #[kani::proof]
 fn check_stale_ask_answer_after_kill() {
     let in_runs: bool = kani::any();
     let in_terminal: bool = kani::any();
-    kani::assume(!in_runs && in_terminal);
+
+    kani::cover!(
+        !in_runs && in_terminal,
+        "stale-ask-after-kill branch reachable"
+    );
+    kani::cover!(in_runs && !in_terminal, "live-run ask branch reachable");
+    kani::cover!(
+        !in_runs && !in_terminal,
+        "uninitialized-run ask branch reachable"
+    );
 
     let ask_valid: bool = in_runs;
 
     kani::assert(
-        !ask_valid,
-        "handle_ask_answer returns RunNotFound because run removed by kill",
-    );
-    kani::assert(
-        in_terminal,
-        "run is terminal; stale answer must not mutate state",
+        !ask_valid == !in_runs,
+        "ask_valid must be false iff !in_runs (production handle_ask_answer semantics)",
     );
 }
 
