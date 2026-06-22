@@ -167,6 +167,13 @@ impl Shard {
         }
         self.pending_timer_remove(run);
         if let Some(state) = self.run_state_remove(run) {
+            // RS-005: drop any coalesce-buffer entries for this run before
+            // appending the terminal event. A previous flush failure (e.g.
+            // the journal permanently rejecting a `StepStarted` event)
+            // leaves buffered events in `coalesce_buffer` per RQ-W0-19 so a
+            // retry could persist them; once the operator cancels, those
+            // entries are orphans and would block the terminal flush.
+            self.discard_buffered_events_for_run(run);
             self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
@@ -194,6 +201,10 @@ impl Shard {
         }
         self.pending_timer_remove(run);
         if let Some(state) = self.run_state_remove(run) {
+            // RS-005: drop any coalesce-buffer entries for this run before
+            // appending the terminal event. Symmetric with `handle_cancel`:
+            // orphaned buffered events must not block the terminal flush.
+            self.discard_buffered_events_for_run(run);
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Killed);

@@ -9,6 +9,7 @@
 
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
+use vb_storage::EventSeq;
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -177,6 +178,35 @@ impl Shard {
             if let Err(error) = append_result {
                 self.run_state_insert(run, state);
                 return Err(error);
+            }
+            // RS-107 follow-up: `append_journal_event` may buffer the event
+            // in `coalesce_buffer` without writing to the durable journal
+            // (when `current_coalesce_window_remaining > 0`). To guarantee
+            // the WaitScheduled/AskScheduled event is durable BEFORE the
+            // timer is registered (preventing an orphan timer pointing at
+            // a journal with no matching event), force a synchronous
+            // rewrite of just-this-event. Pop the just-appended tail
+            // entry, re-append it with the window disabled, and advance
+            // the per-run sequence to match. If the synchronous write
+            // fails, the timer is never registered and the error
+            // propagates.
+            if self.current_coalesce_window_remaining > 0 {
+                let (event, seq) = self
+                    .coalesce_buffer
+                    .pop()
+                    .expect("append_journal_event just buffered this event");
+                let prev_window = self.current_coalesce_window_remaining;
+                self.current_coalesce_window_remaining = 0;
+                let sync_result = self.journal.append_sequenced(event, seq);
+                self.current_coalesce_window_remaining = prev_window;
+                if let Err(error) = sync_result {
+                    self.run_state_insert(run, state);
+                    return Err(error);
+                }
+                let next_seq = EventSeq::new(seq.get().checked_add(1).ok_or_else(|| {
+                    RuntimeError::from(vb_storage::JournalError::SequenceOverflow)
+                })?);
+                self.journal_sequences.insert(run, next_seq);
             }
             self.pending_timer_insert(
                 run,

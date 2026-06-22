@@ -237,9 +237,14 @@ pub fn recover_runtime_summary_with_expected(
     let hydration = crate::recovery::replay::summary::summarize_recovery_events(&events)?;
 
     if hydration.summary().terminal != Some(expected) {
+        let expected_label = expected.as_str().to_string();
+        let found_label = match hydration.summary().terminal {
+            Some(terminal) => terminal.as_str().to_string(),
+            None => "None".to_string(),
+        };
         return Err(RecoveryError::TerminalStateMismatch {
-            expected: format!("{:?}", Some(expected)),
-            found: format!("{:?}", hydration.summary().terminal),
+            expected: expected_label,
+            found: found_label,
         });
     }
 

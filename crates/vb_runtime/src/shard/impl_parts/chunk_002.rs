@@ -72,6 +72,12 @@ impl Shard {
     /// timer, then clears the timer map. Called once the `Shutdown` command
     /// has been observed so the durable journal records the cancellation
     /// before the runs are dropped from the in-memory state.
+    ///
+    /// RQ-W0-12: the buffer must be flushed BEFORE clearing the timer
+    /// map and returning, otherwise the WaitCancelled/AskCancelled events
+    /// are silently lost from the durable journal when the coalesce window
+    /// is active (the test `test_drain_for_shutdown_journals_wait_cancellation_events`
+    /// would observe a snapshot with no WaitCancelled event).
     fn cancel_pending_timers_for_shutdown(&mut self) -> RuntimeResult<()> {
         let pending: Vec<(RunId, StepIdx, PendingTimerKind)> = self
             .pending_timers
@@ -88,6 +94,11 @@ impl Shard {
                 }
             }
         }
+        // RQ-W0-12: force flush the coalesce buffer so the WaitCancelled/
+        // AskCancelled events are durable before we clear the in-memory
+        // timer map. Without this, a coalesce-window-buffered event would
+        // be lost from the journal snapshot.
+        self.flush_coalesce_buffer()?;
         self.pending_timers.clear();
         Ok(())
     }

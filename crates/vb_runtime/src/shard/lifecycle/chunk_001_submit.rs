@@ -244,8 +244,27 @@ impl Shard {
         run: RunId,
         event: RuntimeJournalEvent,
     ) -> RuntimeResult<()> {
-        match self.append_journal_event(event) {
-            Ok(()) => Ok(()),
+        // Admission headers must be persisted synchronously: the submit
+        // flow guarantees the caller that the run has reached the journal
+        // before handle_submit returns Ok. Buffering them in the coalesce
+        // window would defer the failure (when the journal rejects the
+        // header) until a later flush, masking the rejection as
+        // `StorageJournalAppend` instead of `AdmissionHeaderPersistenceFailed`.
+        let seq = self
+            .journal_sequences
+            .get(&run)
+            .copied()
+            .unwrap_or(vb_storage::EventSeq::ZERO);
+        let next_seq = vb_storage::EventSeq::new(
+            seq.get()
+                .checked_add(1)
+                .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?,
+        );
+        match self.journal.append_sequenced(event, seq) {
+            Ok(()) => {
+                self.journal_sequences.insert(run, next_seq);
+                Ok(())
+            }
             Err(error) => {
                 self.discard_journal_sequence(run);
                 Err(RuntimeError::admission_header_persistence_failed(error))

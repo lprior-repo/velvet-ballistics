@@ -147,6 +147,22 @@ impl Shard {
         self.journal_sequences.swap_remove(&run);
     }
 
+    /// Drops any coalesce-buffer entries that belong to the given run.
+    ///
+    /// RS-005: when a flush fails mid-batch (e.g. the journal permanently
+    /// rejects an event type like `StepStarted`), the buffered events are
+    /// preserved across the failed flush (RQ-W0-19) so a later retry could
+    /// persist them. But once the operator terminates the run via Cancel or
+    /// Kill, those buffered events are orphans: the run will never drive
+    /// again, and a subsequent flush attempt must not be blocked by an
+    /// event that was never durably persisted and never will be. This
+    /// helper is called from `handle_cancel` and `handle_kill` immediately
+    /// after the run state is removed, before the terminal event is
+    /// appended, so the terminal event flushes cleanly on the next tick.
+    pub(crate) fn discard_buffered_events_for_run(&mut self, run: RunId) {
+        self.coalesce_buffer.retain(|(event, _)| event.run_id() != run);
+    }
+
     /// Writes a run snapshot at the given executed-step threshold.
     ///
     /// This method:

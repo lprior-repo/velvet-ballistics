@@ -31,6 +31,24 @@ pub enum RecoveryTerminalState {
     Failed,
 }
 
+impl RecoveryTerminalState {
+    /// Returns the variant name as a static string.
+    ///
+    /// This is the canonical diagnostic form for terminal states in recovery
+    /// errors: it names the kind of terminal event without exposing the
+    /// payload, so the structural comparison (`PartialEq`) remains the
+    /// authoritative source for variant-class and slot-value mismatches.
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Cancelled => "Cancelled",
+            Self::Killed => "Killed",
+            Self::Finished { .. } => "Finished",
+            Self::Failed => "Failed",
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Runtime summary
 // ---------------------------------------------------------------------------

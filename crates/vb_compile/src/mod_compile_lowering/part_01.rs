@@ -42,6 +42,7 @@ pub fn compile_source(
             &mut builder,
         )?;
     }
+    let resource_contract = derive_resource_contract(&builder.nodes);
     let parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: canonical_digest(source)?,
@@ -52,7 +53,7 @@ pub fn compile_source(
         accessors: builder.accessors.into_boxed_slice(),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
+        resource_contract,
         step_names: step_names.into_boxed_slice(),
     };
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
@@ -63,6 +64,29 @@ pub fn compile_source(
 pub(super) struct CanonicalStepLayout {
     start: StepIdx,
     width: usize,
+}
+
+/// Derives a `ResourceContract` whose `max_retry_attempts` accommodates
+/// every node-local value emitted by the canonical lowerer.
+///
+/// The default contract ships with a conservative `max_retry_attempts: 3`
+/// so workflows with no retry behaviour validate against a small budget.
+/// Repeat primitives (`repeat.max_attempts: N`) raise the node-local
+/// requirement; lifting the contract's bound to the maximum observed
+/// `N` keeps the contract-consistency validator sound without forcing
+/// callers to author an explicit resource override. All other contract
+/// dimensions are inherited from `ResourceContract::DEFAULT`.
+fn derive_resource_contract(nodes: &[CompiledNode]) -> ResourceContract {
+    let mut max_retry_attempts: u16 = ResourceContract::DEFAULT.max_retry_attempts;
+    for node in nodes {
+        if let CompiledNodeKind::RepeatStart { max_attempts, .. } = &node.kind {
+            max_retry_attempts = max_retry_attempts.max(*max_attempts);
+        }
+    }
+    ResourceContract {
+        max_retry_attempts,
+        ..ResourceContract::DEFAULT
+    }
 }
 
 pub(super) fn canonical_layout(

@@ -1173,21 +1173,24 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     let run = RunId::new(10900);
     let digest = test_digest(0x17);
 
+    // The Fjall key encoder treats `u64::MAX` as a reserved sentinel, so the
+    // highest encodable sequence is `EventSeq::MAX_ENCODABLE` (u64::MAX - 1).
+    // We exercise that boundary with three contiguous events.
     let events = vec![
         JournalEvent::RunAccepted {
             run,
-            seq: EventSeq::new(u64::MAX.saturating_sub(2)),
+            seq: EventSeq::new(u64::MAX.saturating_sub(3)),
             workflow: digest,
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(u64::MAX.saturating_sub(1)),
+            seq: EventSeq::new(u64::MAX.saturating_sub(2)),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(u64::MAX),
+            seq: EventSeq::new(u64::MAX.saturating_sub(1)),
             step: StepIdx::ZERO,
             output: SlotIdx::ZERO,
         },
@@ -1199,14 +1202,14 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     }
 
     let journal = open_journal(&dir);
-    // events_for_run with near-u64::MAX sequences correctly reports a gap
-    // since the journal has no events at lower sequence numbers (the journal
-    // only contains seq u64::MAX-3..u64::MAX, nothing below). This is correct
-    // behavior: the journal detects the missing low-range events.
+    // events_for_run with near-MAX_ENCODABLE sequences correctly reports a
+    // gap since the journal has no events at lower sequence numbers (the
+    // journal only contains seq u64::MAX-3..u64::MAX-1, nothing below). This
+    // is correct behavior: the journal detects the missing low-range events.
     let recovered = journal.events_for_run(run);
     assert!(
         matches!(recovered, Err(vb_storage::JournalError::SequenceGap { .. })),
-        "events_for_run at near-u64::MAX seq should report SequenceGap due to missing low-range events, got: {recovered:?}"
+        "events_for_run at near-MAX_ENCODABLE seq should report SequenceGap due to missing low-range events, got: {recovered:?}"
     );
 }
 
