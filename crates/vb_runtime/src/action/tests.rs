@@ -890,8 +890,12 @@ fn action_registry_register_accepts_max_input_bytes_at_hard_bound() {
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
-    assert_eq!(registry.resolve_compile_time(ActionId::new(9003)).map(|c| c.id),
-        Ok(ActionId::new(9003)));
+    assert_eq!(
+        registry
+            .resolve_compile_time(ActionId::new(9003))
+            .map(|c| c.id),
+        Ok(ActionId::new(9003))
+    );
 }
 
 /// `dispatch_generic` must enforce the same positive limit so direct callers

@@ -110,7 +110,8 @@ fn lru_ring_property_push_tail_invariant_repeated_fill_drain_cycles() {
     // Try multiple capacities and id pool sizes to exercise all slot
     // positions in the free list.
     for (capacity, pool, cycles) in [(2usize, 4usize, 2000usize), (8, 16, 1000), (16, 32, 500)] {
-        let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+        let mut ring: LruRing<RunId> =
+            LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
         for cycle in 0..cycles {
             // Fill the ring with `capacity` unique ids.
             for i in 0..capacity {

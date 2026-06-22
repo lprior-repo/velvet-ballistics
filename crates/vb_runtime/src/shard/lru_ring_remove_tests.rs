@@ -21,7 +21,8 @@ use vb_core::ids::RunId;
 #[test]
 fn test_remove_present_item_drops_it() {
     let capacity = 8usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..capacity {
         ring.insert(RunId::new(offset as u64 + 1), TimerTick::new(offset as u64))
             .expect("fill");
@@ -30,7 +31,8 @@ fn test_remove_present_item_drops_it() {
 
     let target = RunId::new(3);
     let before_counters = ring.counters();
-    ring.remove(&target).expect("remove of present item must succeed");
+    ring.remove(&target)
+        .expect("remove of present item must succeed");
 
     assert!(!ring.contains(&target), "removed item must not be present");
     assert_eq!(ring.len(), capacity - 1, "len must drop by exactly one");
@@ -55,7 +57,8 @@ fn test_remove_present_item_drops_it() {
 #[test]
 fn test_remove_absent_item_is_no_op() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..capacity {
         ring.insert(RunId::new(offset as u64 + 1), TimerTick::new(offset as u64))
             .expect("fill");
@@ -64,7 +67,8 @@ fn test_remove_absent_item_is_no_op() {
     assert!(!ring.contains(&absent), "absent item must not be present");
 
     let before_counters = ring.counters();
-    ring.remove(&absent).expect("remove of absent item must succeed");
+    ring.remove(&absent)
+        .expect("remove of absent item must succeed");
 
     assert!(!ring.contains(&absent));
     assert_eq!(

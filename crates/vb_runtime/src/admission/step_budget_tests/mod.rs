@@ -84,7 +84,8 @@ fn preflight_step_budget_rejects_fifty_thousand_step_workflow() -> Result<(), Ru
 }
 
 #[test]
-fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() -> Result<(), RuntimeError> {
+fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit()
+-> Result<(), RuntimeError> {
     let workflow = linear_workflow_with_declared_steps(
         first_step_count_over_master_limit(),
         master_step_limit_u16(),
@@ -140,7 +141,10 @@ fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> {
         .map_err(|_| RuntimeError::QueueFull)?;
     let workflow = workflow_with_max_steps(max_steps);
     let result = runtime.submit_direct(run, workflow);
-    assert!(result.is_ok(), "submit_direct should accept 1000-step workflow");
+    assert!(
+        result.is_ok(),
+        "submit_direct should accept 1000-step workflow"
+    );
     Ok(())
 }
 

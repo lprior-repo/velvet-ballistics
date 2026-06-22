@@ -27,8 +27,8 @@
 #![cfg(kani)]
 #![cfg(feature = "kani-ask-payload-bounds")]
 
-use vb_core::value::Taint;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::value::Taint;
 
 // =========================================================================
 // Bounded payload size testing
@@ -78,10 +78,7 @@ fn prove_payload_size_rejected() {
     let encoded_at_limit = max_limit;
 
     let at_limit_fails = encoded_at_limit > max_limit;
-    kani::cover!(
-        !at_limit_fails,
-        "exactly_at_limit_should_not_fail"
-    );
+    kani::cover!(!at_limit_fails, "exactly_at_limit_should_not_fail");
 
     // Boundary case: one over limit should fail
     let max_over = any_u32_bounded();
@@ -89,10 +86,7 @@ fn prove_payload_size_rejected() {
     let encoded_over_limit = max_over.wrapping_add(1);
 
     let over_limit_fails = encoded_over_limit > max_over;
-    kani::cover!(
-        over_limit_fails,
-        "one_over_limit_should_fail"
-    );
+    kani::cover!(over_limit_fails, "one_over_limit_should_fail");
 
     // Zero payload is always valid
     let zero_len: u32 = 0;

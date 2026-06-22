@@ -165,7 +165,8 @@ fn durable_frame_recovery_boundary_rejects_inconsistent_seed() -> Result<(), Run
 }
 
 #[test]
-fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() -> Result<(), RuntimeError> {
+fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() -> Result<(), RuntimeError>
+{
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(23),
         first_seq: EventSeq::new(0),
@@ -207,7 +208,8 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() -> Resu
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), RuntimeError> {
+fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), RuntimeError>
+{
     let run = RunId::new(22);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -396,18 +398,9 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() -> Result<(), Runt
 #[test]
 fn recovery_boundary_preserves_cancelled_vs_failed_distinction() -> Result<(), RuntimeError> {
     let cases = [
-        (
-            RunId::new(2001),
-            RecoveryTerminalState::Cancelled,
-        ),
-        (
-            RunId::new(2002),
-            RecoveryTerminalState::Killed,
-        ),
-        (
-            RunId::new(2003),
-            RecoveryTerminalState::Failed,
-        ),
+        (RunId::new(2001), RecoveryTerminalState::Cancelled),
+        (RunId::new(2002), RecoveryTerminalState::Killed),
+        (RunId::new(2003), RecoveryTerminalState::Failed),
         (
             RunId::new(2004),
             RecoveryTerminalState::Finished {
@@ -505,7 +498,9 @@ fn recover_hydrates_pending_timers() -> Result<(), String> {
 
     // Hydrate the frame from the seed.
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
-    let frame = boundary.hydrate_run_frame().map_err(|e| format!("hydrate_run_frame failed: {e:?}"))?;
+    let frame = boundary
+        .hydrate_run_frame()
+        .map_err(|e| format!("hydrate_run_frame failed: {e:?}"))?;
 
     // Build a shard with relaxed policy.
     let config = ShardConfig::default();

@@ -32,9 +32,7 @@ use crate::ValueStore;
 use crate::engine::RetryPolicy;
 use crate::primitives::collect::CollectStates;
 use crate::runtime::RuntimeError;
-use crate::shard::helpers::{
-    record_retry_attempt, reject_invalid_ticket_key,
-};
+use crate::shard::helpers::{record_retry_attempt, reject_invalid_ticket_key};
 use crate::shard::timer_wheel::{TimerEntry, TimerWheel};
 use crate::shard::types::{PendingTimer, PendingTimerKind, RunState};
 
@@ -312,8 +310,14 @@ fn kani_ticket_retry_capacity_bounds() {
 
     let expected_capacity = ticket.capacity.max(max_attempts);
 
-    kani::cover(expected_capacity >= ticket.capacity, "capacity >= ticket.capacity");
-    kani::cover(expected_capacity >= max_attempts, "capacity >= max_attempts");
+    kani::cover(
+        expected_capacity >= ticket.capacity,
+        "capacity >= ticket.capacity",
+    );
+    kani::cover(
+        expected_capacity >= max_attempts,
+        "capacity >= max_attempts",
+    );
     kani::cover(
         expected_capacity == ticket.capacity || expected_capacity == max_attempts,
         "capacity is max of the two",

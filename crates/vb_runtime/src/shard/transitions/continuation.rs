@@ -68,14 +68,12 @@ impl Shard {
         let step = state.frame.pc();
         let result: RuntimeResult<()> = (|| {
             let capacity = resolve_action_capacity(&state, &ticket)?;
-            let ticket = normalize_scheduled_ticket(&state, ActionTicket {
-                capacity,
-                ..ticket
-            })?;
+            let ticket = normalize_scheduled_ticket(&state, ActionTicket { capacity, ..ticket })?;
             record_scheduled_attempt(&mut state, ticket);
             let output = action_output_slot(&state, ticket.step)?;
             let input = action_input_slot(&state, ticket.step)?;
-            self.trace_ring.push(TraceEvent::ActionScheduled { run, step });
+            self.trace_ring
+                .push(TraceEvent::ActionScheduled { run, step });
             self.append_journal_event_durable(RuntimeJournalEvent::ActionScheduledTicket {
                 ticket,
                 input,

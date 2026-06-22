@@ -194,9 +194,7 @@ pub fn collect_next(
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let current_id = expect_list(*run.read_slot(collector_slot)?)?;
-    let has_state = states
-        .entries
-        .contains_key(&(run.run_id(), collector_slot));
+    let has_state = states.entries.contains_key(&(run.run_id(), collector_slot));
     if has_state {
         // Validate the observed collector page matches the active pagination
         // state before treating an empty list as terminal. With an active

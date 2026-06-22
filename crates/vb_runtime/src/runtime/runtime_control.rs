@@ -54,7 +54,7 @@ impl Runtime {
 
     // ── Run lifecycle commands ─────────────────────────────────────────
 
-/// Cancels a run.
+    /// Cancels a run.
     pub fn cancel_run(&self, run: RunId) -> RuntimeResult<()> {
         self.cancel_run_with_reason(run, None)
     }
@@ -71,11 +71,7 @@ impl Runtime {
     /// the reason is propagated through the queue into the durable
     /// `RunCancelled` journal event so post-mortem operators can attribute
     /// the cancellation.
-    pub fn cancel_run_with_reason(
-        &self,
-        run: RunId,
-        reason: Option<String>,
-    ) -> RuntimeResult<()> {
+    pub fn cancel_run_with_reason(&self, run: RunId, reason: Option<String>) -> RuntimeResult<()> {
         self.shard_for(run)?
             .enqueue(ShardCommand::Cancel { run, reason })
     }

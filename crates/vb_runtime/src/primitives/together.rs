@@ -39,9 +39,9 @@ pub fn together_start(
     // `InternalInvariantViolation` from `add_parallel_in_flight`'s
     // own `checked_add`. Treat arithmetic overflow as the same
     // limit-exceeded failure mode as an over-limit increment.
-    let next = current.checked_add(count).ok_or(EngineError::ParallelLimitExceeded {
-        limit: max,
-    })?;
+    let next = current
+        .checked_add(count)
+        .ok_or(EngineError::ParallelLimitExceeded { limit: max })?;
     if next > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }

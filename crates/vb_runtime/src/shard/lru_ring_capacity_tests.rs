@@ -22,7 +22,8 @@ use vb_core::ids::RunId;
 #[test]
 fn test_terminal_runs_lru_bounded_under_load() {
     let capacity = 4;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
 
     // Insert `capacity` distinct runs; every insert must succeed.
     for index in 0..capacity {
@@ -60,7 +61,8 @@ fn test_terminal_runs_lru_bounded_under_load() {
     );
 
     // The default-capacity helper exposes the bead's documented default.
-    let default_ring: LruRing<RunId> = LruRing::try_new(DEFAULT_MAX_TERMINAL_RUNS, 86_400).expect("non-zero test capacity");
+    let default_ring: LruRing<RunId> =
+        LruRing::try_new(DEFAULT_MAX_TERMINAL_RUNS, 86_400).expect("non-zero test capacity");
     assert_eq!(default_ring.capacity(), DEFAULT_MAX_TERMINAL_RUNS);
     assert_eq!(default_ring.ttl_ticks(), 86_400);
 }
@@ -214,8 +216,7 @@ fn test_terminal_runs_lru_respects_ttl_seconds() {
 fn reinsert_preserves_original_timestamp() {
     let capacity = 4;
     let ttl = 100u64;
-    let mut ring: LruRing<RunId> =
-        LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
 
     let run = RunId::new(42);
     let original_tick = TimerTick::new(1_000);

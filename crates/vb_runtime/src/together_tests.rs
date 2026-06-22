@@ -793,14 +793,21 @@ fn rp003_together_start_saturating_add_overflow_reports_parallel_limit_exceeded(
     let branches = [StepIdx::new(1)];
 
     // When calling together_start with one extra branch (count = 1).
-    let result = together_start(&mut run, &mut store, &branches, StepIdx::new(2), Some(output));
+    let result = together_start(
+        &mut run,
+        &mut store,
+        &branches,
+        StepIdx::new(2),
+        Some(output),
+    );
 
     // Then the guard must surface ParallelLimitExceeded instead of
     // letting the addition overflow into InternalInvariantViolation.
     match result {
         Err(EngineError::ParallelLimitExceeded { limit }) => {
             assert_eq!(
-                limit, u16::MAX,
+                limit,
+                u16::MAX,
                 "RP-003: limit must report the configured ceiling u16::MAX, got {limit}"
             );
         }

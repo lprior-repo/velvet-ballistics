@@ -180,7 +180,8 @@ where
         if self.position.contains_key(&item) {
             return Ok(());
         }
-        self.sweep_expired(now).map_err(LruRingError::into_runtime_error)?;
+        self.sweep_expired(now)
+            .map_err(LruRingError::into_runtime_error)?;
         if self.position.len() >= self.capacity {
             self.counters.capacity_overflows = self.counters.capacity_overflows.saturating_add(1);
             return Err(RuntimeError::TerminalRunsLruFull {
@@ -262,8 +263,7 @@ where
             self.position.remove(&expired_item);
             self.unlink(head_slot)?;
             self.free.push(head_slot);
-            self.counters.expired_evictions =
-                self.counters.expired_evictions.saturating_add(1);
+            self.counters.expired_evictions = self.counters.expired_evictions.saturating_add(1);
         }
         Ok(())
     }

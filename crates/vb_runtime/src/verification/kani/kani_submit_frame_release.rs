@@ -77,7 +77,7 @@ fn kani_submit_frame_release_error_path() {
     let initial_available = pool.available();
     kani::assert(
         initial_available == 0,
-        "New pool has zero available frames (empty on creation)"
+        "New pool has zero available frames (empty on creation)",
     );
 
     // Test Case 1: Frame pool take/release symmetry
@@ -101,7 +101,7 @@ fn kani_submit_frame_release_error_path() {
     let available_after_take = pool.available();
     kani::assert(
         available_after_take < capacity,
-        "After take, pool has fewer frames available"
+        "After take, pool has fewer frames available",
     );
     // release_frame returns frame to pool (pool size restored)
     pool.release(frame1);
@@ -109,7 +109,7 @@ fn kani_submit_frame_release_error_path() {
 
     kani::assert(
         available_after_release == initial_available,
-        "After release, pool availability restored to initial state"
+        "After release, pool availability restored to initial state",
     );
     // Test Case 2: Frame is NOT leaked on error
     //
@@ -153,14 +153,14 @@ fn kani_submit_frame_release_error_path() {
     let pool_during_success = pool.available();
     kani::assert(
         pool_during_success < capacity,
-        "Frame in run_state, pool size remains reduced"
+        "Frame in run_state, pool size remains reduced",
     );
     // Return frame when run completes
     pool.release(frame3);
     let pool_after_completion = pool.available();
     kani::assert(
         pool_after_completion == available_during_run + 1,
-        "Run completion releases frame, pool size restored"
+        "Run completion releases frame, pool size restored",
     );
 
     // Test Case 4: Frame released when run completes
@@ -182,7 +182,7 @@ fn kani_submit_frame_release_error_path() {
 
     kani::assert(
         available_after_completion > available_before_completion,
-        "Frame released back to pool on completion"
+        "Frame released back to pool on completion",
     );
     // Test Case 5: Pool respects capacity limit
     //
@@ -221,7 +221,7 @@ fn kani_submit_frame_release_error_path() {
 
     kani::assert(
         after_second_release <= capacity_one,
-        "Pool never exceeds capacity"
+        "Pool never exceeds capacity",
     );
     // Test Case 6: Run existence check semantics
     //
@@ -239,7 +239,7 @@ fn kani_submit_frame_release_error_path() {
     let would_return_not_found = !in_run_state && !in_terminal;
     kani::assert(
         would_return_not_found == (!in_run_state && !in_terminal),
-        "RunNotFound returned only when run not in run_state and not in terminal_runs"
+        "RunNotFound returned only when run not in run_state and not in terminal_runs",
     );
 
     // Test Case 7: Double-cancel safety
@@ -254,10 +254,11 @@ fn kani_submit_frame_release_error_path() {
     if first_cancel_happened {
         // Second cancel would see: run_state=false, terminal_runs=true
         // This is NOT a RunNotFound error
-        let second_cancel_not_found = !after_first_cancel_in_terminal && !after_first_cancel_in_run_state;
+        let second_cancel_not_found =
+            !after_first_cancel_in_terminal && !after_first_cancel_in_run_state;
         kani::assert(
             !second_cancel_not_found,
-            "After first cancel, second cancel does not return RunNotFound (idempotent)"
+            "After first cancel, second cancel does not return RunNotFound (idempotent)",
         );
     }
 }

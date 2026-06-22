@@ -301,11 +301,7 @@ fn write_config_invalid_error(
     f: &mut std::fmt::Formatter<'_>,
 ) -> Result<bool, std::fmt::Error> {
     if let RuntimeError::ConfigInvalid { errors } = error {
-        write!(
-            f,
-            "shard config invalid: {} field error(s)",
-            errors.len()
-        )?;
+        write!(f, "shard config invalid: {} field error(s)", errors.len())?;
         for (index, inner) in errors.iter().enumerate() {
             write!(f, "\n  [{}] {}", index, inner)?;
         }

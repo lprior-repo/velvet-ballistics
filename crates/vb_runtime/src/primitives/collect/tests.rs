@@ -4601,9 +4601,7 @@ fn collect_next_rejects_empty_page_with_active_pagination_state() -> Result<(), 
     match result {
         Err(EngineError::InvalidCompiledWorkflow { .. })
         | Err(EngineError::CollectPageOrderViolation { .. }) => Ok(()),
-        other => Err(format!(
-            "expected page-order violation, got {other:?}"
-        )),
+        other => Err(format!("expected page-order violation, got {other:?}")),
     }
 }
 
@@ -4662,7 +4660,8 @@ fn rp012_collect_finish_emits_final_page_after_terminal_collect_next() -> Result
     );
 
     // Body processes page 1, then collect_next advances to page 2 ([40]).
-    run.mark_running(body).map_err(|e| format!("mark_running: {e:?}"))?;
+    run.mark_running(body)
+        .map_err(|e| format!("mark_running: {e:?}"))?;
     run.mark_succeeded(body)
         .map_err(|e| format!("mark_succeeded: {e:?}"))?;
     collect_next(&mut run, &mut store, &mut states, collector, body, done)
@@ -4671,7 +4670,8 @@ fn rp012_collect_finish_emits_final_page_after_terminal_collect_next() -> Result
     assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(40)]);
 
     // Body processes page 2, then collect_next reaches the terminal step.
-    run.mark_running(body).map_err(|e| format!("mark_running: {e:?}"))?;
+    run.mark_running(body)
+        .map_err(|e| format!("mark_running: {e:?}"))?;
     run.mark_succeeded(body)
         .map_err(|e| format!("mark_succeeded: {e:?}"))?;
     let final_signal = collect_next(&mut run, &mut store, &mut states, collector, body, done)
@@ -4685,8 +4685,15 @@ fn rp012_collect_finish_emits_final_page_after_terminal_collect_next() -> Result
     assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(40)]);
 
     // collect_finish must read the preserved last page and emit it.
-    collect_finish(&mut run, &mut states, collector, Some(output), Some(next), done)
-        .map_err(|e| format!("collect_finish: {e:?}"))?;
+    collect_finish(
+        &mut run,
+        &mut states,
+        collector,
+        Some(output),
+        Some(next),
+        done,
+    )
+    .map_err(|e| format!("collect_finish: {e:?}"))?;
     assert_slot_list_items(&run, &store, output, &[SlotValue::I64(40)]);
     Ok(())
 }

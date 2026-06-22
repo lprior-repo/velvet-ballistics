@@ -2703,8 +2703,9 @@ fn re013_drive_deterministic_full_rejects_zero_max_attempts() {
     use crate::primitives::collect::CollectStates;
     use vb_core::engine::StepBudget;
     use vb_core::value_store::ValueStore;
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract,
-        WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
 
     let node = CompiledNode {
         id: StepIdx::ZERO,

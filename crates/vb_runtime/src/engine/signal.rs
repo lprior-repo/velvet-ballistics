@@ -29,21 +29,13 @@ pub fn runtime_from_core(run: RunId, journal_seq: SeqNo, signal: EngineSignal) -
         EngineSignal::Continue => RuntimeSignal::Continue,
         EngineSignal::Finished(value, _taint) => RuntimeSignal::Finished(value),
         EngineSignal::StepBudgetExhausted => RuntimeSignal::StepBudgetExhausted,
-        EngineSignal::AwaitingAction {
-            step,
-            seq,
-            action,
-        } => {
+        EngineSignal::AwaitingAction { step, seq, action } => {
             // If the IR interpreter supplied a non-ZERO seq, trust it (the
             // runtime has its own SeqNo source for production handlers; this
             // branch only triggers when the IR path is exercised directly).
             // For the documented IR sentinel (SeqNo::ZERO), substitute the
             // runtime's journal_seq so the ticket carries the canonical key.
-            let effective_seq = if seq == SeqNo::ZERO {
-                journal_seq
-            } else {
-                seq
-            };
+            let effective_seq = if seq == SeqNo::ZERO { journal_seq } else { seq };
             let idempotency_key = compute_action_idempotency_key(run, effective_seq, action);
             RuntimeSignal::AwaitingAction(ActionTicket {
                 run,
@@ -249,7 +241,11 @@ mod tests {
         let seq = SeqNo::ZERO;
         let signals = [
             runtime_from_core(run, seq, EngineSignal::Continue),
-            runtime_from_core(run, seq, EngineSignal::Finished(SlotValue::Null, Taint::Clean)),
+            runtime_from_core(
+                run,
+                seq,
+                EngineSignal::Finished(SlotValue::Null, Taint::Clean),
+            ),
             runtime_from_core(run, seq, EngineSignal::StepBudgetExhausted),
             runtime_from_core(
                 run,

@@ -348,10 +348,9 @@ fn runtime_error_admission_budget_eq(left: &RuntimeError, right: &RuntimeError) 
 
 fn runtime_error_config_invalid_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
-        (
-            RuntimeError::ConfigInvalid { errors: a },
-            RuntimeError::ConfigInvalid { errors: b },
-        ) => a == b,
+        (RuntimeError::ConfigInvalid { errors: a }, RuntimeError::ConfigInvalid { errors: b }) => {
+            a == b
+        }
         _ => false,
     }
 }

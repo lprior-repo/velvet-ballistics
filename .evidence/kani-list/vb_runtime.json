@@ -1,6 +1,6 @@
 {
   "discovery_root": "crates/vb_runtime/src",
-  "harness_count": 81,
+  "harness_count": 79,
   "harnesses": [
     {
       "cfg_kani": true,
@@ -61,7 +61,7 @@
     {
       "cfg_kani": true,
       "feature_gated": true,
-      "harness": "check_kind_28_journal_family_valid",
+      "harness": "check_kind_28_journal_family_valid_const",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": []
@@ -86,14 +86,6 @@
       "cfg_kani": true,
       "feature_gated": true,
       "harness": "check_double_swap_remove_second_returns_none",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": true,
-      "harness": "check_cancel_kill_identical_swap_remove",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": []
@@ -493,7 +485,7 @@
     {
       "cfg_kani": true,
       "feature_gated": true,
-      "harness": "check_kind_28_journal_family_valid",
+      "harness": "check_kind_28_journal_family_valid_const",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": []
@@ -518,14 +510,6 @@
       "cfg_kani": true,
       "feature_gated": true,
       "harness": "check_double_swap_remove_second_returns_none",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": true,
-      "harness": "check_cancel_kill_identical_swap_remove",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
       "required_features": []

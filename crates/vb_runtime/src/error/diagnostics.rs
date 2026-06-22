@@ -59,10 +59,8 @@ impl RuntimeError {
     pub const NOT_RESUMABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
     pub const ADMISSION_RESOURCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
         DiagnosticCode::new(0x2024);
-    pub const ADMISSION_BUDGET_POLICY_EXCEEDED_CODE: DiagnosticCode =
-        DiagnosticCode::new(0x2025);
-    pub const ADMISSION_RESOURCE_BUDGET_OVERFLOW_CODE: DiagnosticCode =
-        DiagnosticCode::new(0x2026);
+    pub const ADMISSION_BUDGET_POLICY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2025);
+    pub const ADMISSION_RESOURCE_BUDGET_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x2026);
     pub const ADMISSION_RESOURCE_BUDGET_UNDERFLOW_CODE: DiagnosticCode =
         DiagnosticCode::new(0x2027);
     pub const ADMISSION_RESOURCE_BUDGET_INVALID_CAPACITY_CODE: DiagnosticCode =
@@ -229,7 +227,7 @@ impl RuntimeError {
             Self::TogetherBranchFailed { .. } => Some(Self::TOGETHER_BRANCH_FAILED_RUNTIME_CODE),
             Self::ForEachItemFailed { .. } => Some(Self::FOR_EACH_ITEM_FAILED_RUNTIME_CODE),
             Self::InputMappingFailed { .. } => Some(Self::INPUT_MAPPING_FAILED_RUNTIME_CODE),
-Self::RunNotFound
+            Self::RunNotFound
             | Self::RunAlreadyExists
             | Self::UnsupportedOperation { .. }
             | Self::ShutdownInProgress

@@ -164,13 +164,12 @@ pub(super) fn map_admission_error(
                 limit: u32::try_from(limit).unwrap_or(u32::MAX),
             }
         }
-        crate::admission::AdmissionError::ResourcePerTickCeilingExceeded {
-            requested,
-            limit,
-        } => crate::RuntimeError::AdmissionBudgetExceeded {
-            actual: u32::try_from(requested).unwrap_or(u32::MAX),
-            limit: u32::try_from(limit).unwrap_or(u32::MAX),
-        },
+        crate::admission::AdmissionError::ResourcePerTickCeilingExceeded { requested, limit } => {
+            crate::RuntimeError::AdmissionBudgetExceeded {
+                actual: u32::try_from(requested).unwrap_or(u32::MAX),
+                limit: u32::try_from(limit).unwrap_or(u32::MAX),
+            }
+        }
         crate::admission::AdmissionError::ArtifactEnvelopeDecodeFailed => {
             crate::RuntimeError::AdmissionArtifactEnvelopeDecodeFailed
         }
@@ -327,7 +326,10 @@ mod tests {
         let error = crate::admission::AdmissionError::ArtifactEnvelopeDecodeFailed;
         let mapped = map_admission_error(error, digest());
         assert!(
-            matches!(mapped, crate::RuntimeError::AdmissionArtifactEnvelopeDecodeFailed),
+            matches!(
+                mapped,
+                crate::RuntimeError::AdmissionArtifactEnvelopeDecodeFailed
+            ),
             "ArtifactEnvelopeDecodeFailed must map to AdmissionArtifactEnvelopeDecodeFailed, got {mapped:?}"
         );
     }
@@ -353,9 +355,7 @@ mod tests {
 
     #[test]
     fn ra001_artifact_invalid_proof_flag_maps_to_distinct_runtime_variant() {
-        let error = crate::admission::AdmissionError::ArtifactInvalidProofFlag {
-            flag: "bounded",
-        };
+        let error = crate::admission::AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" };
         let mapped = map_admission_error(error, digest());
         assert!(
             matches!(
@@ -370,10 +370,7 @@ mod tests {
     fn ra001_artifact_digest_mismatch_maps_to_existing_artifact_digest_mismatch() {
         let requested = WorkflowDigest::from_bytes([0x01; 32]);
         let found = WorkflowDigest::from_bytes([0x02; 32]);
-        let error = crate::admission::AdmissionError::ArtifactDigestMismatch {
-            requested,
-            found,
-        };
+        let error = crate::admission::AdmissionError::ArtifactDigestMismatch { requested, found };
         let mapped = map_admission_error(error, digest());
         assert!(
             matches!(
@@ -421,7 +418,9 @@ mod tests {
         );
 
         let overflow = crate::admission::AdmissionError::ResourceStepCeilingExceeded {
-            requested: u64::from(u32::MAX).checked_add(1).unwrap_or(u32::MAX as u64),
+            requested: u64::from(u32::MAX)
+                .checked_add(1)
+                .unwrap_or(u32::MAX as u64),
             limit: u64::MAX,
         };
         let mapped = map_admission_error(overflow, digest());
@@ -462,7 +461,10 @@ mod tests {
         let error = crate::admission::AdmissionError::ArtifactNotFound { digest: d };
         let mapped = map_admission_error(error, digest());
         assert!(
-            matches!(mapped, crate::RuntimeError::AdmissionArtifactNotFound { .. }),
+            matches!(
+                mapped,
+                crate::RuntimeError::AdmissionArtifactNotFound { .. }
+            ),
             "ArtifactNotFound must map to AdmissionArtifactNotFound, got {mapped:?}"
         );
     }
@@ -476,7 +478,10 @@ mod tests {
         };
         let mapped = map_admission_error(error, digest());
         assert!(
-            matches!(mapped, crate::RuntimeError::AdmissionCapabilityDenied { .. }),
+            matches!(
+                mapped,
+                crate::RuntimeError::AdmissionCapabilityDenied { .. }
+            ),
             "CapabilityDenied must map to AdmissionCapabilityDenied, got {mapped:?}"
         );
     }
