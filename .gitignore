@@ -1,6 +1,8 @@
 # Rust build output
 target/
+target_old/
 fuzz/target/
+kani-target/
 
 # Local agent/search state
 .memsearch/

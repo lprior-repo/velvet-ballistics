@@ -480,11 +480,13 @@ proptest::proptest! {
         let mut batch = JournalWriteBatch::new(&journal);
         prop_assert!(batch.append_event(&event_a).is_ok(), "append_event A must succeed");
         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index A must succeed");
-        prop_assert!(batch.append_event(&event_b).is_ok(), "append_event B must succeed");
+        prop_assert!(matches!(batch.append_event(&event_b), Err(JournalError::DuplicateEvent { .. })),
+            "duplicate append_event B must return Err(DuplicateEvent)");
         // Second put_action_index for same (action,run,step) — Fjall last-write-wins
         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index B must succeed");
 
-        prop_assert!(batch.commit().is_ok(), "batch commit must succeed");
+        prop_assert!(matches!(batch.commit(), Err(JournalError::BatchAborted { .. })),
+            "batch commit after duplicate must return Err(BatchAborted)");
 
         // After commit: exactly 1 index_action entry for (action, run, step)
         let index_key = vb_storage::keys::index_action_key(action, run, step)
@@ -631,10 +633,10 @@ proptest::proptest! {
             let before_len = batch.len();
             let subsequent_result = batch.append_event(&subsequent_event);
 
-            // After abort: subsequent ops return Ok(()) without staging
+            // After abort: subsequent ops return Err (batch is aborted, no staging)
             prop_assert!(
-                subsequent_result.is_ok(),
-                "after abort, append_event must return Ok (not stage)",
+                subsequent_result.is_err(),
+                "after abort, append_event must return Err (batch aborted, no staging), got Ok",
             );
             prop_assert_eq!(
                 batch.len(),
@@ -643,9 +645,12 @@ proptest::proptest! {
             );
         }
 
-        // commit() on aborted batch is a safe no-op
+        // commit() on aborted batch must return Err(BatchAborted) per SA-002
         let commit_result = batch.commit();
-        prop_assert!(commit_result.is_ok(), "commit on aborted batch must return Ok");
+        prop_assert!(
+            matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+            "commit on aborted batch must return Err(BatchAborted), got {commit_result:?}",
+        );
 
         // After aborted commit: journal must be unchanged (only original event exists)
         let events = journal.events_for_run(run).expect("events_for_run must succeed");

@@ -3,6 +3,7 @@
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
+use vb_storage::JournalError;
 use vb_storage::batch::JournalWriteBatch;
 use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
@@ -49,7 +50,8 @@ proptest! {
         let mut b2 = JournalWriteBatch::new(&journal);
         // We expect a duplicate failure; explicitly drop the result.
         drop(b2.append_event(&event));
-        b2.commit().expect("commit");
+        prop_assert!(matches!(b2.commit(), Err(JournalError::BatchAborted { .. })),
+            "commit on aborted batch must return Err(BatchAborted)");
         let events = journal.events_for_run(RunId::new(run)).expect("replay");
         prop_assert_eq!(events.len(), 1);
     }
@@ -112,6 +114,7 @@ proptest! {
         let mut b2 = JournalWriteBatch::new(&journal);
         // We expect a duplicate failure; explicitly drop the result.
         drop(b2.append_event(&event));
-        b2.commit().expect("commit");
+        prop_assert!(matches!(b2.commit(), Err(JournalError::BatchAborted { .. })),
+            "commit on aborted batch must return Err(BatchAborted)");
     }
 }

@@ -341,10 +341,7 @@ fn handle_cancel_run_accepts_reason_and_routes_to_runtime() {
     assert_eq!(runtime.tick_all(), Ok(true));
 
     let snap = journal.snapshot();
-    let events = match snap {
-        Ok(events) => events,
-        Err(_) => return,
-    };
+    let events = snap.expect("journal snapshot must succeed for valid run state");
     let matched = events.iter().any(|event| {
         matches!(
             event,
@@ -396,10 +393,7 @@ fn handle_cancel_run_without_reason_records_no_reason_on_journal() {
     assert_eq!(runtime.tick_all(), Ok(true));
 
     let snap = journal.snapshot();
-    let events = match snap {
-        Ok(events) => events,
-        Err(_) => return,
-    };
+    let events = snap.expect("journal snapshot must succeed for valid run state");
     let matched = events.iter().any(|event| {
         matches!(
             event,

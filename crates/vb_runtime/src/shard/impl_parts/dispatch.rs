@@ -50,6 +50,9 @@ impl Shard {
         };
 
         self.dispatch_command(cmd)?;
+        if !self.coalesce_buffer.is_empty() {
+            self.flush_coalesce_buffer()?;
+        }
         if self.is_shutting_down() {
             // H5 mitigation: flush remaining buffer before shutdown.
             if !self.coalesce_buffer.is_empty() {

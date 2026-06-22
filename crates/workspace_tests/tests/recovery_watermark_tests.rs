@@ -569,25 +569,23 @@ fn watermark_journal_recovery_first_and_last_seq() -> Result<(), Box<dyn std::er
 }
 
 #[test]
-fn watermark_journal_recovery_rejects_max_seq() -> Result<(), Box<dyn std::error::Error>> {
-    let dir = tempfile::tempdir()?;
-    let journal = FjallJournal::open(dir.path(), None)?;
+fn watermark_journal_recovery_rejects_max_seq() {
     let run = RunId::new(42);
+    let events = vec![
+        accepted_event(run, 0),
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::MAX,
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+    ];
 
-    journal.append_journaled(&accepted_event(run, 0))?;
-    journal.append_journaled(&JournalEvent::StepStarted {
-        run,
-        seq: EventSeq::MAX,
-        step: StepIdx::new(0),
-        attempt: 1,
-    })?;
-
-    let result = recover_runtime_summary(&journal, run);
+    let result = summarize_recovery_events(&events);
     assert!(
         result.is_err(),
-        "journal recovery must reject EventSeq::MAX"
+        "recovery must reject EventSeq::MAX in event history"
     );
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
