@@ -383,7 +383,7 @@ fn watermark_max_seq_rejected_in_validation() {
         accepted_event(run, 0),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::MAX,
+            seq: EventSeq::MAX_ENCODABLE,
             step: StepIdx::new(0),
             attempt: 1,
         },
@@ -423,7 +423,7 @@ fn watermark_max_minus_one_to_max_rejected() {
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::MAX,
+            seq: EventSeq::MAX_ENCODABLE,
             step: StepIdx::new(0),
             attempt: 1,
         },
@@ -575,7 +575,7 @@ fn watermark_journal_recovery_rejects_max_seq() {
         accepted_event(run, 0),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::MAX,
+            seq: EventSeq::MAX_ENCODABLE,
             step: StepIdx::new(0),
             attempt: 1,
         },
@@ -615,7 +615,7 @@ fn watermark_frame_seed_rejects_max_seq() {
         accepted_event(run, 0),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::MAX,
+            seq: EventSeq::MAX_ENCODABLE,
             step: StepIdx::new(0),
             attempt: 1,
         },
