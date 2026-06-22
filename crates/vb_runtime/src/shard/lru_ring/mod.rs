@@ -258,11 +258,7 @@ where
             Some(value) => i128::from(value),
             None => -1,
         };
-        loop {
-            let (head_slot, expired_item) = match self.head_node_expired(cutoff)? {
-                Some(pair) => pair,
-                None => break,
-            };
+        while let Some((head_slot, expired_item)) = self.head_node_expired(cutoff)? {
             self.position.remove(&expired_item);
             self.unlink(head_slot)?;
             self.free.push(head_slot);

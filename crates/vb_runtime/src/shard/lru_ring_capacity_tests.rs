@@ -273,17 +273,21 @@ fn clear_does_not_grow_arena_across_ten_cycles() {
     let mut ring: LruRing<RunId> =
         LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
 
-    // Fill once so the arena has had at least one growth step. Without
-    // this the test would also pass on the buggy implementation because
-    // the empty arena stays empty until the first insert.
+    // First cycle: prime the arena with one fill so the buggy
+    // implementation has at least one growth step recorded. Without
+    // this the test would pass on both the buggy and fixed
+    // implementations because an empty arena stays empty until the
+    // first insert.
+    ring.clear();
     for offset in 0..capacity {
         ring.insert(RunId::new(offset as u64 + 1), TimerTick::new(0))
-            .expect("first fill must succeed");
+            .expect("prime fill must succeed");
     }
+    ring.clear();
     let arena_after_first_fill = ring.arena_len();
     assert_eq!(
         arena_after_first_fill, capacity,
-        "arena should be exactly `capacity` after a single fill"
+        "arena should be exactly `capacity` after a single fill+clear"
     );
 
     // 10 cycles of fill + clear. The arena must not grow past the

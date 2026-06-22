@@ -186,7 +186,10 @@ fn advance_after_timer_fire_on_invalid_successor_pc_leaves_state_unchanged() {
     //   * PC still at step 0 (not advanced),
     //   * executed counter untouched,
     //   * full frame structurally equal to the snapshot.
-    assert_eq!(state.frame.step_state(StepIdx::ZERO), Ok(StepState::Pending));
+    assert_eq!(
+        state.frame.step_state(StepIdx::ZERO),
+        Ok(StepState::Pending)
+    );
     assert_eq!(state.frame.pc(), pc_before);
     assert_eq!(state.frame.executed(), executed_before);
     assert_eq!(state.frame, frame_before);

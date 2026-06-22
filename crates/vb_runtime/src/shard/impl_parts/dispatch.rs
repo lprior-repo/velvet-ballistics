@@ -30,10 +30,10 @@ impl Shard {
         // A failed flush leaves the counter at zero so the next tick
         // can retry (RQ-W0-19: failed flushes must not drop or rewrite
         // events).
-        if self.current_coalesce_window_remaining == 0 {
-            if self.flush_coalesce_buffer().is_ok() {
-                self.current_coalesce_window_remaining = self.coalesce_window_ticks;
-            }
+        if self.current_coalesce_window_remaining == 0
+            && self.flush_coalesce_buffer().is_ok()
+        {
+            self.current_coalesce_window_remaining = self.coalesce_window_ticks;
         }
 
         let Some(cmd) = self.command_queue.pop() else {

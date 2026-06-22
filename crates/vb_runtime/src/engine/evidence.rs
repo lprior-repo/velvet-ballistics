@@ -214,7 +214,7 @@ impl EvidenceCollector {
                 extra,
             } => {
                 if extra.is_some() {
-                    let _ = self.push_slot_written_with_extra(slot, value, taint, extra);
+                    _ = self.push_slot_written_with_extra(slot, value, taint, extra);
                 } else if self.events.len() < self.capacity {
                     self.events.push(EvidenceEvent::SlotWritten {
                         slot,

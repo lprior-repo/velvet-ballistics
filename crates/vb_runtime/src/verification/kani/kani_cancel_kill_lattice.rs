@@ -130,8 +130,8 @@ fn check_runkilled_zero_attempt_invalid() {
 #[kani::proof]
 fn check_kind_28_is_known_record_kind() {
     let result = vb_storage::codec::validation::is_known_record_kind(28);
-    ,
-        "RunKilled with attempt(0) must be rejected as invalid");
+    kani::assert(result,
+        "is_known_record_kind(28) must be true");
 }
 
 /// PO-KANI-001-H5: is_known_record_kind(28) returns true.

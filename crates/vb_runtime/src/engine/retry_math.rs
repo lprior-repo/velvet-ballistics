@@ -121,7 +121,7 @@ impl RetryPolicy {
         self.validate_attempt(next_attempt)?;
         Ok(RetryCursor {
             attempt: next_attempt,
-            remaining: cursor.remaining - 1,
+            remaining: cursor.remaining.saturating_sub(1),
             delay_ms: self.delay_after_valid_attempt(max_interval_ms, cursor.attempt),
             exhausted: false,
         })
@@ -174,7 +174,10 @@ impl RetryPolicy {
         // prevents a subsequent `next_cursor` from being asked to
         // advance past the policy limit via saturating arithmetic.
         if cursor.remaining > 0 {
-            let last_attempt = match cursor.attempt.checked_add(cursor.remaining - 1) {
+            let last_attempt = match cursor
+                .attempt
+                .checked_add(cursor.remaining.saturating_sub(1))
+            {
                 Some(value) => value,
                 None => return Err(RetryPolicyMathError::CursorInconsistent),
             };

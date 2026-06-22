@@ -23,8 +23,8 @@ impl Shard {
     /// bookkeeping, terminal state transition) whose correctness depends on
     /// the event being durably persisted MUST use
     /// [`append_journal_event_durable`](Self::append_journal_event_durable)
-    /// instead, which bypasses the coalesce buffer and returns only after
-    /// the synchronous write succeeds.
+    /// > instead, which bypasses the coalesce buffer and returns only after
+    /// > the synchronous write succeeds.
     #[cfg(not(kani))]
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();

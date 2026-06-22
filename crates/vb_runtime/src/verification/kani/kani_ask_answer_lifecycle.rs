@@ -118,9 +118,11 @@ fn kani_ask_answer_append_failure_no_timer() {
             // On failure, pending_timers must NOT be modified
             // Since we started with empty pending_timers, it should still be empty.
             let timer_count = shard.pending_timers.len();
-            kani::,
-        "apply(AwaitAction) must set Resumable state",
-    );
+            kani::assert(timer_count == 0,
+                "apply(AwaitAction) must set Resumable state",
+            );
+        }
+    }
 }
 
 // =========================================================================
@@ -161,7 +163,7 @@ fn kani_ask_answer_append_failure_no_timer() {
             // Since we started with empty pending_timers, it should still be empty.
             let timer_count = shard.pending_timers.len();
             kani::kani::assert(timer_count == 0,
-                "append failure must not modify pending_timers", )
+                "append failure must not modify pending_timers");
         }
     }
 }
@@ -203,17 +205,9 @@ fn kani_ask_answer_append_failure_preserves_existing_timer() {
             // On Err path: pending_timers must be UNCHANGED.
             // This proves the failure isolation property.
             let timer_after = shard.pending_timer_get(run);
-            kani::) => {
-            // On Ok path: journal would advance. Timer insert is done by
-            // await_timer, not append_journal_event — this harness tests
-            // append_journal_event in isolation.
-        }
-        Err(_) => {
-            // On Err path: pending_timers must be UNCHANGED.
-            // This proves the failure isolation property.
-            let timer_after = shard.pending_timer_get(run);
-            kani::kani::assert(timer_after == timer_before,
-                "append failure must not modify existing pending timer", )
+            kani::assert(timer_after == timer_before,
+                "append failure must not modify existing pending timer",
+            );
         }
     }
 }
@@ -311,13 +305,13 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state = shard.runtime_state_get(run);
     kani::kani::assert(state == Some(RuntimeState::Resumable),
-        "after AwaitTimer, state is Resumable", )
+        "after AwaitTimer, state is Resumable");
 
     // Verify that calling apply(AwaitTimer) again is idempotent
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state2 = shard.runtime_state_get(run);
     kani::kani::assert(state2 == Some(RuntimeState::Resumable),
-        "apply(AwaitTimer) is idempotent", )
+        "apply(AwaitTimer) is idempotent");
 }
 
 // =========================================================================
@@ -365,8 +359,11 @@ fn kani_ask_answer_journal_monotonicity() {
             // On failure, sequence must NOT be advanced
             // (advance_journal_sequence is only called on Ok path)
             let after_seq = shard.journal_seq_get(run);
-            kani::,
-        "apply(AwaitTimer) is idempotent", )
+            kani::assert(after_seq == 0,
+                "apply(AwaitTimer) is idempotent",
+            );
+        }
+    }
 }
 
 // =========================================================================
@@ -415,7 +412,7 @@ fn kani_ask_answer_journal_monotonicity() {
             // (advance_journal_sequence is only called on Ok path)
             let after_seq = shard.journal_seq_get(run);
             kani::kani::assert(after_seq == initial_seq,
-                "append failure must not advance sequence", )
+                "append failure must not advance sequence");
         }
     }
 
@@ -423,28 +420,27 @@ fn kani_ask_answer_journal_monotonicity() {
     let raw_seq: u64 = kani::any();
     let seq = EventSeq::new(raw_seq);
     let seq_get = seq.get();
-    kani::kani::assert(seq_get == raw_seq,
-        "EventSeq::new/get must be a bijection for all u64 values", )
+    kani::assert(seq_get == raw_seq,
+        "EventSeq::new/get must be a bijection for all u64 values",
+    );
 
     // Test overflow: EventSeq::new(u64::MAX).get().checked_add(1) == None
     let max_seq = EventSeq::new(u64::MAX);
     let max_get = max_seq.get();
     let overflow = max_get.checked_add(1);
-    kani::kani::assert(overflow.is_none(),
-        "EventSeq overflow at u64::MAX must be detected via checked_add", )
+    kani::assert(overflow.is_none(),
+        "EventSeq overflow at u64::MAX must be detected via checked_add",
+    );
     kani::cover!(overflow.is_none(), "sequence_overflow_detected");
 
     // Test normal increment
     let low_raw: u64 = kani::any();
     kani::assume(low_raw < u64::MAX);
     let next = low_raw.checked_add(1);
-    kani::kani::assert(next.is_some(),
-        "checked_add must succeed for values below u64::MAX", )
+    kani::assert(next.is_some(),
+        "checked_add must succeed for values below u64::MAX", );
     if let Some(n) = next {
-        kani::,
-        "checked_add must succeed for values below u64::MAX", )
-    if let Some(n) = next {
-        kani::kani::assert(n > low_raw, "sequence must monotonically increase")
+        kani::assert(n > low_raw, "sequence must monotonically increase");
     }
     kani::cover!(next.is_some(), "monotonic_increment_ok");
 }
