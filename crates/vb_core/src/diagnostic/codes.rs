@@ -204,8 +204,16 @@ const fn build_registry() -> [CodeEntry; TOTAL_LEN] {
 const fn copy_slice(src: &[CodeEntry], dst: &mut [CodeEntry; TOTAL_LEN], i: &mut usize) {
     let mut j: usize = 0;
     while j < src.len() {
-        dst[*i] = src[j];
-        *i += 1;
-        j += 1;
+        if let Some((dst_slot, src_val)) = dst.get_mut(*i).zip(src.get(j)) {
+            *dst_slot = *src_val;
+        }
+        *i = match i.checked_add(1) {
+            Some(next) => next,
+            None => return,
+        };
+        j = match j.checked_add(1) {
+            Some(next) => next,
+            None => return,
+        };
     }
 }
