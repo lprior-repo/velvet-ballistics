@@ -59,7 +59,7 @@ fn minimal_workflow() -> CompiledWorkflow {
         nodes: Box::new([set_const, ask]),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([ConstValue::Bool(true)]),
+        constants: Box::new([ConstValue::I64(0)]),
         slot_count: 2,
         symbols_count: 0,
         entry: StepIdx::new(0),

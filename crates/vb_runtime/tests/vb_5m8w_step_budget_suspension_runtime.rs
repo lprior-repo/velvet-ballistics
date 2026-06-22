@@ -496,10 +496,15 @@ fn given_action_suspension_when_drive_returns_then_signal_is_awaiting_action_and
 #[test]
 fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_and_drive_continue_emitted()
 -> Result<(), String> {
+    // `step_budget_per_tick` is clamped to >= 1 by `ShardConfig` validation:
+    // the minimum valid value is 1, which still drives exactly one
+    // transition per tick before the budget is exhausted. This is the
+    // narrowest configuration that hits the `StepBudgetExhausted` code path
+    // in `apply_drive_result` while keeping the run alive.
     let config = ShardConfig {
         command_queue_capacity: 8,
         trace_capacity: 8,
-        step_budget_per_tick: 0,
+        step_budget_per_tick: 1,
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
@@ -528,8 +533,15 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         InspectResponse::Found(found) => {
             assert_eq!(found.run, run);
             assert_eq!(found.correlation, 44);
-            assert_eq!(found.pc, StepIdx::new(0));
-            assert_eq!(found.executed, 0);
+            // With step_budget_per_tick = 1, the engine executes the first
+            // transition (SetConst at step 0) and then the budget is
+            // exhausted before the second transition (Finish at step 1).
+            // The PC advances to step 1 and `executed` records the single
+            // transition that ran. The run is kept alive because
+            // `apply_drive_result` routes `StepBudgetExhausted` through the
+            // `DriveContinue` continuation path.
+            assert_eq!(found.pc, StepIdx::new(1));
+            assert_eq!(found.executed, 1);
         }
         InspectResponse::NotFound { .. } => return Err("budget-exhausted run was removed".into()),
         _ => return Err("unexpected inspect response variant".into()),
