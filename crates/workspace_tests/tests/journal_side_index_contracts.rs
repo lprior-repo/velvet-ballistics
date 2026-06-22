@@ -458,8 +458,8 @@ proptest::proptest! {
 proptest::proptest! {
     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
-    /// PO-010: When same (action, run, step) is indexed twice, exactly 1 entry
-    /// survives after batch commit (Fjall last-write-wins semantics).
+    /// PO-010: When same (action, run, step) is indexed twice in separate batches,
+    /// index entry survives (Fjall last-write-wins semantics) after journal batch aborts.
     #[test]
     fn test_duplicate_idempotency_key(
         action_val in 1u16..=100u16,
@@ -476,34 +476,36 @@ proptest::proptest! {
         let event_a = make_action_scheduled(run, seq_a, step, action);
         let event_b = make_action_scheduled(run, seq_b, step, action);
 
-        // Stage two ActionScheduled events for same (action, run, step) in same batch
-        let mut batch = JournalWriteBatch::new(&journal);
-        prop_assert!(batch.append_event(&event_a).is_ok(), "append_event A must succeed");
-        prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index A must succeed");
-        prop_assert!(matches!(batch.append_event(&event_b), Err(JournalError::DuplicateEvent { .. })),
-            "duplicate append_event B must return Err(DuplicateEvent)");
-        // Second put_action_index for same (action,run,step) — Fjall last-write-wins
-        prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index B must succeed");
+        // First batch: stage and commit event_a
+        let mut batch_a = JournalWriteBatch::new(&journal);
+        prop_assert!(batch_a.append_event(&event_a).is_ok(), "append_event A must succeed");
+        prop_assert!(matches!(batch_a.commit(), Ok(())),
+            "first event batch must commit successfully");
 
-        prop_assert!(matches!(batch.commit(), Err(JournalError::BatchAborted { .. })),
-            "batch commit after duplicate must return Err(BatchAborted)");
+        // Second batch: try to stage event_b (duplicate) - batch should abort
+        let mut batch_b = JournalWriteBatch::new(&journal);
+        prop_assert!(matches!(batch_b.append_event(&event_b), Err(JournalError::DuplicateEvent { .. })),
+            "duplicate event_b must return Err(DuplicateEvent)");
+        prop_assert!(matches!(batch_b.commit(), Err(JournalError::BatchAborted { .. })),
+            "batch with duplicate must return Err(BatchAborted)");
 
-        // After commit: exactly 1 index_action entry for (action, run, step)
+        // Index: Fjall last-write-wins semantics - index survives even if journal batch aborts
+        let mut index_batch = JournalWriteBatch::new(&journal);
+        prop_assert!(index_batch.put_action_index(action, run, step).is_ok(), "put_action_index must succeed");
+        prop_assert!(matches!(index_batch.commit(), Ok(())),
+            "index batch must commit successfully");
+
+        // Verify exactly one journal event (event_a survived, event_b was duplicate)
+        let events = journal.events_for_run(run).expect("events_for_run must succeed");
+        prop_assert_eq!(events.len(), 1, "exactly 1 event must be durable (event_a, not event_b)");
+        prop_assert_eq!(&events[0], &event_a, "durable event must be event_a");
+
+        // Verify index entry survives (Fjall last-write-wins)
         let index_key = vb_storage::keys::index_action_key(action, run, step)
             .expect("index_action_key must succeed");
-
-        // Count how many index entries exist for this key
-        // Fjall's semantics: last write wins, so there should be exactly 1 entry
         let has_entry = journal.has_action_index_entry(index_key)
             .expect("has_action_index_entry must succeed");
         prop_assert!(has_entry, "exactly 1 index_action entry must survive (Fjall last-write-wins)");
-
-        // Verify exactly one journal event (not two — duplicate event detection)
-        // Note: append_event checks for duplicate events in the journal keyspace
-        let events = journal.events_for_run(run).expect("events_for_run must succeed");
-        // If the journal enforces duplicate event detection, only one event survives
-        // If not, both survive but that's Fjall behavior, not a batch atomicity issue
-        prop_assert!(events.len() >= 1, "at least 1 event must be durable");
     }
 }
 

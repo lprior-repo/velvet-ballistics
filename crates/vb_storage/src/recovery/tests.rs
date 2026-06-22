@@ -790,11 +790,11 @@ fn recover_runtime_summary_with_expected_distinguishes_finished_result_slots() {
             mismatched
         );
     };
-    // The structural comparison (PartialEq on RecoveryTerminalState) is what
-    // actually distinguishes mismatched result slots; the diagnostic strings
-    // intentionally carry only the variant name to keep them stable.
-    assert_eq!(expected.as_str(), "Finished");
-    assert_eq!(found.as_str(), "Finished");
+    // The structural comparison (PartialEq on RecoveryTerminalState) detected
+    // the slot mismatch; the diagnostic label preserves the slot values so
+    // an operator can tell which slots differed (here expected=99 vs found=7).
+    assert_eq!(expected, "Finished(result=99)");
+    assert_eq!(found, "Finished(result=7)");
 }
 
 /// SR-016: variant-class mismatch (Cancelled vs Finished) must still be

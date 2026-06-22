@@ -47,6 +47,23 @@ impl RecoveryTerminalState {
             Self::Failed => "Failed",
         }
     }
+
+    /// Returns the diagnostic label including payload fields, for use in
+    /// error messages where the operator needs to distinguish between two
+    /// `Finished` variants that carry different result slots.
+    ///
+    /// Pairs with [`as_str`](Self::as_str): use `as_str` when only the
+    /// variant name is meaningful, and `diagnostic_label` when the payload
+    /// (e.g. the `result` slot) is part of the bug being diagnosed.
+    #[must_use]
+    pub fn diagnostic_label(&self) -> String {
+        match *self {
+            Self::Cancelled => "Cancelled".to_string(),
+            Self::Killed => "Killed".to_string(),
+            Self::Finished { result } => format!("Finished(result={})", result.get()),
+            Self::Failed => "Failed".to_string(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
