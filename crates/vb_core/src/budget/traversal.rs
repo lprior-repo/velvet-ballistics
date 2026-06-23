@@ -12,6 +12,7 @@ pub(crate) enum BudgetTraversalError {
     StepOutOfBounds { step: StepIdx },
     StepCountOverflow { actual: u64 },
     JumpCycle { step: StepIdx, target: StepIdx },
+    InvalidCompiledWorkflow { reason: &'static str },
 }
 
 impl From<BudgetTraversalError> for WorkflowError {
@@ -23,6 +24,9 @@ impl From<BudgetTraversalError> for WorkflowError {
                 Self::StepCountOverflow { actual }
             }
             BudgetTraversalError::JumpCycle { step, target } => Self::JumpCycle { step, target },
+            BudgetTraversalError::InvalidCompiledWorkflow { reason } => {
+                Self::Expression(crate::errors::CoreError::InvalidCompiledWorkflow { reason })
+            }
         }
     }
 }

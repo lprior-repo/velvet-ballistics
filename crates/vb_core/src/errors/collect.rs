@@ -14,6 +14,8 @@ use crate::diagnostic::DiagnosticCode;
 pub(super) const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1401);
 /// Repeat exhausted diagnostic code.
 pub(super) const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1402);
+/// Invalid repeat state diagnostic code.
+pub(super) const INVALID_REPEAT_STATE_CODE: DiagnosticCode = DiagnosticCode::new(0x0309);
 /// Collect page limit exceeded diagnostic code.
 pub(super) const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1403);
 /// Collect item limit exceeded diagnostic code.
@@ -50,6 +52,7 @@ pub(super) const fn diagnostic_code(
             Some(ITERATION_LIMIT_EXCEEDED_CODE)
         }
         crate::errors::core::CoreError::RepeatExhausted { .. } => Some(REPEAT_EXHAUSTED_CODE),
+        crate::errors::core::CoreError::InvalidRepeatState => Some(INVALID_REPEAT_STATE_CODE),
         crate::errors::core::CoreError::CollectPageLimitExceeded => Some(COLLECT_PAGE_LIMIT_CODE),
         crate::errors::core::CoreError::CollectItemLimitExceeded => Some(COLLECT_ITEM_LIMIT_CODE),
         crate::errors::core::CoreError::CollectTimeLimitExceeded => Some(COLLECT_TIME_LIMIT_CODE),
@@ -84,6 +87,9 @@ pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Opti
         crate::errors::core::CoreError::RepeatExhausted { .. } => {
             Some(REPEAT_LIMIT_REACHED_RUNTIME_CODE)
         }
+        crate::errors::core::CoreError::InvalidRepeatState => {
+            Some(INVALID_REPEAT_STATE_RUNTIME_CODE)
+        }
         crate::errors::core::CoreError::CollectPageLimitExceeded
         | crate::errors::core::CoreError::CollectItemLimitExceeded
         | crate::errors::core::CoreError::CollectTimeLimitExceeded => {
@@ -101,6 +107,8 @@ pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Opti
 
 /// Runtime code for repeat attempt-limit failures.
 pub(super) const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str = "REPEAT_LIMIT_REACHED";
+/// Runtime code for invalid repeat-state failures.
+pub(super) const INVALID_REPEAT_STATE_RUNTIME_CODE: &str = "INVALID_REPEAT";
 /// Runtime code for collect item/page limit failures.
 pub(super) const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
 /// Runtime code for budget exceeded failures.

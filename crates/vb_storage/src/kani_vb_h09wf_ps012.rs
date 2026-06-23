@@ -128,5 +128,8 @@ fn ps_012_oversized_after_corruption_rejected() {
         CompiledIrSizeDecision::WithinLimit => {
             kani::assert(false, "oversized stored data must be rejected on read");
         }
+        CompiledIrSizeDecision::PayloadLenOverflow { .. } => {
+            kani::assert(false, "bounded oversized stored data must fit u32");
+        }
     }
 }

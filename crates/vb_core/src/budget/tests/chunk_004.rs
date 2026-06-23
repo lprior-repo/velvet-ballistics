@@ -331,19 +331,18 @@ fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
     );
 }
 
-// --- FINDING BH-BUD-03: From<WorkflowError> for BudgetError loses information ---
+// --- FINDING BH-BUD-03: From<WorkflowError> for BudgetError preserves information ---
 
 #[test]
-fn blackhat_workflow_error_to_budget_error_produces_equal_actual_and_limit() {
+fn blackhat_workflow_error_to_budget_error_preserves_entry() {
     let workflow_err = WorkflowError::EntryOutOfBounds {
         entry: StepIdx::new(5),
     };
     let budget_err: BudgetError = workflow_err.into();
 
     match budget_err {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
-            assert_eq!(actual, u64::MAX);
-            assert_eq!(limit, u64::MAX);
+        BudgetError::WorkflowEntryOutOfBounds { entry } => {
+            assert_eq!(entry, StepIdx::new(5));
         }
         other => panic!("BLACKHAT BH-BUD-03: unexpected variant: {other:?}"),
     }

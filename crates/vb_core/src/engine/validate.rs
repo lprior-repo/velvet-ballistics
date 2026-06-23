@@ -16,16 +16,26 @@ pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowE
 pub fn validate_node_bounds(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
     for node in &parts.nodes {
-        if node.id.as_usize() >= node_count {
-            return Err(WorkflowError::StepOutOfBounds { step: node.id });
-        }
-        if let Some(next) = node.next
-            && next.as_usize() >= node_count
-        {
-            return Err(WorkflowError::StepOutOfBounds { step: next });
-        }
+        validate_step_bound(node.id, node_count)?;
+        validate_optional_step_bound(node.next, node_count)?;
+        validate_optional_step_bound(node.on_error, node_count)?;
     }
-    Ok(())
+    validate_transition_target(parts)
+}
+
+fn validate_step_bound(step: StepIdx, node_count: usize) -> Result<(), WorkflowError> {
+    if step.as_usize() < node_count {
+        Ok(())
+    } else {
+        Err(WorkflowError::StepOutOfBounds { step })
+    }
+}
+
+fn validate_optional_step_bound(
+    step: Option<StepIdx>,
+    node_count: usize,
+) -> Result<(), WorkflowError> {
+    step.map_or(Ok(()), |target| validate_step_bound(target, node_count))
 }
 
 /// Validates that all step transition targets reference valid node indices.

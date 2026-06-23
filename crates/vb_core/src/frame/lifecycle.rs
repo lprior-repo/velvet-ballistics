@@ -35,7 +35,7 @@ impl RunFrame {
             executed: 0,
             step_count,
             slot_count,
-            max_parallel_in_flight: u16::MAX,
+            max_parallel_in_flight: 0,
             parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
             slots: vec![None; slots_len].into_boxed_slice(),
@@ -69,7 +69,7 @@ impl RunFrame {
         self.run_id = run_id;
         self.pc = first_step;
         self.executed = 0;
-        self.max_parallel_in_flight = u16::MAX;
+        self.max_parallel_in_flight = 0;
         self.parallel_in_flight = 0;
         for state in &mut self.states {
             *state = StepState::Pending;

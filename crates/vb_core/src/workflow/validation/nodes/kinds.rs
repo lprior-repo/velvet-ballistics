@@ -148,8 +148,13 @@ pub(crate) fn validate_node_kind(
             body,
             exhausted,
         } => validate_slot_and_steps(*policy_slot, *body, *exhausted, parts),
-        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
-            validate_two_steps(*body, *handler, parts)
+        CompiledNodeKind::ErrorHandler {
+            body,
+            handler,
+            error_slot,
+        } => {
+            validate_two_steps(*body, *handler, parts)?;
+            validate_optional_slot(*error_slot, parts.slot_count)
         }
         CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),
         CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),

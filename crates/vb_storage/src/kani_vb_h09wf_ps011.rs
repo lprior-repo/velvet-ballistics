@@ -105,5 +105,8 @@ fn ps_011_oversized_envelope_rejected_early() {
         CompiledIrSizeDecision::WithinLimit => {
             kani::assert(false, "oversized envelope must be rejected");
         }
+        CompiledIrSizeDecision::PayloadLenOverflow { .. } => {
+            kani::assert(false, "bounded oversized envelope must fit u32");
+        }
     }
 }

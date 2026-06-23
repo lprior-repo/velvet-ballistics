@@ -388,12 +388,27 @@ fn budget_error_from_workflow_error_preserves_variant() -> Result<(), String> {
     };
     let budget_err: BudgetError = wf_err.into();
     match budget_err {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
-            ensure_equal(actual, u64::MAX)?;
-            ensure_equal(limit, u64::MAX)
+        BudgetError::WorkflowEntryOutOfBounds { entry } => ensure_equal(entry, StepIdx::new(0)),
+        other => Err(format!(
+            "expected WorkflowEntryOutOfBounds for workflow error, got {other:?}"
+        )),
+    }
+}
+
+#[test]
+fn budget_error_from_workflow_jump_cycle_preserves_variant() -> Result<(), String> {
+    let wf_err = WorkflowError::JumpCycle {
+        step: StepIdx::new(2),
+        target: StepIdx::new(1),
+    };
+    let budget_err: BudgetError = wf_err.into();
+    match budget_err {
+        BudgetError::JumpCycle { step, target } => {
+            ensure_equal(step, StepIdx::new(2))?;
+            ensure_equal(target, StepIdx::new(1))
         }
         other => Err(format!(
-            "expected TotalStepsExceeded sentinel for workflow error, got {other:?}"
+            "expected JumpCycle for workflow error, got {other:?}"
         )),
     }
 }

@@ -126,15 +126,14 @@ use crate::workflow::{
 };
 
 #[test]
-fn blackhat_step_count_overflow_uses_misleading_error_variant() {
+fn blackhat_workflow_step_error_preserves_step() {
     let workflow_err = WorkflowError::StepOutOfBounds {
         step: StepIdx::new(0),
     };
     let converted: BudgetError = workflow_err.into();
     match converted {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
-            assert_eq!(actual, u64::MAX);
-            assert_eq!(limit, u64::MAX);
+        BudgetError::WorkflowStepOutOfBounds { step } => {
+            assert_eq!(step, StepIdx::new(0));
         }
         other => panic!("unexpected variant: {other:?}"),
     }

@@ -221,3 +221,34 @@ fn slot_set_rejects_stale_reinsert() {
     set.insert(successor).unwrap();
     assert!(set.contains(successor));
 }
+
+// RS-026 regression: when SlotSet::ensure_insert_slot grows the arena for a
+// previously-unseen slot index, the new slot's generation must be initialized
+// to Generation::INITIAL (matching Arena::push_new_slot). The pre-fix code
+// blindly stored the caller-provided handle generation, coupling the set's
+// internal generation state to external caller state.
+#[test]
+fn slot_set_ensures_new_slot_initializes_generation_to_initial() {
+    let mut set = SlotSet::new();
+    // Fabricate a handle with a non-initial generation for slot index 0.
+    let fabricated_generation = Generation(99);
+    assert!(!fabricated_generation.is_terminal());
+    let handle = SlotHandle::new(SlotId::new(0), fabricated_generation);
+
+    // Inserting into a fresh set forces the `idx == slots.len()` growth branch.
+    set.insert(handle).unwrap();
+
+    // The arena's stored generation for slot 0 must be Generation::INITIAL,
+    // NOT the fabricated caller-provided value (99).
+    let stored = set
+        .arena
+        .generations
+        .get(0)
+        .copied()
+        .expect("test slot must exist");
+    assert_eq!(
+        stored,
+        Generation::INITIAL,
+        "new arena slots must start at Generation::INITIAL, not the caller-provided generation"
+    );
+}

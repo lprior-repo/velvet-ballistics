@@ -96,9 +96,7 @@ impl MaxAttempts {
     /// Returns `EngineError::InvalidRepeatState` if value is 0.
     pub fn try_new(value: u16) -> Result<Self, EngineError> {
         if value == 0 {
-            return Err(EngineError::InternalInvariantViolation {
-                reason: "max_attempts_cannot_be_zero",
-            });
+            return Err(EngineError::InvalidRepeatState);
         }
         Ok(Self(value))
     }

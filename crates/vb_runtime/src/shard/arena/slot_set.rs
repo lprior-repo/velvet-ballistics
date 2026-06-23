@@ -2,7 +2,7 @@
 //!
 //! Does not store values — just tracks which slots are "in the set".
 
-use super::types::{ArenaError, SlotHandle};
+use super::types::{ArenaError, Generation, SlotHandle};
 
 use super::arena_core::Arena;
 
@@ -37,7 +37,11 @@ impl SlotSet {
         }
         if idx == self.arena.slots.len() {
             self.arena.slots.push(None);
-            self.arena.generations.push(handle.generation());
+            // New slots are always born at the initial generation; never trust
+            // the caller-provided generation (matches `Arena::push_new_slot`).
+            // The handle's generation is validated against this stored value
+            // during the subsequent `insert_at` step.
+            self.arena.generations.push(Generation::INITIAL);
             Ok((idx, true))
         } else {
             Ok((idx, false))

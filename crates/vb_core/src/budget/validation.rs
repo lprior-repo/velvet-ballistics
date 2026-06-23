@@ -1,12 +1,8 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(kani, allow(dead_code))]
 
-use crate::workflow::WorkflowError;
-
 use super::aggregate_budget::{AggregateBudgetError, AggregateResourceBudget};
-use super::budget_error::BudgetError;
 use super::policy::BoundednessPolicy;
-use super::traversal::BudgetTraversalError;
 
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
@@ -197,24 +193,6 @@ pub(super) fn check_policy(
         })
     } else {
         Ok(())
-    }
-}
-
-impl From<WorkflowError> for BudgetError {
-    fn from(_err: WorkflowError) -> Self {
-        BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        }
-    }
-}
-
-impl From<BudgetTraversalError> for BudgetError {
-    fn from(_err: BudgetTraversalError) -> Self {
-        BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        }
     }
 }
 

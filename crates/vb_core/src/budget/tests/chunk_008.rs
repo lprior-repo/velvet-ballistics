@@ -233,7 +233,7 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
         CompiledNode {
             id: StepIdx::new(4),
             output: Some(SlotIdx::new(6)),
-            next: None,
+            next: Some(StepIdx::new(5)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
@@ -243,7 +243,7 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
         CompiledNode {
             id: StepIdx::new(5),
             output: Some(SlotIdx::new(7)),
-            next: None,
+            next: Some(StepIdx::new(6)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
@@ -253,15 +253,25 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
         CompiledNode {
             id: StepIdx::new(6),
             output: Some(SlotIdx::new(8)),
-            next: None,
+            next: Some(StepIdx::new(7)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(8),
             },
         },
+        CompiledNode {
+            id: StepIdx::new(7),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
     ];
-    let contract = test_contract(7, 9);
+    let contract = test_contract(8, 9);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
 

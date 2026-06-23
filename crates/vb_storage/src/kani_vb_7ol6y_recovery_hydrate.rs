@@ -41,7 +41,7 @@
 
 use crate::constants::MAX_FRAME_EXTRA_BYTES;
 use crate::events::SlotWriteExtra;
-use crate::recovery::event_replay::{
+use crate::recovery::event_replay::taint::{
     SlotTaintReadObservation, SlotTaintResolution, observe_slot_taint_read, resolve_slot_taint_read,
 };
 use crate::recovery::replay::summary::slots::taint::{RecoveredSlotTaint, recovered_slot_taint};
@@ -464,7 +464,7 @@ fn hydrate_run_frame_workflow_invariants() {
 
         let slot: SlotIdx = SlotIdx::new(0);
         let value: SlotValue = SlotValue::Bool(false);
-        let extra = SlotWriteExtra::Legacy(bytes);
+        let extra = SlotWriteExtra::Legacy(bytes.clone());
         let recovered_result = recovered_slot_taint(slot, value, Some(&extra));
 
         match (starts_with, decode_result) {

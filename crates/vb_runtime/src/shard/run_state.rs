@@ -171,7 +171,10 @@ impl RuntimeEvent {
     /// Returns true if this event sets a Resumable state.
     #[must_use]
     pub fn is_resumable(&self) -> bool {
-        matches!(self, Self::AwaitAction | Self::AwaitTimer | Self::Resume)
+        matches!(
+            self,
+            Self::AwaitAction | Self::AwaitTimer | Self::ResumeRollback
+        )
     }
 }
 

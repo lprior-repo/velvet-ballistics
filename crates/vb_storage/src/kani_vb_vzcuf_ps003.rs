@@ -103,6 +103,9 @@ mod kani_errors_ps003 {
             PayloadLenDecision::Accepted(_) => {
                 kani::assert(false, "zero max payload should not encode");
             }
+            PayloadLenDecision::LenOverflow { .. } => {
+                kani::assert(false, "u32-bounded payload must not overflow len");
+            }
         }
     }
 
@@ -116,6 +119,10 @@ mod kani_errors_ps003 {
                 PayloadLenDecision::Accepted(value) => value,
                 PayloadLenDecision::TooLarge { .. } => {
                     kani::assert(false, "valid journal payload should fit max");
+                    0
+                }
+                PayloadLenDecision::LenOverflow { .. } => {
+                    kani::assert(false, "valid journal payload should fit u32");
                     0
                 }
             };

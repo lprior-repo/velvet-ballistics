@@ -674,3 +674,52 @@
         );
         Ok(())
     }
+
+    // RA-014 regression: lock_admission must recover the mutex guard on poison
+    // instead of permanently bricking the shard. Pre-fix, a poisoned
+    // admission_lock caused every subsequent submit to return
+    // `Err(JournalPoisoned)` forever (the mutex never un-poisons itself).
+    // Post-fix, the recovered guard is returned as `Ok`, keeping the submit
+    // path servicable.
+    //
+    // We poison the mutex by panicking while holding the guard (caught via
+    // catch_unwind so the test process keeps running), then assert
+    // lock_admission yields `Ok`. Tests may use panic/catch_unwind; production
+    // code never panics, so this exercises a defense-in-depth recovery path.
+    #[test]
+    fn lock_admission_recovers_guard_after_mutex_poison() -> Result<(), RuntimeError> {
+        let shard = Shard::new(small_config())?;
+
+        // Sanity: before poisoning, lock_admission returns Ok.
+        {
+            let guard = shard.lock_admission();
+            assert!(guard.is_ok(), "pre-poison lock_admission must succeed");
+        }
+
+        // Poison admission_lock by panicking while holding the guard. The guard
+        // is dropped during unwinding, which marks the mutex poisoned.
+        let panic_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = shard.admission_lock.lock().expect("test helper lock");
+            panic!("intentional test poison for admission_lock");
+        }));
+        assert!(
+            panic_result.is_err(),
+            "test helper must have panicked to poison the mutex"
+        );
+
+        // Post-fix: lock_admission must recover and return Ok, NOT
+        // Err(JournalPoisoned). This is the regression assertion.
+        let recovered = shard.lock_admission();
+        assert!(
+            recovered.is_ok(),
+            "lock_admission must recover on poison (RA-014), got {:?}",
+            recovered.as_ref().err()
+        );
+
+        // And the recovered guard is a real, held guard — dropping it must not
+        // panic and must release the lock (a second acquisition succeeds).
+        drop(recovered);
+        let again = shard.lock_admission();
+        assert!(again.is_ok(), "lock_admission must remain usable after recovery");
+        Ok(())
+    }

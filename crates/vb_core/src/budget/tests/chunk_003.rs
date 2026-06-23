@@ -229,7 +229,7 @@ fn budget_nested_loop_multiplies_correctly() {
         CompiledNode {
             id: StepIdx::new(3),
             output: Some(SlotIdx::new(4)),
-            next: None,
+            next: Some(StepIdx::new(4)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
@@ -239,18 +239,28 @@ fn budget_nested_loop_multiplies_correctly() {
         CompiledNode {
             id: StepIdx::new(4),
             output: Some(SlotIdx::new(5)),
-            next: None,
+            next: Some(StepIdx::new(5)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(5),
             },
         },
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
     ];
-    let contract = test_contract(5, 6);
+    let contract = test_contract(6, 6);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
-        .filter(|b| b.max_total_steps == 122 && b.max_nesting_depth == 2);
+        .filter(|b| b.max_total_steps == 123 && b.max_nesting_depth == 2);
 
     assert!(
         budget.is_some(),

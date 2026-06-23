@@ -44,12 +44,18 @@ mod kani_guards_ps008 {
             PayloadLenDecision::Accepted(_) => {
                 kani::assert(false, "zero max must reject non-empty payload");
             }
+            PayloadLenDecision::LenOverflow { .. } => {
+                kani::assert(false, "bounded payload must fit u32");
+            }
         }
 
         match classify_payload_len(payload_len, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
             PayloadLenDecision::Accepted(_) => {}
             PayloadLenDecision::TooLarge { .. } => {
                 kani::assert(false, "adequate max must accept bounded payload");
+            }
+            PayloadLenDecision::LenOverflow { .. } => {
+                kani::assert(false, "adequate max payload must fit u32");
             }
         }
     }

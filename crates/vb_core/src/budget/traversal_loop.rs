@@ -4,9 +4,11 @@
 use crate::ids::StepIdx;
 use crate::workflow::{CompiledNode, CompiledNodeKind};
 
-use super::budget_error::BudgetError;
 use super::traversal::BudgetTraversalError;
 use super::traversal_successors::{find_node_position, node_at_position, push_successor_targets};
+
+const DONE_WITHOUT_CONTINUATION_REASON: &str =
+    "loop done node requires explicit continuation unless it is terminal";
 
 /// Counts body region steps for a loop header and adds multiplied iterations to total.
 #[inline]
@@ -20,21 +22,15 @@ pub(super) fn count_and_push_loop_body(
     node_count: usize,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
-) -> Result<u64, BudgetError> {
+) -> Result<u64, BudgetTraversalError> {
     let body_count = count_body_region_nodes(nodes, body, done, visited, node_count)?;
     let iter_count = iter_count.max(1);
     let product = body_count
         .checked_mul(iter_count)
-        .ok_or(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        })?;
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
     total = total
         .checked_add(product)
-        .ok_or(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        })?;
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
     push_done_continuation(nodes, done, node_count, stack)?;
     Ok(total)
 }
@@ -44,18 +40,20 @@ fn push_done_continuation(
     done: StepIdx,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), BudgetError> {
+) -> Result<(), BudgetTraversalError> {
     let done_idx = find_node_position(nodes, done, node_count)?;
-    if let Some(node) = nodes.get(done_idx)
-        && node.next.is_none()
-        && let Some(next_idx) = done_idx.checked_add(1)
-        && next_idx < nodes.len()
-        && let Some(next_node) = nodes.get(next_idx)
-    {
-        stack.push(next_node.id);
+    let done_node = node_at_position(nodes, done_idx, done)?;
+    if done_node.next.is_none() && !done_kind_allows_missing_continuation(&done_node.kind) {
+        return Err(BudgetTraversalError::InvalidCompiledWorkflow {
+            reason: DONE_WITHOUT_CONTINUATION_REASON,
+        });
     }
     stack.push(done);
     Ok(())
+}
+
+fn done_kind_allows_missing_continuation(kind: &CompiledNodeKind) -> bool {
+    matches!(kind, CompiledNodeKind::Finish { .. })
 }
 
 /// Counts the worst-case total steps in a loop body region: all nodes reachable
@@ -67,7 +65,7 @@ fn count_body_region_nodes(
     done: StepIdx,
     global_visited: &mut [bool],
     node_count: usize,
-) -> Result<u64, BudgetError> {
+) -> Result<u64, BudgetTraversalError> {
     let mut region_visited: Vec<bool> = vec![false; node_count];
     let mut stack: Vec<StepIdx> = Vec::with_capacity(node_count);
     stack.push(body);
@@ -100,7 +98,7 @@ fn visit_body_region_node(
     region_visited: &mut [bool],
     stack: &mut Vec<StepIdx>,
     mut count: u64,
-) -> Result<u64, BudgetError> {
+) -> Result<u64, BudgetTraversalError> {
     if current == done {
         return Ok(count);
     }
@@ -109,16 +107,13 @@ fn visit_body_region_node(
         return Ok(count);
     }
     let Some(flag) = region_visited.get_mut(idx) else {
-        return Err(BudgetTraversalError::StepOutOfBounds { step: current }.into());
+        return Err(BudgetTraversalError::StepOutOfBounds { step: current });
     };
     *flag = true;
 
     count = count
         .checked_add(1)
-        .ok_or(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        })?;
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
 
     let node = node_at_position(nodes, idx, current)?;
 
@@ -218,19 +213,13 @@ fn count_nested_for_region(
     node_count: usize,
     count: u64,
     stack: &mut Vec<StepIdx>,
-) -> Result<u64, BudgetError> {
+) -> Result<u64, BudgetTraversalError> {
     let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
     stack.push(done);
     let product = body_count
         .checked_mul(iter_count)
-        .ok_or(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        })?;
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
     count
         .checked_add(product)
-        .ok_or(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        })
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })
 }

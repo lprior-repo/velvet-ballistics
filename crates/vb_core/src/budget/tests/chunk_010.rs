@@ -274,22 +274,32 @@ fn multiple_for_each_accumulates_iterations() -> Result<(), String> {
         CompiledNode {
             id: StepIdx::new(5),
             output: Some(SlotIdx::new(5)),
-            next: None,
+            next: Some(StepIdx::new(6)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(5),
             },
         },
+        CompiledNode {
+            id: StepIdx::new(6),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
     ];
     let mut nodes = nodes;
     nodes[2].next = Some(StepIdx::new(3));
 
-    let contract = test_contract(6, 6);
+    let contract = test_contract(7, 6);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
     ensure_equal(budget.max_for_each_iterations, 15)?;
-    ensure_equal(budget.max_total_steps, 19)
+    ensure_equal(budget.max_total_steps, 20)
 }
 
 // -------------------------------------------------------------------------

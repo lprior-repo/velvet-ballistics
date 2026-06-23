@@ -132,6 +132,7 @@ mod kani_overflow_ps002 {
                 }
             }
             PayloadLenDecision::TooLarge { .. } => {}
+            PayloadLenDecision::LenOverflow { .. } => {}
         }
     }
 

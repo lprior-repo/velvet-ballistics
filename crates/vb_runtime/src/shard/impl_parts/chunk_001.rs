@@ -128,22 +128,23 @@ impl Shard {
     /// the same shard cannot squeeze in between the preflight and the enqueue,
     /// keeping the budget reservation atomic with the queue commit.
     ///
-    /// Poisoned-lock errors are mapped to `RuntimeError::JournalPoisoned` since
-    /// the lock lives on the shard's per-state structure and poison can only
-    /// happen if a previous holder panicked mid-admission. Production code
-    /// never panics, so this is a defense-in-depth typed error path.
+    /// Poisoned-lock recovery: if a previous holder panicked mid-admission, the
+    /// mutex is flagged poisoned but the guard recovered via `into_inner` is
+    /// still valid and held. Production code never panics, so this is
+    /// defense-in-depth: rather than permanently bricking the shard's admission
+    /// gate by returning `Err` on every subsequent submit, we continue serving
+    /// the (still-serialized) submit path.
     pub(crate) fn lock_admission(
         &self,
     ) -> Result<std::sync::MutexGuard<'_, ()>, crate::RuntimeError> {
         match self.admission_lock.lock() {
             Ok(guard) => Ok(guard),
             Err(poisoned) => {
-                // Recover the guard; the lock is still held. We mark this as
-                // a journal-poisoned runtime error to avoid introducing a new
-                // error variant for a defense-in-depth case the runtime
-                // contract never produces.
-                drop(poisoned.into_inner());
-                Err(crate::RuntimeError::JournalPoisoned)
+                // Recover the guard and proceed. The mutex remains flagged as
+                // poisoned, but the guard is still valid and held. Returning
+                // `Err` here would brick the shard permanently because the
+                // mutex never un-poisons itself.
+                Ok(poisoned.into_inner())
             }
         }
     }

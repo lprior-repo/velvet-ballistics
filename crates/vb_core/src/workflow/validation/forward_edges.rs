@@ -56,8 +56,8 @@ fn validate_kind_edges(
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. }
-        | CompiledNodeKind::Jump { .. } => Ok(()),
+        | CompiledNodeKind::Finish { .. } => Ok(()),
+        CompiledNodeKind::Jump { target } => validate_forward_target(*target, ci, cid),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,

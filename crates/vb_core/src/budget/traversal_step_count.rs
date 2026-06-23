@@ -4,7 +4,6 @@
 use crate::ids::StepIdx;
 use crate::workflow::{CompiledNode, CompiledNodeKind, ExprBranch, SlotBranch};
 
-use super::budget_error::BudgetError;
 use super::traversal::BudgetTraversalError;
 use super::traversal_loop::count_and_push_loop_body;
 use super::traversal_path::count_path_steps;
@@ -81,7 +80,7 @@ fn visit_node_for_total_steps(
 
     total = match total.checked_add(1) {
         Some(v) => v,
-        None => return Err(BudgetTraversalError::StepOutOfBounds { step: current }),
+        None => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
     };
 
     match &node.kind {
@@ -97,14 +96,7 @@ fn visit_node_for_total_steps(
                 node_count,
                 total,
                 stack,
-            )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            )?;
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
@@ -118,28 +110,15 @@ fn visit_node_for_total_steps(
                 node_count,
                 total,
                 stack,
-            )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            )?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
             // Cold-AST invariant (master §45) drops body, so the declared input
             // length is unknown to the budget traversal. Use the conservative
             // default of 1 iteration for the worst-case step count.
-            total =
-                count_and_push_loop_body(nodes, *body, *done, 1, visited, node_count, total, stack)
-                    .map_err(|e| {
-                        let actual = match e {
-                            BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                            _ => u64::MAX,
-                        };
-                        BudgetTraversalError::StepCountOverflow { actual }
-                    })?;
+            total = count_and_push_loop_body(
+                nodes, *body, *done, 1, visited, node_count, total, stack,
+            )?;
         }
         CompiledNodeKind::RepeatStart {
             max_attempts: _,
@@ -151,15 +130,9 @@ fn visit_node_for_total_steps(
             // Use the conservative default of 1 iteration for the
             // worst-case step count. The declared `max_attempts` is still
             // tracked separately in `WholeWorkflowBudget.max_repeat_attempts`.
-            total =
-                count_and_push_loop_body(nodes, *body, *done, 1, visited, node_count, total, stack)
-                    .map_err(|e| {
-                        let actual = match e {
-                            BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                            _ => u64::MAX,
-                        };
-                        BudgetTraversalError::StepCountOverflow { actual }
-                    })?;
+            total = count_and_push_loop_body(
+                nodes, *body, *done, 1, visited, node_count, total, stack,
+            )?;
         }
         CompiledNodeKind::Jump { target } => {
             let from = current.get();

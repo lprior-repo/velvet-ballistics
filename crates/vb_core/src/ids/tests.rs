@@ -570,7 +570,7 @@ fn max_attempts_zero_is_rejected() {
     assert!(
         matches!(
             result,
-            Err(crate::EngineError::InternalInvariantViolation { .. })
+            Err(crate::EngineError::InvalidRepeatState)
         ),
         "max_attempts=0 must be rejected"
     );

@@ -159,8 +159,8 @@ use vb_core::workflow::{
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{
-    InspectResponse, InspectSnapshotFormatter, IntrospectionRegistry, RegisterOverlapOutcome,
-    ShardConfig, UnregisterOutcome,
+    InspectResponse, InspectSnapshot, InspectSnapshotFormatter, IntrospectionRegistry,
+    RegisterOverlapOutcome, ShardConfig, UnregisterOutcome,
 };
 
 // ============================================================================
@@ -577,6 +577,43 @@ fn raii_registry_snapshot_formatting_stays_cold_path() -> Result<(), String> {
     );
 
     Ok(())
+}
+
+// RS-218 regression: the `Found` branch of `format_snapshot` must format the
+// snapshot's own `snap.run` (response-authoritative), not the caller-supplied
+// `run` parameter. A mismatched call (snapshot for run 42 but called with run
+// 999) must print the snapshot's run (42), not the caller's run (999).
+// Pre-fix, the Found branch printed the caller-supplied run, attributing one
+// run's PC to another run id.
+#[test]
+fn raii_registry_format_snapshot_found_branch_uses_snapshot_run_not_caller_run() {
+    // Given: a Found response whose snapshot belongs to run 42.
+    let snapshot = InspectSnapshot {
+        run: RunId::new(42),
+        correlation: 7,
+        pc: StepIdx::ZERO,
+        executed: 123,
+    };
+    let response = InspectResponse::Found(snapshot);
+
+    // When: format_snapshot is called with a DIFFERENT run id (999) than the
+    // snapshot's own run (42). This simulates a mismatched call.
+    let formatted = InspectSnapshotFormatter::format_snapshot(RunId::new(999), &response);
+
+    // Then: the output must contain the snapshot's run (42), NOT the caller's
+    // run (999).
+    assert!(
+        formatted.contains("RunId(42)"),
+        "Found branch must format snap.run (42); got: {formatted}"
+    );
+    assert!(
+        !formatted.contains("999"),
+        "Found branch must NOT print the caller-supplied run (999); got: {formatted}"
+    );
+    assert!(
+        formatted.contains("InspectSnapshot"),
+        "Found branch must label the variant; got: {formatted}"
+    );
 }
 
 // ============================================================================

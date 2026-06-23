@@ -148,12 +148,60 @@ fn parse_capacity(capacity: usize) -> Result<ActionQueueCapacity, ActionQueueErr
 }
 
 fn backpressure_threshold(capacity: ActionQueueCapacity) -> usize {
-    match capacity
-        .get()
-        .checked_mul(8)
-        .and_then(|scaled| scaled.checked_div(10))
-    {
-        Some(threshold) => threshold.max(1),
-        None => capacity.get(),
+    let cap = capacity.get();
+    match cap.checked_mul(8) {
+        Some(scaled) => {
+            // ceil(scaled / 10) = (scaled + 9) / 10, fully checked. The doc
+            // contract is "80 percent capacity"; ceiling reaches the documented
+            // threshold for capacities that are not multiples of 5 (e.g. 9 -> 8
+            // rather than floor -> 7).
+            match scaled
+                .checked_add(9)
+                .and_then(|biased| biased.checked_div(10))
+            {
+                Some(threshold) => threshold.max(1),
+                // Unreachable for any capacity where checked_mul(8) succeeded
+                // (adding 9 cannot overflow usize for a realistic queue), but
+                // fail safe by falling back to the raw capacity.
+                None => cap,
+            }
+        }
+        None => cap,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::backpressure_threshold;
+    use super::types::ActionQueueCapacity;
+
+    fn capacity(value: usize) -> ActionQueueCapacity {
+        // The tuple field is pub(crate), and these tests run in-crate. The
+        // production constructor (`parse_capacity`) rejects 0 and oversized
+        // values; the values used here are all valid.
+        ActionQueueCapacity(value)
+    }
+
+    // RP-019 regression: backpressure_threshold must reach the documented 80%
+    // mark via ceiling division, not floor. The pre-fix floor implementation
+    // produced threshold=7 for capacity=9 (only 77.7%), below the documented
+    // 80% contract.
+    #[test]
+    fn backpressure_threshold_uses_ceiling_to_reach_80_percent() {
+        // capacity 9: ceil(9*8/10) = ceil(7.2) = 8 (was 7 with floor)
+        assert_eq!(backpressure_threshold(capacity(9)), 8);
+        // capacity 2: ceil(2*8/10) = ceil(1.6) = 2 (was 1 with floor)
+        assert_eq!(backpressure_threshold(capacity(2)), 2);
+        // capacity 5: ceil(5*8/10) = ceil(4.0) = 4 (unchanged)
+        assert_eq!(backpressure_threshold(capacity(5)), 4);
+        // capacity 10: ceil(10*8/10) = ceil(8.0) = 8 (unchanged)
+        assert_eq!(backpressure_threshold(capacity(10)), 8);
+    }
+
+    // The minimum threshold of 1 must still hold for capacity=1 (ceil(0.8)=1
+    // anyway, but the .max(1) guard keeps capacity=1 stable).
+    #[test]
+    fn backpressure_threshold_minimum_is_one() {
+        assert_eq!(backpressure_threshold(capacity(1)), 1);
     }
 }

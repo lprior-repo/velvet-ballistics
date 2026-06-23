@@ -54,6 +54,9 @@ fn ps_003_size_bound() {
             CompiledIrSizeDecision::WithinLimit => {
                 kani::assert(false, "oversized payload must be rejected");
             }
+            CompiledIrSizeDecision::PayloadLenOverflow { .. } => {
+                kani::assert(false, "bounded oversized payload must fit u32");
+            }
         }
     }
 }
@@ -75,12 +78,11 @@ fn ps_003_u32_conversion_safe() {
 fn ps_003_usize_max_rejected() {
     let decision = classify_compiled_ir_value_len(usize::MAX);
     match decision {
-        CompiledIrSizeDecision::PayloadTooLarge { len, max } => {
-            kani::assert(len == u32::MAX, "usize::MAX rejection saturates len");
-            kani::assert(
-                max == MAX_COMPILED_IR_BYTES,
-                "usize::MAX rejection uses cap",
-            );
+        CompiledIrSizeDecision::PayloadLenOverflow { len } => {
+            kani::assert(len == u64::MAX, "usize::MAX rejection preserves u64 length");
+        }
+        CompiledIrSizeDecision::PayloadTooLarge { .. } => {
+            kani::assert(false, "usize::MAX must overflow u32 length");
         }
         CompiledIrSizeDecision::WithinLimit => {
             kani::assert(false, "usize::MAX must be rejected");

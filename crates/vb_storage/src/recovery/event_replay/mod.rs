@@ -11,7 +11,7 @@
 
 mod parallel;
 mod tail;
-mod taint;
+pub(crate) mod taint;
 
 pub(crate) use parallel::compute_parallel_in_flight;
 pub(crate) use tail::apply_tail_events;

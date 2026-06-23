@@ -246,6 +246,16 @@ fn runtime_event_await_timer_is_resumable() {
 }
 
 #[test]
+fn runtime_event_resume_does_not_set_resumable_state() {
+    assert!(!RuntimeEvent::Resume.is_resumable());
+}
+
+#[test]
+fn runtime_event_resume_rollback_sets_resumable_state() {
+    assert!(RuntimeEvent::ResumeRollback.is_resumable());
+}
+
+#[test]
 fn runtime_event_fail_is_terminal() {
     assert!(RuntimeEvent::Fail.is_terminal());
 }

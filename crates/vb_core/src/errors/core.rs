@@ -201,6 +201,9 @@ pub enum CoreError {
         /// Maximum attempts.
         max: u16,
     },
+    /// Repeat state supplied by user/configuration is invalid.
+    #[error("invalid repeat state")]
+    InvalidRepeatState,
     /// A collection pagination limit was exceeded.
     #[error("collect page limit exceeded")]
     CollectPageLimitExceeded,
@@ -447,6 +450,8 @@ impl CoreError {
         collect::ITERATION_LIMIT_EXCEEDED_CODE;
     /// Repeat exhausted diagnostic code.
     pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = collect::REPEAT_EXHAUSTED_CODE;
+    /// Invalid repeat state diagnostic code.
+    pub const INVALID_REPEAT_STATE_CODE: DiagnosticCode = collect::INVALID_REPEAT_STATE_CODE;
     /// Collect page limit exceeded diagnostic code.
     pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = collect::COLLECT_PAGE_LIMIT_CODE;
     /// Collect item limit exceeded diagnostic code.
@@ -522,6 +527,9 @@ impl CoreError {
     /// Runtime code for repeat attempt-limit failures.
     pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &'static str =
         collect::REPEAT_LIMIT_REACHED_RUNTIME_CODE;
+    /// Runtime code for invalid repeat-state failures.
+    pub const INVALID_REPEAT_STATE_RUNTIME_CODE: &'static str =
+        collect::INVALID_REPEAT_STATE_RUNTIME_CODE;
     /// Runtime code for collect item/page limit failures.
     pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &'static str =
         collect::COLLECT_LIMIT_REACHED_RUNTIME_CODE;

@@ -212,13 +212,19 @@ impl InspectSnapshotFormatter {
     ///
     /// This is a cold-path operation - called only when formatting output,
     /// not during the hot path of inspect operations.
+    ///
+    /// The external `run` argument is intentionally unused: every
+    /// `InspectResponse` variant carries its own authoritative `run` value,
+    /// and the `Found` branch must format `snap.run` (the snapshot's own run)
+    /// rather than the caller-supplied value, so a mismatched call cannot
+    /// attribute one run's program counter to another run id.
     #[must_use]
-    pub fn format_snapshot(run: RunId, response: &InspectResponse) -> String {
+    pub fn format_snapshot(_run: RunId, response: &InspectResponse) -> String {
         match response {
             InspectResponse::Found(snap) => {
                 format!(
                     "InspectSnapshot {{ run: {:?}, correlation: {}, pc: {:?}, executed: {} }}",
-                    run, snap.correlation, snap.pc, snap.executed
+                    snap.run, snap.correlation, snap.pc, snap.executed
                 )
             }
             InspectResponse::NotFound { run, correlation } => {

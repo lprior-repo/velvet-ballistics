@@ -278,7 +278,7 @@ fn budget_nested_loop_depth() {
         CompiledNode {
             id: StepIdx::new(3),
             output: Some(SlotIdx::new(4)),
-            next: None,
+            next: Some(StepIdx::new(4)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {
@@ -288,7 +288,7 @@ fn budget_nested_loop_depth() {
         CompiledNode {
             id: StepIdx::new(4),
             output: Some(SlotIdx::new(5)),
-            next: None,
+            next: Some(StepIdx::new(5)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ForEachJoin {

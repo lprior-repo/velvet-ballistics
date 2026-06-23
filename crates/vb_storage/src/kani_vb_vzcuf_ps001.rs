@@ -64,6 +64,9 @@ mod kani_admission_ps001 {
             PayloadLenDecision::TooLarge { .. } => {
                 kani::assert(false, "bounded payload must be accepted");
             }
+            PayloadLenDecision::LenOverflow { .. } => {
+                kani::assert(false, "bounded payload must fit u32");
+            }
         }
 
         payload_len

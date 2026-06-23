@@ -169,7 +169,10 @@ impl ActionRegistry {
     /// Returns the number of registered actions.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.slots.len()
+        self.slots
+            .iter()
+            .filter(|slot| matches!(slot, ActionSlot::Registered(_)))
+            .count()
     }
 
     /// Returns true when no actions are registered.
