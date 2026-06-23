@@ -582,6 +582,75 @@ fn rs011_submit_failure_with_run_state_lost_discards_journal_sequence() -> Resul
     let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(820);
 
+    // ── RS-011 pre-seed: exercise the buffered-events discard path ───────
+    //
+    // The black-hat reviewer caught that `small_config()` sets
+    // `coalesce_window_ticks = 1`, so every evidence event during drive_run
+    // is written synchronously via `append_sequenced` — the coalesce buffer
+    // is empty when drive_run fails. Under that regime
+    // `discard_buffered_events_for_run(run)` is a no-op and the original
+    // assertion `coalesce_buffer has no events for run` passes trivially,
+    // regardless of whether the fix is present. The pre-fix code is then
+    // indistinguishable from the post-fix code under this test, defeating
+    // its purpose as a regression gate.
+    //
+    // To make the test actually exercise the fix path we pre-seed
+    // `coalesce_buffer` with events that represent "events buffered during
+    // earlier ticks that are now orphaned by drive_run failure". This is
+    // the exact scenario the fix targets: the run state was lost during the
+    // drive, the per-run sequence is about to be discarded, and the buffer
+    // holds ghost events that would otherwise persist on the next coalesce
+    // flush. With the fix in place `discard_buffered_events_for_run(run)`
+    // runs before the error propagates and drains these events; with the
+    // fix reverted the events survive and the strengthened assertion
+    // below catches the regression.
+    //
+    // The pre-seed runs BEFORE the Submit enqueue so the events are
+    // present at the start of the failed `tick()`. They are written
+    // directly into the `pub(crate) coalesce_buffer` rather than via
+    // `append_journal_event` because the natural "buffered events for an
+    // orphaned run" state is internal to drive_run's failure path and
+    // cannot be reproduced through the public API alone.
+    let step_zero = vb_core::ids::StepIdx::ZERO;
+    let step_one = vb_core::ids::StepIdx::new(1);
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepStarted {
+            run,
+            step: step_zero,
+        },
+        vb_storage::EventSeq::ZERO,
+    ));
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: step_zero,
+            output: SlotIdx::ZERO,
+            attempt: 1,
+        },
+        vb_storage::EventSeq::new(1),
+    ));
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepStarted {
+            run,
+            step: step_one,
+        },
+        vb_storage::EventSeq::new(2),
+    ));
+
+    // Sanity: the pre-seeded events are in place before tick() runs.
+    assert_eq!(
+        shard.coalesce_buffer.len(),
+        3,
+        "RS-011 pre-seed must inject exactly 3 buffered events for run {run:?}"
+    );
+    assert!(
+        shard
+            .coalesce_buffer
+            .iter()
+            .all(|(event, _)| event.run_id() == run),
+        "RS-011 pre-seed must inject events that all belong to the target run"
+    );
+
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -593,7 +662,9 @@ fn rs011_submit_failure_with_run_state_lost_discards_journal_sequence() -> Resul
 
     // drive_run drives the workflow (SetConst + Finish), emits 5 evidence
     // events written synchronously (window=1), then attempts the
-    // terminal RunFinished event which the journal rejects.
+    // terminal RunFinished event which the journal rejects. The
+    // pre-seeded buffered events above must be drained by the fix path
+    // before the error propagates.
     let tick_result = shard.tick();
     let error = match tick_result {
         Err(error) => error,
@@ -637,16 +708,27 @@ fn rs011_submit_failure_with_run_state_lost_discards_journal_sequence() -> Resul
     );
 
     // RS-011 invariant 5: coalesce_buffer must contain no events for
-    // the failed run. window=1 means evidence events were written
-    // synchronously so the buffer is empty, but the discard path must
-    // still execute cleanly (no panic, no leftover entries) so the
-    // property is observable for any future buffered-mode failure.
-    assert!(
-        shard
-            .coalesce_buffer
-            .iter()
-            .all(|(event, _)| event.run_id() != run),
-        "RS-011: coalesce_buffer must hold no events for the failed run"
+    // the failed run. We PRE-SEEDED three events for `run` above so this
+    // assertion is only satisfied when `discard_buffered_events_for_run`
+    // actually drains them from the fix path. With `small_config()`'s
+    // `coalesce_window_ticks = 1`, drive_run's own evidence events are
+    // written synchronously, so the only way for ghost events to land in
+    // the buffer is via the pre-seed — which simulates the buffered-mode
+    // failure the fix targets. If `self.discard_buffered_events_for_run(run)`
+    // were removed from `chunk_001_submit.rs`, the pre-seeded events would
+    // survive the failed tick and persist as ghost events on the next
+    // coalesce flush.
+    let buffered_for_failed_run = shard
+        .coalesce_buffer
+        .iter()
+        .filter(|(event, _)| event.run_id() == run)
+        .count();
+    assert_eq!(
+        buffered_for_failed_run, 0,
+        "RS-011: coalesce_buffer must hold no events for the failed run after \
+         drive_run failure; pre-seeded events would be drained by the fix path. \
+         Found {buffered_for_failed_run} entries still buffered for run {run:?} \
+         (would persist as ghost events on the next coalesce flush)"
     );
 
     // Pre-fix the journal would have recorded RunSubmitted, RunAdmission,

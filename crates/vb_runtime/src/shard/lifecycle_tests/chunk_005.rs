@@ -840,3 +840,357 @@ fn rs104_ask_answered_journal_failure_preserves_frame_and_timer() -> Result<(), 
     );
     Ok(())
 }
+
+// =======================================================================
+// RS-006: finish_run / fail_run_state terminal-journal ordering
+// =======================================================================
+//
+// RS-006 / bug-hunt-2026-06-21/findings/runtime-shard/RS-006-kill-finish-fail-journal-order.md
+// found that `finish_run` and `fail_run_state` mutated in-memory state
+// (`terminal_runs`, `terminal_outcomes`, `counters`, `trace_ring`) BEFORE
+// appending the durable `RunFinished` / `RunFailed` journal event. If the
+// journal append failed, the shard's in-memory state diverged from the
+// durable journal: the run was recorded as terminal in memory but the
+// journal had no record of the terminal transition. On crash-recovery the
+// run appeared to still be in its last pre-terminal state.
+//
+// The fix reorders both `finish_run` (terminal.rs:42) and `fail_run_state`
+// (terminal.rs:83) to append the terminal journal event FIRST and only
+// mutate in-memory state if the append succeeded. This regression test
+// verifies the fix by driving a workflow to completion via each terminal
+// transition with a journal stub that rejects the terminal event, then
+// asserts the in-memory state was NOT mutated.
+//
+// Test plan:
+//   1. `rs006_finish_run_journal_failure_preserves_terminal_state` — drives
+//      a `finished_workflow` to completion; the terminal `RunFinished`
+//      append is rejected; the in-memory `terminal_runs`, `terminal_outcomes`,
+//      `counters.runs_completed`, and `trace_ring` must all remain
+//      UNCHANGED.
+//   2. `rs006_fail_run_state_journal_failure_preserves_terminal_state` —
+//      drives a `suspended_workflow` to a non-retryable failure; the
+//      terminal `RunFailed` append is rejected; the in-memory
+//      `terminal_runs`, `terminal_outcomes`, `counters.runs_failed`, and
+//      `trace_ring` must all remain UNCHANGED.
+//
+// Both tests pass with the fix and FAIL if the fix is reverted (state
+// mutation before journal append).
+
+/// Selects which terminal event the [`RejectTerminalJournal`] rejects.
+#[derive(Clone, Copy)]
+enum RejectTerminalKind {
+    /// Reject `RuntimeJournalEvent::RunFinished { .. }` (drives
+    /// `finish_run`'s terminal append).
+    RunFinished,
+    /// Reject `RuntimeJournalEvent::RunFailed { .. }` (drives
+    /// `fail_run_state`'s terminal append).
+    RunFailed,
+}
+
+/// Journal stub that accepts every event except a configured terminal
+/// event (`RunFinished` or `RunFailed`), which it rejects with
+/// `JournalError::QueueFull`. Mirrors the `RejectRunFinishedJournal` stub
+/// in `tests/chunk_013.rs:541-567` but is parameterized so the same
+/// fixture can drive either `finish_run` or `fail_run_state`. The
+/// evidence events written before the terminal transition are accepted
+/// and recorded; only the terminal event itself triggers the rejection.
+struct RejectTerminalJournal {
+    kind: RejectTerminalKind,
+    events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,
+}
+
+impl RejectTerminalJournal {
+    fn shared(kind: RejectTerminalKind) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            kind,
+            events: std::sync::Mutex::new(Vec::new()),
+        })
+    }
+
+    fn snapshot(&self) -> Result<Vec<RuntimeJournalEvent>, RuntimeError> {
+        self.events
+            .lock()
+            .map(|events| events.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
+}
+
+impl crate::journal::RuntimeJournal for RejectTerminalJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> Result<(), RuntimeError> {
+        let reject = match self.kind {
+            RejectTerminalKind::RunFinished => {
+                matches!(event, RuntimeJournalEvent::RunFinished { .. })
+            }
+            RejectTerminalKind::RunFailed => {
+                matches!(event, RuntimeJournalEvent::RunFailed { .. })
+            }
+        };
+        if reject {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
+        Ok(())
+    }
+
+    fn probe(&self) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+}
+
+#[test]
+fn rs006_finish_run_journal_failure_preserves_terminal_state() -> Result<(), String> {
+    // RS-006 regression: when the durable `RunFinished` append fails,
+    // `finish_run` must NOT mutate `terminal_runs`, `terminal_outcomes`,
+    // `counters`, or `trace_ring`. The pre-fix code mutated state FIRST,
+    // then tried to journal, so a journal failure left the in-memory state
+    // recording a run as completed while the durable journal had no
+    // `RunFinished` event — divergence on crash-recovery.
+    let journal = RejectTerminalJournal::shared(RejectTerminalKind::RunFinished);
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        shared,
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    )
+    .map_err(|e| format!("shard construction: {:?}", e))?;
+    let wf = require_workflow("finished", finished_workflow())?;
+    let run = RunId::new(900);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+
+    // drive_run drives the workflow (SetConst + Finish), emits 5 evidence
+    // events written synchronously (window=1), then attempts the terminal
+    // `RunFinished` event which the journal rejects. The failure must
+    // surface as a typed storage journal error, not a panic.
+    let tick_result = shard.tick();
+    let error = match tick_result {
+        Err(error) => error,
+        Ok(_) => {
+            return Err("drive_run must fail when journal rejects RunFinished".to_string());
+        }
+    };
+    match &error {
+        RuntimeError::StorageJournalAppend { source } => {
+            assert!(
+                matches!(source.as_ref(), vb_storage::JournalError::QueueFull),
+                "expected QueueFull source, got {source:?}"
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected StorageJournalAppend error from drive_run failure, got {other:?}"
+            ));
+        }
+    }
+
+    // RS-006 invariant 1: `terminal_runs` must NOT contain the run.
+    // Pre-fix: `terminal_runs_insert` ran BEFORE the journal append, so the
+    // run was already in `terminal_runs` when the append failed.
+    assert!(
+        !shard.terminal_runs_contains(run),
+        "RS-006: terminal_runs must NOT contain run when journal rejects RunFinished; \
+         pre-fix bug would have inserted into terminal_runs BEFORE attempting journal append"
+    );
+
+    // RS-006 invariant 2: `terminal_outcomes` must NOT record the run.
+    // Pre-fix: `terminal_outcome_record(Completed)` ran BEFORE the journal
+    // append, so the outcome was already set when the append failed.
+    assert_eq!(
+        shard.terminal_outcome_get(run),
+        None,
+        "RS-006: terminal_outcome_get(run) must be None when journal rejects RunFinished; \
+         pre-fix bug would have recorded Completed before attempting journal append"
+    );
+
+    // RS-006 invariant 3: `runs_completed` counter must NOT be incremented.
+    // Pre-fix: `counters.inc_completed()` ran BEFORE the journal append.
+    assert_eq!(
+        shard.counters().snapshot().runs_completed,
+        0,
+        "RS-006: runs_completed must be 0 when journal rejects RunFinished; \
+         pre-fix bug would have incremented the counter before attempting journal append"
+    );
+
+    // RS-006 invariant 4: `trace_ring` must NOT contain `RunFinished` for this run.
+    // Pre-fix: `trace_ring.push(TraceEvent::RunFinished { run })` ran BEFORE
+    // the journal append, so the trace event was already present when the
+    // append failed.
+    let trace_events = shard
+        .trace_ring()
+        .snapshot_for_run(run, shard.trace_ring().capacity());
+    let run_finished_in_trace = trace_events
+        .iter()
+        .any(|e| matches!(e, TraceEvent::RunFinished { run: r } if *r == run));
+    assert!(
+        !run_finished_in_trace,
+        "RS-006: trace_ring must NOT contain RunFinished for run when journal append fails; \
+         pre-fix bug would have pushed the trace event before attempting journal append; \
+         got {trace_events:?}"
+    );
+
+    // RS-006 invariant 5: the durable journal must NOT contain `RunFinished`
+    // (it was rejected) but MUST contain the preceding evidence events
+    // (`RunSubmitted`, `RunAdmission`, the per-step events). This proves the
+    // failure happened at the `RunFinished` append and the state mutation
+    // guard above it never executed.
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot: {e:?}"))?;
+    assert!(
+        events
+            .iter()
+            .all(|e| !matches!(e, RuntimeJournalEvent::RunFinished { .. })),
+        "RS-006: RunFinished must NOT be in the durable journal when its append was rejected; \
+         got {events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { .. })),
+        "RS-006: RunSubmitted must have been durably appended before the failing RunFinished; \
+         got {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn rs006_fail_run_state_journal_failure_preserves_terminal_state() -> Result<(), String> {
+    // RS-006 regression: when the durable `RunFailed` append fails,
+    // `fail_run_state` must NOT mutate `terminal_runs`, `terminal_outcomes`,
+    // `counters`, or `trace_ring`. The pre-fix code mutated state FIRST,
+    // then tried to journal, so a journal failure left the in-memory state
+    // recording a run as failed while the durable journal had no
+    // `RunFailed` event — divergence on crash-recovery.
+    let journal = RejectTerminalJournal::shared(RejectTerminalKind::RunFailed);
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        shared,
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    )
+    .map_err(|e| format!("shard construction: {:?}", e))?;
+    let wf = require_workflow("suspended", suspended_workflow())?;
+    let run = RunId::new(901);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    // First tick drives the submit (writes RunSubmitted, RunAdmission, then
+    // schedules the action and suspends the run).
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Drive the suspended run to a non-retryable failure. With a
+    // non-retryable failure and no error handler, `handle_action_failure`
+    // emits `ActionFailed` (durable, succeeds), then `drive_run` sees the
+    // failure, the engine returns `Err`, and `apply_drive_result` →
+    // `apply_terminal_failed` → `apply` + `fail_run_state` → attempts to
+    // append `RunFailed` (durable, rejected by the stub).
+    let ticket = make_ticket(run, StepIdx::ZERO, 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    let tick_result = shard.tick();
+    let error = match tick_result {
+        Err(error) => error,
+        Ok(_) => {
+            return Err("drive_run must fail when journal rejects RunFailed".to_string());
+        }
+    };
+    match &error {
+        RuntimeError::StorageJournalAppend { source } => {
+            assert!(
+                matches!(source.as_ref(), vb_storage::JournalError::QueueFull),
+                "expected QueueFull source, got {source:?}"
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected StorageJournalAppend error from drive_run failure, got {other:?}"
+            ));
+        }
+    }
+
+    // RS-006 invariant 1: `terminal_runs` must NOT contain the run.
+    // Pre-fix: `terminal_runs_insert` ran BEFORE the journal append, so the
+    // run was already in `terminal_runs` when the append failed.
+    assert!(
+        !shard.terminal_runs_contains(run),
+        "RS-006: terminal_runs must NOT contain run when journal rejects RunFailed; \
+         pre-fix bug would have inserted into terminal_runs BEFORE attempting journal append"
+    );
+
+    // RS-006 invariant 2: `terminal_outcomes` must NOT record the run as failed.
+    // Pre-fix: `terminal_outcome_record(Failed)` ran BEFORE the journal append.
+    assert_eq!(
+        shard.terminal_outcome_get(run),
+        None,
+        "RS-006: terminal_outcome_get(run) must be None when journal rejects RunFailed; \
+         pre-fix bug would have recorded Failed before attempting journal append"
+    );
+
+    // RS-006 invariant 3: `runs_failed` counter must NOT be incremented.
+    // Pre-fix: `counters.inc_failed()` ran BEFORE the journal append.
+    assert_eq!(
+        shard.counters().snapshot().runs_failed,
+        0,
+        "RS-006: runs_failed must be 0 when journal rejects RunFailed; \
+         pre-fix bug would have incremented the counter before attempting journal append"
+    );
+
+    // RS-006 invariant 4: `trace_ring` must NOT contain `RunFailed` for this run.
+    // Pre-fix: `trace_ring.push(TraceEvent::RunFailed { run })` ran BEFORE
+    // the journal append.
+    let trace_events = shard
+        .trace_ring()
+        .snapshot_for_run(run, shard.trace_ring().capacity());
+    let run_failed_in_trace = trace_events
+        .iter()
+        .any(|e| matches!(e, TraceEvent::RunFailed { run: r } if *r == run));
+    assert!(
+        !run_failed_in_trace,
+        "RS-006: trace_ring must NOT contain RunFailed for run when journal append fails; \
+         pre-fix bug would have pushed the trace event before attempting journal append; \
+         got {trace_events:?}"
+    );
+
+    // RS-006 invariant 5: the durable journal must NOT contain `RunFailed`
+    // (it was rejected) but MUST contain the preceding evidence events
+    // (`RunSubmitted`, `RunAdmission`, `ActionFailed`, etc.). This proves the
+    // failure happened at the `RunFailed` append and the state mutation
+    // guard above it never executed.
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot: {e:?}"))?;
+    assert!(
+        events
+            .iter()
+            .all(|e| !matches!(e, RuntimeJournalEvent::RunFailed { .. })),
+        "RS-006: RunFailed must NOT be in the durable journal when its append was rejected; \
+         got {events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::ActionFailed { .. })),
+        "RS-006: ActionFailed must have been durably appended before the failing RunFailed; \
+         got {events:?}"
+    );
+    Ok(())
+}
