@@ -37,7 +37,7 @@ fuzz/target/
 *.socket
 states/
 run/
-runtime/
+
 tmp/
 
 # Local databases
