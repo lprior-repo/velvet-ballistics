@@ -14,9 +14,10 @@ use vb_core::{RunId, SlotIdx, SlotValue, Taint};
 
 /// Decodes snapshot slot/taint bytes into recovered slot entries.
 ///
-/// Expects postcard-encoded `Vec<(SlotIdx, SlotValue, Taint)>` in both
-/// the `slots` and `taint` fields. Explicit taint from the taint vector
-/// overrides the default taint carried by the slots vector.
+/// Expects postcard-encoded `Vec<(SlotIdx, SlotValue)>` in the `slots` field
+/// and `Vec<(SlotIdx, Taint)>` in the `taint` field. Explicit taint from the
+/// taint vector overrides the default `Taint::Clean` carried by the slots
+/// vector (which is a value-only projection, with no taint field at all).
 pub(super) fn decode_snapshot_slots(
     slots_bytes: &[u8],
     taint_bytes: &[u8],
@@ -26,31 +27,34 @@ pub(super) fn decode_snapshot_slots(
         return Ok(Vec::new());
     }
 
-    let slots: Vec<(SlotIdx, SlotValue, Taint)> =
+    let slots: Vec<(SlotIdx, SlotValue)> =
         postcard::from_bytes(slots_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
             run,
             seq: EventSeq::new(0),
         })?;
 
-    let taint: Vec<(SlotIdx, SlotValue, Taint)> =
+    let taint: Vec<(SlotIdx, Taint)> =
         postcard::from_bytes(taint_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
             run,
             seq: EventSeq::new(0),
         })?;
 
-    // Merge slots and taint, preferring explicit taint from the taint vector
+    // Merge slots and taint, preferring explicit taint from the taint vector.
+    // SR-019: slots and taint are now distinct projections, so a divergent
+    // taint entry actually carries a payload that diverges from the default
+    // `Taint::Clean` we synthesize for slots-only entries.
     let mut entries = Vec::with_capacity(slots.len());
-    for (slot, value, default_taint) in slots {
+    for (slot, value) in slots {
         let explicit_taint = taint
             .iter()
-            .find_map(|(t_slot, _, t_taint)| {
+            .find_map(|(t_slot, t_taint)| {
                 if *t_slot == slot {
                     Some(*t_taint)
                 } else {
                     None
                 }
             })
-            .unwrap_or(default_taint);
+            .unwrap_or(Taint::Clean);
         entries.push(RecoveredSlotEntry {
             slot,
             value,

@@ -90,6 +90,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
         &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
         CapabilityDenied { .. } => "CAPABILITY_DENIED",
+        InvalidRepeatState => "INVALID_REPEAT",
         CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
         CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
         CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",

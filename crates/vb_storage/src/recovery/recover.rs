@@ -6,7 +6,6 @@ use crate::recovery::digest::{
 };
 use crate::recovery::{
     DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult,
-    RecoveryTerminalState,
 };
 use crate::{FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
@@ -238,32 +237,17 @@ pub fn recover_runtime_summary_with_expected(
     let hydration = crate::recovery::replay::summary::summarize_recovery_events(&events)?;
 
     if hydration.summary().terminal != Some(expected) {
-        // SR-016 contract: when expected and found share the same variant
-        // class (e.g. both `Finished { .. }`) the diagnostic label must
-        // preserve the payload (the result slot) so an operator can see
-        // which slots differed. When they belong to different variant
-        // classes (e.g. `Finished` vs `Cancelled`) the structural
-        // comparison has already decided the mismatch; the label only
-        // needs to name the kind of terminal event, which is exactly what
-        // `as_str` documents itself as the canonical form for.
-        let (expected_label, found_label) = match (expected, &hydration.summary().terminal) {
-            (
-                RecoveryTerminalState::Finished { .. },
-                Some(RecoveryTerminalState::Finished { .. }),
-            ) => {
-                let found = match hydration.summary().terminal {
-                    Some(terminal) => terminal.diagnostic_label(),
-                    None => "None".to_string(),
-                };
-                (expected.diagnostic_label(), found)
-            }
-            _ => {
-                let found = match hydration.summary().terminal {
-                    Some(terminal) => terminal.as_str().to_string(),
-                    None => "None".to_string(),
-                };
-                (expected.as_str().to_string(), found)
-            }
+        // SR-016: the structural `PartialEq` comparison above is authoritative.
+        // The label below is purely diagnostic and must use the
+        // payload-preserving `diagnostic_label` form for every variant so an
+        // operator can see exactly which slot/result fields diverged. The
+        // non-`Finished` variants render the same string under `as_str` and
+        // `diagnostic_label`, so the single call covers every mismatch shape
+        // without needing a per-variant match.
+        let expected_label = expected.diagnostic_label();
+        let found_label = match hydration.summary().terminal {
+            Some(terminal) => terminal.diagnostic_label(),
+            None => "None".to_string(),
         };
         return Err(RecoveryError::TerminalStateMismatch {
             expected: expected_label,

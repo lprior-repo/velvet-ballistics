@@ -13,7 +13,11 @@ pub(super) fn compute_small_linear_budget(
     entry: StepIdx,
     contract: &ResourceContract,
 ) -> Result<Option<WholeWorkflowBudget>, BudgetTraversalError> {
-    if nodes.len() > 2 || !small_linear_domain(nodes) {
+    // CB-016: `small_linear_domain` already handles the `len() > 2` case
+    // through its `_ => false` arm. The duplicate `nodes.len() > 2` guard was
+    // dead defensive code that forced a second site to be kept in sync if
+    // the small-linear limit ever changed.
+    if !small_linear_domain(nodes) {
         return Ok(None);
     }
     let metrics = small_linear_metrics(nodes, entry)?;

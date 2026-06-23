@@ -31,7 +31,7 @@ pub fn decode_record_header(
     let header = header
         .get(..RECORD_HEADER_BYTES)
         .ok_or(JournalError::UnexpectedEof)?;
-    let decoded = decode_record_header_unchecked_len(header)?;
+    let decoded = decode_record_header_fields(header)?;
     if decoded.magic != expected_magic {
         return Err(JournalError::BadMagic {
             found: decoded.magic,
@@ -77,9 +77,17 @@ pub(crate) fn build_record_header(
     Ok(header)
 }
 
-pub(crate) fn decode_record_header_unchecked_len(
-    header: &[u8],
-) -> Result<RecordHeader, JournalError> {
+/// Decodes the raw fields of a record header from any slice long enough for
+/// each individual `read_*` call.
+///
+/// SC-010: the previous name `decode_record_header_unchecked_len` suggested
+/// unchecked length handling, but every `read_u16`/`read_u32`/`read_u64`/
+/// `digest_from_header` call below does full bounds checking via
+/// `bytes.get(..end).ok_or(JournalError::UnexpectedEof)?`. The renamed
+/// function is total over all `&[u8]` slices, and its call site
+/// (the outer `decode_record_header`) already pre-slices the input to
+/// `RECORD_HEADER_BYTES` for additional safety.
+pub(crate) fn decode_record_header_fields(header: &[u8]) -> Result<RecordHeader, JournalError> {
     Ok(RecordHeader {
         magic: read_u32(header, 0)?,
         schema_version: read_u16(header, 4)?,

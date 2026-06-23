@@ -3429,9 +3429,20 @@ mod hydrate_run_frame_tests {
         seq: EventSeq,
         slot_entries: &[(SlotIdx, SlotValue, Taint)],
     ) -> RunSnapshot {
-        let slots: Vec<(SlotIdx, SlotValue, Taint)> = slot_entries.to_vec();
+        // SR-019: project slots and taint into separate encodings, mirroring
+        // the production `write_recovered_snapshot` shape. Each vector now
+        // carries distinct information, so the decoder's per-slot taint
+        // lookup actually finds a payload that diverges from `Taint::Clean`.
+        let slots: Vec<(SlotIdx, SlotValue)> = slot_entries
+            .iter()
+            .map(|(slot, value, _)| (*slot, *value))
+            .collect();
+        let taint: Vec<(SlotIdx, Taint)> = slot_entries
+            .iter()
+            .map(|(slot, _, t)| (*slot, *t))
+            .collect();
         let slots_bytes = postcard::to_allocvec(&slots).expect("postcard encode slots");
-        let taint_bytes = postcard::to_allocvec(&slots).expect("postcard encode taint");
+        let taint_bytes = postcard::to_allocvec(&taint).expect("postcard encode taint");
         RunSnapshot {
             run,
             seq,
