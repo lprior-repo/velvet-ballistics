@@ -277,7 +277,7 @@ fn cmd_proof_run(
     };
 
     let (exit_code, summary) = proof_orchestrator::run_proof(workspace_root, &config)?;
-    let output = summary::format_summary(&summary, cfg.json);
+    let output = summary::format_summary(&summary, cfg.json)?;
     write_stdout(format_args!("{output}"))?;
 
     if exit_code != 0 {
@@ -322,7 +322,7 @@ fn cmd_proof_crate(
 
     let (exit_code, summary) =
         proof_orchestrator::run_proof_for_crate(workspace_root, crate_name, &lanes, &config)?;
-    let output = summary::format_summary(&summary, cfg.json);
+    let output = summary::format_summary(&summary, cfg.json)?;
     write_stdout(format_args!("{output}"))?;
 
     if exit_code != 0 {
@@ -382,7 +382,7 @@ fn cmd_proof_affected(
     };
 
     let (exit_code, summary) = proof_orchestrator::run_proof(workspace_root, &config)?;
-    let output = summary::format_summary(&summary, cfg.json);
+    let output = summary::format_summary(&summary, cfg.json)?;
     write_stdout(format_args!("{output}"))?;
 
     if exit_code != 0 {

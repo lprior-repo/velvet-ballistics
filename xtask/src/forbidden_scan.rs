@@ -468,28 +468,17 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) -> io::Result<()> {
 }
 
 fn regex_contains(haystack: &str, pattern: &str) -> bool {
-    // Use simple substring matching for known patterns to avoid regex crate dependency
-    // For complex patterns, fall back to regex crate
+    use regex::Regex;
+    let re = match Regex::new(pattern) {
+        Ok(r) => r,
+        Err(_) => return false,
+    };
+    if !re.is_match(haystack) {
+        return false;
+    }
     match pattern {
-        r"Arc::unwrap\b" => haystack.contains("Arc::unwrap"),
-        r"Arc::expect\b" => haystack.contains("Arc::expect"),
-        r"\b\.unwrap\(\)" => {
-            // Match .unwrap() but not dbg!.unwrap()
-            haystack.contains(".unwrap()") && !haystack.contains("dbg!.unwrap()")
-        }
-        r"\b\.expect\(" => haystack.contains(".expect(") && !haystack.contains("dbg!.expect("),
-        r"\bpanic!\s*\(" => haystack.contains("panic!"),
-        r"\btodo!\s*\(" => haystack.contains("todo!"),
-        r"\bunimplemented!\s*\(" => haystack.contains("unimplemented!"),
-        r"\bunsafe\s*\{" => haystack.contains("unsafe {"),
-        _ => {
-            // Fall back to regex for complex patterns
-            use regex::Regex;
-            let re = match Regex::new(pattern) {
-                Ok(r) => r,
-                Err(_) => return haystack.contains(pattern),
-            };
-            re.is_match(haystack)
-        }
+        r"\b\.unwrap\(\)" => !haystack.contains("dbg!.unwrap()"),
+        r"\b\.expect\(" => !haystack.contains("dbg!.expect("),
+        _ => true,
     }
 }

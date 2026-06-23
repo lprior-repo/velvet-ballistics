@@ -118,5 +118,4 @@ debug-assertions = true
 debug = "line-tables-only"
 lto = "thin"
 overflow-checks = true
-panic = "abort"
 strip = "symbols"

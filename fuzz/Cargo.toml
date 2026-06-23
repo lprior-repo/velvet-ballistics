@@ -373,16 +373,6 @@ test = false
 doc = false
 bench = false
 
-# [[bin]]
-# allow-removed-crate: legacy commented entry retained for history; the active
-# `vb_ui_model_postcard_decode` bin is declared below as a stub that uses
-# in-scope crates (postcard + vb_core) until the UI model crate returns.
-# name = "vb_ui_model_postcard_decode"
-# path = "src/bin/vb_ui_model_postcard_decode.rs"
-# test = false
-# doc = false
-# bench = false
-
 [[bin]]
 name = "vb_ui_model_postcard_decode"
 path = "src/bin/vb_ui_model_postcard_decode.rs"
@@ -433,13 +423,6 @@ path = "fuzz_targets/lex_expr.rs"
 test = false
 doc = false
 bench = false
-
-# [[bin]]
-# name = "ui_redaction_artifact"
-# path = "fuzz_targets/ui_redaction_artifact.rs"
-# test = false
-# doc = false
-# bench = false
 
 # vb_5xs4_* targets DELETED (vb-fuz02, 2026-06-09): referenced
 # vb_boundary_inventory::quality::test_loop_inventory which does not
