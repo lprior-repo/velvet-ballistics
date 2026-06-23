@@ -126,10 +126,10 @@ pub fn preview_keyspace(
 ) -> Result<DecodedPreview, JournalError> {
     let total_entries =
         u64::try_from(entries.len()).map_err(|_| JournalError::PayloadLenOverflow {
-            len: match u64::try_from(entries.len()) {
-                Ok(value) => value,
-                Err(_) => u64::MAX,
-            },
+            // `entries.len()` cannot fit in u64 (32-bit target); use the
+            // u64::MAX sentinel to surface the overflow rather than fabricate
+            // a smaller value.
+            len: u64::MAX,
         })?;
     let mut result: Vec<(StorageKey, Vec<u8>, PreviewPayload)> =
         Vec::with_capacity(config.max_records().get());

@@ -299,21 +299,16 @@ mod hydrate_tests {
     }
 
     #[test]
-    fn validate_tail_first_seq_contiguous_rejects_gap() {
+    fn validate_tail_first_seq_contiguous_accepts_gap() {
+        // qi37 contract: a gap between snapshot and tail is permitted when
+        // the journal skipped events that landed inside the snapshot itself.
         let result = validate_tail_first_seq_contiguous_with_snapshot(
             &[event_at(RunId::new(21), EventSeq::new(9))],
             EventSeq::new(5),
         );
         assert!(
-            matches!(
-                result,
-                Err(SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
-                    snapshot_seq,
-                    actual_seq,
-                }) if snapshot_seq == EventSeq::new(5) && actual_seq == EventSeq::new(9)
-            ),
-            "seq 9 must be rejected as gap after snapshot seq 5, got {:?}",
-            result
+            matches!(result, Ok(())),
+            "seq 9 must validate as Ok(()) when strictly after snapshot seq 5 (gap allowed), got {result:?}"
         );
     }
 
@@ -334,7 +329,8 @@ mod hydrate_tests {
     }
 
     #[test]
-    fn validate_tail_events_after_snapshot_rejects_non_contiguous_first() {
+    fn validate_tail_events_after_snapshot_accepts_non_contiguous_first() {
+        // qi37 contract: a gap between snapshot and tail is permitted.
         let run = RunId::new(23);
         let snapshot = RunSnapshot {
             run,
@@ -347,17 +343,10 @@ mod hydrate_tests {
             event_at(run, EventSeq::new(7)),
             event_at(run, EventSeq::new(8)),
         ];
-        let Err(err) = validate_tail_events_after_snapshot(&tail, &snapshot) else {
-            panic!("expected validation error");
-        };
+        let result = validate_tail_events_after_snapshot(&tail, &snapshot);
         assert!(
-            matches!(
-                err,
-                RecoveryError::ReplayDivergence { ref detail, .. }
-                    if detail.contains("not contiguous with snapshot seq 3")
-            ),
-            "expected non-contiguous rejection, got {:?}",
-            err
+            matches!(result, Ok(())),
+            "tail events strictly after snapshot seq must validate as Ok(()), got {result:?}"
         );
     }
 
@@ -389,7 +378,8 @@ mod hydrate_tests {
     }
 
     #[test]
-    fn validate_snapshot_recovery_inputs_rejects_non_contiguous_tail() {
+    fn validate_snapshot_recovery_inputs_accepts_non_contiguous_tail() {
+        // qi37 contract: a gap between snapshot and tail is permitted.
         let run = RunId::new(25);
         let snapshot = RunSnapshot {
             run,
@@ -399,13 +389,10 @@ mod hydrate_tests {
             taint: Vec::new(),
         };
         let tail = vec![event_at(run, EventSeq::new(7))];
-        let Err(err) = validate_snapshot_recovery_inputs(&snapshot, &tail, run) else {
-            panic!("expected validation error");
-        };
+        let result = validate_snapshot_recovery_inputs(&snapshot, &tail, run);
         assert!(
-            matches!(err, RecoveryError::ReplayDivergence { .. }),
-            "expected ReplayDivergence, got {:?}",
-            err
+            matches!(result, Ok(())),
+            "strictly-after-snapshot tail must validate as Ok(()), got {result:?}"
         );
     }
 }

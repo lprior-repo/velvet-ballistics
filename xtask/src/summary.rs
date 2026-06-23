@@ -41,11 +41,11 @@ impl RunSummary {
     }
 }
 
-pub fn format_summary(summary: &RunSummary, json: bool) -> String {
+pub fn format_summary(summary: &RunSummary, json: bool) -> anyhow::Result<String> {
     if json {
         format_json_summary(summary)
     } else {
-        format_text_summary(summary)
+        Ok(format_text_summary(summary))
     }
 }
 
@@ -75,7 +75,7 @@ fn format_text_summary(summary: &RunSummary) -> String {
     lines.join("\n")
 }
 
-fn format_json_summary(summary: &RunSummary) -> String {
+fn format_json_summary(summary: &RunSummary) -> anyhow::Result<String> {
     let output: HashMap<&str, serde_json::Value> = [
         ("run_id", serde_json::Value::String(summary.run_id.clone())),
         (
@@ -98,7 +98,7 @@ fn format_json_summary(summary: &RunSummary) -> String {
     .into_iter()
     .collect();
 
-    serde_json::to_string_pretty(&output).unwrap_or_default()
+    Ok(serde_json::to_string_pretty(&output)?)
 }
 
 fn group_by_crate(results: &[LaneResult]) -> HashMap<String, Vec<&LaneResult>> {

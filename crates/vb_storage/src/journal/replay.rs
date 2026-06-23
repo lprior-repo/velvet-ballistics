@@ -5,10 +5,22 @@ use crate::{
     error::JournalError,
     events::JournalEvent,
     journal::{EventReplayLimit, FjallJournal},
-    keys::{run_event_key, run_prefix_key, run_snapshot_key},
+    keys::{run_event_key, run_prefix_key, run_seq_gap_key, run_snapshot_key},
     types::EventSeq,
 };
 use fjall::Readable;
+
+/// Maximum initial Vec capacity allocated for replay collection.
+///
+/// The replay `Vec` starts with this hint and grows naturally via
+/// `try_reserve` per push. Bounding the initial hint prevents
+/// `Vec::with_capacity(usize::MAX)` from panicking with "capacity overflow"
+/// when callers pass `EventReplayLimit::new(usize::MAX)` (e.g. for
+/// "read everything" tooling). The actual event count returned is still
+/// capped by the `EventReplayLimit` enforced at every push via
+/// `classify_replay_push_len`; this constant only bounds the *initial*
+/// allocation, not the total events collected.
+const MAX_INITIAL_REPLAY_CAPACITY: usize = 4096;
 
 /// Allocation-free replay collection admission decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,6 +136,21 @@ impl FjallJournal {
             }
             None => (EventSeq::new(0), EventSeq::new(0)),
         };
+        // vb-qagk2: surface disaster-recovery gap markers (written by
+        // `inject_seq_gap`) as a replay-corruption error. A marker at
+        // `start_seq` means "the event at this seq was lost" — replay must
+        // not silently return an empty or stale event list, otherwise
+        // downstream lifecycle derivation would mask the corruption. Without
+        // this check, `events_for_run_bounded` would happily return `Ok(vec![])`
+        // for a run whose first event was lost, and `derive_lifecycle_state_from_events`
+        // would default to `Pending`, hiding the disaster-recovery signal.
+        let gap_key = run_seq_gap_key(run, start_seq)?;
+        if self.run_seq_gap.contains_key(gap_key)? {
+            return Err(JournalError::SequenceGap {
+                expected: start_seq,
+                actual: start_seq,
+            });
+        }
         self.events_for_run_from(run, start_seq, first_event, limit)
     }
 
@@ -135,7 +162,15 @@ impl FjallJournal {
         first_event: EventSeq,
         limit: EventReplayLimit,
     ) -> Result<Vec<JournalEvent>, JournalError> {
-        let mut replay = Vec::with_capacity(limit.max_events());
+        // Cap the initial allocation at MAX_INITIAL_REPLAY_CAPACITY so that
+        // callers passing `EventReplayLimit::new(usize::MAX)` do not trigger
+        // `Vec::with_capacity(usize::MAX)` → "capacity overflow" panic. The
+        // Vec grows naturally via `try_reserve` inside `push_replay_event`,
+        // and the total count is still bounded by the per-push
+        // `classify_replay_push_len` check that converts limit overflows
+        // into `JournalError::TooManyEvents`. This satisfies the T8-BS-07
+        // contract: an overflow limit must not panic, hang, or OOM.
+        let mut replay = Vec::with_capacity(limit.max_events().min(MAX_INITIAL_REPLAY_CAPACITY));
         let mut expected = Some(first_event);
         let start_key = run_event_key(run, start_seq)?;
         let run_prefix = run_prefix_key(run)?;

@@ -46,7 +46,23 @@ impl IndexStatusState {
             0 => Self::Submitted,
             1 => Self::Active,
             2 => Self::Completed,
-            b if b >= Self::MIN_OTHER_BYTE => Self::Other(b - Self::MIN_OTHER_BYTE),
+            // `value >= MIN_OTHER_BYTE` is guaranteed by the guard, so the
+            // subtraction cannot underflow (`MIN_OTHER_BYTE = 3`, so the
+            // result stays in `0..=252`). Restructure the match to drop the
+            // subtraction on the matched byte directly: we only enter this
+            // arm when `value` is in `[MIN_OTHER_BYTE..=u8::MAX]`, so
+            // `value - MIN_OTHER_BYTE` is safe and bounded. Clippy's
+            // `arithmetic_side_effects` lint requires the bound to be visible
+            // at the subtraction site; we satisfy that by computing the offset
+            // from a `value.checked_sub(MIN_OTHER_BYTE)` which the guard
+            // proves is `Some`, and returning that branch directly.
+            b if b >= Self::MIN_OTHER_BYTE => match b.checked_sub(Self::MIN_OTHER_BYTE) {
+                Some(offset) => Self::Other(offset),
+                // Unreachable given the `b >= MIN_OTHER_BYTE` guard; the
+                // `Other(0)` fallback keeps the function total if the guard
+                // ever changes (defence in depth, mirroring the wildcard arm).
+                None => Self::Other(0),
+            },
             // Defensive fallback: a wire byte below `MIN_OTHER_BYTE` outside
             // the named-variant range is unreachable under the current
             // encoder. Coerce it to the canonical `Other(0)` so the function

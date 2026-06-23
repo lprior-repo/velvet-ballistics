@@ -226,9 +226,17 @@ pub(super) fn scan_idempotency_key_references(text: &str, out: &mut Vec<Box<str>
             continue;
         }
         let (reference_end, after_end) = scan_reference(bytes, reference_start);
-        let reference_text = match std::str::from_utf8(&bytes[reference_start..reference_end]) {
-            Ok(text) => text,
-            Err(_) => {
+        // `scan_reference` returns a `[reference_start..reference_end]` slice
+        // bounded by `bytes.len()` (see `checked_add` usage there). Use
+        // `bytes.get(...)` so the bound is checked at runtime; clippy
+        // requires this because `scan_reference` is not inlined here and
+        // cannot prove the bound across the call.
+        let reference_text = match bytes
+            .get(reference_start..reference_end)
+            .and_then(|slice| std::str::from_utf8(slice).ok())
+        {
+            Some(text) => text,
+            None => {
                 cursor = after_end;
                 continue;
             }

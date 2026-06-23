@@ -7,10 +7,13 @@ kani-target/
 # Local agent/search state
 .memsearch/
 .claude/worktrees/
+.femdation-tools/
 
 # Local workspace snapshots and duplicated export bundles
 /refactor/
 /vb-*/
+/femdation-*/
+/femdation-vb-*/
 /ws-batch-*/
 /velvet-ballistics:*_dir/
 /velvet_ballistics_figma_ready_tightened_screens/

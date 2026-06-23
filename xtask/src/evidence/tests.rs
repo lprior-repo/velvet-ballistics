@@ -131,10 +131,6 @@ mod tests {
         let result = validate_evidence_dir(dir.path(), missing_gates);
 
         // Then: returns exactly one MissingEvidence error per absent gate
-        assert!(
-            result.is_ok(),
-            "validate_evidence_dir must not fail on directory access"
-        );
         let errors = result.unwrap();
         assert_eq!(
             errors.len(),
@@ -172,10 +168,6 @@ mod tests {
 
         // Then: returns Ok with empty error vec
         assert!(
-            result.is_ok(),
-            "validate_evidence_dir must not error on valid dir"
-        );
-        assert!(
             result.as_ref().unwrap().is_empty(),
             "no errors when all gate files are present"
         );
@@ -194,7 +186,6 @@ mod tests {
         let result = validate_evidence_dir(dir.path(), required_gates);
 
         // Then: returns exactly 2 MissingEvidence errors (clippy and test)
-        assert!(result.is_ok());
         let errors = result.unwrap();
         assert_eq!(errors.len(), 2);
         assert!(errors

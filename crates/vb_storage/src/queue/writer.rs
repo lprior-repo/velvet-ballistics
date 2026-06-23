@@ -194,9 +194,14 @@ impl JournalWriterQueue {
                     .state
                     .lock()
                     .map_err(|_| JournalError::WriteLockPoisoned)?;
-                let to_requeue: Vec<QueuedJournalEvent> = batch.drain(..).collect();
+                // Drain `batch` into a fresh `VecDeque` and prepend it to
+                // `state.pending` so the next flush_batch attempt retries
+                // these items first. `mem::take` swaps `batch` with an empty
+                // Vec, satisfying the `drain_collect` lint without changing
+                // observable behaviour.
+                let drained = std::mem::take(&mut batch);
                 let mut requeued_front: VecDeque<QueuedJournalEvent> =
-                    to_requeue.into_iter().collect();
+                    drained.into_iter().collect();
                 requeued_front.append(&mut state.pending);
                 state.pending = requeued_front;
                 let pending_after = state.pending.len();

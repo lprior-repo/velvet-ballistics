@@ -71,14 +71,28 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
 }
 
 fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
-    if seed.unsupported.slot_values
-        || seed.unsupported.slot_taint
-        || seed.unsupported.action_payloads
-    {
-        Err(RuntimeError::InvalidRecoveryHydration)
-    } else {
-        Ok(())
+    // Distinct typed rejection paths for the three unsupported flags.
+    //
+    // - `slot_values` / `action_payloads`: data loss / corruption in the
+    //   durable record. The seed cannot be used to hydrate a frame at all,
+    //   so the typed rejection is `InvalidRecoveryHydration`.
+    // - `slot_taint` (only): the slot values themselves were durable, but
+    //   the taint markers could not be re-attached. We cannot safely
+    //   re-expose secret-tainted results, so full-frame hydration is
+    //   *unsupported* (callers must fall back to summary-only recovery).
+    //   The typed rejection is `UnsupportedFullRecoveryHydration`.
+    //
+    // When more than one flag is set we keep the strictest typed outcome
+    // (`InvalidRecoveryHydration`) because a `slot_values` or
+    // `action_payloads` failure alongside the taint failure indicates the
+    // durable record is partially corrupt, not merely taint-unknown.
+    if seed.unsupported.slot_values || seed.unsupported.action_payloads {
+        return Err(RuntimeError::InvalidRecoveryHydration);
     }
+    if seed.unsupported.slot_taint {
+        return Err(RuntimeError::UnsupportedFullRecoveryHydration);
+    }
+    Ok(())
 }
 
 fn empty_recovered_frame(seed: &RecoveryFrameSeed) -> RuntimeResult<RunFrame> {

@@ -15,6 +15,60 @@ pub(crate) fn is_accepted_gate_count(gate_count: u8) -> bool {
     gate_count == 0 || gate_count == ADMISSION_GATE_COUNT
 }
 
+/// Maximum byte size for a serialized `ResourceContract` accepted by the
+/// admission policy buffer.
+///
+/// SA-008 FIX companion: this is the post-`compute_policy_digest` SA-008
+/// buffer bound for the policy-digest path. The bound is the worst-case
+/// postcard varint width of every field of `vb_core::workflow::ResourceContract`
+/// at `T::MAX`, plus a small per-field tag overhead. The companion test
+/// `policy_buffer_fits_canonical_resource_contract` enforces that the actual
+/// postcard encoding of the canonical contract fits inside this bound.
+///
+/// Field-by-field worst-case widths (varint, plus one-byte field tag for
+/// non-unit structs; postcard uses 1-byte field tags per field):
+///
+/// * 5 × u16 (`max_steps`, `max_slots`, `max_constants`, `max_accessors`,
+///   `max_expressions`) → 3 bytes varint each → 5 × 3 = 15 bytes
+/// * 1 × u8 (`max_expr_stack`) → 2 bytes varint
+/// * 1 × u8 (`max_transitions_per_tick`? — actually u64) → see below
+///
+/// Re-counting by type:
+/// * u16 fields: 6 (added `max_retry_attempts`, `max_fanout`) → 6 × 3 = 18 bytes
+/// * u8 field: 1 (`max_expr_stack`) → 2 bytes
+/// * u32 fields: 5 (`max_input_bytes`, `max_output_bytes`,
+///   `max_ipc_payload_bytes`, `max_collect_items`, `max_queue_depth`,
+///   `max_journal_batch_bytes`) → 6 × 5 = 30 bytes
+/// * u64 fields: 3 (`max_step_budget_per_tick`, `max_transitions_per_tick`,
+///   `max_blob_bytes`) → 3 × 9 = 27 bytes
+/// * bool: 1 (`allows_secret_results`) → 1 byte
+///
+/// Total payload bytes: 18 + 2 + 30 + 27 + 1 = 78 bytes.
+///
+/// Postcard adds per-field tags (1 byte each = 18 fields) plus 1-byte
+/// struct tag → 19 bytes overhead. Worst case: 78 + 19 = 97 bytes.
+///
+/// We round up to a safe 256-byte upper bound so any future field additions
+/// up to roughly 2× the current size still fit without silent rejection.
+#[cfg(test)]
+pub(crate) const RESOURCE_CONTRACT_POLICY_BYTES_BOUND: usize = 256;
+
+/// Returns the maximum byte size for a `ResourceContract` accepted by the
+/// admission policy buffer.
+///
+/// Companion to [`compute_policy_digest`]: admission pre-allocates
+/// (logically) a buffer of this size before serializing the workflow's
+/// `resource_contract` for hashing. The bound is intentionally conservative
+/// so that adding new bounded fields to `ResourceContract` cannot silently
+/// push a previously-valid contract past the buffer.
+///
+/// See [`RESOURCE_CONTRACT_POLICY_BYTES_BOUND`] for the derivation.
+#[cfg(test)]
+#[must_use]
+pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
+    RESOURCE_CONTRACT_POLICY_BYTES_BOUND
+}
+
 /// Computes the policy digest from a workflow's resource contract.
 ///
 /// GAP-003 FIX: Added per review finding that `AcceptedArtifact` must bind

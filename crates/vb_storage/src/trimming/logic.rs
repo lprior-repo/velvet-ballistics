@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::codec::decode_record;
 use crate::constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES};
 use crate::trimming::helpers::snapshot_prefix_key;
@@ -7,7 +9,7 @@ use crate::trimming::{
 };
 use crate::{EventSeq, FjallJournal, JournalError};
 use fjall::Readable;
-use vb_core::RunId;
+use vb_core::{RunId, WorkflowId};
 
 impl FjallJournal {
     /// Returns the latest durable snapshot sequence for a run.
@@ -302,5 +304,63 @@ impl FjallJournal {
         }
 
         Ok(())
+    }
+
+    /// Computes the set of terminal runs that the retention policy protects.
+    ///
+    /// For each workflow with at least one terminal run, the most recent
+    /// `policy.retain_last_n_terminal` terminal runs (sorted by
+    /// `accepted_at_ms` descending) are placed in the returned set. The set
+    /// is the union across all workflows. This is the SC-005 batch path
+    /// pre-pass used by `trim_all_eligible_runs` so the batch loop can skip
+    /// re-deriving retention per call.
+    ///
+    /// When `policy.retain_last_n_terminal == 0`, returns an empty set
+    /// without scanning.
+    ///
+    /// # Errors
+    ///
+    /// Returns `TrimError` if Fjall or journal operations fail while
+    /// scanning run headers and journal events for terminal markers.
+    pub fn compute_retained_terminal_runs(
+        &self,
+        policy: &TrimPolicy,
+    ) -> TrimResult<std::collections::HashSet<RunId>> {
+        // Zero-retention: nothing is retained, return an empty set
+        // immediately. This also avoids an unbounded `run_headers()` scan.
+        if policy.retain_last_n_terminal == 0 {
+            return Ok(HashSet::new());
+        }
+
+        let headers = self.run_headers().map_err(TrimError::from)?;
+        let retain_count = usize::try_from(policy.retain_last_n_terminal).unwrap_or(usize::MAX);
+
+        // Group terminal runs by workflow. The workflow-id keyed map keeps
+        // the per-workflow top-N selection bounded by terminal run count
+        // for that workflow, not by total header count.
+        let mut by_workflow: std::collections::BTreeMap<WorkflowId, Vec<(RunId, u64)>> =
+            std::collections::BTreeMap::new();
+
+        for header in headers {
+            if !self.has_terminal_event(header.run)? {
+                continue;
+            }
+            by_workflow
+                .entry(header.workflow_id)
+                .or_default()
+                .push((header.run, header.accepted_at_ms));
+        }
+
+        let mut retained: HashSet<RunId> = HashSet::new();
+        for (_workflow_id, mut runs) in by_workflow {
+            // Sort newest-first; ties break by run id (deterministic) so
+            // the chosen top-N is stable for a given durable history.
+            runs.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| b.0.get().cmp(&a.0.get())));
+            let take = runs.len().min(retain_count);
+            for (run, _ts) in runs.into_iter().take(take) {
+                retained.insert(run);
+            }
+        }
+        Ok(retained)
     }
 }

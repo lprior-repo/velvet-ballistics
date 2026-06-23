@@ -37,14 +37,13 @@ impl ActionName {
 
     /// Validates an action name string.
     fn validate(s: &str) -> Result<(), ActionNameError> {
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
+        if s.is_empty() {
             return Err(ActionNameError::Empty);
         }
-        if trimmed.len() > MAX_ACTION_NAME_LENGTH {
+        if s.len() > MAX_ACTION_NAME_LENGTH {
             return Err(ActionNameError::TooLong);
         }
-        if trimmed.chars().any(|c| c.is_whitespace()) {
+        if s.chars().any(|c| c.is_whitespace()) {
             return Err(ActionNameError::ContainsWhitespace);
         }
         Ok(())
@@ -53,7 +52,7 @@ impl ActionName {
     /// Returns the action name as a string slice.
     #[must_use]
     pub fn as_str(&self) -> &str {
-        self.0.trim()
+        self.0.as_str()
     }
 }
 

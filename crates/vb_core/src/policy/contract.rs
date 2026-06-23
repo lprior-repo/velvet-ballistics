@@ -205,11 +205,12 @@ impl RuntimeLimitsProfile {
         }
         if config.journal_writer_queue_capacity == 0
             || !usize_fits_in_u32(config.journal_writer_queue_capacity)
+            || config.journal_writer_queue_capacity > MAX_JOURNAL_BATCH_BYTES as usize
         {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "journal_writer_queue_capacity",
                 value: usize_to_u64(config.journal_writer_queue_capacity),
-                limit: u64::from(u32::MAX),
+                limit: u64::from(MAX_JOURNAL_BATCH_BYTES),
             });
         }
         if config.together_branch_count == 0 || config.together_branch_count > MAX_FANOUT {
