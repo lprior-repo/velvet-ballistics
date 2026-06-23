@@ -232,6 +232,14 @@ impl Shard {
             Ok(()) => Ok(()),
             Err(error) => {
                 if !self.run_state_contains(run) {
+                    // RS-011: drain the coalesce buffer of any pending events
+                    // for this run BEFORE discarding the journal sequence.
+                    // drive_run may have buffered events (StepStarted,
+                    // SlotWritten, etc.) during the failed drive. Without
+                    // this drain, the next coalesce flush would persist them
+                    // for a run that has already been recorded as failed,
+                    // producing "ghost" events alongside the terminal event.
+                    self.discard_buffered_events_for_run(run);
                     self.discard_journal_sequence(run);
                 }
                 Err(error)
@@ -257,6 +265,12 @@ impl Shard {
         match durable_result {
             Ok(()) => Ok(()),
             Err(error) => {
+                // RS-011: admission header write failed. The run was JUST
+                // submitted, so the coalesce buffer is empty for this run
+                // (admission headers use the durable variant, not buffered).
+                // Still, drain defensively before discarding the sequence
+                // in case a parallel dispatcher queued anything.
+                self.discard_buffered_events_for_run(run);
                 self.discard_journal_sequence(run);
                 Err(RuntimeError::admission_header_persistence_failed(error))
             }

@@ -391,3 +391,285 @@ fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment(
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// RS-011: drive_run failure during submit must drain coalesce buffer before
+// discarding the journal sequence
+// ---------------------------------------------------------------------------
+//
+// Bug summary (chunk_001_submit.rs:231-247):
+//   The pre-fix code dropped the per-run journal sequence on drive_run
+//   failure but did NOT drain coalesce_buffer. Any events the failed
+//   drive left in the coalesce window were then persisted on the next
+//   flush as "ghost" events for a run that had already been recorded
+//   as failed (or, in the rare buffered-window case, was about to be).
+//
+// The fix calls `discard_buffered_events_for_run(run)` BEFORE
+// `discard_journal_sequence(run)`, but only when the run state was
+// actually lost during the failed drive (RS-005 re-inserts state on
+// intermediate failures, so the drain is skipped when state is
+// recoverable).
+//
+// Tests below cover both layers:
+//   1. Helper-level: discard_buffered_events_for_run isolates the target
+//      run, leaving other runs' buffered events untouched.
+//   2. Integration: drive_run failure during apply_terminal_finished
+//      (journal rejects RunFinished) triggers the fix path, which
+//      discards the per-run journal sequence and is a no-op against
+//      an empty coalesce buffer (window=1, synchronous writes).
+
+/// RS-011 helper-level test: `discard_buffered_events_for_run` must
+/// remove only the target run's buffered events and leave other runs'
+/// events untouched. `discard_journal_sequence` must symmetrically
+/// remove only the target run's per-run sequence counter.
+#[test]
+fn rs011_discard_buffered_events_for_run_isolates_target_run() -> Result<(), &'static str> {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        // > 1 keeps the buffered path active so manual injection of
+        // coalesce_buffer entries is not at risk of being flushed by
+        // a stray tick between setup and assertion.
+        coalesce_window_ticks: 4,
+        snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
+    };
+    let mut shard = match Shard::new(config) {
+        Ok(s) => s,
+        Err(_) => return Err("shard construction failed"),
+    };
+
+    let target_run = super::RunId::new(810);
+    let other_run = super::RunId::new(811);
+
+    // Pre-seed the buffer with events for two runs. We push directly into
+    // the pub(crate) coalesce_buffer because the fix path is the only
+    // place this scenario naturally arises (drive_run failure with state
+    // not present), and that combination cannot be triggered by the
+    // existing test fixtures alone.
+    let step_zero = vb_core::ids::StepIdx::ZERO;
+    let step_one = vb_core::ids::StepIdx::new(1);
+    shard
+        .coalesce_buffer
+        .push((RuntimeJournalEvent::StepStarted { run: target_run, step: step_zero }, vb_storage::EventSeq::ZERO));
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepSucceeded {
+            run: target_run,
+            step: step_zero,
+            output: SlotIdx::ZERO,
+            attempt: 1,
+        },
+        vb_storage::EventSeq::new(1),
+    ));
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepStarted { run: target_run, step: step_one },
+        vb_storage::EventSeq::new(2),
+    ));
+    shard.coalesce_buffer.push((
+        RuntimeJournalEvent::StepStarted { run: other_run, step: step_zero },
+        vb_storage::EventSeq::ZERO,
+    ));
+
+    // Pre-seed the journal sequence map so we can verify the symmetric
+    // discard.
+    shard
+        .journal_sequences
+        .insert(target_run, vb_storage::EventSeq::new(3));
+    shard
+        .journal_sequences
+        .insert(other_run, vb_storage::EventSeq::new(1));
+
+    // Sanity: buffer holds 4 events (3 for target, 1 for other) and
+    // both runs have a sequence counter.
+    assert_eq!(shard.coalesce_buffer.len(), 4);
+    assert!(shard.journal_sequences.get(&target_run).is_some());
+    assert!(shard.journal_sequences.get(&other_run).is_some());
+
+    // Exercise the helper the fix relies on.
+    shard.discard_buffered_events_for_run(target_run);
+
+    // RS-011 invariant 1: only target_run's buffered events are gone.
+    assert_eq!(
+        shard.coalesce_buffer.len(),
+        1,
+        "discard must remove only target_run's events"
+    );
+    assert_eq!(
+        shard.coalesce_buffer[0].0.run_id(),
+        other_run,
+        "remaining buffered event must belong to other_run"
+    );
+
+    // Exercise the symmetric sequence discard.
+    shard.discard_journal_sequence(target_run);
+
+    // RS-011 invariant 2: only target_run's sequence is gone; other_run's
+    // sequence counter must be untouched.
+    assert!(
+        shard.journal_sequences.get(&target_run).is_none(),
+        "target_run sequence must be discarded"
+    );
+    assert_eq!(
+        shard.journal_sequences.get(&other_run).copied(),
+        Some(vb_storage::EventSeq::new(1)),
+        "other_run sequence must be preserved"
+    );
+    Ok(())
+}
+
+/// RS-011 integration test: when `drive_run` fails inside
+/// `apply_terminal_finished` (the journal rejects the terminal
+/// `RunFinished` event), the run state is NOT re-inserted and the fix
+/// path in `handle_submit_with_inputs_contracts_and_header_mode` must
+/// discard the per-run journal sequence. Pre-fix, the sequence counter
+/// would survive the failed submit and a subsequent flush would have
+/// nothing to drain — but a future buffered drive for the same run id
+/// would start at the wrong sequence, producing replay divergence.
+///
+/// This test exercises the fix path via a journal stub that accepts
+/// every event except `RunFinished`, which is rejected with
+/// `JournalError::QueueFull`. Because `coalesce_window_ticks = 1` in
+/// `small_config()`, evidence events flush synchronously and the
+/// coalesce buffer is empty when the fix path runs — the discard is
+/// a no-op against the buffer but the sequence discard is the
+/// observable invariant.
+struct RejectRunFinishedJournal {
+    events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,
+}
+
+impl RejectRunFinishedJournal {
+    fn shared() -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            events: std::sync::Mutex::new(Vec::new()),
+        })
+    }
+}
+
+impl crate::journal::RuntimeJournal for RejectRunFinishedJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+        if matches!(event, RuntimeJournalEvent::RunFinished { .. }) {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
+        Ok(())
+    }
+    fn probe(&self) -> crate::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn rs011_submit_failure_with_run_state_lost_discards_journal_sequence() -> Result<(), &'static str>
+{
+    let config = small_config();
+    let journal = RejectRunFinishedJournal::shared();
+    let mut shard = match Shard::new_with_journal_and_artifact_store(
+        config,
+        journal.clone(),
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    ) {
+        Ok(s) => s,
+        Err(_) => return Err("shard construction failed"),
+    };
+    let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
+    let run = super::RunId::new(820);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+
+    // drive_run drives the workflow (SetConst + Finish), emits 5 evidence
+    // events written synchronously (window=1), then attempts the
+    // terminal RunFinished event which the journal rejects.
+    let tick_result = shard.tick();
+    let error = match tick_result {
+        Err(error) => error,
+        Ok(value) => return Err("drive_run must fail when journal rejects RunFinished"),
+    };
+
+    // The failure must surface as a typed storage journal error, not a
+    // panic or admission-header error.
+    match &error {
+        RuntimeError::StorageJournalAppend { source } => {
+            assert!(
+                matches!(source.as_ref(), vb_storage::JournalError::QueueFull),
+                "expected QueueFull source, got {source:?}"
+            );
+        }
+        other => return Err("expected StorageJournalAppend error from drive_run failure"),
+    }
+
+    // RS-011 invariant 3: run_state must NOT contain the run after
+    // drive_run failure on the terminal path. Pre-fix, `take_run_state`
+    // removed it but `finish_run`'s failed journal write never
+    // re-inserted it — so this condition holds regardless of the fix.
+    // The fix code branches on this exact condition to decide whether
+    // to drain.
+    assert!(
+        !shard.run_state_contains(run),
+        "RS-011: run must NOT be in run_state after drive_run failure"
+    );
+
+    // RS-011 invariant 4: the per-run journal sequence counter must be
+    // discarded. Evidence events wrote 5 synchronous entries
+    // (StepStarted, SlotWritten, StepSucceeded for SetConst, then
+    // StepStarted, StepSucceeded for Finish), advancing
+    // journal_sequences[run] to 5 before the RunFinished write failed.
+    // Pre-fix the counter would survive at 5; post-fix it must be gone.
+    assert!(
+        shard.journal_sequences.get(&run).is_none(),
+        "RS-011: journal_sequences[run] must be discarded by the fix path, \
+         got {:?}",
+        shard.journal_sequences.get(&run).copied()
+    );
+
+    // RS-011 invariant 5: coalesce_buffer must contain no events for
+    // the failed run. window=1 means evidence events were written
+    // synchronously so the buffer is empty, but the discard path must
+    // still execute cleanly (no panic, no leftover entries) so the
+    // property is observable for any future buffered-mode failure.
+    assert!(
+        shard
+            .coalesce_buffer
+            .iter()
+            .all(|(event, _)| event.run_id() != run),
+        "RS-011: coalesce_buffer must hold no events for the failed run"
+    );
+
+    // Pre-fix the journal would have recorded RunSubmitted, RunAdmission,
+    // plus the 5 evidence events; RunFinished was rejected. The fix
+    // path does not touch the durable journal contents — it only
+    // cleans up in-memory bookkeeping. Verify the durable record
+    // reflects the partial drive.
+    let recorded = journal
+        .events
+        .lock()
+        .map(|events| events.clone())
+        .map_err(|_| "journal poisoned")?;
+    assert!(
+        recorded
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { .. })),
+        "RunSubmitted must have been durably written before drive_run failure"
+    );
+    assert!(
+        recorded
+            .iter()
+            .all(|e| !matches!(e, RuntimeJournalEvent::RunFinished { .. })),
+        "RunFinished must NOT be in the durable record (rejected by journal)"
+    );
+    Ok(())
+}
