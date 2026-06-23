@@ -9,6 +9,7 @@ use crate::{
 pub(crate) enum PayloadLenDecision {
     Accepted(u32),
     TooLarge { len: u32, max: u32 },
+    LenOverflow { len: u64 },
 }
 
 pub fn verify_digest_match(
@@ -28,6 +29,7 @@ pub(crate) fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError>
         PayloadLenDecision::TooLarge { len, max } => {
             Err(JournalError::PayloadTooLarge { len, max })
         }
+        PayloadLenDecision::LenOverflow { len } => Err(JournalError::PayloadLenOverflow { len }),
     }
 }
 
@@ -38,8 +40,14 @@ pub(crate) fn classify_payload_len(len: usize, max: u32) -> PayloadLenDecision {
             max,
         },
         Ok(payload_len) => PayloadLenDecision::Accepted(payload_len),
-        Err(_) => PayloadLenDecision::TooLarge { len: u32::MAX, max },
+        Err(_) => PayloadLenDecision::LenOverflow {
+            len: observed_len_u64(len),
+        },
     }
+}
+
+fn observed_len_u64(len: usize) -> u64 {
+    u64::try_from(len).map_or(u64::MAX, core::convert::identity)
 }
 
 pub(crate) fn encode_record_payload(
@@ -115,5 +123,46 @@ pub(crate) const fn trailing_byte_bounds(
         Some((declared_end, actual_len))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn first_len_above_u32_max() -> Option<(usize, u64)> {
+        let Ok(max_u32_as_usize) = usize::try_from(u32::MAX) else {
+            return None;
+        };
+        let overflow_len = max_u32_as_usize.checked_add(1)?;
+        let expected = u64::from(u32::MAX).checked_add(1)?;
+        Some((overflow_len, expected))
+    }
+
+    #[test]
+    fn payload_len_u32_preserves_in_range_oversize_len() {
+        let result = payload_len_u32(5, 4);
+
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::PayloadTooLarge { len: 5, max: 4 })
+            ),
+            "in-range overage must preserve exact payload length, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn payload_len_u32_rejects_usize_above_u32_without_saturation() {
+        let Some((overflow_len, expected_len)) = first_len_above_u32_max() else {
+            return;
+        };
+
+        let result = payload_len_u32(overflow_len, 1);
+
+        assert!(
+            matches!(result, Err(JournalError::PayloadLenOverflow { len }) if len == expected_len),
+            "u32 overflow must report exact overflow length, got {result:?}"
+        );
     }
 }

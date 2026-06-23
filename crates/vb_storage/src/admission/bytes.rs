@@ -11,10 +11,16 @@ pub(crate) enum CompiledIrSizeDecision {
     WithinLimit,
     /// The encoded compiled-IR envelope exceeds the configured storage bound.
     PayloadTooLarge {
-        /// Observed encoded length, saturated when the source length cannot fit u32.
+        /// Observed encoded length. This variant is used only when the length
+        /// fits in `u32` and exceeds the configured maximum.
         len: u32,
         /// Maximum accepted compiled-IR envelope length.
         max: u32,
+    },
+    /// The encoded compiled-IR envelope length cannot be represented as `u32`.
+    PayloadLenOverflow {
+        /// Observed encoded length on supported targets.
+        len: u64,
     },
 }
 
@@ -57,6 +63,9 @@ pub fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError
         CompiledIrSizeDecision::PayloadTooLarge { len, max } => {
             Err(JournalError::PayloadTooLarge { len, max })
         }
+        CompiledIrSizeDecision::PayloadLenOverflow { len } => {
+            Err(JournalError::PayloadLenOverflow { len })
+        }
     }
 }
 
@@ -64,9 +73,8 @@ pub(crate) fn classify_compiled_ir_value_len(len: usize) -> CompiledIrSizeDecisi
     let payload_len = match u32::try_from(len) {
         Ok(value) => value,
         Err(_) => {
-            return CompiledIrSizeDecision::PayloadTooLarge {
-                len: u32::MAX,
-                max: MAX_COMPILED_IR_BYTES,
+            return CompiledIrSizeDecision::PayloadLenOverflow {
+                len: observed_len_u64(len),
             };
         }
     };
@@ -77,5 +85,37 @@ pub(crate) fn classify_compiled_ir_value_len(len: usize) -> CompiledIrSizeDecisi
         }
     } else {
         CompiledIrSizeDecision::WithinLimit
+    }
+}
+
+fn observed_len_u64(len: usize) -> u64 {
+    u64::try_from(len).map_or(u64::MAX, core::convert::identity)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn first_len_above_u32_max() -> Option<(usize, u64)> {
+        let Ok(max_u32_as_usize) = usize::try_from(u32::MAX) else {
+            return None;
+        };
+        let overflow_len = max_u32_as_usize.checked_add(1)?;
+        let expected = u64::from(u32::MAX).checked_add(1)?;
+        Some((overflow_len, expected))
+    }
+
+    #[test]
+    fn reject_compiled_ir_value_reports_u32_len_overflow() {
+        let Some((overflow_len, expected_len)) = first_len_above_u32_max() else {
+            return;
+        };
+
+        let result = reject_oversized_compiled_ir_value(overflow_len);
+
+        assert!(
+            matches!(result, Err(JournalError::PayloadLenOverflow { len }) if len == expected_len),
+            "compiled IR length overflow must report exact overflow length, got {result:?}"
+        );
     }
 }
