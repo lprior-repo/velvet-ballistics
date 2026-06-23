@@ -226,6 +226,23 @@ pub mod mrwe6_flux_storage {
     pub mod vb_mrwe6_recovery_refinements;
 }
 
+// --- vb-7ol6y Flux refinement artifacts (Recovery hydration fail-closed P0) ---
+// Wired in at State 5 REDO v3 so cargo flux -p vb_storage actually analyzes
+// them. Each file is gated on the `vb-7ol6y-flux-refinements` feature so
+// non-Flux builds are unaffected. Required by POB-vb-7ol6y-013.
+#[cfg(all(flux, feature = "vb-7ol6y-flux-refinements"))]
+#[path = "verification/flux/vb_7ol6y_recovered_slot_taint.rs"]
+pub mod vb_7ol6y_recovered_slot_taint;
+#[cfg(all(flux, feature = "vb-7ol6y-flux-refinements"))]
+#[path = "verification/flux/vb_7ol6y_slot_taint_resolution.rs"]
+pub mod vb_7ol6y_slot_taint_resolution;
+#[cfg(all(flux, feature = "vb-7ol6y-flux-refinements"))]
+#[path = "verification/flux/vb_7ol6y_legacy_none.rs"]
+pub mod vb_7ol6y_legacy_none;
+#[cfg(all(flux, feature = "vb-7ol6y-flux-refinements"))]
+#[path = "verification/flux/vb_7ol6y_workflow_invariants.rs"]
+pub mod vb_7ol6y_workflow_invariants;
+
 // --- Re-export helpers (implementation in exports.rs) ---
 mod exports;
 

@@ -206,6 +206,39 @@ fn trace_ring_drain_returns_empty_after_drain() {
 }
 
 #[test]
+fn trace_ring_len_and_is_empty_report_pending_events_after_drain() {
+    let mut ring = TraceRing::new(4);
+    assert_eq!(ring.len(), 0);
+    assert_eq!(ring.is_empty(), true);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
+    assert_eq!(ring.history_len(), 0);
+    assert_eq!(ring.history_is_empty(), true);
+
+    assert_eq!(
+        ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }),
+        true
+    );
+    assert_eq!(ring.len(), 1);
+    assert_eq!(ring.is_empty(), false);
+    assert_eq!(ring.pending_len(), 1);
+    assert_eq!(ring.pending_is_empty(), false);
+    assert_eq!(ring.history_len(), 1);
+    assert_eq!(ring.history_is_empty(), false);
+
+    let drained = ring.drain();
+    assert_eq!(drained.len(), 1);
+    assert_eq!(ring.len(), 0);
+    assert_eq!(ring.is_empty(), true);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
+    assert_eq!(ring.history_len(), 1);
+    assert_eq!(ring.history_is_empty(), false);
+    let snapshot = ring.snapshot_for_run(RunId::new(1), ring.capacity());
+    assert_eq!(snapshot.len(), 1);
+}
+
+#[test]
 fn trace_event_equality_same_variant_same_fields() {
     // Given two identical trace events
     let e1 = TraceEvent::ActionScheduled {

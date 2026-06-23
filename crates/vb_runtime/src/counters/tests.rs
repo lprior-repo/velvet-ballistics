@@ -443,12 +443,35 @@ fn counters_mixed_operations_snapshot_is_consistent() {
 // =======================================================================
 
 #[test]
-fn counter_add_steps_near_u64_max_wraps_via_atomic() {
+fn counter_add_steps_near_u64_max_saturates() {
     let counters = ShardCounters::new();
     counters.add_steps(u64::MAX);
     counters.add_steps(1);
     let snap = counters.snapshot();
-    assert_eq!(snap.steps_executed, 0);
+    assert_eq!(snap.steps_executed, u64::MAX);
+}
+
+#[test]
+fn run_counter_increments_saturate_at_u64_max() {
+    let counters = ShardCounters::new();
+    counters.runs_submitted.store(u64::MAX, Ordering::Relaxed);
+    counters.runs_completed.store(u64::MAX, Ordering::Relaxed);
+    counters.runs_failed.store(u64::MAX, Ordering::Relaxed);
+    counters.runs_cancelled.store(u64::MAX, Ordering::Relaxed);
+    counters.runs_killed.store(u64::MAX, Ordering::Relaxed);
+
+    counters.inc_submitted();
+    counters.inc_completed();
+    counters.inc_failed();
+    counters.inc_cancelled();
+    counters.inc_killed();
+
+    let snap = counters.snapshot();
+    assert_eq!(snap.runs_submitted, u64::MAX);
+    assert_eq!(snap.runs_completed, u64::MAX);
+    assert_eq!(snap.runs_failed, u64::MAX);
+    assert_eq!(snap.runs_cancelled, u64::MAX);
+    assert_eq!(snap.runs_killed, u64::MAX);
 }
 
 #[test]

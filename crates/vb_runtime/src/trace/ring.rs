@@ -69,15 +69,46 @@ impl TraceRing {
         self.capacity
     }
 
-    /// Returns the number of events currently in the ring.
+    /// Returns the number of pending events currently drainable from the ring.
     #[must_use]
     pub fn len(&self) -> usize {
+        self.pending_len()
+    }
+
+    /// Returns true if the ring contains no pending drainable events.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.pending_is_empty()
+    }
+
+    /// Returns the number of pending events currently drainable from the ring.
+    #[must_use]
+    pub fn pending_len(&self) -> usize {
+        #[cfg(not(kani))]
+        {
+            self.consumer.slots()
+        }
+        #[cfg(kani)]
+        {
+            self.pending.len()
+        }
+    }
+
+    /// Returns true if there are no pending drainable events.
+    #[must_use]
+    pub fn pending_is_empty(&self) -> bool {
+        self.pending_len() == 0
+    }
+
+    /// Returns the number of remembered events retained for snapshots.
+    #[must_use]
+    pub fn history_len(&self) -> usize {
         self.history.len()
     }
 
-    /// Returns true if the ring contains no events.
+    /// Returns true if no remembered events are retained for snapshots.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub fn history_is_empty(&self) -> bool {
         self.history.is_empty()
     }
 

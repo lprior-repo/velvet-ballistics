@@ -3,6 +3,8 @@
 
 use core::sync::atomic::{AtomicU64, Ordering};
 
+const COUNTER_INCREMENT: u64 = 1;
+
 /// Shard-level counters for runs submitted, completed, failed, and steps executed.
 #[derive(Debug)]
 pub struct ShardCounters {
@@ -36,32 +38,48 @@ impl ShardCounters {
 
     /// Increments the runs-submitted counter.
     pub fn inc_submitted(&self) {
-        self.runs_submitted.fetch_add(1, Ordering::Relaxed);
+        saturating_add_counter(&self.runs_submitted, COUNTER_INCREMENT);
     }
 
     /// Increments the runs-completed counter.
     pub fn inc_completed(&self) {
-        self.runs_completed.fetch_add(1, Ordering::Relaxed);
+        saturating_add_counter(&self.runs_completed, COUNTER_INCREMENT);
     }
 
     /// Increments the runs-failed counter.
     pub fn inc_failed(&self) {
-        self.runs_failed.fetch_add(1, Ordering::Relaxed);
+        saturating_add_counter(&self.runs_failed, COUNTER_INCREMENT);
     }
 
     /// Increments the runs-cancelled counter (RQ-W0-17: previously conflated with `inc_failed`).
     pub fn inc_cancelled(&self) {
-        self.runs_cancelled.fetch_add(1, Ordering::Relaxed);
+        saturating_add_counter(&self.runs_cancelled, COUNTER_INCREMENT);
     }
 
     /// Increments the runs-killed counter (RQ-W0-17: previously conflated with `inc_failed`).
     pub fn inc_killed(&self) {
-        self.runs_killed.fetch_add(1, Ordering::Relaxed);
+        saturating_add_counter(&self.runs_killed, COUNTER_INCREMENT);
     }
 
     /// Adds to the steps-executed counter.
     pub fn add_steps(&self, count: u64) {
-        self.steps_executed.fetch_add(count, Ordering::Relaxed);
+        saturating_add_counter(&self.steps_executed, count);
+    }
+}
+
+fn saturating_add_counter(counter: &AtomicU64, count: u64) {
+    if count == 0 {
+        return;
+    }
+
+    match counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+        Some(current.saturating_add(count))
+    }) {
+        Ok(_) => {}
+        Err(_) => {
+            // The update closure always returns `Some`, so `fetch_update` has
+            // no semantic rejection path to report.
+        }
     }
 }
 
