@@ -168,6 +168,43 @@ fn test_new_validates_zero_active_runs() {
 }
 
 #[test]
+fn test_new_validates_journal_writer_queue_capacity_exceeds_max_journal_batch_bytes() {
+    // CV-104: a profile with `journal_writer_queue_capacity > MAX_JOURNAL_BATCH_BYTES`
+    // would pass the existing u32::MAX fit check but produce a resource contract
+    // whose `max_journal_batch_bytes` exceeds the hard limit. The constructor
+    // must reject the value at validation time so the resulting contract cannot
+    // exceed MAX_JOURNAL_BATCH_BYTES (= 16_777_216).
+    let mut config = strict_config();
+    config.journal_writer_queue_capacity = MAX_JOURNAL_BATCH_BYTES as usize + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "journal_writer_queue_capacity",
+                value: v,
+                limit: l,
+            }) if v > l && l == u64::from(MAX_JOURNAL_BATCH_BYTES)
+        ),
+        "journal_writer_queue_capacity > MAX_JOURNAL_BATCH_BYTES must surface ExceedsHardLimit \
+         with limit=MAX_JOURNAL_BATCH_BYTES, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_accepts_journal_writer_queue_capacity_at_max_journal_batch_bytes_boundary() {
+    // CV-104 boundary: MAX_JOURNAL_BATCH_BYTES (16_777_216) must be accepted
+    // (the check is `> MAX_JOURNAL_BATCH_BYTES`, not `>=`).
+    let mut config = strict_config();
+    config.journal_writer_queue_capacity = MAX_JOURNAL_BATCH_BYTES as usize;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        result.is_ok(),
+        "journal_writer_queue_capacity == MAX_JOURNAL_BATCH_BYTES must be accepted (boundary), got {result:?}"
+    );
+}
+
+#[test]
 fn test_new_validates_zero_retry_attempts() {
     let mut config = strict_config();
     config.retry_attempts = 0;
