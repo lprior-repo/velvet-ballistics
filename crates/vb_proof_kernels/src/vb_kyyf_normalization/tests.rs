@@ -392,14 +392,20 @@ fn compare_replay_observation_specific_rejection_after_sequence_check() {
 
 #[test]
 fn compare_replay_happy_path() {
-    assert!(compare_replay(observation(), observation()).is_ok());
+    assert!(matches!(
+        compare_replay(observation(), observation()),
+        Ok(())
+    ));
 }
 
 // ── compare_generated_ir — exhaustiveness ──────────────────────────────
 
 #[test]
 fn compare_generated_ir_equal_ok() {
-    assert!(compare_generated_ir(observation(), observation()).is_ok());
+    assert!(matches!(
+        compare_generated_ir(observation(), observation()),
+        Ok(())
+    ));
 }
 
 #[test]

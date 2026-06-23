@@ -189,7 +189,7 @@ fn duplicate_completion_does_not_double_drain() {
     let run = RunId::new(13);
     let mut watermark = CompletionWatermark::new(run, 4, 4);
 
-    assert!(watermark.complete(run, 1).is_ok());
+    assert!(matches!(watermark.complete(run, 1), Ok(_)));
     assert_eq!(
         watermark.complete(run, 1),
         Err(CompletionWatermarkError::Duplicate { seq: 1 })

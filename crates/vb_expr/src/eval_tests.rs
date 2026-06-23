@@ -3420,11 +3420,31 @@ mod tests {
         #[test]
         fn type_enforcer_null_rejected_by_all_enforcers(_unit in Just(())) {
             let v = SlotValue::Null;
-            prop_assert!(expect_bool(v).is_err());
-            prop_assert!(expect_i64(v).is_err());
-            prop_assert!(expect_symbol(v).is_err());
-            prop_assert!(expect_list(v).is_err());
-            prop_assert!(expect_object(v).is_err());
+            let bool_rejected = matches!(
+                expect_bool(v),
+                Err(ExprError::TypeMismatch { .. })
+            );
+            prop_assert!(bool_rejected);
+            let i64_rejected = matches!(
+                expect_i64(v),
+                Err(ExprError::TypeMismatch { .. })
+            );
+            prop_assert!(i64_rejected);
+            let symbol_rejected = matches!(
+                expect_symbol(v),
+                Err(ExprError::TypeMismatch { .. })
+            );
+            prop_assert!(symbol_rejected);
+            let list_rejected = matches!(
+                expect_list(v),
+                Err(ExprError::TypeMismatch { .. })
+            );
+            prop_assert!(list_rejected);
+            let object_rejected = matches!(
+                expect_object(v),
+                Err(ExprError::TypeMismatch { .. })
+            );
+            prop_assert!(object_rejected);
         }
 
         #[test]

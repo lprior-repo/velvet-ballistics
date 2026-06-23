@@ -380,10 +380,30 @@ proptest! {
     #[test]
     fn null_rejected_by_all_enforcers(_unit in Just(())) {
         let value = SlotValue::Null;
-        prop_assert!(expect_bool(value).is_err());
-        prop_assert!(expect_i64(value).is_err());
-        prop_assert!(expect_symbol(value).is_err());
-        prop_assert!(expect_list(value).is_err());
-        prop_assert!(expect_object(value).is_err());
+        let bool_rejected = matches!(
+            expect_bool(value),
+            Err(ExprError::TypeMismatch { .. })
+        );
+        prop_assert!(bool_rejected);
+        let i64_rejected = matches!(
+            expect_i64(value),
+            Err(ExprError::TypeMismatch { .. })
+        );
+        prop_assert!(i64_rejected);
+        let symbol_rejected = matches!(
+            expect_symbol(value),
+            Err(ExprError::TypeMismatch { .. })
+        );
+        prop_assert!(symbol_rejected);
+        let list_rejected = matches!(
+            expect_list(value),
+            Err(ExprError::TypeMismatch { .. })
+        );
+        prop_assert!(list_rejected);
+        let object_rejected = matches!(
+            expect_object(value),
+            Err(ExprError::TypeMismatch { .. })
+        );
+        prop_assert!(object_rejected);
     }
 }

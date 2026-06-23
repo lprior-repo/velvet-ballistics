@@ -71,7 +71,7 @@ fn benchmark_budget_helpers_enforce_threshold_boundaries() {
 #[test]
 fn benchmark_evidence_gate_distinguishes_complete_and_missing_baseline() {
     let complete = complete_metadata();
-    assert!(check_evidence_gate(&complete, 5).is_ok());
+    assert!(matches!(check_evidence_gate(&complete, 5), Ok(())));
 
     let missing_baseline = BenchmarkMetadata {
         baseline_us: None,

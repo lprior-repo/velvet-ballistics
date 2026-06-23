@@ -1052,7 +1052,7 @@ mod state_transitions {
         let mut run = make_frame(&workflow)?;
 
         // Pending -> Running (allowed)
-        assert!(run.mark_running(StepIdx::new(0)).is_ok());
+        assert!(matches!(run.mark_running(StepIdx::new(0)), Ok(())));
         // Pending -> Skipped (allowed via Running)
         run.mark_running(StepIdx::new(1))
             .map_err(|e| e.to_string())?;
@@ -1092,10 +1092,13 @@ mod state_transitions {
         let mut run = make_frame(&workflow)?;
 
         // Sharp assertion: Valid PC values are accepted
-        assert!(run.set_pc(StepIdx::new(0)).is_ok());
-        assert!(run.set_pc(StepIdx::new(1)).is_ok());
+        assert!(matches!(run.set_pc(StepIdx::new(0)), Ok(())));
+        assert!(matches!(run.set_pc(StepIdx::new(1)), Ok(())));
         // Exactly at step_count is invalid
-        assert!(run.set_pc(StepIdx::new(2)).is_err());
+        assert!(matches!(
+            run.set_pc(StepIdx::new(2)),
+            Err(CoreError::InvalidProgramCounter { .. })
+        ));
         Ok(())
     }
 

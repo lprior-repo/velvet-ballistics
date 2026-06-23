@@ -111,7 +111,10 @@ fn for_each_start_returns_error_when_input_is_not_list() {
     let input = SlotIdx::new(0);
     let item_slot = SlotIdx::new(1);
     let output_slot = SlotIdx::new(2);
-    assert!(run.write_slot(input, SlotValue::I64(42)).is_ok());
+    assert!(matches!(
+        run.write_slot(input, SlotValue::I64(42)),
+        Ok(())
+    ));
     let result = for_each_start(&mut run, &mut store, input, item_slot, 100, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
     match result {
         Err(EngineError::TypeMismatch { expected, found }) => {
@@ -183,7 +186,10 @@ fn for_each_next_returns_error_when_iterator_is_not_list() {
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let output_slot = SlotIdx::new(1);
-    assert!(run.write_slot(iterator_slot, SlotValue::Bool(true)).is_ok());
+    assert!(matches!(
+        run.write_slot(iterator_slot, SlotValue::Bool(true)),
+        Ok(())
+    ));
     let result = for_each_next(&mut run, &mut store, iterator_slot, StepIdx::new(1), StepIdx::new(2), Some(output_slot));
     match result {
         Err(EngineError::TypeMismatch { expected, found }) => {
@@ -279,7 +285,7 @@ fn for_each_start_null_input_returns_type_mismatch() {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let input = SlotIdx::new(0);
-    assert!(run.write_slot(input, SlotValue::Null).is_ok());
+    assert!(matches!(run.write_slot(input, SlotValue::Null), Ok(())));
     let result = for_each_start(&mut run, &mut store, input, SlotIdx::new(1), 100, StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)));
     match result {
         Err(EngineError::TypeMismatch { expected, found }) => {

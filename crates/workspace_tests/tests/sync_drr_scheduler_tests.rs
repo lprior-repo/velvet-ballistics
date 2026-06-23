@@ -425,8 +425,8 @@ fn missing_action_capacity_blocks_without_drop() {
     let t1 = mk_ticket(1, 1, 1, 1);
     let t2 = mk_ticket(1, 2, 1, 1);
     let t3 = mk_ticket(1, 3, 1, 1);
-    assert!(s.queues[0].inner.enqueue(t1).is_ok());
-    assert!(s.queues[0].inner.enqueue(t2).is_ok());
+    assert!(matches!(s.queues[0].inner.enqueue(t1), Ok(())));
+    assert!(matches!(s.queues[0].inner.enqueue(t2), Ok(())));
     // Third enqueue should fail (queue full)
     let full_err = s.queues[0].inner.enqueue(t3);
     assert!(full_err.is_err(), "third enqueue should fail at cap {cap}");
@@ -526,7 +526,7 @@ fn overflow_enqueue_returns_queue_full() {
     let q = BoundedActionCompletionQueue::new(1).unwrap();
     let t1 = mk_ticket(1, 1, 1, 1);
     let t2 = mk_ticket(1, 2, 1, 1);
-    assert!(q.enqueue(t1).is_ok());
+    assert!(matches!(q.enqueue(t1), Ok(())));
     let err = q.enqueue(t2);
     assert!(err.is_err(), "expected QueueFull, got Ok");
 }
@@ -643,7 +643,7 @@ fn bounded_queue_capacity_preserved() {
 
     let t = mk_ticket(1, 1, 1, 1);
     for _ in 0..cap {
-        assert!(q.enqueue(t).is_ok());
+        assert!(matches!(q.enqueue(t), Ok(())));
     }
     assert!(q.is_full());
     assert_eq!(q.remaining_capacity(), 0);

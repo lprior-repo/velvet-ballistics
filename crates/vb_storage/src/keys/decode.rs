@@ -95,8 +95,8 @@ impl KeyPrefix {
 /// use vb_storage::keys::{try_key_prefix, KeyPrefix};
 ///
 /// assert_eq!(try_key_prefix(&[0x01]).unwrap(), KeyPrefix::WorkflowSource);
-/// assert!(try_key_prefix(&[]).is_err());
-/// assert!(try_key_prefix(&[0xFF]).is_err());
+/// assert!(matches!(try_key_prefix(&[]), Err(KeyDecodeError::EmptyKey)));
+/// assert!(matches!(try_key_prefix(&[0xFF]), Err(KeyDecodeError::UnknownPrefix)));
 /// ```
 pub fn try_key_prefix(bytes: &[u8]) -> Result<KeyPrefix, KeyDecodeError> {
     let &prefix = bytes.first().ok_or(KeyDecodeError::EmptyKey)?;

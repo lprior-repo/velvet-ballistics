@@ -195,8 +195,12 @@ proptest! {
                 // legacy_frame_extra_slot_taint_classifies_as_clean at
                 // crates/vb_storage/src/recovery/replay/summary/tests.rs:1215.
             }
-            other => prop_assert!(false,
-                "non-prefix bytes MUST produce LegacyFrameExtra, got {:?}", other),
+            other => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "non-prefix bytes MUST produce LegacyFrameExtra, got {:?}",
+                    other
+                )));
+            }
         }
     }
 }
@@ -213,8 +217,12 @@ proptest! {
                 prop_assert_eq!(payload, bytes.as_slice(),
                     "LegacyFrameExtra preserves 4-byte payload");
             }
-            other => prop_assert!(false,
-                "random non-prefix bytes MUST produce LegacyFrameExtra, got {:?}", other),
+            other => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "random non-prefix bytes MUST produce LegacyFrameExtra, got {:?}",
+                    other
+                )));
+            }
         }
 
         // Canonical anchor: vec![0xAB, 0xCD, 0xEF, 0x42] from existing

@@ -91,10 +91,16 @@ proptest! {
     #[test]
     fn vb_god2f_boundary_inventory_validation_evidence_properties(suffix in base36_suffix()) {
         let bead_id = format!("vb-{suffix}");
-        prop_assert!(validate_evidence_reference_bytes(bead_id.as_bytes()).is_ok());
+        prop_assert!(matches!(
+            validate_evidence_reference_bytes(bead_id.as_bytes()),
+            Ok(EvidenceReference::ExternalProvenance(_))
+        ));
 
         let external = format!("external:source-{suffix}#sha256=abc123");
-        prop_assert!(validate_evidence_reference_bytes(external.as_bytes()).is_ok());
+        prop_assert!(matches!(
+            validate_evidence_reference_bytes(external.as_bytes()),
+            Ok(EvidenceReference::ExternalProvenance(_))
+        ));
 
         let missing_digest = format!("external:source-{suffix}");
         prop_assert!(matches!(

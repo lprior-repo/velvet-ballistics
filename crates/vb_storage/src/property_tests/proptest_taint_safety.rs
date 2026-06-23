@@ -236,8 +236,8 @@ proptest! {
         let clean_digest: [u8; DIGEST_BYTES] = *blake3::hash(&clean_bytes).as_bytes();
         let secret_digest: [u8; DIGEST_BYTES] = *blake3::hash(&secret_bytes).as_bytes();
         // Both verify their own digests.
-        prop_assert!(verify_digest_match(&clean_bytes, clean_digest).is_ok());
-        prop_assert!(verify_digest_match(&secret_bytes, secret_digest).is_ok());
+        prop_assert_eq!(verify_digest_match(&clean_bytes, clean_digest), Ok(()));
+        prop_assert_eq!(verify_digest_match(&secret_bytes, secret_digest), Ok(()));
         // Distinct payloads produce distinct digests.
         prop_assert_ne!(clean_digest, secret_digest);
     }

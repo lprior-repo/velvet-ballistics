@@ -2199,7 +2199,7 @@ fn integration_policy_validates_total_slots() {
 
     // High limit should pass
     let policy = tight_policy(1_000_000, 500, 64, 8);
-    assert!(policy.validate(&budget).is_ok());
+    assert!(matches!(policy.validate(&budget), Ok(())));
 
     // Low limit should fail
     let tight_policy = tight_policy(1_000_000, 30, 64, 8);
@@ -2281,7 +2281,7 @@ fn integration_policy_validates_nesting_depth() {
 
     // High depth limit should pass
     let policy = tight_policy(1_000_000, 65_535, 64, 10);
-    assert!(policy.validate(&budget).is_ok());
+    assert!(matches!(policy.validate(&budget), Ok(())));
 
     // Low depth limit should fail
     let tight_policy = tight_policy(1_000_000, 65_535, 64, 2);

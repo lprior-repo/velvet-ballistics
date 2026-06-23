@@ -71,12 +71,12 @@ fn validate_capacity_zero_rejected() {
 
 #[test]
 fn validate_capacity_one_accepted() {
-    assert!(validate_capacity(1, 16).is_ok());
+    assert!(matches!(validate_capacity(1, 16), Ok(())));
 }
 
 #[test]
 fn validate_capacity_maximum_accepted() {
-    assert!(validate_capacity(16, 16).is_ok());
+    assert!(matches!(validate_capacity(16, 16), Ok(())));
 }
 
 #[test]

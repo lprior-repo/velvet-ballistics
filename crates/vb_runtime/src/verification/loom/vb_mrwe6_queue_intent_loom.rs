@@ -70,8 +70,8 @@ fn vb_mrwe6_queue_flush_drain_preserves_index_intent_under_interleavings() {
             assert_eq!(events, intents);
         });
 
-        assert!(scheduled.join().is_ok());
-        assert!(resolution.join().is_ok());
-        assert!(observer.join().is_ok());
+        assert!(matches!(scheduled.join(), Ok(())));
+        assert!(matches!(resolution.join(), Ok(())));
+        assert!(matches!(observer.join(), Ok(())));
     });
 }

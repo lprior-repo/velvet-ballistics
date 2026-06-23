@@ -540,11 +540,11 @@ fn no_resurrection_after_finalize() {
     shard.finalize(1).unwrap();
 
     // Submit rejected
-    assert!(shard.submit(mk_ticket(99, 1)).is_err());
+    assert!(matches!(shard.submit(mk_ticket(99, 1)), Err(_)));
     // Drain returns None (wrong state)
     assert_eq!(shard.drain_one(), None);
     // Another finalize rejected
-    assert!(shard.finalize(2).is_err());
+    assert!(matches!(shard.finalize(2), Err(_)));
     // State unchanged
     assert_eq!(shard.current_state(), ShardState::Finalized);
 }

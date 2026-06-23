@@ -240,7 +240,7 @@ fn enqueue_at_capacity_returns_queue_full() {
     assert_eq!(q.capacity(), cap);
     // Fill to capacity
     for i in 0..cap {
-        assert!(q.enqueue(mk_ticket(1, i as u32, 1)).is_ok());
+        assert!(matches!(q.enqueue(mk_ticket(1, i as u32, 1)), Ok(())));
     }
     assert!(q.is_full());
     assert_eq!(q.remaining_capacity(), 0);
@@ -263,7 +263,7 @@ fn enqueue_works_after_dequeue_at_capacity() {
     let _ = q.dequeue();
     assert!(!q.is_full());
     let t3 = mk_ticket(1, 3, 1);
-    assert!(q.enqueue(t3).is_ok());
+    assert!(matches!(q.enqueue(t3), Ok(())));
     assert_eq!(q.len(), 2);
 }
 
@@ -439,7 +439,7 @@ fn enqueue_after_full_drain_works() {
     assert!(q.is_empty());
     // Re-enqueue
     let t3 = mk_ticket(1, 3, 1);
-    assert!(q.enqueue(t3).is_ok());
+    assert!(matches!(q.enqueue(t3), Ok(())));
     assert_eq!(q.len(), 1);
     assert_eq!(q.dequeue(), Some(t3));
 }

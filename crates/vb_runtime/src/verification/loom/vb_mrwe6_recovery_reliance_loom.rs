@@ -51,7 +51,7 @@ fn vb_mrwe6_recovery_trusts_only_atomic_event_index_pairs() {
             }
         });
 
-        assert!(writer.join().is_ok());
-        assert!(recovery.join().is_ok());
+        assert!(matches!(writer.join(), Ok(())));
+        assert!(matches!(recovery.join(), Ok(())));
     });
 }

@@ -378,7 +378,7 @@ proptest! {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&mutated, &mut tracker, &[]);
 
-        prop_assert!(assert_recovery_class(&result, mutation).is_ok());
+        assert_recovery_class(&result, mutation)?;
     }
 }
 
