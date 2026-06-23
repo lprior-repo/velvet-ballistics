@@ -1,11 +1,7 @@
 #[test]
-fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
-    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
-    };
-    let Some(queue) = require_ok(journal_queue(8, 2), "journal queue opens") else {
-        return;
-    };
+fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(8, 2)?;
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
     let run = RunId::new(48);
     let workflow = WorkflowDigest::from_bytes([11; 32]);
@@ -42,16 +38,13 @@ fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 3));
+    Ok(())
 }
 
 #[test]
-fn queued_storage_runtime_journal_rejects_unsequenced_append() {
-    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
-    };
-    let Some(queue) = require_ok(journal_queue(4, 2), "journal queue opens") else {
-        return;
-    };
+fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(4, 2)?;
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
     let run = RunId::new(50);
 
@@ -65,33 +58,25 @@ fn queued_storage_runtime_journal_rejects_unsequenced_append() {
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
+    Ok(())
 }
 
 #[test]
-fn runtime_shutdown_graceful_drains_owned_queued_journal() {
-    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
-    };
-    let Some(queue) = require_ok(journal_queue(4, 1), "journal queue opens") else {
-        return;
-    };
+fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(4, 1)?;
     let runtime_journal = Arc::new(QueuedStorageRuntimeJournal::journaled(
         journal.clone(),
         queue.clone(),
     ));
     let run = RunId::new(49);
     let workflow = WorkflowDigest::from_bytes([12; 32]);
-    let Some(shard_count) = NonZeroUsize::new(1) else {
-        assert!(false, "invalid shard count");
-        return;
-    };
+    let shard_count = NonZeroUsize::new(1).ok_or_else(|| "invalid shard count".to_owned())?;
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal);
 
-    let Some(compiled) = require_ok(single_finish_workflow(workflow), "workflow compiles") else {
-        return;
-    };
+    let compiled = single_finish_workflow(workflow)?;
     assert_eq!(runtime.submit_direct(run, compiled), Ok(()));
     assert!(matches!(
         queue.pending_profile_counts(),
@@ -113,16 +98,13 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() {
     ));
     // At minimum RunSubmitted + RunAdmission + StepSucceeded + RunFinished are stored.
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 4));
+    Ok(())
 }
 
 #[test]
-fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
-    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
-    };
-    let Some(queue) = require_ok(journal_queue(1, 1), "journal queue opens") else {
-        return;
-    };
+fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(1, 1)?;
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
     let run = RunId::new(46);
 
@@ -152,14 +134,9 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
         matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
     );
 
-    let Some(events) = require_ok(
-        journal
-            .events_for_run(run)
-            .map_err(|error| error.to_string()),
-        "queue-full events read",
-    ) else {
-        return;
-    };
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
     assert_eq!(
         events,
         vec![
@@ -176,14 +153,44 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
             },
         ]
     );
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_accepts_appends_until_configured_capacity() {
-    let Some(capacity) = NonZeroUsize::new(2) else {
-        assert!(false, "test capacity must be non-zero");
-        return;
-    };
+fn storage_runtime_journal_probe_delegates_to_fjall_health() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::journaled(journal);
+
+    assert_eq!(adapter.probe(), Ok(()));
+    Ok(())
+}
+
+#[test]
+fn queued_storage_runtime_journal_probe_rejects_full_queue() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(1, 1)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal, queue);
+    let run = RunId::new(47);
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+
+    assert!(matches!(
+        adapter.probe(),
+        Err(crate::RuntimeError::StorageJournalAppend { source })
+            if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
+    ));
+    Ok(())
+}
+
+#[test]
+fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Result<(), String> {
+    let capacity = NonZeroUsize::new(2).ok_or_else(|| "invalid journal capacity".to_owned())?;
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(51);
     let workflow = WorkflowDigest::from_bytes([13; 32]);
@@ -197,14 +204,13 @@ fn volatile_runtime_journal_accepts_appends_until_configured_capacity() {
     assert_eq!(journal.append(second.clone()), Ok(()));
 
     assert_eq!(journal.snapshot(), Ok(vec![first, second]));
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() {
-    let Some(capacity) = NonZeroUsize::new(1) else {
-        assert!(false, "test capacity must be non-zero");
-        return;
-    };
+fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached()
+-> Result<(), String> {
+    let capacity = NonZeroUsize::new(1).ok_or_else(|| "invalid journal capacity".to_owned())?;
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(52);
     let workflow = WorkflowDigest::from_bytes([14; 32]);
@@ -218,14 +224,13 @@ fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capa
     );
 
     assert_eq!(journal.snapshot(), Ok(vec![kept]));
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() {
-    let Some(capacity) = NonZeroUsize::new(2) else {
-        assert!(false, "test capacity must be non-zero");
-        return;
-    };
+fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection()
+-> Result<(), String> {
+    let capacity = NonZeroUsize::new(2).ok_or_else(|| "invalid journal capacity".to_owned())?;
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(53);
     let first = RuntimeJournalEvent::RunCancelled { run, reason: None };
@@ -245,4 +250,5 @@ fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection(
     let expected = Ok(vec![first, second]);
     assert_eq!(journal.snapshot(), expected.clone());
     assert_eq!(journal.snapshot(), expected);
+    Ok(())
 }

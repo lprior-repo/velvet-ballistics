@@ -41,7 +41,7 @@ pub open spec fn MAGIC_INDEX_RECORD() -> u32 { 0x5642_4958u32 }
 
 // Known record kind identifiers (matches RecordKind enum in records.rs)
 pub open spec fn KNOWN_JOURNAL_KINDS() -> Set<int> {
-    set![10int, 11int, 12int, 13int, 14int, 15int, 16int, 17int, 18int, 19int, 20int, 21int, 22int, 23int, 24int, 25int, 26int, 27int, 28int]
+    set![10int, 11int, 12int, 13int, 14int, 15int, 16int, 17int, 18int, 19int, 20int, 21int, 22int, 23int, 24int, 25int, 26int, 27int, 28int, 29int]
 }
 
 pub open spec fn KNOWN_NON_JOURNAL_KINDS() -> Set<int> {
@@ -63,7 +63,7 @@ pub open spec fn spec_is_known_record_kind(kind: int) -> bool {
 }
 
 /// Proof: Kind 28 (RunKilled) is a known record kind.
-/// Proved directly: 28 is in the journal kinds set (10..=28) which is a subset of ALL_KNOWN_KINDS.
+/// Proved directly: 28 is in the journal kinds set (10..=29) which is a subset of ALL_KNOWN_KINDS.
 pub proof fn lemma_kind_28_is_known()
     ensures
         spec_is_known_record_kind(28),
@@ -73,25 +73,25 @@ pub proof fn lemma_kind_28_is_known()
     assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
 }
 
-/// Proof: All journal event kinds (10..=28) are known.
+/// Proof: All journal event kinds (10..=29) are known.
 pub proof fn lemma_all_journal_kinds_known()
     ensures
-        forall |k: int| 10 <= k <= 28 ==> spec_is_known_record_kind(k),
+        forall |k: int| 10 <= k <= 29 ==> spec_is_known_record_kind(k),
 {
-    // KNOWN_JOURNAL_KINDS contains all values 10 through 28 by definition
+    // KNOWN_JOURNAL_KINDS contains all values 10 through 29 by definition
     assert(KNOWN_JOURNAL_KINDS().contains(10));
-    assert(KNOWN_JOURNAL_KINDS().contains(28));
+    assert(KNOWN_JOURNAL_KINDS().contains(29));
     assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
 }
 
-/// Proof: Kind 29 is NOT a known record kind (boundary check).
-pub proof fn lemma_kind_29_is_unknown()
+/// Proof: Kind 31 is NOT a known record kind (boundary check).
+pub proof fn lemma_kind_31_is_unknown()
     ensures
-        !spec_is_known_record_kind(29),
+        !spec_is_known_record_kind(31),
 {
-    // 29 is not in any known set
-    assert(!KNOWN_JOURNAL_KINDS().contains(29));
-    assert(!KNOWN_NON_JOURNAL_KINDS().contains(29));
+    // 31 is not in any known set
+    assert(!KNOWN_JOURNAL_KINDS().contains(31));
+    assert(!KNOWN_NON_JOURNAL_KINDS().contains(31));
 }
 
 /// Proof: Kind 0 is NOT a known record kind.
@@ -116,7 +116,7 @@ pub enum SpecKindFamilyResult {
 /// Returns Ok when the (magic, kind) pair is a valid family combination.
 pub open spec fn spec_validate_kind_family(magic: u32, kind: int) -> SpecKindFamilyResult {
     let valid = match magic {
-        m if m == MAGIC_JOURNAL_EVENT() => 10 <= kind <= 28,
+        m if m == MAGIC_JOURNAL_EVENT() => 10 <= kind <= 29,
         m if m == MAGIC_SNAPSHOT() => kind == 30,
         m if m == MAGIC_BLOB() => kind == 40,
         m if m == MAGIC_WORKFLOW_SOURCE() => kind == 1,
@@ -132,7 +132,15 @@ pub proof fn lemma_kind_28_journal_family_ok()
     ensures
         spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 28) == SpecKindFamilyResult::Ok,
 {
-    assert(10 <= 28 <= 28);
+    assert(10 <= 28 <= 29);
+}
+
+/// Proof: validate_kind_family(MAGIC_JOURNAL_EVENT, 29) returns Ok.
+pub proof fn lemma_kind_29_journal_family_ok()
+    ensures
+        spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 29) == SpecKindFamilyResult::Ok,
+{
+    assert(10 <= 29 <= 29);
 }
 
 /// Proof: validate_kind_family(MAGIC_SNAPSHOT, 28) returns Err.
@@ -151,13 +159,13 @@ pub proof fn lemma_kind_28_blob_family_err()
     assert(28 != 40);
 }
 
-/// Proof: For any journal kind k in 10..=28, MAGIC_JOURNAL_EVENT family validates Ok.
+/// Proof: For any journal kind k in 10..=29, MAGIC_JOURNAL_EVENT family validates Ok.
 pub proof fn lemma_journal_family_range_valid()
     ensures
-        forall |k: int| 10 <= k <= 28 ==>
+        forall |k: int| 10 <= k <= 29 ==>
             spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k) == SpecKindFamilyResult::Ok,
 {
-    assert forall |k: int| 10 <= k <= 28 implies
+    assert forall |k: int| 10 <= k <= 29 implies
         spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k) == SpecKindFamilyResult::Ok by {
     };
 }
@@ -177,9 +185,8 @@ pub proof fn lemma_kind_28_wrong_magic_err()
 /// Proof function binding the Verus spec model to the production Rust
 /// is_known_record_kind() function in crates/vb_storage/src/codec/validation.rs:23.
 ///
-/// The production function uses `matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)`.
-/// This MUST be extended to `10..=28` to include RunKilled(28).
-/// This lemma proves the correct spec; the production gap is recorded as blocker vb-b8i8f-BLOCK-001.
+/// The production function uses `matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)`.
+/// This includes RunKilled(28) and AskTimedOut(29).
 pub proof fn lemma_production_binding_is_known_record_kind_28()
     ensures
         spec_is_known_record_kind(28) == true,
@@ -188,13 +195,106 @@ pub proof fn lemma_production_binding_is_known_record_kind_28()
 }
 
 /// Production binding for validate_kind_family at validation.rs:42.
-/// The current production line 46 uses `matches!(kind, 10..=27)` which
-/// does not yet include kind 28. This spec establishes the correct expected behavior.
+/// The current production line 46 uses `matches!(kind, 10..=29)`.
 pub proof fn lemma_production_binding_validate_kind_family_28()
     ensures
         spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 28) == SpecKindFamilyResult::Ok,
 {
     lemma_kind_28_journal_family_ok();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-VERUS-004b: JournalEvent payload-kind parity model
+// ─────────────────────────────────────────────────────────────────
+
+/// Semantic payload variants from crates/vb_storage/src/events.rs.
+/// Variants that share a durable wire kind map to the same record kind below.
+pub enum SpecJournalEventKind {
+    RunAccepted,
+    RunAdmission,
+    StepStarted,
+    StepSucceeded,
+    ActionScheduled,
+    ActionCompleted,
+    ActionScheduledTicket,
+    ActionCompletedEnvelope,
+    ActionFailed,
+    SlotWritten,
+    WaitScheduled,
+    AskScheduled,
+    AskAnswered,
+    RetryScheduled,
+    RunCancelled,
+    RunKilled,
+    RunFinished,
+    RunFailed,
+    RunResumed,
+    RunRetried,
+    RunAnswered,
+    AskTimedOut,
+}
+
+/// Model of JournalEvent::record_kind().id() from events.rs:347-374.
+pub open spec fn spec_event_record_kind(event: SpecJournalEventKind) -> int {
+    match event {
+        SpecJournalEventKind::RunAccepted => 10,
+        SpecJournalEventKind::RunAdmission => 24,
+        SpecJournalEventKind::StepStarted => 11,
+        SpecJournalEventKind::StepSucceeded => 12,
+        SpecJournalEventKind::ActionScheduled => 13,
+        SpecJournalEventKind::ActionCompleted => 14,
+        SpecJournalEventKind::ActionScheduledTicket => 13,
+        SpecJournalEventKind::ActionCompletedEnvelope => 14,
+        SpecJournalEventKind::ActionFailed => 15,
+        SpecJournalEventKind::SlotWritten => 12,
+        SpecJournalEventKind::WaitScheduled => 16,
+        SpecJournalEventKind::AskScheduled => 17,
+        SpecJournalEventKind::AskAnswered => 18,
+        SpecJournalEventKind::RetryScheduled => 19,
+        SpecJournalEventKind::RunCancelled => 21,
+        SpecJournalEventKind::RunKilled => 28,
+        SpecJournalEventKind::RunFinished => 22,
+        SpecJournalEventKind::RunFailed => 23,
+        SpecJournalEventKind::RunResumed => 25,
+        SpecJournalEventKind::RunRetried => 26,
+        SpecJournalEventKind::RunAnswered => 27,
+        SpecJournalEventKind::AskTimedOut => 29,
+    }
+}
+
+/// Model of codec::validate_journal_event_record_kind: exact equality only.
+pub open spec fn spec_payload_kind_matches(envelope_kind: int, event: SpecJournalEventKind) -> bool {
+    envelope_kind == spec_event_record_kind(event)
+}
+
+/// Proof: AskTimedOut payload maps exactly to durable record kind 29.
+pub proof fn lemma_ask_timed_out_payload_kind_is_29()
+    ensures
+        spec_event_record_kind(SpecJournalEventKind::AskTimedOut) == 29,
+        spec_payload_kind_matches(29, SpecJournalEventKind::AskTimedOut),
+        !spec_payload_kind_matches(18, SpecJournalEventKind::AskTimedOut),
+{
+}
+
+/// Proof: a kind-29 envelope cannot semantically carry an AskAnswered payload.
+pub proof fn lemma_kind_29_rejects_ask_answered_payload()
+    ensures
+        !spec_payload_kind_matches(29, SpecJournalEventKind::AskAnswered),
+        spec_payload_kind_matches(18, SpecJournalEventKind::AskAnswered),
+{
+}
+
+/// Production binding note: codec::validate_journal_event_record_kind in
+/// crates/vb_storage/src/codec/mod.rs compares envelope.record_kind to
+/// JournalEvent::record_kind().id() and returns RecordKindPayloadMismatch on
+/// inequality. These lemmas therefore bind kind-29 admission to exact payload
+/// semantics rather than the broader 10..=29 family range.
+pub proof fn lemma_production_binding_ask_timed_out_payload_parity()
+    ensures
+        spec_payload_kind_matches(29, SpecJournalEventKind::AskTimedOut),
+        !spec_payload_kind_matches(18, SpecJournalEventKind::AskTimedOut),
+{
+    lemma_ask_timed_out_payload_kind_is_29();
 }
 
 // ─────────────────────────────────────────────────────────────────

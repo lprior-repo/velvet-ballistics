@@ -14,6 +14,10 @@ pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;
 
+mod kind_parity;
+
+pub use self::kind_parity::EnforceKindParity;
+
 #[cfg(fuzzing)]
 pub mod fuzz_validation {
     //! Public fuzz-only accessors for codec validation invariants.
@@ -66,31 +70,68 @@ pub fn encode_record<T: Serialize>(
 }
 
 /// Decodes and postcard-deserializes an enveloped record.
-pub fn decode_record<T: DeserializeOwned>(
+///
+/// `T` must be one of the storage record types that implement
+/// [`EnforceKindParity`]. For [`JournalEvent`], parity is enforced automatically:
+/// the envelope record kind must match the decoded payload variant, and the
+/// event must satisfy `JournalEvent::is_valid()`. For non-journal record types
+/// (workflow source, compiled IR, blob, run snapshot, run header) the parity
+/// hook is a no-op because those types do not carry a record-kind discriminant
+/// in the payload.
+pub fn decode_record<T>(
     bytes: &[u8],
     expected_magic: u32,
     max_payload_len: u32,
-) -> Result<(RecordEnvelope, T), JournalError> {
+) -> Result<(RecordEnvelope, T), JournalError>
+where
+    T: DeserializeOwned + EnforceKindParity,
+{
     let (envelope, payload) =
         self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
     let value = postcard::from_bytes(payload).map_err(|_| JournalError::PostcardDecodeFailed)?;
+    T::enforce_kind_parity(&envelope, &value)?;
     Ok((envelope, value))
 }
 
-/// Decodes a `JournalEvent` and validates its semantic constraints.
+/// Validates that the envelope kind exactly matches the decoded journal payload variant.
+pub fn validate_journal_event_record_kind(
+    envelope: &RecordEnvelope,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    let payload_kind = event.record_kind().id();
+    if envelope.record_kind == payload_kind {
+        Ok(())
+    } else {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: envelope.record_kind,
+            payload_kind,
+        })
+    }
+}
+
+/// Decodes a `JournalEvent` and validates its envelope/payload parity and semantic constraints.
 ///
-/// Unlike the generic [`decode_record`], this function additionally verifies that the
-/// decoded event passes `JournalEvent::is_valid()` — catching run_id=0, seq=u64::MAX,
-/// and attempt=0 that can arise from adversarial byte streams even when postcard
-/// deserialization succeeds.
+/// This is the correct decode function for untrusted input streams. The kind/payload
+/// parity and `JournalEvent::is_valid()` checks are mandatory: callers cannot opt
+/// out without bypassing [`decode_record`] entirely. Production parse/replay paths
+/// must use this function for journal events.
 ///
-/// This is the correct decode function for untrusted input streams.
+/// # Errors
+///
+/// Returns an error if the bytes do not form a valid journal event record, including:
+/// - [`JournalError::RecordKindPayloadMismatch`] if the envelope kind and payload variant disagree
+/// - [`JournalError::InvalidEvent`] if the payload is structurally encoded but semantically invalid
+///   (`run_id == 0`, `seq == u64::MAX`, or `attempt == 0`)
 pub fn decode_journal_event(
     bytes: &[u8],
     expected_magic: u32,
     max_payload_len: u32,
 ) -> Result<(RecordEnvelope, JournalEvent), JournalError> {
     let (envelope, event) = decode_record::<JournalEvent>(bytes, expected_magic, max_payload_len)?;
+    // `decode_record::<JournalEvent>` already enforces parity and is_valid via the
+    // `EnforceKindParity` impl. These explicit calls remain as a defense-in-depth
+    // self-check and to make the invariants obvious to readers.
+    validate_journal_event_record_kind(&envelope, &event)?;
     if !event.is_valid() {
         return Err(JournalError::InvalidEvent);
     }

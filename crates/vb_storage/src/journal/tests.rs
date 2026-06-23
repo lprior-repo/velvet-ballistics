@@ -1349,6 +1349,137 @@ fn header_validation_rejects_corrupted_magic_in_stored_event() {
     );
 }
 
+#[test]
+fn events_for_run_rejects_header_payload_kind_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let journal = FjallJournal::open(temp.path(), None)?;
+    let run = RunId::new(9004);
+    let event = JournalEvent::AskTimedOutEvent {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(2),
+        attempt: 1,
+    };
+    let value = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let key = crate::keys::run_event_key(run, EventSeq::new(0))?;
+    journal.events.insert(key.to_vec(), value)?;
+
+    match journal.events_for_run(run) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskAnswered.id()
+            && payload_kind == crate::RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        Ok(_) | Err(_) => Err(Box::new(JournalError::InvalidEvent)),
+    }
+}
+
+// =========================================================================
+// Adversarial replay parity: AskTimedOut(29) ↔ AskAnswered(18) swap.
+// =========================================================================
+
+/// The replay path (`events_for_run`) must reject a stored record whose
+/// envelope kind is `AskTimedOut(29)` while the payload is an
+/// `AskAnsweredEvent`. Without parity enforcement, a tampered record would
+/// reach the recovery code as an "answer" instead of a "timeout" and
+/// silently diverge from the runtime state. The diagnostic must name both
+/// the envelope and the payload kind.
+#[test]
+fn events_for_run_rejects_ask_timed_out_envelope_with_ask_answered_payload()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let journal = FjallJournal::open(temp.path(), None)?;
+    let run = RunId::new(9101);
+    let event = JournalEvent::AskAnsweredEvent {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(2),
+        attempt: 1,
+    };
+    let value = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let key = crate::keys::run_event_key(run, EventSeq::new(0))?;
+    journal.events.insert(key.to_vec(), value)?;
+
+    match journal.events_for_run(run) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskTimedOut.id()
+            && payload_kind == crate::RecordKind::AskAnswered.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "events_for_run must reject AskTimedOut(29) envelope carrying AskAnswered payload, got {other:?}"
+            );
+            Err(Box::new(JournalError::InvalidEvent))
+        }
+    }
+}
+
+/// Symmetric inverse: a stored record whose envelope kind is
+/// `AskAnswered(18)` while the payload is an `AskTimedOutEvent` must also be
+/// rejected by the replay path. This is the parity direction exercised by
+/// the existing `events_for_run_rejects_header_payload_kind_mismatch` test,
+/// but is repeated here under the explicit AskTimedOut ↔ AskAnswered
+/// contract so the storage journal parity/API contract is unambiguously
+/// covered for both swap directions through every public path.
+#[test]
+fn events_for_run_rejects_ask_answered_envelope_with_ask_timed_out_payload()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let journal = FjallJournal::open(temp.path(), None)?;
+    let run = RunId::new(9102);
+    let event = JournalEvent::AskTimedOutEvent {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(2),
+        attempt: 1,
+    };
+    let value = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let key = crate::keys::run_event_key(run, EventSeq::new(0))?;
+    journal.events.insert(key.to_vec(), value)?;
+
+    match journal.events_for_run(run) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskAnswered.id()
+            && payload_kind == crate::RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "events_for_run must reject AskAnswered(18) envelope carrying AskTimedOut payload, got {other:?}"
+            );
+            Err(Box::new(JournalError::InvalidEvent))
+        }
+    }
+}
+
 // =========================================================================
 // Edge case: header validation - wrong schema version in stored record
 // =========================================================================

@@ -184,26 +184,31 @@ fn next_seq_max_minus_one_returns_max() {
 }
 
 // =============================================================================
-// B60: kind 28 admission does not open unknown kind 29
+// B60: journal-specific kind admission does not open unknown kind 31
 // =============================================================================
 
 #[test]
-fn kind_28_admission_does_not_open_unknown_kind_29() {
-    // Verify kind 28 is known and admitted for journal
+fn kind_28_and_29_admission_does_not_open_unknown_kind_31() {
+    // Verify kind 28 and kind 29 are known and admitted for journal
     assert!(is_known_record_kind(28), "kind 28 must be known");
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 28).is_ok(),
         "kind 28 must be admitted for journal magic"
     );
+    assert!(is_known_record_kind(29), "kind 29 must be known");
+    assert!(
+        validate_kind_family(MAGIC_JOURNAL_EVENT, 29).is_ok(),
+        "kind 29 must be admitted for journal magic"
+    );
 
-    // Verify kind 29 is still unknown and rejected
-    assert!(!is_known_record_kind(29), "kind 29 must still be unknown");
+    // Verify kind 31 is still unknown and rejected
+    assert!(!is_known_record_kind(31), "kind 31 must still be unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 29),
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 31),
             Err(JournalError::RecordKindFamilyMismatch { .. })
         ),
-        "kind 29 must be rejected for journal magic"
+        "kind 31 must be rejected for journal magic"
     );
 }
 

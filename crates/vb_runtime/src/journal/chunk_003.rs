@@ -16,7 +16,13 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     }
 
     fn probe(&self) -> RuntimeResult<()> {
-        Ok(())
+        if self.profile == DurabilityProfile::Strict {
+            return Err(RuntimeError::UnsupportedAsyncStrictAck);
+        }
+        self.journal.probe_health().map_err(RuntimeError::from)?;
+        self.queue
+            .probe_accepting_writes()
+            .map_err(RuntimeError::from)
     }
 
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {

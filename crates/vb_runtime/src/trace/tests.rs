@@ -159,6 +159,20 @@ fn drain_for_run_returns_empty_for_nonexistent_run() {
 }
 
 #[test]
+fn drain_for_run_preserves_non_target_events() {
+    let mut ring = TraceRing::new(8);
+    let run_one_start = TraceEvent::RunSubmitted { run: RunId::new(1) };
+    let run_two = TraceEvent::RunSubmitted { run: RunId::new(2) };
+    let run_one_finish = TraceEvent::RunFinished { run: RunId::new(1) };
+    assert_eq!(ring.push(run_one_start.clone()), true);
+    assert_eq!(ring.push(run_two.clone()), true);
+    assert_eq!(ring.push(run_one_finish.clone()), true);
+
+    assert_eq!(ring.drain_for_run(RunId::new(2), 8), vec![run_two]);
+    assert_eq!(ring.drain(), vec![run_one_start, run_one_finish]);
+}
+
+#[test]
 fn trace_event_run_id_returns_correct_run_for_all_variants() {
     let run = RunId::new(42);
     let step = StepIdx::new(5);

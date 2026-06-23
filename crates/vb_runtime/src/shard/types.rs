@@ -627,6 +627,8 @@ pub struct Shard {
     pub(crate) terminal_runs: IndexSet<RunId>,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
+    /// Last frame executed count already reflected in shard counters by run.
+    pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,

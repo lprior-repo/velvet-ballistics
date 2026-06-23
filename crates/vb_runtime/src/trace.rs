@@ -18,11 +18,7 @@ pub struct TraceRing {
 }
 
 impl TraceRing {
-    /// Creates a trace ring with the given bounded capacity.
-    ///
-    /// # Invariants
-    ///
-    /// `capacity` must be ≥ 1. A value of 0 is normalized to 1.
+    /// Creates a trace ring with nonzero bounded capacity.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
         let (producer, consumer) = RingBuffer::new(capacity.max(1));
@@ -53,8 +49,7 @@ impl TraceRing {
         self.consumer.is_empty()
     }
 
-    /// Attempts to push a trace event. Returns false if the ring is full (drops oldest policy
-    /// is not used here; the caller may choose to count the drop).
+    /// Attempts to push a trace event. Returns false if the ring is full.
     pub fn push(&mut self, event: TraceEvent) -> bool {
         let remembered = event.clone();
         if let Ok(()) = self.producer.push(event) {
@@ -92,18 +87,30 @@ impl TraceRing {
     pub fn drain_for_run(&mut self, target: RunId, limit: usize) -> Vec<TraceEvent> {
         let bounded_limit = limit.min(self.capacity);
         let mut events = Vec::with_capacity(bounded_limit);
+        if bounded_limit == 0 {
+            return events;
+        }
+        let mut preserved = VecDeque::with_capacity(self.capacity);
         let mut inspected = 0usize;
-        while inspected < bounded_limit {
+        while inspected < self.capacity {
             let Ok(event) = self.consumer.pop() else {
-                return events;
+                break;
             };
-            if event.run_id() == target {
+            if event.run_id() == target && events.len() < bounded_limit {
                 events.push(event);
+            } else {
+                preserved.push_back(event);
             }
             inspected = match inspected.checked_add(1) {
                 Some(next) => next,
-                None => return events,
+                None => break,
             };
+        }
+        while let Some(event) = preserved.pop_front() {
+            if self.producer.push(event).is_err() {
+                self.dropped = self.dropped.saturating_add(1);
+                break;
+            }
         }
         events
     }

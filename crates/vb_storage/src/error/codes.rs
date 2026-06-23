@@ -91,6 +91,7 @@ impl JournalError {
             Self::MigrationRequired { .. } => Self::MIGRATION_REQUIRED_CODE,
             Self::UnknownRecordKind { .. } => Self::UNKNOWN_RECORD_KIND_CODE,
             Self::RecordKindFamilyMismatch { .. } => Self::RECORD_KIND_FAMILY_MISMATCH_CODE,
+            Self::RecordKindPayloadMismatch { .. } => Self::INVALID_EVENT_CODE,
             Self::HeaderLengthMismatch { .. } => Self::HEADER_LENGTH_MISMATCH_CODE,
             Self::PayloadTooLarge { .. } => Self::PAYLOAD_TOO_LARGE_CODE,
             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
@@ -145,6 +146,7 @@ impl JournalError {
             Self::MigrationRequired { .. } => "MIGRATION_REQUIRED",
             Self::UnknownRecordKind { .. } => "UNKNOWN_RECORD_KIND",
             Self::RecordKindFamilyMismatch { .. } => "RECORD_KIND_FAMILY_MISMATCH",
+            Self::RecordKindPayloadMismatch { .. } => "INVALID_JOURNAL_EVENT",
             Self::HeaderLengthMismatch { .. } => "HEADER_LENGTH_MISMATCH",
             Self::PayloadTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
@@ -194,8 +196,9 @@ impl HasSymbolicCode for JournalError {
     /// [`SymbolicCode::INTERNAL_INVARIANT`] when the numeric code is
     /// not yet registered in `CODE_REGISTRY`.
     fn symbolic_code(&self) -> SymbolicCode {
-        self.diagnostic_code()
-            .symbolic_code()
-            .unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+        match self.diagnostic_code().symbolic_code() {
+            Some(code) => code,
+            None => SymbolicCode::INTERNAL_INVARIANT,
+        }
     }
 }

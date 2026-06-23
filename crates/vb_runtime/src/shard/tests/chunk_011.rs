@@ -1,6 +1,5 @@
-
 #[test]
-fn shard_step_budget_one_processes_one_command_per_tick() {
+fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Result<(), String> {
     // Given a shard with step_budget_per_tick = 1
     let config = ShardConfig {
         command_queue_capacity: 16,
@@ -10,9 +9,7 @@ fn shard_step_budget_one_processes_one_command_per_tick() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     // When submitting a 2-step finished workflow
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -23,22 +20,39 @@ fn shard_step_budget_one_processes_one_command_per_tick() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    // Then with budget 1, the first step executes but second does not
-    // (budget exhausted after 1 transition; second tick needed)
+    // Then later ticks do not recount the already-accounted step.
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    assert_eq!(shard.counters().snapshot().steps_executed, 1);
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().steps_executed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() {
+fn shard_executed_step_accounting_adds_only_new_delta() {
+    // Given a shard with no accounted executed steps for the run
+    let mut shard = Shard::new(small_config());
+    let run = super::RunId::new(515);
+
+    // When the same cumulative value is observed more than once
+    shard.add_executed_step_delta(run, 1);
+    shard.add_executed_step_delta(run, 1);
+
+    // Then only the first newly observed step is counted.
+    assert_eq!(shard.counters().snapshot().steps_executed, 1);
+
+    // And a later cumulative increase counts only the delta.
+    shard.add_executed_step_delta(run, 3);
+    assert_eq!(shard.counters().snapshot().steps_executed, 3);
+}
+
+#[test]
+fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(wf1) = suspended_workflow() else {
-        return;
-    };
-    let Some(wf2) = suspended_workflow() else {
-        return;
-    };
+    let wf1 = workflow_fixture(suspended_workflow(), "suspended_workflow wf1")?;
+    let wf2 = workflow_fixture(suspended_workflow(), "suspended_workflow wf2")?;
     let run = super::RunId::new(42);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -60,6 +74,7 @@ fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() {
     );
     // Then tick returns RunAlreadyExists (cannot replace workflow)
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
 }
 
 #[test]
@@ -93,13 +108,11 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
 }
 
 #[test]
-fn shard_run_id_max_u64_accepted_as_valid_identifier() {
+fn shard_run_id_max_u64_accepted_as_valid_identifier() -> Result<(), String> {
     // Given a shard
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(u64::MAX);
     // When submitting a run with RunId::MAX
     assert_eq!(
@@ -114,6 +127,7 @@ fn shard_run_id_max_u64_accepted_as_valid_identifier() {
     // Then the run is accepted and completes
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
@@ -156,16 +170,12 @@ fn shard_snapshot_for_nonexistent_run_returns_not_found() {
 }
 
 #[test]
-fn shard_cancel_then_resubmit_same_run_id_succeeds() {
+fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(wf1) = suspended_workflow() else {
-        return;
-    };
-    let Some(wf2) = finished_workflow() else {
-        return;
-    };
+    let wf1 = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
+    let wf2 = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(55);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -177,7 +187,10 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling and re-submitting with same ID
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -191,16 +204,15 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     // Then the re-submitted run completes
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_trace_ring_records_submit_and_finish_events_in_order() {
+fn shard_trace_ring_records_submit_and_finish_events_in_order() -> Result<(), String> {
     // Given a shard
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(77);
     // When submitting a run that finishes immediately
     assert_eq!(
@@ -220,10 +232,11 @@ fn shard_trace_ring_records_submit_and_finish_events_in_order() {
     let found_finish = events.iter().any(|e| *e == TraceEvent::RunFinished { run });
     assert_eq!(found_submit, true);
     assert_eq!(found_finish, true);
+    Ok(())
 }
 
 #[test]
-fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
+fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), String> {
     // Given a shard with trace_capacity = 0
     let config = ShardConfig {
         command_queue_capacity: 4,
@@ -233,9 +246,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     // When submitting a run
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -248,6 +259,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
     // Then tick succeeds (trace drops are non-fatal)
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]

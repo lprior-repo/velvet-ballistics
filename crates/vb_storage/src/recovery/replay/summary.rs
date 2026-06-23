@@ -59,6 +59,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
             summary.suspensions = summary.suspensions.saturating_add(1);
         }
         JournalEvent::AskAnsweredEvent { .. } => {}
+        JournalEvent::AskTimedOutEvent { .. } => {
+            summary.steps_succeeded = summary.steps_succeeded.saturating_add(1);
+        }
         JournalEvent::RunCancelled { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Cancelled);
         }
@@ -533,6 +536,9 @@ impl FrameSeedAccumulator {
             JournalEvent::AskScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Asking))
             }
+            JournalEvent::AskTimedOutEvent { step, .. } => Ok(self
+                .record_step(*step, RecoveredStepState::Succeeded)
+                .record_last_succeeded(*step)),
             JournalEvent::SlotWrittenEvent {
                 slot, value, extra, ..
             } => self.record_slot_write(*slot, value, extra),

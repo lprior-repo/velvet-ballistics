@@ -175,7 +175,8 @@ pub use trimming::{
 
 // Codec
 pub use codec::{
-    decode_record, decode_record_header, encode_record, encode_record_header, verify_digest_match,
+    decode_journal_event, decode_record, decode_record_header, encode_record, encode_record_header,
+    validate_journal_event_record_kind, verify_digest_match,
 };
 
 // Admission

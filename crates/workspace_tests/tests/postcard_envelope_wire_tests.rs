@@ -465,7 +465,7 @@ proptest! {
 
     // PO-3t44-026: All known RecordKind ids roundtrip correctly
     #[test]
-    fn po_3t44_026_all_record_kind_ids_valid(kind_id in 10u16..=27u16) {
+    fn po_3t44_026_all_record_kind_ids_valid(kind_id in 10u16..=29u16) {
         // Verify that all record kind IDs in the journal event range are known
         let kind = match kind_id {
             10 => RecordKind::RunAccepted,
@@ -486,6 +486,8 @@ proptest! {
             25 => RecordKind::RunResumed,
             26 => RecordKind::RunRetried,
             27 => RecordKind::RunAnswered,
+            28 => RecordKind::RunKilled,
+            29 => RecordKind::AskTimedOut,
             _ => return Ok(()),
         };
         prop_assert_eq!(kind.id(), kind_id);

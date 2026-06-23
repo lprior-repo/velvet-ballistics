@@ -42,6 +42,7 @@ pub const fn replay_event_has_state_effect(event: &JournalEvent) -> bool {
             | JournalEvent::ActionCompletedEvent { .. }
             | JournalEvent::ActionFailedEvent { .. }
             | JournalEvent::SlotWrittenEvent { .. }
+            | JournalEvent::AskTimedOutEvent { .. }
     )
 }
 

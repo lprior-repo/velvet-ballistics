@@ -6,8 +6,8 @@
 use crate::{
     codec::encode_record,
     constants::{
-        MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES, MAGIC_BLOB,
-        CURRENT_SCHEMA_VERSION, CRC_OFFSET,
+        CRC_OFFSET, CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES,
     },
     decode_record,
     error::JournalError,
@@ -91,6 +91,120 @@ fn parse_event_accepts_valid_run_accepted_event() {
     assert_eq!(parsed.run_id(), RunId::new(100));
     assert_eq!(parsed.seq(), EventSeq::new(0));
     assert!(parsed.is_valid());
+}
+
+#[test]
+fn parse_event_rejects_header_payload_kind_mismatch_for_ask_timed_out() -> Result<(), JournalError>
+{
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(101),
+        seq: EventSeq::new(4),
+        step: StepIdx::new(2),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    match parse_event(&bytes) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskAnswered.id()
+            && payload_kind == crate::RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        Ok(_) | Err(_) => Err(JournalError::InvalidEvent),
+    }
+}
+
+// =========================================================================
+// parse_event — adversarial parity tests: AskTimedOut(29) ↔ AskAnswered(18)
+// =========================================================================
+
+/// `parse_event` is the production journal decode boundary. It must reject
+/// an AskTimedOut(29) envelope carrying an `AskAnsweredEvent` payload (the
+/// inverse of the existing test) so that the replay path cannot be tricked
+/// into treating an answer as a timeout or vice versa.
+#[test]
+fn parse_event_rejects_ask_timed_out_envelope_with_ask_answered_payload() -> Result<(), JournalError>
+{
+    let event = JournalEvent::AskAnsweredEvent {
+        run: RunId::new(102),
+        seq: EventSeq::new(5),
+        step: StepIdx::new(3),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    match parse_event(&bytes) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskTimedOut.id()
+            && payload_kind == crate::RecordKind::AskAnswered.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "parse_event must reject AskTimedOut(29) envelope carrying AskAnswered payload, got {other:?}"
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
+}
+
+/// `parse_event` is the production journal decode boundary. The
+/// envelope/payload swap is exactly the kind of attack the storage journal
+/// parity/API contract is designed to defeat, so it must be rejected at
+/// every public decode site — `decode_record::<JournalEvent>`,
+/// `decode_journal_event`, and `parse_event`. This is the explicit
+/// `parse_event` coverage for the AskTimedOut(29) ↔ AskAnswered(18) swap.
+#[test]
+fn parse_event_rejects_ask_answered_envelope_with_ask_timed_out_payload() -> Result<(), JournalError>
+{
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(103),
+        seq: EventSeq::new(6),
+        step: StepIdx::new(4),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    match parse_event(&bytes) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == crate::RecordKind::AskAnswered.id()
+            && payload_kind == crate::RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "parse_event must reject AskAnswered(18) envelope carrying AskTimedOut payload, got {other:?}"
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
 }
 
 // =========================================================================
@@ -288,8 +402,7 @@ fn parse_event_rejects_future_schema_version() {
     bytes[4..6].copy_from_slice(&future_version.to_le_bytes());
     // Recompute CRC after modifying header
     let checksum = crc32c::crc32c(&bytes[..CRC_OFFSET]);
-    bytes[CRC_OFFSET..CRC_OFFSET + 4]
-        .copy_from_slice(&checksum.to_le_bytes());
+    bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&checksum.to_le_bytes());
 
     // When: parse_event is called
     let result = parse_event(&bytes);
@@ -327,8 +440,7 @@ fn parse_event_rejects_unknown_record_kind() {
     bytes[6..8].copy_from_slice(&999u16.to_le_bytes());
     // Recompute CRC after modifying header
     let checksum = crc32c::crc32c(&bytes[..CRC_OFFSET]);
-    bytes[CRC_OFFSET..CRC_OFFSET + 4]
-        .copy_from_slice(&checksum.to_le_bytes());
+    bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&checksum.to_le_bytes());
 
     // When: parse_event is called
     let result = parse_event(&bytes);
@@ -347,8 +459,8 @@ fn parse_event_rejects_unknown_record_kind() {
 // =========================================================================
 
 #[test]
-fn parse_event_accepts_minimum_valid_record() {
-    // Given: the smallest possible valid event (header + empty payload)
+fn parse_event_rejects_minimum_structural_record_with_zero_run() -> Result<(), JournalError> {
+    // Given: the smallest structurally decodable event carries the forbidden zero run id.
     let event = JournalEvent::RunAccepted {
         run: RunId::new(0),
         seq: EventSeq::new(0),
@@ -360,16 +472,16 @@ fn parse_event_accepts_minimum_valid_record() {
         event.seq().get(),
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )
-    .unwrap();
+    )?;
 
     // When: parse_event is called
     let result = parse_event(&bytes);
 
-    // Then: returns Ok with zero run_id and zero seq
-    let parsed = result.unwrap();
-    assert_eq!(parsed.run_id(), RunId::ZERO);
-    assert_eq!(parsed.seq(), EventSeq::ZERO);
+    // Then: typed parsing rejects the semantically invalid zero run id.
+    match result {
+        Err(JournalError::InvalidEvent) => Ok(()),
+        Ok(_) | Err(_) => Err(JournalError::InvalidEvent),
+    }
 }
 
 // =========================================================================
@@ -427,7 +539,10 @@ fn is_valid_returns_false_for_slot_written_with_max_seq() {
     let valid = event.is_valid();
 
     // Then: returns false
-    assert!(!valid, "seq == EventSeq::MAX must invalidate SlotWrittenEvent");
+    assert!(
+        !valid,
+        "seq == EventSeq::MAX must invalidate SlotWrittenEvent"
+    );
 }
 
 #[test]

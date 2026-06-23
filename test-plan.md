@@ -78,8 +78,8 @@
 | B49 | `decode_journal_event(bytes, MAGIC_JOURNAL_EVENT, ...)` validates and returns `RunKilled` |
 | B50 | `validate_known_kind(28)` returns `Ok(())` |
 | B51 | `unknown_record_kind_value(28)` returns `None` |
-| B52 | Unknown kind (e.g., 29, 0xFFFF) still rejected by `is_known_record_kind` |
-| B53 | `validate_kind_family(MAGIC_JOURNAL_EVENT, 29)` returns `Err` (out of journal range) |
+| B52 | Unknown kind (e.g., 31, 0xFFFF) still rejected by `is_known_record_kind` |
+| B53 | `validate_kind_family(MAGIC_JOURNAL_EVENT, 31)` returns `Err` (out of journal range) |
 
 ### C6: Replay Integrity
 | B54 | `events_for_run` returns `Vec<JournalEvent>` with contiguous `EventSeq` |
@@ -88,7 +88,7 @@
 | B57 | `validate_replayed_event(run, other_seq, &RunKilled)` returns `Err(SequenceGap)` when seq mismatches |
 | B58 | `validate_replayed_event(other_run, seq, &RunKilled)` returns `Err(WrongRun)` when run mismatches |
 | B59 | Killed terminal events replay as terminal (do not permit side-effect re-execution) |
-| B60 | Kind 28 admission does not weaken rejection for unknown kind 29 |
+| B60 | Kind 28/29 admission does not weaken rejection for unknown kind 31 |
 | B61 | `next_seq(EventSeq(u64::MAX))` returns `Err(SequenceOverflow)` (existing invariant, must survive) |
 
 ---
@@ -422,14 +422,14 @@ fn validate_known_kind_28_returns_ok():
 fn unknown_record_kind_value_28_returns_none():
     -- unit: assert_eq!(unknown_record_kind_value(28), None)
 
-fn is_known_record_kind_29_returns_false():
-    -- unit: assert!(!is_known_record_kind(29))
+fn is_known_record_kind_31_returns_false():
+    -- unit: assert!(!is_known_record_kind(31))
 
 fn is_known_record_kind_0xFFFF_returns_false():
     -- unit: assert!(!is_known_record_kind(0xFFFF))
 
-fn validate_kind_family_journal_event_29_returns_rejection():
-    -- unit: assert!(matches!(validate_kind_family(MAGIC_JOURNAL_EVENT, 29), Err(RecordKindFamilyMismatch{..})))
+fn validate_kind_family_journal_event_31_returns_rejection():
+    -- unit: assert!(matches!(validate_kind_family(MAGIC_JOURNAL_EVENT, 31), Err(RecordKindFamilyMismatch{..})))
 ```
 
 ---
@@ -462,11 +462,11 @@ fn next_seq_zero_returns_one():
     When: next_seq(seq) is called
     Then: returns Ok(EventSeq::new(1))
 
-fn kind_28_admission_does_not_open_unknown_kind_29():
-    Given: is_known_record_kind passes for 28, validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok
-    When: is_known_record_kind(29), validate_kind_family(MAGIC_JOURNAL_EVENT, 29) are called
-    Then: is_known_record_kind(29) returns false AND validate_kind_family returns Err
-    -- Regression: ensuring the 28 fix didn't accidentally admit wildcard kinds
+fn kind_28_and_29_admission_does_not_open_unknown_kind_31():
+    Given: is_known_record_kind passes for 28 and 29, validate_kind_family(MAGIC_JOURNAL_EVENT, 28/29) returns Ok
+    When: is_known_record_kind(31), validate_kind_family(MAGIC_JOURNAL_EVENT, 31) are called
+    Then: is_known_record_kind(31) returns false AND validate_kind_family returns Err
+    -- Regression: ensuring the 28/29 fix didn't accidentally admit wildcard kinds
 ```
 
 ---
@@ -514,7 +514,7 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 - **Strategy**: Generate arbitrary `JournalEvent` values (including `RunKilled`). Ensure only valid events pass. Round-trip encode/decode.
 
 #### PROP-009: is_known_record_kind Consistency
-- **Invariant**: `is_known_record_kind(k)` is equivalent to `matches!(k, 1|2|3|10..=28|30|40|50)`. For any `u16` value, the result is deterministic and never panics.
+- **Invariant**: `is_known_record_kind(k)` is equivalent to `matches!(k, 1|2|3|10..=29|30|40|50)`. For any `u16` value, the result is deterministic and never panics.
 - **Strategy**: `any::<u16>()` — exhaustive across the u16 space.
 
 #### PROP-010: validate_known_kind/unknown_record_kind_value Coherence
@@ -532,11 +532,12 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 ### PO-FUZZ-001 (RRO-017): Kind Validation Fuzz
 - **Target**: `validate_kind_family`, `is_known_record_kind`, `validate_known_kind`
 - **Input type**: arbitrary `(magic: u32, kind: u16)` pairs (8 bytes)
-- **Risk**: Panic on unanticipated magic values, incorrect boolean logic on boundary kind values (0, 1, 28, 29, 50, 51, 0xFFFF), integer overflow in match arms.
+- **Risk**: Panic on unanticipated magic values, incorrect boolean logic on boundary kind values (0, 1, 28, 29, 30, 50, 51, 0xFFFF), integer overflow in match arms.
 - **Corpus seeds**:
   - `(MAGIC_JOURNAL_EVENT, 28)` — known pass
   - `(MAGIC_JOURNAL_EVENT, 27)` — boundary (just below 28)
-  - `(MAGIC_JOURNAL_EVENT, 29)` — boundary (just above 28)
+  - `(MAGIC_JOURNAL_EVENT, 29)` — `AskTimedOut` known pass
+  - `(MAGIC_JOURNAL_EVENT, 31)` — unknown kind rejection
   - `(MAGIC_SNAPSHOT, 28)` — known reject
   - `(MAGIC_BLOB, 28)` — known reject
   - `(0x00000000, 0x0000)` — zero magic, zero kind
@@ -571,7 +572,7 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 ### New Kani Harnesses (State 11)
 
 #### KANI-006: is_known_record_kind Exhaustive across u16
-- **Property**: For all `u16` values, `is_known_record_kind(k)` is equivalent to the explicit match set `{1, 2, 3, 10..=28, 30, 40, 50}`.
+- **Property**: For all `u16` values, `is_known_record_kind(k)` is equivalent to the explicit match set `{1, 2, 3, 10..=29, 30, 40, 50}`.
 - **Bound**: Full u16 space (65,536 values) — Kani can handle this with unwind.
 - **Rationale**: The `matches!` macro is simple but must be proven correct for all 65,536 possible `u16` values. This is the canonical admission gate for kind 28.
 
@@ -615,8 +616,8 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 | Mutation Target | Test That Must Catch It |
 |----------------|------------------------|
 | `is_known_record_kind` — remove `28` from match arm | `is_known_record_kind_28_returns_true` (unit) + proptest PROP-009 |
-| `validate_kind_family` — change `10..=28` to `10..=27` | `validate_kind_family_journal_event_28_returns_ok` (unit) |
-| `validate_kind_family` — change journal branch from `10..=28` to `10..=50` (over-admit) | `validate_kind_family_journal_event_29_returns_rejection` (unit) |
+| `validate_kind_family` — change `10..=29` to `10..=27` | `validate_kind_family_journal_event_28_returns_ok` and AskTimedOut kind-29 tests |
+| `validate_kind_family` — change journal branch from `10..=29` to `10..=50` (over-admit) | `validate_kind_family_journal_event_31_returns_rejection` (unit) |
 | `validate_kind_family` — change snapshot/branch to admit 28 | `validate_kind_family_snapshot_28_returns_rejection` (unit) |
 | `handle_cancel` — remove `terminal_runs` guard before `append_journal_event` | `cancel_live_run_appends_exactly_one_runcancelled_event` (integration) + `second_cancel_after_first_cancel_is_rejected` |
 | `handle_cancel` — remove `runs.contains_key` guard for journal append | `cancel_missing_run_does_not_append_journal_event` (integration) |
@@ -642,6 +643,8 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 |----------|-------------|-----------------|------------|
 | happy path: kind 28 known | kind=28 | `is_known_record_kind(28) = true` | unit |
 | happy path: kind 28 journal family | (MAGIC_JOURNAL_EVENT, 28) | `validate_kind_family = Ok(())` | unit |
+| happy path: kind 29 known | kind=29 | `is_known_record_kind(29) = true` | unit |
+| happy path: kind 29 journal family | (MAGIC_JOURNAL_EVENT, 29) | `validate_kind_family = Ok(())` | unit |
 | happy path: encode RunKilled | RunKilled{valid} | `encode_record = Ok(bytes)` | unit |
 | happy path: decode RunKilled | valid bytes | `decode_record = Ok(RunKilled{..})` | unit |
 | happy path: decode_journal_event RunKilled | valid bytes, valid event | `decode_journal_event = Ok(RunKilled{..})` | unit |
@@ -650,8 +653,8 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 | happy path: validate_replayed_event match | matching run+seq | `Ok(())` | unit |
 | error: kind 28 snapshot family | (MAGIC_SNAPSHOT, 28) | `Err(RecordKindFamilyMismatch{..})` | unit |
 | error: kind 28 blob family | (MAGIC_BLOB, 28) | `Err(RecordKindFamilyMismatch{..})` | unit |
-| error: kind 29 unknown | kind=29 | `is_known_record_kind(29) = false` | unit |
-| error: kind 29 journal family | (MAGIC_JOURNAL_EVENT, 29) | `Err(RecordKindFamilyMismatch{..})` | unit |
+| error: kind 31 unknown | kind=31 | `is_known_record_kind(31) = false` | unit |
+| error: kind 31 journal family | (MAGIC_JOURNAL_EVENT, 31) | `Err(RecordKindFamilyMismatch{..})` | unit |
 | error: decode RunKilled zero run | RunKilled{run=0} | `Err(InvalidEvent)` | unit |
 | error: decode RunKilled zero attempt | RunKilled{attempt=0} | `Err(InvalidEvent)` | unit |
 | error: decode RunKilled overflow seq | RunKilled{seq=MAX} | `Err(InvalidEvent)` | unit |
@@ -664,8 +667,9 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 | boundary: kind 10 | kind=10 | `is_known_record_kind(10) = true` | unit |
 | boundary: kind 27 | kind=27 | `is_known_record_kind(27) = true` | unit |
 | boundary: kind 28 | kind=28 | `is_known_record_kind(28) = true` | unit |
-| boundary: kind 29 | kind=29 | `is_known_record_kind(29) = false` | unit |
+| boundary: kind 29 | kind=29 | `is_known_record_kind(29) = true` | unit |
 | boundary: kind 30 | kind=30 | `is_known_record_kind(30) = true` | unit |
+| boundary: kind 31 | kind=31 | `is_known_record_kind(31) = false` | unit |
 | boundary: kind 40 | kind=40 | `is_known_record_kind(40) = true` | unit |
 | boundary: kind 50 | kind=50 | `is_known_record_kind(50) = true` | unit |
 | boundary: kind 51 | kind=51 | `is_known_record_kind(51) = false` | unit |
@@ -749,4 +753,3 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 4. **Q4: proptest_storage.rs:317 fix scope.** The pre-existing compile error at line 317 is blocking 2/22 RRO rows. Is fixing this error within State 9 scope, or only in State 11? *The bridge says State 11 for the fix, but the test plan must document the tests that would run after the fix. Recommend treating the compile fix as a State 9 prerequisite for test validation.*
 
 5. **Q5: Shard-level vs Runtime-level test scope.** The existing `cancel_kill_lattice_tests.rs` tests at the Runtime level (using public API). Should the new error-semantics tests (B07-B22) test at the Runtime level or the Shard level? *Recommendation: Runtime-level for integration tests (public API contract), Shard-level for unit tests (internal contract). Both layers are useful — Shard-level for fast deterministic validation of handle_cancel/handle_kill, Runtime-level for end-to-end correctness.*
-

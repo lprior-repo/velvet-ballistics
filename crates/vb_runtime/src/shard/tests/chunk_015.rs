@@ -1,11 +1,11 @@
-
 #[test]
-fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
+fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = action_with_error_handler_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(
+        action_with_error_handler_workflow(),
+        "action_with_error_handler",
+    )?;
     let run = super::RunId::new(743);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -34,6 +34,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
     // The error handler at step 2 runs and the workflow finishes successfully
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -41,12 +42,10 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
+fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(1),
@@ -65,6 +64,7 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -72,12 +72,10 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_ask_answer_completes_ask_workflow() {
+fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(750);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -111,15 +109,14 @@ fn shard_ask_answer_completes_ask_workflow() {
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     // Pending timer was cleaned up by the answer
     assert_eq!(shard.pending_timers.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn shard_ask_answer_produces_ask_answered_trace_event() {
+fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(751);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -154,15 +151,14 @@ fn shard_ask_answer_produces_ask_answered_trace_event() {
         }
     });
     assert_eq!(found_ask_answered, true);
+    Ok(())
 }
 
 #[test]
-fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
+fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(752);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -174,7 +170,7 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Answer with a wrong ask_step that doesn't match the suspended state
+    // Answer with a wrong ask_step that doesn't match the suspended state.
     let answer = AskAnswer {
         ticket: AskTicket {
             run,
@@ -187,7 +183,8 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
         encoded_len: 0,
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -195,14 +192,12 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
+fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), String> {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(config, shared);
-    let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(760);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -215,7 +210,10 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
+    assert_eq!(
+        timer_command(&shard, run).map(|command| shard.enqueue(command)),
+        Some(Ok(()))
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
@@ -223,15 +221,17 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
     assert!(
         matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::WaitResolved { run, step: vb_core::ids::StepIdx::new(1) }))
     );
+    Ok(())
 }
 
 #[test]
-fn shard_timer_fire_for_ask_timeout_fails_run() {
+fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
-    };
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared);
+    let workflow = timed_ask_without_answer_workflow()
+        .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
     let run = super::RunId::new(761);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -244,10 +244,73 @@ fn shard_timer_fire_for_ask_timeout_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
+    assert_eq!(
+        timer_command(&shard, run).map(|command| shard.enqueue(command)),
+        Some(Ok(()))
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    assert!(
+        matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::AskTimedOut { run, step: vb_core::ids::StepIdx::new(2) }))
+    );
+    Ok(())
+}
+
+#[derive(Debug)]
+struct CancelAppendFailsJournal;
+
+impl crate::journal::RuntimeJournal for CancelAppendFailsJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+        self.append_sequenced(event, vb_storage::EventSeq::ZERO)
+    }
+
+    fn append_sequenced(
+        &self,
+        event: RuntimeJournalEvent,
+        _seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if matches!(event, RuntimeJournalEvent::RunCancelled { .. }) {
+            return Err(RuntimeError::JournalPoisoned);
+        }
+        Ok(())
+    }
+
+    fn probe(&self) -> crate::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result<(), String> {
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(CancelAppendFailsJournal);
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let workflow = timed_ask_without_answer_workflow()
+        .ok_or_else(|| "timed ask workflow fixture must build".to_owned())?;
+    let run = super::RunId::new(762);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_contains(run), true);
+    assert_eq!(shard.run_state_contains(run), true);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::JournalPoisoned));
+
+    assert_eq!(shard.pending_timer_contains(run), true);
+    assert_eq!(shard.run_state_contains(run), true);
+    assert_eq!(shard.terminal_runs_contains(run), false);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -255,12 +318,13 @@ fn shard_timer_fire_for_ask_timeout_fails_run() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_cancel_removes_pending_ask_timer() {
+fn shard_cancel_removes_pending_ask_timer() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(
+        timed_ask_without_answer_workflow(),
+        "timed_ask_without_answer",
+    )?;
     let run = super::RunId::new(770);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -273,8 +337,12 @@ fn shard_cancel_removes_pending_ask_timer() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }

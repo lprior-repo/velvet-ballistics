@@ -405,7 +405,7 @@ mod storage_tests {
         }
 
         /// Verify that is_known_record_kind(28) returns true.
-        /// BLOCK-001 FIXED: validation.rs now accepts 10..=28.
+        /// BLOCK-001/B-004 FIXED: validation.rs now accepts 10..=29.
         #[test]
         fn prop_kind_28_is_known_record_kind() {
             let known = crate::codec::validation::is_known_record_kind(28);

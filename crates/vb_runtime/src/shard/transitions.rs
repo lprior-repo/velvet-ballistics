@@ -77,27 +77,33 @@ impl Shard {
 
     /// Re-inserts a run that has remaining work into the active runs map.
     pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.counters.add_steps(state.frame.executed());
+        self.add_executed_step_delta(run, state.frame.executed());
         self.run_state_insert(run, state)?;
         Ok(())
     }
 
     /// Marks a run as finished, releases its frame, and updates counters.
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.pending_timer_remove(run);
-        self.terminal_runs_insert(run)?;
-        self.counters.inc_completed();
-        self.counters.add_steps(state.frame.executed());
-        self.trace_ring.push(TraceEvent::RunFinished { run });
         let result = match crate::shard::helpers::result_slot_for_finished_run(&state) {
             Some(slot) => slot,
             None => SlotIdx::ZERO,
         };
         // Note: StepSucceeded for the Finish step is now emitted by the evidence
         // collector during flush_evidence, before apply_drive_result is called.
-        self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })?;
+        if let Err(error) =
+            self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })
+        {
+            let _ = self.run_state_insert(run, state);
+            return Err(error);
+        }
+        self.pending_timer_remove(run);
+        self.terminal_runs_insert(run)?;
+        self.counters.inc_completed();
+        self.add_executed_step_delta(run, state.frame.executed());
+        self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
         self.discard_journal_sequence(run);
+        self.clear_executed_step_accounting(run);
         Ok(())
     }
 
@@ -108,7 +114,7 @@ impl Shard {
         mut state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
-        self.counters.add_steps(state.frame.executed());
+        self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let capacity = match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
             Ok(policy) => policy.max_attempts,
@@ -142,7 +148,7 @@ impl Shard {
         state: RunState,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
-        self.counters.add_steps(state.frame.executed());
+        self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         if crate::shard::helpers::timer_registration_required(&state, step) {
             let generation = match self.next_pending_timer_generation(run) {
@@ -180,17 +186,20 @@ impl Shard {
     }
 
     /// Marks a run as failed, releases its frame, and updates counters.
-    /// NOTE: runtime_states mutation (inserting Failed) is handled by apply() before this is called.
-    /// This function only handles cleanup: pending_timers, counters, trace, journal, frame, sequence.
+    /// Runtime state mutation is applied after the durable failure event is persisted.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed { run }) {
+            let _ = self.run_state_insert(run, state);
+            return Err(error);
+        }
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
-        self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
         self.runtime_state_remove(run);
         self.discard_journal_sequence(run);
+        self.clear_executed_step_accounting(run);
         Ok(())
     }
 }

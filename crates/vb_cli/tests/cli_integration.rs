@@ -1245,12 +1245,18 @@ fn ipc_frame_roundtrip() {
 #[test]
 fn storage_encode_decode_roundtrip() {
     use serde::{Deserialize, Serialize};
+    use vb_storage::codec::EnforceKindParity;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct TestPayload {
         value: i64,
         label: String,
     }
+
+    // TestPayload has no payload-level record-kind discriminant, so the
+    // default no-op parity check is correct. Implementing the trait is
+    // required by `decode_record`'s new bound.
+    impl EnforceKindParity for TestPayload {}
 
     let payload = TestPayload {
         value: 42,
@@ -1283,11 +1289,14 @@ fn storage_encode_decode_roundtrip() {
 #[test]
 fn storage_corrupt_record_fails_decode() {
     use serde::{Deserialize, Serialize};
+    use vb_storage::codec::EnforceKindParity;
 
     #[derive(Serialize, Deserialize)]
     struct TestPayload {
         value: i64,
     }
+
+    impl EnforceKindParity for TestPayload {}
 
     let payload = TestPayload { value: 42 };
     const MAGIC: u32 = vb_storage::MAGIC_JOURNAL_EVENT;

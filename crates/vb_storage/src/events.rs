@@ -269,6 +269,17 @@ pub enum JournalEvent {
         /// When the answer was received.
         timestamp: DateTime<Utc>,
     },
+    /// Ask timed out and resumed along the ask timeout path.
+    AskTimedOutEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
 }
 
 impl JournalEvent {
@@ -296,7 +307,8 @@ impl JournalEvent {
             | Self::RunFailedEvent { run, .. }
             | Self::RunResumed { run, .. }
             | Self::RunRetried { run, .. }
-            | Self::RunAnswered { run, .. } => *run,
+            | Self::RunAnswered { run, .. }
+            | Self::AskTimedOutEvent { run, .. } => *run,
         }
     }
 
@@ -327,7 +339,8 @@ impl JournalEvent {
             | Self::RunFailedEvent { seq, .. }
             | Self::RunResumed { seq, .. }
             | Self::RunRetried { seq, .. }
-            | Self::RunAnswered { seq, .. } => *seq,
+            | Self::RunAnswered { seq, .. }
+            | Self::AskTimedOutEvent { seq, .. } => *seq,
         }
     }
 
@@ -357,6 +370,7 @@ impl JournalEvent {
             Self::RunResumed { .. } => RecordKind::RunResumed,
             Self::RunRetried { .. } => RecordKind::RunRetried,
             Self::RunAnswered { .. } => RecordKind::RunAnswered,
+            Self::AskTimedOutEvent { .. } => RecordKind::AskTimedOut,
         }
     }
 
@@ -419,7 +433,8 @@ impl JournalEvent {
             | Self::RunCancelled { attempt, .. }
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
-            | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
+            | Self::RunFailedEvent { attempt, .. }
+            | Self::AskTimedOutEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. } => Some(ticket.attempt),
             Self::RunAccepted { .. }
@@ -464,7 +479,8 @@ impl JournalEvent {
             | Self::RunCancelled { attempt, .. }
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
-            | Self::RunFailedEvent { attempt, .. } => *attempt != 0,
+            | Self::RunFailedEvent { attempt, .. }
+            | Self::AskTimedOutEvent { attempt, .. } => *attempt != 0,
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. } => ticket.attempt != 0,
             Self::RunAccepted { .. }

@@ -95,6 +95,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
+            | RuntimeJournalEvent::AskTimedOut { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::Resumed { .. } => None,
         }
@@ -171,6 +172,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
+            | RuntimeJournalEvent::AskTimedOut { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
@@ -209,6 +211,14 @@ impl StorageRuntimeJournal {
             }
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
                 Ok(Some(JournalEvent::AskAnsweredEvent {
+                    run,
+                    seq,
+                    step,
+                    attempt: 1,
+                }))
+            }
+            RuntimeJournalEvent::AskTimedOut { run, step } => {
+                Ok(Some(JournalEvent::AskTimedOutEvent {
                     run,
                     seq,
                     step,
@@ -287,7 +297,7 @@ impl RuntimeJournal for StorageRuntimeJournal {
     }
 
     fn probe(&self) -> RuntimeResult<()> {
-        Ok(())
+        self.journal.probe_health().map_err(RuntimeError::from)
     }
 
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {

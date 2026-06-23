@@ -4,6 +4,8 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
+use std::collections::HashMap;
+
 use crate::recovery::types::{
     ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
 };
@@ -161,19 +163,17 @@ pub(super) fn decode_snapshot_slots(
             seq: crate::EventSeq::new(0),
         })?;
 
-    // Merge slots and taint, preferring explicit taint from the taint vector
-    let mut entries = Vec::new();
+    // Merge slots and taint, preferring explicit taint from the taint vector.
+    let taint_by_slot: HashMap<vb_core::SlotIdx, vb_core::Taint> = taint
+        .into_iter()
+        .map(|(slot, _, explicit_taint)| (slot, explicit_taint))
+        .collect();
+    let mut entries = Vec::with_capacity(slots.len());
     for (slot, value, default_taint) in slots {
-        let explicit_taint = taint
-            .iter()
-            .find_map(|(t_slot, _, t_taint)| {
-                if *t_slot == slot {
-                    Some(*t_taint)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(default_taint);
+        let explicit_taint = match taint_by_slot.get(&slot) {
+            Some(taint) => *taint,
+            None => default_taint,
+        };
         entries.push(crate::recovery::types::RecoveredSlotEntry {
             slot,
             value,
@@ -214,6 +214,7 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
             | JournalEvent::ActionFailedEvent { step, .. }
             | JournalEvent::WaitScheduledEvent { step, .. }
             | JournalEvent::AskScheduledEvent { step, .. }
+            | JournalEvent::AskTimedOutEvent { step, .. }
             | JournalEvent::RetryScheduledEvent { step, .. } => {
                 max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
                 min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
@@ -465,135 +466,18 @@ pub(super) fn apply_tail_events(
                     })?;
                 executed = executed.saturating_add(1);
             }
+            JournalEvent::AskTimedOutEvent { step, .. } => {
+                frame
+                    .mark_running(*step)
+                    .and_then(|_| frame.mark_succeeded(*step))
+                    .map_err(|_e| RecoveryError::ReplayDivergence {
+                        step: *step,
+                        detail: "mark ask timeout resolved failed".to_owned(),
+                    })?;
+                executed = executed.saturating_add(1);
+            }
             _ => {}
         }
     }
     Ok(executed)
-}
-
-/// Computes parallel in-flight counters from action events without mutating step states.
-///
-/// This is used by `hydrate_run_frame_from_events` after the seed has already
-/// applied step states. It only tracks action scheduling/completion for parallel counters.
-///
-/// Returns the peak parallel in-flight count observed.
-pub(super) fn compute_parallel_in_flight(
-    frame: &mut vb_core::RunFrame,
-    events: &[JournalEvent],
-) -> RecoveryResult<u16> {
-    let mut tracker = ActionReplayTracker::new();
-    let mut peak: u16 = 0;
-
-    for event in events {
-        match event {
-            JournalEvent::ActionScheduled { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                frame
-                    .add_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight overflow".to_owned(),
-                    })?;
-                if frame.parallel_in_flight() > peak {
-                    peak = frame.parallel_in_flight();
-                }
-            }
-            JournalEvent::ActionScheduledTicket {
-                run,
-                ticket,
-                input,
-                output,
-                ..
-            } => {
-                verify_action_ticket_event(*run, *ticket)?;
-                let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
-                if effect == ActionReplayEffect::Duplicate {
-                    continue;
-                }
-                frame
-                    .add_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: ticket.step,
-                        detail: "parallel_in_flight overflow".to_owned(),
-                    })?;
-                if frame.parallel_in_flight() > peak {
-                    peak = frame.parallel_in_flight();
-                }
-            }
-            JournalEvent::ActionCompletedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_completed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
-            }
-            JournalEvent::ActionCompletedEnvelope {
-                run,
-                ticket,
-                output,
-                outcome,
-                value,
-                encoded_len,
-                taint,
-                value_digest,
-                ..
-            } => {
-                let verified_digest = verified_action_envelope_digest(
-                    *run,
-                    *ticket,
-                    *outcome,
-                    value,
-                    *encoded_len,
-                    *value_digest,
-                )?;
-                tracker.require_scheduled_ticket(*ticket, *output)?;
-                let effect = tracker.mark_completed_envelope_effect(
-                    *ticket,
-                    *output,
-                    *encoded_len,
-                    *taint,
-                    verified_digest,
-                )?;
-                if effect == ActionReplayEffect::Apply {
-                    frame.sub_parallel_in_flight(1).map_err(|_| {
-                        RecoveryError::ReplayDivergence {
-                            step: ticket.step,
-                            detail: "parallel_in_flight underflow".to_owned(),
-                        }
-                    })?;
-                }
-            }
-            JournalEvent::ActionFailedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_failed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
-            }
-            _ => {}
-        }
-    }
-
-    Ok(peak)
 }

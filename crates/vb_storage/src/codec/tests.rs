@@ -190,6 +190,226 @@ fn encode_decode_roundtrip_journal_event_action_failed() -> Result<(), JournalEr
 }
 
 #[test]
+fn decode_journal_event_accepts_exact_ask_timed_out_kind() -> Result<(), JournalError> {
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(73),
+        seq: EventSeq::new(8),
+        step: StepIdx::new(3),
+        attempt: 2,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (_, decoded) =
+        decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+    if decoded == event {
+        Ok(())
+    } else {
+        Err(JournalError::InvalidEvent)
+    }
+}
+
+#[test]
+fn decode_journal_event_rejects_ask_timed_out_under_ask_answered_kind() -> Result<(), JournalError>
+{
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(74),
+        seq: EventSeq::new(9),
+        step: StepIdx::new(4),
+        attempt: 3,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    match decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == RecordKind::AskAnswered.id()
+            && payload_kind == RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        Ok(_) | Err(_) => Err(JournalError::InvalidEvent),
+    }
+}
+
+// ============================================================================
+// Adversarial parity tests: AskTimedOut(29) envelope with AskAnswered(18) payload.
+// The parity gate must reject this combination at every public decode site —
+// `decode_record::<JournalEvent>`, `decode_journal_event`, `parse_event`, and
+// the replay path. These tests exercise the round trip through the generic
+// `decode_record` entry point (which used to bypass parity) to prove that
+// parity is now mandatory for JournalEvent decoding.
+// ============================================================================
+
+/// `decode_record::<JournalEvent>` is the public generic decode entry point.
+/// Before the parity gate was mandatory, this function silently returned the
+/// decoded payload even when the envelope kind disagreed with the payload
+/// variant. The contract fix moves the parity check into
+/// `EnforceKindParity::enforce_kind_parity`, so `decode_record::<JournalEvent>`
+/// must now reject envelope kind 18 (AskAnswered) paired with an
+/// `AskTimedOutEvent` payload.
+#[test]
+fn decode_record_journal_event_rejects_ask_answered_envelope_with_ask_timed_out_payload()
+-> Result<(), JournalError> {
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(91),
+        seq: EventSeq::new(11),
+        step: StepIdx::new(5),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskAnswered,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    match decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    ) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == RecordKind::AskAnswered.id()
+            && payload_kind == RecordKind::AskTimedOut.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "decode_record::<JournalEvent> must reject AskAnswered(18) envelope \
+                 carrying AskTimedOut payload, got {other:?}"
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
+}
+
+/// Symmetric inverse: AskTimedOut(29) envelope carrying an `AskAnsweredEvent`
+/// payload must also be rejected with `RecordKindPayloadMismatch` that names
+/// both the envelope and payload kinds. This guards against the production
+/// replay path accepting a timeout event whose payload is actually an answer.
+#[test]
+fn decode_record_journal_event_rejects_ask_timed_out_envelope_with_ask_answered_payload()
+-> Result<(), JournalError> {
+    let event = JournalEvent::AskAnsweredEvent {
+        run: RunId::new(92),
+        seq: EventSeq::new(12),
+        step: StepIdx::new(6),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    match decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    ) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == RecordKind::AskTimedOut.id()
+            && payload_kind == RecordKind::AskAnswered.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "decode_record::<JournalEvent> must reject AskTimedOut(29) envelope \
+                 carrying AskAnswered payload, got {other:?}"
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
+}
+
+/// `decode_journal_event` is the explicit journal-event decode function. It
+/// must reject the same envelope/payload swap with the same diagnostic, but
+/// the test lives here to confirm parity is enforced even on the dedicated
+/// entry point (not just the generic `decode_record`).
+#[test]
+fn decode_journal_event_rejects_ask_timed_out_envelope_with_ask_answered_payload()
+-> Result<(), JournalError> {
+    let event = JournalEvent::AskAnsweredEvent {
+        run: RunId::new(93),
+        seq: EventSeq::new(13),
+        step: StepIdx::new(7),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    match decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind,
+            payload_kind,
+        }) if envelope_kind == RecordKind::AskTimedOut.id()
+            && payload_kind == RecordKind::AskAnswered.id() =>
+        {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "decode_journal_event must reject AskTimedOut(29) envelope \
+                 carrying AskAnswered payload, got {other:?}"
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
+}
+
+/// When the envelope and payload kinds agree, parity is satisfied and the
+/// decode must succeed. This is the positive control for the AskTimedOut
+/// parity gate — without it the rejection tests above could trivially pass
+/// by rejecting everything.
+#[test]
+fn decode_record_journal_event_accepts_ask_timed_out_with_matching_kind() -> Result<(), JournalError>
+{
+    let event = JournalEvent::AskTimedOutEvent {
+        run: RunId::new(94),
+        seq: EventSeq::new(14),
+        step: StepIdx::new(8),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::AskTimedOut,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (envelope, decoded) = decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert_eq!(envelope.record_kind, RecordKind::AskTimedOut.id());
+    assert_eq!(decoded, event);
+    Ok(())
+}
+
+#[test]
 fn encode_decode_roundtrip_workflow_source_record() -> Result<(), JournalError> {
     let source = b"workflow: test".to_vec();
     let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
@@ -907,16 +1127,18 @@ fn encode_decode_roundtrip_empty_blob_payload() -> Result<(), JournalError> {
 
 #[test]
 fn encode_decode_with_max_sequence() -> Result<(), JournalError> {
+    // u64::MAX is the overflow sentinel that `is_valid()` rejects, so use the
+    // largest representable value that still passes the invariant gate.
     let event = JournalEvent::RunCancelled {
         run: RunId::new(u64::MAX),
-        seq: EventSeq::new(u64::MAX),
+        seq: EventSeq::new(u64::MAX - 1),
         attempt: 1,
         reason: None,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
         RecordKind::RunCancelled,
-        u64::MAX,
+        u64::MAX - 1,
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
@@ -925,7 +1147,7 @@ fn encode_decode_with_max_sequence() -> Result<(), JournalError> {
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
-    assert_eq!(envelope.sequence, u64::MAX);
+    assert_eq!(envelope.sequence, u64::MAX - 1);
     assert_eq!(decoded, event);
     Ok(())
 }
@@ -1407,9 +1629,10 @@ fn header_roundtrip_preserves_sequence_and_kind() -> Result<(), JournalError> {
 
 #[test]
 fn encode_decode_roundtrip_minimum_valid_run_accepted() -> Result<(), JournalError> {
-    // Smallest valid RunAccepted: run=0, seq=0, workflow=all-zeros digest
+    // Smallest RunAccepted that still satisfies `is_valid()`: run must be non-zero,
+    // seq must not be the u64::MAX overflow sentinel.
     let event = JournalEvent::RunAccepted {
-        run: RunId::new(0),
+        run: RunId::new(1),
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
     };
@@ -1434,16 +1657,17 @@ fn encode_decode_roundtrip_minimum_valid_run_accepted() -> Result<(), JournalErr
 
 #[test]
 fn encode_decode_roundtrip_max_field_values() -> Result<(), JournalError> {
-    // Use maximum sequence number and max-valued run ID
+    // Use max run ID and the largest sequence that still satisfies
+    // `is_valid()` (u64::MAX is the overflow sentinel and is rejected).
     let event = JournalEvent::RunAccepted {
         run: RunId::new(u64::MAX),
-        seq: EventSeq::new(u64::MAX),
+        seq: EventSeq::new(u64::MAX - 1),
         workflow: WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]),
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
         RecordKind::RunAccepted,
-        u64::MAX,
+        u64::MAX - 1,
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
@@ -1452,7 +1676,7 @@ fn encode_decode_roundtrip_max_field_values() -> Result<(), JournalError> {
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
-    assert_eq!(envelope.sequence, u64::MAX);
+    assert_eq!(envelope.sequence, u64::MAX - 1);
     assert_eq!(decoded, event);
     Ok(())
 }
@@ -1549,10 +1773,11 @@ fn encode_decode_header_with_zero_length_payload_roundtrip() -> Result<(), Journ
 
 #[test]
 fn multiple_sequential_encode_decode_cycles() -> Result<(), JournalError> {
+    // `is_valid()` requires a non-zero run id, so offset the loop by 1.
     let events: Vec<JournalEvent> = (0..10)
         .map(|i| JournalEvent::RunAccepted {
-            run: RunId::new(i),
-            seq: EventSeq::new(i),
+            run: RunId::new((i + 1) as u64),
+            seq: EventSeq::new(i as u64),
             workflow: WorkflowDigest::from_bytes([i as u8; DIGEST_BYTES]),
         })
         .collect();

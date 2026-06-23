@@ -113,7 +113,7 @@ fn check_runkilled_zero_attempt_invalid() {
 }
 
 /// PO-KANI-001-H5: is_known_record_kind(28) returns true.
-/// Production: validation.rs:23 with extended range 10..=28.
+/// Production: validation.rs:23 with extended range 10..=29.
 #[kani::proof]
 fn check_kind_28_is_known_record_kind() {
     let result = vb_storage::codec::validation::is_known_record_kind(28);
@@ -121,7 +121,7 @@ fn check_kind_28_is_known_record_kind() {
 }
 
 /// PO-KANI-001-H6: validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok(()).
-/// Production: validation.rs:46 with extended range 10..=28.
+/// Production: validation.rs:46 with extended range 10..=29.
 #[kani::proof]
 fn check_kind_28_journal_family_valid() {
     let result = vb_storage::codec::validation::validate_kind_family(
@@ -149,11 +149,11 @@ fn check_validate_kind_family_exhaustive() {
     // It always returns either Ok(()) or Err(RecordKindFamilyMismatch).
     match &result {
         Ok(()) => {
-            // If magic is MAGIC_JOURNAL_EVENT, kind must be in 10..=28
+            // If magic is MAGIC_JOURNAL_EVENT, kind must be in 10..=29
             if magic == vb_storage::constants::MAGIC_JOURNAL_EVENT {
                 kani::assert(
-                    (10u16..=28u16).contains(&kind),
-                    &format!("journal kind {kind} returned Ok but not in 10..=28"));
+                    (10u16..=29u16).contains(&kind),
+                    &format!("journal kind {kind} returned Ok but not in 10..=29"));
             }
         }
         Err(e) => {

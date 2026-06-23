@@ -1,6 +1,35 @@
 use super::*;
 use crate::value::Taint;
 
+fn input_len_contract(action: ActionId, max_input_bytes: u32) -> Result<ActionContract, String> {
+    let name = ActionName::new("input-len-contract").map_err(|error| error.to_string())?;
+    Ok(ActionContract {
+        id: action,
+        name,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    })
+}
+
+fn input_len_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
+    ActionTicket {
+        run,
+        step,
+        seq: SeqNo::ZERO,
+        action,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    }
+}
+
 #[test]
 fn deterministic_clean_stays_clean() {
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Clean);
@@ -180,6 +209,123 @@ fn action_error_runtime_codes_are_unique() {
 fn action_error_runtime_code_is_absent_without_section_17_equivalent() {
     assert_eq!(ActionError::InvalidTicket.runtime_code(), None);
     assert_eq!(ActionError::CompletionAlreadyRecorded.runtime_code(), None);
+}
+
+#[test]
+fn encoded_action_input_len_computes_from_actual_payload_bytes() -> Result<(), String> {
+    let action = ActionId::new(77);
+    let contract = input_len_contract(action, 4)?;
+    let payload = [0u8, 1, 2, 3];
+
+    let checked = EncodedActionInputLen::from_encoded_payload(&payload, &contract)
+        .map_err(|error| error.to_string())?;
+
+    assert_eq!(checked.get(), 4);
+    assert_eq!(checked.action(), action);
+    Ok(())
+}
+
+#[test]
+fn encoded_action_input_len_rejects_actual_payload_over_contract_limit() -> Result<(), String> {
+    let contract = input_len_contract(ActionId::new(78), 3)?;
+    let payload = [0u8, 1, 2, 3];
+
+    assert_eq!(
+        EncodedActionInputLen::from_encoded_payload(&payload, &contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 3,
+            actual_bytes: 4,
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn action_input_constructor_preserves_checked_len_and_rejects_ticket_mismatch() -> Result<(), String>
+{
+    let action = ActionId::new(79);
+    let run = RunId::new(7);
+    let step = StepIdx::new(2);
+    let contract = input_len_contract(action, 8)?;
+    let payload = [0u8, 1, 2, 3, 4];
+    let ticket = input_len_ticket(run, step, action);
+    let input = ActionInput::new(
+        run,
+        step,
+        action,
+        SlotIdx::ZERO,
+        &payload,
+        &contract,
+        ticket,
+    )
+    .map_err(|error| error.to_string())?;
+
+    assert_eq!(input.encoded_len(), 5);
+    assert_eq!(input.encoded_input_len().get(), 5);
+
+    let wrong_ticket = input_len_ticket(run, StepIdx::new(3), action);
+    assert_eq!(
+        ActionInput::new(
+            run,
+            step,
+            action,
+            SlotIdx::ZERO,
+            &payload,
+            &contract,
+            wrong_ticket
+        ),
+        Err(ActionError::InvalidTicket)
+    );
+    Ok(())
+}
+
+#[test]
+fn public_action_input_constructor_cannot_under_report_actual_payload_len() -> Result<(), String> {
+    let action = ActionId::new(80);
+    let run = RunId::new(8);
+    let step = StepIdx::new(3);
+    let contract = input_len_contract(action, 16)?;
+    let payload = [0u8, 1, 2, 3, 4, 5, 6];
+    let ticket = input_len_ticket(run, step, action);
+
+    let input = ActionInput::new(
+        run,
+        step,
+        action,
+        SlotIdx::ZERO,
+        &payload,
+        &contract,
+        ticket,
+    )
+    .map_err(|error| error.to_string())?;
+
+    assert_eq!(input.encoded_len(), 7);
+    Ok(())
+}
+
+#[test]
+fn public_action_input_constructor_rejects_oversized_actual_payload() -> Result<(), String> {
+    let action = ActionId::new(81);
+    let contract = input_len_contract(action, 2)?;
+    let payload = [0u8, 1, 2];
+    let ticket = input_len_ticket(RunId::new(9), StepIdx::new(4), action);
+
+    assert_eq!(
+        ActionInput::new(
+            RunId::new(9),
+            StepIdx::new(4),
+            action,
+            SlotIdx::ZERO,
+            &payload,
+            &contract,
+            ticket
+        ),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 2,
+            actual_bytes: 3,
+        })
+    );
+    Ok(())
 }
 
 // =========================================================================

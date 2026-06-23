@@ -42,13 +42,17 @@ fn registry_with_n_actions(count: usize) -> ActionRegistry {
 }
 
 /// Creates a simple ActionInput for the given action ID.
-fn action_input(action: ActionId) -> ActionInput {
-    ActionInput {
-        run: RunId::new(1),
-        step: StepIdx::new(0),
+fn action_input(action: ActionId) -> vb_core::action::ActionResult<ActionInput> {
+    let contract = action_contract(action);
+    let payload = [0u8];
+    ActionInput::new(
+        RunId::new(1),
+        StepIdx::new(0),
         action,
-        input: SlotIdx::new(0),
-        ticket: vb_core::action::ActionTicket {
+        SlotIdx::new(0),
+        &payload,
+        &contract,
+        vb_core::action::ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
             seq: SeqNo::new(0),
@@ -57,6 +61,18 @@ fn action_input(action: ActionId) -> ActionInput {
             idempotency_key: 0,
             capacity: 1,
         },
+    )
+}
+
+fn action_input_or_exit(action: ActionId) -> ActionInput {
+    match action_input(action) {
+        Ok(input) => input,
+        Err(error) => {
+            eprintln!("bench action input must build: {error}");
+            unreachable!(
+                "bench action input must build: {error}; hardcoded valid ActionIds should not error"
+            );
+        }
     }
 }
 
@@ -100,7 +116,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let input = action_input(ActionId::new(0));
+                    let input = action_input_or_exit(ActionId::new(0));
                     let contract = action_contract(ActionId::new(0));
                     let result = registry_1.dispatch(black_box(&input), black_box(&contract));
                     // Exact assertion: dispatch must succeed with known outcome
@@ -109,10 +125,11 @@ fn bench_action_dispatch(c: &mut Criterion) {
                         "dispatch of registered action 0 must succeed"
                     );
                     let outcome = result.expect("ok");
-                    match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
-                    }
+                    assert!(
+                        matches!(outcome, ActionOutcome::Suspended(_)),
+                        "expected ActionOutcome::Suspended, got {:?}",
+                        outcome
+                    );
                     black_box(outcome);
                 });
             },
@@ -131,7 +148,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let input = action_input(ActionId::new(9));
+                    let input = action_input_or_exit(ActionId::new(9));
                     let contract = action_contract(ActionId::new(9));
                     let result = registry_10.dispatch(black_box(&input), black_box(&contract));
                     // Exact assertion: last registered action must dispatch correctly
@@ -140,10 +157,11 @@ fn bench_action_dispatch(c: &mut Criterion) {
                         "dispatch of action 9 must succeed with 10-action registry"
                     );
                     let outcome = result.expect("ok");
-                    match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
-                    }
+                    assert!(
+                        matches!(outcome, ActionOutcome::Suspended(_)),
+                        "expected ActionOutcome::Suspended, got {:?}",
+                        outcome
+                    );
                     black_box(outcome);
                 });
             },
@@ -162,7 +180,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let input = action_input(ActionId::new(99));
+                    let input = action_input_or_exit(ActionId::new(99));
                     let contract = action_contract(ActionId::new(99));
                     let result = registry_100.dispatch(black_box(&input), black_box(&contract));
                     // Exact assertion: last action in 100-action registry
@@ -171,10 +189,11 @@ fn bench_action_dispatch(c: &mut Criterion) {
                         "dispatch of action 99 must succeed with 100-action registry"
                     );
                     let outcome = result.expect("ok");
-                    match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
-                    }
+                    assert!(
+                        matches!(outcome, ActionOutcome::Suspended(_)),
+                        "expected ActionOutcome::Suspended, got {:?}",
+                        outcome
+                    );
                     black_box(outcome);
                 });
             },
@@ -192,7 +211,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let input = action_input(ActionId::new(999)); // Not registered
+                    let input = action_input_or_exit(ActionId::new(999)); // Not registered
                     let contract = action_contract(ActionId::new(999));
                     let result = registry_10.dispatch(black_box(&input), black_box(&contract));
                     // Exact assertion: must return UnknownAction error

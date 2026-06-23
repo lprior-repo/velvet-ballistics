@@ -18,7 +18,7 @@ mod cancel_kill_lattice_props {
     // ==========================================================================
 
     /// PO-PROP-001-P1: RecordKind::RunKilled.id() == 28 and is a valid journal event kind.
-    /// BLOCK-001 FIXED: validation.rs now accepts 10..=28.
+    /// BLOCK-001/B-004 FIXED: validation.rs now accepts 10..=29.
     /// Since is_known_record_kind is pub(crate), we verify via the public RecordKind API
     /// and by constructing a valid JournalEvent::RunKilled that passes is_valid().
     #[test]
@@ -121,6 +121,7 @@ mod cancel_kill_lattice_props {
             RecordKind::WaitScheduled,
             RecordKind::AskScheduled,
             RecordKind::AskAnswered,
+            RecordKind::AskTimedOut,
             RecordKind::RetryScheduled,
             RecordKind::StepFailed,
             RecordKind::RunCancelled,
@@ -240,7 +241,7 @@ mod cancel_kill_lattice_props {
     #[test]
     fn prop_is_known_record_kind_known_values() {
         // Verify boundary kinds are recognized by constructing valid events
-        let known_ids = [1u16, 2, 3, 10, 21, 22, 23, 28, 30, 40, 50];
+        let known_ids = [1u16, 2, 3, 10, 21, 22, 23, 28, 29, 30, 40, 50];
         for &kid in &known_ids {
             if kid == 28 {
                 let event = JournalEvent::RunKilled {
@@ -275,6 +276,7 @@ mod cancel_kill_lattice_props {
             RecordKind::WaitScheduled.id(),
             RecordKind::AskScheduled.id(),
             RecordKind::AskAnswered.id(),
+            RecordKind::AskTimedOut.id(),
             RecordKind::RetryScheduled.id(),
             RecordKind::StepFailed.id(),
             RecordKind::RunCancelled.id(),
