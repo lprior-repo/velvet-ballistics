@@ -1,4 +1,3 @@
-
 fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
@@ -62,7 +61,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
             vb_core::value::ConstValue::I64(10),
         ]),
         slot_count: 3,
-        symbols_count: 0,
+        symbols_count: 2,
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
@@ -80,13 +79,22 @@ fn small_config() -> ShardConfig {
     }
 }
 
+fn workflow_fixture(
+    workflow: Option<vb_core::workflow::CompiledWorkflow>,
+    name: &'static str,
+) -> Result<vb_core::workflow::CompiledWorkflow, String> {
+    workflow.ok_or_else(|| {
+        let mut message = name.to_owned();
+        message.push_str(" fixture must build");
+        message
+    })
+}
+
 #[test]
-fn finished_run_releases_frame_to_dimension_pool() {
+fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -100,15 +108,14 @@ fn finished_run_releases_frame_to_dimension_pool() {
 
     let available = shard.frame_pools.get(&(2, 1)).map(FramePool::available);
     assert_eq!(available, Some(1));
+    Ok(())
 }
 
 #[test]
-fn cancelled_run_releases_frame_to_dimension_pool() {
+fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let run = super::RunId::new(11);
 
     assert_eq!(
@@ -125,21 +132,23 @@ fn cancelled_run_releases_frame_to_dimension_pool() {
         Some(0)
     );
 
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
         Some(1)
     );
+    Ok(())
 }
 
 #[test]
-fn cancel_cleans_pending_timer() {
+fn cancel_cleans_pending_timer() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(12);
 
     assert_eq!(
@@ -152,19 +161,21 @@ fn cancel_cleans_pending_timer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn finish_cleans_pending_timer_after_timer_fire() {
+fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
     let run = super::RunId::new(13);
 
     assert_eq!(
@@ -177,20 +188,25 @@ fn finish_cleans_pending_timer_after_timer_fire() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
+    assert_eq!(
+        timer_command(&shard, run).map(|command| shard.enqueue(command)),
+        Some(Ok(()))
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn fail_cleans_pending_timer_after_ask_timeout_without_answer() {
+fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(
+        timed_ask_without_answer_workflow(),
+        "timed_ask_without_answer",
+    )?;
     let run = super::RunId::new(14);
 
     assert_eq!(
@@ -203,11 +219,15 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
+    assert_eq!(
+        timer_command(&shard, run).map(|command| shard.enqueue(command)),
+        Some(Ok(()))
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
@@ -244,13 +264,11 @@ fn tick_after_shutdown_returns_false() {
 }
 
 #[test]
-fn submit_returns_run_already_exists_for_duplicate() {
+fn submit_returns_run_already_exists_for_duplicate() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let run = super::RunId::new(42);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -272,4 +290,5 @@ fn submit_returns_run_already_exists_for_duplicate() {
     );
     // Then tick returns RunAlreadyExists
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
 }

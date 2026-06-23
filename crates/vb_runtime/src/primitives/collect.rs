@@ -535,8 +535,7 @@ pub fn collect_next(
     let current_id = expect_list(*run.read_slot(collector_slot)?)?;
     let current = store.list(current_id)?;
     if current.is_empty() {
-        states.remove(run.run_id(), collector_slot);
-        return jump_to(run, done);
+        return accept_empty_collect_page(run, states, collector_slot, current_id, done);
     }
     let plan = build_collect_next_plan(run, store, states, collector_slot, current_id)?;
     let Some((state, page, page_len)) = plan else {
@@ -550,6 +549,25 @@ pub fn collect_next(
         ..state
     })?;
     jump_to_body(run, body)
+}
+
+fn accept_empty_collect_page(
+    run: &mut RunFrame,
+    states: &mut CollectStates,
+    collector_slot: SlotIdx,
+    current_id: ListId,
+    done: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    if states.capture_state(run.run_id(), collector_slot).is_some() {
+        let state = states.require_current_page(run.run_id(), collector_slot, current_id)?;
+        if state.cursor < state.item_count {
+            return Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect empty page before terminal cursor",
+            });
+        }
+        states.remove(run.run_id(), collector_slot);
+    }
+    jump_to(run, done)
 }
 
 type CollectNextPlan = Option<(CollectPaginationState, Box<[SlotValue]>, usize)>;

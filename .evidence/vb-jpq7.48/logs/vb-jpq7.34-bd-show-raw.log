@@ -1,0 +1,25 @@
+command: bd show vb-jpq7.34
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.34 · P0: fuzz yaml_events parser typed-error surface   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Fuzz target yaml_events implemented and verified: registered in fuzz/Cargo.toml, builds with RUSTFLAGS=--cfg fuzzing, runs 800K+ invocations with no crashes, typed YamlError variants confirmed, corpus seeds present in fuzz/corpus/yaml_events/
+
+DESCRIPTION
+Split from vb-jpq7.6. Register and execute yaml_events fuzz target against hostile YAML/event syntax.
+
+ACCEPTANCE CRITERIA
+fuzz/Cargo.toml registers bin yaml_events; smoke fuzz executes meaningful hostile inputs with corpus/seed evidence; parser returns typed errors or clean rejection with no panic unwrap expect; raw run logs are attached.
+
+LABELS: backend-dod, fuzz, master-gap, parser, release-blocker, truth-serum, yaml
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ✓ vb-481r.8: P0: make fuzz-smoke run exact Section 37 target names ● P0
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

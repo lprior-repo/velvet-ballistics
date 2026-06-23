@@ -109,8 +109,8 @@
 | B49 | decode_journal_event validates RunKilled | `decode_journal_event_runkilled_passes_validation` | unit | new |
 | B50 | validate_known_kind(28) = Ok | `validate_known_kind_28_returns_ok` | unit | new |
 | B51 | unknown_record_kind_value(28) = None | `unknown_record_kind_value_28_returns_none` | unit | new |
-| B52 | kind 29 still unknown | `is_known_record_kind_29_returns_false` | unit | new |
-| B53 | journal family rejects kind 29 | `validate_kind_family_journal_event_29_returns_rejection` | unit | new |
+| B52 | kind 31 still unknown | `is_known_record_kind_31_returns_false` | unit | new |
+| B53 | journal family rejects kind 31 | `validate_kind_family_journal_event_31_returns_rejection` | unit | new |
 | -- | proptest: kind 28 valid | `prop_record_kind_28_is_valid` | proptest | **existing** ✅ |
 | -- | proptest: RunKilled valid event | `prop_runkilled_valid_event_passes_validation` | proptest | **existing** ✅ |
 | -- | proptest: zero run invalid | `prop_runkilled_zero_run_invalid` | proptest | **existing** ✅ |
@@ -135,7 +135,7 @@
 | B57 | validate_replayed_event gap | `validate_replayed_event_seq_mismatch_returns_gap` | unit | new |
 | B58 | validate_replayed_event wrong run | `validate_replayed_event_run_mismatch_returns_wrong_run` | unit | new |
 | B59 | RunKilled replays as terminal | `runkilled_events_replay_as_terminal` | integration | new |
-| B60 | kind 28 does not open kind 29 | `kind_28_admission_does_not_open_unknown_kind_29` | unit | new |
+| B60 | kind 28/29 does not open kind 31 | `kind_28_and_29_admission_does_not_open_unknown_kind_31` | unit | new |
 | B61 | next_seq overflow | `next_seq_max_returns_overflow` | unit | new |
 | -- | Kani: replay contiguity + killed | `check_replay_contiguity_with_killed` | kani | **existing** ✅ (wired) |
 | -- | Kani: replay gap detection | `check_replay_sequence_gap_detection` | kani | **existing** ✅ (wired) |

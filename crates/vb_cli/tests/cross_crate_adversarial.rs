@@ -482,12 +482,18 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
 #[test]
 fn runtime_to_storage_journal_event_encode_decode_roundtrip() {
     use serde::{Deserialize, Serialize};
+    use vb_storage::codec::EnforceKindParity;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct TestPayload {
         value: i64,
         label: String,
     }
+
+    // TestPayload has no payload-level record-kind discriminant, so the
+    // default no-op parity check is correct. Implementing the trait is
+    // required by `decode_record`'s new bound.
+    impl EnforceKindParity for TestPayload {}
 
     // Given: a valid payload and storage magic
     let payload = TestPayload {
@@ -523,11 +529,14 @@ fn runtime_to_storage_journal_event_encode_decode_roundtrip() {
 #[test]
 fn runtime_to_storage_corrupted_record_fails_integrity_check() {
     use serde::{Deserialize, Serialize};
+    use vb_storage::codec::EnforceKindParity;
 
     #[derive(Serialize, Deserialize)]
     struct TestPayload {
         value: i64,
     }
+
+    impl EnforceKindParity for TestPayload {}
 
     let payload = TestPayload { value: 42 };
     let magic = vb_storage::MAGIC_JOURNAL_EVENT;

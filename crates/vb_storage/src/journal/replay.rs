@@ -1,5 +1,5 @@
 use crate::{
-    codec::decode_record,
+    codec::decode_journal_event,
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
@@ -106,7 +106,7 @@ impl FjallJournal {
             let Some(value) = value else {
                 break;
             };
-            let (_, event): (_, JournalEvent) = decode_record(
+            let (_, event) = decode_journal_event(
                 value.as_ref(),
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
@@ -124,7 +124,10 @@ fn validate_replay_sequence(
     expected: &mut Option<EventSeq>,
     event: &JournalEvent,
 ) -> Result<(), JournalError> {
-    let expected_seq = expected.unwrap_or_else(|| event.seq());
+    let expected_seq = match *expected {
+        Some(seq) => seq,
+        None => event.seq(),
+    };
     crate::codec::validate_replayed_event(run, expected_seq, event)?;
     *expected = Some(crate::codec::next_seq(expected_seq)?);
     Ok(())

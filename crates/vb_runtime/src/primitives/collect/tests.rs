@@ -3054,6 +3054,38 @@ fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<
     Ok(())
 }
 
+#[test]
+fn collect_next_rejects_empty_non_current_page_without_removing_state() -> Result<(), String> {
+    let mut scenario = CollectScenario::start(
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        3,
+        1,
+    )?;
+    scenario.next()?;
+    let live_page = scenario.current_page()?;
+    let empty_page = scenario
+        .store
+        .insert_list(Vec::<SlotValue>::new().into_boxed_slice())
+        .map_err(|e| format!("empty page insert: {e:?}"))?;
+    scenario.write_collector_page(empty_page)?;
+
+    let result = collect_next(
+        &mut scenario.run,
+        &mut scenario.store,
+        &mut scenario.states,
+        scenario.collector,
+        scenario.body,
+        scenario.done,
+    );
+
+    assert!(matches!(
+        result,
+        Err(EngineError::CollectPageOrderViolation { .. })
+    ));
+    scenario.assert_live_cursor(live_page, 2)?;
+    Ok(())
+}
+
 // =========================================================================
 // vb-qi37.3.1 RED PHASE: collect state isolation contract tests.
 // These tests encode the approved bead plan and are expected to fail until

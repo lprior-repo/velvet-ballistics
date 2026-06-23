@@ -262,7 +262,7 @@ mod envelope_decode_tests {
         // Given: a valid header with journal magic but using CompiledIr kind
         let event = make_test_event(4, 0);
         let mut header = build_valid_header(&event)?;
-        // RecordKind::CompiledIr.id() = 2, not in journal family (10..=27)
+        // RecordKind::CompiledIr.id() = 2, not in journal family (10..=29)
         header[6..8].copy_from_slice(&RecordKind::CompiledIr.id().to_le_bytes());
 
         // When: decoding

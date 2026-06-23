@@ -376,6 +376,18 @@ fn should_skip_rs_file(rel_path: &str) -> bool {
         || rel_path.starts_with("kani_")
         || rel_path.contains("/kani/")
         || rel_path.contains("/kani_")
+        // Verification extern-body files: Flux `#[extern_spec]` and Verus
+        // `#[verifier::external_body]` modules under any `verification/` tree
+        // are compiled by their own toolchains (flux-rs, verus), not by rustc.
+        // Their module roots (e.g. `crates/vb_runtime/src/verification/mod.rs`)
+        // gate the contents behind `#[cfg(flux)]` / `#[cfg(verus)]`, and the
+        // bodies intentionally use `unimplemented!()` because the real bodies
+        // live in the referenced production source files. Treat them as
+        // trusted extern-bodies; they are never reachable from production
+        // rustc builds. Sibling kani/loom/proptest trees under verification/
+        // are already covered by the preceding rules.
+        || rel_path.starts_with("verification/")
+        || rel_path.contains("/verification/")
 }
 
 fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {

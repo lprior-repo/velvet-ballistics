@@ -110,6 +110,16 @@ pub enum JournalError {
         /// Record kind.
         kind: u16,
     },
+    /// Journal event payload variant does not match the envelope record kind.
+    #[error(
+        "journal event payload kind {payload_kind} does not match envelope kind {envelope_kind}"
+    )]
+    RecordKindPayloadMismatch {
+        /// Wire kind stored in the record envelope.
+        envelope_kind: u16,
+        /// Wire kind implied by the decoded payload variant.
+        payload_kind: u16,
+    },
     /// Header length was not the contract value.
     #[error("record header length mismatch: {found}")]
     HeaderLengthMismatch {

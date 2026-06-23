@@ -110,6 +110,23 @@ impl JournalWriterQueue {
         Ok(counts)
     }
 
+    /// Probes whether the queue can currently accept another journaled write.
+    ///
+    /// This does not enqueue a sentinel event or mutate queue state.
+    pub fn probe_accepting_writes(&self) -> Result<(), JournalError> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        if state.shutdown {
+            return Err(JournalError::QueueShutdown);
+        }
+        if state.pending.len() >= self.capacity {
+            return Err(JournalError::QueueFull);
+        }
+        Ok(())
+    }
+
     /// Flushes at most one configured batch to the journal.
     pub fn flush_batch(
         &self,

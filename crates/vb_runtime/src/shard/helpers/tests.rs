@@ -1160,13 +1160,11 @@ fn snapshot_from_state_captures_nonzero_executed() {
 // =======================================================================
 
 #[test]
-fn validate_action_completion_returns_ok_when_all_preconditions_satisfied() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_returns_ok_when_all_preconditions_satisfied() -> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     // Mark step 0 as Running and set action_attempts[0] = 1
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -1175,16 +1173,16 @@ fn validate_action_completion_returns_ok_when_all_preconditions_satisfied() {
     let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
     let result = validate_action_completion(&state, t);
     assert_eq!(result, Ok(()));
+    Ok(())
 }
 
 #[test]
-fn validate_action_completion_returns_stale_attempt_when_attempt_lower_than_current() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_returns_stale_attempt_when_attempt_lower_than_current()
+-> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 3;
@@ -1198,16 +1196,15 @@ fn validate_action_completion_returns_stale_attempt_when_attempt_lower_than_curr
             current: 3
         })
     );
+    Ok(())
 }
 
 #[test]
-fn validate_action_completion_returns_stale_attempt_when_lower_by_many() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_returns_stale_attempt_when_lower_by_many() -> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 5;
@@ -1221,16 +1218,15 @@ fn validate_action_completion_returns_stale_attempt_when_lower_by_many() {
             current: 5
         })
     );
+    Ok(())
 }
 
 #[test]
-fn validate_action_completion_returns_stale_attempt_at_edge_1_vs_2() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_returns_stale_attempt_at_edge_1_vs_2() -> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 2;
@@ -1244,16 +1240,16 @@ fn validate_action_completion_returns_stale_attempt_at_edge_1_vs_2() {
             current: 2
         })
     );
+    Ok(())
 }
 
 #[test]
-fn validate_action_completion_rejects_future_attempt_when_attempt_exceeds_current() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_rejects_future_attempt_when_attempt_exceeds_current()
+-> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 3;
@@ -1266,6 +1262,7 @@ fn validate_action_completion_rejects_future_attempt_when_attempt_exceeds_curren
     // validate_ticket_attempt returns Err(InvalidActionCompletion) for attempt > current
     let result = validate_action_completion(&state, t);
     assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }
 
 #[test]
@@ -1287,13 +1284,11 @@ fn validate_action_completion_rejects_unscheduled_first_attempt() {
 }
 
 #[test]
-fn validate_action_completion_rejects_when_attempt_is_zero() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
+fn validate_action_completion_rejects_when_attempt_is_zero() -> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
     let t = ActionTicket {
         capacity: 5,
@@ -1304,6 +1299,7 @@ fn validate_action_completion_rejects_when_attempt_is_zero() {
         result,
         Err(RuntimeError::AttemptBeyondMax { attempt: 0, max: 5 })
     );
+    Ok(())
 }
 
 #[test]

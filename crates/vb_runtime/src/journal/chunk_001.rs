@@ -132,6 +132,13 @@ pub enum RuntimeJournalEvent {
         /// Slot that received the answer.
         slot: SlotIdx,
     },
+    /// Ask timed out and resumed along the timeout path.
+    AskTimedOut {
+        /// Run identifier.
+        run: RunId,
+        /// Step that scheduled the ask.
+        step: StepIdx,
+    },
     /// Slot was written by an external runtime boundary.
     SlotWritten {
         /// Run identifier.
@@ -189,6 +196,7 @@ impl RuntimeJournalEvent {
             | Self::WaitResolved { run, .. }
             | Self::AskScheduled { run, .. }
             | Self::AskAnswered { run, .. }
+            | Self::AskTimedOut { run, .. }
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }

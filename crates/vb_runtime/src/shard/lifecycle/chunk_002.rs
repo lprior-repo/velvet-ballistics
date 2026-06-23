@@ -89,6 +89,9 @@ impl Shard {
         if !current_timer.matches_authority(generation, deadline, kind) {
             return Err(RuntimeError::InvalidTimerFire);
         }
+        let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
+        self.append_timer_resolution_event(run, current_timer)?;
         let mut state = self.take_run_state(run)?;
         let timer = match self.pending_timer_remove(run) {
             Some(timer) => timer,
@@ -98,19 +101,27 @@ impl Shard {
             }
         };
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
-        match timer.kind {
-            PendingTimerKind::Wait => {
-                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
-                    run,
-                    step: timer.step,
-                })?;
-            }
-            PendingTimerKind::Ask => {}
-        }
         let mut evidence = EvidenceCollector::new();
         let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
         self.flush_evidence(run, &mut evidence)?;
         self.apply_drive_result(run, state, result)
+    }
+
+    fn append_timer_resolution_event(
+        &mut self,
+        run: RunId,
+        timer: PendingTimer,
+    ) -> RuntimeResult<()> {
+        match timer.kind {
+            PendingTimerKind::Wait => self.append_journal_event(RuntimeJournalEvent::WaitResolved {
+                run,
+                step: timer.step,
+            }),
+            PendingTimerKind::Ask => self.append_journal_event(RuntimeJournalEvent::AskTimedOut {
+                run,
+                step: timer.step,
+            }),
+        }
     }
 
     pub(crate) fn handle_cancel(
@@ -122,14 +133,18 @@ impl Shard {
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        self.pending_timer_remove(run);
-        if let Some(state) = self.run_state_remove(run) {
+        if self.run_state_contains(run) {
             self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
+            self.pending_timer_remove(run);
+            let Some(state) = self.run_state_remove(run) else {
+                return Err(RuntimeError::RunNotFound);
+            };
             self.release_frame(state.frame);
             self.terminal_runs_insert(run)?;
             self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
+            self.clear_executed_step_accounting(run);
         }
         self.discard_journal_sequence(run);
         Ok(())
@@ -140,14 +155,17 @@ impl Shard {
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        self.pending_timer_remove(run);
+        if self.run_state_contains(run) {
+            self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
+            self.pending_timer_remove(run);
+        }
         if let Some(state) = self.run_state_remove(run) {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run)?;
             self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
-            self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
+            self.clear_executed_step_accounting(run);
         }
         self.discard_journal_sequence(run);
         Ok(())
@@ -245,13 +263,18 @@ impl Shard {
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        // Append-before-mutate: persist terminal finish (journal) before mutating
+        // runtime_states, so durability ordering is preserved on crash recovery.
+        self.finish_run(run, state)?;
         self.apply(run, RuntimeEvent::DriveFinished)?;
-        self.finish_run(run, state)
+        Ok(())
     }
 
     fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        // apply() handles runtime_states mutation; fail_run_state handles cleanup only
+        // Append-before-mutate: persist failure cleanup (journal) before mutating
+        // runtime_states, so durability ordering is preserved on crash recovery.
+        self.fail_run_state(run, state)?;
         self.apply(run, RuntimeEvent::Fail)?;
-        self.fail_run_state(run, state)
+        Ok(())
     }
 }

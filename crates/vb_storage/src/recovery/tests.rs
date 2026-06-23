@@ -8,7 +8,9 @@ use crate::recovery::{
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
-use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
+use crate::{
+    DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RecordKind, RunHeaderRecord,
+};
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -986,6 +988,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::RunAdmission { .. }
                 | JournalEvent::SlotWrittenEvent { .. }
                 | JournalEvent::RetryScheduledEvent { .. }
+                | JournalEvent::AskTimedOutEvent { .. }
                 | JournalEvent::RunResumed { .. }
                 | JournalEvent::RunRetried { .. }
                 | JournalEvent::RunAnswered { .. } => {}
@@ -1064,6 +1067,35 @@ fn assert_snapshot_tail_matches_full_summary(
     let combined_summary = combine_summaries(snapshot_summary, tail_summary);
 
     assert_eq!(full_summary, combined_summary);
+    Ok(())
+}
+
+#[test]
+fn ask_timed_out_recovery_summary_does_not_count_as_answered() -> Result<(), String> {
+    let run = RunId::new(84);
+    let events = [
+        JournalEvent::AskAnsweredEvent {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(1),
+            attempt: 1,
+        },
+        JournalEvent::AskTimedOutEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(2),
+            attempt: 1,
+        },
+    ];
+
+    let summary = summarize_events(&events);
+
+    let timeout_event = events
+        .get(1)
+        .ok_or_else(|| String::from("missing timed-out event"))?;
+    assert_eq!(timeout_event.record_kind(), RecordKind::AskTimedOut);
+    assert_ne!(timeout_event.record_kind(), RecordKind::AskAnswered);
+    assert_eq!(summary.ask_answered, 1);
     Ok(())
 }
 

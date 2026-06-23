@@ -7,9 +7,8 @@
 
 use crate::JournalEvent;
 use crate::recovery::hydrate_support::{
-    apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
-    derive_dimensions_from_snapshot_and_tail, verified_action_envelope_digest,
-    verify_action_ticket_event,
+    apply_tail_events, decode_snapshot_slots, derive_dimensions_from_snapshot_and_tail,
+    verified_action_envelope_digest, verify_action_ticket_event,
 };
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::types::{
@@ -333,8 +332,8 @@ pub fn hydrate_run_frame_from_events(
     apply_seed_step_states(&mut frame, &seed.steps)?;
     apply_seed_slots(&mut frame, &seed.slots)?;
     apply_seed_pc(&mut frame, seed.pc)?;
-    increment_executed(&mut frame, run_id, count_state_events(events, run_id)?)?;
-    apply_parallel_peak(&mut frame, events)?;
+    let executed = apply_replay_accounting(&mut frame, events, run_id)?;
+    increment_executed(&mut frame, run_id, executed)?;
 
     Ok(frame)
 }
@@ -395,27 +394,41 @@ fn apply_seed_pc(frame: &mut vb_core::RunFrame, pc: vb_core::StepIdx) -> Recover
         })
 }
 
-fn count_state_events(events: &[JournalEvent], run_id: RunId) -> RecoveryResult<u64> {
+fn apply_replay_accounting(
+    frame: &mut vb_core::RunFrame,
+    events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<u64> {
     let mut tracker = ActionReplayTracker::new();
     let mut count = 0u64;
+    let mut peak = 0u16;
     for event in events {
-        if count_state_event(event, &mut tracker)? {
-            count = count.saturating_add(1);
+        if apply_accounting_event(frame, event, &mut tracker)? {
+            count = increment_replay_count(count, run_id)?;
+        }
+        if frame.parallel_in_flight() > peak {
+            peak = frame.parallel_in_flight();
         }
     }
-    if count == u64::MAX {
-        return Err(RecoveryError::FrameDimensionOverflow { run: run_id });
-    }
+    frame.set_max_parallel_in_flight(peak);
     Ok(count)
 }
 
-fn count_state_event(
+fn increment_replay_count(current: u64, run_id: RunId) -> RecoveryResult<u64> {
+    current
+        .checked_add(1)
+        .ok_or(RecoveryError::FrameDimensionOverflow { run: run_id })
+}
+
+fn apply_accounting_event(
+    frame: &mut vb_core::RunFrame,
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<bool> {
     match event {
         JournalEvent::ActionScheduled { action, step, .. } => {
             reject_resolved_action(tracker, *action, *step)?;
+            add_replay_parallel_in_flight(frame, *step)?;
             Ok(true)
         }
         JournalEvent::ActionScheduledTicket {
@@ -427,11 +440,15 @@ fn count_state_event(
         } => {
             verify_action_ticket_event(*run, *ticket)?;
             let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+            if effect == ActionReplayEffect::Apply {
+                add_replay_parallel_in_flight(frame, ticket.step)?;
+            }
             Ok(effect == ActionReplayEffect::Apply)
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_resolved_action(tracker, *action, *step)?;
             tracker.mark_completed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step)?;
             Ok(true)
         }
         JournalEvent::ActionCompletedEnvelope {
@@ -461,20 +478,49 @@ fn count_state_event(
                 *taint,
                 verified_digest,
             )?;
+            if effect == ActionReplayEffect::Apply {
+                sub_replay_parallel_in_flight(frame, ticket.step)?;
+            }
             Ok(effect == ActionReplayEffect::Apply)
         }
         JournalEvent::ActionFailedEvent { action, step, .. } => {
             reject_resolved_action(tracker, *action, *step)?;
             tracker.mark_failed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step)?;
             Ok(true)
         }
         JournalEvent::StepStarted { .. }
         | JournalEvent::StepSucceeded { .. }
         | JournalEvent::SlotWrittenEvent { .. }
         | JournalEvent::WaitScheduledEvent { .. }
-        | JournalEvent::AskScheduledEvent { .. } => Ok(true),
+        | JournalEvent::AskScheduledEvent { .. }
+        | JournalEvent::AskTimedOutEvent { .. } => Ok(true),
         _ => Ok(false),
     }
+}
+
+fn add_replay_parallel_in_flight(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    frame
+        .add_parallel_in_flight(1)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step,
+            detail: "parallel_in_flight overflow".to_owned(),
+        })
+}
+
+fn sub_replay_parallel_in_flight(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    frame
+        .sub_parallel_in_flight(1)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step,
+            detail: "parallel_in_flight underflow".to_owned(),
+        })
 }
 
 fn reject_resolved_action(
@@ -485,18 +531,5 @@ fn reject_resolved_action(
     if tracker.is_resolved(action, step) {
         return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
     }
-    Ok(())
-}
-
-fn apply_parallel_peak(
-    frame: &mut vb_core::RunFrame,
-    events: &[JournalEvent],
-) -> RecoveryResult<()> {
-    let peak =
-        compute_parallel_in_flight(frame, events).map_err(|_| RecoveryError::ReplayDivergence {
-            step: vb_core::StepIdx::ZERO,
-            detail: "parallel in-flight computation failed".to_owned(),
-        })?;
-    frame.set_max_parallel_in_flight(peak);
     Ok(())
 }

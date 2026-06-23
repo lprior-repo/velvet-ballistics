@@ -52,7 +52,7 @@ fn corrupt_kind_in_header(header: &mut [u8], new_kind: u16) {
 /// Returns true if the kind is NOT a known record kind.
 #[allow(dead_code)]
 fn is_unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)
 }
 
 // =============================================================================
@@ -403,9 +403,9 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn decode_accepts_all_known_journal_event_kinds() -> Result<(), JournalError> {
-        // Given: record headers with kinds 10..=27 (valid for MAGIC_JOURNAL_EVENT)
+        // Given: record headers with kinds 10..=29 (valid for MAGIC_JOURNAL_EVENT)
         let known_journal_kinds: Vec<u16> = vec![
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
         ];
 
         for &kind in &known_journal_kinds {
@@ -431,13 +431,13 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_true_for_valid_kinds() {
-        // Given: kind values that are in the known set {1, 2, 3, 10-28, 30, 40, 50}
+        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 40, 50}
         // We test through decode_record_header which calls is_known_record_kind internally.
         // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
         // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
         let valid_kinds: Vec<u16> = vec![
             1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            30, 40, 50,
+            29, 30, 40, 50,
         ];
 
         for &kind in &valid_kinds {
@@ -464,11 +464,10 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 29, 31..=39, 41..=49, 51..=65535
+        // Given: kind values 0, 4..=9, 31..=39, 41..=49, 51..=65535
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
-            0, 4, 5, 6, 7, 8, 9,  // 4..=9
-            29, // gap after RunKilled(28)
+            0, 4, 5, 6, 7, 8, 9, // 4..=9
             31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50
@@ -520,6 +519,7 @@ mod record_kind_stable_ids {
             RecordKind::WaitScheduled,
             RecordKind::AskScheduled,
             RecordKind::AskAnswered,
+            RecordKind::AskTimedOut,
             RecordKind::RetryScheduled,
             RecordKind::StepFailed,
             RecordKind::RunCancelled,
@@ -587,6 +587,11 @@ mod record_kind_stable_ids {
             RecordKind::RunKilled.id(),
             28,
             "RunKilled.id() must equal 28"
+        );
+        assert_eq!(
+            RecordKind::AskTimedOut.id(),
+            29,
+            "AskTimedOut.id() must equal 29"
         );
         assert_eq!(RecordKind::Snapshot.id(), 30, "Snapshot.id() must equal 30");
         assert_eq!(RecordKind::Blob.id(), 40, "Blob.id() must equal 40");

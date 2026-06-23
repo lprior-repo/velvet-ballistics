@@ -29,7 +29,7 @@ struct SymbolicRecordKindInput {
 }
 
 fn unknown_record_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)
 }
 
 fn run_raw(inputs: SymbolicKeyInputs) -> u64 {

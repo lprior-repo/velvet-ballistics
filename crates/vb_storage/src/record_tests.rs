@@ -52,6 +52,7 @@ mod record_tests {
         assert_eq!(RecordKind::WaitScheduled.id(), 16);
         assert_eq!(RecordKind::AskScheduled.id(), 17);
         assert_eq!(RecordKind::AskAnswered.id(), 18);
+        assert_eq!(RecordKind::AskTimedOut.id(), 29);
         assert_eq!(RecordKind::RetryScheduled.id(), 19);
         assert_eq!(RecordKind::RunCancelled.id(), 21);
         assert_eq!(RecordKind::RunFinished.id(), 22);
@@ -74,6 +75,7 @@ mod record_tests {
             RecordKind::WaitScheduled.id(),
             RecordKind::AskScheduled.id(),
             RecordKind::AskAnswered.id(),
+            RecordKind::AskTimedOut.id(),
             RecordKind::RetryScheduled.id(),
             RecordKind::StepFailed.id(),
             RecordKind::RunCancelled.id(),

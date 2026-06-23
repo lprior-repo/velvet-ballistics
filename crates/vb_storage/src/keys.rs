@@ -198,7 +198,7 @@ impl KeyPrefix {
 /// ```
 /// use vb_storage::keys::{try_key_prefix, KeyPrefix};
 ///
-/// assert_eq!(try_key_prefix(&[0x01]).unwrap(), KeyPrefix::WorkflowSource);
+/// assert!(matches!(try_key_prefix(&[0x01]), Ok(KeyPrefix::WorkflowSource)));
 /// assert!(try_key_prefix(&[]).is_err());
 /// assert!(try_key_prefix(&[0xFF]).is_err());
 /// ```
@@ -264,9 +264,8 @@ fn key_byte(bytes: &[u8], prefix: KeyPrefix, index: usize) -> Result<u8, KeyDeco
 /// use vb_core::RunId;
 ///
 /// let bytes = [0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2A];
-/// let key = decode_storage_key(&bytes).unwrap();
 /// let expected = StorageKey::RunHeader { run: RunId::new(42) };
-/// assert_eq!(key, expected);
+/// assert!(decode_storage_key(&bytes).is_ok_and(|k| k == expected));
 /// ```
 pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
     let prefix = try_key_prefix(bytes)?;

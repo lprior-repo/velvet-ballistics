@@ -1,7 +1,7 @@
 //! Journal event parsing utilities.
 
 use crate::{
-    codec::decode_record,
+    codec::decode_journal_event,
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
@@ -9,8 +9,8 @@ use crate::{
 
 /// Parses a journal event from raw bytes.
 ///
-/// This is a convenience wrapper around [`decode_record`] that fixes the magic
-/// and max payload length to the journal event contract values and returns
+/// This is a convenience wrapper around [`decode_journal_event`] that fixes the
+/// magic and max payload length to the journal event contract values and returns
 /// only the deserialized event (dropping the envelope).
 ///
 /// # Errors
@@ -24,11 +24,10 @@ use crate::{
 /// - [`JournalError::PayloadDigestMismatch`] if the payload digest does not match
 /// - [`JournalError::HeaderChecksumMismatch`] if the header CRC fails
 /// - [`JournalError::PostcardDecodeFailed`] if postcard deserialization fails
+/// - [`JournalError::RecordKindPayloadMismatch`] if the envelope kind and payload variant disagree
+/// - [`JournalError::InvalidEvent`] if the payload has invalid event invariants
 pub fn parse_event(data: &[u8]) -> Result<JournalEvent, JournalError> {
-    let (_, event) = decode_record::<JournalEvent>(
-        data,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    let (_, event) =
+        decode_journal_event(data, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
     Ok(event)
 }

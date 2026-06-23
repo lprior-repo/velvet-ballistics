@@ -39,7 +39,7 @@ pub(crate) fn action_contract_detail(
             .collect(),
         failure_codes: action_failure_code_names().to_vec(),
         idempotency_rule: action_idempotency_rule(contract.idempotency, contract.retry_safety),
-        example_input_schema: "postcard(ActionInput { run, step, action, input, ticket })",
+        example_input_schema: "postcard(ActionInput::new(run, step, action, input, encoded_payload_bytes, contract, ticket))",
         example_output_schema: "postcard(ActionOutcome::Ready|Suspended|Failed)",
     }
 }

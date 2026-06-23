@@ -1,5 +1,5 @@
 use crate::{
-    codec::{decode_record, encode_record},
+    codec::{EnforceKindParity, decode_journal_event, decode_record, encode_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
@@ -10,13 +10,16 @@ use serde::de::DeserializeOwned;
 
 impl FjallJournal {
     #[allow(clippy::unused_self)]
-    pub(crate) fn decode_optional<T: DeserializeOwned>(
+    pub(crate) fn decode_optional<T>(
         &self,
         keyspace: &fjall::Keyspace,
         key: &[u8],
         magic: u32,
         max_bytes: u32,
-    ) -> Result<Option<T>, JournalError> {
+    ) -> Result<Option<T>, JournalError>
+    where
+        T: DeserializeOwned + EnforceKindParity,
+    {
         let Some(value) = keyspace.get(key)? else {
             return Ok(None);
         };
@@ -58,7 +61,7 @@ impl FjallJournal {
                 let Some(value) = self.events.get(key)? else {
                     return Err(JournalError::DuplicateEvent { run, seq });
                 };
-                let (_, existing) = decode_record::<JournalEvent>(
+                let (_, existing) = decode_journal_event(
                     value.as_ref(),
                     MAGIC_JOURNAL_EVENT,
                     MAX_JOURNAL_EVENT_PAYLOAD_BYTES,

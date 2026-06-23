@@ -635,7 +635,7 @@ fn given_stale_artifact_when_strict_run_created_then_stale_certificate_denies() 
 }
 
 #[test]
-fn given_missing_excess_prefix_or_action_mismatched_capability_then_capability_denied() {
+fn given_missing_prefix_or_action_mismatched_capability_then_capability_denied() {
     // Given
     let requested = digest(0xC1);
     let action = ActionId::new(7);
@@ -645,6 +645,51 @@ fn given_missing_excess_prefix_or_action_mismatched_capability_then_capability_d
         ("prefix-only", caps(Box::new([cap("network", 7)]))),
         ("partial-prefix", caps(Box::new([cap("net", 7)]))),
         ("wrong-action", caps(Box::new([cap("network.github", 8)]))),
+    ];
+
+    // When / Then
+    for (label, granted) in cases {
+        let store = FixedAcceptedStore {
+            result: Ok(accepted_artifact_with_seq(
+                requested,
+                requested,
+                REQUIRED_GATE_COUNT,
+                true,
+                Box::new([required.clone()]),
+                1, // non-stale
+            )),
+        };
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(47),
+            requested,
+            granted.clone(),
+        );
+        assert_eq!(
+            observed(result),
+            ObservedAdmissionDiagnostic::CapabilityDenied {
+                action,
+                required: required.clone(),
+                granted,
+            },
+            "capability mismatch case {label} must preserve action, required, and granted"
+        );
+    }
+}
+
+#[test]
+fn given_required_capability_with_extras_or_duplicates_then_denied() {
+    // F-001 fix: strict admission rejects both cardinality-mismatch shapes
+    // (excess grants and duplicate grants) per VERUS-CARD-003.
+    // Previously admitted under subset-allowed semantics; now rejected
+    // to enforce least-privilege: the runtime re-checks per-action against
+    // `RunAdmission::granted_capabilities`, so extras would authorize
+    // actions beyond the artifact's declared requirement set.
+    // Given
+    let requested = digest(0xC1);
+    let required = cap("network.github", 7);
+    let cases = [
         (
             "excess",
             caps(Box::new([required.clone(), cap("filesystem.read", 9)])),
@@ -677,11 +722,11 @@ fn given_missing_excess_prefix_or_action_mismatched_capability_then_capability_d
         assert_eq!(
             observed(result),
             ObservedAdmissionDiagnostic::CapabilityDenied {
-                action,
+                action: required.action_id(),
                 required: required.clone(),
                 granted,
             },
-            "capability mismatch case {label} must preserve action, required, and granted"
+            "capability cardinality-mismatch case {label} must deny closed"
         );
     }
 }
@@ -1422,12 +1467,14 @@ fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_deni
 
 proptest! {
     #[test]
-    fn proptest_capability_profiles_admit_if_and_only_if_sets_are_identical(
+    fn proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted(
         required_action in 1u16..20,
         _granted_action in 1u16..20,
         name_suffix in 1u8..10,
         mutation in 0u8..6,
     ) {
+        // F-001 fix: strict admission rejects cardinality mismatch (VERUS-CARD-003).
+        // Mutation 0 (exact match) admits; every other shape denies.
         let requested = digest(0xFA);
         let required_name = format!("network.service.{name_suffix}");
         let required = cap(&required_name, required_action);

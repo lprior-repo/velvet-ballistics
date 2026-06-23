@@ -22,6 +22,7 @@ impl Shard {
             runtime_states: IndexMap::new(),
             terminal_runs: IndexSet::new(),
             journal_sequences: IndexMap::new(),
+            accounted_executed_steps: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -224,6 +225,26 @@ impl Shard {
 
     pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
         let _removed = self.journal_sequences.swap_remove(&run);
+    }
+
+    pub(crate) fn add_executed_step_delta(&mut self, run: RunId, executed: u64) {
+        let previous = self
+            .accounted_executed_steps
+            .get(&run)
+            .copied()
+            .map_or(0, |value| value);
+        let Some(delta) = executed.checked_sub(previous) else {
+            return;
+        };
+        if delta == 0 {
+            return;
+        }
+        self.counters.add_steps(delta);
+        self.accounted_executed_steps.insert(run, executed);
+    }
+
+    pub(crate) fn clear_executed_step_accounting(&mut self, run: RunId) {
+        self.accounted_executed_steps.swap_remove(&run);
     }
 
     /// Returns the number of pending timers on this shard.

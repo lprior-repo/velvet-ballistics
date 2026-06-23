@@ -2034,6 +2034,8 @@ mod tests {
         assert_eq!(RecordKind::RunCancelled.id(), 21);
         assert_eq!(RecordKind::RunFinished.id(), 22);
         assert_eq!(RecordKind::RunFailed.id(), 23);
+        assert_eq!(RecordKind::RunKilled.id(), 28);
+        assert_eq!(RecordKind::AskTimedOut.id(), 29);
         assert_eq!(RecordKind::Snapshot.id(), 30);
         assert_eq!(RecordKind::Blob.id(), 40);
         assert_eq!(RecordKind::IndexUpdate.id(), 50);
@@ -3022,6 +3024,16 @@ mod tests {
             run
         );
         assert_eq!(
+            JournalEvent::AskTimedOutEvent {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            }
+            .run_id(),
+            run
+        );
+        assert_eq!(
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(0),
@@ -3165,6 +3177,16 @@ mod tests {
         );
         assert_eq!(
             JournalEvent::AskAnsweredEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                attempt: 1,
+            }
+            .seq(),
+            seq
+        );
+        assert_eq!(
+            JournalEvent::AskTimedOutEvent {
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3324,6 +3346,16 @@ mod tests {
             }
             .record_kind(),
             RecordKind::AskAnswered
+        );
+        assert_eq!(
+            JournalEvent::AskTimedOutEvent {
+                run,
+                seq,
+                step: StepIdx::new(0),
+                attempt: 1,
+            }
+            .record_kind(),
+            RecordKind::AskTimedOut
         );
         assert_eq!(
             JournalEvent::RetryScheduledEvent {
@@ -3815,6 +3847,8 @@ mod tests {
             RecordKind::RunCancelled.id(),
             RecordKind::RunFinished.id(),
             RecordKind::RunFailed.id(),
+            RecordKind::RunKilled.id(),
+            RecordKind::AskTimedOut.id(),
             RecordKind::Snapshot.id(),
             RecordKind::Blob.id(),
             RecordKind::IndexUpdate.id(),
@@ -4100,6 +4134,41 @@ mod tests {
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_for_ask_timed_out_record_uses_distinct_kind() -> Result<(), String> {
+        let event = JournalEvent::AskTimedOutEvent {
+            run: RunId::new(29),
+            seq: EventSeq::new(29),
+            step: StepIdx::new(5),
+            attempt: 1,
+        };
+
+        assert_eq!(event.record_kind(), RecordKind::AskTimedOut);
+        assert_ne!(event.record_kind(), RecordKind::AskAnswered);
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::AskTimedOut,
+            event.seq().get(),
+            &event,
+            128,
+        )
+        .map_err(|error| format!("encoding should succeed: {error:?}"))?;
+        let (envelope, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
+            .map_err(|error| format!("decoding should succeed: {error:?}"))?;
+
+        assert_eq!(envelope.record_kind, RecordKind::AskTimedOut.id());
+        assert_eq!(decoded, event);
+        Ok(())
+    }
+
+    #[test]
+    fn master_wire_contract_lists_ask_timed_out_kind_29() {
+        let master = include_str!("../../../velvet-ballistics-MASTER.md");
+
+        assert!(master.contains("| 29 | `AskTimedOut` |"));
+        assert!(master.contains("CURRENT_SCHEMA_VERSION`\nremains `1`"));
     }
 
     #[test]
@@ -7533,6 +7602,7 @@ mod tests {
                 JournalError::MigrationRequired { .. } => "migration_required",
                 JournalError::UnknownRecordKind { .. } => "unknown_record_kind",
                 JournalError::RecordKindFamilyMismatch { .. } => "record_kind_family_mismatch",
+                JournalError::RecordKindPayloadMismatch { .. } => "record_kind_payload_mismatch",
                 JournalError::HeaderLengthMismatch { .. } => "header_length_mismatch",
                 JournalError::PayloadTooLarge { .. } => "payload_too_large",
                 JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",

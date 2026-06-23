@@ -237,7 +237,7 @@ fn kani_record_kind_valid_range() {
     let kind_id: u16 = kani::any();
     let result = crate::codec::validation::validate_known_kind(kind_id);
 
-    let is_valid = matches!(kind_id, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50);
+    let is_valid = matches!(kind_id, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50);
     match (is_valid, result) {
         (true, Ok(())) => {}
         (false, Err(JournalError::UnknownRecordKind { .. })) => {}

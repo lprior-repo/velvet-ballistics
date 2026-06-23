@@ -174,6 +174,25 @@ impl FjallJournal {
         Ok(self.index_workflow.contains_key(key.as_ref())?)
     }
 
+    /// Performs a read-only health probe across the opened storage keyspaces.
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if any underlying keyspace cannot be read.
+    pub fn probe_health(&self) -> Result<(), JournalError> {
+        let empty_key: &[u8] = &[];
+        let _ = self.workflow_source.contains_key(empty_key)?;
+        let _ = self.compiled_ir.contains_key(empty_key)?;
+        let _ = self.run_header.contains_key(empty_key)?;
+        let _ = self.events.contains_key(empty_key)?;
+        let _ = self.run_snapshot.contains_key(empty_key)?;
+        let _ = self.blob.contains_key(empty_key)?;
+        let _ = self.index_status.contains_key(empty_key)?;
+        let _ = self.index_workflow.contains_key(empty_key)?;
+        let _ = self.index_action.contains_key(empty_key)?;
+        Ok(())
+    }
+
     /// Closes the journal, forcing a strict durability barrier before ownership is released.
     ///
     /// This method **must** be called explicitly by callers who require durable persistence.

@@ -699,15 +699,39 @@ pub fn admit_artifact_run_with_certificate_floor(
                 });
             }
 
-            // Check that granted capabilities cover the artifact's required capabilities.
-            if caps.len() != artifact.required_capabilities.len() {
-                return Err(capability_count_mismatch_error(
-                    &artifact.required_capabilities,
-                    &caps,
-                ));
-            }
+            // F-001 fix: restore strict capability equality (VERUS-CARD-003).
+            //
+            // Strict admission requires that granted capabilities exactly match the
+            // artifact's declared required capabilities — same cardinality AND same
+            // membership. Subset grants with extras are rejected because the runtime
+            // re-checks `RunAdmission::granted_capabilities` per action in
+            // `engine::action::execute_do`; preserving extras would let an over-granted
+            // capability authorize actions the artifact never declared, violating
+            // least-privilege and contradicting the cardinality-exact Verus proof
+            // model (`verification/verus/capability_artifact_model.rs::exact_profile`).
+            //
+            // Order: per-required subset check runs first so under-grant reports the
+            // specific missing capability; only when every required is covered do we
+            // gate on cardinality to reject over-grants (extras / duplicates).
             for required_cap in artifact.required_capabilities.iter() {
                 check_capability(required_cap.action_id(), required_cap, &caps)?;
+            }
+            let required_count = artifact.required_capabilities.len();
+            let granted_count = caps.len();
+            if required_count != granted_count {
+                let first_required = artifact
+                    .required_capabilities
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        Capability::new("__capability_profile_mismatch__".into(), ActionId::new(0))
+                    });
+                let first_action = first_required.action_id();
+                return Err(AdmissionError::CapabilityDenied {
+                    action: first_action,
+                    required: first_required,
+                    granted: caps.clone(),
+                });
             }
 
             Ok(RunAdmission::with_idempotency_evidence(
@@ -872,19 +896,6 @@ pub fn check_capability(
             required: required.clone(),
             granted: granted.clone(),
         })
-    }
-}
-
-fn capability_count_mismatch_error(
-    required: &[Capability],
-    granted: &CapabilitySet,
-) -> AdmissionError {
-    let fallback = Capability::new("__capability_count_mismatch__".into(), ActionId::new(0));
-    let required_capability = required.first().cloned().unwrap_or(fallback);
-    AdmissionError::CapabilityDenied {
-        action: required_capability.action_id(),
-        required: required_capability,
-        granted: granted.clone(),
     }
 }
 

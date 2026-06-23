@@ -849,9 +849,24 @@ Required `record_kind_u16` IDs:
 | 21 | `RunCancelled` |
 | 22 | `RunFinished` |
 | 23 | `RunFailed` |
+| 24 | `RunAdmission` |
+| 25 | `RunResumed` |
+| 26 | `RunRetried` |
+| 27 | `RunAnswered` |
+| 28 | `RunKilled` |
+| 29 | `AskTimedOut` |
 | 30 | `Snapshot` |
 | 40 | `Blob` |
 | 50 | `IndexUpdate` |
+
+The current v1 storage contract includes `AskTimedOut = 29` so ask timeout
+replay is distinguishable from `AskAnswered = 18`. This repository is still at
+workspace crate version `0.1.0`; the table above is the authoritative v1 wire
+contract before a stable compatibility release, so `CURRENT_SCHEMA_VERSION`
+remains `1`. Implementations using an older in-repo draft table that rejected
+kind `29` are not considered compatible v1 decoders. After a stable v1 storage
+compatibility release, adding or repurposing any `record_kind_u16` requires a
+schema-version bump or an explicit named migration with evidence.
 
 Decode order is mandatory: read 60-byte header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, blobs, and IPC payloads, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
 

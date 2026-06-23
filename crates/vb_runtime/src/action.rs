@@ -194,14 +194,12 @@ fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionRes
 }
 
 /// Validates that the input payload does not exceed the contract's byte limit.
-fn validate_input_bytes(_input: &ActionInput, contract: &ActionContract) -> ActionResult<()> {
-    // Byte-level validation requires encoded_len from the caller.
-    // This is a structural check placeholder; actual byte counting
-    // happens at the IPC boundary.
-    if contract.max_input_bytes == 0 && contract.input_slot_count > 0 {
+fn validate_input_bytes(input: &ActionInput, contract: &ActionContract) -> ActionResult<()> {
+    let actual_bytes = input.encoded_len();
+    if actual_bytes > contract.max_input_bytes {
         return Err(ActionError::PayloadTooLarge {
-            max_bytes: 0,
-            actual_bytes: 0,
+            max_bytes: contract.max_input_bytes,
+            actual_bytes,
         });
     }
     Ok(())

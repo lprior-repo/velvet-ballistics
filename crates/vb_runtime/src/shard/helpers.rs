@@ -159,6 +159,32 @@ pub fn advance_after_timer_fire(
     state: &mut crate::shard::types::RunState,
     timer: PendingTimer,
 ) -> RuntimeResult<()> {
+    validate_timer_fire(state, timer)?;
+    let next = state
+        .workflow
+        .node(timer.step)
+        .and_then(|node| node.next)
+        .ok_or(RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_running(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_succeeded(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .set_pc(next)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    Ok(())
+}
+
+/// Validates a timer fire without mutating the run frame.
+pub fn validate_timer_fire(
+    state: &crate::shard::types::RunState,
+    timer: PendingTimer,
+) -> RuntimeResult<()> {
     let Some(node) = state.workflow.node(timer.step) else {
         return Err(RuntimeError::InvalidTimerFire);
     };
@@ -170,21 +196,9 @@ pub fn advance_after_timer_fire(
         | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
-    state
-        .frame
-        .mark_running(timer.step)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
-    state
-        .frame
-        .mark_succeeded(timer.step)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
-    let Some(next) = node.next else {
+    if node.next.is_none() {
         return Err(RuntimeError::InvalidTimerFire);
-    };
-    state
-        .frame
-        .set_pc(next)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    }
     Ok(())
 }
 

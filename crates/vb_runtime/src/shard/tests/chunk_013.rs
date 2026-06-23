@@ -63,7 +63,7 @@ fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             vb_core::value::ConstValue::I64(10),
         ]),
         slot_count: 3,
-        symbols_count: 0,
+        symbols_count: 2,
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,

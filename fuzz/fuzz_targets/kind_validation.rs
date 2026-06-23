@@ -57,8 +57,8 @@ fuzz_target!(|data: &[u8]| {
             // Kind-magic pair is valid. Verify invariants based on magic.
             match magic {
                 m if m == vb_storage::MAGIC_JOURNAL_EVENT => {
-                    assert!((10..=28).contains(&kind),
-                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=28", kind);
+                    assert!((10..=29).contains(&kind),
+                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=29", kind);
                 }
                 m if m == vb_storage::MAGIC_SNAPSHOT => {
                     assert_eq!(kind, 30, "MAGIC_SNAPSHOT accepted non-snapshot kind {}", kind);

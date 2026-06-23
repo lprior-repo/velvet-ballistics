@@ -159,7 +159,10 @@ fn admission_check_capability_rejects_partial_prefix_grant() {
 }
 
 #[test]
-fn admit_artifact_run_rejects_excess_grants() {
+fn admit_artifact_run_rejects_capability_superset() {
+    // F-001 fix: strict admission rejects extras (VERUS-CARD-003 cardinality-exact).
+    // The granted set contains an extra `storage` capability that the artifact
+    // never declared. Cardinality mismatch must reject closed.
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let extra = Capability::new("storage".into(), ActionId::new(8));
@@ -187,6 +190,56 @@ fn admit_artifact_run_rejects_excess_grants() {
 }
 
 #[test]
+fn admit_artifact_run_rejects_capability_duplicate() {
+    // F-001 fix: strict admission rejects duplicate grants (cardinality mismatch).
+    let action = ActionId::new(7);
+    let required = Capability::new("network".into(), action);
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted.clone(),
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityDenied {
+            action,
+            required,
+            granted,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_accepts_capability_exact_match() {
+    // F-001 fix: strict admission accepts exactly-equal capability sets.
+    let action = ActionId::new(7);
+    let required = Capability::new("network".into(), action);
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([required.clone()]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted.clone(),
+    );
+
+    let admitted = result.expect("exact-match capability set must admit");
+    assert_eq!(admitted.granted_capabilities(), &granted);
+}
+
+#[test]
 fn admit_artifact_run_rejects_missing_grants_without_allocation() {
     let network = Capability::new("network.github".into(), ActionId::new(7));
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
@@ -206,8 +259,8 @@ fn admit_artifact_run_rejects_missing_grants_without_allocation() {
     assert_eq!(
         result,
         Err(AdmissionError::CapabilityDenied {
-            action: network.action_id(),
-            required: network,
+            action: filesystem.action_id(),
+            required: filesystem,
             granted,
         })
     );

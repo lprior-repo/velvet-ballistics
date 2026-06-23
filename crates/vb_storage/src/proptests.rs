@@ -47,7 +47,8 @@ mod proptests {
         ) {
             // Given a RunAccepted event (all journal events share the same encode/decode path)
             // When encoded with MAGIC_JOURNAL_EVENT and the given kind, then decoded
-            // Then the round trip preserves the original event
+            // Then either the round trip preserves the original event (matching kind)
+            // or the decode returns RecordKindPayloadMismatch (kind != RunAccepted).
             let run = RunId::new(run_val);
             let seq = EventSeq::new(seq_val);
             let event = crate::JournalEvent::RunAccepted {
@@ -85,8 +86,26 @@ mod proptests {
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok((_envelope, decoded_event)) = decoded else { return Ok(()) };
-            prop_assert_eq!(decoded_event, event);
+            match (decoded, kind_id) {
+                // Matching kind must round-trip the original event.
+                (Ok((_envelope, decoded_event)), 10) => {
+                    prop_assert_eq!(decoded_event, event);
+                }
+                // Mismatched kind must be rejected with RecordKindPayloadMismatch.
+                (Err(crate::JournalError::RecordKindPayloadMismatch { envelope_kind, payload_kind }), k) => {
+                    prop_assert_eq!(envelope_kind, k);
+                    prop_assert_eq!(payload_kind, RecordKind::RunAccepted.id());
+                }
+                // Any other outcome is a contract violation: parity must be enforced.
+                (other, k) => {
+                    prop_assert!(
+                        false,
+                        "decode_record::<JournalEvent> must enforce parity, \
+                         but kind {} produced {:?}",
+                        k, other
+                    );
+                }
+            }
         }
 
         #[test]

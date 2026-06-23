@@ -21,9 +21,8 @@ pub(crate) mod prelude {
         action_contract_detail, action_table_rows, registered_cli_actions,
     };
     pub(crate) use crate::app_impl::{
-        compile_errors_message, HELP, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
-        VERSION,
+        HELP, INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, VERSION, compile_errors_message,
     };
     pub(crate) use crate::args::{
         self, ActionRegistryMode, Command, DurabilityMode, EmitTarget, EventStatus, OutputFormat,

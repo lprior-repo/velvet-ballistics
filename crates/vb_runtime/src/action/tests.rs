@@ -18,22 +18,47 @@ fn contract_fixture(id: u16) -> ActionContract {
     }
 }
 
-fn input_fixture(action: u16) -> ActionInput {
-    ActionInput {
+fn ticket_fixture(action: u16) -> ActionTicket {
+    ActionTicket {
         run: RunId::new(1),
         step: StepIdx::new(0),
+        seq: SeqNo::new(0),
         action: ActionId::new(action),
-        input: SlotIdx::new(0),
-        ticket: ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(action),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
     }
+}
+
+fn payload_fixture(encoded_len: u32) -> ActionResult<Vec<u8>> {
+    let len = usize::try_from(encoded_len).map_err(|_| ActionError::PayloadTooLarge {
+        max_bytes: u32::MAX,
+        actual_bytes: encoded_len,
+    })?;
+    Ok(vec![0u8; len])
+}
+
+fn input_fixture(action: u16) -> ActionResult<ActionInput> {
+    let contract = contract_fixture(action);
+    input_fixture_with_contract(action, 1, &contract, ticket_fixture(action))
+}
+
+fn input_fixture_with_contract(
+    action: u16,
+    encoded_len: u32,
+    contract: &ActionContract,
+    ticket: ActionTicket,
+) -> ActionResult<ActionInput> {
+    let payload = payload_fixture(encoded_len)?;
+    ActionInput::new(
+        ticket.run,
+        ticket.step,
+        ActionId::new(action),
+        SlotIdx::new(0),
+        &payload,
+        contract,
+        ticket,
+    )
 }
 
 #[test]
@@ -58,16 +83,15 @@ fn resolve_unknown_action_returns_error() {
 }
 
 #[test]
-fn dispatch_produces_suspended_outcome() {
+fn dispatch_produces_suspended_outcome() -> ActionResult<()> {
     let mut registry = ActionRegistry::new();
     let contract = contract_fixture(5);
     assert_eq!(registry.register(contract), Ok(()));
-    let input = input_fixture(5);
+    let input = input_fixture(5)?;
     let resolved = registry.resolve_compile_time(ActionId::new(5));
     assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(5)));
-    let contract = resolved.ok().cloned();
-    assert_eq!(contract.as_ref().map(|c| c.id), Some(ActionId::new(5)));
-    let Some(ref contract) = contract else { return };
+    let contract = resolved?;
+    assert_eq!(contract.id, ActionId::new(5));
     let result = registry.dispatch(&input, contract);
     match result {
         Ok(ActionOutcome::Suspended(ticket)) => {
@@ -86,6 +110,7 @@ fn dispatch_produces_suspended_outcome() {
             }))
         ),
     }
+    Ok(())
 }
 
 #[test]
@@ -140,7 +165,7 @@ fn len_increases_after_register() {
 }
 
 #[test]
-fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
+fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() -> ActionResult<()> {
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(1),
@@ -156,42 +181,37 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
-    let input = input_fixture(1);
+    let input = input_fixture(1)?;
     let resolved = registry.resolve_compile_time(ActionId::new(1));
     assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(1)));
-    let contract = resolved.ok().cloned();
-    let Some(ref contract) = contract else { return };
+    let contract = resolved?;
+    assert_eq!(contract.id, ActionId::new(1));
     let result = registry.dispatch(&input, contract);
     assert_eq!(
         result,
         Err(ActionError::PayloadTooLarge {
             max_bytes: 0,
-            actual_bytes: 0
+            actual_bytes: 1
         })
     );
+    Ok(())
 }
 
 #[test]
-fn action_registry_resolve_returns_correct_contract() {
+fn action_registry_resolve_returns_correct_contract() -> ActionResult<()> {
     // Given a registry with one contract
     let mut registry = ActionRegistry::new();
     let contract = contract_fixture(5);
     assert_eq!(registry.register(contract), Ok(()));
     // When resolving the action
-    let result = registry.resolve_compile_time(ActionId::new(5));
+    let result = registry.resolve_compile_time(ActionId::new(5))?;
     // Then it returns the correct contract with matching id
-    match result {
-        Ok(c) => {
-            assert_eq!(c.id, ActionId::new(5));
-            assert_eq!(c.input_slot_count, 1);
-            assert_eq!(c.output_slot_count, 1);
-            assert_eq!(c.max_input_bytes, 1024);
-            assert_eq!(c.max_output_bytes, 1024);
-        }
-        Err(_) => {
-            assert!(false);
-        }
-    }
+    assert_eq!(result.id, ActionId::new(5));
+    assert_eq!(result.input_slot_count, 1);
+    assert_eq!(result.output_slot_count, 1);
+    assert_eq!(result.max_input_bytes, 1024);
+    assert_eq!(result.max_output_bytes, 1024);
+    Ok(())
 }
 
 #[test]
@@ -207,12 +227,12 @@ fn action_registry_register_fills_gaps() {
 }
 
 #[test]
-fn action_registry_dispatch_rejects_mismatched_contract() {
+fn action_registry_dispatch_rejects_mismatched_contract() -> ActionResult<()> {
     // Given a registry with action 5
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(5)), Ok(()));
     // When dispatching with input for action 5 but a different contract
-    let input = input_fixture(5);
+    let input = input_fixture(5)?;
     let wrong_contract = ActionContract {
         id: ActionId::new(3),
         name: ActionName::new("test-action").unwrap(),
@@ -234,6 +254,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
             action: ActionId::new(5)
         })
     );
+    Ok(())
 }
 
 #[test]
@@ -306,11 +327,11 @@ fn action_registry_resolve_unregistered_action_fails() {
 }
 
 #[test]
-fn action_registry_dispatch_with_correct_contract_succeeds() {
+fn action_registry_dispatch_with_correct_contract_succeeds() -> ActionResult<()> {
     // Given a registry with action 0
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(0)), Ok(()));
-    let input = input_fixture(0);
+    let input = input_fixture(0)?;
     let contract = contract_fixture(0);
     // When dispatching with matching contract
     let result = registry.dispatch(&input, &contract);
@@ -334,10 +355,11 @@ fn action_registry_dispatch_with_correct_contract_succeeds() {
             );
         }
     }
+    Ok(())
 }
 
 #[test]
-fn action_contract_fields_are_preserved() {
+fn action_contract_fields_are_preserved() -> ActionResult<()> {
     // Given a contract with specific fields
     let contract = ActionContract {
         id: ActionId::new(42),
@@ -355,22 +377,16 @@ fn action_contract_fields_are_preserved() {
     // When registering and resolving
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract), Ok(()));
-    let resolved = registry.resolve_compile_time(ActionId::new(42));
+    let resolved = registry.resolve_compile_time(ActionId::new(42))?;
     // Then all fields are preserved
-    match resolved {
-        Ok(c) => {
-            assert_eq!(c.id, ActionId::new(42));
-            assert_eq!(c.input_slot_count, 3);
-            assert_eq!(c.output_slot_count, 2);
-            assert_eq!(c.max_input_bytes, 2048);
-            assert_eq!(c.max_output_bytes, 4096);
-            assert_eq!(c.timeout_ms, 10000);
-            assert_eq!(c.idempotency, Idempotency::IdempotentExternal);
-        }
-        Err(_) => {
-            assert!(false);
-        }
-    }
+    assert_eq!(resolved.id, ActionId::new(42));
+    assert_eq!(resolved.input_slot_count, 3);
+    assert_eq!(resolved.output_slot_count, 2);
+    assert_eq!(resolved.max_input_bytes, 2048);
+    assert_eq!(resolved.max_output_bytes, 4096);
+    assert_eq!(resolved.timeout_ms, 10000);
+    assert_eq!(resolved.idempotency, Idempotency::IdempotentExternal);
+    Ok(())
 }
 
 #[test]
@@ -419,10 +435,10 @@ fn action_registry_gap_slot_nondefault_id_fails() {
 // =======================================================================
 
 #[test]
-fn action_registry_dispatch_unknown_action_returns_exact_error_variant() {
+fn action_registry_dispatch_unknown_action_returns_exact_error_variant() -> ActionResult<()> {
     // Given an empty registry
     let registry = ActionRegistry::new();
-    let input = input_fixture(99);
+    let input = input_fixture(99)?;
     let contract = contract_fixture(99);
     // When dispatching an unknown action
     let result = registry.dispatch(&input, &contract);
@@ -433,6 +449,7 @@ fn action_registry_dispatch_unknown_action_returns_exact_error_variant() {
             action: ActionId::new(99)
         })
     );
+    Ok(())
 }
 
 #[test]
@@ -471,7 +488,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
 }
 
 #[test]
-fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
+fn action_registry_validate_input_bytes_rejects_zero_with_slots() -> ActionResult<()> {
     // Given a contract with max_input_bytes=0 and input_slot_count=1
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
@@ -488,26 +505,25 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
-    let input = input_fixture(1);
+    let input = input_fixture(1)?;
     let resolved = registry.resolve_compile_time(ActionId::new(1));
-    let contract = match resolved {
-        Ok(c) => c.clone(),
-        Err(_) => return,
-    };
+    assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(1)));
+    let contract = resolved?;
     // When dispatching
-    let result = registry.dispatch(&input, &contract);
+    let result = registry.dispatch(&input, contract);
     // Then it returns PayloadTooLarge (zero bytes with slots)
     assert_eq!(
         result,
         Err(ActionError::PayloadTooLarge {
             max_bytes: 0,
-            actual_bytes: 0,
+            actual_bytes: 1,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
+fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() -> ActionResult<()> {
     // Given a contract with max_input_bytes=0 and input_slot_count=0
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
@@ -524,27 +540,12 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
-    let input = ActionInput {
-        run: RunId::new(1),
-        step: StepIdx::new(0),
-        action: ActionId::new(2),
-        input: SlotIdx::new(0),
-        ticket: ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(2),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
-    };
-    let contract = match registry.resolve_compile_time(ActionId::new(2)) {
-        Ok(c) => c.clone(),
-        Err(_) => return,
-    };
+    let input = input_fixture_with_contract(2, 0, &contract_fixture(2), ticket_fixture(2))?;
+    let resolved = registry.resolve_compile_time(ActionId::new(2));
+    assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(2)));
+    let contract = resolved?;
     // When dispatching with zero bytes and zero slots
-    let result = registry.dispatch(&input, &contract);
+    let result = registry.dispatch(&input, contract);
     // Then it succeeds (no payload to validate)
     match result {
         Ok(ActionOutcome::Suspended(_)) => {}
@@ -563,10 +564,11 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
             );
         }
     }
+    Ok(())
 }
 
 #[test]
-fn action_registry_resolve_after_many_registrations_finds_correct_action() {
+fn action_registry_resolve_after_many_registrations_finds_correct_action() -> ActionResult<()> {
     // Given a registry with actions 0, 5, 10, 20
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(0)), Ok(()));
@@ -574,17 +576,11 @@ fn action_registry_resolve_after_many_registrations_finds_correct_action() {
     assert_eq!(registry.register(contract_fixture(10)), Ok(()));
     assert_eq!(registry.register(contract_fixture(20)), Ok(()));
     // When resolving action 10
-    let result = registry.resolve_compile_time(ActionId::new(10));
+    let result = registry.resolve_compile_time(ActionId::new(10))?;
     // Then it returns the correct contract
-    match result {
-        Ok(c) => {
-            assert_eq!(c.id, ActionId::new(10));
-            assert_eq!(c.input_slot_count, 1);
-        }
-        Err(_) => {
-            assert!(false);
-        }
-    }
+    assert_eq!(result.id, ActionId::new(10));
+    assert_eq!(result.input_slot_count, 1);
+    Ok(())
 }
 
 #[test]
@@ -608,31 +604,25 @@ fn registered_contracts_returns_only_real_contracts_sorted_by_action_id() {
 }
 
 #[test]
-fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
+fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() -> ActionResult<()> {
     // Given a registry with action 3
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(3)), Ok(()));
-    let input = ActionInput {
+    let ticket = ActionTicket {
         run: RunId::new(77),
         step: StepIdx::new(5),
+        seq: SeqNo::new(10),
         action: ActionId::new(3),
-        input: SlotIdx::new(0),
-        ticket: ActionTicket {
-            run: RunId::new(77),
-            step: StepIdx::new(5),
-            seq: SeqNo::new(10),
-            action: ActionId::new(3),
-            attempt: 2,
-            idempotency_key: 99,
-            capacity: 1,
-        },
+        attempt: 2,
+        idempotency_key: 99,
+        capacity: 1,
     };
-    let contract = match registry.resolve_compile_time(ActionId::new(3)) {
-        Ok(c) => c.clone(),
-        Err(_) => return,
-    };
+    let input = input_fixture_with_contract(3, 1, &contract_fixture(3), ticket)?;
+    let resolved = registry.resolve_compile_time(ActionId::new(3));
+    assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(3)));
+    let contract = resolved?;
     // When dispatching
-    let result = registry.dispatch(&input, &contract);
+    let result = registry.dispatch(&input, contract);
     // Then the returned ticket carries the input ticket's fields
     match result {
         Ok(ActionOutcome::Suspended(ticket)) => {
@@ -658,6 +648,7 @@ fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
             );
         }
     }
+    Ok(())
 }
 
 // ========================================================================
@@ -756,4 +747,74 @@ fn idempotency_tracker_default_matches_new() {
     let new = IdempotencyTracker::with_default_capacity();
     assert_eq!(default.len(), new.len());
     assert_eq!(default.is_empty(), new.is_empty());
+}
+
+#[test]
+fn action_input_new_rejects_oversized_actual_payload() {
+    let contract = ActionContract {
+        max_input_bytes: 4,
+        ..contract_fixture(7)
+    };
+    let payload = [0u8, 1, 2, 3, 4];
+
+    assert_eq!(
+        ActionInput::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(7),
+            SlotIdx::new(0),
+            &payload,
+            &contract,
+            ticket_fixture(7),
+        ),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 4,
+            actual_bytes: 5,
+        })
+    );
+}
+
+#[test]
+fn action_input_new_rejects_contract_for_different_action() {
+    let contract = contract_fixture(8);
+    let payload = [0u8];
+    let result = ActionInput::new(
+        RunId::new(1),
+        StepIdx::new(0),
+        ActionId::new(9),
+        SlotIdx::new(0),
+        &payload,
+        &contract,
+        ticket_fixture(9),
+    );
+
+    assert_eq!(result, Err(ActionError::InvalidTicket));
+}
+
+#[test]
+fn validate_input_bytes_rejects_positive_limit_overflow() -> ActionResult<()> {
+    let mut registry = ActionRegistry::new();
+    let contract = ActionContract {
+        max_input_bytes: 4,
+        ..contract_fixture(6)
+    };
+    assert_eq!(registry.register(contract), Ok(()));
+    let loose_contract = ActionContract {
+        max_input_bytes: 5,
+        ..contract_fixture(6)
+    };
+    let input = input_fixture_with_contract(6, 5, &loose_contract, ticket_fixture(6))?;
+    let resolved = registry.resolve_compile_time(ActionId::new(6));
+    assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(6)));
+    let contract = resolved?;
+    assert_eq!(contract.id, ActionId::new(6));
+
+    assert_eq!(
+        registry.dispatch(&input, contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 4,
+            actual_bytes: 5,
+        })
+    );
+    Ok(())
 }
