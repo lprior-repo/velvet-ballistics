@@ -128,7 +128,8 @@ pub(super) fn workflow_error_code(error: &WorkflowError) -> &'static str {
     match error {
         WorkflowError::ResourceContractExceeded { .. }
         | WorkflowError::ResourceContractTooLarge { .. }
-        | WorkflowError::BudgetPolicyExceeded { .. } => "LIMIT_EXCEEDED",
+        | WorkflowError::BudgetPolicyExceeded { .. }
+        | WorkflowError::DepthOverflow { .. } => "LIMIT_EXCEEDED",
         WorkflowError::StepOutOfBounds { .. } => "INVALID_THEN_TARGET",
         WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
         WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",

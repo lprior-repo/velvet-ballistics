@@ -169,10 +169,25 @@ impl WholeWorkflowBudget {
 /// variants so proof harnesses do not pay for unrelated destructor graphs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BudgetTraversalError {
-    EntryOutOfBounds { entry: StepIdx },
-    StepOutOfBounds { step: StepIdx },
-    StepCountOverflow { actual: u64 },
-    JumpCycle { step: StepIdx, target: StepIdx },
+    EntryOutOfBounds {
+        entry: StepIdx,
+    },
+    StepOutOfBounds {
+        step: StepIdx,
+    },
+    StepCountOverflow {
+        actual: u64,
+    },
+    /// `u16` nesting depth overflowed at `compute_child_depth`; carries the
+    /// actual pre-overflow depth so diagnostics can report the real value
+    /// instead of the lossy `u64::MAX` sentinel previously produced here.
+    DepthOverflow {
+        depth: u16,
+    },
+    JumpCycle {
+        step: StepIdx,
+        target: StepIdx,
+    },
 }
 
 impl From<BudgetTraversalError> for WorkflowError {
@@ -183,6 +198,7 @@ impl From<BudgetTraversalError> for WorkflowError {
             BudgetTraversalError::StepCountOverflow { actual } => {
                 Self::StepCountOverflow { actual }
             }
+            BudgetTraversalError::DepthOverflow { depth } => Self::DepthOverflow { depth },
             BudgetTraversalError::JumpCycle { step, target } => Self::JumpCycle { step, target },
         }
     }
@@ -2079,9 +2095,12 @@ fn compute_child_depth(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. } => {
-            let new_depth = current_depth
-                .checked_add(1)
-                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+            let new_depth =
+                current_depth
+                    .checked_add(1)
+                    .ok_or(BudgetTraversalError::DepthOverflow {
+                        depth: current_depth,
+                    })?;
             if new_depth > *max_nesting_depth {
                 *max_nesting_depth = new_depth;
             }
@@ -2184,3 +2203,67 @@ mod tests;
 
 #[cfg(test)]
 mod vb_qi37_2_4_state8_tests;
+
+#[cfg(test)]
+mod depth_overflow_tests {
+    //! Regression tests for CB-004 / `vb-lk26g`:
+    //! `compute_child_depth` must return `BudgetTraversalError::DepthOverflow`
+    //! carrying the actual pre-overflow depth value, not the lossy
+    //! `StepCountOverflow { actual: u64::MAX }` sentinel it used to produce.
+
+    use super::{BudgetTraversalError, CompiledNodeKind, compute_child_depth};
+
+    #[test]
+    fn compute_child_depth_returns_depth_overflow_carrying_actual_depth() {
+        let kind = CompiledNodeKind::ForEachStart {
+            input: crate::ids::SlotIdx::new(0),
+            item_slot: crate::ids::SlotIdx::new(1),
+            limit: 1,
+            body: crate::ids::StepIdx::new(0),
+            done: crate::ids::StepIdx::new(0),
+        };
+        let mut max_nesting_depth: u16 = 0;
+        let err = compute_child_depth(&kind, u16::MAX, &mut max_nesting_depth)
+            .expect_err("u16::MAX + 1 must overflow");
+        match err {
+            BudgetTraversalError::DepthOverflow { depth } => {
+                assert_eq!(
+                    depth,
+                    u16::MAX,
+                    "DepthOverflow must carry the actual pre-overflow depth"
+                );
+            }
+            other => panic!(
+                "expected BudgetTraversalError::DepthOverflow {{ depth: u16::MAX }}, got {other:?}"
+            ),
+        }
+    }
+
+    #[test]
+    fn compute_child_depth_does_not_emit_step_count_overflow_at_u16_max() {
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 1,
+            body: crate::ids::StepIdx::new(0),
+            done: crate::ids::StepIdx::new(0),
+        };
+        let mut max_nesting_depth: u16 = 0;
+        let err = compute_child_depth(&kind, u16::MAX, &mut max_nesting_depth)
+            .expect_err("u16::MAX + 1 must overflow");
+        assert!(
+            !matches!(err, BudgetTraversalError::StepCountOverflow { .. }),
+            "depth overflow must not be misclassified as StepCountOverflow (CB-004)"
+        );
+    }
+
+    #[test]
+    fn depth_overflow_converts_to_workflow_error_carrying_actual_depth() {
+        let err: crate::workflow::WorkflowError =
+            BudgetTraversalError::DepthOverflow { depth: 42 }.into();
+        match err {
+            crate::workflow::WorkflowError::DepthOverflow { depth } => {
+                assert_eq!(depth, 42, "From conversion must preserve depth");
+            }
+            other => panic!("expected WorkflowError::DepthOverflow {{ depth: 42 }}, got {other:?}"),
+        }
+    }
+}

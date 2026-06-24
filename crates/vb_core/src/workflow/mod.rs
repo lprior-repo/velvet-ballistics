@@ -406,6 +406,12 @@ pub enum WorkflowError {
         /// The overflowing value.
         actual: u64,
     },
+    /// Nesting depth overflowed `u16::MAX` during budget computation.
+    #[error("nesting depth overflow: {depth} cannot be incremented past u16::MAX")]
+    DepthOverflow {
+        /// The actual pre-overflow depth value.
+        depth: u16,
+    },
     /// A symbol identifier exceeded the declared symbols table bound.
     #[error("symbol {symbol:?} exceeds symbols_count")]
     SymbolOutOfBounds {
