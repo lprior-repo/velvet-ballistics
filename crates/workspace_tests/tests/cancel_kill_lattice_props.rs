@@ -18,7 +18,7 @@ mod cancel_kill_lattice_props {
     // ==========================================================================
 
     /// PO-PROP-001-P1: RecordKind::RunKilled.id() == 28 and is a valid journal event kind.
-    /// BLOCK-001/B-004 FIXED: validation.rs now accepts 10..=29.
+    /// BLOCK-001/B-004 FIXED: validation.rs now accepts 10..=29 | 31.
     /// Since is_known_record_kind is pub(crate), we verify via the public RecordKind API
     /// and by constructing a valid JournalEvent::RunKilled that passes is_valid().
     #[test]

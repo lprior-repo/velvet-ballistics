@@ -112,7 +112,7 @@ mod storage_tests {
         // =========================================================================
         #[test]
         fn codec_encode_decode_roundtrip_all_kinds(
-            kind_id in 10u16..=27u16,
+            kind_id in proptest::sample::select(&[10u16, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31]),
             run_val in 1u64..1000u64,
             seq_val in 0u64..100u64,
             attempt_val in 1u16..10u16,
@@ -131,6 +131,7 @@ mod storage_tests {
                 17 => RecordKind::AskScheduled,
                 18 => RecordKind::AskAnswered,
                 19 => RecordKind::RetryScheduled,
+                20 => RecordKind::StepFailed,
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
@@ -138,6 +139,9 @@ mod storage_tests {
                 25 => RecordKind::RunResumed,
                 26 => RecordKind::RunRetried,
                 27 => RecordKind::RunAnswered,
+                28 => RecordKind::RunKilled,
+                29 => RecordKind::AskTimedOut,
+                31 => RecordKind::WaitResolved,
                 _ => return Ok(()),
             };
 

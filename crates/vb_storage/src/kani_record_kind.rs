@@ -174,24 +174,51 @@ fn check_kind_28_blob_family_rejected() {
     );
 }
 
-/// PO-KANI-004-H6: Unknown kind 31 must be rejected (boundary check).
+/// PO-KANI-004-H6: Unknown kind 32 must be rejected (boundary check; 31 is now WaitResolved).
 #[kani::proof]
 fn check_unknown_kind_rejected() {
-    let kind: u16 = 31;
+    let kind: u16 = 32;
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
     kani::assert(
         result.is_err(),
-        "unknown kind 31 must be rejected by validate_kind_family",
+        "unknown kind 32 must be rejected by validate_kind_family",
     );
 }
 
-/// PO-KANI-004-H7: All existing known kinds (1,2,3,10-27,30,40,50) remain known.
+/// PO-KANI-004-H6b: Kind 31 (WaitResolved) must now be admitted for MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_31_journal_family() {
+    let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
+    let kind: u16 = 31;
+    let result = crate::codec::validation::validate_kind_family(magic, kind);
+    kani::assert(
+        result.is_ok(),
+        "kind 31 (WaitResolved) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
+/// PO-KANI-004-H6c: is_known_record_kind(31) must return true.
+#[kani::proof]
+fn check_kind_31_known() {
+    let kind: u16 = 31;
+    let result = crate::codec::validation::is_known_record_kind(kind);
+    kani::assert(result, "kind 31 (WaitResolved) must be a known record kind");
+}
+
+/// PO-KANI-004-H6d: RecordKind::WaitResolved.id() returns the stable wire kind 31.
+#[kani::proof]
+fn check_wait_resolved_kind_id() {
+    let id = crate::RecordKind::WaitResolved.id();
+    kani::assert(id == 31, "WaitResolved wire kind must remain 31");
+}
+
+/// PO-KANI-004-H7: All existing known kinds (1,2,3,10-29,30,31,40,50) remain known.
 #[kani::proof]
 fn check_all_existing_kinds_known() {
-    let known_kinds: [u16; 26] = [
+    let known_kinds: [u16; 27] = [
         1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-        30, 40, 50,
+        30, 31, 40, 50,
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
@@ -200,7 +227,7 @@ fn check_all_existing_kinds_known() {
 }
 
 /// PO-KANI-004-H8: Exhaustive: for any arbitrary u16 kind value,
-/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=29.
+/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=29 | 31.
 #[kani::proof]
 #[kani::unwind(3)]
 fn check_journal_family_exhaustive() {
@@ -208,21 +235,22 @@ fn check_journal_family_exhaustive() {
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
 
-    // Expected valid range: 10..=29
-    let is_valid_journal_kind = (10u16..=29u16).contains(&kind);
+    // Expected valid set: 10..=29 or 31 (WaitResolved).
+    let is_valid_journal_kind =
+        (10u16..=29u16).contains(&kind) || kind == 31u16;
 
     match result {
         Ok(()) => {
             assert!(
                 is_valid_journal_kind,
-                "kind {} returned Ok but is not in valid journal range 10..=29",
+                "kind {} returned Ok but is not in valid journal set 10..=29 | 31",
                 kind
             );
         }
         Err(_) => {
             assert!(
                 !is_valid_journal_kind,
-                "kind {} returned Err but is in valid journal range 10..=29",
+                "kind {} returned Err but is in valid journal set 10..=29 | 31",
                 kind
             );
         }

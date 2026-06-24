@@ -494,7 +494,8 @@ fn apply_accounting_event(
         | JournalEvent::SlotWrittenEvent { .. }
         | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
-        | JournalEvent::AskTimedOutEvent { .. } => Ok(true),
+        | JournalEvent::AskTimedOutEvent { .. }
+        | JournalEvent::WaitResolvedEvent { .. } => Ok(true),
         _ => Ok(false),
     }
 }

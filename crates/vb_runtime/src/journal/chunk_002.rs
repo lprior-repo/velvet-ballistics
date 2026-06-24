@@ -194,7 +194,7 @@ impl StorageRuntimeJournal {
                 }))
             }
             RuntimeJournalEvent::WaitResolved { run, step } => {
-                Ok(Some(JournalEvent::RetryScheduledEvent {
+                Ok(Some(JournalEvent::WaitResolvedEvent {
                     run,
                     seq,
                     step,

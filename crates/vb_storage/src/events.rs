@@ -187,6 +187,21 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Wait was resolved by an external timer.
+    ///
+    /// Distinct from `RetryScheduledEvent` because a wait resolution is not a
+    /// retry: the suspended run resumes from a satisfied external condition
+    /// rather than from a bounded retry attempt. See bug-hunt RE-009.
+    WaitResolvedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
     /// Retry was scheduled.
     RetryScheduledEvent {
         /// Run identifier.
@@ -300,6 +315,7 @@ impl JournalEvent {
             | Self::WaitScheduledEvent { run, .. }
             | Self::AskScheduledEvent { run, .. }
             | Self::AskAnsweredEvent { run, .. }
+            | Self::WaitResolvedEvent { run, .. }
             | Self::RetryScheduledEvent { run, .. }
             | Self::RunCancelled { run, .. }
             | Self::RunKilled { run, .. }
@@ -332,6 +348,7 @@ impl JournalEvent {
             | Self::WaitScheduledEvent { seq, .. }
             | Self::AskScheduledEvent { seq, .. }
             | Self::AskAnsweredEvent { seq, .. }
+            | Self::WaitResolvedEvent { seq, .. }
             | Self::RetryScheduledEvent { seq, .. }
             | Self::RunCancelled { seq, .. }
             | Self::RunKilled { seq, .. }
@@ -362,6 +379,7 @@ impl JournalEvent {
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
+            Self::WaitResolvedEvent { .. } => RecordKind::WaitResolved,
             Self::RetryScheduledEvent { .. } => RecordKind::RetryScheduled,
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
             Self::RunKilled { .. } => RecordKind::RunKilled,
@@ -428,6 +446,7 @@ impl JournalEvent {
             | Self::WaitScheduledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }
+            | Self::WaitResolvedEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }
@@ -474,6 +493,7 @@ impl JournalEvent {
             | Self::WaitScheduledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }
+            | Self::WaitResolvedEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }

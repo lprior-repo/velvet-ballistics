@@ -215,6 +215,7 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
             | JournalEvent::WaitScheduledEvent { step, .. }
             | JournalEvent::AskScheduledEvent { step, .. }
             | JournalEvent::AskTimedOutEvent { step, .. }
+            | JournalEvent::WaitResolvedEvent { step, .. }
             | JournalEvent::RetryScheduledEvent { step, .. } => {
                 max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
                 min_step = Some(min_step.map_or(*step, |s| s.min(*step)));

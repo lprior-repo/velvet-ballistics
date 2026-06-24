@@ -932,6 +932,10 @@ struct ReplaySummary {
     wait_scheduled: usize,
     ask_scheduled: usize,
     ask_answered: usize,
+    /// Boundary-suspension count. Mirrors production `RecoveryRuntimeSummary::suspensions`
+    /// semantics: incremented by `RetryScheduledEvent` only. `WaitResolvedEvent`
+    /// (kind 31, RE-009) is a resumption and must NOT inflate this count.
+    suspensions: usize,
     terminal: Option<TerminalSummary>,
 }
 
@@ -973,6 +977,27 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::AskAnsweredEvent { .. } => {
                     summary.ask_answered = summary.ask_answered.saturating_add(1);
                 }
+                JournalEvent::RetryScheduledEvent { .. } => {
+                    summary.suspensions = summary.suspensions.saturating_add(1);
+                }
+                JournalEvent::ActionCompletedEvent { .. } => {
+                    summary.action_completed = summary.action_completed.saturating_add(1);
+                }
+                JournalEvent::ActionCompletedEnvelope { .. } => {
+                    summary.action_completed = summary.action_completed.saturating_add(1);
+                }
+                JournalEvent::ActionFailedEvent { .. } => {
+                    summary.action_failed = summary.action_failed.saturating_add(1);
+                }
+                JournalEvent::WaitScheduledEvent { .. } => {
+                    summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
+                }
+                JournalEvent::AskScheduledEvent { .. } => {
+                    summary.ask_scheduled = summary.ask_scheduled.saturating_add(1);
+                }
+                JournalEvent::AskAnsweredEvent { .. } => {
+                    summary.ask_answered = summary.ask_answered.saturating_add(1);
+                }
                 JournalEvent::RunCancelled { .. } => {
                     summary.terminal = Some(TerminalSummary::Cancelled);
                 }
@@ -987,7 +1012,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 }
                 JournalEvent::RunAdmission { .. }
                 | JournalEvent::SlotWrittenEvent { .. }
-                | JournalEvent::RetryScheduledEvent { .. }
+                | JournalEvent::WaitResolvedEvent { .. }
                 | JournalEvent::AskTimedOutEvent { .. }
                 | JournalEvent::RunResumed { .. }
                 | JournalEvent::RunRetried { .. }
@@ -1008,6 +1033,7 @@ fn combine_summaries(base: ReplaySummary, tail: ReplaySummary) -> ReplaySummary 
         wait_scheduled: base.wait_scheduled.saturating_add(tail.wait_scheduled),
         ask_scheduled: base.ask_scheduled.saturating_add(tail.ask_scheduled),
         ask_answered: base.ask_answered.saturating_add(tail.ask_answered),
+        suspensions: base.suspensions.saturating_add(tail.suspensions),
         terminal: tail.terminal.or(base.terminal),
     }
 }
@@ -1096,6 +1122,44 @@ fn ask_timed_out_recovery_summary_does_not_count_as_answered() -> Result<(), Str
     assert_eq!(timeout_event.record_kind(), RecordKind::AskTimedOut);
     assert_ne!(timeout_event.record_kind(), RecordKind::AskAnswered);
     assert_eq!(summary.ask_answered, 1);
+    Ok(())
+}
+
+#[test]
+fn wait_resolved_event_does_not_inflate_suspension_count() -> Result<(), String> {
+    // PO: RE-009 — WaitResolvedEvent (kind 31) is the resumption of a suspended
+    // run, not a new suspension. Only RetryScheduledEvent (kind 19) should
+    // increment the suspension counter; WaitResolvedEvent must be invisible to it.
+    let run = RunId::new(85);
+    let events = [
+        JournalEvent::WaitScheduledEvent {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(1),
+            attempt: 1,
+        },
+        JournalEvent::WaitResolvedEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            attempt: 1,
+        },
+    ];
+
+    let summary = summarize_events(&events);
+
+    let resolved = events
+        .get(1)
+        .ok_or_else(|| String::from("missing WaitResolvedEvent"))?;
+    assert_eq!(
+        resolved.record_kind(),
+        RecordKind::WaitResolved,
+        "WaitResolvedEvent must map to RecordKind::WaitResolved"
+    );
+    assert_eq!(
+        summary.suspensions, 0,
+        "WaitResolvedEvent must NOT inflate the suspension counter (RE-009: resumption, not retry)"
+    );
     Ok(())
 }
 
