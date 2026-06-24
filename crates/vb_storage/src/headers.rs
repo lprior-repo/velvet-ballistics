@@ -47,11 +47,26 @@ impl FjallJournal {
     }
 
     /// Loads all run metadata records in key order.
+    ///
+    /// Scans the run-header keyspace with
+    /// [`KeyspaceScanPolicy::FailClosed`](crate::keys::KeyspaceScanPolicy::FailClosed)
+    /// (the production default): if a row's key is not exactly
+    /// `RUN_ONLY_KEY_BYTES` long, the scan aborts and surfaces
+    /// [`JournalError::MalformedKeyspaceRow`] instead of silently
+    /// dropping the row or producing an inconsistent `headers` vector.
     pub fn run_headers(&self) -> Result<Vec<RunHeaderRecord>, JournalError> {
         let mut headers = Vec::new();
         let prefix = [PREFIX_RUN_HEADER];
         for item in self.run_header.prefix(prefix) {
-            let value = item.value()?;
+            let (raw_key, value) = item.into_inner()?;
+            let key_len = raw_key.len();
+            if key_len != crate::constants::RUN_ONLY_KEY_BYTES {
+                return Err(JournalError::MalformedKeyspaceRow {
+                    prefix: PREFIX_RUN_HEADER,
+                    expected_len: crate::constants::RUN_ONLY_KEY_BYTES,
+                    actual_len: key_len,
+                });
+            }
             let (_, header) = decode_record(
                 value.as_ref(),
                 MAGIC_INDEX_RECORD,

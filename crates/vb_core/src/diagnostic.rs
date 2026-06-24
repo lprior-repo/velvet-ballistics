@@ -1064,6 +1064,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
+        symbolic: "MALFORMED_KEYSPACE_ROW",
+        numeric: 0x4030,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
         symbolic: "JOURNAL_WRONG_RUN",
         numeric: 0x4008,
         category: CodeCategory::RuntimeBoundary,

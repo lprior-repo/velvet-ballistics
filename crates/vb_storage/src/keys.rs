@@ -20,6 +20,52 @@ use crate::{
     types::{EventSeq, IndexStatusState, StorageKey},
 };
 
+/// Policy that decides how a keyspace iteration handles rows whose key
+/// cannot be parsed back into a typed `StorageKey` (truncated bytes,
+/// unknown prefix, or shape mismatch).
+///
+/// Picking a single policy per call site is the unifying rule for CC-002:
+/// production paths default to [`Self::FailClosed`]; diagnostic/doctor
+/// callers that must keep scanning across partial corruption opt in to
+/// [`Self::SkipMalformed`]. Never use `SkipMalformed` on a production
+/// read path that is supposed to surface evidence of corruption.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyspaceScanPolicy {
+    /// Surface the first malformed row as a typed
+    /// [`crate::JournalError::MalformedKeyspaceRow`] error and abort the
+    /// scan. This is the default for production paths.
+    FailClosed,
+    /// Skip malformed rows silently and continue scanning. Reserved for
+    /// doctor/diagnostic tooling that must produce a partial view of a
+    /// partially-corrupt keyspace. The caller is responsible for
+    /// reporting the skipped count to the operator; the policy itself
+    /// does not log.
+    SkipMalformed,
+}
+
+impl KeyspaceScanPolicy {
+    /// Returns the policy used by production scan APIs by default.
+    pub const fn default_production() -> Self {
+        Self::FailClosed
+    }
+
+    /// Returns the policy used by doctor/diagnostic scan APIs by
+    /// default. Doctor paths must tolerate partial corruption so the
+    /// operator can see whatever is still well-formed.
+    pub const fn default_doctor() -> Self {
+        Self::SkipMalformed
+    }
+}
+
+impl Default for KeyspaceScanPolicy {
+    fn default() -> Self {
+        // The unit struct variant chosen here is the production default.
+        // Doctor callers MUST pass `KeyspaceScanPolicy::default_doctor()`
+        // explicitly; there is no implicit detection of a doctor context.
+        Self::FailClosed
+    }
+}
+
 /// Encodes `[0x01][workflow_digest_32]`.
 pub fn workflow_source_key(
     digest: [u8; crate::constants::DIGEST_BYTES],

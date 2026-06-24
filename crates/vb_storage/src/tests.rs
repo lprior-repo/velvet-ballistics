@@ -1844,6 +1844,48 @@ mod tests {
         assert_eq!(retrieved, Some(record));
     }
 
+    // CC-002: run_headers must fail closed on a malformed key (length mismatch).
+    #[test]
+    fn cc002_run_headers_fails_closed_on_malformed_key() {
+        // Given a journal with one valid run header
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let record = RunHeaderRecord {
+            run: RunId::new(0xABCD),
+            workflow_id: WorkflowId::new(1),
+            compiled_digest: WorkflowDigest::from_bytes([0; 32]),
+            status: 1,
+            accepted_at_ms: 0,
+        };
+        journal.put_run_header(&record).expect("setup: put_run_header");
+
+        // When a malformed key (3 bytes — well-formed keys are 9 bytes) is
+        // planted directly into the run_header partition
+        let bad_key: Vec<u8> = vec![PREFIX_RUN_HEADER, 0xAB, 0xCD];
+        journal
+            .run_header
+            .insert(bad_key, b"any-value".to_vec())
+            .expect("malformed key insert at partition level");
+
+        // Then run_headers fails closed with MalformedKeyspaceRow
+        let err = journal
+            .run_headers()
+            .expect_err("run_headers must fail closed on malformed key");
+        match err {
+            JournalError::MalformedKeyspaceRow {
+                prefix,
+                expected_len,
+                actual_len,
+            } => {
+                assert_eq!(prefix, PREFIX_RUN_HEADER);
+                assert_eq!(expected_len, 9);
+                assert_eq!(actual_len, 3);
+            }
+            other => panic!("expected MalformedKeyspaceRow, got {other:?}"),
+        }
+    }
+
     #[test]
     fn put_compiled_ir_stores_and_retrieves() {
         // Given an open journal and a compiled IR record
@@ -7634,6 +7676,7 @@ mod tests {
                 JournalError::ProcessLockIo { .. } => "process_lock_io",
                 JournalError::Trim(_) => "trim",
                 JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
+                JournalError::MalformedKeyspaceRow { .. } => "malformed_keyspace_row",
             }
         }
         let _ = _exhaustive_match;
