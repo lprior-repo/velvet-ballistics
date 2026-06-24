@@ -1820,6 +1820,237 @@ fn blackhat_unsupported_op_count_returns_error() -> Result<(), CoreError> {
     check_unsupported_op_returns_error(ExprOp::Count)
 }
 
+// --- CE-003: Replay accessor must propagate field/list-item taint ---
+//
+// Engine evaluation joins segment taint from every object_field and list_item
+// traversal. The replay path must do the same, otherwise accessor-derived
+// values can land on the replay stack with weaker taint than the engine
+// produced, silently downgrading secret propagation.
+
+#[test]
+fn ce003_replay_object_field_taint_joins_segment() -> Result<(), CoreError> {
+    let field_sym = SymbolId::new(0);
+    let mut store = ValueStore::new();
+    let fields = vec![crate::value_store::ObjectField::with_taint(
+        field_sym,
+        SlotValue::I64(42),
+        Taint::Secret,
+    )]
+    .into_boxed_slice();
+    let obj_handle = store.insert_object(fields)?;
+
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(1)),
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![],
+        vec![],
+        vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(field_sym)].into(),
+        }],
+    )?;
+
+    let mut run = make_frame(4)?;
+    // Root slot is Clean — segment taint is Secret. Combined result must be Secret.
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj_handle), Taint::Clean)?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(42) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: accessor should resolve object field to I64(42)",
+        });
+    }
+    if taint != Taint::Secret {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: replay accessor must join field taint into accumulator",
+        });
+    }
+    Ok(())
+}
+
+#[test]
+fn ce003_replay_list_item_taint_joins_segment() -> Result<(), CoreError> {
+    let mut store = ValueStore::new();
+    let values = vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+        .into_boxed_slice();
+    let taints = vec![Taint::Clean, Taint::Secret, Taint::Clean].into_boxed_slice();
+    let list_handle = store.insert_list_with_taint(values, taints)?;
+
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(1)),
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![],
+        vec![],
+        vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Index(1)].into(),
+        }],
+    )?;
+
+    let mut run = make_frame(4)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list_handle), Taint::Clean)?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(20) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: accessor should resolve list[1] to I64(20)",
+        });
+    }
+    if taint != Taint::Secret {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: replay accessor must join list-item taint into accumulator",
+        });
+    }
+    Ok(())
+}
+
+#[test]
+fn ce003_replay_multi_segment_path_joins_every_segment_taint() -> Result<(), CoreError> {
+    // Build: list[0] -> list_inner -> list_inner_field
+    // list_inner contains one object; list_inner_field is Secret.
+    let field_sym = SymbolId::new(0);
+    let mut store = ValueStore::new();
+
+    let inner_obj = store.insert_object(
+        vec![crate::value_store::ObjectField::with_taint(
+            field_sym,
+            SlotValue::I64(7),
+            Taint::Secret,
+        )]
+        .into_boxed_slice(),
+    )?;
+    let inner_list = store.insert_list_with_taint(
+        vec![SlotValue::Object(inner_obj)].into_boxed_slice(),
+        vec![Taint::Clean].into_boxed_slice(),
+    )?;
+    let outer_list = store.insert_list_with_taint(
+        vec![SlotValue::List(inner_list)].into_boxed_slice(),
+        vec![Taint::Clean].into_boxed_slice(),
+    )?;
+
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(1)),
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![],
+        vec![],
+        vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![
+                PathSegment::Index(0),
+                PathSegment::Index(0),
+                PathSegment::Field(field_sym),
+            ]
+            .into(),
+        }],
+    )?;
+
+    let mut run = make_frame(4)?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(outer_list), Taint::Clean)?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(7) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: deep accessor should resolve to I64(7)",
+        });
+    }
+    if taint != Taint::Secret {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: replay must join every segment's taint along the path",
+        });
+    }
+    Ok(())
+}
+
 #[test]
 fn blackhat_unsupported_op_unique_returns_error() -> Result<(), CoreError> {
     check_unsupported_op_returns_error(ExprOp::Unique)

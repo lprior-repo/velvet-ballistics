@@ -91,13 +91,8 @@ fn eval_load_accessor(
     let accessor_program = plan.accessor(accessor).ok_or(ReplayError::Internal {
         reason: "accessor out of bounds",
     })?;
-    let root_taint = run
-        .read_taint(accessor_program.root)
-        .map_err(|_| ReplayError::Internal {
-            reason: "read_taint failed for accessor root",
-        })?;
-    let value = eval_accessor_for_replay(run, store, accessor_program)?;
-    *taint_accum = join_taint(*taint_accum, root_taint);
+    let (value, accessor_taint) = eval_accessor_for_replay(run, store, accessor_program)?;
+    *taint_accum = join_taint(*taint_accum, accessor_taint);
     stack.push(value)
 }
 
@@ -195,7 +190,7 @@ fn eval_accessor_for_replay(
     run: &RunFrame,
     store: &mut ValueStore,
     program: &crate::workflow::AccessorProgram,
-) -> Result<SlotValue, ReplayError> {
+) -> Result<(SlotValue, Taint), ReplayError> {
     let mut current = *run.read_slot(program.root).map_err(|e| match e {
         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
@@ -203,8 +198,13 @@ fn eval_accessor_for_replay(
             reason: "unexpected error reading accessor root",
         },
     })?;
+    let mut accumulated_taint = run
+        .read_taint(program.root)
+        .map_err(|_| ReplayError::Internal {
+            reason: "read_taint failed for accessor root",
+        })?;
     if program.path.is_empty() {
-        return Ok(current);
+        return Ok((current, accumulated_taint));
     }
     let mut index = 0usize;
     while index < program.path.len() {
@@ -215,14 +215,14 @@ fn eval_accessor_for_replay(
             .ok_or(ReplayError::Internal {
                 reason: "accessor path index checked by loop bound",
             })?;
-        current = match (current, segment) {
+        let (next_value, segment_taint) = match (current, segment) {
             (SlotValue::Object(object), crate::workflow::PathSegment::Field(field)) => store
-                .object_field(object, field)
+                .object_field_with_taint(object, field)
                 .map_err(|_| ReplayError::Internal {
                     reason: "object field not found during replay accessor",
                 })?,
             (SlotValue::List(list), crate::workflow::PathSegment::Index(idx)) => store
-                .list_item(list, idx)
+                .list_item_with_taint(list, idx)
                 .map_err(|_| ReplayError::Internal {
                     reason: "list index out of bounds during replay accessor",
                 })?,
@@ -232,11 +232,13 @@ fn eval_accessor_for_replay(
                 });
             }
         };
+        accumulated_taint = join_taint(accumulated_taint, segment_taint);
+        current = next_value;
         index = index.checked_add(1).ok_or(ReplayError::Internal {
             reason: "accessor path index overflow",
         })?;
     }
-    Ok(current)
+    Ok((current, accumulated_taint))
 }
 
 pub fn pop_pair(stack: &mut ReplayExprStack) -> Result<(SlotValue, SlotValue), ReplayError> {
