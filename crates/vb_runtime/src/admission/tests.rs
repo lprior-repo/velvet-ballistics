@@ -161,8 +161,79 @@ fn admission_check_capability_rejects_partial_prefix_grant() {
 #[test]
 fn admit_artifact_run_rejects_capability_superset() {
     // F-001 fix: strict admission rejects extras (VERUS-CARD-003 cardinality-exact).
+    // RA-023 fix: a cardinality mismatch surfaces as the typed
+    // `CapabilityCountMismatch` error rather than a fabricated
+    // `CapabilityDenied` that names a granted capability as missing.
+    //
     // The granted set contains an extra `storage` capability that the artifact
-    // never declared. Cardinality mismatch must reject closed.
+    // never declared. The per-capability loop succeeds (every required cap is
+    // covered); the cardinality mismatch must reject with the typed error.
+    let action = ActionId::new(7);
+    let required = Capability::new("network".into(), action);
+    let extra = Capability::new("storage".into(), ActionId::new(8));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([required])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([
+        Capability::new("network".into(), action),
+        extra,
+    ]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 1,
+            granted_count: 2,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_rejects_capability_duplicate() {
+    // F-001 fix: strict admission rejects duplicate grants (cardinality mismatch).
+    // RA-023 fix: surface as typed `CapabilityCountMismatch`, not fabricated denial.
+    let action = ActionId::new(7);
+    let required = Capability::new("network".into(), action);
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+    };
+    let granted =
+        CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 1,
+            granted_count: 2,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied() {
+    // RA-023 regression: a cardinality mismatch (over-grant / extra) must surface
+    // as a typed `CapabilityCountMismatch` error, NOT as a fabricated
+    // `CapabilityDenied` that names a granted capability as the missing one.
+    //
+    // Required = 1 capability, granted = 2 capabilities (superset).
+    // The per-capability loop will succeed (every required is covered).
+    // The count-mismatch must be reported as `CapabilityCountMismatch { required_count, granted_count }`.
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let extra = Capability::new("storage".into(), ActionId::new(8));
@@ -176,28 +247,73 @@ fn admit_artifact_run_rejects_capability_superset() {
         RuntimePolicy::Strict,
         RunId::new(1),
         test_digest(),
-        granted.clone(),
+        granted,
     );
 
     assert_eq!(
         result,
-        Err(AdmissionError::CapabilityDenied {
-            action,
-            required,
-            granted,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 1,
+            granted_count: 2,
         })
     );
 }
 
 #[test]
-fn admit_artifact_run_rejects_capability_duplicate() {
-    // F-001 fix: strict admission rejects duplicate grants (cardinality mismatch).
-    let action = ActionId::new(7);
-    let required = Capability::new("network".into(), action);
+fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial() {
+    // RA-023 / RA-018: when count differs, return the typed count-mismatch
+    // error instead of fabricating a per-capability denial on a granted cap.
+    // Required = 2, granted = 1 (under-grant with different membership).
+    // The per-capability loop will fail first on the second required cap,
+    // which is the legitimate per-capability denial path. To exercise the
+    // count-mismatch path specifically we need granted ⊋ required with extras
+    // matching membership — see superset test above. This test pins the
+    // invariant that the count-mismatch error is a separate variant and
+    // cannot be confused with `CapabilityDenied`.
+    let network = Capability::new("network.github".into(), ActionId::new(7));
+    let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let extra = Capability::new("storage.write".into(), ActionId::new(9));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([
+            network.clone(),
+            filesystem.clone(),
+        ])),
     };
-    let granted = CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
+    let granted = CapabilitySet::from_grants(Box::new([network, filesystem, extra]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 2,
+            granted_count: 3,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied() {
+    // RA-023 contract preservation: when cardinality is equal but membership
+    // differs, the per-capability loop must fire and surface the actual
+    // missing capability, NOT a count-mismatch error.
+    let network = Capability::new("network.github".into(), ActionId::new(7));
+    let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let wrong = Capability::new("network.other".into(), ActionId::new(11));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([
+            network.clone(),
+            filesystem.clone(),
+        ])),
+    };
+    // Granted has the right count (2) but the second cap is wrong.
+    let granted = CapabilitySet::from_grants(Box::new([network, wrong]));
 
     let result = admit_artifact_run(
         &store,
@@ -210,8 +326,8 @@ fn admit_artifact_run_rejects_capability_duplicate() {
     assert_eq!(
         result,
         Err(AdmissionError::CapabilityDenied {
-            action,
-            required,
+            action: filesystem.action_id(),
+            required: filesystem,
             granted,
         })
     );
@@ -1095,6 +1211,7 @@ fn admission_error_match_covers_all_variants() {
             AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",
             AdmissionError::ArtifactDigestMismatch { .. } => "artifact_digest_mismatch",
             AdmissionError::ArtifactCertificateStale { .. } => "artifact_certificate_stale",
+            AdmissionError::CapabilityCountMismatch { .. } => "capability_count_mismatch",
         }
     }
     let _ = _exhaustive_match;

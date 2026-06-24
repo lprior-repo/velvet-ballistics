@@ -187,6 +187,16 @@ fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeErr
                 granted: f,
             },
         ) => a == d && b == e && c == f,
+        (
+            RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count: a,
+                granted_count: b,
+            },
+            RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count: c,
+                granted_count: d,
+            },
+        ) => a == c && b == d,
         _ => false,
     }
 }

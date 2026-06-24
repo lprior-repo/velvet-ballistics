@@ -46,6 +46,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
         }
+        RuntimeError::AdmissionCapabilityCountMismatch { .. } => {
+            Some("admission rejected: capability count mismatch")
+        }
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
         }
