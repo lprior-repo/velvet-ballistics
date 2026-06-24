@@ -429,20 +429,24 @@ mod tests {
         assert_eq!(builder.len(), 0);
 
         let run = RunId::new(63);
-        builder.push(JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        });
+        builder
+            .push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([1; 32]),
+            })
+            .expect("push within cap");
         assert_eq!(builder.len(), 1);
         assert!(!builder.is_empty());
 
-        builder.push(JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(1),
-            result: vb_core::SlotIdx::new(0),
-            attempt: 1,
-        });
+        builder
+            .push(JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(1),
+                result: vb_core::SlotIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
         assert_eq!(builder.len(), 2);
         assert_eq!(builder.as_slice().len(), 2);
     }
@@ -454,17 +458,21 @@ mod tests {
 
         let run = RunId::new(64);
         let mut builder = BatchBuilder::new();
-        builder.push(JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([2; 32]),
-        });
-        builder.push(JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-            attempt: 1,
-        });
+        builder
+            .push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([2; 32]),
+            })
+            .expect("push within cap");
+        builder
+            .push(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
 
         journal
             .append_strict_batch(builder.as_slice())
@@ -6312,11 +6320,13 @@ mod tests {
     fn builder_append_increments_len() {
         let mut builder = BatchBuilder::new();
         let run = RunId::new(8001);
-        builder.push(JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        });
+        builder
+            .push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([1; 32]),
+            })
+            .expect("push within cap");
         assert_eq!(builder.len(), 1, "builder must have len 1 after one push");
         assert!(!builder.is_empty());
     }
@@ -6325,23 +6335,29 @@ mod tests {
     fn builder_append_multiple_events_len_matches() {
         let mut builder = BatchBuilder::new();
         let run = RunId::new(8002);
-        builder.push(JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        });
-        builder.push(JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-            attempt: 1,
-        });
-        builder.push(JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(2),
-            result: SlotIdx::new(0),
-            attempt: 1,
-        });
+        builder
+            .push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([1; 32]),
+            })
+            .expect("push within cap");
+        builder
+            .push(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
+        builder
+            .push(JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(2),
+                result: SlotIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
         assert_eq!(
             builder.len(),
             3,
@@ -6364,8 +6380,8 @@ mod tests {
             attempt: 1,
             reason: None,
         };
-        builder.push(e0.clone());
-        builder.push(e1.clone());
+        builder.push(e0.clone()).expect("push within cap");
+        builder.push(e1.clone()).expect("push within cap");
         let slice = builder.as_slice();
         assert_eq!(slice.len(), 2);
         assert_eq!(
@@ -6384,23 +6400,29 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(8004);
         let mut builder = BatchBuilder::new();
-        builder.push(JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([1; 32]),
-        });
-        builder.push(JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-            attempt: 1,
-        });
-        builder.push(JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(2),
-            result: SlotIdx::new(0),
-            attempt: 1,
-        });
+        builder
+            .push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([1; 32]),
+            })
+            .expect("push within cap");
+        builder
+            .push(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
+        builder
+            .push(JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(2),
+                result: SlotIdx::new(0),
+                attempt: 1,
+            })
+            .expect("push within cap");
         assert_eq!(builder.len(), 3);
         journal
             .append_strict_batch(builder.as_slice())

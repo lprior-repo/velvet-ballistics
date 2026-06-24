@@ -70,6 +70,16 @@ impl FjallJournal {
         let mut batch = self.database.batch();
         let mut deleted_count: u64 = 0;
 
+        // CC-003 fix: hoist a single scratch key buffer outside the trim
+        // loop and reuse it for every `batch.remove` call. `key` here is
+        // a `fjall::UserKey` (= `Slice`), which is `ByteView`-backed and
+        // already cheap to inspect; copying its bytes once into a reusable
+        // `Vec<u8>` and passing `as_slice()` to `OwnedWriteBatch::remove`
+        // avoids both the per-iteration `Vec<u8>` heap allocation
+        // (previously `key.to_vec()`) and the Arc-cheap `key.clone()`
+        // overhead from SC-008. `&[u8]` implements `Into<UserKey>` via
+        // `lsm_tree::Slice`, so the call site stays one expression.
+        let mut key_buf: Vec<u8> = Vec::with_capacity(64);
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
             if key.len() < 17 {
@@ -84,14 +94,9 @@ impl FjallJournal {
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
-                // SC-008 fix: avoid per-iteration heap allocation of a fresh
-                // `Vec<u8>` for the key. `key` is a `fjall::UserKey` (= `Slice`),
-                // which is `ByteView`-backed and implements `Into<UserKey>`
-                // directly. `Fjall::OwnedWriteBatch::remove<K: Into<UserKey>>`
-                // accepts `K = Slice`, so `key.clone()` is Arc-cheap and zero-
-                // alloc (`key.to_vec()` previously allocated a fresh 17-byte
-                // `Vec<u8>` per trimmable event).
-                batch.remove(&self.events, key.clone());
+                key_buf.clear();
+                key_buf.extend_from_slice(&key);
+                batch.remove(&self.events, key_buf.as_slice());
                 deleted_count = deleted_count.saturating_add(1);
             }
         }

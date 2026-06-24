@@ -148,26 +148,58 @@ pub fn index_action_key(
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
 }
 
-/// Encodes any supported storage key using the existing typed key encoders.
-pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
-    let encoded = match key {
-        StorageKey::WorkflowSource { digest } => workflow_source_key(digest)?.to_vec(),
-        StorageKey::CompiledIr { digest } => compiled_ir_key(digest)?.to_vec(),
-        StorageKey::RunHeader { run } => run_header_key(run)?.to_vec(),
-        StorageKey::RunEvent { run, seq } => run_event_key(run, seq)?.to_vec(),
-        StorageKey::RunSnapshot { run, seq } => run_snapshot_key(run, seq)?.to_vec(),
-        StorageKey::Blob { digest } => blob_key(digest)?.to_vec(),
+/// Encodes any supported storage key into the provided buffer.
+///
+/// `out` is cleared before writing. This avoids per-call allocation when
+/// the caller owns a reusable scratch `Vec<u8>` (see scan paths in
+/// `trimming/logic.rs` and the doctor preview loop).
+pub fn encode_key_into(key: &StorageKey, out: &mut Vec<u8>) -> Result<(), JournalError> {
+    out.clear();
+    match key {
+        StorageKey::WorkflowSource { digest } => {
+            out.extend_from_slice(&workflow_source_key(*digest)?);
+        }
+        StorageKey::CompiledIr { digest } => {
+            out.extend_from_slice(&compiled_ir_key(*digest)?);
+        }
+        StorageKey::RunHeader { run } => {
+            out.extend_from_slice(&run_header_key(*run)?);
+        }
+        StorageKey::RunEvent { run, seq } => {
+            out.extend_from_slice(&run_event_key(*run, *seq)?);
+        }
+        StorageKey::RunSnapshot { run, seq } => {
+            out.extend_from_slice(&run_snapshot_key(*run, *seq)?);
+        }
+        StorageKey::Blob { digest } => {
+            out.extend_from_slice(&blob_key(*digest)?);
+        }
         StorageKey::IndexStatus {
             state,
             timestamp,
             run,
-        } => index_status_key(state, timestamp, run)?.to_vec(),
-        StorageKey::IndexWorkflow { workflow, run } => index_workflow_key(workflow, run)?.to_vec(),
-        StorageKey::IndexAction { action, run, step } => {
-            index_action_key(action, run, step)?.to_vec()
+        } => {
+            out.extend_from_slice(&index_status_key(*state, *timestamp, *run)?);
         }
-    };
-    Ok(encoded)
+        StorageKey::IndexWorkflow { workflow, run } => {
+            out.extend_from_slice(&index_workflow_key(*workflow, *run)?);
+        }
+        StorageKey::IndexAction { action, run, step } => {
+            out.extend_from_slice(&index_action_key(*action, *run, *step)?);
+        }
+    }
+    Ok(())
+}
+
+/// Encodes any supported storage key using the existing typed key encoders.
+///
+/// Thin wrapper around [`encode_key_into`] that returns an owned `Vec<u8>`.
+/// Use [`encode_key_into`] directly in hot scan paths to reuse a single
+/// scratch buffer across iterations.
+pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
+    let mut buf = Vec::with_capacity(32);
+    encode_key_into(&key, &mut buf)?;
+    Ok(buf)
 }
 
 /// Storage key prefix classification for filter-by-kind operations.
