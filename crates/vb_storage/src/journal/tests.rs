@@ -827,14 +827,14 @@ fn run_headers_returns_all_headers_in_order() {
 // =========================================================================
 
 #[test]
-fn append_queued_unpersisted_allows_idempotent_duplicate() {
+fn append_queued_unfsynced_allows_idempotent_duplicate() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(1100);
     let event = make_event(run, 0);
     journal
-        .append_queued_unpersisted(&event)
+        .append_queued_unfsynced(&event)
         .expect("first append should succeed");
-    let result = journal.append_queued_unpersisted(&event);
+    let result = journal.append_queued_unfsynced(&event);
     assert!(
         result.is_ok(),
         "idempotent duplicate of same event should succeed, got {:?}",
@@ -843,7 +843,7 @@ fn append_queued_unpersisted_allows_idempotent_duplicate() {
 }
 
 #[test]
-fn append_queued_unpersisted_rejects_different_duplicate() {
+fn append_queued_unfsynced_rejects_different_duplicate() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(1101);
     let event_a = make_event(run, 0);
@@ -856,9 +856,9 @@ fn append_queued_unpersisted_rejects_different_duplicate() {
         *workflow = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
     }
     journal
-        .append_queued_unpersisted(&event_a)
+        .append_queued_unfsynced(&event_a)
         .expect("first append should succeed");
-    let result = journal.append_queued_unpersisted(&event_b);
+    let result = journal.append_queued_unfsynced(&event_b);
     assert!(
         matches!(result, Err(JournalError::DuplicateEvent { .. })),
         "different event at same run/seq must be rejected, got {:?}",
@@ -2345,16 +2345,16 @@ fn snapshot_with_empty_slots_populated_taint() {
 }
 
 // =========================================================================
-// Edge case: append_queued_unpersisted then read back
+// Edge case: append_queued_unfsynced then read back
 // =========================================================================
 
 #[test]
-fn append_queued_unpersisted_then_read_back() {
+fn append_queued_unfsynced_then_read_back() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(17000);
     let event = make_event(run, 0);
     journal
-        .append_queued_unpersisted(&event)
+        .append_queued_unfsynced(&event)
         .expect("append should succeed");
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(replayed.len(), 1);
@@ -2554,4 +2554,41 @@ fn close_propagates_persist_errors() {
         "close must propagate strict durability failures, got {:?}",
         result
     );
+}
+
+
+// =========================================================================
+// Regression test for SA-016
+// =========================================================================
+//
+// SA-016 confirmed that `append_queued_unfsynced` actually commits to
+// the LSM memtable per call; "unpersisted" only meant "not fsynced".  The
+// misleading name was corrected to `append_queued_unfsynced` so that the
+// type signature documents the actual semantics: the event is durable
+// against process-level recovery (visible to readers and replay) but has
+// not been force-fsync'd to disk.
+
+#[test]
+fn append_queued_unfsynced_commits_to_memtable_and_is_visible_to_readers() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7000);
+    let event = make_event(run, 0);
+
+    // The renamed entry point must accept and commit the event without
+    // requiring an explicit fsync call from the caller.
+    journal
+        .append_queued_unfsynced(&event)
+        .expect("append_queued_unfsynced should commit to the memtable");
+
+    // "unfsynced" means it is committed to the LSM memtable and visible
+    // to subsequent readers — that is the actual documented contract.
+    let replayed = journal
+        .events_for_run(run)
+        .expect("replay should succeed after an unfsynced commit");
+    assert_eq!(
+        replayed.len(),
+        1,
+        "event must be visible to readers immediately after append_queued_unfsynced"
+    );
+    assert_eq!(replayed[0], event, "replayed event must equal appended event");
 }

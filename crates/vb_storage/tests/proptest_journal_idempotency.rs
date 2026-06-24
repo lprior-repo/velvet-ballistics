@@ -4,7 +4,7 @@
 //! Bead: vb-282my
 //! Obligation: PO-vb282my-RJ-PROP-001
 //!
-//! Target: crate::journal::internal::append_queued_unpersisted
+//! Target: crate::journal::internal::append_queued_unfsynced
 //!
 //! Tests idempotency round-trip: serialize JournalEvent → append →
 //! decode existing → assert equality.
