@@ -223,6 +223,10 @@ name = "proptest_error_types_registration"
 path = "tests/proptest_error_types_registration.rs"
 
 [[test]]
+name = "proptest_equality"
+path = "tests/proptest_equality.rs"
+
+[[test]]
 name = "proptest_compile_error_codes"
 path = "tests/proptest_compile_error_codes.rs"
 
