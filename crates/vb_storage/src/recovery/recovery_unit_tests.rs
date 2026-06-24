@@ -912,6 +912,35 @@ mod tests {
     }
 
     #[test]
+    fn is_terminal_event_run_killed_is_true() {
+        let event = JournalEvent::RunKilled {
+            run: RunId::new(1),
+            seq: EventSeq::new(5),
+            attempt: 1,
+        };
+        assert!(is_terminal_event(&event));
+    }
+
+    #[test]
+    fn extract_terminal_returns_runkilled_when_no_other_terminal_present() {
+        let run = RunId::new(1011);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(20),
+            },
+            JournalEvent::RunKilled {
+                run,
+                seq: EventSeq::new(1),
+                attempt: 1,
+            },
+        ];
+        let terminal = extract_terminal(&events).expect("RunKilled must be extracted");
+        assert!(matches!(terminal, JournalEvent::RunKilled { .. }));
+    }
+
+    #[test]
     fn is_terminal_event_run_accepted_is_false() {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),

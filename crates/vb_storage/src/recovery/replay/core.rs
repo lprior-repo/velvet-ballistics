@@ -258,12 +258,19 @@ pub fn recover_snapshot_plus_tail(
 }
 
 /// Checks whether a run has reached a terminal state.
+///
+/// The set of terminal variants matches every variant of
+/// [`crate::recovery::types::RecoveryTerminalState`]; an inconsistency here
+/// causes `extract_terminal` to drop `RunKilled` events, `has_terminal_event`
+/// to misclassify killed runs as in-progress for retention-policy purposes,
+/// and `recover_all_incomplete_runs` to incorrectly include them.
 #[must_use]
 pub fn is_terminal_event(event: &JournalEvent) -> bool {
     matches!(
         event,
         JournalEvent::RunFinished { .. }
             | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFailedEvent { .. }
     )
 }
