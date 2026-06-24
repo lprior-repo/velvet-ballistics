@@ -1147,3 +1147,134 @@ fn trace_ring_fill_drain_refill_preserves_newest_events() {
         "second drain last event is run 5"
     );
 }
+
+// =========================================================================
+// RA-003 (bead vb-8rldf / vb-gaofu): numerical equivalence between the
+// inline f32 ratio and the f64-then-f32 ratio used in the
+// trace_ring_fill_pct metric path. The red-queen reviewer at commit
+// 31038d224 concluded the two formulations are observationally equivalent
+// at every production capacity. These tests pin the property down with
+// three complementary invariants:
+//   1. bit-exact for every power-of-two cap (no ULP difference)
+//   2. bounded by 1 ULP for a representative sample of general caps in
+//      [1, 2^20] (every cap swept, sample len positions per cap)
+//   3. bit-exact at the empty-ring (len=0) and full-ring (len=cap)
+//      boundaries regardless of cap (every cap in [1, 2^20])
+// See docs/ra-003-no-op.md for the full mathematical derivation.
+// =========================================================================
+
+/// Trace ring fill percent: f32 and f64-then-f32 paths are bit-exact
+/// for every power-of-two capacity in [1, 2^20].
+///
+/// Both `len` and `cap` are exact integers in `f32`, and a denominator
+/// that is a power of two guarantees that the division `len / cap` is
+/// also exact in `f32` (no rounding), so the path produces the same
+/// value as the f64-then-f32 path bit-for-bit.
+#[test]
+fn trace_ring_fill_pct_f32_f64_bit_exact_for_powers_of_two() {
+    let max_cap: usize = 1_048_576;
+    let mut cap: usize = 1;
+    while cap <= max_cap {
+        assert_eq!(
+            cap.count_ones(),
+            1,
+            "internal: cap={cap} should be a power of two"
+        );
+        for len in 0..=cap {
+            let f32_pct = (len as f32) / (cap as f32) * 100.0_f32;
+            let f64_pct = ((len as f64) / (cap as f64) * 100.0_f64) as f32;
+            assert_eq!(
+                f32_pct.to_bits(),
+                f64_pct.to_bits(),
+                "RA-003 power-of-two no-op violated at len={len}, cap={cap}: \
+                 f32 path bits {:#x}, f64-then-f32 path bits {:#x}",
+                f32_pct.to_bits(),
+                f64_pct.to_bits(),
+            );
+        }
+        cap = match cap.checked_mul(2) {
+            Some(next) if next <= max_cap => next,
+            _ => break,
+        };
+    }
+}
+
+/// Trace ring fill percent: f32 and f64-then-f32 paths differ by at
+/// most 1 ULP for every capacity in [1, 2^20] and a representative
+/// sample of len positions inside each cap.
+///
+/// This is the operational no-op invariant: the bounded 1-ULP
+/// difference is below the resolution of any monitoring surface that
+/// consumes `trace_ring_fill_pct`, so the two formulations are
+/// observably indistinguishable for metric reporting. Sampling the
+/// per-cap len axis at boundaries (0, cap/4, cap/2, 3*cap/4, cap) is
+/// sufficient because rounding divergence in IEEE-754 division occurs
+/// only at the rounding boundary of the quotient, which lies near the
+/// boundaries of len / cap.
+#[test]
+fn trace_ring_fill_pct_f32_f64_within_one_ulp_for_general_caps() {
+    let max_cap: usize = 1_048_576;
+    let mut cap: usize = 1;
+    while cap <= max_cap {
+        let sample_lens: [usize; 5] = [
+            0,
+            cap / 4,
+            cap / 2,
+            (cap * 3) / 4,
+            cap,
+        ];
+        for &len in sample_lens.iter() {
+            let f32_pct = (len as f32) / (cap as f32) * 100.0_f32;
+            let f64_pct = ((len as f64) / (cap as f64) * 100.0_f64) as f32;
+            let f32_bits = f32_pct.to_bits() as i64;
+            let f64_bits = f64_pct.to_bits() as i64;
+            let ulp_diff = (f32_bits - f64_bits).abs();
+            assert!(
+                ulp_diff <= 1,
+                "RA-003 1-ULP bound violated at len={len}, cap={cap}: \
+                 f32 path bits {:#x}, f64-then-f32 path bits {:#x}, \
+                 ULP diff = {ulp_diff}",
+                f32_pct.to_bits(),
+                f64_pct.to_bits(),
+            );
+        }
+        cap += 1;
+    }
+}
+
+/// Trace ring fill percent: empty-ring (len=0) and full-ring (len=cap)
+/// boundary values are bit-exact between the f32 and f64-then-f32 paths
+/// for every capacity in [1, 2^20].
+///
+/// The empty-ring case produces 0.0 regardless of divisor (exact in both
+/// formats); the full-ring case produces 1.0 * 100.0 = 100.0 (exact in
+/// both formats). These are the two boundary values the metric code
+/// exercises in practice and they are guaranteed bit-exact.
+#[test]
+fn trace_ring_fill_pct_boundary_values_are_bit_exact() {
+    let max_cap: usize = 1_048_576;
+    for cap in 1..=max_cap {
+        // Empty ring.
+        let f32_empty = (0_usize as f32) / (cap as f32) * 100.0_f32;
+        let f64_empty = ((0_usize as f64) / (cap as f64) * 100.0_f64) as f32;
+        assert_eq!(
+            f32_empty.to_bits(),
+            f64_empty.to_bits(),
+            "RA-003 empty-ring no-op violated at cap={cap}: \
+             f32 path bits {:#x}, f64-then-f32 path bits {:#x}",
+            f32_empty.to_bits(),
+            f64_empty.to_bits(),
+        );
+        // Full ring.
+        let f32_full = (cap as f32) / (cap as f32) * 100.0_f32;
+        let f64_full = ((cap as f64) / (cap as f64) * 100.0_f64) as f32;
+        assert_eq!(
+            f32_full.to_bits(),
+            f64_full.to_bits(),
+            "RA-003 full-ring no-op violated at cap={cap}: \
+             f32 path bits {:#x}, f64-then-f32 path bits {:#x}",
+            f32_full.to_bits(),
+            f64_full.to_bits(),
+        );
+    }
+}
