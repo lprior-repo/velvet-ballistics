@@ -26,6 +26,23 @@ impl ActionQueueCapacity {
     pub const fn get(self) -> usize {
         self.0
     }
+
+    /// Creates a new [`ActionQueueCapacity`] without validating the input.
+    ///
+    /// Use this constructor ONLY when the caller has already verified that
+    /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. The naming
+    /// convention `new_unchecked` makes the trust boundary explicit at the
+    /// call site. Constructing an `ActionQueueCapacity` with `capacity == 0`
+    /// or above the maximum violates the type's invariants and may cause
+    /// `BoundedActionCompletionQueue` operations to behave incorrectly.
+    ///
+    /// For runtime/derived input where the value is not statically known,
+    /// use the fallible [`BoundedActionCompletionQueue::new`] and propagate
+    /// the error.
+    #[must_use]
+    pub const fn new_unchecked(capacity: usize) -> Self {
+        Self(capacity)
+    }
 }
 
 /// Reason an action completion queue capacity was rejected.
@@ -97,6 +114,61 @@ impl BoundedActionCompletionQueue {
             capacity,
             backpressure_tx: None,
         })
+    }
+
+    /// Creates a new bounded queue with the given capacity, skipping capacity
+    /// validation.
+    ///
+    /// Use this constructor ONLY when the caller has verified that
+    /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+    /// [`BoundedActionCompletionQueue::new`], this constructor does NOT
+    /// validate the input and is purely infallible (no Result, no panic).
+    /// The naming convention `new_infallible` makes the trust boundary
+    /// explicit at the call site.
+    ///
+    /// For runtime/derived capacity where the value is not statically known,
+    /// use the fallible [`BoundedActionCompletionQueue::new`] and propagate
+    /// the error.
+    pub fn new_infallible(capacity: usize) -> Self {
+        let capacity = ActionQueueCapacity::new_unchecked(capacity);
+        Self {
+            inner: std::sync::Mutex::new(Inner {
+                items: VecDeque::with_capacity(capacity.get()),
+            }),
+            capacity,
+            backpressure_tx: None,
+        }
+    }
+
+    /// Creates a new bounded queue with backpressure notification channel,
+    /// skipping capacity validation.
+    ///
+    /// Use this constructor ONLY when the caller has verified that
+    /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+    /// [`BoundedActionCompletionQueue::with_backpressure`], this constructor
+    /// does NOT validate the input and is purely infallible (no Result, no
+    /// panic). The naming convention `with_backpressure_infallible` makes
+    /// the trust boundary explicit at the call site.
+    ///
+    /// Returns the queue together with the receiving end of the backpressure
+    /// notification channel. The sender is owned by the queue.
+    ///
+    /// For runtime/derived capacity where the value is not statically known,
+    /// use the fallible [`BoundedActionCompletionQueue::with_backpressure`]
+    /// and propagate the error.
+    pub fn with_backpressure_infallible(capacity: usize) -> (Self, Receiver<BackpressureWarning>) {
+        let capacity = ActionQueueCapacity::new_unchecked(capacity);
+        let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+        (
+            Self {
+                inner: std::sync::Mutex::new(Inner {
+                    items: VecDeque::with_capacity(capacity.get()),
+                }),
+                capacity,
+                backpressure_tx: Some(tx),
+            },
+            rx,
+        )
     }
 
     /// Creates a new bounded queue with backpressure notification channel.

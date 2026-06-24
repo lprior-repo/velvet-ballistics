@@ -142,48 +142,70 @@ impl PartialEq for RecoveryError {
         match (self, other) {
             (Self::Journal(_), Self::Journal(_)) => false,
             (
-                Self::WorkflowSourceDigestMismatch { expected: le, found: lf },
-                Self::WorkflowSourceDigestMismatch { expected: re, found: rf },
+                Self::WorkflowSourceDigestMismatch {
+                    expected: le,
+                    found: lf,
+                },
+                Self::WorkflowSourceDigestMismatch {
+                    expected: re,
+                    found: rf,
+                },
             ) => le == re && lf == rf,
             (
-                Self::CompiledIrDigestMismatch { expected: le, found: lf },
-                Self::CompiledIrDigestMismatch { expected: re, found: rf },
+                Self::CompiledIrDigestMismatch {
+                    expected: le,
+                    found: lf,
+                },
+                Self::CompiledIrDigestMismatch {
+                    expected: re,
+                    found: rf,
+                },
             ) => le == re && lf == rf,
             (
                 Self::ActionAbiMismatch { action_id: la },
                 Self::ActionAbiMismatch { action_id: ra },
             ) => la == ra,
+            (Self::PolicyDigestMismatch { step: ls }, Self::PolicyDigestMismatch { step: rs }) => {
+                ls == rs
+            }
             (
-                Self::PolicyDigestMismatch { step: ls },
-                Self::PolicyDigestMismatch { step: rs },
-            ) => ls == rs,
-            (
-                Self::NonIdempotentActionBlocked { action: la, step: ls },
-                Self::NonIdempotentActionBlocked { action: ra, step: rs },
+                Self::NonIdempotentActionBlocked {
+                    action: la,
+                    step: ls,
+                },
+                Self::NonIdempotentActionBlocked {
+                    action: ra,
+                    step: rs,
+                },
             ) => la == ra && ls == rs,
             (
-                Self::ReplayDivergence { step: ls, detail: ld },
-                Self::ReplayDivergence { step: rs, detail: rd },
+                Self::ReplayDivergence {
+                    step: ls,
+                    detail: ld,
+                },
+                Self::ReplayDivergence {
+                    step: rs,
+                    detail: rd,
+                },
             ) => ls == rs && ld == rd,
-            (
-                Self::SlotTaintReadFailed { slot: ls },
-                Self::SlotTaintReadFailed { slot: rs },
-            ) => ls == rs,
-            (
-                Self::CorruptSlotTaint { slot: ls },
-                Self::CorruptSlotTaint { slot: rs },
-            ) => ls == rs,
-            (
-                Self::NoRecoveryData { run: lr },
-                Self::NoRecoveryData { run: rr },
-            ) => lr == rr,
+            (Self::SlotTaintReadFailed { slot: ls }, Self::SlotTaintReadFailed { slot: rs }) => {
+                ls == rs
+            }
+            (Self::CorruptSlotTaint { slot: ls }, Self::CorruptSlotTaint { slot: rs }) => ls == rs,
+            (Self::NoRecoveryData { run: lr }, Self::NoRecoveryData { run: rr }) => lr == rr,
             (
                 Self::CorruptSnapshot { run: lr, seq: ls },
                 Self::CorruptSnapshot { run: rr, seq: rs },
             ) => lr == rr && ls == rs,
             (
-                Self::TerminalStateMismatch { expected: le, found: lf },
-                Self::TerminalStateMismatch { expected: re, found: rf },
+                Self::TerminalStateMismatch {
+                    expected: le,
+                    found: lf,
+                },
+                Self::TerminalStateMismatch {
+                    expected: re,
+                    found: rf,
+                },
             ) => le == re && lf == rf,
             (
                 Self::FrameDimensionOverflow { run: lr },
@@ -195,7 +217,6 @@ impl PartialEq for RecoveryError {
 }
 
 impl Eq for RecoveryError {}
-
 
 /// Result alias for recovery operations.
 pub type RecoveryResult<T> = Result<T, RecoveryError>;

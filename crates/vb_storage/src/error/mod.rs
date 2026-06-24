@@ -18,7 +18,6 @@ pub use self::warnings::{
 
 /// Storage and journal operation errors.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum JournalError {
     /// Fjall operation failed.
     #[error("fjall journal operation failed: {0}")]

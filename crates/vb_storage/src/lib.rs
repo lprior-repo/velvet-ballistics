@@ -122,6 +122,10 @@ mod proptest_integration;
 #[path = "error_tests.rs"]
 mod error_tests;
 
+#[cfg(test)]
+#[path = "error_code_tests.rs"]
+mod error_code_tests;
+
 pub mod queue;
 pub mod records;
 pub mod recovery;

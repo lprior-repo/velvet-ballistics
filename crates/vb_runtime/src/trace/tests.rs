@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use crate::trace::{RunId, TraceEvent, TraceRing};
-use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::action::ActionFailureCode;
+use vb_core::ids::{SlotIdx, StepIdx};
 
 #[test]
 fn new_creates_with_configured_capacity() {

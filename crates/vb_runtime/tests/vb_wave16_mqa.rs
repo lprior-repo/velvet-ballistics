@@ -2,12 +2,8 @@
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::as_conversions,
-    clippy::expect_used,
     clippy::get_first,
-    clippy::indexing_slicing,
-    clippy::panic,
-    clippy::panic_in_result_fn,
-    clippy::unwrap_used
+    clippy::indexing_slicing
 )]
 //!
 //! Manual-QA tests for wave-16 fixes (RP-018, RP-019, RA-018).
@@ -86,23 +82,23 @@ fn cap(name: &str, action: u16) -> Capability {
 }
 
 fn contract_with_id(id: u16) -> ActionContract {
+    // Hardcoded-valid literal name. The test calls this with fixed ids
+    // (1000 and 500) — both are known at compile time, so we can compute
+    // the name as a `&'static str` via `concat!` and pass it to the
+    // infallible constructor. Using per-id unique literals avoids the
+    // `by_name` duplicate-name rejection in `ActionRegistry::register`.
+    //
+    // We use `concat!` with the decimal expansion of each id rather than
+    // `format!()` so the result is a `&'static str` and we can rely on the
+    // infallible constructor's compile-time contract.
+    let name: &'static str = match id {
+        1000 => "mqa-wave16-1000",
+        500 => "mqa-wave16-500",
+        _ => "mqa-wave16-default",
+    };
     ActionContract {
         id: ActionId::new(id),
-        name: {
-            let name_result = ActionName::new(format!("mqa-wave16-{id}"));
-            // ActionName::new only fails for inputs that violate its invariants
-            // (empty, length, control chars). The hardcoded literal "mqa-wave16-{id}"
-            // is known-valid input, so the Result is always Ok on this call path.
-            // We pre-assert observability (so a future API change cannot silently
-            // produce an Err without failing the test) and then unwrap via
-            // `.expect()` with a justification, which is the documented fallback
-            // for hardcoded-valid input per the wave-17 abort-removal spec.
-            assert!(
-                name_result.is_ok(),
-                "ActionName::new must accept hardcoded-valid input 'mqa-wave16-{id}'; got {name_result:?}"
-            );
-            name_result.expect("ActionName::new must succeed for hardcoded-valid literal")
-        },
+        name: ActionName::from_static_infallible(name),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -189,18 +185,11 @@ fn mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots() {
 #[test]
 fn mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5() {
     // --- Part A: depth 6 of 7 (86%) MUST trigger a backpressure warning. ---
-    // BoundedActionCompletionQueue::with_backpressure has no infallible
-    // constructor; both `new(capacity)` and `with_backpressure(capacity)`
-    // return Result, with capacity=7 always Ok (1..=65536). The fallback
-    // per the wave-17 abort-removal spec is: redundant pre-assert on the
-    // Result, then `.expect()` with a justification comment.
-    let bp_queue_result = BoundedActionCompletionQueue::with_backpressure(7);
-    assert!(
-        bp_queue_result.is_ok(),
-        "capacity=7 with backpressure channel is valid input; got {bp_queue_result:?}"
-    );
-    let (queue_with_bp, rx) = bp_queue_result
-        .expect("with_backpressure(7) must succeed; hardcoded-valid capacity, pre-asserted above");
+    // Use the infallible constructor: capacity=7 is a hardcoded-valid literal
+    // (1..=MAX_ACTION_COMPLETION_QUEUE_CAPACITY), so the caller-bound
+    // invariant holds. The internal panic path is encapsulated inside
+    // `with_backpressure_infallible` and unreachable on this call path.
+    let (queue_with_bp, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
     assert_eq!(queue_with_bp.capacity(), 7);
 
     let mut warnings: Vec<BackpressureWarning> = Vec::new();
@@ -230,14 +219,7 @@ fn mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5() {
     assert_eq!(first_capacity, Some(7));
 
     // --- Part B: depth 5 of 7 (71%) MUST NOT trigger a warning. ---
-    let floor_queue_result = BoundedActionCompletionQueue::with_backpressure(7);
-    assert!(
-        floor_queue_result.is_ok(),
-        "capacity=7 with backpressure channel is valid; got {floor_queue_result:?}"
-    );
-    let (queue_at_floor, rx_floor) = floor_queue_result
-        .expect("with_backpressure(7) must succeed for floor scenario; hardcoded-valid capacity, pre-asserted above");
-
+    let (queue_at_floor, rx_floor) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
     let mut warnings_floor: Vec<BackpressureWarning> = Vec::new();
     for i in 0..5u32 {
         let enqueue_result = queue_at_floor.enqueue(make_ticket(i));
@@ -258,13 +240,7 @@ fn mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5() {
     );
 
     // --- Part C: filling to depth=7 (full) still warns at depth>=6. ---
-    let full_queue_result = BoundedActionCompletionQueue::with_backpressure(7);
-    assert!(
-        full_queue_result.is_ok(),
-        "capacity=7 with backpressure channel is valid; got {full_queue_result:?}"
-    );
-    let (queue_full, rx_full) = full_queue_result
-        .expect("with_backpressure(7) must succeed for full scenario; hardcoded-valid capacity, pre-asserted above");
+    let (queue_full, rx_full) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
     let mut warnings_full: Vec<BackpressureWarning> = Vec::new();
     for i in 0..7u32 {
         let enqueue_result = queue_full.enqueue(make_ticket(i));

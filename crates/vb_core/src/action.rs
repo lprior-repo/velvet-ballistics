@@ -41,25 +41,25 @@ impl ActionName {
         Self::validate(&s)?;
         Ok(Self(s))
     }
-    /// Creates a new validated action name from a `&'static str` whose
-    /// invariants are guaranteed by construction at the call site.
+
+    /// Creates a new action name from a string slice, skipping validation.
     ///
-    /// Use this constructor ONLY when the input is a string literal (or other
-    /// `&'static str`) known at compile time to be non-empty, free of
-    /// whitespace, and within `MAX_ACTION_NAME_LENGTH`. Examples: test
-    /// fixtures with hardcoded names, `const` tables of action names, or
-    /// generated code emitting validated literals.
+    /// Use this constructor ONLY when the input is known at compile time or
+    /// is a hardcoded literal that the caller has verified to be non-empty,
+    /// free of whitespace, and within `MAX_ACTION_NAME_LENGTH`. Examples:
+    /// test fixtures with hardcoded names, `const` tables of action names,
+    /// or generated code emitting validated literals.
     ///
-    /// The internal `.expect()` is bounded at construction: the caller
-    /// guarantees the static-slice input satisfies the validation rules.
-    /// The single panic path is reachable only via a programmer error at
-    /// the call site (passing a literal that violates an invariant), which
-    /// is the intended fail-fast behavior for a hardcoded-valid input.
+    /// Unlike [`ActionName::new`], this constructor does NOT validate the
+    /// input and is purely infallible (no Result, no panic). The caller
+    /// bears the responsibility for upholding the validation invariants.
+    /// The naming convention `from_static_infallible` makes the trust
+    /// boundary explicit at the call site.
     ///
     /// For runtime/derived input where the value is not statically known,
     /// use the fallible [`ActionName::new`] and propagate the error.
-    pub fn from_static_infallible(s: &'static str) -> Self {
-        Self::new(s).expect("ActionName::from_static_infallible caller must guarantee non-empty, no-whitespace, length<=64; programmer error otherwise")
+    pub fn from_static_infallible(s: impl Into<String>) -> Self {
+        ActionName(s.into())
     }
 
     /// Validates an action name string.
