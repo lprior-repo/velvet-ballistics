@@ -1030,6 +1030,42 @@ fn encode_decode_roundtrip_retry_scheduled() -> Result<(), JournalError> {
 }
 
 #[test]
+fn kind_31_wait_resolved_record_roundtrip() -> Result<(), JournalError> {
+    // PO: RE-009 — WaitResolvedEvent (kind 31) is the resumption of a suspended
+    // run, distinct from RetryScheduledEvent (kind 19). This test pins the
+    // wire-format roundtrip so future codec changes cannot silently break it.
+    let event = JournalEvent::WaitResolvedEvent {
+        run: RunId::new(71),
+        seq: EventSeq::new(9),
+        step: StepIdx::new(6),
+        attempt: 1,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::WaitResolved,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (envelope, decoded) = decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert_eq!(
+        envelope.record_kind,
+        RecordKind::WaitResolved.id(),
+        "envelope.record_kind must be WaitResolved (id 31), got {}",
+        envelope.record_kind
+    );
+    assert_eq!(
+        decoded, event,
+        "WaitResolvedEvent must roundtrip to itself through encode/decode"
+    );
+    Ok(())
+}
+
+#[test]
 fn encode_decode_roundtrip_run_failed() -> Result<(), JournalError> {
     let event = JournalEvent::RunFailedEvent {
         run: RunId::new(80),

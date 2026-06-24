@@ -20,15 +20,16 @@ use crate::constants::{CURRENT_SCHEMA_VERSION, MAGIC_JOURNAL_EVENT, RECORD_HEADE
 use crate::error::JournalError;
 
 fn unknown_record_kind_or_default(candidate: u16) -> u16 {
-    if matches!(candidate, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50) {
-        31
+    if matches!(candidate, 1 | 2 | 3 | 10..=29 | 30 | 31 | 40 | 50) {
+        // Kind 32 is the first unknown kind after WaitResolved=31.
+        32
     } else {
         candidate
     }
 }
 
 fn journal_record_kind_or_default(candidate: u16) -> u16 {
-    if matches!(candidate, 10..=29) {
+    if matches!(candidate, 10..=29) || candidate == 31 {
         candidate
     } else {
         10
@@ -89,7 +90,7 @@ pub fn vb_u8gi_storage_decode_order_unknown_kind() {
     header[0..4].copy_from_slice(&MAGIC_JOURNAL_EVENT.to_le_bytes());
     // Set valid version
     header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
-    // Set invalid kind (not in 1|2|3|10..=29|30|40|50)
+    // Set invalid kind (not in 1|2|3|10..=29|30|31|40|50)
     let invalid_kind = unknown_record_kind_or_default(kani::any());
     header[6..8].copy_from_slice(&invalid_kind.to_le_bytes());
     header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes()); // valid header_len
@@ -100,10 +101,9 @@ pub fn vb_u8gi_storage_decode_order_unknown_kind() {
         Err(JournalError::UnknownRecordKind { .. })
     ));
 }
-
-/// VB-U8GI-STORAGE-DECODE-ORDER-004: RecordKindFamilyMismatch for kind not in 10..=29.
+/// VB-U8GI-STORAGE-DECODE-ORDER-004: RecordKindFamilyMismatch for kind not in 10..=29 | 31.
 /// This tests kinds 1, 2, 3, 30, 40, 50 which are valid kinds but not valid
-/// for MAGIC_JOURNAL_EVENT (only 10..=29 are valid for journal events).
+/// for MAGIC_JOURNAL_EVENT (only 10..=29 and 31 are valid for journal events).
 #[kani::proof]
 #[kani::unwind(2)]
 pub fn vb_u8gi_storage_decode_order_family_mismatch() {
@@ -113,7 +113,7 @@ pub fn vb_u8gi_storage_decode_order_family_mismatch() {
     header[0..4].copy_from_slice(&MAGIC_JOURNAL_EVENT.to_le_bytes());
     // Set valid version
     header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
-    // Set kind in 1|2|3|30|40|50 (valid kind but not for journal)
+    // Set kind in 1|2|3|30|40|50 (valid kind but not for journal; 31 is now journal)
     let kind: u16 = kani::any();
     kani::assume(matches!(kind, 1 | 2 | 3 | 30 | 40 | 50));
     header[6..8].copy_from_slice(&kind.to_le_bytes());
@@ -141,7 +141,7 @@ pub fn vb_u8gi_storage_decode_order_bad_header_len() {
     header[0..4].copy_from_slice(&MAGIC_JOURNAL_EVENT.to_le_bytes());
     // Set valid version
     header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
-    // Set kind in 10..=29 (valid for journal)
+    // Set kind in 10..=29 | 31 (valid for journal)
     let kind = journal_record_kind_or_default(kani::any());
     header[6..8].copy_from_slice(&kind.to_le_bytes());
     // Set invalid header_len
@@ -170,7 +170,7 @@ pub fn vb_u8gi_storage_decode_order_payload_too_large() {
     header[0..4].copy_from_slice(&MAGIC_JOURNAL_EVENT.to_le_bytes());
     // Set valid version
     header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
-    // Set kind in 10..=29 (valid for journal)
+    // Set kind in 10..=29 | 31 (valid for journal)
     let kind = journal_record_kind_or_default(kani::any());
     header[6..8].copy_from_slice(&kind.to_le_bytes());
     // Set valid header_len

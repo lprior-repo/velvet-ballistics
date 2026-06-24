@@ -52,7 +52,7 @@ fn corrupt_kind_in_header(header: &mut [u8], new_kind: u16) {
 /// Returns true if the kind is NOT a known record kind.
 #[allow(dead_code)]
 fn is_unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 40 | 50)
 }
 
 // =============================================================================
@@ -401,11 +401,10 @@ mod unknown_record_kind_rejection {
         Ok(())
     }
 
-    #[test]
     fn decode_accepts_all_known_journal_event_kinds() -> Result<(), JournalError> {
-        // Given: record headers with kinds 10..=29 (valid for MAGIC_JOURNAL_EVENT)
+        // Given: record headers with kinds 10..=29 and 31 (valid for MAGIC_JOURNAL_EVENT)
         let known_journal_kinds: Vec<u16> = vec![
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31,
         ];
 
         for &kind in &known_journal_kinds {
@@ -431,15 +430,14 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_true_for_valid_kinds() {
-        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 40, 50}
+        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 31, 40, 50}
         // We test through decode_record_header which calls is_known_record_kind internally.
         // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
         // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
         let valid_kinds: Vec<u16> = vec![
             1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            29, 30, 40, 50,
+            29, 30, 31, 40, 50,
         ];
-
         for &kind in &valid_kinds {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);
@@ -464,17 +462,17 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 31..=39, 41..=49, 51..=65535
+        // Given: kind values 0, 4..=9, 32..=39, 41..=49, 51..=65535
+        // (kind 31 is now WaitResolved and admitted as a journal kind)
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
             0, 4, 5, 6, 7, 8, 9, // 4..=9
-            31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
+            32, 33, 34, 35, 36, 37, 38, 39, // 32..=39 (31 removed: now WaitResolved)
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50
             100, 255,   // edge cases
             65535, // max u16
         ];
-
         for &kind in &invalid_kinds {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);

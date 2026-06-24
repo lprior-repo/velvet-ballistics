@@ -455,7 +455,7 @@ fn unknown_record_kind_rejected_with_diagnostics() {
     header.copy_from_slice(&encoded[..RECORD_HEADER_BYTES]);
 
     // When: record_kind bytes are changed to an unknown value (99, which is not
-    // in the set {1,2,3,10..=29,30,40,50}).
+    // in the set {1,2,3,10..=29,30,31,40,50}).
     // The record_kind field is a little-endian u16 at offset 6.
     let invalid_kind: u16 = 99;
     header[6] = (invalid_kind & 0xFF) as u8;
@@ -489,7 +489,7 @@ fn record_kind_family_mismatch_rejected_with_diagnostics() {
     header.copy_from_slice(&encoded[..RECORD_HEADER_BYTES]);
 
     // When: record_kind is changed to Snapshot (30), which is a known kind
-    // but does NOT belong to the Journal family (10..=29).
+    // but does NOT belong to the Journal family (10..=29 | 31).
     let snapshot_kind: u16 = 30;
     header[6] = (snapshot_kind & 0xFF) as u8;
     header[7] = ((snapshot_kind >> 8) & 0xFF) as u8;

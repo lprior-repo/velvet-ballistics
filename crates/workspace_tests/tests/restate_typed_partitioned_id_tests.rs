@@ -16,7 +16,7 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 40 | 50)
 }
 
 proptest! {
