@@ -6,6 +6,7 @@
 )]
 use crate::admission::*;
 use crate::error::JournalError;
+use vb_core::workflow::ResourceContract;
 
 #[test]
 fn verification_warning_display_formats_gate_code_message() {
@@ -757,4 +758,97 @@ fn gap_submit_artifact_journaled_produces_unconditional_true_flags() -> Result<(
     );
 
     Ok(())
+}
+
+// =========================================================================
+// vb-1rqz7.36 / SA-008 — canonical ResourceContract fits the policy buffer
+// =========================================================================
+
+#[test]
+fn policy_buffer_fits_canonical_resource_contract() {
+    // A fully-populated ResourceContract: every numeric field at the
+    // upper bound (the contract itself enforces these), bool at true.
+    let contract = ResourceContract {
+        max_steps: u16::MAX,
+        max_slots: u16::MAX,
+        max_constants: u16::MAX,
+        max_accessors: u16::MAX,
+        max_expressions: u16::MAX,
+        max_expr_stack: u8::MAX,
+        max_step_budget_per_tick: u64::MAX,
+        max_transitions_per_tick: u64::MAX,
+        max_input_bytes: u32::MAX,
+        max_output_bytes: u32::MAX,
+        max_blob_bytes: u64::MAX,
+        max_ipc_payload_bytes: u32::MAX,
+        max_retry_attempts: u16::MAX,
+        max_fanout: u16::MAX,
+        max_collect_items: u32::MAX,
+        max_queue_depth: u32::MAX,
+        max_journal_batch_bytes: u32::MAX,
+        allows_secret_results: true,
+    };
+
+    let bound = resource_contract_policy_bytes_bound();
+    let serialized = postcard::to_allocvec(&contract)
+        .expect("postcard encode must succeed for canonical contract");
+
+    assert!(
+        serialized.len() <= bound,
+        "vb-1rqz7.36: serialized ResourceContract ({} bytes) must fit in policy buffer ({} bytes)",
+        serialized.len(),
+        bound
+    );
+}
+
+// =========================================================================
+// compute_policy_digest: regression guard for the YAGNI Vec::with_capacity
+// regression (RE-REVIEW #2). The previous implementation used
+// `Vec::with_capacity(bound) + postcard::to_slice(&mut Vec<u8>)` which
+// deref-coerced to a zero-length slice and returned `SerializeBufferFull`
+// on every call (the function ALWAYS returned `ArtifactMalformed`,
+// breaking 94+ production-path tests). `policy_buffer_fits_canonical_resource_contract`
+// did not catch this because it uses `to_allocvec` directly and never
+// calls `compute_policy_digest`. The test below calls
+// `compute_policy_digest` directly and would have caught the regression.
+// =========================================================================
+
+#[test]
+fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
+    use crate::admission::compute_policy_digest;
+
+    let _journal = match temp_journal() {
+        Ok(j) => j,
+        Err(e) => panic!("journal open failed: {e}"),
+    };
+    let workflow = match minimal_workflow() {
+        Ok(w) => w,
+        Err(e) => panic!("workflow build failed: {e}"),
+    };
+
+    let digest = compute_policy_digest(&workflow);
+
+    let bytes: [u8; 32] = digest.as_bytes();
+    assert!(
+        bytes.iter().any(|b| *b != 0),
+        "compute_policy_digest must yield a non-zero digest for a non-empty ResourceContract, \
+         got all-zero digest (regression guard)"
+    );
+
+    // The digest must also be deterministic: two consecutive calls on the
+    // same workflow must return identical digests.
+    let digest_again = compute_policy_digest(&workflow);
+    assert_eq!(
+        digest, digest_again,
+        "compute_policy_digest must be deterministic across calls"
+    );
+
+    // And it must be hex-distinct from a sentinel zero digest (the digest
+    // is derived from the ResourceContract bytes, not from the workflow
+    // digest or the workflow id).
+    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_ne!(
+        digest, zero,
+        "compute_policy_digest must not collide with the zero sentinel"
+    );
 }
