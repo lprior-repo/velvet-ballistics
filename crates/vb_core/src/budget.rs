@@ -1559,7 +1559,7 @@ fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalError> 
 
 /// Counts body region steps for a loop header and adds multiplied iterations to total.
 #[inline]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, unused_variables)]
 fn count_and_push_loop_body(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
@@ -1570,7 +1570,7 @@ fn count_and_push_loop_body(
     mut total: u64,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, BudgetError> {
-    let body_count = count_body_region_nodes(nodes, body, done, visited, node_count)?;
+    let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
     let iter_count = iter_count.max(1);
     let product = body_count
         .checked_mul(iter_count)
@@ -1614,7 +1614,6 @@ fn count_body_region_nodes(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
     done: StepIdx,
-    global_visited: &mut [bool],
     node_count: usize,
 ) -> Result<u64, BudgetError> {
     let mut region_visited: Vec<bool> = vec![false; node_count];
@@ -1628,7 +1627,6 @@ fn count_body_region_nodes(
             current,
             done,
             node_count,
-            global_visited,
             &mut region_visited,
             &mut stack,
             count,
@@ -1645,7 +1643,6 @@ fn visit_body_region_node(
     current: StepIdx,
     done: StepIdx,
     node_count: usize,
-    global_visited: &mut [bool],
     region_visited: &mut [bool],
     stack: &mut Vec<StepIdx>,
     mut count: u64,
@@ -1681,7 +1678,6 @@ fn visit_body_region_node(
                     *body,
                     *done,
                     u64::from(*limit).max(1),
-                    global_visited,
                     node_count,
                     count,
                     stack,
@@ -1697,7 +1693,6 @@ fn visit_body_region_node(
                     *body,
                     *done,
                     u64::from(*limit).max(1),
-                    global_visited,
                     node_count,
                     count,
                     stack,
@@ -1715,16 +1710,8 @@ fn visit_body_region_node(
                 }
             };
             if *body != current {
-                count = count_nested_for_region(
-                    nodes,
-                    *body,
-                    *done,
-                    iter,
-                    global_visited,
-                    node_count,
-                    count,
-                    stack,
-                )?;
+                count =
+                    count_nested_for_region(nodes, *body, *done, iter, node_count, count, stack)?;
             }
         }
         CompiledNodeKind::RepeatStart {
@@ -1739,7 +1726,6 @@ fn visit_body_region_node(
                     *body,
                     *done,
                     u64::from(*max_attempts).max(1),
-                    global_visited,
                     node_count,
                     count,
                     stack,
@@ -1764,12 +1750,11 @@ fn count_nested_for_region(
     body: StepIdx,
     done: StepIdx,
     iter_count: u64,
-    global_visited: &mut [bool],
     node_count: usize,
     count: u64,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, BudgetError> {
-    let body_count = count_body_region_nodes(nodes, body, done, global_visited, node_count)?;
+    let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
     stack.push(done);
     let product = body_count
         .checked_mul(iter_count)
