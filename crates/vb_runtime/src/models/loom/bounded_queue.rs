@@ -8,7 +8,6 @@
 //! Command: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime bounded_queue
 
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Abstract model of a bounded queue with concurrent take/release.

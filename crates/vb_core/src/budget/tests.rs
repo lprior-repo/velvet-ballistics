@@ -281,7 +281,7 @@ fn choose_branch_accounts_for_nested_for_each_loop_iterations() -> Result<(), St
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::Choose {
-                branches: vec![CompiledNodeKind_expr_branch(0, 1)].into_boxed_slice(),
+                branches: vec![compiled_node_kind_expr_branch(0, 1)].into_boxed_slice(),
                 otherwise: Some(StepIdx::new(3)),
             },
         },
@@ -320,7 +320,7 @@ fn choose_branch_accounts_for_nested_for_each_loop_iterations() -> Result<(), St
     ensure_equal(actual.max_for_each_iterations, 10)
 }
 
-fn CompiledNodeKind_expr_branch(condition: u16, target: u16) -> crate::workflow::ExprBranch {
+fn compiled_node_kind_expr_branch(condition: u16, target: u16) -> crate::workflow::ExprBranch {
     crate::workflow::ExprBranch {
         condition: ExprIdx::new(condition),
         target: StepIdx::new(target),

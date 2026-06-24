@@ -21,22 +21,17 @@ pub(crate) mod prelude {
         action_contract_detail, action_table_rows, registered_cli_actions,
     };
     pub(crate) use crate::app_impl::{
-        HELP, INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
         INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, VERSION, compile_errors_message,
     };
     pub(crate) use crate::args::{
-        self, ActionRegistryMode, Command, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
-        StepTarget,
+        self, ActionRegistryMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat, StepTarget,
     };
-    pub(crate) use crate::constants::VERSION as VERSION_CONST;
     pub(crate) use crate::exit_code::CliExitCode;
     pub(crate) use crate::file_io::{
         parse_run_id, read_file, read_journal_events, report_storage_open_error,
     };
-    pub(crate) use crate::io_helpers::{
-        exit_from_io, unique_doctor_run_id, write_help_stdout, write_parse_error_stderr,
-        write_version_stdout,
-    };
+    pub(crate) use crate::io_helpers::unique_doctor_run_id;
     pub(crate) use crate::output::{
         json_error, json_out_exit, output_error_exit, write_contract_error_json,
         write_failure_message, write_json_pretty_stdout,
@@ -61,8 +56,6 @@ pub(crate) mod prelude {
     pub(crate) use vb_ipc::{IpcCommand, IpcPayload};
     pub(crate) use vb_runtime::action::ActionRegistry;
 }
-
-pub(crate) const HELP: &str = "velvet-ballistics - compiled workflow runtime";
 
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
