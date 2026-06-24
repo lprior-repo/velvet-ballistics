@@ -103,9 +103,8 @@ fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    // RE-011: mark the step as running BEFORE emitting StepStarted.
     run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
-    evidence.push_step_started(pc);
+    evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;
     Ok(Some(DriveStep { pc, node }))
 }
 
@@ -125,7 +124,9 @@ fn finish_drive_step(
     emit_slot_evidence(run, evidence, collect_states, step.node)?;
     if signal_is_success(signal) {
         mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
-        evidence.push_step_succeeded(step.pc, step.node.output);
+        evidence
+            .push_step_succeeded(step.pc, step.node.output)
+            .map_err(RuntimeEngineError::Core)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid.
@@ -156,7 +157,9 @@ fn emit_slot_evidence(
         && let Ok(value) = run.read_slot(slot)
     {
         let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-        evidence.push_slot_written_with_taint(slot, *value, taint);
+        evidence
+            .push_slot_written_with_taint(slot, *value, taint)
+            .map_err(RuntimeEngineError::Core)?;
     }
     Ok(())
 }
