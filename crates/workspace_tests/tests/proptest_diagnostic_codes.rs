@@ -263,7 +263,7 @@ const RUNTIME_ERROR_CODES: &[FrozenCode] = &[
 /// `crates/vb_core/src/diagnostic.rs:1763`), so a slice of
 /// `(&'static str, DiagnosticCode)` is itself `Copy + Clone`, which
 /// satisfies `proptest::sample::select`'s `T: Clone` bound.
-const RUNTIME_ERROR_CODE_PAIRS: &[(&'static str, DiagnosticCode)] = &[
+const RUNTIME_ERROR_CODE_PAIRS: &[(&str, DiagnosticCode)] = &[
     ("QUEUE_FULL_CODE", RuntimeError::QUEUE_FULL_CODE),
     ("RUN_NOT_FOUND_CODE", RuntimeError::RUN_NOT_FOUND_CODE),
     (
@@ -446,8 +446,10 @@ fn diagnostic_code_stability_against_frozen_baseline() {
 /// Also asserts pairwise distinctness within the wave-15 set, in the
 /// same nested-for shape as Property 1, so this test is independently
 /// useful in isolation.
+// INTENTIONAL: catches future widening of DiagnosticCode to u32.
+#[allow(clippy::absurd_extreme_comparisons)]
 #[test]
-fn diagnostic_code_range_and_pairwise_uniqueness() {
+ fn diagnostic_code_range_and_pairwise_uniqueness() {
     /// Inclusive lower bound of the wave-15 runtime-code range.
     const WAVE_15_LOW: u16 = 0x2001;
     /// Inclusive upper bound of the wave-15 runtime-code range.
