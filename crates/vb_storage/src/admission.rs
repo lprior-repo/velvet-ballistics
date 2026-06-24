@@ -357,6 +357,12 @@ pub fn submit_artifact_with_contracts(
                 ir: artifact_bytes,
             };
             journal.put_compiled_ir(&record)?;
+            let stored = journal
+                .compiled_ir(workflow.digest())
+                .map_err(|_| JournalError::ArtifactMalformed)?;
+            if stored.is_none() {
+                return Err(JournalError::ArtifactMalformed);
+            }
             Ok(artifact)
         }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
