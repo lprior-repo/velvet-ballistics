@@ -1,3 +1,4 @@
 # Path-scoped exceptions for scripts/check-ignored-fallible-results.sh.
 # Format:
 # crates/<crate>/src/<file>.rs|DISCARD-001|owner=<name>|expiry=YYYY-MM-DD|follow_up=<bead>|reason=<why>
+crates/vb_runtime/src/shard/transitions.rs|DISCARD-006|owner=runtime|expiry=2026-09-30|follow_up=vb-vw6bx|reason=best-effort rollback after journal append failure in finish_run and fail_run_state; the original journal error is the one surfaced and the rollback run_state_insert result is intentionally dropped via let _
