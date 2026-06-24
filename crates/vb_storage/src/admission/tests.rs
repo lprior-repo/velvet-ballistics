@@ -704,6 +704,91 @@ fn strict_and_journaled_have_same_gate_count() -> Result<(), String> {
 }
 
 // =========================================================================
+// SA-009: Relaxed artifact readback verification
+//
+// The Relaxed branch historically returned Ok(artifact) immediately after
+// `put_compiled_ir` without verifying that the value survived the LSM
+// memtable round-trip. The fix routes Relaxed through the same
+// `verify_artifact_persisted` helper used by Journaled/Strict, so a silent
+// persistence failure surfaces as `ArtifactMalformed` instead of as a
+// falsely-accepted artifact.
+// =========================================================================
+
+#[test]
+fn sa009_relaxed_rejects_silent_persistence_failure() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    // Force the post-put readback to report the artifact as missing,
+    // simulating a silent LSM-level persistence failure.
+    journal.fail_next_compiled_ir_readback_for_test();
+
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
+
+    assert!(
+        matches!(result, Err(JournalError::ArtifactMalformed)),
+        "Relaxed branch must surface a silent persistence failure as ArtifactMalformed, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn sa009_journaled_rejects_silent_persistence_failure() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    journal.fail_next_compiled_ir_readback_for_test();
+
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled);
+
+    assert!(
+        matches!(result, Err(JournalError::ArtifactMalformed)),
+        "Journaled branch must surface a silent persistence failure as ArtifactMalformed, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn sa009_strict_rejects_silent_persistence_failure() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    journal.fail_next_compiled_ir_readback_for_test();
+
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);
+
+    assert!(
+        matches!(result, Err(JournalError::ArtifactMalformed)),
+        "Strict branch must surface a silent persistence failure as ArtifactMalformed, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn sa009_relaxed_succeeds_after_failure_flag_consumed() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    // Arm the failure flag for the first call; the flag is one-shot so the
+    // second call exercises the normal happy-path readback.
+    journal.fail_next_compiled_ir_readback_for_test();
+    let first = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
+    assert!(
+        matches!(first, Err(JournalError::ArtifactMalformed)),
+        "first call with armed failure flag must fail closed"
+    );
+
+    let second = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("second submit_artifact(relaxed) failed: {e}"))?;
+    assert_eq!(
+        second.digest,
+        workflow.digest(),
+        "subsequent Relaxed submit must succeed once the failure flag is consumed"
+    );
+    Ok(())
+}
+
+// =========================================================================
 // Warning gate boundary values
 // =========================================================================
 

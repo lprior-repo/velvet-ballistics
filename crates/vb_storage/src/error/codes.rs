@@ -164,7 +164,7 @@ impl JournalError {
             Self::QueueFull => "JOURNAL_QUEUE_FULL",
             Self::QueueShutdown => "QUEUE_SHUTDOWN",
             Self::WrongRun { .. } => "WRONG_RUN",
-            Self::SequenceGap { .. } => "SEQUENCE_GAP",
+            Self::SequenceGap { .. } => "JOURNAL_SEQUENCE_GAP",
             Self::SequenceOverflow => "SEQUENCE_OVERFLOW",
             Self::BadMagic { .. } => "BAD_MAGIC",
             Self::UnsupportedSchemaVersion { .. } => "UNSUPPORTED_SCHEMA_VERSION",

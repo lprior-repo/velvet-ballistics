@@ -61,6 +61,8 @@ pub struct FjallJournal {
     pub(crate) index_action: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
+    #[cfg(test)]
+    pub(crate) fail_next_compiled_ir_readback: AtomicBool,
     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
     // The lock guard is acquired and dropped, never read directly.
     pub(crate) write_lock: Mutex<()>,
@@ -117,6 +119,8 @@ impl FjallJournal {
             index_action,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
+            #[cfg(test)]
+            fail_next_compiled_ir_readback: AtomicBool::new(false),
             write_lock: Mutex::new(()),
             _process_lock,
         })
@@ -215,6 +219,22 @@ impl FjallJournal {
     #[cfg(test)]
     pub(crate) fn consume_persist_failure_for_test(&self) -> bool {
         self.fail_next_persist.swap(false, Ordering::SeqCst)
+    }
+
+    /// Test-only hook: forces the next `compiled_ir` readback to return
+    /// `Ok(None)`, simulating a silent persistence failure in which the
+    /// `put_compiled_ir` insert succeeded but the value vanished from the
+    /// LSM by the time the readback runs.
+    #[cfg(test)]
+    pub(crate) fn fail_next_compiled_ir_readback_for_test(&self) {
+        self.fail_next_compiled_ir_readback
+            .store(true, Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn consume_compiled_ir_readback_failure_for_test(&self) -> bool {
+        self.fail_next_compiled_ir_readback
+            .swap(false, Ordering::SeqCst)
     }
 }
 

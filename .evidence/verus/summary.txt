@@ -8,5 +8,8 @@ VERUS_VERSION=Verus
 VERUSFMT=available
 PASS verus verification/verus/taint_lattice.rs
 PASS verus verification/verus/step_state_machine.rs
+<<<<<<< Updated upstream
 PASS verus verification/verus/step_budget.rs
 PASS verus verification/verus/resource_budget.rs
+=======
+>>>>>>> Stashed changes

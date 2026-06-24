@@ -62,6 +62,12 @@ impl FjallJournal {
         &self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<Option<CompiledIrRecord>, JournalError> {
+        // SA-009: test-only hook forces the readback to report the artifact
+        // as missing even when the underlying LSM still holds it.
+        #[cfg(test)]
+        if self.consume_compiled_ir_readback_failure_for_test() {
+            return Ok(None);
+        }
         let key = compiled_ir_key(digest.as_bytes())?;
         self.decode_optional(
             &self.compiled_ir,

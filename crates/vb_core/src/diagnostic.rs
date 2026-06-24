@@ -1507,7 +1507,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
-        symbolic: "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
+        symbolic: "EVIDENCE_CAPACITY_EXCEEDED",
         numeric: 0x140D,
         category: CodeCategory::Lowering,
         deprecated: false,

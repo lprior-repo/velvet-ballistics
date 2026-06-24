@@ -357,6 +357,10 @@ pub fn submit_artifact_with_contracts(
                 ir: artifact_bytes,
             };
             journal.put_compiled_ir(&record)?;
+            // SA-009: verify immediate readback under all policies so that
+            // a silent persistence failure surfaces as ArtifactMalformed
+            // rather than as a falsely-accepted artifact.
+            verify_artifact_persisted(journal, workflow.digest())?;
             Ok(artifact)
         }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
@@ -406,12 +410,7 @@ pub fn submit_artifact_with_contracts(
                 journal.persist_strict()?;
             }
 
-            let stored = journal
-                .compiled_ir(workflow.digest())
-                .map_err(|_| JournalError::ArtifactMalformed)?;
-            if stored.is_none() {
-                return Err(JournalError::ArtifactMalformed);
-            }
+            verify_artifact_persisted(journal, workflow.digest())?;
 
             Ok(artifact)
         }
@@ -419,6 +418,25 @@ pub fn submit_artifact_with_contracts(
         // fail closed rather than silently accept malformed artifacts.
         _ => Err(JournalError::ArtifactMalformed),
     }
+}
+
+/// Verifies that the artifact identified by `digest` is actually readable
+/// from the journal after a `put_compiled_ir` call.
+///
+/// Both persistence layers (Relaxed and Journaled/Strict) rely on this readback
+/// so that a silent persistence failure surfaces as `ArtifactMalformed` rather
+/// than as a falsely-accepted artifact in the returned `AcceptedArtifact`.
+fn verify_artifact_persisted(
+    journal: &FjallJournal,
+    digest: vb_core::WorkflowDigest,
+) -> Result<(), JournalError> {
+    let stored = journal
+        .compiled_ir(digest)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    if stored.is_none() {
+        return Err(JournalError::ArtifactMalformed);
+    }
+    Ok(())
 }
 
 fn required_capabilities_from_contracts(
