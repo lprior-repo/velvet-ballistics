@@ -242,3 +242,52 @@ fn rejects_do_input_out_of_range() {
         Err(ValidationError::SlotReferenceOutOfRange { .. })
     ));
 }
+
+#[test]
+fn rejects_node_error_slot_out_of_range() {
+    // Node-level error_slot is a SlotIdx reference and must be within slot_count.
+    // Previously gate 09 only validated `node.output`, leaving `node.error_slot`
+    // unchecked even though it is a slot reference written before routing to the
+    // error handler.
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: Some(SlotIdx::new(99)),
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node], 1);
+    assert!(matches!(
+        validate_gate_09_slot_references(&parts),
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
+}
+
+#[test]
+fn accepts_node_error_slot_in_range() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: Some(SlotIdx::new(0)),
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node, nop_node(1)], 1);
+    assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
+}
+
+#[test]
+fn accepts_node_error_slot_none() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node, nop_node(1)], 1);
+    assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
+}

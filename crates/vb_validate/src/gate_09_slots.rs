@@ -28,6 +28,9 @@ fn validate_node_slots(
     if let Some(output) = node.output {
         check_slot(output, node_index, slot_count)?;
     }
+    if let Some(error_slot) = node.error_slot {
+        check_slot(error_slot, node_index, slot_count)?;
+    }
     match &node.kind {
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
