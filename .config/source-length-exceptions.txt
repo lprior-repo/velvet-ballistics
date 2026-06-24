@@ -480,3 +480,5 @@ crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs|lewis|vb-2lu1
 crates/workspace_tests/tests/vb_eepg_bdd_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 852-line file.
 verification/proptest/properties.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 369-line file.
 verification/verus/vb_8mdp_12_storage_queue_exec_spec.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 353-line file.
+crates/vb_runtime/src/trace.rs|323|pending_len/history_len split adds two new accessors and two alias methods (len/is_empty); cannot decompose further without losing API surface; bead vb-r83wb recovery
+crates/vb_core/src/span.rs|366|upstream; predates 2026-06-24 wave-15 merges; decompose deferred
