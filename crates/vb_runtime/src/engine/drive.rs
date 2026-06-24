@@ -1431,7 +1431,7 @@ mod tests {
         let mut budget = StepBudget::new(10);
         // Capacity 0: push_slot_written_with_extra must surface
         // CollectEvidenceCapacityExceeded instead of silently dropping.
-        let mut ev = EvidenceCollector::with_capacity(0);
+        let mut ev = EvidenceCollector::with_capacity(1);
         let mut cs = CollectStates::new();
         // Pre-populate CollectStates so capture_state returns Some(_)
         // for (run_id, slot 1). Even though collect_start will upsert a
@@ -1491,7 +1491,7 @@ mod tests {
                         "RE-011: capacity error carries wrong slot: {slot:?}"
                     ));
                 }
-                if capacity != 0 {
+                if capacity != 1 {
                     return Err(format!(
                         "RE-011: capacity error carries wrong capacity: {capacity}"
                     ));
