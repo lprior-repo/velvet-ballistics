@@ -805,7 +805,10 @@ impl RuntimeEvent {
     /// Returns true if this event sets a Resumable state.
     #[must_use]
     pub fn is_resumable(&self) -> bool {
-        matches!(self, Self::AwaitAction | Self::AwaitTimer | Self::Resume)
+        matches!(
+            self,
+            Self::AwaitAction | Self::AwaitTimer | Self::ResumeRollback
+        )
     }
 }
 
@@ -1235,6 +1238,12 @@ mod tests {
     #[test]
     fn runtime_event_await_timer_is_resumable() {
         assert!(RuntimeEvent::AwaitTimer.is_resumable());
+    }
+
+    #[test]
+    fn runtime_event_resume_is_not_resumable() {
+        // Regression for RS-012: Resume transitions to Resuming, not Resumable.
+        assert!(!RuntimeEvent::Resume.is_resumable());
     }
 
     #[test]
