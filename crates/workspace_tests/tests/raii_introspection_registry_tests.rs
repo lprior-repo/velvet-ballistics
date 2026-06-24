@@ -422,7 +422,7 @@ fn raii_registry_snapshot_formatting_stays_cold_path() -> Result<(), String> {
     };
 
     // When: formatting is applied (this should be a simple formatting, no computation)
-    let formatted = InspectSnapshotFormatter::format_snapshot(RunId::new(1030), &response);
+    let formatted = InspectSnapshotFormatter::format_snapshot(&response);
 
     // Then: the formatting produces expected output
     assert!(
