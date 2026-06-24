@@ -6,7 +6,7 @@ use crate::frame::RunFrame;
 use crate::ids::StepIdx;
 use crate::value::SlotValue;
 
-use super::{ReplayAction, ReplayError, eval_expr_for_replay, slot_to_replay_err};
+use super::{ReplayAction, ReplayError, eval_expr_for_replay, engine_to_replay_err};
 
 /// Replays a ChooseSlot node which selects a branch based on boolean slot values.
 pub fn replay_choose_slot(
@@ -28,7 +28,7 @@ pub fn replay_choose_slot(
         })?;
         match value {
             SlotValue::Bool(true) => {
-                run.set_pc(branch.target).map_err(slot_to_replay_err)?;
+                run.set_pc(branch.target).map_err(engine_to_replay_err)?;
                 run.increment_executed()
                     .map_err(|_| ReplayError::Internal {
                         reason: "executed counter overflow",
@@ -49,7 +49,7 @@ pub fn replay_choose_slot(
     let target = otherwise.ok_or(ReplayError::Internal {
         reason: "choose_slot no branch matched and no otherwise",
     })?;
-    run.set_pc(target).map_err(slot_to_replay_err)?;
+    run.set_pc(target).map_err(engine_to_replay_err)?;
     run.increment_executed()
         .map_err(|_| ReplayError::Internal {
             reason: "executed counter overflow",
@@ -74,7 +74,7 @@ pub fn replay_choose_expr(
             .map_err(|_| ReplayError::ExpressionEvalFailed { step: run.pc() })?;
         match value {
             SlotValue::Bool(true) => {
-                run.set_pc(branch.target).map_err(slot_to_replay_err)?;
+                run.set_pc(branch.target).map_err(engine_to_replay_err)?;
                 run.increment_executed()
                     .map_err(|_| ReplayError::Internal {
                         reason: "executed counter overflow",
@@ -95,7 +95,7 @@ pub fn replay_choose_expr(
     let target = otherwise.ok_or(ReplayError::Internal {
         reason: "choose_expr no branch matched and no otherwise",
     })?;
-    run.set_pc(target).map_err(slot_to_replay_err)?;
+    run.set_pc(target).map_err(engine_to_replay_err)?;
     run.increment_executed()
         .map_err(|_| ReplayError::Internal {
             reason: "executed counter overflow",
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn choose_slot_set_pc_failure_returns_slot_to_replay_err() {
+    fn choose_slot_set_pc_failure_yields_typed_step_not_found() {
         let mut run = make_frame(1);
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
             .expect("write slot");
@@ -229,9 +229,9 @@ mod tests {
         assert!(
             matches!(
                 result,
-                Err(ReplayError::Internal { reason }) if reason == "unexpected engine error during replay"
+                Err(ReplayError::StepNotFound { step }) if step == StepIdx::new(99)
             ),
-            "expected Internal(engine error)"
+            "CE-004: out-of-bounds choose target must surface as typed StepNotFound"
         );
     }
 }
