@@ -223,9 +223,7 @@ impl<'a> ReplayEngine<'a> {
             self.plan.node_count(),
             self.plan.slot_count(),
         )
-        .map_err(|_| ReplayError::Internal {
-            reason: "failed to create run frame",
-        })
+        .map_err(engine_to_replay_err)
     }
 
     fn replay_until(
