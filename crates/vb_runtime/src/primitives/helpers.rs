@@ -20,32 +20,68 @@ pub(crate) fn empty_list() -> Box<[SlotValue]> {
     Vec::<SlotValue>::new().into_boxed_slice()
 }
 
-pub(crate) fn tail_items(items: &[SlotValue]) -> Result<Box<[SlotValue]>, EngineError> {
-    if items.len() <= 1 {
-        return Ok(empty_list());
+/// Builds a 2-element iterator state list encoding `(source_id, cursor)`.
+/// This is the compact alternative to materializing the tail of the source
+/// list on every iteration step. Both `source_id` and `cursor` are stored
+/// as `SlotValue::I64`; the state list is immutable once inserted.
+pub(crate) fn build_iterator_state(
+    source_id: ListId,
+    cursor: usize,
+) -> Result<Box<[SlotValue]>, EngineError> {
+    let source_token = i64::from(source_id.get());
+    let cursor_token = i64::try_from(cursor).map_err(|_| EngineError::InternalInvariantViolation {
+        reason: "iterator state cursor exceeds i64 range",
+    })?;
+    Ok(vec![SlotValue::I64(source_token), SlotValue::I64(cursor_token)].into_boxed_slice())
+}
+
+/// Decodes a 2-element iterator state list into `(source_id, cursor)`.
+/// Returns an internal-invariant error on a malformed state.
+pub(crate) fn decode_iterator_state(
+    items: &[SlotValue],
+) -> Result<(ListId, usize), EngineError> {
+    if items.len() != 2 {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "iterator state must be a 2-element list",
+        });
     }
-    let tail_len = items
-        .len()
-        .checked_sub(1)
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "tail_items length checked nonempty",
-        })?;
-    let mut tail = Vec::with_capacity(tail_len);
-    let mut index = 1usize;
-    while index < items.len() {
-        let value = *items
-            .get(index)
-            .ok_or(EngineError::InternalInvariantViolation {
-                reason: "tail_items index checked",
-            })?;
-        tail.push(value);
-        index = index
-            .checked_add(1)
-            .ok_or(EngineError::InternalInvariantViolation {
-                reason: "tail_items index overflow",
-            })?;
-    }
-    Ok(tail.into_boxed_slice())
+    let source_token = match items.first().copied() {
+        Some(SlotValue::I64(v)) => v,
+        Some(_) => {
+            return Err(EngineError::InternalInvariantViolation {
+                reason: "iterator state source token must be I64",
+            })
+        }
+        None => {
+            return Err(EngineError::InternalInvariantViolation {
+                reason: "iterator state must be a 2-element list",
+            })
+        }
+    };
+    let cursor_token = match items.get(1).copied() {
+        Some(SlotValue::I64(v)) => v,
+        Some(_) => {
+            return Err(EngineError::InternalInvariantViolation {
+                reason: "iterator state cursor must be I64",
+            })
+        }
+        None => {
+            return Err(EngineError::InternalInvariantViolation {
+                reason: "iterator state must be a 2-element list",
+            })
+        }
+    };
+    let source_id_value = u32::try_from(source_token).map_err(|_| {
+        EngineError::InternalInvariantViolation {
+            reason: "iterator state source token out of u32 range",
+        }
+    })?;
+    let cursor_value = usize::try_from(cursor_token).map_err(|_| {
+        EngineError::InternalInvariantViolation {
+            reason: "iterator state cursor out of usize range",
+        }
+    })?;
+    Ok((ListId::new(source_id_value), cursor_value))
 }
 
 pub(crate) fn jump_to(
@@ -220,74 +256,6 @@ mod tests {
         ensure(list.is_empty(), "expected is_empty")
     }
 
-    // ── tail_items tests ───────────────────────────────────────────────
-
-    #[test]
-    fn tail_items_empty_input_returns_empty() -> Result<(), String> {
-        let items: Box<[SlotValue]> = Box::new([]);
-        let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(tail.is_empty(), "expected empty tail for empty input")
-    }
-
-    #[test]
-    fn tail_items_single_item_returns_empty() -> Result<(), String> {
-        let items: Box<[SlotValue]> = vec![SlotValue::I64(42)].into_boxed_slice();
-        let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(tail.is_empty(), "expected empty tail for single item")
-    }
-
-    #[test]
-    fn tail_items_two_items_returns_second() -> Result<(), String> {
-        let items: Box<[SlotValue]> =
-            vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
-        let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(
-            tail.len() == 1,
-            format!("expected len 1, got {}", tail.len()),
-        )?;
-        ensure(
-            tail.get(0) == Some(&SlotValue::I64(20)),
-            format!("expected I64(20), got {:?}", tail.get(0)),
-        )
-    }
-
-    #[test]
-    fn tail_items_three_items_returns_last_two() -> Result<(), String> {
-        let items: Box<[SlotValue]> =
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice();
-        let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(
-            tail.len() == 2,
-            format!("expected len 2, got {}", tail.len()),
-        )?;
-        ensure(
-            tail.get(0) == Some(&SlotValue::I64(2)),
-            "first tail item mismatch",
-        )?;
-        ensure(
-            tail.get(1) == Some(&SlotValue::I64(3)),
-            "second tail item mismatch",
-        )
-    }
-
-    #[test]
-    fn tail_items_preserves_mixed_types() -> Result<(), String> {
-        let items: Box<[SlotValue]> =
-            vec![SlotValue::I64(1), SlotValue::Bool(true), SlotValue::Null].into_boxed_slice();
-        let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(
-            tail.len() == 2,
-            format!("expected len 2, got {}", tail.len()),
-        )?;
-        ensure(
-            tail.get(0) == Some(&SlotValue::Bool(true)),
-            "expected Bool(true) as first tail item",
-        )?;
-        ensure(
-            tail.get(1) == Some(&SlotValue::Null),
-            "expected Null as second tail item",
-        )
-    }
 
     // ── jump_to tests ──────────────────────────────────────────────────
 

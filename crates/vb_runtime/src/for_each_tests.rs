@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_harness::list_in_slot;
+use crate::test_harness::{iterator_state_in_slot, list_in_slot};
 use vb_core::value_store::ValueStore;
 
 fn fresh_frame() -> RunFrame {
@@ -71,35 +71,51 @@ fn for_each_start_returns_done_when_list_is_empty() {
 
 #[test]
 fn for_each_next_returns_continue_while_items_remain() {
+    // Given a frame with a 2-item source list, after for_each_start the
+    // iterator slot holds a (source_id, cursor=1) state. for_each_next
+    // advances the cursor to 1 and binds the second item.
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
-    let iterator_slot = SlotIdx::new(0);
-    let output_slot = SlotIdx::new(1);
+    let input = SlotIdx::new(0);
+    let item_slot = SlotIdx::new(1);
+    let iter_slot = SlotIdx::new(2);
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
     list_in_slot(
         &mut run,
         &mut store,
-        iterator_slot,
+        input,
         vec![SlotValue::I64(7), SlotValue::I64(8)],
     );
+    let start = for_each_start(
+        &mut run,
+        &mut store,
+        input,
+        item_slot,
+        16,
+        body,
+        done,
+        Some(iter_slot),
+    );
+    assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
+    // The state list now encodes (source_id, cursor=1).
 
     let result = for_each_next(
         &mut run,
         &mut store,
-        iterator_slot,
+        iter_slot,
         body,
         done,
-        Some(output_slot),
+        Some(item_slot),
     );
 
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     assert_eq!(
-        *run.read_slot(output_slot)
+        *run.read_slot(item_slot)
             .ok()
             .unwrap_or_else(|| panic!("read must succeed")),
-        SlotValue::I64(7)
+        SlotValue::I64(8)
     );
 }
 
@@ -371,11 +387,25 @@ fn for_each_next_returns_done_when_tail_empty() {
 
 #[test]
 fn for_each_next_returns_error_when_output_missing() {
-    // Given a frame with items but no output slot
+    // Given a frame with a real iterator state (source_id, cursor=0) but
+    // no output slot.
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
-    list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+    let source_id = store
+        .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+        .ok()
+        .unwrap_or_else(|| panic!("insert source"));
+    let state_id = store
+        .insert_list(
+            vec![SlotValue::I64(source_id.get() as i64), SlotValue::I64(0)]
+                .into_boxed_slice(),
+        )
+        .ok()
+        .unwrap_or_else(|| panic!("insert state"));
+    run.write_slot(iterator_slot, SlotValue::List(state_id))
+        .ok()
+        .unwrap_or_else(|| panic!("write state"));
     // When calling for_each_next with output=None
     let result = for_each_next(
         &mut run,
@@ -510,12 +540,18 @@ fn for_each_start_increments_executed_counter() {
 
 #[test]
 fn for_each_next_increments_executed_counter() {
-    // Given a frame with items in iterator
+    // Given a frame with a real iterator state (source_id, cursor=0)
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let output_slot = SlotIdx::new(1);
-    list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+    iterator_state_in_slot(
+        &mut run,
+        &mut store,
+        iterator_slot,
+        vec![SlotValue::I64(1)],
+        0,
+    );
     let executed_before = run.executed();
     // When calling for_each_next
     let result = for_each_next(
@@ -559,18 +595,20 @@ fn for_each_single_item_list_tail_is_empty() {
             .unwrap_or_else(|| panic!("read must succeed")),
         SlotValue::I64(42)
     );
-    // And the tail (output slot) is an empty list
+    // And the iterator state in output_slot encodes (source_id, cursor=1).
+    // RP-016: state is a bounded 2-element list, not a materialized tail.
     match *run
         .read_slot(output_slot)
         .ok()
         .unwrap_or_else(|| panic!("read must succeed"))
     {
-        SlotValue::List(id) => {
-            let items = store
-                .list(id)
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
                 .ok()
                 .unwrap_or_else(|| panic!("list read must succeed"));
-            assert_eq!(items.len(), 0);
+            assert_eq!(state.len(), 2, "state must be a 2-element cursor list");
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
@@ -579,17 +617,18 @@ fn for_each_single_item_list_tail_is_empty() {
 }
 
 #[test]
-fn for_each_next_writes_tail_to_iterator_slot() {
-    // Given a frame with 3-item iterator
+fn for_each_next_writes_cursor_state_to_iterator_slot() {
+    // Given a frame with a 3-item source encoded as iterator state (cursor=0)
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let output_slot = SlotIdx::new(1);
-    list_in_slot(
+    iterator_state_in_slot(
         &mut run,
         &mut store,
         iterator_slot,
         vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        0,
     );
     // When calling for_each_next
     let result = for_each_next(
@@ -600,7 +639,7 @@ fn for_each_next_writes_tail_to_iterator_slot() {
         StepIdx::new(2),
         Some(output_slot),
     );
-    // Then output has first item and iterator has tail
+    // Then output has the first item and iterator state advances to cursor=1
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(
         *run.read_slot(output_slot)
@@ -613,12 +652,14 @@ fn for_each_next_writes_tail_to_iterator_slot() {
         .ok()
         .unwrap_or_else(|| panic!("read must succeed"))
     {
-        SlotValue::List(id) => {
-            let items = store
-                .list(id)
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
                 .ok()
                 .unwrap_or_else(|| panic!("list read must succeed"));
-            assert_eq!(items.len(), 2);
+            // RP-016: state is always 2 elements regardless of source size
+            assert_eq!(state.len(), 2);
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
@@ -873,16 +914,17 @@ fn for_each_start_null_input_returns_type_mismatch() {
 
 #[test]
 fn for_each_next_output_slot_same_as_iterator_overwrite() {
-    // Given a frame where output_slot == iterator_slot
+    // Given a frame where output_slot == iterator_slot, with cursor state
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let body = StepIdx::new(1);
-    list_in_slot(
+    iterator_state_in_slot(
         &mut run,
         &mut store,
         iterator_slot,
         vec![SlotValue::I64(1), SlotValue::I64(2)],
+        0,
     );
     // When calling for_each_next with output == iterator_slot
     let result = for_each_next(
@@ -893,28 +935,30 @@ fn for_each_next_output_slot_same_as_iterator_overwrite() {
         StepIdx::new(2),
         Some(iterator_slot),
     );
-    // Then it succeeds -- output first writes item, then overwrites with tail
+    // Then it succeeds -- output first writes item, then overwrites with
+    // the next 2-element cursor state (cursor=1).
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    // The iterator_slot should hold the tail list (overwrite semantics)
     match *run
         .read_slot(iterator_slot)
         .ok()
         .unwrap_or_else(|| panic!("must read"))
     {
-        SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-            // Tail of [1, 2] is [2], so len == 1
-            assert_eq!(items.len(), 1);
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
+                .ok()
+                .unwrap_or_else(|| panic!("must read"));
+            assert_eq!(state.len(), 2, "cursor state must remain 2 elements");
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
         }
         other => {
-            // This branch should not be reached; fail the test
             assert_eq!(other, SlotValue::I64(0));
         }
     }
 }
 
 #[test]
-fn for_each_start_drains_single_item_producing_empty_tail() {
+fn for_each_start_drains_single_item_producing_empty_cursor() {
     // Given a frame with a single-item list
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
@@ -934,7 +978,8 @@ fn for_each_start_drains_single_item_producing_empty_tail() {
         StepIdx::new(2),
         Some(output_slot),
     );
-    // Then item_slot has 42 and tail is empty
+    // Then item_slot has 42 and the iterator state has cursor=1 == source len,
+    // so the next for_each_next call must jump to done.
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     assert_eq!(
@@ -948,15 +993,13 @@ fn for_each_start_drains_single_item_producing_empty_tail() {
         .ok()
         .unwrap_or_else(|| panic!("must read"))
     {
-        SlotValue::List(id) => {
-            assert_eq!(
-                store
-                    .list(id)
-                    .ok()
-                    .unwrap_or_else(|| panic!("must read"))
-                    .len(),
-                0
-            );
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
+                .ok()
+                .unwrap_or_else(|| panic!("must read"));
+            assert_eq!(state.len(), 2, "cursor state must remain 2 elements");
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
@@ -966,18 +1009,19 @@ fn for_each_start_drains_single_item_producing_empty_tail() {
 
 #[test]
 fn for_each_next_on_two_item_list_exhausts_after_one_call() {
-    // Given a frame with a 2-item iterator
+    // Given a frame with a 2-item source encoded as iterator state (cursor=0)
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let iterator_slot = SlotIdx::new(0);
     let output_slot = SlotIdx::new(1);
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
-    list_in_slot(
+    iterator_state_in_slot(
         &mut run,
         &mut store,
         iterator_slot,
         vec![SlotValue::I64(7), SlotValue::I64(8)],
+        0,
     );
     // When calling for_each_next once
     let result = for_each_next(
@@ -990,27 +1034,26 @@ fn for_each_next_on_two_item_list_exhausts_after_one_call() {
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    // The iterator now has 1 remaining item
+    // The iterator state advanced to cursor=1
     match *run
         .read_slot(iterator_slot)
         .ok()
         .unwrap_or_else(|| panic!("must read"))
     {
-        SlotValue::List(id) => {
-            assert_eq!(
-                store
-                    .list(id)
-                    .ok()
-                    .unwrap_or_else(|| panic!("must read"))
-                    .len(),
-                1
-            );
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
+                .ok()
+                .unwrap_or_else(|| panic!("must read"));
+            assert_eq!(state.len(), 2, "cursor state must remain 2 elements");
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
         }
     }
-    // When calling for_each_next again on the 1-item tail
+    // When calling for_each_next again, cursor advances to 2 (= source len)
+    // and the function must jump to done.
     let result2 = for_each_next(
         &mut run,
         &mut store,
@@ -1019,7 +1062,7 @@ fn for_each_next_on_two_item_list_exhausts_after_one_call() {
         done,
         Some(output_slot),
     );
-    // Then it still processes the last item and leaves an empty tail
+    // Then it still processes the last item and routes to done.
     assert_eq!(result2, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     match *run
@@ -1027,21 +1070,22 @@ fn for_each_next_on_two_item_list_exhausts_after_one_call() {
         .ok()
         .unwrap_or_else(|| panic!("must read"))
     {
-        SlotValue::List(id) => {
-            assert_eq!(
-                store
-                    .list(id)
-                    .ok()
-                    .unwrap_or_else(|| panic!("must read"))
-                    .len(),
-                0
-            );
+        SlotValue::List(state_id) => {
+            let state = store
+                .list(state_id)
+                .ok()
+                .unwrap_or_else(|| panic!("must read"));
+            // After exhausting, cursor == source len (2). The state still
+            // carries the 2-element format; for_each_next on it must jump
+            // to done on the next call.
+            assert_eq!(state.len(), 2);
+            assert_eq!(state.get(1).copied(), Some(SlotValue::I64(2)));
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
         }
     }
-    // When calling for_each_next a third time on empty tail
+    // When calling for_each_next a third time on the exhausted cursor
     let result3 = for_each_next(
         &mut run,
         &mut store,
@@ -1888,4 +1932,106 @@ fn phase22_for_each_iteration_drains_all_items_sequentially() {
     }
 
     assert_eq!(seen, original);
+}
+
+// RP-016 regression: the iterator slot must carry a bounded (source_id, cursor)
+// state, not a materialized tail. Assert the new state list is always 2
+// elements regardless of the source size, and that no per-step allocation
+// happens for the source list items themselves.
+#[test]
+fn rp016_iterator_state_is_bounded_cursor_not_tail() {
+    const N: usize = 64;
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let input = SlotIdx::new(0);
+    let item_slot = SlotIdx::new(1);
+    let iter_slot = SlotIdx::new(2);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        (0..N).map(|i| SlotValue::I64(i as i64)).collect(),
+    );
+
+    let result = for_each_start(
+        &mut run,
+        &mut store,
+        input,
+        item_slot,
+        1024,
+        body,
+        done,
+        Some(iter_slot),
+    );
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+
+    // After start, the iterator slot is a 2-element state list, NOT a tail
+    // of size N-1. This is the contract: a bounded cursor, not a copy.
+    let state_id = match *run
+        .read_slot(iter_slot)
+        .ok()
+        .unwrap_or_else(|| panic!("read must succeed"))
+    {
+        SlotValue::List(id) => id,
+        other => panic!("expected list in iter_slot, got {other:?}"),
+    };
+    let state_items = store
+        .list(state_id)
+        .ok()
+        .unwrap_or_else(|| panic!("list read must succeed"));
+    assert_eq!(
+        state_items.len(),
+        2,
+        "RP-016 fix: iterator state must be a 2-element (source_id, cursor) list, got len {} for source size {N}",
+        state_items.len()
+    );
+
+    // Run the rest of the iteration; each step must also write a 2-element
+    // state list. No step ever materializes a tail.
+    for _ in 1..N {
+        let _ = run.set_pc(body);
+        let _ = run.mark_succeeded(body);
+        let next = for_each_next(
+            &mut run,
+            &mut store,
+            iter_slot,
+            body,
+            done,
+            Some(item_slot),
+        );
+        assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
+        let state_id = match *run
+            .read_slot(iter_slot)
+            .ok()
+            .unwrap_or_else(|| panic!("read must succeed"))
+        {
+            SlotValue::List(id) => id,
+            other => panic!("expected list in iter_slot, got {other:?}"),
+        };
+        let state_items = store
+            .list(state_id)
+            .ok()
+            .unwrap_or_else(|| panic!("list read must succeed"));
+        assert_eq!(
+            state_items.len(),
+            2,
+            "RP-016 fix: iterator state must remain 2 elements at every step"
+        );
+    }
+
+    // Final step: cursor exhausts source, function jumps to done.
+    let _ = run.set_pc(body);
+    let _ = run.mark_succeeded(body);
+    let final_step = for_each_next(
+        &mut run,
+        &mut store,
+        iter_slot,
+        body,
+        done,
+        Some(item_slot),
+    );
+    assert_eq!(final_step, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done);
 }
