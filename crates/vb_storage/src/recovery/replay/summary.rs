@@ -59,6 +59,10 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
             summary.suspensions = summary.suspensions.saturating_add(1);
         }
         JournalEvent::AskAnsweredEvent { .. } => {}
+        // WaitResolvedEvent is a resumption, not a fresh suspension: the run
+        // unblocks because the wait condition was satisfied. It must not
+        // inflate the suspension counter (regression check for RE-009).
+        JournalEvent::WaitResolvedEvent { .. } => {}
         JournalEvent::AskTimedOutEvent { .. } => {
             summary.steps_succeeded = summary.steps_succeeded.saturating_add(1);
         }

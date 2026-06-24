@@ -114,7 +114,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
                 step: StepIdx::new(3),
                 attempt: 1,
             },
-            JournalEvent::RetryScheduledEvent {
+            JournalEvent::WaitResolvedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(3),
@@ -142,6 +142,56 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
             },
         ]
     );
+}
+
+/// Regression test for bug-hunt RE-009: `WaitResolved` must map to a distinct
+/// `JournalEvent::WaitResolvedEvent` rather than being mis-attributed as a
+/// `RetryScheduledEvent`. A wait resolution is a resumption, not a retry.
+#[test]
+fn re_009_wait_resolved_maps_to_dedicated_journal_event() {
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = RunId::new(46);
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::WaitResolved {
+                run,
+                step: StepIdx::new(7),
+            },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+
+    let Some(events) = require_ok(
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string()),
+        "wait resolved event read",
+    ) else {
+        return;
+    };
+    assert_eq!(events.len(), 1);
+    let event = match events.first() {
+        Some(value) => value,
+        None => return,
+    };
+    // The mis-attribution path produced RetryScheduledEvent; the fix must emit
+    // the dedicated WaitResolvedEvent variant.
+    assert!(
+        matches!(event, JournalEvent::WaitResolvedEvent { step, attempt, .. }
+            if *step == StepIdx::new(7) && *attempt == 1),
+        "expected WaitResolvedEvent for WaitResolved runtime event, got {event:?}"
+    );
+    assert!(
+        !matches!(event, JournalEvent::RetryScheduledEvent { .. }),
+        "RE-009 regression: WaitResolved must not be mis-attributed as RetryScheduledEvent"
+    );
+    // Record-kind parity: the envelope kind must equal the variant's record kind.
+    assert_eq!(event.record_kind(), vb_storage::RecordKind::WaitResolved);
 }
 
 #[test]

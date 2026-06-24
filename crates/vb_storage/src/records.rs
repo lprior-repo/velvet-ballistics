@@ -171,6 +171,11 @@ pub enum RecordKind {
     RunKilled = 28,
     /// Ask timed out event.
     AskTimedOut = 29,
+    /// Wait resolved event.
+    ///
+    /// Distinct from `RetryScheduled = 19` because a wait resolution is the
+    /// resumption of a suspended run, not a retry attempt. See bug-hunt RE-009.
+    WaitResolved = 31,
     /// Run finished event.
     RunFinished = 22,
     /// Run failed event.
@@ -211,15 +216,16 @@ impl RecordKind {
             Self::RetryScheduled => 19,
             Self::StepFailed => 20,
             Self::RunCancelled => 21,
-            Self::RunKilled => 28,
-            Self::AskTimedOut => 29,
             Self::RunFinished => 22,
             Self::RunFailed => 23,
             Self::RunAdmission => 24,
             Self::RunResumed => 25,
             Self::RunRetried => 26,
             Self::RunAnswered => 27,
+            Self::RunKilled => 28,
+            Self::AskTimedOut => 29,
             Self::Snapshot => 30,
+            Self::WaitResolved => 31,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }

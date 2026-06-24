@@ -987,6 +987,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 }
                 JournalEvent::RunAdmission { .. }
                 | JournalEvent::SlotWrittenEvent { .. }
+                | JournalEvent::WaitResolvedEvent { .. }
                 | JournalEvent::RetryScheduledEvent { .. }
                 | JournalEvent::AskTimedOutEvent { .. }
                 | JournalEvent::RunResumed { .. }

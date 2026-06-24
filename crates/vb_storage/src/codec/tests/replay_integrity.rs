@@ -187,9 +187,10 @@ fn next_seq_max_minus_one_returns_max() {
 // B60: journal-specific kind admission does not open unknown kind 31
 // =============================================================================
 
+/// Confirms that WaitResolved (kind 31) is admitted for the journal magic
+/// while genuinely unknown kinds (e.g. 32, 9) remain rejected.
 #[test]
-fn kind_28_and_29_admission_does_not_open_unknown_kind_31() {
-    // Verify kind 28 and kind 29 are known and admitted for journal
+fn kind_28_29_31_admission_for_journal_magic() {
     assert!(is_known_record_kind(28), "kind 28 must be known");
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 28).is_ok(),
@@ -200,15 +201,20 @@ fn kind_28_and_29_admission_does_not_open_unknown_kind_31() {
         validate_kind_family(MAGIC_JOURNAL_EVENT, 29).is_ok(),
         "kind 29 must be admitted for journal magic"
     );
-
-    // Verify kind 31 is still unknown and rejected
-    assert!(!is_known_record_kind(31), "kind 31 must still be unknown");
+    // WaitResolved (31) is the dedicated journal kind for bug-hunt RE-009.
+    assert!(is_known_record_kind(31), "kind 31 (WaitResolved) must be known");
+    assert!(
+        validate_kind_family(MAGIC_JOURNAL_EVENT, 31).is_ok(),
+        "kind 31 (WaitResolved) must be admitted for journal magic"
+    );
+    // Kinds outside the journal range remain rejected.
+    assert!(!is_known_record_kind(32), "kind 32 must remain unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 31),
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 32),
             Err(JournalError::RecordKindFamilyMismatch { .. })
         ),
-        "kind 31 must be rejected for journal magic"
+        "kind 32 must be rejected for journal magic"
     );
 }
 
