@@ -18,17 +18,16 @@ impl Shard {
     ) -> Self {
         Self {
             command_queue: ShardCommandQueue::from_config(config),
-            runs: Vec::new(),
-            runtime_states: Vec::new(),
-            terminal_runs: Vec::new(),
-            journal_sequences: Vec::new(),
-            pending_timers: Vec::new(),
+            runs: IndexMap::new(),
+            runtime_states: IndexMap::new(),
+            terminal_runs: IndexSet::new(),
+            journal_sequences: IndexMap::new(),
+            pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
-            active_run_count: 0,
             policy: config.policy,
             artifact_store,
             inspect_response: None,
@@ -116,6 +115,75 @@ impl Shard {
         self.runs.len()
     }
 
+    fn run_capacity_error(capacity: usize) -> RuntimeError {
+        RuntimeError::ActiveRunCapacityExceeded { capacity }
+    }
+
+    pub(crate) fn prepare_run_slots(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.reserve_run_state_slot(run_id)?;
+        self.reserve_runtime_state_slot(run_id)?;
+        self.reserve_journal_sequence_slot(run_id)?;
+        self.reserve_pending_timer_slot(run_id)
+    }
+
+    fn reserve_index_map_slot<T>(
+        slots: &mut IndexMap<RunId, T>,
+        run_id: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if slots.contains_key(&run_id) {
+            return Ok(());
+        }
+        if slots.len() >= capacity {
+            return Err(Self::run_capacity_error(capacity));
+        }
+        slots
+            .try_reserve(1)
+            .map_err(|_| Self::run_capacity_error(capacity))
+    }
+
+    fn reserve_index_set_slot(
+        slots: &mut IndexSet<RunId>,
+        run_id: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if slots.contains(&run_id) {
+            return Ok(());
+        }
+        if capacity == 0 {
+            return Err(Self::run_capacity_error(capacity));
+        }
+        if slots.len() >= capacity {
+            let evicted = slots.iter().next().copied();
+            if let Some(evicted) = evicted {
+                let _removed = slots.shift_remove(&evicted);
+            }
+        }
+        slots
+            .try_reserve(1)
+            .map_err(|_| Self::run_capacity_error(capacity))
+    }
+
+    fn reserve_run_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.runs, run_id, self.max_active_runs)
+    }
+
+    fn reserve_runtime_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.runtime_states, run_id, self.max_active_runs)
+    }
+
+    fn reserve_journal_sequence_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.journal_sequences, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.pending_timers, run_id, self.max_active_runs)
+    }
+
+    fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_set_slot(&mut self.terminal_runs, run_id, self.max_active_runs)
+    }
+
     #[cfg(not(kani))]
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();
@@ -149,12 +217,13 @@ impl Shard {
             .checked_add(1)
             .map(EventSeq::new)
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
-        self.journal_sequences.insert(run, next);
+        self.reserve_journal_sequence_slot(run)?;
+        let _previous = self.journal_sequences.insert(run, next);
         Ok(())
     }
 
     pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
-        self.journal_sequences.swap_remove(&run);
+        let _removed = self.journal_sequences.swap_remove(&run);
     }
 
     /// Returns the number of pending timers on this shard.
@@ -193,8 +262,18 @@ impl Shard {
     }
 
     /// Inserts a runtime state for the given run ID.
-    pub fn runtime_state_insert(&mut self, run_id: RunId, state: RuntimeState) {
-        self.runtime_states.insert(run_id, state);
+    pub fn runtime_state_insert(
+        &mut self,
+        run_id: RunId,
+        state: RuntimeState,
+    ) -> RuntimeResult<Option<RuntimeState>> {
+        self.reserve_runtime_state_slot(run_id)?;
+        Ok(self.runtime_states.insert(run_id, state))
+    }
+
+    /// Removes the runtime state for the given run ID, if it exists.
+    pub(crate) fn runtime_state_remove(&mut self, run_id: RunId) {
+        let _removed = self.runtime_states.swap_remove(&run_id);
     }
 
     /// Returns true if the given run ID is in the terminal state.
@@ -204,23 +283,34 @@ impl Shard {
     }
 
     /// Inserts a run state for the given run ID.
-    pub fn run_state_insert(&mut self, run_id: RunId, state: RunState) {
-        self.runs.insert(run_id, state);
+    pub fn run_state_insert(
+        &mut self,
+        run_id: RunId,
+        state: RunState,
+    ) -> RuntimeResult<Option<RunState>> {
+        self.reserve_run_state_slot(run_id)?;
+        Ok(self.runs.insert(run_id, state))
     }
 
     /// Inserts a run into the terminal runs set.
-    pub fn terminal_runs_insert(&mut self, run_id: RunId) {
-        self.terminal_runs.insert(run_id);
+    pub fn terminal_runs_insert(&mut self, run_id: RunId) -> RuntimeResult<bool> {
+        self.reserve_terminal_run_slot(run_id)?;
+        Ok(self.terminal_runs.insert(run_id))
     }
 
     /// Removes a run from the terminal runs set.
     pub fn terminal_runs_remove(&mut self, run_id: RunId) {
-        self.terminal_runs.swap_remove(&run_id);
+        let _removed = self.terminal_runs.swap_remove(&run_id);
     }
 
     /// Inserts a pending timer for the given run ID.
-    pub fn pending_timer_insert(&mut self, run_id: RunId, timer: PendingTimer) -> Option<PendingTimer> {
-        self.pending_timers.insert(run_id, timer)
+    pub fn pending_timer_insert(
+        &mut self,
+        run_id: RunId,
+        timer: PendingTimer,
+    ) -> RuntimeResult<Option<PendingTimer>> {
+        self.reserve_pending_timer_slot(run_id)?;
+        Ok(self.pending_timers.insert(run_id, timer))
     }
 
     /// Returns the pending timer for the given run ID, if it exists.
@@ -276,7 +366,7 @@ impl Shard {
     /// If no timer exists for the run, returns `Some(1)`.
     #[must_use]
     pub fn next_pending_timer_generation(&self, run: RunId) -> Option<u64> {
-        match self.pending_timers.get(&run).copied() {
+        match self.pending_timer_get(run) {
             Some(timer) => timer.generation.checked_add(1),
             None => Some(1),
         }
@@ -404,9 +494,7 @@ impl Shard {
     /// Returns the current typed timer authority for explicit capture.
     #[must_use]
     pub fn timer_entry(&self, run: RunId) -> Option<crate::shard::timer_wheel::TimerEntry> {
-        self.pending_timers
-            .get(&run)
-            .copied()
+        self.pending_timer_get(run)
             .map(|timer| crate::shard::timer_wheel::TimerEntry {
                 run,
                 generation: timer.generation,
@@ -429,7 +517,7 @@ impl Shard {
     /// Returns a direct non-queued diagnostic snapshot for a run.
     #[must_use]
     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
-        match self.runs.get(&run) {
+        match self.run_state_get(run) {
             Some(state) => InspectResponse::Found(crate::shard::helpers::snapshot_from_state(
                 run,
                 correlation,
@@ -464,7 +552,7 @@ impl Shard {
             shutting_down,
             command_queue_depth: self.command_queue.len(),
             command_queue_capacity: self.command_queue.capacity(),
-            active_runs: self.runs.len(),
+            active_runs: self.active_run_count(),
             max_active_runs: self.max_active_runs,
             trace_capacity: self.trace_ring.capacity(),
             trace_dropped: self.trace_ring.dropped(),

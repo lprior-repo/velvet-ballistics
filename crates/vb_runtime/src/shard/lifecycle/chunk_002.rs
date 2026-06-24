@@ -93,7 +93,7 @@ impl Shard {
         let timer = match self.pending_timer_remove(run) {
             Some(timer) => timer,
             None => {
-                self.run_state_insert(run, state);
+                self.run_state_insert(run, state)?;
                 return Err(RuntimeError::InvalidTimerFire);
             }
         };
@@ -126,7 +126,8 @@ impl Shard {
         if let Some(state) = self.run_state_remove(run) {
             self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
-            self.terminal_runs_insert(run);
+            self.terminal_runs_insert(run)?;
+            self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
@@ -142,7 +143,8 @@ impl Shard {
         self.pending_timer_remove(run);
         if let Some(state) = self.run_state_remove(run) {
             self.release_frame(state.frame);
-            self.terminal_runs_insert(run);
+            self.terminal_runs_insert(run)?;
+            self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
@@ -203,8 +205,8 @@ impl Shard {
     ) -> RuntimeResult<()> {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
-                self.apply(run, RuntimeEvent::DriveContinue);
-                self.keep_run(run, state);
+                self.apply(run, RuntimeEvent::DriveContinue)?;
+                self.keep_run(run, state)?;
                 Ok(())
             }
             Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state),
@@ -227,7 +229,7 @@ impl Shard {
         state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
-        self.apply(run, RuntimeEvent::AwaitAction);
+        self.apply(run, RuntimeEvent::AwaitAction)?;
         self.await_action(run, state, ticket)
     }
 
@@ -238,18 +240,18 @@ impl Shard {
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
         self.await_timer(run, state, kind)?;
-        self.apply(run, RuntimeEvent::AwaitTimer);
+        self.apply(run, RuntimeEvent::AwaitTimer)?;
         Ok(())
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.apply(run, RuntimeEvent::DriveFinished);
+        self.apply(run, RuntimeEvent::DriveFinished)?;
         self.finish_run(run, state)
     }
 
     fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-        self.apply(run, RuntimeEvent::Fail);
+        self.apply(run, RuntimeEvent::Fail)?;
         self.fail_run_state(run, state)
     }
 }

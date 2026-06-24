@@ -36,7 +36,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
     assert_ne!(old_timer, replacement_timer);
     assert_eq!(
         shard.pending_timer_insert(run, replacement_timer),
-        Some(old_timer)
+        Ok(Some(old_timer))
     );
     let after_replacement_pending = shard.pending_timer_clone();
     assert_eq!(after_replacement_pending.len(), 1);
@@ -50,7 +50,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
 
     // Then stale delivery must be rejected exactly and the current timer must remain pending.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers, after_replacement_pending);
+    assert_eq!(shard.pending_timer_clone(), after_replacement_pending);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }
 
@@ -244,7 +244,7 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
         panic!("timed wait must register one pending timer before overflow test");
     };
     timer.generation = u64::MAX;
-    assert_eq!(shard.pending_timer_insert(run, timer).is_some(), true);
+    assert!(matches!(shard.pending_timer_insert(run, timer), Ok(Some(_))));
     let Some(state) = shard.run_state_get(run).cloned() else {
         panic!("waiting run state must remain available for overflow test");
     };
@@ -438,7 +438,7 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
 
     // Then it is stale authority and must not consume the live timer.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers, pending_before);
+    assert_eq!(shard.pending_timer_clone(), pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }
 
@@ -479,7 +479,7 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
 
     // Then it is stale authority and must not consume the live timer.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers, pending_before);
+    assert_eq!(shard.pending_timer_clone(), pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }
 
@@ -519,6 +519,6 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
 
     // Then it is stale authority and must not consume the live timer.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers, pending_before);
+    assert_eq!(shard.pending_timer_clone(), pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }

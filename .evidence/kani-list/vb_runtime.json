@@ -2,6 +2,12 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
+    "crates/vb_runtime/src/kani_trace_ring.rs": [
+      "kani_trace_ring::verify_drain_for_run_correctness",
+      "kani_trace_ring::verify_terminal_event_detection",
+      "kani_trace_ring::verify_trace_ring_bounds",
+      "kani_trace_ring::verify_trace_ring_dropped_monotonic"
+    ],
     "crates/vb_runtime/src/primitives/collect.rs": [
       "primitives::collect::kani_collect_verification::collect_page_pagination_bounds"
     ],
@@ -32,7 +38,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 20,
+    "standard-harnesses": 24,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

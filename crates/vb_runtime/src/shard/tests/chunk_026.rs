@@ -251,14 +251,17 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
     let config = small_config();
     let mut shard = Shard::new(config);
     let orphaned_run = super::RunId::new(9003);
-    shard.pending_timer_insert(
-        orphaned_run,
-        PendingTimer {
-            step: vb_core::ids::StepIdx::new(1),
-            kind: PendingTimerKind::Wait,
-            generation: 1,
-            deadline: std::time::Instant::now(),
-        },
+    assert_eq!(
+        shard.pending_timer_insert(
+            orphaned_run,
+            PendingTimer {
+                step: vb_core::ids::StepIdx::new(1),
+                kind: PendingTimerKind::Wait,
+                generation: 1,
+                deadline: std::time::Instant::now(),
+            },
+        ),
+        Ok(None)
     );
     assert_eq!(shard.pending_timers.len(), 1);
 

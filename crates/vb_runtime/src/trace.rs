@@ -44,13 +44,13 @@ impl TraceRing {
     /// Returns the number of events currently in the ring.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.history.len()
+        self.consumer.slots()
     }
 
     /// Returns true if the ring contains no events.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.history.is_empty()
+        self.consumer.is_empty()
     }
 
     /// Attempts to push a trace event. Returns false if the ring is full (drops oldest policy

@@ -91,6 +91,7 @@ mod verification;
 
 pub use error::{RuntimeError, RuntimeResult};
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
+pub use trace::{TraceEvent, TraceRing};
 
 #[cfg(test)]
 mod test_harness;

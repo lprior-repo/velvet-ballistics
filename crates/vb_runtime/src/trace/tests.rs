@@ -18,6 +18,52 @@ fn push_succeeds_when_ring_has_space() {
 }
 
 #[test]
+fn len_and_is_empty_track_pending_ring_events() {
+    let mut ring = TraceRing::new(4);
+    assert_eq!(ring.len(), 0);
+    assert_eq!(ring.is_empty(), true);
+
+    assert_eq!(
+        ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }),
+        true
+    );
+    assert_eq!(
+        ring.push(TraceEvent::RunSubmitted { run: RunId::new(2) }),
+        true
+    );
+
+    assert_eq!(ring.len(), 2);
+    assert_eq!(ring.is_empty(), false);
+
+    let mut drained = Vec::new();
+    ring.drain_into(1, &mut drained);
+    assert_eq!(ring.len(), 1);
+    assert_eq!(ring.is_empty(), false);
+
+    let remaining = ring.drain();
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(ring.len(), 0);
+    assert_eq!(ring.is_empty(), true);
+}
+
+#[test]
+fn len_and_is_empty_ignore_retained_snapshot_history_after_drain() {
+    let mut ring = TraceRing::new(4);
+    assert_eq!(
+        ring.push(TraceEvent::RunSubmitted { run: RunId::new(7) }),
+        true
+    );
+
+    let drained = ring.drain();
+    assert_eq!(drained.len(), 1);
+
+    let snapshot = ring.snapshot_for_run(RunId::new(7), 4);
+    assert_eq!(snapshot.len(), 1);
+    assert_eq!(ring.len(), 0);
+    assert_eq!(ring.is_empty(), true);
+}
+
+#[test]
 fn push_returns_false_when_ring_is_full() {
     let mut ring = TraceRing::new(1);
     let event1 = TraceEvent::RunSubmitted { run: RunId::new(1) };

@@ -233,14 +233,19 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
     let timer1 = shard.pending_timer_get(run);
-    shard.pending_timer_insert(
-        run,
-        super::types::PendingTimer {
-            step: vb_core::ids::StepIdx::new(99),
-            kind: super::types::PendingTimerKind::Ask,
-            generation: 2,
-            deadline: std::time::Instant::now(),
-        },
+    assert!(
+        matches!(
+            shard.pending_timer_insert(
+                run,
+                super::types::PendingTimer {
+                    step: vb_core::ids::StepIdx::new(99),
+                    kind: super::types::PendingTimerKind::Ask,
+                    generation: 2,
+                    deadline: std::time::Instant::now(),
+                },
+            ),
+            Ok(Some(_))
+        )
     );
     let timer2 = shard.pending_timer_get(run);
     assert_ne!(timer1, timer2, "BH-SHD-08: second timer replaced first");

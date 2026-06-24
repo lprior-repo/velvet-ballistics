@@ -11,6 +11,33 @@
 use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
+/// Bounded `Vec<u8>` slot value for harness use.
+///
+/// kani 0.67 does not provide a default `kani::Arbitrary` for `Vec<T>`, so the
+/// `kani::vec::any_vec::<T, N>()` bounded generator is used. The 8-byte bound
+/// is more than enough for the harness scope (postcard-encoded `SlotValue`
+/// payloads) and keeps the state space tractable.
+fn arbitrary_slot_value() -> Vec<u8> {
+    kani::vec::any_vec::<u8, 8>()
+}
+
+/// `kani::Arbitrary` for `TraceEvent` so harness call sites can use
+/// `kani::any::<TraceEvent>()` without violating GOD RULE 1
+/// (no hardcoded structural inputs).
+///
+/// Delegates to `arbitrary_trace_event` to keep variant coverage identical
+/// to the existing harness path. The `run` id is fully arbitrary here, while
+/// the helper path used by `verify_trace_ring_bounds` and
+/// `verify_trace_ring_dropped_monotonic` passes a fixed `run` from the loop
+/// index — both styles exercise the same `TraceEvent` shape.
+impl kani::Arbitrary for crate::TraceEvent {
+    fn any() -> Self {
+        let run: RunId = kani::any();
+        let variant_selector: u8 = kani::any();
+        arbitrary_trace_event(run, variant_selector)
+    }
+}
+
 /// Generate an arbitrary TraceEvent for a given run.
 ///
 /// Uses kani::any() for StepIdx/SlotIdx to avoid GOD RULE hardcoded-0 violations.
@@ -18,8 +45,10 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent {
     let step: StepIdx = kani::any();
     let slot: SlotIdx = kani::any();
-    let value: Vec<u8> = kani::any();
-    match variant_selector % 11 {
+    let value: Vec<u8> = arbitrary_slot_value();
+    // `TraceEvent` has 12 variants; modulo must match so every variant is
+    // reachable from this generator (GOD RULE: no hardcoded structural inputs).
+    match variant_selector % 12 {
         0 => crate::TraceEvent::StepStarted { run, step },
         1 => crate::TraceEvent::StepEnded { run, step },
         2 => crate::TraceEvent::SlotWritten { run, slot, value },
@@ -34,7 +63,8 @@ fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent 
         7 => crate::TraceEvent::RunSubmitted { run },
         8 => crate::TraceEvent::RunFinished { run },
         9 => crate::TraceEvent::RunFailed { run },
-        _ => crate::TraceEvent::RunCancelled { run },
+        10 => crate::TraceEvent::RunCancelled { run },
+        _ => crate::TraceEvent::RunKilled { run },
     }
 }
 

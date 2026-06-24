@@ -152,6 +152,7 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
+        self.prepare_run_slots(run)?;
         let digest = workflow.digest();
         let admission = self.build_admission(run, digest, caps)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
@@ -187,8 +188,15 @@ impl Shard {
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.terminal_runs_remove(run);
-        self.run_state_insert(run, state);
-        self.apply(run, RuntimeEvent::Submit);
+        self.run_state_insert(run, state)?;
+        if let Err(error) = self.apply(run, RuntimeEvent::Submit) {
+            let removed = self.run_state_remove(run);
+            if let Some(state) = removed {
+                self.release_frame(state.frame);
+            }
+            self.discard_journal_sequence(run);
+            return Err(error);
+        }
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {
@@ -330,11 +338,13 @@ impl Shard {
         if !self.is_run_tracked(run) {
             return Err(ResumeError::IncompleteHydration { run_id: run });
         }
-        self.apply(run, RuntimeEvent::Resume);
+        self.apply(run, RuntimeEvent::Resume)
+            .map_err(ResumeError::journal_append_failed_with_source)?;
         let timestamp = current_timestamp();
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
         if let Err(source) = self.append_journal_event(resumed_event) {
-            self.apply(run, RuntimeEvent::ResumeRollback);
+            self.apply(run, RuntimeEvent::ResumeRollback)
+                .map_err(ResumeError::journal_append_failed_with_source)?;
             return Err(ResumeError::journal_append_failed_with_source(source));
         }
         Ok(timestamp)
@@ -360,8 +370,10 @@ impl Shard {
         run: RunId,
         source: RuntimeError,
     ) -> ResumeError {
-        self.apply(run, RuntimeEvent::ResumeRollback);
-        ResumeError::journal_append_failed_with_source(source)
+        match self.apply(run, RuntimeEvent::ResumeRollback) {
+            Ok(()) => ResumeError::journal_append_failed_with_source(source),
+            Err(rollback_error) => ResumeError::journal_append_failed_with_source(rollback_error),
+        }
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -456,7 +468,7 @@ impl Shard {
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
                 // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-                self.apply(run, RuntimeEvent::Fail);
+                self.apply(run, RuntimeEvent::Fail)?;
                 self.fail_run_state(run, state)
             }
         }
