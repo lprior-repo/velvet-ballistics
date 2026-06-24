@@ -103,8 +103,9 @@ fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    evidence.push_step_started(pc);
+    // RE-011: mark the step as running BEFORE emitting StepStarted.
     run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    evidence.push_step_started(pc);
     Ok(Some(DriveStep { pc, node }))
 }
 
@@ -115,10 +116,20 @@ fn finish_drive_step(
     step: DriveStep<'_>,
     signal: &RuntimeSignal,
 ) -> RuntimeEngineResult<()> {
-    mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
+    // RE-011: emit slot evidence BEFORE committing the step state. If
+    // emit fails (e.g. CollectEvidenceCapacityExceeded), the step must
+    // remain in its pre-success state so the caller sees a single
+    // fail-closed Err rather than a half-committed Succeeded step.
+    // Slot evidence is emitted regardless of signal class because slot
+    // writes are observable even on AwaitingAction/AwaitingWait paths.
     emit_slot_evidence(run, evidence, collect_states, step.node)?;
     if signal_is_success(signal) {
+        mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
         evidence.push_step_succeeded(step.pc, step.node.output);
+    } else {
+        // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
+        // no StepSucceeded event, but slot evidence above is still valid.
+        mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
     }
     Ok(())
 }
@@ -192,10 +203,11 @@ mod tests {
     use crate::engine::types::{
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
     };
-    use crate::primitives::collect::CollectStates;
+    use crate::primitives::collect::{CollectPaginationState, CollectStates};
     use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
     use vb_core::capability::{Capability, CapabilitySet};
     use vb_core::engine::StepBudget;
+    use vb_core::errors::EngineError;
     use vb_core::frame::RunFrame;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use vb_core::value::{ConstValue, SlotValue};
@@ -1381,5 +1393,130 @@ mod tests {
             return Err("expected SlotWritten(0, Bool(true))".into());
         }
         Ok(())
+    }
+
+    // RE-011: when the evidence collector runs out of capacity during
+    // finish_drive_step, the drive loop must surface the typed error
+    // and the run frame must NOT show step 0 as Succeeded (no
+    // half-committed state). The Collect* branch in emit_slot_evidence
+    // calls push_slot_written_with_extra with extra = Some(_), which
+    // returns Err(CollectEvidenceCapacityExceeded) at capacity 0. The
+    // mark_step_after_signal path is intentionally swapped to run
+    // AFTER emit_slot_evidence so that a capacity overflow leaves the
+    // step in its pre-success Running state and the caller sees a
+    // single fail-closed Err rather than a half-committed Succeeded
+    // step.
+    #[test]
+    fn re_011_evidence_capacity_overflow_does_not_mark_step_succeeded() -> Result<(), String> {
+        // CollectStart at step 0 forces emit_slot_evidence down the
+        // collect branch (push_slot_written_with_extra) instead of the
+        // silent-drop push_slot_written_with_taint branch that the
+        // previous SetConst+Finish workflow used.
+        let wf = mkwf(
+            vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)],
+            2,
+        )?;
+        let mut run = mkr(3, 2)?;
+        let mut store = ValueStore::new();
+        let source_page: Box<[SlotValue]> =
+            Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
+        let source_list_id = store
+            .insert_list(source_page)
+            .map_err(|e| format!("{e}"))?;
+        run.write_slot(SlotIdx::new(0), SlotValue::List(source_list_id))
+            .map_err(|e| format!("{e}"))?;
+        let mut budget = StepBudget::new(10);
+        // Capacity 0: push_slot_written_with_extra must surface
+        // CollectEvidenceCapacityExceeded instead of silently dropping.
+        let mut ev = EvidenceCollector::with_capacity(0);
+        let mut cs = CollectStates::new();
+        // Pre-populate CollectStates so capture_state returns Some(_)
+        // for (run_id, slot 1). Even though collect_start will upsert a
+        // new state during execution, the resulting state still satisfies
+        // capture_state, so emit_slot_evidence takes the extra path.
+        cs.upsert(CollectPaginationState {
+            run_id: run.run_id(),
+            collector_slot: SlotIdx::new(1),
+            source: source_list_id,
+            current_page: source_list_id,
+            cursor: 0,
+            page_size: 1,
+            item_count: 2,
+            limit: 100,
+            time_limit_ms: None,
+            start_millis: 0,
+        })
+        .map_err(|e| format!("{e}"))?;
+
+        let result = drive_deterministic_full(
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut ev,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+
+        // RE-011 assertion 1: drive must surface the typed
+        // CollectEvidenceCapacityExceeded error rather than completing
+        // successfully and silently dropping the evidence event.
+        let err = match result {
+            Ok(sig) => {
+                return Err(format!(
+                    "RE-011: drive returned Ok({sig:?}); expected Err(CollectEvidenceCapacityExceeded)"
+                ));
+            }
+            Err(e) => e,
+        };
+        match err {
+            RuntimeEngineError::Core(EngineError::CollectEvidenceCapacityExceeded {
+                run_id,
+                slot,
+                capacity,
+                ..
+            }) => {
+                if run_id != run.run_id() {
+                    return Err(format!(
+                        "RE-011: capacity error carries wrong run_id: {run_id:?}"
+                    ));
+                }
+                if slot != SlotIdx::new(1) {
+                    return Err(format!(
+                        "RE-011: capacity error carries wrong slot: {slot:?}"
+                    ));
+                }
+                if capacity != 0 {
+                    return Err(format!(
+                        "RE-011: capacity error carries wrong capacity: {capacity}"
+                    ));
+                }
+            }
+            other => {
+                return Err(format!(
+                    "RE-011: unexpected drive error variant: {other:?}"
+                ));
+            }
+        }
+
+        // RE-011 assertion 2: step 0 must NOT be Succeeded. The fix
+        // swaps emit_slot_evidence ahead of mark_step_after_signal so
+        // the capacity error short-circuits before the state
+        // transition is committed. Step 0 stays in its pre-success
+        // Running state (set by begin_drive_step).
+        let step_state = run
+            .step_state(StepIdx::new(0))
+            .map_err(|e| format!("{e}"))?;
+        match step_state {
+            vb_core::frame::StepState::Succeeded => Err(format!(
+                "RE-011: step 0 marked Succeeded despite capacity overflow (half-committed state)"
+            )),
+            vb_core::frame::StepState::Running => Ok(()),
+            other => Err(format!(
+                "RE-011: step 0 in unexpected state {other:?}; expected Running (pre-success, fail-closed)"
+            )),
+        }
     }
 }
