@@ -429,6 +429,17 @@ impl Shard {
         run: RunId,
         step: StepIdx,
     ) -> RuntimeResult<()> {
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        state.frame.step_state(step).map_err(|_| RuntimeError::RunNotFound)?;
+        // Evidence chain: emit StepSucceeded for legacy action completion.
+        // Legacy path has no output slot information.
+        // Journal append FIRST so a journal failure does not diverge frame and journal.
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: SlotIdx::ZERO,
+            attempt: 1,
+        })?;
         let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
@@ -436,14 +447,6 @@ impl Shard {
             .map_err(|_| RuntimeError::RunNotFound)?;
         self.trace_ring
             .push(TraceEvent::ActionCompleted { run, step });
-        // Evidence chain: emit StepSucceeded for legacy action completion.
-        // Legacy path has no output slot information.
-        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
-            run,
-            step,
-            output: SlotIdx::ZERO,
-            attempt: 1,
-        })?;
         self.drive_run(run)
     }
 

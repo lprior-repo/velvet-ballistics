@@ -235,6 +235,105 @@ fn legacy_action_completed_unknown_run_returns_run_not_found() {
 }
 
 #[test]
+fn legacy_action_completion_journal_first() {
+    // Regression test for RS-010:
+    // handle_legacy_action_completion must append the journal event BEFORE mutating
+    // the run frame. On journal append failure, the frame MUST remain unchanged.
+    struct LegacyStepFailsJournal;
+    impl crate::journal::RuntimeJournal for LegacyStepFailsJournal {
+        fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            self.append_sequenced(event, vb_storage::EventSeq::ZERO)
+        }
+        fn append_sequenced(
+            &self,
+            event: RuntimeJournalEvent,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            // Reject the legacy completion's StepSucceeded append with a typed
+            // JournalError so the shard surfaces a StorageJournalAppend failure.
+            if matches!(event, RuntimeJournalEvent::StepSucceeded { .. }) {
+                return Err(RuntimeError::StorageJournalAppend {
+                    source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+                });
+            }
+            Ok(())
+        }
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+    }
+
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(LegacyStepFailsJournal);
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let run = RunId::new(50_010);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Capture frame invariants BEFORE the failing legacy completion.
+    let frame_before = shard
+        .run_state_get(run)
+        .expect("run should remain active after submit")
+        .frame
+        .clone();
+    let pc_before = frame_before.pc();
+    let step_state_before = frame_before.step_state(StepIdx::ZERO);
+    let executed_before = frame_before.executed();
+    let counters_before = shard.counters().snapshot();
+    // Pre-existing journal sequence value (if any) for the run.
+    let seq_before = shard.journal_sequences.get(&run).copied();
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompletedLegacy {
+            run,
+            step: StepIdx::ZERO,
+        }),
+        Ok(())
+    );
+    // The typed StorageJournalAppend error MUST surface (no swallowed map_err(|_| ...)).
+    let result = shard.tick();
+    assert!(
+        matches!(
+            &result,
+            Err(RuntimeError::StorageJournalAppend { source })
+                if matches!(source.as_ref(), vb_storage::JournalError::WriteLockPoisoned)
+        ),
+        "expected typed StorageJournalAppend(WriteLockPoisoned), got {result:?}"
+    );
+
+    // Frame MUST remain unchanged — the journal-first ordering guarantees that
+    // a failed append does not diverge the frame from the journal.
+    let frame_after = shard
+        .run_state_get(run)
+        .expect("run must remain active after rejected legacy completion")
+        .frame
+        .clone();
+    assert_eq!(frame_after.pc(), pc_before, "pc must be unchanged");
+    assert_eq!(
+        frame_after.step_state(StepIdx::ZERO),
+        step_state_before,
+        "step state must be unchanged"
+    );
+    assert_eq!(
+        frame_after.executed(),
+        executed_before,
+        "executed count must be unchanged"
+    );
+    assert_eq!(frame_after, frame_before, "frame must be byte-equal");
+    // Counters and journal sequence MUST remain unchanged.
+    assert_eq!(shard.counters().snapshot(), counters_before);
+    assert_eq!(shard.journal_sequences.get(&run).copied(), seq_before);
+}
+
+#[test]
 fn action_failure_without_handler_fails_run() -> Result<(), String> {
     let mut shard = Shard::new(small_config());
     let wf = require_workflow("suspended", suspended_workflow())?;

@@ -133,41 +133,64 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 
 /// Derives the final lifecycle state from a sequence of journal events.
 ///
-/// The last event in the sequence determines the final state:
-/// - `RunCancelled` → Cancelled
-/// - `RunResumed` → Active
-/// - `RunRetried` → Active
-/// - `RunAnswered` → Completed
-/// - `RunFinished` → Completed
-/// - `RunFailedEvent` → Failed
+/// The last event in the sequence determines the final state. Every known
+/// `JournalEvent` variant is enumerated explicitly:
 ///
-/// If no events exist, defaults to Pending.
-#[allow(unreachable_patterns)]
+/// - `RunCancelled`, `RunKilled` → `Cancelled` (terminal)
+/// - `RunFinished`, `RunAnswered` → `Completed` (terminal)
+/// - `RunFailedEvent`, `ActionFailedEvent` → `Failed` (non-terminal; retry may
+///   transition a run away from `Failed`)
+/// - `WaitScheduledEvent`, `AskScheduledEvent`, `AskAnsweredEvent` →
+///   `WaitingAnswer`
+/// - All other variants (`RunAccepted`, `RunAdmission`, `StepStarted`,
+///   `StepSucceeded`, `ActionScheduled`, `ActionScheduledTicket`,
+///   `ActionCompletedEvent`, `ActionCompletedEnvelope`, `SlotWrittenEvent`,
+///   `WaitResolvedEvent`, `RetryScheduledEvent`, `RunResumed`, `RunRetried`,
+///   `AskTimedOutEvent`) → `Active`
+///
+/// No wildcard arm is used. `JournalEvent` is `#[non_exhaustive]`, but the
+/// compiler still treats a match within the defining crate as exhaustive
+/// when every variant is enumerated. If a new variant is added later the
+/// build will fail, forcing it to be handled explicitly. Downstream crates
+/// that consume this function may keep their own wildcards.
+///
+/// If no events exist, defaults to `Pending`.
+#[must_use]
 pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleState {
-    events
-        .last()
-        .map(|e| match e {
-            JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
-            JournalEvent::RunResumed { .. } => LifecycleState::Active,
-            JournalEvent::RunRetried { .. } => LifecycleState::Active,
-            JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
-            JournalEvent::RunFinished { .. } => LifecycleState::Completed,
-            JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
-            JournalEvent::RunAccepted { .. } => LifecycleState::Active,
-            JournalEvent::RunAdmission { .. } => LifecycleState::Active,
-            JournalEvent::StepStarted { .. } => LifecycleState::Active,
-            JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
-            JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
-            JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
-            JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
-            JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
-            JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-            JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-            JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
-            JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
-            _ => LifecycleState::Active,
-        })
-        .unwrap_or(LifecycleState::Pending)
+    events.last().map(event_to_lifecycle).unwrap_or(LifecycleState::Pending)
+}
+
+/// Map a single `JournalEvent` to the lifecycle state implied by that event.
+///
+/// Enumerates every known variant of `JournalEvent` so that adding a new
+/// variant produces a compile-time error in the defining crate.
+#[must_use]
+pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
+    match event {
+        JournalEvent::RunAccepted { .. } => LifecycleState::Active,
+        JournalEvent::RunAdmission { .. } => LifecycleState::Active,
+        JournalEvent::StepStarted { .. } => LifecycleState::Active,
+        JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
+        JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
+        JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
+        JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
+        JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
+        JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
+        JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
+        JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
+        JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
+        JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
+        JournalEvent::WaitResolvedEvent { .. } => LifecycleState::Active,
+        JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
+        JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
+        JournalEvent::RunKilled { .. } => LifecycleState::Cancelled,
+        JournalEvent::RunFinished { .. } => LifecycleState::Completed,
+        JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
+        JournalEvent::RunResumed { .. } => LifecycleState::Active,
+        JournalEvent::RunRetried { .. } => LifecycleState::Active,
+        JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
+        JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
+    }
 }
 
 #[cfg(test)]
