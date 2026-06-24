@@ -401,6 +401,7 @@ mod unknown_record_kind_rejection {
         Ok(())
     }
 
+    #[test]
     fn decode_accepts_all_known_journal_event_kinds() -> Result<(), JournalError> {
         // Given: record headers with kinds 10..=29 and 31 (valid for MAGIC_JOURNAL_EVENT)
         let known_journal_kinds: Vec<u16> = vec![

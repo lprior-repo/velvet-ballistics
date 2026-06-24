@@ -980,24 +980,6 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::RetryScheduledEvent { .. } => {
                     summary.suspensions = summary.suspensions.saturating_add(1);
                 }
-                JournalEvent::ActionCompletedEvent { .. } => {
-                    summary.action_completed = summary.action_completed.saturating_add(1);
-                }
-                JournalEvent::ActionCompletedEnvelope { .. } => {
-                    summary.action_completed = summary.action_completed.saturating_add(1);
-                }
-                JournalEvent::ActionFailedEvent { .. } => {
-                    summary.action_failed = summary.action_failed.saturating_add(1);
-                }
-                JournalEvent::WaitScheduledEvent { .. } => {
-                    summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
-                }
-                JournalEvent::AskScheduledEvent { .. } => {
-                    summary.ask_scheduled = summary.ask_scheduled.saturating_add(1);
-                }
-                JournalEvent::AskAnsweredEvent { .. } => {
-                    summary.ask_answered = summary.ask_answered.saturating_add(1);
-                }
                 JournalEvent::RunCancelled { .. } => {
                     summary.terminal = Some(TerminalSummary::Cancelled);
                 }
