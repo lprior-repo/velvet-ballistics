@@ -184,6 +184,12 @@ pub enum RuntimeError {
     },
     /// Migrate directive targeted the source shard (self-migrate).
     MigrateSelf,
+    /// Introspection registry has issued the maximum number of epochs
+    /// (u64::MAX) and can no longer guarantee unique epoch assignment for
+    /// new or replaced handles. Without a typed error here, saturating
+    /// arithmetic silently re-issued `u64::MAX` to subsequent
+    /// registrations, allowing a stale handle to drop the live handle.
+    IntrospectionEpochExhausted,
 }
 
 impl From<std::io::Error> for RuntimeError {
