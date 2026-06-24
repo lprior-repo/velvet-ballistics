@@ -18,10 +18,10 @@ fn push_succeeds_when_ring_has_space() {
 }
 
 #[test]
-fn len_and_is_empty_track_pending_ring_events() {
+fn pending_len_and_pending_is_empty_track_drainable_ring_events() {
     let mut ring = TraceRing::new(4);
-    assert_eq!(ring.len(), 0);
-    assert_eq!(ring.is_empty(), true);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
 
     assert_eq!(
         ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }),
@@ -32,22 +32,22 @@ fn len_and_is_empty_track_pending_ring_events() {
         true
     );
 
-    assert_eq!(ring.len(), 2);
-    assert_eq!(ring.is_empty(), false);
+    assert_eq!(ring.pending_len(), 2);
+    assert_eq!(ring.pending_is_empty(), false);
 
     let mut drained = Vec::new();
     ring.drain_into(1, &mut drained);
-    assert_eq!(ring.len(), 1);
-    assert_eq!(ring.is_empty(), false);
+    assert_eq!(ring.pending_len(), 1);
+    assert_eq!(ring.pending_is_empty(), false);
 
     let remaining = ring.drain();
     assert_eq!(remaining.len(), 1);
-    assert_eq!(ring.len(), 0);
-    assert_eq!(ring.is_empty(), true);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
 }
 
 #[test]
-fn len_and_is_empty_ignore_retained_snapshot_history_after_drain() {
+fn pending_len_and_pending_is_empty_ignore_retained_snapshot_history_after_drain() {
     let mut ring = TraceRing::new(4);
     assert_eq!(
         ring.push(TraceEvent::RunSubmitted { run: RunId::new(7) }),
@@ -59,8 +59,42 @@ fn len_and_is_empty_ignore_retained_snapshot_history_after_drain() {
 
     let snapshot = ring.snapshot_for_run(RunId::new(7), 4);
     assert_eq!(snapshot.len(), 1);
-    assert_eq!(ring.len(), 0);
-    assert_eq!(ring.is_empty(), true);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
+    assert_eq!(ring.history_len(), 1);
+    assert_eq!(ring.history_is_empty(), false);
+}
+
+#[test]
+fn pending_len_and_history_len_track_independent_queues() {
+    let mut ring = TraceRing::new(4);
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.history_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
+    assert_eq!(ring.history_is_empty(), true);
+
+    let n: usize = 3;
+    for i in 0..n {
+        assert_eq!(
+            ring.push(TraceEvent::RunSubmitted {
+                run: RunId::new(i as u64 + 1)
+            }),
+            true
+        );
+    }
+
+    assert_eq!(ring.pending_len(), n);
+    assert_eq!(ring.history_len(), n);
+    assert_eq!(ring.pending_is_empty(), false);
+    assert_eq!(ring.history_is_empty(), false);
+
+    let drained = ring.drain();
+    assert_eq!(drained.len(), n);
+
+    assert_eq!(ring.pending_len(), 0);
+    assert_eq!(ring.pending_is_empty(), true);
+    assert_eq!(ring.history_len(), n);
+    assert_eq!(ring.history_is_empty(), false);
 }
 
 #[test]

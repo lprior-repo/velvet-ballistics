@@ -97,7 +97,7 @@ fn verify_trace_ring_bounds() {
         let _drained = ring.drain();
 
         // Invariant: len never exceeds capacity.
-        assert!(ring.len() <= ring.capacity());
+        assert!(ring.pending_len() <= ring.capacity());
     }
 }
 

@@ -442,7 +442,7 @@ impl Runtime {
             let frame_pool_free = u32::try_from(fp_free).unwrap_or(u32::MAX);
             let frame_pool_total = u32::try_from(fp_total).unwrap_or(u32::MAX);
             let trace_capacity = shard.trace_ring().capacity();
-            let trace_len = shard.trace_ring().len();
+            let trace_len = shard.trace_ring().pending_len();
             let trace_ring_fill_pct = if trace_capacity > 0 {
                 // SAFETY: trace_len and trace_capacity are bounded by configuration
                 // (typically 4096). Safe lossless narrowing to u32 for metric calculation.
