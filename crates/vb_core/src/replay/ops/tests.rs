@@ -2052,6 +2052,183 @@ fn ce003_replay_multi_segment_path_joins_every_segment_taint() -> Result<(), Cor
 }
 
 #[test]
+fn ce003_replay_root_taint_joins_into_accumulator() -> Result<(), CoreError> {
+    // Regression for vb-a68zo follow-up vb-yt5wq: the original CE-003 tests
+    // only exercised segment taint propagation (root slot was always Clean).
+    // This test sets the root slot taint to Secret while the field it points
+    // at is Clean. A correct replay accessor must join the root taint into
+    // the accumulator so the final taint is Secret. Mutation resistance:
+    // deleting the `accumulated_taint = run.read_taint(program.root)` line
+    // (or any other "drop root taint" mutation in `eval_accessor_for_replay`)
+    // would leave the accumulator at Clean and this test would fail.
+    let field_sym = SymbolId::new(0);
+    let mut store = ValueStore::new();
+    let fields = vec![crate::value_store::ObjectField::with_taint(
+        field_sym,
+        SlotValue::I64(99),
+        Taint::Clean,
+    )]
+    .into_boxed_slice();
+    let obj_handle = store.insert_object(fields)?;
+
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(1)),
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![],
+        vec![],
+        vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![PathSegment::Field(field_sym)].into(),
+        }],
+    )?;
+
+    let mut run = make_frame(4)?;
+    // Root slot carries Secret taint; field itself is Clean. The accessor
+    // must surface Secret as the joined accumulator value.
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj_handle), Taint::Secret)?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(99) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: accessor should resolve object field to I64(99)",
+        });
+    }
+    if taint != Taint::Secret {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: replay accessor must join root slot taint into accumulator",
+        });
+    }
+    Ok(())
+}
+
+#[test]
+fn ce003_replay_lattice_random_respected() -> Result<(), CoreError> {
+    // Regression for vb-a68zo follow-up vb-yt5wq: the original CE-003 tests
+    // only ever produced Taint::Secret. The taint lattice orders
+    //   Clean(0) < DerivedFromSecret(1) < Secret(2) < Random(3) < TimeDependent(4)
+    // via `join_taint` (max-discriminant wins). This test puts a Random
+    // taint on the deepest segment and a Secret taint on the root slot,
+    // then asserts the accumulator is Random -- proving the join uses the
+    // lattice's max-rule rather than a hard-coded "Secret" shortcut.
+    // Mutation resistance: replacing `join_taint(accumulated_taint, segment_taint)`
+    // with identity (e.g. just `accumulated_taint`) would leave the result
+    // at Secret, and this test would fail.
+    let field_sym = SymbolId::new(0);
+    let mut store = ValueStore::new();
+
+    let inner_obj = store.insert_object(
+        vec![crate::value_store::ObjectField::with_taint(
+            field_sym,
+            SlotValue::I64(11),
+            Taint::Random,
+        )]
+        .into_boxed_slice(),
+    )?;
+    let inner_list = store.insert_list_with_taint(
+        vec![SlotValue::Object(inner_obj)].into_boxed_slice(),
+        vec![Taint::Clean].into_boxed_slice(),
+    )?;
+    let outer_list = store.insert_list_with_taint(
+        vec![SlotValue::List(inner_list)].into_boxed_slice(),
+        vec![Taint::Clean].into_boxed_slice(),
+    )?;
+
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(1)),
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![],
+        vec![],
+        vec![AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![
+                PathSegment::Index(0),
+                PathSegment::Index(0),
+                PathSegment::Field(field_sym),
+            ]
+            .into(),
+        }],
+    )?;
+
+    let mut run = make_frame(4)?;
+    // Root slot is Secret -- must lose to the deeper Random segment under
+    // the lattice join. Intermediate lists/objects stay Clean.
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(outer_list), Taint::Secret)?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(11) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: deep accessor should resolve to I64(11)",
+        });
+    }
+    if taint != Taint::Random {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "CE-003: replay must respect lattice -- Random(3) outranks Secret(2)",
+        });
+    }
+    Ok(())
+}
+
+#[test]
 fn blackhat_unsupported_op_unique_returns_error() -> Result<(), CoreError> {
     check_unsupported_op_returns_error(ExprOp::Unique)
 }
