@@ -48,7 +48,11 @@ impl FjallJournal {
 
     /// Loads all run metadata records in key order.
     pub fn run_headers(&self) -> Result<Vec<RunHeaderRecord>, JournalError> {
-        let mut headers = Vec::new();
+        // CC-003 capacity hint: 16 is a Holzmann-Rust bounded knowledge
+        // estimate for the typical case (per-workflow running set of
+        // active runs). The Vec grows via standard doubling if more
+        // headers exist, but this avoids the initial 0->4 doubling.
+        let mut headers = Vec::with_capacity(16);
         let prefix = [PREFIX_RUN_HEADER];
         for item in self.run_header.prefix(prefix) {
             let value = item.value()?;

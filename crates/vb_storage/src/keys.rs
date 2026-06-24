@@ -132,6 +132,72 @@ pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
     Ok(encoded)
 }
 
+
+/// Encodes a `StorageKey` into the supplied scratch buffer.
+///
+/// CC-003 fix: callers that encode keys in a tight loop (e.g. an index
+/// rebuild, a batched query, or a metadata scan) reuse a single
+/// `Vec<u8>` instead of allocating one fresh `Vec<u8>` per call.
+///
+/// The buffer is *cleared and overwritten* on each call — the existing
+/// contents are not preserved. To accumulate results, push the
+/// returned slice into a caller-owned `Vec` rather than reusing the
+/// scratch buffer.
+///
+/// # Errors
+///
+/// Returns `JournalError` variants produced by the typed encoders
+/// (e.g. capacity-checked `RunId::new`) and `JournalError::ArtifactMalformed`
+/// if the scratch buffer cannot reserve `RUN_ONLY_KEY_BYTES`.
+pub fn encode_key_into(
+    key: StorageKey,
+    buf: &mut Vec<u8>,
+) -> Result<(), JournalError> {
+    buf.clear();
+    // Hint the next allocation so the smallest key variant (9 bytes)
+    // avoids the standard doubling strategy.
+    buf.try_reserve(RUN_ONLY_KEY_BYTES)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    match key {
+        StorageKey::WorkflowSource { digest } => {
+            buf.extend_from_slice(&workflow_source_key(digest)?);
+        }
+        StorageKey::CompiledIr { digest } => {
+            buf.extend_from_slice(&compiled_ir_key(digest)?);
+        }
+        StorageKey::RunHeader { run } => {
+            buf.extend_from_slice(&run_header_key(run)?);
+        }
+        StorageKey::RunEvent { run, seq } => {
+            buf.extend_from_slice(&run_event_key(run, seq)?);
+        }
+        StorageKey::RunSnapshot { run, seq } => {
+            buf.extend_from_slice(&run_snapshot_key(run, seq)?);
+        }
+        StorageKey::Blob { digest } => {
+            buf.extend_from_slice(&blob_key(digest)?);
+        }
+        StorageKey::IndexStatus {
+            state,
+            timestamp,
+            run,
+        } => {
+            buf.extend_from_slice(&index_status_key(state, timestamp, run)?);
+        }
+        StorageKey::IndexWorkflow { workflow, run } => {
+            buf.extend_from_slice(&index_workflow_key(workflow, run)?);
+        }
+        StorageKey::IndexAction {
+            action,
+            run,
+            step,
+        } => {
+            buf.extend_from_slice(&index_action_key(action, run, step)?);
+        }
+    }
+    Ok(())
+}
+
 /// Storage key prefix classification for filter-by-kind operations.
 ///
 /// Each variant corresponds to one of the nine known key prefixes.
