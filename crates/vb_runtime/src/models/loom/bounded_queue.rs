@@ -54,6 +54,7 @@ impl BoundedQueue {
         self.available.load(Ordering::SeqCst)
     }
 
+    #[allow(dead_code)]
     fn capacity(&self) -> usize {
         self.capacity
     }

@@ -10,6 +10,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[allow(dead_code)]
 enum ActionState {
     Pending,
     Completed,
