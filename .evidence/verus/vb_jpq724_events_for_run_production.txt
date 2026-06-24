@@ -1,70 +1,18 @@
 [verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
-note: automatically chose triggers for this expression:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:219:17
-    |
-219 |               &&& (forall|i: int|
-    |  _________________^
-220 | |                 0 <= i && i < events.len() as int ==> events[i as int].run_id == run)
-    | |_____________________________________________________________________________________^
+error: expected identifier
+  --> verification/verus/vb_jpq724_events_for_run_production.rs:59:43
+   |
+59 | pub assume_specification[<FjallJournal as ?>::events_for_run](
+   |                                           ^
 
-note:   trigger 1 of 1:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:220:55
-    |
-220 |                 0 <= i && i < events.len() as int ==> events[i as int].run_id == run)
-    |                                                       ^^^^^^^^^^^^^^^^
+error[E0432]: unresolved import `vb_storage`
+  --> verification/verus/vb_jpq724_events_for_run_production.rs:28:5
+   |
+28 | use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
+   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `vb_storage`
+   |
+   = help: you might be missing a crate named `vb_storage`
 
-note: automatically chose triggers for this expression:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:260:9
-    |
-260 |         forall|i: int| 0 <= i && i < events.len() as int ==> events[i as int].run_id == run,
-    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-note:   trigger 1 of 1:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:260:62
-    |
-260 |         forall|i: int| 0 <= i && i < events.len() as int ==> events[i as int].run_id == run,
-    |                                                              ^^^^^^^^^^^^^^^^
-
-note: automatically chose triggers for this expression:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:262:5
-    |
-262 | /     assert_forall_by(
-263 | |         |i: int|
-264 | |             {
-265 | |                 requires(0 <= i && i < events.len() as int);
-...   |
-268 | |             },
-269 | |     );
-    | |_____^
-
-note:   trigger 1 of 1:
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:266:25
-    |
-266 |                 ensures(events[i as int].run_id == run);
-    |                         ^^^^^^^^^^^^^^^^
-
-note: Verus printed one or more automatically chosen quantifier triggers
-      because it had low confidence in the chosen triggers.
-      To suppress these messages, do one of the following:
-        (1) manually annotate a single desired trigger using #[trigger]
-            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
-        (2) manually annotate multiple desired triggers using #![trigger ...]
-            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
-        (3) accept the automatically chosen trigger using #![auto]
-            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
-        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
-      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
-      the theorem prover instantiates a quantifier whenever some expression matches the
-      pattern specified by one of the quantifier's triggers.)
-   --> verification/verus/vb_jpq724_events_for_run_production.rs:262:5
-    |
-262 | /     assert_forall_by(
-263 | |         |i: int|
-264 | |             {
-265 | |                 requires(0 <= i && i < events.len() as int);
-...   |
-268 | |             },
-269 | |     );
-    | |_____^
-
-verification results:: 5 verified, 0 errors
+For more information about this error, try `rustc --explain E0432`.

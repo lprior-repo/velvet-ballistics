@@ -10,5 +10,3 @@ PASS verus verification/verus/taint_lattice.rs
 PASS verus verification/verus/step_state_machine.rs
 PASS verus verification/verus/step_budget.rs
 PASS verus verification/verus/resource_budget.rs
-PASS verus verification/verus/vb_jpq724_events_for_run_production.rs
-VERUS_TRUST_SCAN_OK

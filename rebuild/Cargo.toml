@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/vb_core",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+rust-version = "nightly"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "forbid"
+panic_in_result_fn = "forbid"
+todo = "forbid"
+unimplemented = "forbid"
+dbg_macro = "forbid"
+indexing_slicing = "deny"
+string_slice = "deny"
+get_unwrap = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+let_underscore_must_use = "deny"
+result_large_err = "deny"
+
+[profile.hardened]
+inherits = "release"
+debug = "line-tables-only"
+lto = "fat"
+codegen-units = 1
+strip = true
