@@ -177,7 +177,146 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
             _ => {}
         }
     }
+    // Reject nested `TogetherStart` (RE-001, option (b)): nesting causes
+    // `compute_max_parallel_in_flight` (in vb_runtime::engine::drive) to
+    // report a misleading per-node maximum and yields spurious
+    // `ParallelLimitExceeded` failures at runtime. Surface the structural
+    // problem at validation time with a typed error.
+    validate_no_nested_together(parts)?;
     Ok(())
+}
+
+
+/// Rejects `TogetherStart` nodes that are reachable from the body of
+/// another `TogetherStart` node.
+///
+/// `compute_max_parallel_in_flight` (in `vb_runtime::engine::drive`)
+/// returns a per-node maximum branch count rather than the true peak
+/// parallel-in-flight, so a nested `TogetherStart` produces a
+/// `ParallelLimitExceeded` at runtime even when no real concurrency
+/// limit has been violated. Surfacing the structural error at compile
+/// time (RE-001, option (b)) gives operators a typed, deterministic
+/// rejection with a precise location instead of a misleading runtime
+/// signal.
+pub fn validate_no_nested_together(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let node_count = parts.nodes.len();
+    // Identify all `TogetherStart` step indices for quick lookup.
+    let together_starts: Vec<StepIdx> = parts
+        .nodes
+        .iter()
+        .filter_map(|node| match &node.kind {
+            CompiledNodeKind::TogetherStart { .. } => Some(node.id),
+            _ => None,
+        })
+        .collect();
+    if together_starts.len() < 2 {
+        // Cannot be nested with zero or one `TogetherStart` nodes.
+        return Ok(());
+    }
+    let together_set: std::collections::BTreeSet<StepIdx> =
+        together_starts.iter().copied().collect();
+    for node in &parts.nodes {
+        let CompiledNodeKind::TogetherStart { branches, join } = &node.kind else {
+            continue;
+        };
+        let outer = node.id;
+        for branch_entry in branches.iter() {
+            let entry_idx = branch_entry.as_usize();
+            if entry_idx >= node_count {
+                // Out-of-bounds branch is reported by `validate_transition_target`.
+                continue;
+            }
+            let join_idx = join.as_usize();
+            if join_idx >= node_count {
+                continue;
+            }
+            // Depth-first walk from `branch_entry`; stop at the `join` step
+            // (which is the outer TogetherStart's join, exclusive). The walk
+            // follows the linear `next` chain emitted by the compiler for
+            // TogetherStart branch bodies, so it stays bounded to the outer
+            // TogetherStart's body.
+            if walk_contains_together_start(
+                &parts.nodes,
+                &together_set,
+                entry_idx,
+                join_idx,
+                outer,
+            ) {
+                return Err(WorkflowError::NestedTogether {
+                    outer,
+                    inner: find_inner_together_start(
+                        &parts.nodes,
+                        &together_set,
+                        entry_idx,
+                        join_idx,
+                        outer,
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Walks nodes starting at `start_idx` and following each node's `next`
+/// field, stopping once `stop_idx` is reached (exclusive). Returns `true`
+/// if any reachable node is a `TogetherStart` distinct from `outer`.
+fn walk_contains_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<StepIdx>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> bool {
+    let mut visited: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+    let mut stack: Vec<usize> = vec![start_idx];
+    while let Some(idx) = stack.pop() {
+        if idx >= nodes.len() || idx == stop_idx || !visited.insert(idx) {
+            continue;
+        }
+        let Ok(step_u16) = u16::try_from(idx) else { continue; };
+        let step = StepIdx::new(step_u16);
+        if step != outer && together_set.contains(&step) {
+            return true;
+        }
+        let Some(node) = nodes.get(idx) else {
+            continue;
+        };
+        if let Some(next) = node.next {
+            stack.push(next.as_usize());
+        }
+    }
+    false
+}
+
+/// Helper that returns the first inner `TogetherStart` step reachable
+/// from `start_idx` (without crossing `stop_idx`).
+fn find_inner_together_start(
+    nodes: &[crate::workflow::CompiledNode],
+    together_set: &std::collections::BTreeSet<StepIdx>,
+    start_idx: usize,
+    stop_idx: usize,
+    outer: StepIdx,
+) -> StepIdx {
+    let mut visited: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+    let mut stack: Vec<usize> = vec![start_idx];
+    while let Some(idx) = stack.pop() {
+        if idx >= nodes.len() || idx == stop_idx || !visited.insert(idx) {
+            continue;
+        }
+        let Ok(step_u16) = u16::try_from(idx) else { return outer; };
+        let step = StepIdx::new(step_u16);
+        if step != outer && together_set.contains(&step) {
+            return step;
+        }
+        let Some(node) = nodes.get(idx) else {
+            continue;
+        };
+        if let Some(next) = node.next {
+            stack.push(next.as_usize());
+        }
+    }
+    outer
 }
 
 fn validate_branch_targets(

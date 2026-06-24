@@ -30,8 +30,8 @@ pub use step::{
     journal_action_suspended, resume_action_completion, resume_action_failure, step_once,
 };
 pub use validate::{
-    validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
-    validate_transition_target,
+    validate_compiled_workflow, validate_node_bounds, validate_no_nested_together,
+    validate_resource_contract, validate_transition_target,
 };
 
 use crate::ids::RunId;
