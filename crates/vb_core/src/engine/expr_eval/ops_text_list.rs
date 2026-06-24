@@ -9,6 +9,45 @@ use super::stack::{
     ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
 };
 
+// ===== Test-only OOM injection hook =====
+// CE-005 follow-up (vb-kepe8): a thread-local test-only overflow hook
+// (option (b) from the follow-up bead). Operators call a `cfg(test)`
+// helper immediately after `try_reserve_exact` returns Ok. When the
+// hook is armed, the helper returns `Err(AllocationFailed)` even
+// though the underlying reservation succeeded — that is the only
+// way for tests to deterministically exercise the operator's own
+// post-reservation branch without forcing the global allocator to
+// fail. In release builds, both the helper and the call sites are
+// `cfg(test)`-gated, so production is unchanged.
+#[cfg(test)]
+mod oom_inject {
+    use core::cell::Cell;
+
+    thread_local! {
+        static REMAINING: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(super) fn arm(count: usize) {
+        REMAINING.with(|c| c.set(count));
+    }
+
+    pub(super) fn reset() {
+        REMAINING.with(|c| c.set(0));
+    }
+
+    pub(super) fn dec() -> bool {
+        REMAINING.with(|c| {
+            let cur = c.get();
+            if cur == 0 {
+                false
+            } else {
+                c.set(cur - 1);
+                true
+            }
+        })
+    }
+}
+
 // ===== Text operations =====
 
 pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
@@ -172,7 +211,16 @@ pub(super) fn eval_append(
     let items = store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
+    let mut new_items: Vec<SlotValue> = Vec::new();
+    let new_len = items.len().checked_add(1).ok_or(EngineError::AllocationFailed)?;
+    new_items.try_reserve_exact(new_len).map_err(|_| EngineError::AllocationFailed)?;
+    #[cfg(test)]
+    {
+        if oom_inject::dec() {
+            return Err(EngineError::AllocationFailed);
+        }
+    }
+    new_items.extend_from_slice(items);
     new_items.push(item);
     let new_list = store
         .insert_list(new_items.into_boxed_slice())
@@ -187,12 +235,29 @@ pub(super) fn eval_append_if(
     let (list, item, condition) = pop_triple(stack)?;
     let list_id = expect_list(list)?;
     let cond = super::stack::expect_bool(condition)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
+    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
+    let mut new_items: Vec<SlotValue> = Vec::new();
+    let base_len = items.len();
     if cond {
+        let new_len = base_len.checked_add(1).ok_or(EngineError::AllocationFailed)?;
+        new_items.try_reserve_exact(new_len).map_err(|_| EngineError::AllocationFailed)?;
+        #[cfg(test)]
+        {
+            if oom_inject::dec() {
+                return Err(EngineError::AllocationFailed);
+            }
+        }
+        new_items.extend_from_slice(items);
         new_items.push(item);
+    } else {
+        new_items.try_reserve_exact(base_len).map_err(|_| EngineError::AllocationFailed)?;
+        #[cfg(test)]
+        {
+            if oom_inject::dec() {
+                return Err(EngineError::AllocationFailed);
+            }
+        }
+        new_items.extend_from_slice(items);
     }
     let new_list = store
         .insert_list(new_items.into_boxed_slice())
@@ -210,6 +275,13 @@ pub(super) fn eval_unique(
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut seen: Vec<SlotValue> = Vec::new();
+    seen.try_reserve_exact(items.len()).map_err(|_| EngineError::AllocationFailed)?;
+    #[cfg(test)]
+    {
+        if oom_inject::dec() {
+            return Err(EngineError::AllocationFailed);
+        }
+    }
     for &item in items {
         if !seen.contains(&item) {
             seen.push(item);
@@ -1042,4 +1114,122 @@ mod tests {
             })
         );
     }
+
+    // ========================================================================
+    // CE-005 follow-up (vb-kepe8): real OOM-path tests.
+    // The pre-existing tests at the top of this mod only cover the
+    // downstream `insert_list` resource cap (`MAX_LIST_ITEMS_PER_VALUE`).
+    // The tests below exercise the operator's *own* fallible reservation
+    // by arming the thread-local OOM hook, which fires immediately after
+    // `try_reserve_exact` returns Ok. The hook is `thread_local!` so
+    // parallel tests cannot race each other.
+    // ========================================================================
+
+    fn fresh_list_with_items(
+        items: Vec<SlotValue>,
+    ) -> Result<(ValueStore, ExprStack, ListId), String> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(items.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
+        push_value(&mut stack, SlotValue::List(list)).map_err(|e| e.to_string())?;
+        Ok((store, stack, list))
+    }
+
+    /// RAII guard that arms the OOM hook on creation and clears it on
+    /// drop, so a test that panics (or just ends) never leaks armed
+    /// state into the next test.
+    struct OomGuard {
+        _priv: (),
+    }
+
+    impl OomGuard {
+        fn new(count: usize) -> Self {
+            oom_inject::arm(count);
+            Self { _priv: () }
+        }
+    }
+
+    impl Drop for OomGuard {
+        fn drop(&mut self) {
+            oom_inject::reset();
+        }
+    }
+
+    #[test]
+    fn oom_inject_eval_append_returns_allocation_failed() -> Result<(), String> {
+        let (mut store, mut stack, _list) = fresh_list_with_items(vec![SlotValue::I64(1)])?;
+        push_value(&mut stack, SlotValue::I64(2)).map_err(|e| e.to_string())?;
+        let _guard = OomGuard::new(1);
+        let result = eval_append(&mut stack, &mut store);
+        ensure_equal(result, Err(EngineError::AllocationFailed))
+    }
+
+    #[test]
+    fn oom_inject_eval_append_if_true_returns_allocation_failed() -> Result<(), String> {
+        let (mut store, mut stack, _list) = fresh_list_with_items(vec![SlotValue::I64(1)])?;
+        push_value(&mut stack, SlotValue::I64(2)).map_err(|e| e.to_string())?;
+        push_value(&mut stack, SlotValue::Bool(true)).map_err(|e| e.to_string())?;
+        let _guard = OomGuard::new(1);
+        let result = eval_append_if(&mut stack, &mut store);
+        ensure_equal(result, Err(EngineError::AllocationFailed))
+    }
+
+    #[test]
+    fn oom_inject_eval_append_if_false_returns_allocation_failed() -> Result<(), String> {
+        // The false branch still calls `try_reserve_exact(base_len)`,
+        // so the hook must fire there too — that path is what the
+        // parent's tests did not exercise.
+        let (mut store, mut stack, _list) = fresh_list_with_items(vec![SlotValue::I64(1)])?;
+        push_value(&mut stack, SlotValue::I64(2)).map_err(|e| e.to_string())?;
+        push_value(&mut stack, SlotValue::Bool(false)).map_err(|e| e.to_string())?;
+        let _guard = OomGuard::new(1);
+        let result = eval_append_if(&mut stack, &mut store);
+        ensure_equal(result, Err(EngineError::AllocationFailed))
+    }
+
+    #[test]
+    fn oom_inject_eval_unique_returns_allocation_failed() -> Result<(), String> {
+        let (mut store, mut stack, _list) =
+            fresh_list_with_items(vec![SlotValue::I64(1), SlotValue::I64(2)])?;
+        let _guard = OomGuard::new(1);
+        let result = eval_unique(&mut stack, &mut store);
+        ensure_equal(result, Err(EngineError::AllocationFailed))
+    }
+
+    #[test]
+    fn oom_inject_dec_is_one_shot() -> Result<(), String> {
+        // First call with the hook armed must fail. After the guard
+        // drops, the hook is cleared and a follow-up call on a fresh
+        // stack must succeed normally.
+        let (mut store, mut stack, _list) = fresh_list_with_items(vec![SlotValue::I64(1)])?;
+        push_value(&mut stack, SlotValue::I64(2)).map_err(|e| e.to_string())?;
+        let first = {
+            let _guard = OomGuard::new(1);
+            eval_append(&mut stack, &mut store)
+        };
+        ensure_equal(first, Err(EngineError::AllocationFailed))?;
+        // The hook must be cleared by guard Drop. Verify by arming
+        // a fresh state and observing it is at 0.
+        oom_inject::reset();
+        let (mut store2, mut stack2, _list2) =
+            fresh_list_with_items(vec![SlotValue::I64(10)])?;
+        push_value(&mut stack2, SlotValue::I64(20)).map_err(|e| e.to_string())?;
+        let result = eval_append(&mut stack2, &mut store2);
+        ensure_equal(result, Ok(()))?;
+        Ok(())
+    }
+
+    #[test]
+    fn oom_inject_disarmed_happy_path_succeeds() -> Result<(), String> {
+        // Sanity: with the hook disarmed, the operator still works.
+        let (mut store, mut stack, _list) =
+            fresh_list_with_items(vec![SlotValue::I64(1), SlotValue::I64(2)])?;
+        push_value(&mut stack, SlotValue::I64(3)).map_err(|e| e.to_string())?;
+        oom_inject::reset();
+        let result = eval_append(&mut stack, &mut store);
+        ensure_equal(result, Ok(()))
+    }
+
 }
