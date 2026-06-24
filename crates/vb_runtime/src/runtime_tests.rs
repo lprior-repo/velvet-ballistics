@@ -1190,8 +1190,8 @@ mod tests {
             Ok(None)
         );
         // Construct a timer entry for the run.
-        use crate::shard::timer_wheel::TimerEntry;
         use crate::shard::PendingTimerKind;
+        use crate::shard::timer_wheel::TimerEntry;
         let entry = TimerEntry {
             run,
             generation: 0,
@@ -1277,8 +1277,8 @@ mod tests {
             Err(RuntimeError::RunNotFound)
         );
         // timer_entry_fired (with constructed entry)
-        use crate::shard::timer_wheel::TimerEntry;
         use crate::shard::PendingTimerKind;
+        use crate::shard::timer_wheel::TimerEntry;
         let entry = TimerEntry {
             run: unknown_run,
             generation: 0,

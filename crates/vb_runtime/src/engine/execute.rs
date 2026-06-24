@@ -403,10 +403,7 @@ fn handle_retry_check(
 ) -> RuntimeEngineResult<RuntimeSignal> {
     // RE-003: surface the absence of an attempt counter explicitly. An
     // uninitialized policy slot is the first-visit case (attempt = 0).
-    let current_attempt = match read_attempt_from_slot(run, policy_slot)? {
-        Some(n) => n,
-        None => 0,
-    };
+    let current_attempt = read_attempt_from_slot(run, policy_slot)?.unwrap_or(0);
     let target = execute_retry_check(current_attempt, retry_policy, body, exhausted);
     // Mirror `primitives/repeat.rs::repeat_check`: advance the counter
     // in-handler so subsequent visits can terminate even when the body

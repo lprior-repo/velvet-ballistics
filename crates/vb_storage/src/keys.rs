@@ -29,11 +29,12 @@ use crate::{
 /// callers that must keep scanning across partial corruption opt in to
 /// [`Self::SkipMalformed`]. Never use `SkipMalformed` on a production
 /// read path that is supposed to surface evidence of corruption.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KeyspaceScanPolicy {
     /// Surface the first malformed row as a typed
     /// [`crate::JournalError::MalformedKeyspaceRow`] error and abort the
     /// scan. This is the default for production paths.
+    #[default]
     FailClosed,
     /// Skip malformed rows silently and continue scanning. Reserved for
     /// doctor/diagnostic tooling that must produce a partial view of a
@@ -54,15 +55,6 @@ impl KeyspaceScanPolicy {
     /// operator can see whatever is still well-formed.
     pub const fn default_doctor() -> Self {
         Self::SkipMalformed
-    }
-}
-
-impl Default for KeyspaceScanPolicy {
-    fn default() -> Self {
-        // The unit struct variant chosen here is the production default.
-        // Doctor callers MUST pass `KeyspaceScanPolicy::default_doctor()`
-        // explicitly; there is no implicit detection of a doctor context.
-        Self::FailClosed
     }
 }
 

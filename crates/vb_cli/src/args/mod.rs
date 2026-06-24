@@ -8,6 +8,7 @@ pub(crate) mod other;
 pub(crate) mod run_ops;
 pub(crate) mod shared;
 pub(crate) mod status;
+pub(crate) mod status_value;
 pub(crate) mod trace;
 pub(crate) mod types;
 pub(crate) mod workflow;

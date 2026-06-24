@@ -26,15 +26,15 @@ use std::num::NonZeroUsize;
 use std::time::Instant;
 
 use vb_core::ids::RunId;
-use vb_core::value::SlotValue;
 use vb_core::ids::SlotIdx;
+use vb_core::value::SlotValue;
 
-use crate::runtime::Runtime;
-use crate::shard::{AskAnswer, AskTicket, PendingTimerKind, ShardConfig};
-use crate::shard::timer_wheel::TimerEntry;
 use crate::error::RuntimeError;
-use vb_core::value::Taint;
+use crate::runtime::Runtime;
+use crate::shard::timer_wheel::TimerEntry;
+use crate::shard::{AskAnswer, AskTicket, PendingTimerKind, ShardConfig};
 use vb_core::ids::StepIdx;
+use vb_core::value::Taint;
 
 // =========================================================================
 // Bounded generators (GOD RULE 1)

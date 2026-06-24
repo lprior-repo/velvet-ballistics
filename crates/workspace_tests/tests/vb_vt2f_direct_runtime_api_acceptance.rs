@@ -834,6 +834,10 @@ fn test_direct_api_list_events_and_drain_trace_have_exact_semantics() -> Result<
     let run_b = RunId::new(2007);
     assert_eq!(runtime.submit_direct(run_a, finished_workflow()?), Ok(()));
     assert_eq!(runtime.submit_direct(run_b, finished_workflow()?), Ok(()));
+    // tick_all processes one command per shard per tick; two ticks are
+    // required to drain both submits on a 1-shard runtime so that
+    // list_events can locate both runs on the owning shard.
+    run_one_tick(&mut runtime)?;
     run_one_tick(&mut runtime)?;
 
     // When: list_events is repeated, then drain_trace is called twice.
