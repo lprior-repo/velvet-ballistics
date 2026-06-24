@@ -231,6 +231,10 @@ name = "proptest_compile_error_codes"
 path = "tests/proptest_compile_error_codes.rs"
 
 [[test]]
+name = "proptest_diagnostic_codes"
+path = "tests/proptest_diagnostic_codes.rs"
+
+[[test]]
 name = "behavior_symbolic_code_serde"
 path = "tests/behavior_symbolic_code_serde.rs"
 
