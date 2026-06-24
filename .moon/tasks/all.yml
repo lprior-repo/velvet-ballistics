@@ -789,3 +789,15 @@ tasks:
       moon run :nightly-feature-gate
     options:
       runInCI: false
+
+  ci:
+    script: |
+      set -euo pipefail
+      moon run :fmt
+      moon run :banned-token-gates
+      moon run :source-length
+      moon run :check
+      moon run :lint-src
+      moon run :test
+    options:
+      runInCI: true
