@@ -332,6 +332,12 @@ pub enum CoreError {
         /// Maximum attempts.
         max: u16,
     },
+    /// A repeat configuration or attempt counter is in an invalid state.
+    #[error("invalid repeat state: {reason}")]
+    InvalidRepeatState {
+        /// Stable invariant reason for the invalid repeat state.
+        reason: &'static str,
+    },
     /// A collection pagination limit was exceeded.
     #[error("collect page limit exceeded")]
     CollectPageLimitExceeded,
@@ -562,6 +568,8 @@ impl CoreError {
     pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1401);
     /// Repeat exhausted diagnostic code.
     pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1402);
+    /// Invalid repeat state diagnostic code.
+    pub const INVALID_REPEAT_STATE_CODE: DiagnosticCode = DiagnosticCode::new(0x140E);
     /// Collect page limit exceeded diagnostic code.
     pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1403);
     /// Collect item limit exceeded diagnostic code.
@@ -661,6 +669,7 @@ impl CoreError {
             Self::BlobOutOfBounds { .. } => Self::BLOB_OUT_OF_BOUNDS_CODE,
             Self::IterationLimitExceeded { .. } => Self::ITERATION_LIMIT_EXCEEDED_CODE,
             Self::RepeatExhausted { .. } => Self::REPEAT_EXHAUSTED_CODE,
+            Self::InvalidRepeatState { .. } => Self::INVALID_REPEAT_STATE_CODE,
             Self::CollectPageLimitExceeded => Self::COLLECT_PAGE_LIMIT_CODE,
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
             Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,

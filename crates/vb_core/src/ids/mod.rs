@@ -156,10 +156,11 @@ impl MaxAttempts {
     /// Creates a max attempts value, validating that it is non-zero.
     ///
     /// # Errors
-    /// Returns `EngineError::InvalidRepeatState` if value is 0.
+    /// Returns `EngineError::InvalidRepeatState` with reason
+    /// `"max_attempts_cannot_be_zero"` if value is 0.
     pub fn try_new(value: u16) -> Result<Self, super::errors::EngineError> {
         if value == 0 {
-            return Err(super::errors::EngineError::InternalInvariantViolation {
+            return Err(super::errors::EngineError::InvalidRepeatState {
                 reason: "max_attempts_cannot_be_zero",
             });
         }
@@ -819,6 +820,53 @@ mod tests {
         use super::MaxAttempts;
         let result = MaxAttempts::try_new(0);
         assert!(result.is_err(), "max_attempts=0 must be rejected");
+    }
+
+    #[test]
+    fn max_attempts_zero_returns_invalid_repeat_state() {
+        // CF-012: try_new must return EngineError::InvalidRepeatState for zero input,
+        // not EngineError::InternalInvariantViolation.
+        use super::MaxAttempts;
+        let err = MaxAttempts::try_new(0).expect_err("zero must be rejected");
+        match err {
+            super::super::errors::EngineError::InvalidRepeatState { reason } => {
+                assert_eq!(
+                    reason, "max_attempts_cannot_be_zero",
+                    "reason must be stable for downstream matching",
+                );
+            }
+            other => panic!(
+                "expected EngineError::InvalidRepeatState for zero input, got {other:?}",
+            ),
+        }
+    }
+
+    #[test]
+    fn max_attempts_zero_does_not_return_internal_invariant_violation() {
+        // CF-012 regression guard: prior code returned InternalInvariantViolation;
+        // ensure that variant is no longer used for try_new(0).
+        use super::MaxAttempts;
+        let err = MaxAttempts::try_new(0).expect_err("zero must be rejected");
+        assert!(
+            !matches!(
+                err,
+                super::super::errors::EngineError::InternalInvariantViolation { .. },
+            ),
+            "try_new(0) must NOT return InternalInvariantViolation",
+        );
+    }
+
+    #[test]
+    fn max_attempts_invalid_repeat_state_display_mentions_repeat_state() {
+        // Doc-comment parity: the rendered Display string for the returned error
+        // must be discoverable as a "repeat state" failure for log triage.
+        use super::MaxAttempts;
+        let err = MaxAttempts::try_new(0).expect_err("zero must be rejected");
+        let rendered = err.to_string();
+        assert!(
+            rendered.contains("repeat state"),
+            "display string should mention 'repeat state', got: {rendered}",
+        );
     }
 
     // --- RetryCount edge cases ---
