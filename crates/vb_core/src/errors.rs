@@ -423,6 +423,20 @@ pub enum CoreError {
         /// Description of what's required.
         required: &'static str,
     },
+    /// Evidence capacity was exceeded during a non-collect push.
+    #[error("evidence capacity exceeded: step {step:?} slot {slot:?} capacity {capacity}")]
+    EvidenceCapacityExceeded {
+        /// Step that triggered the overflow (sentinel `StepIdx::ZERO` for slot-only pushes).
+        step: StepIdx,
+        /// Slot that caused the overflow (sentinel `SlotIdx::ZERO` for step-only pushes).
+        slot: SlotIdx,
+        /// Configured capacity.
+        capacity: usize,
+        /// Actual length of data.
+        len: usize,
+        /// Description of what's required.
+        required: &'static str,
+    },
     /// Lifecycle storage unavailable.
     #[error("lifecycle storage unavailable: {context}")]
     LifecycleStorageUnavailable {
@@ -592,6 +606,8 @@ impl CoreError {
     pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x140C);
     /// Collect evidence capacity exceeded diagnostic code.
     pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x140D);
+    /// Evidence capacity exceeded diagnostic code (non-collect push).
+    pub const EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x140E);
     /// Lifecycle storage unavailable diagnostic code.
     pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x1501);
     /// Lifecycle duplicate request diagnostic code.
@@ -683,6 +699,7 @@ impl CoreError {
             Self::CollectEvidenceCapacityExceeded { .. } => {
                 Self::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE
             }
+            Self::EvidenceCapacityExceeded { .. } => Self::EVIDENCE_CAPACITY_EXCEEDED_CODE,
             Self::LifecycleStorageUnavailable { .. } => Self::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
             Self::LifecycleDuplicateRequest { .. } => Self::LIFECYCLE_DUPLICATE_REQUEST_CODE,
             Self::LifecycleStaleRequest { .. } => Self::LIFECYCLE_STALE_REQUEST_CODE,

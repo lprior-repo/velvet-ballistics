@@ -358,7 +358,8 @@ impl WorkflowDigest {
 
 #[cfg(test)]
 mod tests {
-    use super::{RunId, SeqNo, SlotIdx, StepIdx, WorkflowId};
+    use super::{ActionId, AccessorIdx, BlobId, EventSeq, ExprIdx, ListId, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowId};
+    use core::str::FromStr;
 
     #[test]
     fn workflow_id_get_returns_inner_value() {
@@ -1136,6 +1137,76 @@ mod tests {
         a.hash(&mut hasher_a);
         b.hash(&mut hasher_b);
         assert_eq!(hasher_a.finish(), hasher_b.finish());
+    }
+
+    // CF-013: numeric_id! macro consolidated to single definition site.
+    // Verifies every ID type produced by the macro still constructs and round-trips.
+    #[test]
+    fn cf013_all_numeric_id_types_construct_via_single_macro() -> Result<(), String> {
+        // Workflow domain
+        let wf = WorkflowId::new(1);
+        if wf.get() != 1u32 {
+            return Err(String::from("WorkflowId::get"));
+        }
+        let run = RunId::new(2);
+        if run.get() != 2u64 {
+            return Err(String::from("RunId::get"));
+        }
+        let step = StepIdx::new(3);
+        if step.as_usize() != 3 {
+            return Err(String::from("StepIdx::as_usize"));
+        }
+        // Index domain
+        let expr = ExprIdx::new(4);
+        if expr.as_usize() != 4 {
+            return Err(String::from("ExprIdx::as_usize"));
+        }
+        let acc = AccessorIdx::new(5);
+        if acc.as_usize() != 5 {
+            return Err(String::from("AccessorIdx::as_usize"));
+        }
+        // Symbol domain
+        let sym = SymbolId::new(6);
+        if sym.get() != 6u32 {
+            return Err(String::from("SymbolId::get"));
+        }
+        let list = ListId::new(7);
+        if list.get() != 7u32 {
+            return Err(String::from("ListId::get"));
+        }
+        // Storage domain
+        let blob = BlobId::new(8);
+        if blob.get() != 8u64 {
+            return Err(String::from("BlobId::get"));
+        }
+        let action = ActionId::new(9);
+        if action.get() != 9u16 {
+            return Err(String::from("ActionId::get"));
+        }
+        // Sequence/ordering
+        let seq = EventSeq::new(10);
+        if seq.get() != 10u64 {
+            return Err(String::from("EventSeq::get"));
+        }
+        Ok(())
+    }
+
+    // CF-013: FromStr must succeed on all numeric_id! products (the macro emits FromStr).
+    #[test]
+    fn cf013_from_str_round_trip_for_all_numeric_id_types() -> Result<(), String> {
+        let cases: Vec<(&str, Box<dyn Fn(&str) -> Result<String, String>>)> = vec![
+            ("1", Box::new(|s| WorkflowId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
+            ("2", Box::new(|s| RunId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
+            ("3", Box::new(|s| StepIdx::from_str(s).map(|v| v.0.to_string()).map_err(|e| e.to_string()))),
+            ("4", Box::new(|s| SymbolId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
+            ("5", Box::new(|s| BlobId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
+        ];
+        for (input, parse) in &cases {
+            if parse(input).is_err() {
+                return Err(format!("FromStr failed for input {input}"));
+            }
+        }
+        Ok(())
     }
 }
 

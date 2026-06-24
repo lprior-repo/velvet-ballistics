@@ -103,9 +103,8 @@ fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    // RE-011: mark the step as running BEFORE emitting StepStarted.
+    evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;
     run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
-    evidence.push_step_started(pc);
     Ok(Some(DriveStep { pc, node }))
 }
 
@@ -125,7 +124,9 @@ fn finish_drive_step(
     emit_slot_evidence(run, evidence, collect_states, step.node)?;
     if signal_is_success(signal) {
         mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
-        evidence.push_step_succeeded(step.pc, step.node.output);
+        evidence
+            .push_step_succeeded(step.pc, step.node.output)
+            .map_err(RuntimeEngineError::Core)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid.
@@ -156,7 +157,9 @@ fn emit_slot_evidence(
         && let Ok(value) = run.read_slot(slot)
     {
         let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-        evidence.push_slot_written_with_taint(slot, *value, taint);
+        evidence
+            .push_slot_written_with_taint(slot, *value, taint)
+            .map_err(RuntimeEngineError::Core)?;
     }
     Ok(())
 }
@@ -1428,7 +1431,7 @@ mod tests {
         let mut budget = StepBudget::new(10);
         // Capacity 0: push_slot_written_with_extra must surface
         // CollectEvidenceCapacityExceeded instead of silently dropping.
-        let mut ev = EvidenceCollector::with_capacity(0);
+        let mut ev = EvidenceCollector::with_capacity(1);
         let mut cs = CollectStates::new();
         // Pre-populate CollectStates so capture_state returns Some(_)
         // for (run_id, slot 1). Even though collect_start will upsert a
@@ -1488,7 +1491,7 @@ mod tests {
                         "RE-011: capacity error carries wrong slot: {slot:?}"
                     ));
                 }
-                if capacity != 0 {
+                if capacity != 1 {
                     return Err(format!(
                         "RE-011: capacity error carries wrong capacity: {capacity}"
                     ));
