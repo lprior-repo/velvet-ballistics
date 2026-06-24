@@ -74,7 +74,7 @@ def main() -> int:
         print(f"CHECK FAILED: {issues_result}", file=sys.stderr)
         return 2
     if not issues_result:
-        print("CHECK FAILED: bd children returned no vb-jpq7 children", file=sys.stderr)
+        print("CHECK FAILED: bd list --status closed returned no vb-jpq7 children", file=sys.stderr)
         return 2
     rows, row_errors = load_manifest(resolve_path(root, args.manifest))
     failures = list(row_errors)
@@ -97,11 +97,21 @@ def resolve_path(root: Path, raw_path: str) -> Path:
 
 
 def load_issues(parent: str, fixture: str | None, bd_workdir: Path) -> list[Issue] | str:
+    """Load every closed child of ``parent``.
+
+    The bd CLI invocation ``bd list --status closed --parent <parent> --limit 0
+    --json`` replaces the previous ``bd children <parent> --json`` which the
+    server-mode bd CLI caps at 50 rows; ``--limit 0`` drains every closed child
+    without pagination. ``--status closed`` constrains the result set so the
+    downstream filter in ``validate_closed_children`` (line 174) stays correct.
+    """
     if fixture is not None:
         text = Path(fixture).read_text(encoding="utf-8")
     else:
+        # Source: scripts/check-vb-jpq7-closure-evidence.py:104 (was: bd children --json,
+        # capped at 50 in server mode; now bd list --status closed --limit 0 to drain all rows).
         result = subprocess.run(
-            ["bd", "children", parent, "--json"],
+            ["bd", "list", "--status", "closed", "--parent", parent, "--limit", "0", "--json"],
             cwd=bd_workdir,
             text=True,
             stdout=subprocess.PIPE,
@@ -109,18 +119,18 @@ def load_issues(parent: str, fixture: str | None, bd_workdir: Path) -> list[Issu
             check=False,
         )
         if result.returncode != 0:
-            return f"bd children failed exit={result.returncode} stderr={compact(result.stderr)}"
+            return f"bd list --status closed failed exit={result.returncode} stderr={compact(result.stderr)}"
         text = result.stdout
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        return f"children JSON is invalid: {exc}"
+        return f"bd list --status closed JSON is invalid: {exc}"
     if not isinstance(data, list):
-        return "children JSON must be a list"
+        return "bd list --status closed JSON must be a list"
     issues: list[Issue] = []
     for raw in data:
         if not isinstance(raw, dict):
-            return "children JSON contains a non-object issue"
+            return "bd list --status closed JSON contains a non-object issue"
         bead_id = string_field(raw, "id")
         status = string_field(raw, "status")
         if bead_id is None or status is None:
@@ -133,6 +143,14 @@ def load_issues(parent: str, fixture: str | None, bd_workdir: Path) -> list[Issu
                 notes=string_field(raw, "notes") or "",
             )
         )
+    if fixture is None:
+        # Defensive: the live bd list --status closed path must return only
+        # closed, distinct children. Flag divergence and fail closed so the
+        # closed_children=N oracle line never lies about the true count.
+        if len(issues) != len({issue.bead_id for issue in issues}):
+            return "bd list --status closed returned duplicate bead_ids"
+        if any(issue.status != "closed" for issue in issues):
+            return "bd list --status closed returned a non-closed child"
     return issues
 
 
