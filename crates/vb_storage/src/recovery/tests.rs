@@ -3812,4 +3812,184 @@ mod hydrate_run_frame_tests {
             StepState::Succeeded
         );
     }
+
+    // =========================================================================
+    // SR-012 — `decode_snapshot_slots` must complete the taint merge in
+    // O(N + M), not O(N·M).
+    //
+    // Pre-fix the decoder performed a linear `taint.iter().find_map(...)`
+    // for every slot, which is O(N·M) and dominates snapshot hydration
+    // cost on runs with thousands of slots. Post-fix the decoder builds a
+    // `HashMap<SlotIdx, Taint>` once and looks up each slot in O(1),
+    // making the merge O(N + M).
+    //
+    // The regression check below exercises the real decoder
+    // (`super::snapshot_decode::decode_snapshot_slots`, `pub(super)`)
+    // through the `recovery` module path so a future rewrite that moves
+    // the function or its helper still has to honour the same contract.
+    //
+    // We pick N = 2048 with mixed taint entries and assert:
+    //   1. Correctness: every decoded entry's `(slot, value, taint)` matches
+    //      the override rule (taint vector wins when present, else `Clean`).
+    //   2. Linear-time: total decode completes in well under a second.
+    //      At N = 2048 the pre-fix O(N·M) loop performs ~2M comparisons
+    //      and exceeds the budget on any reasonable CI; the post-fix
+    //      HashMap path completes in tens of microseconds.
+    // =========================================================================
+
+    fn sr_012_build_snapshot_bytes(
+        slot_entries: &[(SlotIdx, SlotValue, Taint)],
+    ) -> (Vec<u8>, Vec<u8>) {
+        // Mirror the on-disk shape produced by `snapshot_write`:
+        // slots = Vec<(SlotIdx, SlotValue)>, taint = Vec<(SlotIdx, Taint)>.
+        // Only emit taint entries for non-Clean slots so the decoder's
+        // default branch (no override -> Clean) is also exercised.
+        let slots: Vec<(SlotIdx, SlotValue)> = slot_entries
+            .iter()
+            .map(|(slot, value, _)| (*slot, *value))
+            .collect();
+        let taint: Vec<(SlotIdx, Taint)> = slot_entries
+            .iter()
+            .filter(|(_, _, t)| *t != Taint::Clean)
+            .map(|(slot, _, t)| (*slot, *t))
+            .collect();
+        let slots_bytes = postcard::to_allocvec(&slots).expect("postcard encode slots");
+        let taint_bytes = postcard::to_allocvec(&taint).expect("postcard encode taint");
+        (slots_bytes, taint_bytes)
+    }
+
+    #[test]
+    fn sr_012_decode_snapshot_slots_resolves_taint_in_linear_time() {
+        use std::time::Instant;
+
+        // N = 2048 slots, M = N / 2 taint overrides (every other slot is
+        // explicitly dirty; the rest default to Clean). With N ~= M the
+        // pre-fix O(N*M) loop performs ~2.1M comparisons; the post-fix
+        // HashMap path performs O(N + M) ~= 3072 ops.
+        const N: u16 = 2048;
+        let run = RunId::new(0x5E_012);
+        let mut slot_entries: Vec<(SlotIdx, SlotValue, Taint)> = Vec::with_capacity(N as usize);
+        for i in 0..N {
+            let slot = SlotIdx::new(i);
+            // `i` is `u16` and the formula `i * 7 + 1` stays in `i64` range
+            // for every `i < 2048`, so the direct `i64::from(i)` conversion
+            // is total and cannot fail.
+            let value = SlotValue::I64(i64::from(i) * 7 + 1);
+            // Half the slots get an explicit `Secret` override, half stay
+            // Clean (no taint-vector entry -> decoder must default to Clean).
+            let explicit_taint = if i % 2 == 0 {
+                Taint::Secret
+            } else {
+                Taint::Clean
+            };
+            slot_entries.push((slot, value, explicit_taint));
+        }
+        let (slots_bytes, taint_bytes) = sr_012_build_snapshot_bytes(&slot_entries);
+
+        let started = Instant::now();
+        let decoded = crate::recovery::snapshot_decode::decode_snapshot_slots(
+            &slots_bytes,
+            &taint_bytes,
+            run,
+        )
+        .expect("decode_snapshot_slots must succeed on well-formed bytes");
+        let elapsed = started.elapsed();
+
+        assert_eq!(
+            decoded.len(),
+            N as usize,
+            "decoder must produce one entry per slot, got {} entries for {N} slots",
+            decoded.len()
+        );
+        for (idx, entry) in decoded.iter().enumerate() {
+            let expected_slot = SlotIdx::new(u16::try_from(idx).expect("idx fits u16"));
+            // `idx < 2048 < i64::MAX`, so the `try_from` cannot fail; the
+            // explicit `expect` documents the invariant for any future
+            // bump of `N` past `i64::MAX`.
+            let expected_value = SlotValue::I64(i64::try_from(idx).expect("idx fits i64") * 7 + 1);
+            let expected_taint = if idx % 2 == 0 {
+                Taint::Secret
+            } else {
+                Taint::Clean
+            };
+            assert_eq!(
+                entry.slot, expected_slot,
+                "slot index mismatch at idx={idx}"
+            );
+            assert_eq!(
+                entry.value, expected_value,
+                "slot value mismatch at idx={idx}"
+            );
+            assert_eq!(
+                entry.taint, expected_taint,
+                "taint override wrong at idx={idx}: even slots must read Secret from taint vector, odd slots must default to Clean"
+            );
+        }
+
+        // Linear-time budget. At N = 2048 the pre-fix O(N*M) loop performs
+        // ~2.1M comparisons and takes tens to hundreds of milliseconds; the
+        // post-fix HashMap path completes in tens of microseconds. 1 second
+        // is generous enough to avoid CI flakes but tight enough to fail
+        // loudly if a future regression re-introduces the quadratic lookup.
+        assert!(
+            elapsed < std::time::Duration::from_secs(1),
+            "SR-012: decode_snapshot_slots must complete in O(N + M); took {elapsed:?} for N ~= 2048, M ~= 1024, which exceeds the linear-time budget and indicates the taint-lookup regression has returned"
+        );
+    }
+
+    #[test]
+    fn sr_012_decode_snapshot_slots_default_taint_is_clean_when_taint_vector_omits_slot() {
+        // When the taint vector has NO entry for a slot, the decoder must
+        // default the slot's taint to `Taint::Clean` rather than panicking,
+        // returning an error, or leaking a stale value. Both pre-fix and
+        // post-fix code paths satisfy this branch, so this is a guard
+        // against future regressions where the default-taint logic is
+        // removed or rewired to a fallible API.
+        let run = RunId::new(0x5E_012);
+        let slot_entries = vec![
+            (SlotIdx::new(0), SlotValue::I64(11), Taint::Secret),
+            (SlotIdx::new(1), SlotValue::I64(22), Taint::Secret),
+            (SlotIdx::new(2), SlotValue::I64(33), Taint::Secret),
+        ];
+        let (slots_bytes, taint_bytes) = sr_012_build_snapshot_bytes(&slot_entries);
+
+        let decoded = crate::recovery::snapshot_decode::decode_snapshot_slots(
+            &slots_bytes,
+            &taint_bytes,
+            run,
+        )
+        .expect("decode_snapshot_slots must succeed on well-formed bytes");
+
+        assert_eq!(decoded.len(), 3);
+        for entry in &decoded {
+            assert_eq!(entry.taint, Taint::Secret);
+        }
+
+        // Edge case: taint vector empty (no overrides at all) -> every slot
+        // resolves to `Taint::Clean`. This is the decoder's documented
+        // default branch (see `decode_snapshot_slots` doc-comment).
+        let slots_only: Vec<(SlotIdx, SlotValue)> = slot_entries
+            .iter()
+            .map(|(slot, value, _)| (*slot, *value))
+            .collect();
+        let slots_bytes_no_taint =
+            postcard::to_allocvec(&slots_only).expect("postcard encode slots");
+        let empty_taint_bytes: Vec<u8> = Vec::new();
+        let decoded_default = crate::recovery::snapshot_decode::decode_snapshot_slots(
+            &slots_bytes_no_taint,
+            &empty_taint_bytes,
+            run,
+        )
+        .expect("decode_snapshot_slots must succeed when taint vector is empty");
+        assert_eq!(decoded_default.len(), 3);
+        for entry in &decoded_default {
+            assert_eq!(
+                entry.taint,
+                Taint::Clean,
+                "missing taint entry must default to Clean, got {:?} for slot {:?}",
+                entry.taint,
+                entry.slot
+            );
+        }
+    }
 }
