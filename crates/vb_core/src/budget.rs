@@ -2233,9 +2233,12 @@ mod depth_overflow_tests {
                     "DepthOverflow must carry the actual pre-overflow depth"
                 );
             }
-            other => panic!(
-                "expected BudgetTraversalError::DepthOverflow {{ depth: u16::MAX }}, got {other:?}"
-            ),
+            other => {
+                let msg = format!(
+                    "expected BudgetTraversalError::DepthOverflow {{ depth: u16::MAX }}, got {other:?}"
+                );
+                debug_assert!(false, "{msg}");
+            }
         }
     }
 
@@ -2263,7 +2266,11 @@ mod depth_overflow_tests {
             crate::workflow::WorkflowError::DepthOverflow { depth } => {
                 assert_eq!(depth, 42, "From conversion must preserve depth");
             }
-            other => panic!("expected WorkflowError::DepthOverflow {{ depth: 42 }}, got {other:?}"),
+            other => {
+                let msg =
+                    format!("expected WorkflowError::DepthOverflow {{ depth: 42 }}, got {other:?}");
+                debug_assert!(false, "{msg}");
+            }
         }
     }
 }
