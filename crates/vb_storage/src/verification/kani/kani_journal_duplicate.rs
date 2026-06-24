@@ -5,7 +5,7 @@
 //! Obligations: PO-vb282my-RJ-KANI-001 through PO-vb282my-RJ-KANI-004
 //!
 //! Target: crate::keys::run_event_key
-//!         crate::journal::internal::append_unpersisted
+//!         crate::journal::internal::append_unfsynced
 //!         crate::journal::internal::append_queued_unfsynced
 //!
 //! GOD RULE 1: All inputs use kani::any() for non-journal types.
@@ -156,14 +156,14 @@ fn kani_journal_key_prefix() {
 //
 // BLOCKED: FjallJournal requires file-backed LSM tree + Mutex<()> which
 // Kani cannot model directly. The duplicate-rejection logic in
-// append_unpersisted and append_queued_unfsynced is tested via:
+// append_unfsynced and append_queued_unfsynced is tested via:
 //   1. Runtime integration tests (crates/vb_storage/tests/)
 //   2. The key injectivity harnesses above (proving keys are unique)
 //   3. The proptest round-trip (PO-vb282my-RJ-PROP-001)
 //
 // The key encoding guarantees that distinct (run, seq) pairs produce
 // distinct keys. Combined with Fjall's Keyspace uniqueness guarantee,
-// this implies that append_unpersisted will return DuplicateEvent on
+// this implies that append_unfsynced will return DuplicateEvent on
 // re-insertion.  append_queued_unfsynced's idempotency check relies
 // on postcard deserialization which is tested via proptest.
 //
