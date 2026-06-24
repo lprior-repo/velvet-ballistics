@@ -37,16 +37,34 @@ impl TraceRing {
         self.capacity
     }
 
-    /// Returns the number of events currently in the ring.
+    /// Returns the number of drainable events currently buffered in the ring.
+    /// This counts pending events the next `drain` would remove, not the
+    /// replayable history retained by `snapshot_for_run`.
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub fn pending_len(&self) -> usize {
         self.consumer.slots()
     }
 
-    /// Returns true if the ring contains no events.
+    /// Returns true when no pending events remain to be drained.
+    /// This observes the drainable queue, not the replayable history.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub fn pending_is_empty(&self) -> bool {
         self.consumer.is_empty()
+    }
+
+    /// Returns the number of events retained for replay snapshots.
+    /// Replayable history survives `drain`; see `pending_len` for the
+    /// drainable queue occupancy.
+    #[must_use]
+    pub fn history_len(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Returns true when no replayable history events are retained.
+    /// This observes the snapshot history, not the drainable queue.
+    #[must_use]
+    pub fn history_is_empty(&self) -> bool {
+        self.history.is_empty()
     }
 
     /// Attempts to push a trace event. Returns false if the ring is full.
