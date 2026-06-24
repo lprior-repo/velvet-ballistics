@@ -29,17 +29,16 @@ pub(crate) fn build_iterator_state(
     cursor: usize,
 ) -> Result<Box<[SlotValue]>, EngineError> {
     let source_token = i64::from(source_id.get());
-    let cursor_token = i64::try_from(cursor).map_err(|_| EngineError::InternalInvariantViolation {
-        reason: "iterator state cursor exceeds i64 range",
-    })?;
+    let cursor_token =
+        i64::try_from(cursor).map_err(|_| EngineError::InternalInvariantViolation {
+            reason: "iterator state cursor exceeds i64 range",
+        })?;
     Ok(vec![SlotValue::I64(source_token), SlotValue::I64(cursor_token)].into_boxed_slice())
 }
 
 /// Decodes a 2-element iterator state list into `(source_id, cursor)`.
 /// Returns an internal-invariant error on a malformed state.
-pub(crate) fn decode_iterator_state(
-    items: &[SlotValue],
-) -> Result<(ListId, usize), EngineError> {
+pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usize), EngineError> {
     if items.len() != 2 {
         return Err(EngineError::InternalInvariantViolation {
             reason: "iterator state must be a 2-element list",
@@ -50,12 +49,12 @@ pub(crate) fn decode_iterator_state(
         Some(_) => {
             return Err(EngineError::InternalInvariantViolation {
                 reason: "iterator state source token must be I64",
-            })
+            });
         }
         None => {
             return Err(EngineError::InternalInvariantViolation {
                 reason: "iterator state must be a 2-element list",
-            })
+            });
         }
     };
     let cursor_token = match items.get(1).copied() {
@@ -63,24 +62,22 @@ pub(crate) fn decode_iterator_state(
         Some(_) => {
             return Err(EngineError::InternalInvariantViolation {
                 reason: "iterator state cursor must be I64",
-            })
+            });
         }
         None => {
             return Err(EngineError::InternalInvariantViolation {
                 reason: "iterator state must be a 2-element list",
-            })
+            });
         }
     };
-    let source_id_value = u32::try_from(source_token).map_err(|_| {
-        EngineError::InternalInvariantViolation {
+    let source_id_value =
+        u32::try_from(source_token).map_err(|_| EngineError::InternalInvariantViolation {
             reason: "iterator state source token out of u32 range",
-        }
-    })?;
-    let cursor_value = usize::try_from(cursor_token).map_err(|_| {
-        EngineError::InternalInvariantViolation {
+        })?;
+    let cursor_value =
+        usize::try_from(cursor_token).map_err(|_| EngineError::InternalInvariantViolation {
             reason: "iterator state cursor out of usize range",
-        }
-    })?;
+        })?;
     Ok((ListId::new(source_id_value), cursor_value))
 }
 
@@ -255,7 +252,6 @@ mod tests {
         let list = empty_list();
         ensure(list.is_empty(), "expected is_empty")
     }
-
 
     // ── jump_to tests ──────────────────────────────────────────────────
 

@@ -100,14 +100,7 @@ fn for_each_next_returns_continue_while_items_remain() {
     assert_eq!(start, Ok(vb_core::EngineSignal::Continue));
     // The state list now encodes (source_id, cursor=1).
 
-    let result = for_each_next(
-        &mut run,
-        &mut store,
-        iter_slot,
-        body,
-        done,
-        Some(item_slot),
-    );
+    let result = for_each_next(&mut run, &mut store, iter_slot, body, done, Some(item_slot));
 
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
@@ -398,8 +391,7 @@ fn for_each_next_returns_error_when_output_missing() {
         .unwrap_or_else(|| panic!("insert source"));
     let state_id = store
         .insert_list(
-            vec![SlotValue::I64(source_id.get() as i64), SlotValue::I64(0)]
-                .into_boxed_slice(),
+            vec![SlotValue::I64(source_id.get() as i64), SlotValue::I64(0)].into_boxed_slice(),
         )
         .ok()
         .unwrap_or_else(|| panic!("insert state"));
@@ -1993,14 +1985,7 @@ fn rp016_iterator_state_is_bounded_cursor_not_tail() {
     for _ in 1..N {
         let _ = run.set_pc(body);
         let _ = run.mark_succeeded(body);
-        let next = for_each_next(
-            &mut run,
-            &mut store,
-            iter_slot,
-            body,
-            done,
-            Some(item_slot),
-        );
+        let next = for_each_next(&mut run, &mut store, iter_slot, body, done, Some(item_slot));
         assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
         let state_id = match *run
             .read_slot(iter_slot)
@@ -2024,14 +2009,7 @@ fn rp016_iterator_state_is_bounded_cursor_not_tail() {
     // Final step: cursor exhausts source, function jumps to done.
     let _ = run.set_pc(body);
     let _ = run.mark_succeeded(body);
-    let final_step = for_each_next(
-        &mut run,
-        &mut store,
-        iter_slot,
-        body,
-        done,
-        Some(item_slot),
-    );
+    let final_step = for_each_next(&mut run, &mut store, iter_slot, body, done, Some(item_slot));
     assert_eq!(final_step, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), done);
 }
