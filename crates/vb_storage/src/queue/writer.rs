@@ -162,7 +162,7 @@ impl JournalWriterQueue {
                 let Some(item) = state.pending.get(written) else {
                     break;
                 };
-                journal.append_queued_unpersisted(&item.event)?;
+                journal.append_queued_unfsynced(&item.event)?;
                 written = written.saturating_add(1);
             }
             journal.persist_strict()?;
@@ -188,7 +188,7 @@ impl JournalWriterQueue {
             let Some(item) = state.pending.get(written) else {
                 break;
             };
-            journal.append_queued_unpersisted(&item.event)?;
+            journal.append_queued_unfsynced(&item.event)?;
             written = written.saturating_add(1);
         }
 
