@@ -332,13 +332,11 @@ fn workflow_digest_rejection_reports_exact_mismatch_and_accepts_match() {
 fn workflow_digest_rejection_fails_closed_without_run_accepted() {
     let expected = digest(13);
 
-    assert_eq!(
+    assert!(matches!(
         reject_workflow_digest_mismatch(&[], expected),
-        Err(RecoveryError::ReplayDivergence {
-            step: StepIdx::new(0),
-            detail: String::from("RunAccepted evidence missing"),
-        })
-    );
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::new(0) && detail == "RunAccepted evidence missing"
+    ));
 
     let run = RunId::new(33);
     let non_run_accepted = [JournalEvent::StepStarted {
@@ -347,13 +345,11 @@ fn workflow_digest_rejection_fails_closed_without_run_accepted() {
         step: StepIdx::new(0),
         attempt: 1,
     }];
-    assert_eq!(
+    assert!(matches!(
         reject_workflow_digest_mismatch(&non_run_accepted, expected),
-        Err(RecoveryError::ReplayDivergence {
-            step: StepIdx::new(0),
-            detail: String::from("RunAccepted evidence missing"),
-        })
-    );
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::new(0) && detail == "RunAccepted evidence missing"
+    ));
 }
 
 #[test]

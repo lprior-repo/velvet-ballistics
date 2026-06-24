@@ -8,8 +8,7 @@ pub use event::TraceEvent;
 use std::collections::VecDeque;
 
 use rtrb::RingBuffer;
-use vb_core::action::ActionFailureCode;
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::ids::RunId;
 
 /// Bounded trace event ring for one shard.
 #[derive(Debug)]

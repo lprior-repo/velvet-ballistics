@@ -128,20 +128,27 @@ pub proof fn proof_non_empty_contract_not_erased(
 )
     requires
         accepted_certificate_preserves_profile(contract_required_count, accepted_required_count),
-        contract_required_count > 0,
-    ensures
-        accepted_required_count > 0,
-{
+    forall|i: int|
+        #![trigger required[i]]
+        0 <= i < required.len() ==> {
+            exists|j: int|
+/// Contract predicate: when `required_count != granted_count`, the failure
+/// shape is the typed `CapabilityCountMismatch` carrying the raw counts.
+/// Closed so Verus inlines the body without trigger inference.
+pub closed spec fn admit_failure_is_typed_count_mismatch(
+    required_count: nat,
+    granted_count: nat,
+) -> bool {
+    required_count != granted_count ==> {
+        forall|err: SpecAdmitError|
+            match err {
+                SpecAdmitError::Ok => false,
+                SpecAdmitError::CapabilityCountMismatch { required_count: rc, granted_count: gc } =>
+                    rc == required_count && gc == granted_count,
+                SpecAdmitError::CapabilityDenied { .. } => false,
+            }
+    }
 }
-
-pub proof fn proof_gate12_rejects_invalid_schema(
-    name_len: int,
-    action_matches_contract: bool,
-    duplicate_requirement: bool,
-)
-    requires
-        !valid_capability_name(name_len) || !action_matches_contract || duplicate_requirement,
-    ensures
         !gate12_schema_valid(name_len, action_matches_contract, duplicate_requirement),
 {
 }

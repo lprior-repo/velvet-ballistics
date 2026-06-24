@@ -25,8 +25,89 @@
 //!               first returned event equals start_seq when present
 //!               sequences are strictly increasing by 1
 use vstd::prelude::*;
+use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 
 verus! {
+
+// ============================================================
+// Production-type external bindings
+// ============================================================
+// Verus cannot natively reason about production types whose invariants are
+// proven by Holzman + cargo gates elsewhere. The bindings below are the
+// production-source-of-truth imports; the `Spec*` mirror types that follow
+// carry the verifiable contract. The refinement proof
+// `refinement_proof_events_for_run_from_contract_binds_production`
+// (further below) is the bridge between the two halves of this file.
+
+#[verifier::external_type_specification]
+pub struct ExEventSeq(EventSeq);
+
+#[verifier::external_type_specification]
+pub struct ExJournalEvent(JournalEvent);
+
+#[verifier::external_type_specification]
+pub struct ExJournalError(JournalError);
+
+#[verifier::external_type_specification]
+pub struct ExFjallJournal(FjallJournal);
+
+// Production-bound spec for FjallJournal::events_for_run.
+// This is the single source of truth: the spec contract below is the
+// property the production body must satisfy. The body itself is trusted
+// via the `assume_specification` external-fn-specification attribute; the
+// ensures clause re-states the spec contract in production-type terms.
+pub assume_specification[<FjallJournal as ?>::events_for_run](
+    &self,
+    run: vb_core::RunId,
+) -> (result: Result<Vec<JournalEvent>, JournalError>)
+    requires
+        run.valid_digest(),
+    ensures
+        match result {
+            Ok(events) => events_run_id_matches_run(events@, run),
+            Err(_) => true,
+        },
+;
+
+// Production-bound spec for FjallJournal::events_for_run_bounded (the
+// bounded form is `pub` and the body delegates to events_for_run_from).
+// The refinement lemma links the two contracts.
+pub assume_specification[<FjallJournal as ?>::events_for_run_bounded](
+    &self,
+    run: vb_core::RunId,
+    limit: vb_storage::EventReplayLimit,
+) -> (result: Result<Vec<JournalEvent>, JournalError>)
+    requires
+        run.valid_digest(),
+    ensures
+        match result {
+            Ok(events) => events_run_id_matches_run(events@, run),
+            Err(_) => true,
+        },
+;
+
+// ============================================================
+// Spec-level projection helpers (used by both the mirror types
+// and the production-binding ensures clauses)
+// ============================================================
+pub open spec fn events_run_id_matches_run(
+    events: Seq<JournalEvent>,
+    run: vb_core::RunId,
+) -> bool {
+    forall|i: int|
+        0 <= i && i < events.len() as int ==> #[trigger] events[i as int].run_id() == run
+}
+
+pub open spec fn events_seq_contiguous_from(
+    events: Seq<JournalEvent>,
+    start_seq: EventSeq,
+) -> bool {
+    &&& (events.len() as int > 0 ==> events[0].seq() == start_seq)
+    &&& (forall|i: int|
+        0 <= i && i < events.len() as int - 1
+            ==> #[trigger] events[i as int].seq() < events[(i + 1) as int].seq())
+}
+
 
 // ============================================================
 // Spec mirror types (verification-only abstractions)

@@ -237,4 +237,111 @@ mod error_code_tests {
             DiagnosticCode::new(0x4103)
         );
     }
+
+    // -----------------------------------------------------------------
+    // vb-1rqz7.28 / SC-009: `JournalError::Trim(inner)` must delegate
+    // the diagnostic code to the wrapped `TrimError`, so a
+    // journal-wrapped trim error still surfaces its underlying
+    // failure code (e.g. INCOMPLETE_TRIM, WRONG_RUN) instead of
+    // collapsing to the generic FJALL fallback.
+    // -----------------------------------------------------------------
+
+    /// `JournalError::Trim(TrimError::Journal(inner))` must propagate
+    /// the inner journal diagnostic code through the trim wrapper.
+    #[test]
+    fn journal_error_trim_wrapper_delegates_to_inner_journal_error_code() {
+        let inner = JournalError::WrongRun {
+            expected: RunId::new(1),
+            actual: RunId::new(2),
+        };
+        let inner_code = inner.diagnostic_code();
+        let wrapped: JournalError =
+            JournalError::Trim(Box::new(TrimError::Journal(inner)));
+        assert_eq!(
+            wrapped.diagnostic_code(),
+            inner_code,
+            "JournalError::Trim(TrimError::Journal(inner)) must delegate to inner.diagnostic_code()"
+        );
+        assert_ne!(
+            wrapped.diagnostic_code(),
+            JournalError::FJALL_CODE,
+            "delegation must not collapse to the generic FJALL_CODE fallback"
+        );
+    }
+
+    /// `JournalError::Trim(TrimError::IncompleteTrim { .. })` must
+    /// surface the `INCOMPLETE_TRIM_CODE` directly rather than the
+    /// generic `FJALL_CODE`. This is the code path exercised by
+    /// `count_trimmable_events` when it observes a malformed key.
+    #[test]
+    fn journal_error_trim_wrapper_delegates_incomplete_trim_code() {
+        let inner = TrimError::IncompleteTrim { deleted_count: 0 };
+        let wrapped: JournalError = JournalError::Trim(Box::new(inner));
+        assert_eq!(
+            wrapped.diagnostic_code(),
+            TrimError::INCOMPLETE_TRIM_CODE,
+            "JournalError::Trim(IncompleteTrim) must surface INCOMPLETE_TRIM_CODE"
+        );
+        assert_ne!(
+            wrapped.diagnostic_code(),
+            JournalError::FJALL_CODE,
+            "delegation must not collapse to FJALL_CODE"
+        );
+    }
+
+    /// `JournalError::Trim(TrimError::NoDurableSnapshot { .. })` must
+    /// surface the `NO_DURABLE_SNAPSHOT_CODE`.
+    #[test]
+    fn journal_error_trim_wrapper_delegates_no_durable_snapshot_code() {
+        let inner = TrimError::NoDurableSnapshot {
+            run: RunId::new(7),
+        };
+        let wrapped: JournalError = JournalError::Trim(Box::new(inner));
+        assert_eq!(
+            wrapped.diagnostic_code(),
+            TrimError::NO_DURABLE_SNAPSHOT_CODE,
+            "JournalError::Trim(NoDurableSnapshot) must surface NO_DURABLE_SNAPSHOT_CODE"
+        );
+    }
+
+    /// `JournalError::Trim(TrimError::RetentionPolicyBlocks { .. })` must
+    /// surface the `RETENTION_POLICY_BLOCKS_CODE`.
+    #[test]
+    fn journal_error_trim_wrapper_delegates_retention_policy_code() {
+        let inner = TrimError::RetentionPolicyBlocks {
+            run: RunId::new(11),
+        };
+        let wrapped: JournalError = JournalError::Trim(Box::new(inner));
+        assert_eq!(
+            wrapped.diagnostic_code(),
+            TrimError::RETENTION_POLICY_BLOCKS_CODE,
+            "JournalError::Trim(RetentionPolicyBlocks) must surface RETENTION_POLICY_BLOCKS_CODE"
+        );
+    }
+
+    /// `JournalError::symbolic_code()` for `Self::Trim(inner)` must
+    /// resolve to the inner's registered symbolic code, not
+    /// `INTERNAL_INVARIANT`.
+    #[test]
+    fn journal_error_trim_wrapper_symbolic_code_is_inner() {
+        use vb_core::SymbolicCode;
+
+        let inner = JournalError::SequenceGap {
+            expected: EventSeq::new(1),
+            actual: EventSeq::new(3),
+        };
+        let inner_symbolic = inner.symbolic_code();
+        let wrapped: JournalError =
+            JournalError::Trim(Box::new(TrimError::Journal(inner)));
+        let wrapped_symbolic = wrapped.symbolic_code();
+        assert_eq!(
+            wrapped_symbolic, inner_symbolic,
+            "JournalError::Trim(TrimError::Journal(inner)).symbolic_code() must equal inner.symbolic_code()"
+        );
+        assert_ne!(
+            wrapped_symbolic,
+            SymbolicCode::INTERNAL_INVARIANT,
+            "delegation must not collapse to INTERNAL_INVARIANT"
+        );
+    }
 }

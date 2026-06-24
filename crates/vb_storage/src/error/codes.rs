@@ -200,15 +200,21 @@ impl JournalError {
             Self::ReplayAllocationFailed { .. } => "REPLAY_ALLOCATION_FAILED",
             Self::ProcessLockHeld { .. } => "PROCESS_LOCK_HELD",
             Self::ProcessLockIo { .. } => "PROCESS_LOCK_IO",
-            Self::Trim(_) => "FJALL_ERROR",
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
+            // SC-009 (vb-1rqz7.28): `Self::Trim(_)` is handled above by
+            // the early return. Keep this arm so the match on `&Self`
+            // satisfies exhaustiveness; it is not reachable at runtime.
+            Self::Trim(_) => "FJALL_ERROR_DELEGATED",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;
         }
-        // Unreachable: all match arms use registered symbolic names.
+        // Fallback for the historical string arms whose symbolic names
+        // are not registered in `CODE_REGISTRY` (e.g. "FJALL_ERROR",
+        // "KEY_CAPACITY_EXCEEDED"). Keeps the pre-existing fallback
+        // contract for non-SC-009 variants.
         SymbolicCode::INTERNAL_INVARIANT
     }
 }

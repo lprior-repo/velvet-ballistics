@@ -153,7 +153,7 @@ pub proof fn proof_rejection_before_ack_and_run_state(case: ArtifactCase)
 }
 
 pub proof fn proof_admission_possible_only_for_valid(case: ArtifactCase)
-    requires outcome_admitted(case),
+        admission_outcome(SpecEnvelopeCase::Valid) == (0int, true, true, true),
     ensures
         case == ArtifactCase::Valid,
         outcome_acknowledged(case),
