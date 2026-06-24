@@ -128,6 +128,75 @@ pub enum RecoveryError {
     },
 }
 
+// Manual `PartialEq, Eq` impl: `RecoveryError::Journal(_)` wraps
+// `JournalError`, whose variants transitively contain `fjall::Error`
+// and `std::io::Error` (neither implements `PartialEq`), so a
+// `#[derive(PartialEq, Eq)]` is infeasible without restructuring the
+// broader storage error surface. Two `Journal(_)` payloads are treated
+// as never equal (the inner `JournalError` cannot be compared); every
+// other variant is compared field-by-field. This adds the trait
+// capability without changing any variant, field, `Display`, `From`,
+// or `Error` semantic on `RecoveryError`.
+impl PartialEq for RecoveryError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Journal(_), Self::Journal(_)) => false,
+            (
+                Self::WorkflowSourceDigestMismatch { expected: le, found: lf },
+                Self::WorkflowSourceDigestMismatch { expected: re, found: rf },
+            ) => le == re && lf == rf,
+            (
+                Self::CompiledIrDigestMismatch { expected: le, found: lf },
+                Self::CompiledIrDigestMismatch { expected: re, found: rf },
+            ) => le == re && lf == rf,
+            (
+                Self::ActionAbiMismatch { action_id: la },
+                Self::ActionAbiMismatch { action_id: ra },
+            ) => la == ra,
+            (
+                Self::PolicyDigestMismatch { step: ls },
+                Self::PolicyDigestMismatch { step: rs },
+            ) => ls == rs,
+            (
+                Self::NonIdempotentActionBlocked { action: la, step: ls },
+                Self::NonIdempotentActionBlocked { action: ra, step: rs },
+            ) => la == ra && ls == rs,
+            (
+                Self::ReplayDivergence { step: ls, detail: ld },
+                Self::ReplayDivergence { step: rs, detail: rd },
+            ) => ls == rs && ld == rd,
+            (
+                Self::SlotTaintReadFailed { slot: ls },
+                Self::SlotTaintReadFailed { slot: rs },
+            ) => ls == rs,
+            (
+                Self::CorruptSlotTaint { slot: ls },
+                Self::CorruptSlotTaint { slot: rs },
+            ) => ls == rs,
+            (
+                Self::NoRecoveryData { run: lr },
+                Self::NoRecoveryData { run: rr },
+            ) => lr == rr,
+            (
+                Self::CorruptSnapshot { run: lr, seq: ls },
+                Self::CorruptSnapshot { run: rr, seq: rs },
+            ) => lr == rr && ls == rs,
+            (
+                Self::TerminalStateMismatch { expected: le, found: lf },
+                Self::TerminalStateMismatch { expected: re, found: rf },
+            ) => le == re && lf == rf,
+            (
+                Self::FrameDimensionOverflow { run: lr },
+                Self::FrameDimensionOverflow { run: rr },
+            ) => lr == rr,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for RecoveryError {}
+
+
 /// Result alias for recovery operations.
 pub type RecoveryResult<T> = Result<T, RecoveryError>;
 

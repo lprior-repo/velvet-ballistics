@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
-use crate::trace::{RunId, SlotIdx, StepIdx, TraceEvent, TraceRing};
+use crate::trace::{RunId, TraceEvent, TraceRing};
+use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::action::ActionFailureCode;
 
 #[test]
