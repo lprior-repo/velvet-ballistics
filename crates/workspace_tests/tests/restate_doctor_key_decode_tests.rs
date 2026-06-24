@@ -651,7 +651,9 @@ fn preview_keyspace_bounded_by_max_records() {
             )
         })
         .collect();
-    let result = preview_keyspace(config, &entries).unwrap();
+    let mut scratch: Vec<u8> = Vec::new();
+
+    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
     assert_eq!(result.entries.len(), 3);
     assert!(result.truncated);
 }
@@ -670,7 +672,9 @@ fn preview_keyspace_bounded_by_max_bytes() {
             )
         })
         .collect();
-    let result = preview_keyspace(config, &entries).unwrap();
+    let mut scratch: Vec<u8> = Vec::new();
+
+    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
     // max_bytes=25, each entry value is 10 bytes. Entries 0 and 1 = 20 bytes (ok),
     // entry 2 would bring it to 30 > 25, so max 2 entries.
     assert_eq!(result.entries.len(), 2);
@@ -683,7 +687,9 @@ fn preview_keyspace_empty_entries() {
 
     let config = PreviewConfig::new(10, 1024).unwrap();
     let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![];
-    let result = preview_keyspace(config, &entries).unwrap();
+    let mut scratch: Vec<u8> = Vec::new();
+
+    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
     assert_eq!(result.entries.len(), 0);
     assert!(!result.truncated);
     assert_eq!(result.total_keyspace_records, 0);
@@ -704,7 +710,9 @@ fn preview_keyspace_skips_corrupt_keys_silently() {
         (valid_key.clone(), vec![0x01u8; 5]),
         (corrupt_key, vec![0x02u8; 5]),
     ];
-    let result = preview_keyspace(config, &entries).unwrap();
+    let mut scratch: Vec<u8> = Vec::new();
+
+    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
     // Only the valid entry should appear (corrupt key silently skipped).
     assert_eq!(result.entries.len(), 1);
     let (decoded_key, val_bytes, payload) = &result.entries[0];

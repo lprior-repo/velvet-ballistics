@@ -41,6 +41,7 @@ use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
 pub fn preview_keyspace(
     config: PreviewConfig,
     entries: &[(Vec<u8>, Vec<u8>)],
+    scratch: &mut Vec<u8>,
 ) -> Result<DecodedPreview, JournalError> {
     let max_records_val = config.max_records().get();
     let max_bytes_val = config.max_bytes();
@@ -85,8 +86,15 @@ pub fn preview_keyspace(
         }
 
         // Both caps not hit: include this record.
+        // CC-003 fix: reuse the caller's scratch buffer instead of
+        // allocating a fresh `Vec<u8>` per included entry. After
+        // `extend_from_slice`, `mem::take(scratch)` swaps in an empty
+        // `Vec` so the next iteration can keep using the same buffer
+        // without losing the bytes we just pushed.
         bytes_accumulated = projected; // Safe: checked projected <= max_bytes_val
-        result_entries.push((key, value_bytes.clone(), PreviewPayload::Raw));
+        scratch.clear();
+        scratch.extend_from_slice(value_bytes);
+        result_entries.push((key, std::mem::take(scratch), PreviewPayload::Raw));
         records_yielded = records_yielded.saturating_add(1);
     }
 
@@ -105,7 +113,8 @@ mod tests {
     fn empty_entries_produces_empty_preview() {
         let config = PreviewConfig::new(10, 1024).unwrap();
         let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![];
-        let result = preview_keyspace(config, &entries).unwrap();
+        let mut scratch: Vec<u8> = Vec::new();
+        let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
         assert!(result.entries.is_empty());
         assert!(!result.truncated);
         assert_eq!(result.total_keyspace_records, 0);
@@ -118,7 +127,8 @@ mod tests {
         let entries: Vec<_> = (0..10)
             .map(|_| (vec![0x10, 0, 0, 0, 0, 0, 0, 0, 1], vec![42u8; 10]))
             .collect();
-        let result = preview_keyspace(config, &entries).unwrap();
+        let mut scratch: Vec<u8> = Vec::new();
+        let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
         assert!(result.entries.len() <= 3);
         assert!(result.truncated);
     }
@@ -129,7 +139,8 @@ mod tests {
         let entries: Vec<_> = (0..10)
             .map(|_| (vec![0x10, 0, 0, 0, 0, 0, 0, 0, 1], vec![0u8; 20]))
             .collect();
-        let result = preview_keyspace(config, &entries).unwrap();
+        let mut scratch: Vec<u8> = Vec::new();
+        let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
         // Each entry is 20 bytes, max_bytes is 50. At most 2 entries (40 bytes) +
         // the 3rd would be 60 which exceeds 50, so max 2 entries.
         assert!(result.entries.len() <= 5);

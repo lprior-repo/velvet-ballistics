@@ -304,7 +304,7 @@ mod internal_tests {
     fn batch_builder_push_adds_events() {
         let mut builder = BatchBuilder::new();
         let event = make_event(RunId::new(1), 0);
-        builder.push(event.clone());
+        builder.push(event.clone()).expect("push within cap");
         assert!(!builder.is_empty());
         assert_eq!(builder.len(), 1);
         assert_eq!(builder.as_slice().first(), Some(&event));
@@ -316,9 +316,9 @@ mod internal_tests {
         let e1 = make_event(RunId::new(1), 0);
         let e2 = make_event(RunId::new(2), 0);
         let e3 = make_event(RunId::new(3), 0);
-        builder.push(e1.clone());
-        builder.push(e2.clone());
-        builder.push(e3.clone());
+        builder.push(e1.clone()).expect("push within cap");
+        builder.push(e2.clone()).expect("push within cap");
+        builder.push(e3.clone()).expect("push within cap");
         assert_eq!(builder.len(), 3);
         assert_eq!(builder.as_slice(), &[e1, e2, e3]);
     }
@@ -840,8 +840,8 @@ mod internal_tests {
         let mut builder = BatchBuilder::new();
         let e0 = make_event(RunId::new(200), 0);
         let e1 = make_event(RunId::new(201), 0);
-        builder.push(e0.clone());
-        builder.push(e1.clone());
+        builder.push(e0.clone()).expect("push within cap");
+        builder.push(e1.clone()).expect("push within cap");
         let slice = builder.as_slice();
         assert_eq!(slice.len(), 2);
         assert_eq!(slice[0], e0, "first element should be e0");
