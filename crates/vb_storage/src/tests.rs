@@ -7675,6 +7675,7 @@ mod tests {
                 JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
                 JournalError::UnexpectedEof => "unexpected_eof",
                 JournalError::PostcardDecodeFailed => "postcard_decode_failed",
+                JournalError::PostcardDecodeError(_) => "postcard_decode_error",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",
                 JournalError::ArtifactChecksumMismatch => "artifact_checksum_mismatch",
