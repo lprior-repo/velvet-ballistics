@@ -1,0 +1,42 @@
+{
+  "parent_bead": "vb-kij9n",
+  "audit_date": "2026-06-24",
+  "auditor": "holzman-rust",
+  "total_children_all": 156,
+  "total_bug_children": 155,
+  "non_bug_children": [
+    {
+      "id": "vb-og75k",
+      "issue_type": "epic",
+      "title": "wave-16: close 8 budget P1s (vb-vrfld flux-rs pin + 6 is_err/is_ok smoke checks + select source bugs) + resolve wave-13 conflict + split cold_adapter_isolation.rs",
+      "status": "closed"
+    }
+  ],
+  "bug_children_status_distribution": [
+    {
+      "status": "blocked",
+      "count": 5
+    },
+    {
+      "status": "closed",
+      "count": 119
+    },
+    {
+      "status": "in_progress",
+      "count": 30
+    },
+    {
+      "status": "open",
+      "count": 1
+    }
+  ],
+  "children_missing_planner_session": [],
+  "children_wrong_final_status": [],
+  "unique_source_finding_ids": 155,
+  "duplicate_source_finding_ids": [],
+  "duplicate_external_refs": 0
+}
+=== Cross-set results (computed via comm) ===
+rejected_leaked_as_children: 0
+child_ids_orphan: 0
+finding_ids_unaccounted: 0

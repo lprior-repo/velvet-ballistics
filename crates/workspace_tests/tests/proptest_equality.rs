@@ -153,21 +153,19 @@ fn arb_runtime_error() -> impl Strategy<Value = RuntimeError> {
         Just(RuntimeError::ActiveRunCapacityZero),
         Just(RuntimeError::EncodeFailed),
         Just(RuntimeError::SecretResultNotAllowed),
-        // ShardNotFound { shard } — see vb-jpq7.audit.2.
-        // `runtime_error_unit_tag` in crates/vb_runtime/src/error/equality.rs:32
-        // matches this variant via a wildcard (`ShardNotFound { .. } => Some(14)`),
-        // so `runtime_error_unit_eq` short-circuits to `true` for any two
-        // `ShardNotFound` regardless of `shard`. That makes the
-        // `core_field_eq` arm at equality.rs:120-122 dead code for this
-        // variant (a `ShardNotFound { shard }` field comparison never runs).
-        // A single generator is correct here: the test captures the current
-        // (latently buggy) behavior — two `ShardNotFound` values with
-        // different `shard` fields compare equal because of the wildcard
-        // tag match, not because the field-arm is exercised. The underlying
-        // equality bug is tracked under vb-jpq7.audit.2; once that bead
-        // changes equality.rs:32 to `None` (or otherwise makes the arm
-        // reachable), this comment and the assertion it documents must be
-        // revisited together.
+        // ShardNotFound { shard } — fixed by vb-jpq7.audit.2.
+        // After the vb-jpq7.audit.2 fix, `runtime_error_unit_tag` at
+        // crates/vb_runtime/src/error/equality.rs no longer matches
+        // `ShardNotFound { .. }` via wildcard; it falls through to the
+        // `_ => None` arm, so `runtime_error_unit_eq` returns `false` for
+        // any `ShardNotFound` pair. Equality is then decided by the
+        // `ShardNotFound { shard: a } == ShardNotFound { shard: b }` field
+        // arm in `runtime_error_core_field_eq` at equality.rs:120-122.
+        // This is consistent with every other field-bearing variant
+        // (`ActiveRunCapacityExceeded { capacity }`, `JournalFull { capacity }`,
+        // `UnsupportedOperation { operation }`, ...). The dedicated
+        // 8x8-grid `runtime_error_shard_not_found_field_equality` test
+        // below asserts this contract exhaustively.
         (any::<u32>()).prop_map(|shard| RuntimeError::ShardNotFound { shard }),
         Just(RuntimeError::MigrateSelf),
         // ---- runtime_error_core_field_eq field variants ----
@@ -412,6 +410,44 @@ proptest! {
                         prop_assert_eq!(a == c, true);
                     }
                 }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ShardNotFound field-equality contract (vb-jpq7.audit.2)
+//
+// After the equality fix at crates/vb_runtime/src/error/equality.rs (the
+// `ShardNotFound { .. } => Some(14)` wildcard was removed from
+// `runtime_error_unit_tag`), two `RuntimeError::ShardNotFound` values are
+// equal iff their `shard` fields are equal — the same contract every other
+// field-bearing variant already satisfies. This plain `#[test]` exhaustively
+// covers an 8x8 grid (0..8 u32 for both shards), so any regression that
+// reintroduces the wildcard (or otherwise short-circuits the field-arm) is
+// caught immediately.
+//
+// Test clippy is not strict per AGENTS.md, so `assert_eq!` / `assert_ne!`
+// are allowed here. These assertions are scoped to the test target and do
+// not enter the production source lint gate.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn runtime_error_shard_not_found_field_equality() {
+    for shard_a in 0u32..8 {
+        for shard_b in 0u32..8 {
+            let a = RuntimeError::ShardNotFound { shard: shard_a };
+            let b = RuntimeError::ShardNotFound { shard: shard_b };
+            if shard_a == shard_b {
+                assert_eq!(
+                    a, b,
+                    "ShardNotFound {{ shard: {shard_a} }} must equal ShardNotFound {{ shard: {shard_b} }} when shard fields match"
+                );
+            } else {
+                assert_ne!(
+                    a, b,
+                    "ShardNotFound {{ shard: {shard_a} }} must not equal ShardNotFound {{ shard: {shard_b} }} when shard fields differ"
+                );
             }
         }
     }
