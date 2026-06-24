@@ -216,6 +216,21 @@ pub enum AdmissionError {
         /// Capabilities that were granted at admission time.
         granted: CapabilitySet,
     },
+    /// Granted capability count does not match the artifact's required count.
+    ///
+    /// RA-023 fix: a cardinality mismatch (extras, duplicates, or under-grants
+    /// whose per-capability membership check would otherwise fabricate a
+    /// `CapabilityDenied` on a granted capability) is reported via this typed
+    /// error instead. Carries the raw counts so callers and the operator
+    /// diagnostic surface can render an honest "set size mismatch" message
+    /// without inventing capability data.
+    #[error("admission rejected: capability count mismatch: required {required_count}, granted {granted_count}")]
+    CapabilityCountMismatch {
+        /// Number of capabilities the artifact requires.
+        required_count: usize,
+        /// Number of capabilities the caller granted.
+        granted_count: usize,
+    },
     /// The requested aggregate budget exceeds shard capacity.
     #[error(
         "admission rejected: resource capacity exceeded for {resource}: {requested} > {available}"
@@ -713,24 +728,21 @@ pub fn admit_artifact_run_with_certificate_floor(
             // Order: per-required subset check runs first so under-grant reports the
             // specific missing capability; only when every required is covered do we
             // gate on cardinality to reject over-grants (extras / duplicates).
+            //
+            // RA-023 fix: when cardinality differs, surface a typed
+            // `CapabilityCountMismatch { required_count, granted_count }` instead of
+            // fabricating a `CapabilityDenied` that names a granted capability as the
+            // missing one. Honesty-preserving error variants matter for the operator
+            // diagnostic surface (admission_result / RuntimeError mapping).
             for required_cap in artifact.required_capabilities.iter() {
                 check_capability(required_cap.action_id(), required_cap, &caps)?;
             }
             let required_count = artifact.required_capabilities.len();
             let granted_count = caps.len();
             if required_count != granted_count {
-                let first_required = artifact
-                    .required_capabilities
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        Capability::new("__capability_profile_mismatch__".into(), ActionId::new(0))
-                    });
-                let first_action = first_required.action_id();
-                return Err(AdmissionError::CapabilityDenied {
-                    action: first_action,
-                    required: first_required,
-                    granted: caps.clone(),
+                return Err(AdmissionError::CapabilityCountMismatch {
+                    required_count,
+                    granted_count,
                 });
             }
 

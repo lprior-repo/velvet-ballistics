@@ -83,6 +83,13 @@ fn map_admission_to_runtime(
         AdmissionError::ArtifactCertificateStale { digest: d, .. } => {
             RuntimeError::AdmissionArtifactStale { digest: d }
         }
+        AdmissionError::CapabilityCountMismatch {
+            required_count,
+            granted_count,
+        } => RuntimeError::AdmissionCapabilityCountMismatch {
+            required_count,
+            granted_count,
+        },
     }
 }
 
@@ -177,6 +184,23 @@ fn arb_admission_error() -> impl Strategy<Value = AdmissionError> {
             }
         });
 
+    let capability_count_mismatch = (any::<u8>(), any::<u8>())
+        .prop_map(|(required, granted)| {
+            // Force a real mismatch (proptest otherwise floods equal pairs).
+            let required_count = usize::from(required);
+            let granted_count = usize::from(granted).wrapping_add(if granted == u8::MAX { 1 } else { 1 });
+            // Replace equality with non-equal by shifting granted.
+            let granted_count = if granted_count == required_count {
+                required_count.wrapping_add(1)
+            } else {
+                granted_count
+            };
+            AdmissionError::CapabilityCountMismatch {
+                required_count,
+                granted_count,
+            }
+        });
+
     prop_oneof![
         3 => resource_capacity_exceeded,
         3 => artifact_not_found,
@@ -189,6 +213,7 @@ fn arb_admission_error() -> impl Strategy<Value = AdmissionError> {
         1 => step_ceiling,
         1 => per_tick_ceiling,
         1 => artifact_stale,
+        1 => capability_count_mismatch,
         1 => Just(AdmissionError::ArtifactEnvelopeDecodeFailed),
         1 => Just(AdmissionError::ArtifactInvalidGateCount { found: 7, required: 15 }),
         1 => Just(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }),

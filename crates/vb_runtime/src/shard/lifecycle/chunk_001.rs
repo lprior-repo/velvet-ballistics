@@ -284,6 +284,13 @@ impl Shard {
             Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
                 Err(RuntimeError::AdmissionArtifactStale { digest })
             }
+            Err(AdmissionError::CapabilityCountMismatch {
+                required_count,
+                granted_count,
+            }) => Err(RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count,
+                granted_count,
+            }),
         }
     }
 

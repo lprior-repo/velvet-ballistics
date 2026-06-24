@@ -106,6 +106,17 @@ pub enum RuntimeError {
         /// Capabilities that were granted at admission time.
         granted: vb_core::capability::CapabilitySet,
     },
+    /// Admission gate rejected the run because the granted capability set size
+    /// did not match the artifact's required capability set size (RA-023 / RA-018).
+    ///
+    /// Carries the raw counts so operators can diagnose "extras / duplicates /
+    /// under-grants" honestly without inventing capability data.
+    AdmissionCapabilityCountMismatch {
+        /// Number of capabilities the artifact requires.
+        required_count: usize,
+        /// Number of capabilities the caller granted.
+        granted_count: usize,
+    },
     /// Admission gate rejected the run because the artifact certificate is stale.
     AdmissionArtifactStale {
         /// Digest of the stale artifact.
