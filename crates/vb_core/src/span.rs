@@ -3,6 +3,7 @@
 //! Source-location primitives for diagnostics.
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Byte-offset span into a source document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -17,10 +18,35 @@ impl Span {
     /// Empty span at the beginning of a source document.
     pub const ZERO: Self = Self { start: 0, end: 0 };
 
-    /// Creates a span from byte offsets.
+    /// Creates a span from byte offsets without validation.
+    ///
+    /// This is the **unchecked** constructor: any pair of `u32` values
+    /// is accepted, including inverted inputs where `start > end`. The
+    /// resulting `Span` preserves the offsets verbatim, so a downstream
+    /// `is_empty()` check, a length computation, or a slice operation
+    /// can produce surprising results. New code should prefer
+    /// [`Span::try_new`] unless it can prove the invariant by
+    /// construction (for example, when carrying offsets forward from
+    /// a previously-validated source).
     #[must_use]
     pub const fn new(start: u32, end: u32) -> Self {
         Self { start, end }
+    }
+
+    /// Creates a span from byte offsets, rejecting inverted inputs.
+    ///
+    /// Returns `Ok(Span { start, end })` when `start <= end`, including
+    /// the empty-span case `start == end`. Returns
+    /// `Err(SpanError::StartGreaterThanEnd { start, end })` when
+    /// `start > end`, with the offending operands carried verbatim
+    /// for diagnostics. This constructor is the safe entry point for
+    /// any `Span` whose offsets come from untrusted input (parser
+    /// output, user-supplied coordinates, recovered journal data, etc.).
+    pub const fn try_new(start: u32, end: u32) -> Result<Self, SpanError> {
+        if start > end {
+            return Err(SpanError::StartGreaterThanEnd { start, end });
+        }
+        Ok(Self { start, end })
     }
 
     /// Returns true when the span covers no bytes.
@@ -28,6 +54,20 @@ impl Span {
     pub const fn is_empty(self) -> bool {
         self.start == self.end
     }
+}
+
+/// Failure mode for [`Span::try_new`].
+#[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SpanError {
+    /// `start > end`; the offset pair describes a negative-length range.
+    #[error("span start {start} is greater than end {end}")]
+    StartGreaterThanEnd {
+        /// Inclusive start offset that exceeded the end offset.
+        start: u32,
+        /// Exclusive end offset that was smaller than the start offset.
+        end: u32,
+    },
 }
 
 /// Value paired with its source location.
@@ -66,7 +106,7 @@ impl SourceMap {
 
 #[cfg(test)]
 mod tests {
-    use super::{Located, SourceMap, Span, Spanned};
+    use super::{Located, SourceMap, Span, SpanError, Spanned};
 
     #[test]
     fn zero_span_is_empty() {
@@ -217,5 +257,110 @@ mod tests {
     fn span_large_span() {
         let span = Span::new(0, u32::MAX);
         assert!(!span.is_empty());
+    }
+
+    // =========================================================================
+    // Span::try_new (CV-106) — checked constructor + SpanError behaviour
+    // =========================================================================
+
+    #[test]
+    fn try_new_accepts_start_less_than_end() {
+        let span = Span::try_new(2, 5).expect("start < end must be Ok");
+        assert_eq!(span, Span::new(2, 5));
+        assert!(!span.is_empty());
+    }
+
+    #[test]
+    fn try_new_accepts_start_equal_end() {
+        let span = Span::try_new(7, 7).expect("start == end must be Ok");
+        assert!(span.is_empty());
+        assert_eq!(span, Span::new(7, 7));
+    }
+
+    #[test]
+    fn try_new_accepts_zero_zero() {
+        let span = Span::try_new(0, 0).expect("0,0 must be Ok");
+        assert_eq!(span, Span::ZERO);
+        assert!(span.is_empty());
+    }
+
+    #[test]
+    fn try_new_accepts_zero_to_max() {
+        let span = Span::try_new(0, u32::MAX).expect("0,MAX must be Ok");
+        assert!(!span.is_empty());
+        assert_eq!(span.start, 0);
+        assert_eq!(span.end, u32::MAX);
+    }
+
+    #[test]
+    fn try_new_accepts_max_to_max() {
+        let span = Span::try_new(u32::MAX, u32::MAX).expect("MAX,MAX must be Ok");
+        assert!(span.is_empty());
+        assert_eq!(span.start, u32::MAX);
+        assert_eq!(span.end, u32::MAX);
+    }
+
+    #[test]
+    fn try_new_rejects_start_greater_than_end() {
+        let err = Span::try_new(5, 3).expect_err("start > end must be Err");
+        assert_eq!(err, SpanError::StartGreaterThanEnd { start: 5, end: 3 });
+    }
+
+    #[test]
+    fn try_new_rejects_one_above_boundary() {
+        // The smallest possible inversion: end = start - 1.
+        let err = Span::try_new(10, 9).expect_err("start - 1 must be Err");
+        assert_eq!(err, SpanError::StartGreaterThanEnd { start: 10, end: 9 });
+    }
+
+    #[test]
+    fn try_new_rejects_max_zero_pair() {
+        // The largest possible inversion: start = MAX, end = 0.
+        let err = Span::try_new(u32::MAX, 0).expect_err("MAX,0 must be Err");
+        assert_eq!(
+            err,
+            SpanError::StartGreaterThanEnd {
+                start: u32::MAX,
+                end: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn try_new_error_carries_offending_operands() {
+        // The error must preserve the exact operands for diagnostics.
+        let err = Span::try_new(42, 17).expect_err("must be Err");
+        match err {
+            SpanError::StartGreaterThanEnd { start, end } => {
+                assert_eq!(start, 42);
+                assert_eq!(end, 17);
+            }
+        }
+    }
+
+    #[test]
+    fn try_new_preserves_existing_new_semantics() {
+        // `new` must remain unchecked and accept the same inputs as
+        // before; `try_new` is strictly additive.
+        let inverted = Span::new(7, 3);
+        assert_eq!(inverted.start, 7);
+        assert_eq!(inverted.end, 3);
+
+        // The same input via `try_new` is rejected.
+        assert!(Span::try_new(7, 3).is_err());
+    }
+
+    #[test]
+    fn span_error_display_is_human_readable() {
+        let err = SpanError::StartGreaterThanEnd { start: 9, end: 4 };
+        let rendered = format!("{err}");
+        assert!(
+            rendered.contains('9'),
+            "display must include start: {rendered}"
+        );
+        assert!(
+            rendered.contains('4'),
+            "display must include end: {rendered}"
+        );
     }
 }

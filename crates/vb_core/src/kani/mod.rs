@@ -5,7 +5,8 @@
 //! harnesses first.
 //!
 //! Obligations covered: PO-001, PO-002, PO-004, PO-005, PO-007, PO-008,
-//! PO-009, PO-010, PO-011, PO-012, PO-013, PO-014
+//! PO-009, PO-010, PO-011, PO-012, PO-013, PO-014, PO-CV106-1,
+//! PO-CV106-2, PO-CV106-3, PO-CV106-4
 
 #![forbid(unsafe_code)]
 
@@ -17,5 +18,6 @@ pub mod kani_registry_bijection;
 pub mod kani_registry_category;
 pub mod kani_reverse_lookup;
 pub mod kani_serde_roundtrip;
+pub mod kani_span_try_new;
 pub mod kani_symbolic_code_validation;
 pub mod kani_zero_alloc;

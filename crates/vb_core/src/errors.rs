@@ -8,6 +8,7 @@ use crate::ids::{
     ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
     SymbolId,
 };
+use crate::span::SpanError;
 use chrono::{DateTime, Utc};
 use thiserror::Error;
 
@@ -515,6 +516,14 @@ pub enum CoreError {
         /// Associated run ID if available.
         bead_id: Option<RunId>,
     },
+    /// A `Span` was constructed via [`Span::try_new`] with `start > end`.
+    #[error("invalid span: start {start} is greater than end {end}")]
+    InvalidSpan {
+        /// Inclusive start offset that exceeded the end offset.
+        start: u32,
+        /// Exclusive end offset that was smaller than the start offset.
+        end: u32,
+    },
 }
 
 impl CoreError {
@@ -620,6 +629,8 @@ impl CoreError {
     pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = DiagnosticCode::new(0x1505);
     /// Replay corruption diagnostic code.
     pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x1506);
+    /// Invalid span diagnostic code (CV-106).
+    pub const INVALID_SPAN_CODE: DiagnosticCode = DiagnosticCode::new(0x130E);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -706,6 +717,7 @@ impl CoreError {
             Self::LifecycleInvalidTransition { .. } => Self::LIFECYCLE_INVALID_TRANSITION_CODE,
             Self::JournalWriteFailure { .. } => Self::JOURNAL_WRITE_FAILURE_CODE,
             Self::ReplayCorruption { .. } => Self::REPLAY_CORRUPTION_CODE,
+            Self::InvalidSpan { .. } => Self::INVALID_SPAN_CODE,
         }
     }
 
@@ -755,6 +767,18 @@ impl HasSymbolicCode for CoreError {
             Some(sc) => sc,
             // Unregistered numeric code falls back to the invariant sentinel.
             None => SymbolicCode::INTERNAL_INVARIANT,
+        }
+    }
+}
+
+impl From<SpanError> for CoreError {
+    /// Maps every [`SpanError`] variant onto the corresponding
+    /// [`CoreError::InvalidSpan`] variant, preserving the offending
+    /// `start` and `end` operands verbatim. This lets `?` work across
+    /// the `Span` / core-error boundary without losing diagnostics.
+    fn from(err: SpanError) -> Self {
+        match err {
+            SpanError::StartGreaterThanEnd { start, end } => Self::InvalidSpan { start, end },
         }
     }
 }
