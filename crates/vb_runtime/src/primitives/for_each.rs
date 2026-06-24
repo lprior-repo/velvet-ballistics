@@ -52,7 +52,7 @@ pub fn for_each_start(
             reason: "for_each item_count checked nonzero",
         })?;
     run.write_slot_with_taint(item_slot, first, input_taint)?;
-    let state = build_iterator_state(list_id, 1);
+    let state = build_iterator_state(list_id, 1)?;
     let state_id = store.insert_list(state)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
@@ -79,14 +79,19 @@ pub fn for_each_next(
         return jump_to(run, done);
     }
     let item_output = require_output(output, run.pc())?;
-    let item = source[cursor];
+    let item = source
+        .get(cursor)
+        .copied()
+        .ok_or(EngineError::InternalInvariantViolation {
+            reason: "for_each cursor bounds-checked above",
+        })?;
     run.write_slot_with_taint(item_output, item, iter_taint)?;
     let next_cursor = cursor
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each cursor overflow",
         })?;
-    let next_state = build_iterator_state(source_id, next_cursor);
+    let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
     jump_to_body(run, body)

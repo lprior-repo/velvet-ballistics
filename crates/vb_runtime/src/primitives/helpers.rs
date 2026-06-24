@@ -24,10 +24,15 @@ pub(crate) fn empty_list() -> Box<[SlotValue]> {
 /// This is the compact alternative to materializing the tail of the source
 /// list on every iteration step. Both `source_id` and `cursor` are stored
 /// as `SlotValue::I64`; the state list is immutable once inserted.
-pub(crate) fn build_iterator_state(source_id: ListId, cursor: usize) -> Box<[SlotValue]> {
+pub(crate) fn build_iterator_state(
+    source_id: ListId,
+    cursor: usize,
+) -> Result<Box<[SlotValue]>, EngineError> {
     let source_token = i64::from(source_id.get());
-    let cursor_token = i64::try_from(cursor).unwrap_or(i64::MAX);
-    vec![SlotValue::I64(source_token), SlotValue::I64(cursor_token)].into_boxed_slice()
+    let cursor_token = i64::try_from(cursor).map_err(|_| EngineError::InternalInvariantViolation {
+        reason: "iterator state cursor exceeds i64 range",
+    })?;
+    Ok(vec![SlotValue::I64(source_token), SlotValue::I64(cursor_token)].into_boxed_slice())
 }
 
 /// Decodes a 2-element iterator state list into `(source_id, cursor)`.
