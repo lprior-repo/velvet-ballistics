@@ -339,8 +339,8 @@ pub fn submit_artifact_with_contracts(
             let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
             let mut proof = VerificationProof::new(workflow.digest(), 0, false);
-            proof.idempotency_keyed = idempotency_evidence.keyed.clone();
-            proof.idempotency_attested = idempotency_evidence.attested.clone();
+            proof.idempotency_keyed = idempotency_evidence.keyed;
+            proof.idempotency_attested = idempotency_evidence.attested;
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 source_digest: workflow.digest(),
