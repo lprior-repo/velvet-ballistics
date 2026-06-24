@@ -1079,6 +1079,8 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
 
 #[test]
 fn execute_reduce_start_errors_on_uninitialized_input() {
+    // Forward-edge-only validator rejects self-edge body, so route the
+    // never-entered body through a Nop terminator before Finish.
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         output: None,
@@ -1089,14 +1091,15 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
             input: SlotIdx::new(5),
             accumulator: SlotIdx::new(6),
             initial: ConstIdx::new(0),
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         },
     };
-    let node1 = finish_node(1, 0);
+    let node1 = nop_forward(1, 2);
+    let node2 = finish_node(2, 0);
     let constants: Box<[vb_core::value::ConstValue]> =
         Box::from([vb_core::value::ConstValue::I64(0)]);
-    let wf = make_workflow_with_constants(vec![node0, node1], 8, constants);
+    let wf = make_workflow_with_constants(vec![node0, node1, node2], 8, constants);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -1210,6 +1213,8 @@ fn execute_reduce_finish_errors_on_missing_step_state() {
 
 #[test]
 fn execute_repeat_start_single_attempt_no_panic() {
+    // Forward-edge-only validator rejects self-edge body, so route the
+    // never-entered body through a Nop terminator before Finish.
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         output: None,
@@ -1218,12 +1223,13 @@ fn execute_repeat_start_single_attempt_no_panic() {
         error_slot: None,
         kind: CompiledNodeKind::RepeatStart {
             max_attempts: 1,
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         },
     };
-    let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let node1 = nop_forward(1, 2);
+    let node2 = finish_node(2, 0);
+    let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
