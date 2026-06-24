@@ -3265,7 +3265,7 @@ pub struct Capability {
 1. **Declared requirement** (in `AcceptedArtifact`): the set of capabilities the artifact's actions require.
 2. **Granted permission** (in `RunAdmission`): the set of capabilities the operator has granted for this run.
 
-Admission checks that every declared requirement is satisfied by a granted permission. Ungranted capabilities cause `CapabilityDenied` rejection.
+Admission checks strict set equality between declared requirements and the granted permission set: every declared requirement matches an element of the granted permission set, AND every element of the granted permission set is matched by a declared requirement (cardinality-exact and membership-exact, mirroring `VERUS-CARD-003` / `verification/verus/capability_artifact_model.rs::exact_profile`). Mismatch in either direction — a missing required capability OR an undeclared granted capability — causes `CapabilityDenied` rejection.
 
 Capability checking occurs at admission time (cold path) only. The runtime does not re-check capabilities during execution. `Box<str>` is acceptable because admission is cold-path.
 
