@@ -43,7 +43,9 @@ pub(crate) fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalE
     let valid = match magic {
         MAGIC_WORKFLOW_SOURCE => kind == RecordKind::WorkflowSource.id(),
         MAGIC_COMPILED_ARTIFACT => kind == RecordKind::CompiledIr.id(),
-        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=29) || kind == RecordKind::WaitResolved.id(),
+        MAGIC_JOURNAL_EVENT => {
+            matches!(kind, 10..=29) || kind == RecordKind::WaitResolved.id()
+        }
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),

@@ -1901,8 +1901,8 @@ fn ce003_replay_object_field_taint_joins_segment() -> Result<(), CoreError> {
 #[test]
 fn ce003_replay_list_item_taint_joins_segment() -> Result<(), CoreError> {
     let mut store = ValueStore::new();
-    let values =
-        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice();
+    let values = vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+        .into_boxed_slice();
     let taints = vec![Taint::Clean, Taint::Secret, Taint::Clean].into_boxed_slice();
     let list_handle = store.insert_list_with_taint(values, taints)?;
 

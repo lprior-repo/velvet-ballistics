@@ -198,11 +198,11 @@ fn eval_accessor_for_replay(
             reason: "unexpected error reading accessor root",
         },
     })?;
-    let mut accumulated_taint =
-        run.read_taint(program.root)
-            .map_err(|_| ReplayError::Internal {
-                reason: "read_taint failed for accessor root",
-            })?;
+    let mut accumulated_taint = run
+        .read_taint(program.root)
+        .map_err(|_| ReplayError::Internal {
+            reason: "read_taint failed for accessor root",
+        })?;
     if program.path.is_empty() {
         return Ok((current, accumulated_taint));
     }

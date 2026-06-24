@@ -1467,6 +1467,7 @@ fn ce_004_replay_jump_out_of_bounds_yields_typed_step_not_found() -> Result<(), 
     let slot_count = plan.slot_count();
     let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
+    let store = ValueStore::new();
 
     // Drive `replay_jump` with an out-of-bounds target (99) directly to
     // exercise the `set_pc` failure path without relying on workflow

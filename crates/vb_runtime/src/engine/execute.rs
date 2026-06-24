@@ -22,12 +22,14 @@ use crate::primitives::collect::CollectStates;
 fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<Option<u16>> {
     match run.read_slot(slot) {
         Ok(value) => match *value {
-            SlotValue::I64(v) => u16::try_from(v).map(Some).map_err(|_| {
-                RuntimeEngineError::Core(EngineError::TypeMismatch {
-                    expected: "non-negative u16 attempt count",
-                    found: "out-of-range i64",
-                })
-            }),
+            SlotValue::I64(v) => u16::try_from(v)
+                .map(Some)
+                .map_err(|_| {
+                    RuntimeEngineError::Core(EngineError::TypeMismatch {
+                        expected: "non-negative u16 attempt count",
+                        found: "out-of-range i64",
+                    })
+                }),
             _ => Err(RuntimeEngineError::Core(EngineError::TypeMismatch {
                 expected: "number",
                 found: value.type_name(),
@@ -414,11 +416,9 @@ fn handle_retry_check(
     // rather than silently saturating.
     let next_attempt = current_attempt
         .checked_add(1)
-        .ok_or(RuntimeEngineError::Core(
-            EngineError::InternalInvariantViolation {
-                reason: "retry_attempt_overflow",
-            },
-        ))?;
+        .ok_or(RuntimeEngineError::Core(EngineError::InternalInvariantViolation {
+            reason: "retry_attempt_overflow",
+        }))?;
     run.write_slot(policy_slot, SlotValue::I64(i64::from(next_attempt)))
         .map_err(RuntimeEngineError::Core)?;
     run.set_pc(target).map_err(RuntimeEngineError::Core)?;

@@ -6,7 +6,7 @@ use crate::frame::RunFrame;
 use crate::ids::StepIdx;
 use crate::value::SlotValue;
 
-use super::{ReplayAction, ReplayError, engine_to_replay_err, eval_expr_for_replay};
+use super::{ReplayAction, ReplayError, eval_expr_for_replay, engine_to_replay_err};
 
 /// Replays a ChooseSlot node which selects a branch based on boolean slot values.
 pub fn replay_choose_slot(

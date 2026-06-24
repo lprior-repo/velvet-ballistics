@@ -202,10 +202,7 @@ fn kind_28_29_31_admission_for_journal_magic() {
         "kind 29 must be admitted for journal magic"
     );
     // WaitResolved (31) is the dedicated journal kind for bug-hunt RE-009.
-    assert!(
-        is_known_record_kind(31),
-        "kind 31 (WaitResolved) must be known"
-    );
+    assert!(is_known_record_kind(31), "kind 31 (WaitResolved) must be known");
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 31).is_ok(),
         "kind 31 (WaitResolved) must be admitted for journal magic"

@@ -186,6 +186,7 @@ pub fn validate_transition_target(parts: &WorkflowParts) -> Result<(), WorkflowE
     Ok(())
 }
 
+
 /// Rejects `TogetherStart` nodes that are reachable from the body of
 /// another `TogetherStart` node.
 ///
@@ -234,8 +235,13 @@ pub fn validate_no_nested_together(parts: &WorkflowParts) -> Result<(), Workflow
             // follows the linear `next` chain emitted by the compiler for
             // TogetherStart branch bodies, so it stays bounded to the outer
             // TogetherStart's body.
-            if walk_contains_together_start(&parts.nodes, &together_set, entry_idx, join_idx, outer)
-            {
+            if walk_contains_together_start(
+                &parts.nodes,
+                &together_set,
+                entry_idx,
+                join_idx,
+                outer,
+            ) {
                 return Err(WorkflowError::NestedTogether {
                     outer,
                     inner: find_inner_together_start(
@@ -268,9 +274,7 @@ fn walk_contains_together_start(
         if idx >= nodes.len() || idx == stop_idx || !visited.insert(idx) {
             continue;
         }
-        let Ok(step_u16) = u16::try_from(idx) else {
-            continue;
-        };
+        let Ok(step_u16) = u16::try_from(idx) else { continue; };
         let step = StepIdx::new(step_u16);
         if step != outer && together_set.contains(&step) {
             return true;
@@ -300,9 +304,7 @@ fn find_inner_together_start(
         if idx >= nodes.len() || idx == stop_idx || !visited.insert(idx) {
             continue;
         }
-        let Ok(step_u16) = u16::try_from(idx) else {
-            return outer;
-        };
+        let Ok(step_u16) = u16::try_from(idx) else { return outer; };
         let step = StepIdx::new(step_u16);
         if step != outer && together_set.contains(&step) {
             return step;
