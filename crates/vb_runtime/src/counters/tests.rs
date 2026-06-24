@@ -355,15 +355,17 @@ fn counters_mixed_operations_snapshot_is_consistent() {
 // =======================================================================
 
 #[test]
-fn counter_add_steps_near_u64_max_wraps_via_atomic() {
-    // Given counters near u64::MAX for steps
+fn add_steps_saturates_at_u64_max_on_overflow() {
+    // Given counters driven to u64::MAX for steps
     let counters = ShardCounters::new();
     counters.add_steps(u64::MAX);
     // When adding one more step
     counters.add_steps(1);
-    // Then the counter wraps (fetch_add wraps on overflow for AtomicU64)
-    let snap = counters.snapshot();
-    assert_eq!(snap.steps_executed, 0);
+    // Then the counter saturates at u64::MAX (no wrap)
+    assert_eq!(counters.snapshot().steps_executed, u64::MAX);
+    // And additional increments remain saturated
+    counters.add_steps(42);
+    assert_eq!(counters.snapshot().steps_executed, u64::MAX);
 }
 
 #[test]

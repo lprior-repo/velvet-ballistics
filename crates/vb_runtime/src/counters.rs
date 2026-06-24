@@ -45,9 +45,21 @@ impl ShardCounters {
         self.runs_failed.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Adds to the steps-executed counter.
+    /// Adds to the steps-executed counter, saturating at `u64::MAX` on overflow.
     pub fn add_steps(&self, count: u64) {
-        self.steps_executed.fetch_add(count, Ordering::Relaxed);
+        let mut current = self.steps_executed.load(Ordering::Relaxed);
+        loop {
+            let next = current.saturating_add(count);
+            if current == next
+                || self
+                    .steps_executed
+                    .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+                    .is_ok()
+            {
+                return;
+            }
+            current = self.steps_executed.load(Ordering::Relaxed);
+        }
     }
 }
 
