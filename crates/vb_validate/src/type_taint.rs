@@ -267,15 +267,23 @@ pub fn validate_resource_limits(
         workflow.resource_contract.max_steps,
         hard_limits.max_steps,
     )?;
-    check_resource_bound(
+    // `WorkflowTypes` does not carry the actual slot count, so we can only
+    // check the declared bound against the protocol hard limit. Using
+    // `workflow.steps.len()` here would be a copy-paste error (it is the
+    // step count, not the slot count) and would produce false-positive
+    // `LimitExceeded` errors whenever steps.len() > max_slots.
+    check_declared_bound(
         "max_slots",
-        workflow.steps.len(),
         workflow.resource_contract.max_slots,
         hard_limits.max_slots,
     )?;
-    check_resource_bound(
+    // `WorkflowTypes` does not carry the actual constants count, so the
+    // actual-vs-declared check is not possible. Passing `0` here would make
+    // the `actual > declared` check always false, silently masking any
+    // actual-exceeds-declared violation. The declared bound check is the
+    // strongest check we can perform on this struct.
+    check_declared_bound(
         "max_constants",
-        0,
         workflow.resource_contract.max_constants,
         hard_limits.max_constants,
     )?;

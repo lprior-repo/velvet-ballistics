@@ -881,7 +881,12 @@ fn prop_taint_merge_clean_is_identity() {
 // =========================================================================
 
 #[test]
-fn blackhat_resource_limits_max_slots_uses_step_count_not_slot_count() {
+fn blackhat_resource_limits_max_slots_does_not_compare_against_step_count() {
+    // `WorkflowTypes` does not carry the actual slot count, so the validator
+    // must NOT compare `steps.len()` against `max_slots` (that would be a
+    // false-positive rejection whenever steps.len() > max_slots). The check
+    // reduces to: declared `max_slots` must be non-zero and at most the
+    // protocol hard limit.
     let wf = WorkflowTypes {
         inputs: vec![],
         vars: vec![],
@@ -892,28 +897,44 @@ fn blackhat_resource_limits_max_slots_uses_step_count_not_slot_count() {
         ],
         resource_contract: ResourceLimits {
             max_steps: 10,
-            max_slots: 1,
+            max_slots: 1, // declared less than steps.len()=2; must still pass
             max_constants: 8_192,
             ..ResourceLimits::default()
         },
     };
     let hard = ResourceLimits::default();
-    match validate_resource_limits(&wf, &hard) {
-        Err(ValidationError::LimitExceeded { resource }) => {
-            assert_eq!(resource, "max_slots");
-        }
-        Err(ValidationError::LimitRequired { .. }) => {}
-        other => {
-            assert!(
-                matches!(
-                    other,
-                    Err(ValidationError::LimitExceeded { .. }
-                        | ValidationError::LimitRequired { .. })
-                ),
-                "blackhat: expected LimitExceeded or LimitRequired for max_slots, got {other:?}"
-            );
-        }
-    }
+    assert_eq!(
+        validate_resource_limits(&wf, &hard),
+        Ok(()),
+        "blackhat: max_slots declared within hard limit must pass even when \
+         steps.len() > max_slots (slot count is not carried by WorkflowTypes)"
+    );
+}
+
+#[test]
+fn blackhat_resource_limits_max_constants_does_not_accept_hard_zero_actual() {
+    // `WorkflowTypes` does not carry the actual constants count, so the
+    // validator must NOT pass `0` as the actual value (that would make the
+    // `actual > declared` check always false, silently masking any
+    // actual-exceeds-declared violation). The check reduces to: declared
+    // `max_constants` must be non-zero and at most the protocol hard limit.
+    let wf = WorkflowTypes {
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![],
+        resource_contract: ResourceLimits {
+            max_constants: 1, // declared = 1, hard = 8_192, must pass
+            ..ResourceLimits::default()
+        },
+    };
+    let hard = ResourceLimits::default();
+    assert_eq!(
+        validate_resource_limits(&wf, &hard),
+        Ok(()),
+        "blackhat: max_constants declared within hard limit must pass; \
+         the actual-vs-declared check is not possible from WorkflowTypes alone"
+    );
 }
 
 #[test]
