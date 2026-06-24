@@ -47,7 +47,7 @@ fn kani_ask_answer_append_before_insert() {
 
     // apply(AwaitTimer) sets state to Resumable — this is called
     // AFTER the journal append in the production await_timer function
-    shard.apply(run, RuntimeEvent::AwaitTimer);
+    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
 
     let state = shard.runtime_state_get(run);
     kani::assert(
@@ -59,7 +59,7 @@ fn kani_ask_answer_append_before_insert() {
     // Also test AwaitAction → Resumable
     let mut s2 = new_shard();
     let r2 = any_run_id();
-    s2.apply(r2, RuntimeEvent::AwaitAction);
+    let _ = s2.apply(r2, RuntimeEvent::AwaitAction);
     let state2 = s2.runtime_state_get(r2);
     kani::assert(
         state2 == Some(RuntimeState::Resumable),
@@ -106,11 +106,10 @@ fn kani_ask_answer_append_failure_no_timer() {
             // On failure, pending_timers must NOT be modified
             // Since we started with empty pending_timers, it should still be empty.
             let timer_count = shard.pending_timers.len();
-            kani::assert!(
+            kani::assert(
                 timer_count == 0,
                 "append failure must not modify pending_timers",
             );
-            kani::cover!(true, "append_failed_no_timer_added");
         }
     }
 }
@@ -128,9 +127,15 @@ fn kani_ask_answer_pending_timer_guard() {
     // Test the guard logic at chunk_002.rs:26-29
     // The guard checks: pending_timer.step != ask_step || pending_timer.kind != Ask
     //
-    // We test the enum variants to ensure they are correctly typed.
-    let kind = kani::any::<PendingTimerKind>();
-
+    // Use a bounded integer tag (PendingTimerKind is `#[non_exhaustive]` and
+    // does not implement `kani::Arbitrary`); map 0 → Ask, 1 → Wait.
+    let kind_tag: u8 = kani::any();
+    kani::assume(kind_tag < 2);
+    let kind = if kind_tag == 0 {
+        PendingTimerKind::Ask
+    } else {
+        PendingTimerKind::Wait
+    };
     match kind {
         PendingTimerKind::Ask => {
             kani::cover!(true, "ask_kind_allows_ask_answer");
@@ -183,7 +188,7 @@ fn kani_ask_answer_slot_written_before_ask_answered() {
     // We test apply() as the state-mutation step that prepares the run
     // for the SlotWritten→AskAnswered sequence.
 
-    shard.apply(run, RuntimeEvent::AwaitTimer);
+    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
     let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Resumable),
@@ -212,17 +217,17 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     // Test: apply(AwaitTimer) sets Resumable, which is the state
     // after SlotWritten failure. The AskAnswered append path is not reached.
 
-    shard.apply(run, RuntimeEvent::AwaitTimer);
+    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
     let state = shard.runtime_state_get(run);
-    kani::assert!(
+    kani::assert(
         state == Some(RuntimeState::Resumable),
         "after AwaitTimer, state is Resumable",
     );
 
     // Verify that calling apply(AwaitTimer) again is idempotent
-    shard.apply(run, RuntimeEvent::AwaitTimer);
+    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
     let state2 = shard.runtime_state_get(run);
-    kani::assert!(
+    kani::assert(
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) is idempotent",
     );
@@ -278,7 +283,7 @@ fn kani_ask_answer_journal_monotonicity() {
             // On failure, sequence must NOT be advanced
             // (advance_journal_sequence is only called on Ok path)
             let after_seq = shard.journal_seq_get(run);
-            kani::assert!(
+            kani::assert(
                 after_seq == initial_seq,
                 "append failure must not advance sequence",
             );
@@ -290,7 +295,7 @@ fn kani_ask_answer_journal_monotonicity() {
     let raw_seq: u64 = kani::any();
     let seq = EventSeq::new(raw_seq);
     let seq_get = seq.get();
-    kani::assert!(
+    kani::assert(
         seq_get == raw_seq,
         "EventSeq::new/get must be a bijection for all u64 values",
     );
@@ -299,7 +304,7 @@ fn kani_ask_answer_journal_monotonicity() {
     let max_seq = EventSeq::new(u64::MAX);
     let max_get = max_seq.get();
     let overflow = max_get.checked_add(1);
-    kani::assert!(
+    kani::assert(
         overflow.is_none(),
         "EventSeq overflow at u64::MAX must be detected via checked_add",
     );
@@ -309,12 +314,12 @@ fn kani_ask_answer_journal_monotonicity() {
     let low_raw: u64 = kani::any();
     kani::assume(low_raw < u64::MAX);
     let next = low_raw.checked_add(1);
-    kani::assert!(
+    kani::assert(
         next.is_some(),
         "checked_add must succeed for values below u64::MAX",
     );
     if let Some(n) = next {
-        kani::assert!(n > low_raw, "sequence must monotonically increase");
+        kani::assert(n > low_raw, "sequence must monotonically increase");
     }
     kani::cover!(next.is_some(), "monotonic_increment_ok");
 }

@@ -13,6 +13,14 @@
       "primitives::reentry_proofs::reentry_harnesses::repeat_attempt_reentry",
       "primitives::reentry_proofs::reentry_harnesses::repeat_check_reentry"
     ],
+    "crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs": [
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_append_before_insert",
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_append_failure_no_timer",
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_journal_monotonicity",
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_pending_timer_guard",
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_slot_written_before_ask_answered",
+      "verification::kani::kani_ask_answer_lifecycle::kani_ask_answer_slot_written_failure_skip_ask_answered"
+    ],
     "crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs": [
       "verification::kani::kani_attempt_fence_harnesses::proof_action_ticket_fields_non_overflow",
       "verification::kani::kani_attempt_fence_harnesses::proof_all_attempt_combinations_handled",
@@ -27,21 +35,12 @@
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_attempt_rejected",
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_capacity_rejected",
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_policy_max_rejected"
-    ],
-    "crates/vb_runtime/src/verification/kani/kani_sxkz6_shard_for_run.rs": [
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_answer_ask_unknown_run_returns_not_found",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_capture_timer_entry_unknown_run_returns_not_found",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_list_events_unknown_run_returns_not_found",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_shard_index_bounded",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_shard_index_determinism",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_take_inspect_unknown_run_returns_not_found",
-      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_timer_entry_fired_unknown_run_returns_not_found"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 27,
+    "standard-harnesses": 26,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }
