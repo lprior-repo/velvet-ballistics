@@ -1422,13 +1422,7 @@ fn visit_node_for_total_steps(
                 total,
                 stack,
             )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            .map_err(map_loop_body_budget_error)?;
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
@@ -1443,13 +1437,7 @@ fn visit_node_for_total_steps(
                 total,
                 stack,
             )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            .map_err(map_loop_body_budget_error)?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
             let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
@@ -1459,13 +1447,7 @@ fn visit_node_for_total_steps(
             total = count_and_push_loop_body(
                 nodes, *body, *done, iter_count, visited, node_count, total, stack,
             )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            .map_err(map_loop_body_budget_error)?;
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
@@ -1482,13 +1464,7 @@ fn visit_node_for_total_steps(
                 total,
                 stack,
             )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            .map_err(map_loop_body_budget_error)?;
         }
         CompiledNodeKind::Jump { target } => {
             let from = current.get();
@@ -1528,6 +1504,14 @@ fn visit_node_for_total_steps(
         }
     }
     Ok(total)
+}
+
+fn map_loop_body_budget_error(error: BudgetError) -> BudgetTraversalError {
+    let actual = match error {
+        BudgetError::TotalStepsExceeded { actual, .. } => actual,
+        _ => u64::MAX,
+    };
+    BudgetTraversalError::StepCountOverflow { actual }
 }
 
 fn add_conditional_max_steps(
