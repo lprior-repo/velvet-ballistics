@@ -254,6 +254,79 @@ fn whole_workflow_budget_uses_conditional_max_instead_of_branch_sum() -> Result<
     ensure_equal(actual.max_fanout, 2)
 }
 
+/// Regression: a Choose branch that enters a `ForEachStart` loop must
+/// multiply the loop body by the iteration limit in the branch's worst-case
+/// step count. Previously, branch counts used a path-counting helper that
+/// ignored loop headers, so a 1 + (10 * 1) + 1 + 1 branch was reported as
+/// 5 steps instead of 14 (1 Choose + 1 ForEachStart + 10 body
+/// iterations + 1 Finish + 1 done-continuation node 3).
+#[test]
+fn choose_branch_accounts_for_nested_for_each_loop_iterations() -> Result<(), String> {
+    // Workflow:
+    //   0: Choose { branch0 -> 1, otherwise -> 3 }
+    //   1: ForEachStart { limit = 10, body = 4, done = 2 }
+    //   2: Finish
+    //   3: Nop
+    //   4: Nop
+    // Branch 0 path worst case = 1 (Choose) + 1 (ForEachStart)
+    //                          + 10 * 1 (body iterations) + 1 (Finish)
+    //                          + 1 (push_done_continuation pushes node 3) = 14.
+    // Branch otherwise path = 1 (Choose) + 1 (Nop) = 2.
+    // Overall max_total_steps = 14.
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: vec![CompiledNodeKind_expr_branch(0, 1)].into_boxed_slice(),
+                otherwise: Some(StepIdx::new(3)),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 10,
+                body: StepIdx::new(4),
+                done: StepIdx::new(2),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
+        test_node(3, None, CompiledNodeKind::Nop),
+        test_node(4, None, CompiledNodeKind::Nop),
+    ];
+    let contract = test_contract(5, 2);
+    let actual = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .map_err(|error| format!("unexpected budget error: {error:?}"))?;
+
+    ensure_equal(actual.max_total_steps, 14)?;
+    ensure_equal(actual.max_for_each_iterations, 10)
+}
+
+fn CompiledNodeKind_expr_branch(condition: u16, target: u16) -> crate::workflow::ExprBranch {
+    crate::workflow::ExprBranch {
+        condition: ExprIdx::new(condition),
+        target: StepIdx::new(target),
+    }
+}
+
 #[test]
 fn whole_workflow_budget_rejects_unbounded_jump_cycle_with_exact_error() -> Result<(), String> {
     let nodes = vec![CompiledNode {
