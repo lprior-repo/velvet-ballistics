@@ -153,8 +153,21 @@ fn arb_runtime_error() -> impl Strategy<Value = RuntimeError> {
         Just(RuntimeError::ActiveRunCapacityZero),
         Just(RuntimeError::EncodeFailed),
         Just(RuntimeError::SecretResultNotAllowed),
-        // ShardNotFound appears in unit_tag (tag 14) AND core_field_eq;
-        // generate both with random shard indices.
+        // ShardNotFound { shard } — see vb-jpq7.audit.2.
+        // `runtime_error_unit_tag` in crates/vb_runtime/src/error/equality.rs:32
+        // matches this variant via a wildcard (`ShardNotFound { .. } => Some(14)`),
+        // so `runtime_error_unit_eq` short-circuits to `true` for any two
+        // `ShardNotFound` regardless of `shard`. That makes the
+        // `core_field_eq` arm at equality.rs:120-122 dead code for this
+        // variant (a `ShardNotFound { shard }` field comparison never runs).
+        // A single generator is correct here: the test captures the current
+        // (latently buggy) behavior — two `ShardNotFound` values with
+        // different `shard` fields compare equal because of the wildcard
+        // tag match, not because the field-arm is exercised. The underlying
+        // equality bug is tracked under vb-jpq7.audit.2; once that bead
+        // changes equality.rs:32 to `None` (or otherwise makes the arm
+        // reachable), this comment and the assertion it documents must be
+        // revisited together.
         (any::<u32>()).prop_map(|shard| RuntimeError::ShardNotFound { shard }),
         Just(RuntimeError::MigrateSelf),
         // ---- runtime_error_core_field_eq field variants ----
