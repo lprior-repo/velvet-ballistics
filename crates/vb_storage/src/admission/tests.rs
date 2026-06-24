@@ -524,32 +524,34 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
     let workflow = minimal_workflow()?;
     let action_a = vb_core::ActionId::new(13);
     let action_b = vb_core::ActionId::new(14);
-    let build_contract = |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
-        id,
-        name: vb_core::action::ActionName::new(name).unwrap(),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 2048,
-        timeout_ms: 1000,
-        idempotency: vb_core::action::Idempotency::IdempotentExternal,
-        side_effect: vb_core::action::SideEffect::Writes,
-        retry_safety: vb_core::action::RetrySafety::KeyRequired,
-        required_capabilities: Box::new([]),
-    };
-    let build_pure_contract = |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
-        id,
-        name: vb_core::action::ActionName::new(name).unwrap(),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 2048,
-        timeout_ms: 1000,
-        idempotency: vb_core::action::Idempotency::IdempotentExternal,
-        side_effect: vb_core::action::SideEffect::None,
-        retry_safety: vb_core::action::RetrySafety::Safe,
-        required_capabilities: Box::new([]),
-    };
+    let build_contract =
+        |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+            id,
+            name: vb_core::action::ActionName::new(name).unwrap(),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 2048,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::IdempotentExternal,
+            side_effect: vb_core::action::SideEffect::Writes,
+            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
+        };
+    let build_pure_contract =
+        |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+            id,
+            name: vb_core::action::ActionName::new(name).unwrap(),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 2048,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::IdempotentExternal,
+            side_effect: vb_core::action::SideEffect::None,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
     let relaxed_contracts = [
         build_contract(action_a, "sa013-parity-relaxed-a"),
         build_pure_contract(action_b, "sa013-parity-relaxed-b"),
@@ -573,7 +575,6 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
         &journaled_contracts,
     )
     .map_err(|e| format!("submit_artifact_with_contracts(journaled) failed: {e}"))?;
-
 
     assert_eq!(
         relaxed.verification.idempotency_keyed.as_ref(),

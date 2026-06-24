@@ -236,8 +236,7 @@ fn check_journal_family_exhaustive() {
     let result = crate::codec::validation::validate_kind_family(magic, kind);
 
     // Expected valid set: 10..=29 or 31 (WaitResolved).
-    let is_valid_journal_kind =
-        (10u16..=29u16).contains(&kind) || kind == 31u16;
+    let is_valid_journal_kind = (10u16..=29u16).contains(&kind) || kind == 31u16;
 
     match result {
         Ok(()) => {

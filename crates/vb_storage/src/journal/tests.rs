@@ -2556,7 +2556,6 @@ fn close_propagates_persist_errors() {
     );
 }
 
-
 // =========================================================================
 // Regression test for SA-016
 // =========================================================================
@@ -2590,5 +2589,8 @@ fn append_queued_unfsynced_commits_to_memtable_and_is_visible_to_readers() {
         1,
         "event must be visible to readers immediately after append_queued_unfsynced"
     );
-    assert_eq!(replayed[0], event, "replayed event must equal appended event");
+    assert_eq!(
+        replayed[0], event,
+        "replayed event must equal appended event"
+    );
 }

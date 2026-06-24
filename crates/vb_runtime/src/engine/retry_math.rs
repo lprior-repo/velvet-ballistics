@@ -54,7 +54,7 @@ pub enum RetryPolicyMathError {
     /// `attempt + remaining - 1 <= max_attempts` for a non-exhausted cursor.
     #[error("retry cursor attempt/remaining window exceeds max_attempts")]
     InconsistentCursor,
- }
+}
 
 impl RetryPolicy {
     /// Accepts a retry policy only when it fits caller-supplied resource limits.
@@ -238,10 +238,7 @@ mod tests {
         };
         match policy.next_cursor(MAX_INTERVAL_MS, inconsistent_cursor) {
             Err(RetryPolicyMathError::InconsistentCursor) => {}
-            other => panic!(
-                "expected Err(InconsistentCursor), got {:?}",
-                other
-            ),
+            other => panic!("expected Err(InconsistentCursor), got {:?}", other),
         }
     }
 
@@ -320,8 +317,7 @@ mod tests {
             delay_ms: 0,
             exhausted: false,
         };
-        let result =
-            policy.fast_forward_cursor(MAX_INTERVAL_MS, inconsistent_cursor, 1);
+        let result = policy.fast_forward_cursor(MAX_INTERVAL_MS, inconsistent_cursor, 1);
         assert!(
             matches!(result, Err(RetryPolicyMathError::InconsistentCursor)),
             "expected Err(InconsistentCursor), got {:?}",
