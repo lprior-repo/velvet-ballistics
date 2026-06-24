@@ -10,6 +10,7 @@ use crate::{
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+pub(crate) mod envelope;
 pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;

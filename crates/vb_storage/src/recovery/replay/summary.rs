@@ -298,23 +298,41 @@ pub fn recover_runtime_frame_seed_from_events_with_workflow(
     recover_runtime_frame_seed_from_events_inner(events, Some(workflow))
 }
 
+/// Fail-closed gate for the compiled workflow digest used by recovery.
+///
+/// Preconditions:
+/// - `events` is the ordered slice passed to the surrounding recovery routine.
+/// - `expected` is the compiled workflow digest for the run being recovered.
+///
+/// Postconditions:
+/// - Returns `Ok(())` only when at least one `JournalEvent::RunAccepted` is
+///   present in `events` and its digest equals `expected`.
+/// - Returns `Err(RecoveryError::CompiledIrDigestMismatch { .. })` when a
+///   `RunAccepted` event is present but its digest differs from `expected`.
+/// - Returns `Err(RecoveryError::ReplayDivergence { step: StepIdx::ZERO,
+///   detail: "RunAccepted evidence missing" })` when `events` is empty or
+///   contains no `RunAccepted` event, so the gate fails closed on missing
+///   evidence rather than silently passing.
 fn reject_workflow_digest_mismatch(
     events: &[JournalEvent],
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    events
-        .iter()
-        .find_map(|event| match event {
-            JournalEvent::RunAccepted { workflow, .. } if *workflow != expected => {
-                Some(Err(RecoveryError::CompiledIrDigestMismatch {
+    for event in events {
+        if let JournalEvent::RunAccepted { workflow, .. } = event {
+            return if *workflow == expected {
+                Ok(())
+            } else {
+                Err(RecoveryError::CompiledIrDigestMismatch {
                     expected,
                     found: *workflow,
-                }))
-            }
-            JournalEvent::RunAccepted { .. } => Some(Ok(())),
-            _ => None,
-        })
-        .map_or(Ok(()), |result| result)
+                })
+            };
+        }
+    }
+    Err(RecoveryError::ReplayDivergence {
+        step: StepIdx::ZERO,
+        detail: String::from("RunAccepted evidence missing"),
+    })
 }
 
 fn recover_runtime_frame_seed_from_events_inner(

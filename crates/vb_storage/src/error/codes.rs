@@ -10,6 +10,8 @@ impl JournalError {
     pub const KEY_CAPACITY_CODE: DiagnosticCode = DiagnosticCode::new(0x4003);
     /// Diagnostic code for duplicate event.
     pub const DUPLICATE_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x4004);
+    /// Diagnostic code for duplicate event staged in the same batch.
+    pub const DUPLICATE_STAGED_KEY_CODE: DiagnosticCode = DiagnosticCode::new(0x4023);
     /// Diagnostic code for write lock poisoned.
     pub const WRITE_LOCK_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x4005);
     /// Diagnostic code for queue capacity zero.
