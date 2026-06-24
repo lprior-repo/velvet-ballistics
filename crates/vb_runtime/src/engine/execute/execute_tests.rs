@@ -1538,3 +1538,241 @@ fn execute_repeat_check_routes_forward_on_done() {
         "expected error for uninitialized attempt slot, got {result:?}"
     );
 }
+// =====================================================================
+// RE-003: read_attempt_from_slot must NOT silently return 0 on
+// uninitialized slots. The RetryCheck handler must explicitly treat an
+// uninitialized policy_slot as "first attempt" AND write the post-call
+// attempt counter back to the slot so subsequent visits can terminate
+// (mirroring primitives/repeat.rs:94-117). Without the write-back, the
+// body would loop against the same uninitialized slot until the step
+// budget is exhausted.
+// =====================================================================
+
+#[test]
+fn execute_retry_check_writes_first_attempt_on_uninitialized_slot_re_003() {
+    // RetryCheck on an uninitialized policy_slot. After the call, the
+    // slot MUST hold attempt=1 (no silent zero) so the next visit can
+    // route to exhausted rather than re-entering the body.
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(0),
+            exhausted: StepIdx::new(1),
+        },
+    };
+    let node1 = finish_node(1, 0);
+    let wf = make_workflow(vec![node0, node1], 4);
+    let mut run = make_run(4, 4);
+    // policy_slot is intentionally NOT written -- remains uninitialized.
+    let mut store = ValueStore::new();
+    let mut cs = CollectStates::new();
+    let n = match wf.node(StepIdx::ZERO) {
+        Some(n) => n,
+        None => return,
+    };
+    let result = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::NEVER,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(
+        result,
+        Ok(RuntimeSignal::Continue),
+        "RetryCheck on uninitialized policy_slot must succeed and route to body"
+    );
+    // RE-003 fix invariant: the policy slot must now contain attempt=1
+    // (NOT remain uninitialized, NOT silently hold 0). Without the
+    // write-back, the next visit would re-read 0 (silent zero) and loop.
+    let written = run.read_slot(SlotIdx::new(0));
+    match written {
+        Ok(value) => match *value {
+            SlotValue::I64(1) => {}
+            SlotValue::I64(other) => {
+                panic!("RE-003: expected attempt=1 written to slot, got I64({other})")
+            }
+            other => panic!("RE-003: expected I64 attempt counter, got {other:?}"),
+        },
+        Err(err) => panic!("RE-003: expected slot to be initialized after RetryCheck, got {err:?}"),
+    }
+    // A follow-up visit MUST observe attempt=1 and route to exhausted
+    // (NEVER: max_attempts=1, 1<1 false => exhausted).
+    let follow_up = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::NEVER,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(
+        follow_up,
+        Ok(RuntimeSignal::Continue),
+        "follow-up RetryCheck with attempt=1 must succeed"
+    );
+    assert_eq!(
+        run.pc(),
+        StepIdx::new(1),
+        "follow-up visit must route to exhausted (step 1), not loop back to body"
+    );
+}
+
+#[test]
+fn execute_retry_check_default_policy_advances_counter_without_body_writeback_re_003() {
+    // Regression: with DEFAULT policy (max_attempts=3) and a body that
+    // never writes back the attempt counter, the in-handler write-back
+    // must advance the counter on every visit so the engine terminates
+    // at attempt=3 (exhausted) instead of looping indefinitely.
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(0),
+            exhausted: StepIdx::new(1),
+        },
+    };
+    let node1 = finish_node(1, 0);
+    let wf = make_workflow(vec![node0, node1], 4);
+    let mut run = make_run(4, 4);
+    let mut store = ValueStore::new();
+    let mut cs = CollectStates::new();
+    let n = match wf.node(StepIdx::ZERO) {
+        Some(n) => n,
+        None => return,
+    };
+    // Visit 1: uninitialized -> writes attempt=1 -> DEFAULT 0<3 -> body.
+    let visit1 = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::DEFAULT,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(visit1, Ok(RuntimeSignal::Continue));
+    assert_eq!(
+        run.pc(),
+        StepIdx::new(0),
+        "first visit must route to body (step 0)"
+    );
+    // Visit 2: slot holds attempt=1 -> 1<3 -> body. Body doesn't write.
+    let visit2 = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::DEFAULT,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(visit2, Ok(RuntimeSignal::Continue));
+    assert_eq!(
+        run.pc(),
+        StepIdx::new(0),
+        "second visit must still route to body (step 0)"
+    );
+    // Visit 3: slot holds attempt=2 -> 2<3 -> body.
+    let visit3 = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::DEFAULT,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(visit3, Ok(RuntimeSignal::Continue));
+    assert_eq!(
+        run.pc(),
+        StepIdx::new(0),
+        "third visit must still route to body (step 0)"
+    );
+    // Visit 4: slot holds attempt=3 -> 3<3 false -> exhausted (step 1).
+    let visit4 = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::DEFAULT,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert_eq!(visit4, Ok(RuntimeSignal::Continue));
+    assert_eq!(
+        run.pc(),
+        StepIdx::new(1),
+        "fourth visit must route to exhausted (step 1)"
+    );
+}
+
+#[test]
+fn execute_retry_check_initializes_typed_value_mismatch_re_003() {
+    // RE-003 surface: the slot must already be initialized to a non-I64
+    // value, NOT remain uninitialized. A type mismatch is a real error
+    // (not a silent zero). This is the boundary case distinguishing
+    // "uninitialized -> treat as first attempt" from
+    // "wrong type -> propagate error".
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(0),
+            exhausted: StepIdx::new(1),
+        },
+    };
+    let node1 = finish_node(1, 0);
+    let wf = make_workflow(vec![node0, node1], 4);
+    let mut run = make_run(4, 4);
+    // Write a Bool value (not I64) into the policy slot. This is a real
+    // type mismatch and must surface as a typed error, NOT be coerced
+    // to 0 or any silent default.
+    assert_eq!(
+        run.write_slot(SlotIdx::new(0), SlotValue::Bool(true)),
+        Ok(())
+    );
+    let mut store = ValueStore::new();
+    let mut cs = CollectStates::new();
+    let n = match wf.node(StepIdx::ZERO) {
+        Some(n) => n,
+        None => return,
+    };
+    let result = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::NEVER,
+        &mut cs,
+        &CapabilitySet::empty(),
+    );
+    assert!(
+        result.is_err(),
+        "RE-003: type mismatch on policy_slot must surface as typed error, got {result:?}"
+    );
+}
+

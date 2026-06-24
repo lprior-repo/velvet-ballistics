@@ -5,6 +5,7 @@
 
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
+use vb_core::errors::{CoreError, EngineError};
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, FanoutLimit, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
@@ -18,23 +19,28 @@ use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
 
-fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<u16> {
+fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<Option<u16>> {
     match run.read_slot(slot) {
         Ok(value) => match *value {
-            SlotValue::I64(v) => u16::try_from(v).map_err(|_| {
-                RuntimeEngineError::Core(vb_core::errors::EngineError::TypeMismatch {
-                    expected: "non-negative u16 attempt count",
-                    found: "out-of-range i64",
-                })
-            }),
-            _ => Err(RuntimeEngineError::Core(
-                vb_core::errors::EngineError::TypeMismatch {
-                    expected: "number",
-                    found: value.type_name(),
-                },
-            )),
+            SlotValue::I64(v) => u16::try_from(v)
+                .map(Some)
+                .map_err(|_| {
+                    RuntimeEngineError::Core(EngineError::TypeMismatch {
+                        expected: "non-negative u16 attempt count",
+                        found: "out-of-range i64",
+                    })
+                }),
+            _ => Err(RuntimeEngineError::Core(EngineError::TypeMismatch {
+                expected: "number",
+                found: value.type_name(),
+            })),
         },
-        Err(_) => Ok(0),
+        // RE-003: an uninitialized policy slot must NOT collapse to a
+        // silent 0 attempt count. Surface the absence as `None` so the
+        // caller (`handle_retry_check`) can explicitly treat it as the
+        // first attempt AND advance the counter via in-handler write-back.
+        Err(CoreError::SlotUninitialized { .. }) => Ok(None),
+        Err(e) => Err(RuntimeEngineError::Core(e)),
     }
 }
 
@@ -397,8 +403,24 @@ fn handle_retry_check(
     exhausted: StepIdx,
     retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let current_attempt = read_attempt_from_slot(run, policy_slot)?;
+    // RE-003: surface the absence of an attempt counter explicitly. An
+    // uninitialized policy slot is the first-visit case (attempt = 0).
+    let current_attempt = match read_attempt_from_slot(run, policy_slot)? {
+        Some(n) => n,
+        None => 0,
+    };
     let target = execute_retry_check(current_attempt, retry_policy, body, exhausted);
+    // Mirror `primitives/repeat.rs::repeat_check`: advance the counter
+    // in-handler so subsequent visits can terminate even when the body
+    // does not write back. checked_add returns a typed overflow error
+    // rather than silently saturating.
+    let next_attempt = current_attempt
+        .checked_add(1)
+        .ok_or(RuntimeEngineError::Core(EngineError::InternalInvariantViolation {
+            reason: "retry_attempt_overflow",
+        }))?;
+    run.write_slot(policy_slot, SlotValue::I64(i64::from(next_attempt)))
+        .map_err(RuntimeEngineError::Core)?;
     run.set_pc(target).map_err(RuntimeEngineError::Core)?;
     run.increment_executed().map_err(RuntimeEngineError::Core)?;
     Ok(RuntimeSignal::Continue)
