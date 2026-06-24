@@ -188,9 +188,13 @@ mod tests {
         let config = PreviewConfig::new(10, 1024).unwrap();
         let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![];
         let mut scratch: Vec<u8> = Vec::new();
-        let result =
-            preview_keyspace(KeyspaceScanPolicy::default_doctor(), config, &entries, &mut scratch)
-                .unwrap();
+        let result = preview_keyspace(
+            KeyspaceScanPolicy::default_doctor(),
+            config,
+            &entries,
+            &mut scratch,
+        )
+        .unwrap();
         assert!(result.entries.is_empty());
         assert!(!result.truncated);
         assert_eq!(result.total_keyspace_records, 0);
@@ -204,9 +208,13 @@ mod tests {
             .map(|_| (vec![0x10, 0, 0, 0, 0, 0, 0, 0, 1], vec![42u8; 10]))
             .collect();
         let mut scratch: Vec<u8> = Vec::new();
-        let result =
-            preview_keyspace(KeyspaceScanPolicy::default_doctor(), config, &entries, &mut scratch)
-                .unwrap();
+        let result = preview_keyspace(
+            KeyspaceScanPolicy::default_doctor(),
+            config,
+            &entries,
+            &mut scratch,
+        )
+        .unwrap();
         assert!(result.entries.len() <= 3);
         assert!(result.truncated);
     }
@@ -218,9 +226,13 @@ mod tests {
             .map(|_| (vec![0x10, 0, 0, 0, 0, 0, 0, 0, 1], vec![0u8; 20]))
             .collect();
         let mut scratch: Vec<u8> = Vec::new();
-        let result =
-            preview_keyspace(KeyspaceScanPolicy::default_doctor(), config, &entries, &mut scratch)
-                .unwrap();
+        let result = preview_keyspace(
+            KeyspaceScanPolicy::default_doctor(),
+            config,
+            &entries,
+            &mut scratch,
+        )
+        .unwrap();
         // Each entry is 20 bytes, max_bytes is 50. At most 2 entries (40 bytes) +
         // the 3rd would be 60 which exceeds 50, so max 2 entries.
         assert!(result.entries.len() <= 5);
@@ -322,8 +334,7 @@ mod tests {
         // structural expectation for an unrecognised prefix byte.
         let config = PreviewConfig::new(10, 1024).unwrap();
         // First byte 0xFF is not one of the nine known prefixes.
-        let entries: Vec<(Vec<u8>, Vec<u8>)> =
-            vec![(vec![0xFF, 0x01, 0x02, 0x03], vec![0u8; 4])];
+        let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![(vec![0xFF, 0x01, 0x02, 0x03], vec![0u8; 4])];
         let mut scratch: Vec<u8> = Vec::new();
         let err = preview_keyspace(
             KeyspaceScanPolicy::default_production(),
