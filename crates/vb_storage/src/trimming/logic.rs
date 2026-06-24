@@ -5,9 +5,9 @@ use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
     TrimmedRunResult,
 };
-use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
+use crate::{EventSeq, FjallJournal, JournalError};
 use fjall::Readable;
-use vb_core::RunId;
+use vb_core::{RunId, WorkflowId};
 
 impl FjallJournal {
     /// Returns the latest durable snapshot sequence for a run.
@@ -55,13 +55,6 @@ impl FjallJournal {
         Ok(latest)
     }
 
-    /// Trims journal events for a specific run.
-    ///
-    /// Removes events with sequence numbers less than the latest durable
-    /// snapshot sequence. If no durable snapshot exists for the run, returns an error.
-    ///
-    /// Trimming is idempotent: subsequent trims of an already-trimmed run
-    /// are a no-op.
     pub fn trim_events_for_run(
         &self,
         run: RunId,
@@ -91,7 +84,14 @@ impl FjallJournal {
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
-                batch.remove(&self.events, key.to_vec());
+                // SC-008 fix: avoid per-iteration heap allocation of a fresh
+                // `Vec<u8>` for the key. `key` is a `fjall::UserKey` (= `Slice`),
+                // which is `ByteView`-backed and implements `Into<UserKey>`
+                // directly. `Fjall::OwnedWriteBatch::remove<K: Into<UserKey>>`
+                // accepts `K = Slice`, so `key.clone()` is Arc-cheap and zero-
+                // alloc (`key.to_vec()` previously allocated a fresh 17-byte
+                // `Vec<u8>` per trimmable event).
+                batch.remove(&self.events, key.clone());
                 deleted_count = deleted_count.saturating_add(1);
             }
         }
@@ -139,7 +139,6 @@ impl FjallJournal {
     /// Non-destructive trim eligibility diagnostic.
     ///
     /// Scans all runs and reports eligibility WITHOUT deleting anything.
-    /// Safe to run during incident triage.
     pub fn trim_eligibility_diagnostic(
         &self,
         policy: TrimPolicy,
@@ -247,13 +246,13 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix) {
             let value = item.value().map_err(TrimError::from)?;
-            let (_, event) = crate::codec::decode_record::<JournalEvent>(
+            let (_, event) = crate::codec::decode_journal_event(
                 value.as_ref(),
                 crate::constants::MAGIC_JOURNAL_EVENT,
                 crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )
             .map_err(TrimError::from)?;
-            if crate::recovery::replay::core::is_terminal_event(&event) {
+            if crate::recovery::replay::is_terminal_event(&event) {
                 return Ok(true);
             }
         }
@@ -303,5 +302,80 @@ impl FjallJournal {
         }
 
         Ok(())
+    }
+
+    /// Computes the set of terminal run IDs that are retained by the
+    /// retention policy, without performing any trim.
+    ///
+    /// This is a thin I/O wrapper: it fetches all run headers, asks
+    /// [`Self::has_terminal_event`] for each one (which scans the durable
+    /// journal), groups the terminal runs by workflow, and delegates the
+    /// pure compute to
+    /// [`retained_terminal_runs_top_n`](Self::retained_terminal_runs_top_n).
+    ///
+    /// **Short-circuit:** when `policy.retain_last_n_terminal == 0`, the
+    /// returned set is empty without scanning journal events.
+    ///
+    /// **Post-trim semantics:** terminal detection reads the current journal
+    /// state, so any events deleted by a prior trim are no longer observed.
+    /// A run whose terminal events were trimmed therefore does not appear
+    /// in the returned set.
+    pub fn compute_retained_terminal_runs(
+        &self,
+        policy: &TrimPolicy,
+    ) -> Result<std::collections::HashSet<RunId>, JournalError> {
+        if policy.retain_last_n_terminal == 0 {
+            return Ok(std::collections::HashSet::new());
+        }
+
+        let headers = self.run_headers()?;
+        let mut by_workflow: std::collections::BTreeMap<WorkflowId, Vec<(RunId, u64)>> =
+            std::collections::BTreeMap::new();
+        for h in headers {
+            if self.has_terminal_event(h.run).map_err(JournalError::from)? {
+                by_workflow
+                    .entry(h.workflow_id)
+                    .or_default()
+                    .push((h.run, h.accepted_at_ms));
+            }
+        }
+
+        Ok(Self::retained_terminal_runs_top_n(
+            by_workflow,
+            policy.retain_last_n_terminal,
+        ))
+    }
+
+    /// Pure compute: returns the set of retained terminal runs from a
+    /// pre-grouped `by_workflow` map, taking the top-N per workflow by
+    /// `accepted_at_ms` descending.
+    ///
+    /// This is the testable core of [`Self::compute_retained_terminal_runs`];
+    /// it has no I/O, no I/O-error channel, and a fixed bounded loop per
+    /// workflow. Splitting I/O from compute (Farley imperative-shell rule)
+    /// lets the grouping + sort + take-N logic be unit-tested without a
+    /// Fjall journal.
+    ///
+    /// `retain_last_n_terminal == 0` yields an empty set without reading
+    /// the input (preserves the short-circuit semantics of
+    /// `compute_retained_terminal_runs`).
+    pub fn retained_terminal_runs_top_n(
+        mut by_workflow: std::collections::BTreeMap<WorkflowId, Vec<(RunId, u64)>>,
+        retain_last_n_terminal: u32,
+    ) -> std::collections::HashSet<RunId> {
+        if retain_last_n_terminal == 0 {
+            return std::collections::HashSet::new();
+        }
+
+        let retain_count = usize::try_from(retain_last_n_terminal).unwrap_or(usize::MAX);
+        let mut retained: std::collections::HashSet<RunId> = std::collections::HashSet::new();
+        for runs in by_workflow.values_mut() {
+            // Newest terminal run first (descending by accepted_at_ms).
+            runs.sort_by_key(|(_, ts)| std::cmp::Reverse(*ts));
+            for (run, _) in runs.iter().copied().take(retain_count) {
+                retained.insert(run);
+            }
+        }
+        retained
     }
 }
