@@ -780,7 +780,7 @@ fn check_next_step_in_range(
     node_count: usize,
     source_index: usize,
 ) -> ValidationResult<()> {
-    if step.as_usize() > node_count {
+    if step.as_usize() >= node_count {
         return Err(ValidationError::LoopBodyStepOutOfRange {
             step: step.as_usize(),
             node_count,

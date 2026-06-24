@@ -229,6 +229,28 @@ fn gate_11_accepts_nop_workflow() {
 }
 
 #[test]
+fn gate_11_rejects_next_equal_to_node_count() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node, finish_node(1, 0)], 1);
+    assert_eq!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::LoopBodyStepOutOfRange {
+            step: 2,
+            node_count: 2,
+            source_node: 0,
+            label: "next".to_owned(),
+        })
+    );
+}
+
+#[test]
 fn gate_11_accepts_valid_for_each() {
     let nodes = vec![
         CompiledNode {
