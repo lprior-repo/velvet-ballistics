@@ -2,6 +2,10 @@
 #[cfg(test)]
 mod proptest_attempt_fence;
 
+// vb-sxkz6: RA-030 wave-15 follow-up proptest harnesses
+#[cfg(test)]
+mod sxkz6_proptest;
+
 #[cfg(test)]
 mod proptest_idempotency {
     use proptest::prelude::*;

@@ -31,4 +31,6 @@ pub mod verus {
 #[cfg(kani)]
 pub(crate) mod kani {
     pub(crate) mod kani_attempt_fence_harnesses;
+    #[cfg(feature = "kani-sxkz6-shard-for-run")]
+    pub(crate) mod kani_sxkz6_shard_for_run;
 }

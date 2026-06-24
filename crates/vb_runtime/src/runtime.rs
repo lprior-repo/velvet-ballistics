@@ -352,11 +352,12 @@ impl Runtime {
     }
 
     /// Lists trace events for a run without draining the shard trace ring.
+    ///
+    /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard
+    /// other than the home shard selected by the hash of `RunId`. Scan all
+    /// shards so the trace ring of the owning shard is read.
     pub fn list_events(&self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
-        let shard_index = self.shard_index(run);
-        let Some(shard) = self.shards.get(shard_index) else {
-            return Err(RuntimeError::RunNotFound);
-        };
+        let shard = self.shard_for_run(run)?;
         let limit = shard.trace_ring().capacity();
         Ok(shard.trace_ring().snapshot_for_run(run, limit))
     }
@@ -370,42 +371,32 @@ impl Runtime {
     /// whichever shard actually holds the run state.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
-        let home_index = self.shard_index(run);
-        let shard = match self.shards.get(home_index) {
-            Some(shard)
-                if shard.run_state_contains(run) || shard.terminal_runs_contains(run) =>
-            {
-                shard
-            }
-            _ => self
-                .shards
-                .iter()
-                .enumerate()
-                .find(|(idx, shard)| {
-                    *idx != home_index
-                        && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
-                })
-                .map(|(_, shard)| shard)
-                .ok_or(RuntimeError::RunNotFound)?,
-        };
+        let shard = self.shard_for_run(run)?;
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
     /// Legacy run-only timer delivery is fail-closed because it carries no authority.
     pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
-        let _shard = self.shard_for(run)?;
+        let _shard = self.shard_for_run(run)?;
         Err(RuntimeError::InvalidTimerFire)
     }
 
     /// Captures the current timer authority for tests and typed scheduler handoff.
+    ///
+    /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run's timer entry.
+    /// Returns `Err(RuntimeError::RunNotFound)` if no shard owns the run.
+    /// Returns `Err(RuntimeError::InvalidTimerFire)` when the owner shard has
+    /// no live timer entry for the run.
     pub fn capture_timer_entry(&self, run: RunId) -> RuntimeResult<TimerEntry> {
-        let shard = self.shard_for(run)?;
+        let shard = self.shard_for_run(run)?;
         shard.timer_entry(run).ok_or(RuntimeError::InvalidTimerFire)
     }
 
     /// Advances a run from a timer-wheel-captured authority entry.
+    ///
+    /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
     pub fn timer_entry_fired(&self, entry: TimerEntry) -> RuntimeResult<()> {
-        let shard = self.shard_for(entry.run)?;
+        let shard = self.shard_for_run(entry.run)?;
         shard.enqueue(ShardCommand::TimerFired {
             run: entry.run,
             generation: entry.generation,
@@ -415,12 +406,10 @@ impl Runtime {
     }
 
     /// Takes the latest inspect response from the run's shard.
+    ///
+    /// RA-030 wave-15 (vb-sxkz6): scans all shards for the run owner.
     pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<InspectResponse>> {
-        let shard_index = self.shard_index(run);
-        let shard = self
-            .shards
-            .get_mut(shard_index)
-            .ok_or(RuntimeError::RunNotFound)?;
+        let shard = self.shard_for_run_mut(run)?;
         Ok(shard.take_inspect_response())
     }
 
@@ -603,6 +592,58 @@ impl Runtime {
     fn shard_for_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
         let index = self.shard_index(run);
         self.shards.get_mut(index).ok_or(RuntimeError::RunNotFound)
+    }
+
+    /// Returns the shard that currently owns `run`, scanning all shards.
+    ///
+    /// RA-030 wave-15 (vb-sxkz6): the hash-based `shard_index(run)` returns
+    /// the home shard which may differ from the owner after `migrate_shard`
+    /// transfers a run's commands and run-state to a different shard. We
+    /// check the home shard first as a fast path; on miss we scan the
+    /// remaining shards in deterministic slice order.
+    ///
+    /// Returns `Err(RuntimeError::RunNotFound)` if `run` is not in any
+    /// shard's `run_state` or `terminal_runs` set.
+    fn shard_for_run(&self, run: RunId) -> Result<&Shard, RuntimeError> {
+        let home_index = self.shard_index(run);
+        if let Some(shard) = self.shards.get(home_index)
+            && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+        {
+            return Ok(shard);
+        }
+        self.shards
+            .iter()
+            .enumerate()
+            .find(|(idx, shard)| {
+                *idx != home_index
+                    && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+            })
+            .map(|(_, shard)| shard)
+            .ok_or(RuntimeError::RunNotFound)
+    }
+
+    /// Mutable variant of `shard_for_run` for `take_inspect_response`.
+    fn shard_for_run_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
+        // Mirror the home-fast-path + scan-fallback logic on immutable borrow,
+        // then re-index after borrow ends to get the mutable shard.
+        let home_index = self.shard_index(run);
+        let owner_index = {
+            if let Some(shard) = self.shards.get(home_index)
+                && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+            {
+                home_index
+            } else {
+                self.shards
+                    .iter()
+                    .position(|shard| {
+                        shard.run_state_contains(run) || shard.terminal_runs_contains(run)
+                    })
+                    .ok_or(RuntimeError::RunNotFound)?
+            }
+        };
+        self.shards
+            .get_mut(owner_index)
+            .ok_or(RuntimeError::RunNotFound)
     }
 }
 

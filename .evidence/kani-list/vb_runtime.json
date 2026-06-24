@@ -2,12 +2,6 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_runtime/src/kani_trace_ring.rs": [
-      "kani_trace_ring::verify_drain_for_run_correctness",
-      "kani_trace_ring::verify_terminal_event_detection",
-      "kani_trace_ring::verify_trace_ring_bounds",
-      "kani_trace_ring::verify_trace_ring_dropped_monotonic"
-    ],
     "crates/vb_runtime/src/primitives/collect.rs": [
       "primitives::collect::kani_collect_verification::collect_page_pagination_bounds"
     ],
@@ -33,12 +27,21 @@
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_attempt_rejected",
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_capacity_rejected",
       "verification::kani::kani_attempt_fence_harnesses::proof_zero_policy_max_rejected"
+    ],
+    "crates/vb_runtime/src/verification/kani/kani_sxkz6_shard_for_run.rs": [
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_answer_ask_unknown_run_returns_not_found",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_capture_timer_entry_unknown_run_returns_not_found",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_list_events_unknown_run_returns_not_found",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_shard_index_bounded",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_shard_index_determinism",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_take_inspect_unknown_run_returns_not_found",
+      "verification::kani::kani_sxkz6_shard_for_run::kani_sxkz6_timer_entry_fired_unknown_run_returns_not_found"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 24,
+    "standard-harnesses": 27,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }
