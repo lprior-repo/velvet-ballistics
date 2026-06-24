@@ -6,10 +6,24 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::workflow::{AccessorProgram, PathSegment, WorkflowParts};
 
+/// Maximum accessor path depth allowed by the v1 protocol.
+///
+/// Mirrors `gates::MAX_ACCESSOR_PATH_DEPTH`. Bound matches the canonical
+/// production validator so that focused tests catch the same malformed inputs
+/// that production rejects.
+const MAX_ACCESSOR_PATH_DEPTH: usize = 16;
+
 /// Validates that every accessor path segment resolves to a well-formed symbol.
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
     for (acc_index, accessor) in parts.accessors.iter().enumerate() {
         validate_accessor_root(acc_index, accessor, parts.slot_count)?;
+        if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
+            return Err(ValidationError::AccessorPathTooDeep {
+                accessor_index: acc_index,
+                depth: accessor.path.len(),
+                max: MAX_ACCESSOR_PATH_DEPTH,
+            });
+        }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
                 PathSegment::Field(sym_id) => {

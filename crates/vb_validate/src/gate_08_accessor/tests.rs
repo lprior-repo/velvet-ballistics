@@ -338,6 +338,58 @@ fn focused_and_aggregate_gate_08_reject_field_equal_to_symbols_count() {
     );
 }
 
+#[test]
+fn gate_08_accepts_accessor_path_at_max_depth() {
+    // 16 path segments is the protocol maximum and must be accepted.
+    let segments: Vec<PathSegment> = (0..16)
+        .map(|i| PathSegment::Field(SymbolId::new(i)))
+        .collect();
+    let parts = workflow_parts_with_accessors(
+        1,
+        16,
+        Box::new([accessor_allocating_boxed_path(
+            0,
+            segments.into_boxed_slice(),
+        )]),
+    );
+
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
+}
+
+#[test]
+fn gate_08_rejects_accessor_path_above_max_depth() {
+    // 17 path segments exceeds the protocol maximum (16) and must be rejected.
+    let segments: Vec<PathSegment> = (0..17)
+        .map(|i| PathSegment::Field(SymbolId::new(i)))
+        .collect();
+    let parts = workflow_parts_with_accessors(
+        1,
+        32,
+        Box::new([accessor_allocating_boxed_path(
+            0,
+            segments.into_boxed_slice(),
+        )]),
+    );
+
+    assert_eq!(
+        validate_gate_08_accessor_path_segments(&parts),
+        Err(ValidationError::AccessorPathTooDeep {
+            accessor_index: 0,
+            depth: 17,
+            max: 16,
+        })
+    );
+    // Focused and canonical (gates) must agree on the boundary.
+    assert_eq!(
+        crate::gates::validate_gate_08_accessor_path_segments(&parts),
+        Err(ValidationError::AccessorPathTooDeep {
+            accessor_index: 0,
+            depth: 17,
+            max: 16,
+        })
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         failure_persistence: None,
