@@ -13,7 +13,7 @@ use vb_core::action::{
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_core::value::{SlotValue, Taint};
+use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
 #[cfg(test)]
@@ -212,6 +212,92 @@ mod tests {
             Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
             action_grants(action),
             action_contracts_through(action, 1, 0),
+        )
+    }
+
+    fn ask_waiting_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_prompt = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let set_timeout = CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
+            },
+        };
+        let ask = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: Some(SlotIdx::new(1)),
+            },
+        };
+        let resume = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(2),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("ask_waiting_test"),
+            digest: WorkflowDigest::from_bytes([42; 32]),
+            nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([
+                ConstValue::I64(0),
+                ConstValue::I64(0),
+            ]),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn submit_ask_waiting(
+        runtime: &Runtime,
+        run: vb_core::ids::RunId,
+        wf: vb_core::workflow::CompiledWorkflow,
+    ) -> crate::RuntimeResult<()> {
+        let action = ActionId::new(0);
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            run,
+            wf,
+            Box::from([]),
+            action_grants(action),
+            action_contracts_through(action, 0, 0),
         )
     }
 
@@ -857,14 +943,95 @@ mod tests {
 
     #[test]
     fn runtime_answer_ask_routes_to_run_shard() {
-        // Given a runtime
+        // Given a 1-shard runtime with an Ask-waiting run
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, runtime_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let run = vb_core::ids::RunId::new(1);
+        let Some(wf) = ask_waiting_workflow() else {
+            return;
+        };
+        assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
+        // Drive the run to the Ask-waiting state.
+        assert_eq!(runtime.tick_all(), Ok(true));
         let answer = AskAnswer {
             ticket: AskTicket {
-                run: vb_core::ids::RunId::new(1),
+                run,
+                ask_step: StepIdx::new(2),
+                resume_step: StepIdx::new(3),
+            },
+            answer_slot: SlotIdx::new(2),
+            value: SlotValue::Bool(true),
+            taint: Taint::Clean,
+            encoded_len: 1u32,
+        };
+        // Then answer_ask routes to the only shard and succeeds
+        assert_eq!(runtime.answer_ask(answer), Ok(()));
+    }
+
+    #[test]
+    fn runtime_answer_ask_finds_run_on_migrated_shard() {
+        // Given a 2-shard runtime (RA-030 regression test)
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let run = vb_core::ids::RunId::new(1);
+        // Pick a run that actually lives on shard 0 so the migration target
+        // (shard 1) differs from the home shard. This guarantees the
+        // hash-based shard_for() lookup would miss the run.
+        let home_index = runtime.shard_index(run);
+        if home_index != 0 {
+            // skip — cannot construct migration scenario on this seed
+            return;
+        }
+        let destination = 1usize;
+        // When submitting an Ask-waiting workflow to put the run into a
+        // suspend state where answer_ask is meaningful.
+        let Some(wf) = ask_waiting_workflow() else {
+            return;
+        };
+        assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
+        // Tick until AskAwaiting (handle_ask returns AwaitingAsk).
+        assert_eq!(runtime.tick_all(), Ok(true));
+        // Sanity: run is now active on home shard.
+        assert!(runtime.shards[home_index].run_state_contains(run));
+        // Simulate migration: remove from home, insert into destination.
+        let state = runtime.shards[home_index]
+            .run_state_remove(run)
+            .expect("run must be active on home shard before migration");
+        assert_eq!(
+            runtime.shards[destination].run_state_insert(run, state),
+            Ok(None)
+        );
+        // Now answer_ask must find the run on the destination shard.
+        let answer = AskAnswer {
+            ticket: AskTicket {
+                run,
+                ask_step: StepIdx::new(2),
+                resume_step: StepIdx::new(3),
+            },
+            answer_slot: SlotIdx::new(2),
+            value: SlotValue::Bool(true),
+            taint: Taint::Clean,
+            encoded_len: 1u32,
+        };
+        // Then answer_ask returns Ok (post-fix scans all shards).
+        assert_eq!(runtime.answer_ask(answer), Ok(()));
+    }
+
+    #[test]
+    fn runtime_answer_ask_returns_run_not_found_for_unknown_run() {
+        // Given a 2-shard runtime with no submitted runs
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let runtime = Runtime::new(shard_count, runtime_config());
+        // When answering an ask for a run that exists nowhere
+        let answer = AskAnswer {
+            ticket: AskTicket {
+                run: vb_core::ids::RunId::new(424242),
                 ask_step: StepIdx::ZERO,
                 resume_step: StepIdx::new(1),
             },
@@ -873,8 +1040,8 @@ mod tests {
             taint: Taint::Clean,
             encoded_len: 1u32,
         };
-        let result = runtime.answer_ask(answer);
-        assert_eq!(result, Ok(()));
+        // Then answer_ask returns RunNotFound
+        assert_eq!(runtime.answer_ask(answer), Err(RuntimeError::RunNotFound));
     }
 
     #[test]

@@ -362,13 +362,32 @@ impl Runtime {
     }
 
     /// Answers an ask with an explicit typed payload and resume ticket.
+    ///
+    /// RA-030: a run may have been migrated to a shard other than the home
+    /// shard selected by the hash of `RunId` (see `migrate_shard` / RA-021).
+    /// Test the home shard first as a fast path, then scan the remaining
+    /// shards for active or terminal ownership so the answer is routed to
+    /// whichever shard actually holds the run state.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
-        let shard = self.shard_for(answer.ticket.run)?;
-        if !shard.run_state_contains(answer.ticket.run)
-            && shard.terminal_runs_contains(answer.ticket.run)
-        {
-            return Err(RuntimeError::RunNotFound);
-        }
+        let run = answer.ticket.run;
+        let home_index = self.shard_index(run);
+        let shard = match self.shards.get(home_index) {
+            Some(shard)
+                if shard.run_state_contains(run) || shard.terminal_runs_contains(run) =>
+            {
+                shard
+            }
+            _ => self
+                .shards
+                .iter()
+                .enumerate()
+                .find(|(idx, shard)| {
+                    *idx != home_index
+                        && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+                })
+                .map(|(_, shard)| shard)
+                .ok_or(RuntimeError::RunNotFound)?,
+        };
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
