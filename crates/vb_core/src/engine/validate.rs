@@ -45,6 +45,61 @@ pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowE
             resource: "max_expr_stack",
         });
     }
+    if contract.max_step_budget_per_tick > crate::limits::MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
+        });
+    }
+    if contract.max_transitions_per_tick > crate::limits::MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_transitions_per_tick",
+        });
+    }
+    if contract.max_input_bytes > crate::limits::MAX_INPUT_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_input_bytes",
+        });
+    }
+    if contract.max_output_bytes > crate::limits::MAX_OUTPUT_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_output_bytes",
+        });
+    }
+    if contract.max_blob_bytes > crate::limits::MAX_BLOB_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_blob_bytes",
+        });
+    }
+    if contract.max_ipc_payload_bytes > crate::limits::MAX_IPC_PAYLOAD_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_ipc_payload_bytes",
+        });
+    }
+    if u32::from(contract.max_retry_attempts) > u32::from(crate::limits::MAX_RETRY_ATTEMPTS) {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_retry_attempts",
+        });
+    }
+    if u32::from(contract.max_fanout) > u32::from(crate::limits::MAX_FANOUT) {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_fanout",
+        });
+    }
+    if contract.max_collect_items > crate::limits::MAX_COLLECT_ITEMS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_collect_items",
+        });
+    }
+    if contract.max_queue_depth > crate::limits::MAX_QUEUE_DEPTH {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_queue_depth",
+        });
+    }
+    if contract.max_journal_batch_bytes > crate::limits::MAX_JOURNAL_BATCH_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_journal_batch_bytes",
+        });
+    }
     Ok(())
 }
 
