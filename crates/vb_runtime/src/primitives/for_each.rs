@@ -8,11 +8,12 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
 use super::helpers::{
-    empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items,
+    build_iterator_state, decode_iterator_state, empty_list, expect_list, jump_to, jump_to_body,
+    jump_to_next, require_output,
 };
 
-/// Executes ForEachStart: validates input list, binds first item, sets up
-/// iterator state in the output slot as the remaining tail list.
+/// Executes ForEachStart: validates input list, binds first item, and writes
+/// the cursor-based iterator state to the output slot.
 #[allow(clippy::too_many_arguments)]
 pub fn for_each_start(
     run: &mut RunFrame,
@@ -51,13 +52,13 @@ pub fn for_each_start(
             reason: "for_each item_count checked nonzero",
         })?;
     run.write_slot_with_taint(item_slot, first, input_taint)?;
-    let tail = tail_items(items)?;
-    let tail_id = store.insert_list(tail)?;
-    run.write_slot_with_taint(iter_output, SlotValue::List(tail_id), input_taint)?;
+    let state = build_iterator_state(list_id, 1);
+    let state_id = store.insert_list(state)?;
+    run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
 
-/// Executes ForEachNext: advances iterator, binds next item or exits.
+/// Executes ForEachNext: advances the cursor, binds the next item, or exits.
 pub fn for_each_next(
     run: &mut RunFrame,
     store: &mut ValueStore,
@@ -66,23 +67,28 @@ pub fn for_each_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let list_id = expect_list(*run.read_slot(iterator_slot)?)?;
+    let state_id = expect_list(*run.read_slot(iterator_slot)?)?;
     let iter_taint = run.read_taint(iterator_slot)?;
-    let items = store.list(list_id)?;
-    if items.is_empty() {
+    let state_items = store.list(state_id)?;
+    if state_items.is_empty() {
+        return jump_to(run, done);
+    }
+    let (source_id, cursor) = decode_iterator_state(state_items)?;
+    let source = store.list(source_id)?;
+    if cursor >= source.len() {
         return jump_to(run, done);
     }
     let item_output = require_output(output, run.pc())?;
-    let first = items
-        .first()
-        .copied()
+    let item = source[cursor];
+    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    let next_cursor = cursor
+        .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each next items checked nonempty",
+            reason: "for_each cursor overflow",
         })?;
-    run.write_slot_with_taint(item_output, first, iter_taint)?;
-    let tail = tail_items(items)?;
-    let tail_id = store.insert_list(tail)?;
-    run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
+    let next_state = build_iterator_state(source_id, next_cursor);
+    let next_state_id = store.insert_list(next_state)?;
+    run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
     jump_to_body(run, body)
 }
 

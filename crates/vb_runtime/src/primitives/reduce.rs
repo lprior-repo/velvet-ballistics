@@ -9,7 +9,8 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use super::helpers::{
-    expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items,
+    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_body, jump_to_next,
+    require_output,
 };
 
 /// Executes ReduceStart: initializes accumulator from constant pool,
@@ -47,9 +48,9 @@ pub fn reduce_start(
             reason: "reduce items checked nonempty",
         })?;
     run.write_slot_with_taint(input, first, input_taint)?;
-    let tail = tail_items(items)?;
-    let tail_id = store.insert_list(tail)?;
-    run.write_slot_with_taint(iter_output, SlotValue::List(tail_id), input_taint)?;
+    let state = build_iterator_state(list_id, 1);
+    let state_id = store.insert_list(state)?;
+    run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
 
@@ -64,23 +65,28 @@ pub fn reduce_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let remaining_id = expect_list(*run.read_slot(iterator_slot)?)?;
+    let state_id = expect_list(*run.read_slot(iterator_slot)?)?;
     let iter_taint = run.read_taint(iterator_slot)?;
-    let remaining = store.list(remaining_id)?;
-    if remaining.is_empty() {
+    let state_items = store.list(state_id)?;
+    if state_items.is_empty() {
+        return jump_to(run, done);
+    }
+    let (source_id, cursor) = decode_iterator_state(state_items)?;
+    let source = store.list(source_id)?;
+    if cursor >= source.len() {
         return jump_to(run, done);
     }
     let item_output = require_output(output, run.pc())?;
-    let first = remaining
-        .first()
-        .copied()
+    let item = source[cursor];
+    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    let next_cursor = cursor
+        .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce next items checked nonempty",
+            reason: "reduce cursor overflow",
         })?;
-    run.write_slot_with_taint(item_output, first, iter_taint)?;
-    let tail = tail_items(remaining)?;
-    let tail_id = store.insert_list(tail)?;
-    run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
+    let next_state = build_iterator_state(source_id, next_cursor);
+    let next_state_id = store.insert_list(next_state)?;
+    run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
     jump_to_body(run, body)
 }
 
@@ -102,7 +108,7 @@ pub fn reduce_finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_harness::list_in_slot;
+    use crate::test_harness::{iterator_state_in_slot, list_in_slot};
     use vb_core::value::{ConstValue, SlotValue};
     use vb_core::value_store::ValueStore;
     use vb_core::workflow::{
@@ -189,11 +195,13 @@ mod tests {
         let output = SlotIdx::new(2);
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
-        list_in_slot(
+        // RP-016: iterator slot holds a (source_id, cursor=0) state list.
+        iterator_state_in_slot(
             &mut run,
             &mut store,
             iterator_slot,
             vec![SlotValue::I64(5), SlotValue::I64(6)],
+            0,
         );
 
         let result = reduce_next(
@@ -376,17 +384,18 @@ mod tests {
 
     #[test]
     fn reduce_next_binds_first_remaining_item() {
-        // Given a frame with remaining items in iterator
+        // Given a frame with a real iterator state (source_id, cursor=0)
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let iterator_slot = SlotIdx::new(0);
         let output = SlotIdx::new(2);
         let body = StepIdx::new(1);
-        list_in_slot(
+        iterator_state_in_slot(
             &mut run,
             &mut store,
             iterator_slot,
             vec![SlotValue::I64(42), SlotValue::I64(99)],
+            0,
         );
         // When calling reduce_next
         let result = reduce_next(
@@ -398,7 +407,7 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then output has first remaining item
+        // Then output has first remaining item from the source list
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(
             *run.read_slot(output)
@@ -520,11 +529,17 @@ mod tests {
 
     #[test]
     fn reduce_next_returns_error_when_output_missing() {
-        // Given a frame with items but no output
+        // Given a frame with a real iterator state (source_id, cursor=0) and no output
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let iterator_slot = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        iterator_state_in_slot(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            vec![SlotValue::I64(1)],
+            0,
+        );
         // When calling reduce_next with output=None
         let result = reduce_next(
             &mut run,
@@ -578,11 +593,17 @@ mod tests {
 
     #[test]
     fn reduce_next_increments_executed_counter() {
-        // Given a frame with remaining items
+        // Given a frame with a real iterator state (source_id, cursor=0)
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let iterator_slot = SlotIdx::new(0);
-        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(1)]);
+        iterator_state_in_slot(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            vec![SlotValue::I64(1)],
+            0,
+        );
         let before = run.executed();
         // When calling reduce_next
         let result = reduce_next(
@@ -652,7 +673,7 @@ mod tests {
     }
 
     #[test]
-    fn reduce_start_writes_tail_to_iterator_slot() {
+    fn reduce_start_writes_cursor_state_to_iterator_slot() {
         // Given a frame with a 3-item list
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -676,19 +697,21 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then the output slot has a tail list with 2 remaining items
+        // Then the output slot has a 2-element (source_id, cursor=1) state,
+        // not a materialized 2-item tail.
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         match *run
             .read_slot(output)
             .ok()
             .unwrap_or_else(|| panic!("read must succeed"))
         {
-            SlotValue::List(id) => {
-                let items = store
-                    .list(id)
+            SlotValue::List(state_id) => {
+                let state = store
+                    .list(state_id)
                     .ok()
                     .unwrap_or_else(|| panic!("list read must succeed"));
-                assert_eq!(items.len(), 2);
+                assert_eq!(state.len(), 2, "cursor state must be 2 elements");
+                assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
             }
             other => {
                 assert_eq!(other, SlotValue::I64(0));
@@ -697,17 +720,18 @@ mod tests {
     }
 
     #[test]
-    fn reduce_next_writes_tail_to_iterator_slot() {
-        // Given a frame with 3 remaining items
+    fn reduce_next_writes_cursor_state_to_iterator_slot() {
+        // Given a frame with a 3-item source encoded as iterator state (cursor=0)
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let iterator_slot = SlotIdx::new(0);
         let output = SlotIdx::new(2);
-        list_in_slot(
+        iterator_state_in_slot(
             &mut run,
             &mut store,
             iterator_slot,
             vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+            0,
         );
         // When calling reduce_next
         let result = reduce_next(
@@ -719,19 +743,20 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then the iterator slot has a tail list with 2 remaining items
+        // Then the iterator slot has a 2-element cursor state advanced to 1
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         match *run
             .read_slot(iterator_slot)
             .ok()
             .unwrap_or_else(|| panic!("read must succeed"))
         {
-            SlotValue::List(id) => {
-                let items = store
-                    .list(id)
+            SlotValue::List(state_id) => {
+                let state = store
+                    .list(state_id)
                     .ok()
                     .unwrap_or_else(|| panic!("list read must succeed"));
-                assert_eq!(items.len(), 2);
+                assert_eq!(state.len(), 2, "cursor state must be 2 elements");
+                assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
             }
             other => {
                 assert_eq!(other, SlotValue::I64(0));
@@ -774,7 +799,7 @@ mod tests {
     }
 
     #[test]
-    fn reduce_start_single_item_list_writes_tail_and_jumps_to_body() {
+    fn reduce_start_single_item_list_writes_cursor_state_and_jumps_to_body() {
         // Given a frame with single-item input list
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -799,7 +824,8 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then it jumps to body and output has an empty tail
+        // Then it jumps to body and output has a 2-element cursor state with
+        // cursor=1 (= source len), signaling "next call goes to done".
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(run.pc(), body);
         match *run
@@ -807,15 +833,13 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("must read"))
         {
-            SlotValue::List(id) => {
-                assert_eq!(
-                    store
-                        .list(id)
-                        .ok()
-                        .unwrap_or_else(|| panic!("must read"))
-                        .len(),
-                    0
-                );
+            SlotValue::List(state_id) => {
+                let state = store
+                    .list(state_id)
+                    .ok()
+                    .unwrap_or_else(|| panic!("must read"));
+                assert_eq!(state.len(), 2, "cursor state must be 2 elements");
+                assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
             }
             other => {
                 assert_eq!(other, SlotValue::I64(0));
@@ -824,7 +848,7 @@ mod tests {
     }
 
     #[test]
-    fn reduce_start_first_item_in_input_tail_in_output() {
+    fn reduce_start_first_item_in_input_cursor_state_in_output() {
         // Given a frame with a 2-item list
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
@@ -849,7 +873,8 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then input slot has the first item and output slot has the tail list
+        // Then input slot has the first item and output slot has a 2-element
+        // (source_id, cursor=1) state list, NOT a literal 1-item tail.
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(
             *run.read_slot(input)
@@ -862,10 +887,13 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("must read"))
         {
-            SlotValue::List(id) => {
-                let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-                assert_eq!(items.len(), 1);
-                assert_eq!(items.get(0), Some(&SlotValue::I64(20)));
+            SlotValue::List(state_id) => {
+                let state = store
+                    .list(state_id)
+                    .ok()
+                    .unwrap_or_else(|| panic!("must read"));
+                assert_eq!(state.len(), 2, "cursor state must be 2 elements");
+                assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
             }
             other => {
                 assert_eq!(other, SlotValue::I64(0));
@@ -944,17 +972,18 @@ mod tests {
     }
 
     #[test]
-    fn reduce_next_single_remaining_item_produces_empty_tail() {
-        // Given a frame with 1 remaining item
+    fn reduce_next_single_remaining_item_produces_exhausted_cursor() {
+        // Given a frame with a 1-item source encoded as iterator state (cursor=0)
         let mut run = fresh_frame();
         let mut store = ValueStore::new();
         let iterator_slot = SlotIdx::new(0);
         let output = SlotIdx::new(2);
-        list_in_slot(
+        iterator_state_in_slot(
             &mut run,
             &mut store,
             iterator_slot,
             vec![SlotValue::I64(42)],
+            0,
         );
         // When calling reduce_next
         let result = reduce_next(
@@ -966,7 +995,8 @@ mod tests {
             StepIdx::new(2),
             Some(output),
         );
-        // Then output has the item and iterator has empty tail
+        // Then output has the item and the iterator state advances to cursor=1
+        // (= source len). The next call must jump to done.
         assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
         assert_eq!(
             *run.read_slot(output)
@@ -979,15 +1009,13 @@ mod tests {
             .ok()
             .unwrap_or_else(|| panic!("must read"))
         {
-            SlotValue::List(id) => {
-                assert_eq!(
-                    store
-                        .list(id)
-                        .ok()
-                        .unwrap_or_else(|| panic!("must read"))
-                        .len(),
-                    0
-                );
+            SlotValue::List(state_id) => {
+                let state = store
+                    .list(state_id)
+                    .ok()
+                    .unwrap_or_else(|| panic!("must read"));
+                assert_eq!(state.len(), 2, "cursor state must be 2 elements");
+                assert_eq!(state.get(1).copied(), Some(SlotValue::I64(1)));
             }
             other => {
                 assert_eq!(other, SlotValue::I64(0));
