@@ -699,6 +699,7 @@ pub fn admit_artifact_run_with_certificate_floor(
                 });
             }
 
+            // spec: VERUS-CARD-003 strict equality (cardinality-exact + membership-exact admission).
             // F-001 fix: restore strict capability equality (VERUS-CARD-003).
             //
             // Strict admission requires that granted capabilities exactly match the
