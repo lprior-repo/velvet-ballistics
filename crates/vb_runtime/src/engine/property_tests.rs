@@ -18,35 +18,65 @@ use crate::engine::types::{
 // =============================================================================
 
 #[test]
-fn evidence_collector_zero_capacity_drops_all() {
+fn evidence_collector_zero_capacity_returns_typed_error_for_every_push() {
     let mut collector = EvidenceCollector::with_capacity(0);
-    collector.push_step_started(StepIdx::ZERO);
-    assert_eq!(collector.len(), 0);
-    assert_eq!(collector.dropped(), 1);
-
-    collector.push_step_succeeded(StepIdx::ZERO, None);
-    assert_eq!(collector.dropped(), 2);
-
-    collector.push_slot_written(SlotIdx::ZERO, SlotValue::I64(42));
-    assert_eq!(collector.dropped(), 3);
+    assert_eq!(
+        collector.push_step_started(StepIdx::ZERO),
+        Err(vb_core::EngineError::EvidenceCapacityExceeded {
+            step: StepIdx::ZERO,
+            slot: SlotIdx::ZERO,
+            capacity: 0,
+            len: 0,
+            required: "evidence StepStarted event",
+        })
+    );
+    assert_eq!(
+        collector.push_step_succeeded(StepIdx::ZERO, None),
+        Err(vb_core::EngineError::EvidenceCapacityExceeded {
+            step: StepIdx::ZERO,
+            slot: SlotIdx::ZERO,
+            capacity: 0,
+            len: 0,
+            required: "evidence StepSucceeded event",
+        })
+    );
+    assert_eq!(
+        collector.push_slot_written(SlotIdx::ZERO, SlotValue::I64(42)),
+        Err(vb_core::EngineError::EvidenceCapacityExceeded {
+            step: StepIdx::ZERO,
+            slot: SlotIdx::ZERO,
+            capacity: 0,
+            len: 0,
+            required: "evidence SlotWritten event",
+        })
+    );
 }
 
 #[test]
-fn evidence_collector_capacity_one_tracks_dropped() {
+fn evidence_collector_capacity_one_first_succeeds_second_is_typed_error() {
     let mut collector = EvidenceCollector::with_capacity(1);
-    collector.push_step_started(StepIdx::ZERO);
+    assert!(collector.push_step_started(StepIdx::ZERO).is_ok());
     assert_eq!(collector.len(), 1);
-    assert_eq!(collector.dropped(), 0);
-
-    collector.push_step_started(StepIdx::new(1));
-    assert_eq!(collector.len(), 1);
-    assert!(collector.dropped() >= 1);
+    let err = collector
+        .push_step_started(StepIdx::new(1))
+        .expect_err("second push at capacity must surface as typed error");
+    assert_eq!(
+        err,
+        vb_core::EngineError::EvidenceCapacityExceeded {
+            step: StepIdx::new(1),
+            slot: SlotIdx::ZERO,
+            capacity: 1,
+            len: 1,
+            required: "evidence StepStarted event",
+        }
+    );
 }
-
 #[test]
 fn evidence_collector_double_drain_returns_empty_second_time() {
     let mut collector = EvidenceCollector::new();
-    collector.push_step_started(StepIdx::ZERO);
+    collector
+        .push_step_started(StepIdx::ZERO)
+        .expect("default capacity must accept the push");
     let first = collector.drain();
     assert_eq!(first.len(), 1);
     let second = collector.drain();
@@ -60,7 +90,9 @@ fn evidence_collector_slot_written_with_taint_preserves_values() {
     let val = SlotValue::I64(123);
     let taint = Taint::Secret;
 
-    collector.push_slot_written_with_taint(slot, val, taint);
+    collector
+        .push_slot_written_with_taint(slot, val, taint)
+        .expect("default capacity must accept the push");
     let events = collector.drain();
     assert_eq!(events.len(), 1);
 

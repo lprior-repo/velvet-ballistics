@@ -12,6 +12,9 @@ use vb_core::value::{SlotValue, Taint};
 use crate::primitives::collect::CollectPaginationState;
 
 const REQUIRED_COLLECT_SLOT_EXTRA: &str = "collect SlotWritten extra";
+const REQUIRED_STEP_STARTED: &str = "evidence StepStarted event";
+const REQUIRED_STEP_SUCCEEDED: &str = "evidence StepSucceeded event";
+const REQUIRED_SLOT_WRITTEN: &str = "evidence SlotWritten event";
 
 /// Evidence event emitted by the deterministic drive loop for each step.
 ///
@@ -58,13 +61,10 @@ const DEFAULT_EVIDENCE_CAPACITY: usize = 3 * 1024;
 /// to emit StepStarted/StepSucceeded/SlotWritten events to the journal.
 /// The collector enforces a capacity limit to prevent unbounded memory
 /// growth from malicious or buggy workflows. When at capacity, new events
-/// are silently dropped (the evidence chain becomes incomplete but the
-/// system remains memory-safe).
 #[derive(Debug, Clone)]
 pub struct EvidenceCollector {
     events: Vec<EvidenceEvent>,
     capacity: usize,
-    dropped: usize,
 }
 
 impl EvidenceCollector {
@@ -74,7 +74,6 @@ impl EvidenceCollector {
         Self {
             events: Vec::new(),
             capacity: DEFAULT_EVIDENCE_CAPACITY,
-            dropped: 0,
         }
     }
 
@@ -84,53 +83,97 @@ impl EvidenceCollector {
         Self {
             events: Vec::new(),
             capacity,
-            dropped: 0,
         }
     }
 
     /// Records a StepStarted event.
-    /// Silently drops the event if the collector is at capacity.
-    pub fn push_step_started(&mut self, step: StepIdx) {
-        if self.events.len() < self.capacity {
-            self.events.push(EvidenceEvent::StepStarted { step });
-        } else {
-            self.dropped = self.dropped.saturating_add(1);
+    ///
+    /// Returns `EngineError::EvidenceCapacityExceeded` if the collector is at
+    /// capacity; the event is NOT pushed in that case. Callers must propagate
+    /// the error — silent drops are no longer possible on this path.
+    pub fn push_step_started(&mut self, step: StepIdx) -> Result<(), EngineError> {
+        if self.events.len() >= self.capacity {
+            return Err(EngineError::EvidenceCapacityExceeded {
+                step,
+                slot: SlotIdx::ZERO,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_STEP_STARTED,
+            });
         }
+        self.events.push(EvidenceEvent::StepStarted { step });
+        Ok(())
     }
 
     /// Records a StepSucceeded event.
-    /// Silently drops the event if the collector is at capacity.
-    pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>) {
-        if self.events.len() < self.capacity {
-            self.events
-                .push(EvidenceEvent::StepSucceeded { step, output });
-        } else {
-            self.dropped = self.dropped.saturating_add(1);
+    ///
+    /// Returns `EngineError::EvidenceCapacityExceeded` if the collector is at
+    /// capacity; the event is NOT pushed in that case.
+    pub fn push_step_succeeded(
+        &mut self,
+        step: StepIdx,
+        output: Option<SlotIdx>,
+    ) -> Result<(), EngineError> {
+        if self.events.len() >= self.capacity {
+            return Err(EngineError::EvidenceCapacityExceeded {
+                step,
+                slot: SlotIdx::ZERO,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_STEP_SUCCEEDED,
+            });
         }
+        self.events
+            .push(EvidenceEvent::StepSucceeded { step, output });
+        Ok(())
     }
 
     /// Records a SlotWritten event.
-    /// Silently drops the event if the collector is at capacity.
-    pub fn push_slot_written(&mut self, slot: SlotIdx, value: SlotValue) {
-        self.push_slot_written_with_taint(slot, value, Taint::Clean);
+    ///
+    /// Returns `EngineError::EvidenceCapacityExceeded` if the collector is at
+    /// capacity; the event is NOT pushed in that case.
+    pub fn push_slot_written(
+        &mut self,
+        slot: SlotIdx,
+        value: SlotValue,
+    ) -> Result<(), EngineError> {
+        self.push_slot_written_with_taint(slot, value, Taint::Clean)
     }
 
     /// Records a SlotWritten event with explicit taint.
-    /// Silently drops the event if the collector is at capacity.
-    pub fn push_slot_written_with_taint(&mut self, slot: SlotIdx, value: SlotValue, taint: Taint) {
-        if self.events.len() < self.capacity {
-            self.events.push(EvidenceEvent::SlotWritten {
+    ///
+    /// Returns `EngineError::EvidenceCapacityExceeded` if the collector is at
+    /// capacity; the event is NOT pushed in that case.
+    pub fn push_slot_written_with_taint(
+        &mut self,
+        slot: SlotIdx,
+        value: SlotValue,
+        taint: Taint,
+    ) -> Result<(), EngineError> {
+        if self.events.len() >= self.capacity {
+            return Err(EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::ZERO,
                 slot,
-                value,
-                taint,
-                extra: None,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_SLOT_WRITTEN,
             });
-        } else {
-            self.dropped = self.dropped.saturating_add(1);
         }
+        self.events.push(EvidenceEvent::SlotWritten {
+            slot,
+            value,
+            taint,
+            extra: None,
+        });
+        Ok(())
     }
 
     /// Records a SlotWritten event with frame extra data.
+    ///
+    /// Returns `EngineError::CollectEvidenceCapacityExceeded` when the
+    /// collector is at capacity and `extra` is `Some` (collect-extra must
+    /// be preserved). Returns `EngineError::EvidenceCapacityExceeded` for
+    /// the non-extra overflow path. Either way, the event is NOT pushed.
     pub fn push_slot_written_with_extra(
         &mut self,
         slot: SlotIdx,
@@ -138,33 +181,35 @@ impl EvidenceCollector {
         taint: Taint,
         extra: Option<CollectPaginationState>,
     ) -> Result<(), EngineError> {
-        if let Some(state) = extra
-            && self.events.len() >= self.capacity
-        {
-            return Err(EngineError::CollectEvidenceCapacityExceeded {
-                run_id: state.run_id,
-                slot,
-                capacity: self.capacity,
-                len: self.events.len(),
-                required: REQUIRED_COLLECT_SLOT_EXTRA,
+        if self.events.len() >= self.capacity {
+            return Err(match extra {
+                Some(state) => EngineError::CollectEvidenceCapacityExceeded {
+                    run_id: state.run_id,
+                    slot,
+                    capacity: self.capacity,
+                    len: self.events.len(),
+                    required: REQUIRED_COLLECT_SLOT_EXTRA,
+                },
+                None => EngineError::EvidenceCapacityExceeded {
+                    step: StepIdx::ZERO,
+                    slot,
+                    capacity: self.capacity,
+                    len: self.events.len(),
+                    required: REQUIRED_SLOT_WRITTEN,
+                },
             });
         }
-        if self.events.len() < self.capacity {
-            self.events.push(EvidenceEvent::SlotWritten {
-                slot,
-                value,
-                taint,
-                extra,
-            });
-        } else {
-            self.dropped = self.dropped.saturating_add(1);
-        }
+        self.events.push(EvidenceEvent::SlotWritten {
+            slot,
+            value,
+            taint,
+            extra,
+        });
         Ok(())
     }
 
     /// Drains all collected events, returning them for processing.
     pub fn drain(&mut self) -> Vec<EvidenceEvent> {
-        self.dropped = 0;
         core::mem::take(&mut self.events)
     }
 
@@ -178,12 +223,6 @@ impl EvidenceCollector {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
-    }
-
-    /// Returns the number of events dropped due to capacity limits.
-    #[must_use]
-    pub fn dropped(&self) -> usize {
-        self.dropped
     }
 
     /// Returns the configured capacity.
@@ -336,7 +375,9 @@ mod tests {
     #[test]
     fn evidence_collector_push_step_started_increments_len() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
         assert!(!collector.is_empty());
         assert_eq!(collector.len(), 1);
     }
@@ -344,14 +385,18 @@ mod tests {
     #[test]
     fn evidence_collector_push_step_succeeded_increments_len() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
+        collector
+            .push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)))
+            .expect("default capacity must accept the push");
         assert_eq!(collector.len(), 1);
     }
 
     #[test]
     fn evidence_collector_push_step_succeeded_with_no_output() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_succeeded(StepIdx::new(5), None);
+        collector
+            .push_step_succeeded(StepIdx::new(5), None)
+            .expect("default capacity must accept the push");
         assert_eq!(collector.len(), 1);
     }
 
@@ -362,9 +407,15 @@ mod tests {
     #[test]
     fn evidence_collector_drain_returns_all_events() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
-        collector.push_step_started(StepIdx::new(1));
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_started(StepIdx::new(1))
+            .expect("default capacity must accept the push");
         assert_eq!(collector.len(), 3);
 
         let events = collector.drain();
@@ -375,7 +426,9 @@ mod tests {
     #[test]
     fn evidence_collector_drain_leaves_empty() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
         let drained = collector.drain();
         assert_eq!(drained.len(), 1);
         assert_eq!(collector.len(), 0);
@@ -385,7 +438,9 @@ mod tests {
     #[test]
     fn evidence_collector_double_drain_second_returns_nothing() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
         let first = collector.drain();
         assert_eq!(first.len(), 1);
         let second = collector.drain();
@@ -406,7 +461,9 @@ mod tests {
     #[test]
     fn evidence_collector_events_preserve_step_index() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(42));
+        collector
+            .push_step_started(StepIdx::new(42))
+            .expect("default capacity must accept the push");
         let events = collector.drain();
         match events.first() {
             Some(EvidenceEvent::StepStarted { step }) => assert_eq!(*step, StepIdx::new(42)),
@@ -420,7 +477,9 @@ mod tests {
     #[test]
     fn evidence_collector_step_succeeded_preserves_output_slot() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_succeeded(StepIdx::new(3), Some(SlotIdx::new(7)));
+        collector
+            .push_step_succeeded(StepIdx::new(3), Some(SlotIdx::new(7)))
+            .expect("default capacity must accept the push");
         let events = collector.drain();
         match events.first() {
             Some(EvidenceEvent::StepSucceeded { step, output }) => {
@@ -437,7 +496,9 @@ mod tests {
     #[test]
     fn evidence_collector_step_succeeded_none_output_for_boundary_nodes() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_succeeded(StepIdx::new(1), None);
+        collector
+            .push_step_succeeded(StepIdx::new(1), None)
+            .expect("default capacity must accept the push");
         let events = collector.drain();
         match events.first() {
             Some(EvidenceEvent::StepSucceeded { step, output }) => {
@@ -454,10 +515,18 @@ mod tests {
     #[test]
     fn evidence_collector_events_maintain_insertion_order() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)));
-        collector.push_step_started(StepIdx::new(1));
-        collector.push_step_succeeded(StepIdx::new(1), None);
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_started(StepIdx::new(1))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_succeeded(StepIdx::new(1), None)
+            .expect("default capacity must accept the push");
 
         let events = collector.drain();
         assert_eq!(events.len(), 4);
@@ -490,15 +559,20 @@ mod tests {
     #[test]
     fn evidence_collector_accepts_events_after_drain() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("default capacity must accept the push");
         let drained = collector.drain();
         assert_eq!(drained.len(), 1);
 
-        collector.push_step_started(StepIdx::new(1));
-        collector.push_step_succeeded(StepIdx::new(1), Some(SlotIdx::new(2)));
+        collector
+            .push_step_started(StepIdx::new(1))
+            .expect("default capacity must accept the push");
+        collector
+            .push_step_succeeded(StepIdx::new(1), Some(SlotIdx::new(2)))
+            .expect("default capacity must accept the push");
         assert_eq!(collector.len(), 2);
     }
-
     // =====================================================================
     // EvidenceEvent equality and debug
     // =====================================================================
@@ -606,65 +680,92 @@ mod tests {
     fn evidence_collector_new_has_default_capacity() {
         let collector = EvidenceCollector::new();
         assert_eq!(collector.capacity(), 3 * 1024);
-        assert_eq!(collector.dropped(), 0);
     }
 
     #[test]
     fn evidence_collector_with_capacity_sets_custom_capacity() {
         let collector = EvidenceCollector::with_capacity(10);
         assert_eq!(collector.capacity(), 10);
-        assert_eq!(collector.dropped(), 0);
     }
 
     #[test]
-    fn evidence_collector_drops_events_at_capacity() {
+    fn evidence_collector_returns_typed_error_at_capacity() {
         let mut collector = EvidenceCollector::with_capacity(2);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_started(StepIdx::new(1));
+        assert!(
+            collector.push_step_started(StepIdx::new(0)).is_ok(),
+            "first push must succeed",
+        );
+        assert!(
+            collector.push_step_started(StepIdx::new(1)).is_ok(),
+            "second push must succeed at boundary",
+        );
         assert_eq!(collector.len(), 2);
-        assert_eq!(collector.dropped(), 0);
-        // Third event exceeds capacity.
-        collector.push_step_started(StepIdx::new(2));
+        let err = collector
+            .push_step_started(StepIdx::new(2))
+            .expect_err("third push at capacity must surface as typed error");
+        assert_eq!(
+            err,
+            EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::new(2),
+                slot: SlotIdx::ZERO,
+                capacity: 2,
+                len: 2,
+                required: REQUIRED_STEP_STARTED,
+            },
+        );
         assert_eq!(collector.len(), 2, "capacity should be respected");
-        assert_eq!(collector.dropped(), 1, "dropped count should increment");
     }
 
     #[test]
-    fn evidence_collector_drops_slot_written_at_capacity() {
+    fn evidence_collector_slot_written_typed_error_at_capacity() {
         let mut collector = EvidenceCollector::with_capacity(1);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
-        assert_eq!(collector.len(), 1);
-        assert_eq!(collector.dropped(), 1);
+        assert!(collector.push_step_started(StepIdx::new(0)).is_ok());
+        let err = collector
+            .push_slot_written(SlotIdx::new(0), SlotValue::I64(1))
+            .expect_err("slot_written at capacity must surface as typed error");
+        assert_eq!(
+            err,
+            EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::ZERO,
+                slot: SlotIdx::new(0),
+                capacity: 1,
+                len: 1,
+                required: REQUIRED_SLOT_WRITTEN,
+            },
+        );
     }
 
     #[test]
-    fn evidence_collector_drops_step_succeeded_at_capacity() {
+    fn evidence_collector_step_succeeded_typed_error_at_capacity() {
         let mut collector = EvidenceCollector::with_capacity(1);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_succeeded(StepIdx::new(0), None);
-        assert_eq!(collector.len(), 1);
-        assert_eq!(collector.dropped(), 1);
+        assert!(collector.push_step_started(StepIdx::new(0)).is_ok());
+        let err = collector
+            .push_step_succeeded(StepIdx::new(0), None)
+            .expect_err("step_succeeded at capacity must surface as typed error");
+        assert_eq!(
+            err,
+            EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::new(0),
+                slot: SlotIdx::ZERO,
+                capacity: 1,
+                len: 1,
+                required: REQUIRED_STEP_SUCCEEDED,
+            },
+        );
     }
 
     #[test]
-    fn evidence_collector_drain_resets_dropped_counter() {
+    fn evidence_collector_drain_after_overflow_returns_only_kept_events() {
         let mut collector = EvidenceCollector::with_capacity(1);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_started(StepIdx::new(1)); // dropped
-        assert_eq!(collector.dropped(), 1);
+        assert!(collector.push_step_started(StepIdx::new(0)).is_ok());
+        // At capacity: second push returns an error and the event is not kept.
+        assert!(
+            collector.push_step_started(StepIdx::new(1)).is_err(),
+            "overflow push must surface as typed error",
+        );
         let events = collector.drain();
-        assert_eq!(events.len(), 1);
-        assert_eq!(collector.dropped(), 0, "drain should reset dropped");
-        assert!(collector.is_empty());
-    }
-
-    #[test]
-    fn evidence_collector_dropped_saturates_on_many_drops() {
-        let mut collector = EvidenceCollector::with_capacity(0);
-        (0u16..10_000).for_each(|i| collector.push_step_started(StepIdx::new(i)));
-        assert_eq!(collector.len(), 0, "zero capacity should hold nothing");
-        assert_eq!(collector.dropped(), 10_000, "all events should be dropped");
+        assert_eq!(events.len(), 1, "only the first event was kept");
+        assert!(collector.is_empty(), "drain empties the buffer");
     }
 
     // =====================================================================
@@ -862,7 +963,9 @@ mod tests {
     #[test]
     fn evidence_collector_slot_written_preserves_slot_and_value() {
         let mut collector = EvidenceCollector::new();
-        collector.push_slot_written(SlotIdx::new(3), SlotValue::I64(99));
+        collector
+            .push_slot_written(SlotIdx::new(3), SlotValue::I64(99))
+            .expect("default capacity must accept the push");
         let events = collector.drain();
         match events.first() {
             Some(EvidenceEvent::SlotWritten { slot, value, .. }) => {
@@ -879,7 +982,9 @@ mod tests {
     #[test]
     fn evidence_collector_slot_written_bool_value() {
         let mut collector = EvidenceCollector::new();
-        collector.push_slot_written(SlotIdx::new(0), SlotValue::Bool(true));
+        collector
+            .push_slot_written(SlotIdx::new(0), SlotValue::Bool(true))
+            .expect("default capacity must accept the push");
         let events = collector.drain();
         match events.first() {
             Some(EvidenceEvent::SlotWritten { value, .. }) => {
@@ -891,15 +996,24 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn evidence_collector_mixed_events_in_order() {
         let mut collector = EvidenceCollector::new();
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
-        collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)));
-        collector.push_step_started(StepIdx::new(1));
-        collector.push_step_succeeded(StepIdx::new(1), None);
+        collector
+            .push_step_started(StepIdx::new(0))
+            .expect("push_step_started must succeed under default capacity");
+        collector
+            .push_slot_written(SlotIdx::new(0), SlotValue::I64(1))
+            .expect("push_slot_written must succeed under default capacity");
+        collector
+            .push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)))
+            .expect("push_step_succeeded must succeed under default capacity");
+        collector
+            .push_step_started(StepIdx::new(1))
+            .expect("push_step_started must succeed under default capacity");
+        collector
+            .push_step_succeeded(StepIdx::new(1), None)
+            .expect("push_step_succeeded must succeed under default capacity");
         let events = collector.drain();
         assert_eq!(events.len(), 5);
         assert!(matches!(
@@ -915,16 +1029,40 @@ mod tests {
     }
 
     #[test]
-    fn evidence_collector_zero_capacity_drops_all() {
+    fn evidence_collector_zero_capacity_returns_typed_error_for_every_push() {
         let mut collector = EvidenceCollector::with_capacity(0);
         assert_eq!(collector.capacity(), 0);
-        collector.push_step_started(StepIdx::new(0));
+        assert_eq!(
+            collector.push_step_started(StepIdx::new(0)),
+            Err(EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::new(0),
+                slot: SlotIdx::ZERO,
+                capacity: 0,
+                len: 0,
+                required: REQUIRED_STEP_STARTED,
+            })
+        );
         assert_eq!(collector.len(), 0);
-        assert_eq!(collector.dropped(), 1);
-        collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1));
-        assert_eq!(collector.dropped(), 2);
-        collector.push_step_succeeded(StepIdx::new(0), None);
-        assert_eq!(collector.dropped(), 3);
+        assert_eq!(
+            collector.push_slot_written(SlotIdx::new(0), SlotValue::I64(1)),
+            Err(EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::ZERO,
+                slot: SlotIdx::new(0),
+                capacity: 0,
+                len: 0,
+                required: REQUIRED_SLOT_WRITTEN,
+            })
+        );
+        assert_eq!(
+            collector.push_step_succeeded(StepIdx::new(0), None),
+            Err(EngineError::EvidenceCapacityExceeded {
+                step: StepIdx::new(0),
+                slot: SlotIdx::ZERO,
+                capacity: 0,
+                len: 0,
+                required: REQUIRED_STEP_SUCCEEDED,
+            })
+        );
     }
 
     // =====================================================================
@@ -1060,8 +1198,12 @@ mod tests {
             start_millis: 10,
         };
         let mut evidence = EvidenceCollector::with_capacity(2);
-        evidence.push_step_started(StepIdx::ZERO);
-        evidence.push_step_succeeded(StepIdx::ZERO, None);
+        evidence
+            .push_step_started(StepIdx::ZERO)
+            .expect("push_step_started must succeed under capacity 2");
+        evidence
+            .push_step_succeeded(StepIdx::ZERO, None)
+            .expect("push_step_succeeded must succeed under capacity 2");
 
         let result = evidence.push_slot_written_with_extra(
             collector,
@@ -1151,7 +1293,9 @@ mod tests {
             start_millis: 10,
         };
         let mut evidence = EvidenceCollector::with_capacity(1);
-        evidence.push_step_started(StepIdx::ZERO);
+        evidence
+            .push_step_started(StepIdx::ZERO)
+            .expect("push_step_started must succeed under capacity 1");
 
         let result = evidence.push_slot_written_with_extra(
             collector,

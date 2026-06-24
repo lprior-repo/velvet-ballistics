@@ -96,6 +96,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
         CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
         CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
+        EvidenceCapacityExceeded { .. } => "EVIDENCE_CAPACITY_EXCEEDED",
         LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
         LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
         LifecycleStaleRequest { .. } => "LIFECYCLE_STALE_REQUEST",

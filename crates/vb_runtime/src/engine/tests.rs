@@ -1453,10 +1453,10 @@ fn bh_evidence_events_always_alternate_started_succeeded() {
     // [StepStarted(N), StepSucceeded(N)] in strict alternating order.
     // This test uses the EvidenceCollector directly to verify the pattern.
     let mut collector = EvidenceCollector::new();
-    collector.push_step_started(StepIdx::new(0));
-    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
-    collector.push_step_started(StepIdx::new(1));
-    collector.push_step_succeeded(StepIdx::new(1), None);
+    collector.push_step_started(StepIdx::new(0)).expect("ok");
+    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1))).expect("ok");
+    collector.push_step_started(StepIdx::new(1)).expect("ok");
+    collector.push_step_succeeded(StepIdx::new(1), None).expect("ok");
 
     let events = collector.drain();
     assert_eq!(events.len(), 4);
@@ -1658,9 +1658,12 @@ mod blackhat_engine {
     fn bh_eng_01_evidence_collector_enforces_capacity_bound() {
         let mut collector = EvidenceCollector::new();
         let capacity = collector.capacity();
-        // Push more events than capacity allows.
+        // First `capacity` pushes succeed; the rest surface as typed errors.
+        let mut overflow_errors = 0usize;
         for i in 0u16..10_000 {
-            collector.push_step_started(StepIdx::new(i));
+            if collector.push_step_started(StepIdx::new(i)).is_err() {
+                overflow_errors = overflow_errors.saturating_add(1);
+            }
         }
         assert_eq!(
             collector.len(),
@@ -1668,9 +1671,9 @@ mod blackhat_engine {
             "BH-ENG-01 FIXED: EvidenceCollector should respect capacity bound"
         );
         assert_eq!(
-            collector.dropped(),
+            overflow_errors,
             10_000 - capacity,
-            "dropped count should reflect overflow"
+            "overflow pushes must surface as typed errors"
         );
     }
 
@@ -2340,25 +2343,26 @@ mod blackhat_engine {
     #[test]
     fn bh_eng_15_evidence_collector_with_capacity_drops_excess() {
         let mut collector = EvidenceCollector::with_capacity(3);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_started(StepIdx::new(1));
-        collector.push_step_started(StepIdx::new(2));
-        // At capacity: next event should be dropped.
-        collector.push_step_started(StepIdx::new(3));
+        assert!(collector.push_step_started(StepIdx::new(0)).is_ok());
+        assert!(collector.push_step_started(StepIdx::new(1)).is_ok());
+        assert!(collector.push_step_started(StepIdx::new(2)).is_ok());
+        // At capacity: next event must surface as a typed error.
+        assert!(collector.push_step_started(StepIdx::new(3)).is_err());
         assert_eq!(collector.len(), 3, "capacity should be respected");
-        assert_eq!(collector.dropped(), 1, "overflow should be tracked");
     }
 
     #[test]
-    fn bh_eng_15_evidence_collector_drain_resets_dropped() {
+    fn bh_eng_15_evidence_collector_drain_after_overflow() {
         let mut collector = EvidenceCollector::with_capacity(2);
-        collector.push_step_started(StepIdx::new(0));
-        collector.push_step_started(StepIdx::new(1));
-        collector.push_step_started(StepIdx::new(2)); // dropped
-        assert_eq!(collector.dropped(), 1);
+        assert!(collector.push_step_started(StepIdx::new(0)).is_ok());
+        assert!(collector.push_step_started(StepIdx::new(1)).is_ok());
+        assert!(
+            collector.push_step_started(StepIdx::new(2)).is_err(),
+            "overflow must surface as typed error"
+        );
         let events = collector.drain();
         assert_eq!(events.len(), 2);
-        assert_eq!(collector.dropped(), 0, "drain should reset dropped counter");
+        assert!(collector.is_empty(), "drain empties the buffer");
     }
 
     // =====================================================================
