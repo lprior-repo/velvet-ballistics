@@ -9,7 +9,60 @@ use super::stack::{
     ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
 };
 
+// ===== Allocation fault hook (test-only) =====
+//
+// CE-005 requires that the expression collection operators surface an
+// out-of-memory condition as `EngineError::AllocationFailed` rather than
+// aborting. The standard library has no API to deterministically make
+// `Vec::try_reserve_exact` fail under unit tests, so we route the
+// reservation through a small helper that consults a thread-local fault
+// flag (consumed on read) before delegating to the real reservation. The
+// flag and its accessors are compiled out of non-test builds, so the
+// production binary pays nothing for the indirection.
+
+#[cfg(test)]
+mod alloc_fault {
+    use core::cell::Cell;
+
+    thread_local! {
+        static OOM_FAULT_INJECTED: Cell<bool> = const { Cell::new(false) };
+    }
+
+    /// Arm the OOM fault: the next call to `try_reserve_or_inject` in this
+    /// thread returns `Err(EngineError::AllocationFailed)` regardless of
+    /// the actual capacity requested. The flag auto-clears on read so
+    /// each test gets exactly one fault.
+    pub(crate) fn arm() {
+        OOM_FAULT_INJECTED.with(|cell| cell.set(true));
+    }
+
+    /// Returns `true` if the OOM fault is armed and clears it.
+    pub(crate) fn take() -> bool {
+        OOM_FAULT_INJECTED.with(|cell| {
+            let armed = cell.get();
+            cell.set(false);
+            armed
+        })
+    }
+}
+
+/// Reserve exactly `additional` slots in `buf`, or return
+/// `EngineError::AllocationFailed`. The hook above is consulted first
+/// under `cfg(test)` so unit tests can deterministically exercise the
+/// reservation failure branch.
+fn try_reserve_or_inject<T>(buf: &mut Vec<T>, additional: usize) -> Result<(), EngineError> {
+    #[cfg(test)]
+    {
+        if alloc_fault::take() {
+            return Err(EngineError::AllocationFailed);
+        }
+    }
+    buf.try_reserve_exact(additional)
+        .map_err(|_| EngineError::AllocationFailed)
+}
+
 // ===== Text operations =====
+
 
 pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (haystack, needle) = pop_pair(stack)?;
@@ -172,7 +225,13 @@ pub(super) fn eval_append(
     let items = store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
+    let new_len = items
+        .len()
+        .checked_add(1)
+        .ok_or(EngineError::AllocationFailed)?;
+    let mut new_items: Vec<SlotValue> = Vec::new();
+    try_reserve_or_inject(&mut new_items, new_len)?;
+    new_items.extend_from_slice(items);
     new_items.push(item);
     let new_list = store
         .insert_list(new_items.into_boxed_slice())
@@ -190,7 +249,17 @@ pub(super) fn eval_append_if(
     let items = store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
+    let base_len = items.len();
+    let new_len = if cond {
+        base_len
+            .checked_add(1)
+            .ok_or(EngineError::AllocationFailed)?
+    } else {
+        base_len
+    };
+    let mut new_items: Vec<SlotValue> = Vec::new();
+    try_reserve_or_inject(&mut new_items, new_len)?;
+    new_items.extend_from_slice(items);
     if cond {
         new_items.push(item);
     }
@@ -210,6 +279,7 @@ pub(super) fn eval_unique(
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut seen: Vec<SlotValue> = Vec::new();
+    try_reserve_or_inject(&mut seen, items.len())?;
     for &item in items {
         if !seen.contains(&item) {
             seen.push(item);
@@ -1027,6 +1097,123 @@ mod tests {
                 list: ListId::new(99)
             })
         );
+    }
+
+    // ===== CE-005: OOM fault injection on the try_reserve_exact path =====
+    //
+    // The previous regression test only exercised the `checked_add(1)`
+    // short-circuit and let the actual `try_reserve_exact` call go
+    // unobserved. The tests below arm `OOM_FAULT_INJECTED` so the
+    // `try_reserve_or_inject` helper returns `Err(AllocationFailed)`
+    // BEFORE the real allocator runs, then drive each collection
+    // operator with a normal-size payload and assert that the
+    // `AllocationFailed` error is propagated. The flag auto-clears on
+    // read, so subsequent allocations succeed and the test stays
+    // self-contained.
+
+    #[test]
+    fn ce005_oom_fault_armed_returns_allocation_failed_for_append() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+            )
+            .expect("insert source list");
+        alloc_fault::arm();
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Append,
+            ],
+            vec![SlotValue::List(list)],
+            vec![ConstValue::I64(4)],
+            &mut store,
+        );
+        match result {
+            Err(msg) if msg.contains("allocation") => Ok(()),
+            other => Err(format!("expected AllocationFailed, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn ce005_oom_fault_armed_returns_allocation_failed_for_append_if_true() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+            )
+            .expect("insert source list");
+        alloc_fault::arm();
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::AppendIf,
+            ],
+            vec![SlotValue::List(list)],
+            vec![ConstValue::I64(4), ConstValue::Bool(true)],
+            &mut store,
+        );
+        match result {
+            Err(msg) if msg.contains("allocation") => Ok(()),
+            other => Err(format!("expected AllocationFailed, got {other:?}")),
+        }
+    }
+    #[test]
+    fn ce005_oom_fault_armed_returns_allocation_failed_for_unique() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![
+                    SlotValue::I64(1),
+                    SlotValue::I64(2),
+                    SlotValue::I64(1),
+                    SlotValue::I64(3),
+                ]
+                .into_boxed_slice(),
+            )
+            .expect("insert source list");
+        alloc_fault::arm();
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        match result {
+            Err(msg) if msg.contains("allocation") => Ok(()),
+            other => Err(format!("expected AllocationFailed, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn ce005_oom_fault_unarmed_does_not_trigger() -> Result<(), String> {
+        // Sanity check: with the fault NOT armed, append succeeds and
+        // accidentally sticky across test threads.
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .expect("insert source list");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Append,
+            ],
+            vec![SlotValue::List(list)],
+            vec![ConstValue::I64(2)],
+            &mut store,
+        )?;
+        match result {
+            SlotValue::List(id) => {
+                let items = store.list(id).map_err(|e| e.to_string())?;
+                ensure_equal(items.len(), 2)?;
+                ensure_equal(items[1], SlotValue::I64(2))
+            }
+            other => Err(format!("expected List, got {other:?}")),
+        }
     }
 
     #[test]
