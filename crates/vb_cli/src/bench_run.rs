@@ -1,4 +1,8 @@
-//! Workflow benchmark command.
+//! Module: bench_run
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -116,22 +120,3 @@
 
     ExitCode::SUCCESS
 }
-
-pub(crate) fn open_doctor_journal(
-    db: &std::path::Path,
-) -> Result<vb_storage::FjallJournal, vb_storage::JournalError> {
-    for delay in [
-        std::time::Duration::from_millis(5),
-        std::time::Duration::from_millis(25),
-    ] {
-        match vb_storage::FjallJournal::open(db, None) {
-            Ok(journal) => return Ok(journal),
-            Err(vb_storage::JournalError::ProcessLockHeld { .. }) => std::thread::sleep(delay),
-            Err(err) => return Err(err),
-        }
-    }
-
-    vb_storage::FjallJournal::open(db, None)
-}
-
-pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {

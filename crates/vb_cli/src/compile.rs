@@ -1,20 +1,6 @@
-//! Workflow compilation command.
-    match err {
-        commands_verify::VerifyError::YamlParse(msg)
-        | commands_verify::VerifyError::IrValidation(msg)
-        | commands_verify::VerifyError::BudgetPolicy(msg)
-        | commands_verify::VerifyError::StorageError(msg)
-        | commands_verify::VerifyError::ReplayDivergence(msg) => msg.clone(),
-        commands_verify::VerifyError::Compile(errors) => {
-            let mut message = String::from("compilation failed");
-            for error in errors {
-                message.push_str("; compile error: ");
-                message.push_str(error);
-            }
-            message
-        }
-    }
-}
+//! Module: compile
+
+use crate::app_impl::prelude::*;
 
 pub(crate) fn cmd_compile(
     workflow: &std::path::Path,
@@ -178,5 +164,3 @@ pub(crate) fn cmd_compile(
 
     ExitCode::SUCCESS
 }
-
-pub(crate) fn cmd_run(

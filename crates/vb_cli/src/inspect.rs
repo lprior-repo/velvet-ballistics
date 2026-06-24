@@ -1,4 +1,8 @@
-//! Run inspection command.
+//! Module: inspect
+
+use crate::app_impl::prelude::*;
+use crate::replay::write_locked_read_surface;
+
 pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
@@ -71,4 +75,3 @@ pub(crate) fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize
         "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
     );
 }
-

@@ -1,5 +1,4 @@
 use crate::shard::types::RuntimeState;
-use indexmap::IndexSet;
 
 impl Shard {
     /// Creates a new shard with the given configuration.

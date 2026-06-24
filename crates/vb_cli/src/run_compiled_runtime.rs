@@ -1,23 +1,6 @@
-//! Runtime journal, config, and workflow execution.
-pub(crate) fn runtime_journal_for_mode(
-    durability: DurabilityMode,
-    db: Option<&std::path::Path>,
-    output: OutputFormat,
-) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
-    match durability {
-        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
-        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
-        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
-    }
-}
+//! Module: run_compiled_runtime
 
-pub(crate) fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shard::ShardConfig {
-    let mut config = vb_runtime::shard::ShardConfig::default();
-    if durability == DurabilityMode::None {
-        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    }
-    config
-}
+use crate::app_impl::prelude::*;
 
 pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
@@ -248,4 +231,3 @@ pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         }
     }
 }
-

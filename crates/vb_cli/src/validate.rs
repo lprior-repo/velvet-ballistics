@@ -1,105 +1,38 @@
 //! Workflow validation command and helpers.
-        Err(err) => {
-            let code = commands_verify::exit_code_for_error(&err);
-            if output != OutputFormat::Text {
-                write_failure_message(&verify_error_message(&err), output, code);
-                return code.into();
-            }
-            match &err {
-                commands_verify::VerifyError::YamlParse(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("{msg}");
-                    }
-                }
-                commands_verify::VerifyError::Compile(errors) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": "compilation failed",
-                                "errors": errors
-                            }),
-                            output,
-                        );
-                    } else {
-                        for e in errors {
-                            errln!("compile error: {e}");
-                        }
-                    }
-                }
-                commands_verify::VerifyError::IrValidation(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("{msg}");
-                    }
-                }
-                commands_verify::VerifyError::BudgetPolicy(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("{msg}");
-                    }
-                }
-                commands_verify::VerifyError::StorageError(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("{msg}");
-                    }
-                }
-                commands_verify::VerifyError::ReplayDivergence(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("{msg}");
-                    }
-                }
-            }
-            code.into()
-        }
-    }
+#![forbid(unsafe_code)]
+
+use std::path::Path;
+use std::process::ExitCode;
+
+use crate::args::OutputFormat;
+use crate::cli_envelope::SCHEMA_VERSION;
+use crate::exit_code::CliExitCode;
+use crate::file_io::read_file;
+use crate::output::{json_out, output_error_exit, write_failure_message};
+use crate::output_utils::write_stdout_line;
+
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        write_stdout_line(format_args!($($arg)*));
+    }};
 }
 
-pub(crate) fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+macro_rules! emit_json_or_return {
+    ($value:expr, $format:expr $(,)?) => {{
+        if let Err(error) = json_out($value, $format) {
+            return output_error_exit(&error);
+        }
+    }};
+}
+
+/// Run the `validate` command: YAML parse and compilation check only.
+///
+/// This performs lightweight validation (not full verification):
+/// - Phase 1: strict YAML profile and AST parse via vb_yaml
+/// - Phase 2: full compilation pipeline (schema, references, control flow, type/taint)
+///
+/// Returns `ExitCode::SUCCESS` if validation passes.
+pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -148,9 +81,17 @@ pub(crate) fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> 
     ExitCode::SUCCESS
 }
 
+pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
+    let mut msg = String::from("compilation failed:\n");
+    for e in errors {
+        msg.push_str(&format!("  compile error: {e}\n"));
+    }
+    msg
+}
+
 pub(crate) fn validate_success_report() -> serde_json::Value {
     serde_json::json!({
-        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "schema_version": SCHEMA_VERSION,
         "kind": "validate_report",
         "success": true,
         "status": "valid",
@@ -159,36 +100,6 @@ pub(crate) fn validate_success_report() -> serde_json::Value {
     })
 }
 
-pub(crate) fn verify_success_report(
-    result: &commands_verify::VerifyOk,
-    profile: VerifyProfile,
-) -> serde_json::Value {
-    serde_json::json!({
-        "schema_version": cli_envelope::SCHEMA_VERSION,
-        "kind": "verify_report",
-        "success": true,
-        "profile": profile.as_str(),
-        "digest": result.digest_hex.as_str(),
-        "node_count": result.node_count,
-        "checks": &result.checks,
-        "warnings": &result.warnings,
-        "artifact": {
-            "source_digest_hex": result.digest_hex.as_str(),
-            "ir_digest_hex": result.digest_hex.as_str(),
-            "node_count": result.node_count
-        },
-        "replay": {
-            "gates_passed": &result.checks,
-            "gate_sequence": &result.checks,
-            "replay_safe": true
-        },
-        "durability": {
-            "profile": "none",
-            "journal_written": false
-        },
-        "repair_hints": [],
-        "exit_code": cli_exit_code_number(CliExitCode::Success)
-    })
+fn cli_exit_code_number(code: CliExitCode) -> u8 {
+    code.into()
 }
-
-pub(crate) fn verify_error_message(err: &commands_verify::VerifyError) -> String {

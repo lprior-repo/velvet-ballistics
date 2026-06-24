@@ -1,4 +1,12 @@
-//! Basic I/O helpers: help, version, exit, stderr writing.
+//! Module: io_helpers
+
+use std::io::{self, Write};
+use std::process::ExitCode;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::args::{OutputFormat, ParseError, VALID_COMMANDS};
+use crate::constants::{HELP, VERSION};
+use crate::exit_code::CliExitCode;
 
 pub(crate) fn unique_doctor_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
@@ -150,3 +158,17 @@ pub(crate) fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     }
 }
 
+pub(crate) fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+    match output {
+        OutputFormat::Text => write_error_stderr(error),
+        OutputFormat::Yaml | OutputFormat::Postcard => crate::output::write_structured_stderr(
+            &serde_json::json!({
+                "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+                "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
+                "message": error.to_string(),
+                "exit_code": u8::from(CliExitCode::ValidationFailed),
+            }),
+            output,
+        ),
+    }
+}

@@ -1,4 +1,8 @@
-//! Execution trace command.
+//! Module: trace
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_trace(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
@@ -79,4 +83,3 @@ pub(crate) fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde
     }
     serde_json::Value::Object(map)
 }
-

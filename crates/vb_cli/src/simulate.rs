@@ -1,4 +1,8 @@
-//! Workflow dry-run simulation command.
+//! Module: simulate
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -49,5 +53,3 @@
 
     CliExitCode::Success.into()
 }
-
-pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {

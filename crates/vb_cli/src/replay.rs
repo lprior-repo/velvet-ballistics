@@ -1,4 +1,11 @@
-//! Run replay command.
+//! Module: replay
+
+use crate::app_impl::prelude::*;
+use crate::events::print_event;
+use crate::inspect::write_vb_kyyf_trace;
+
+/// Convert a journal event to a JSON value for structured output.
+pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
     match event {
         vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
             serde_json::json!({
@@ -241,6 +248,47 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
     ExitCode::SUCCESS
 }
 
+pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let rid = match parse_run_id(run_id, output) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    match vb_cli::lifecycle::resume(rid, &journal) {
+        Ok(()) => match output {
+            OutputFormat::Text => {
+                outln!("resumed run {run_id}");
+                ExitCode::SUCCESS
+            }
+            OutputFormat::Yaml | OutputFormat::Postcard => json_out_exit(
+                &serde_json::json!({
+                    "success": true,
+                    "run_id": run_id,
+                    "status": "resumed"
+                }),
+                output,
+            ),
+        },
+        Err(error) => {
+            let message = format!("error resuming run {run_id}: {error}");
+            if output == OutputFormat::Text {
+                errln!("{message}");
+            } else {
+                write_failure_message(&message, output, CliExitCode::StorageError);
+            }
+            CliExitCode::StorageError.into()
+        }
+    }
+}
+
 pub(crate) fn write_locked_read_surface(
     command: &'static str,
     run_id: &str,
@@ -265,5 +313,3 @@ pub(crate) fn write_locked_read_surface(
         ),
     }
 }
-
-pub(crate) fn cmd_trace(

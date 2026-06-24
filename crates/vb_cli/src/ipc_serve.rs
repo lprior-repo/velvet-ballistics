@@ -1,4 +1,7 @@
-//! IPC server command and workflow resolver.
+//! Module: ipc_serve
+
+use crate::app_impl::prelude::*;
+
 pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     // Open the storage journal to validate the path
     let journal = match vb_storage::FjallJournal::open(db, None) {
@@ -102,4 +105,3 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
             .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
     }
 }
-

@@ -1,4 +1,9 @@
-//! Run events listing and formatting.
+//! Module: events
+
+use crate::app_impl::prelude::*;
+use crate::inspect::write_vb_kyyf_trace;
+use crate::replay::{event_to_json, write_locked_read_surface};
+
 pub(crate) fn cmd_events(
     run_id: &str,
     db: &std::path::Path,
@@ -177,6 +182,3 @@ pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
         }
     }
 }
-
-/// Convert a journal event to a JSON value for structured output.
-pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {

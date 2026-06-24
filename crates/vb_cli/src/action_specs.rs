@@ -1,10 +1,7 @@
-//! CLI action specs, contract builders, and registration.
-    retry_safety: &'static str,
-    side_effect: &'static str,
-    input_slot_count: u16,
-    output_slot_count: u16,
-    timeout_ms: u64,
-}
+//! Module: action_specs
+
+use crate::action::{ActionContractDetail, ActionTableRow};
+use crate::app_impl::prelude::*;
 
 pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
     registry
@@ -22,7 +19,9 @@ pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow
         .collect()
 }
 
-pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
+pub(crate) fn action_contract_detail(
+    contract: &vb_core::action::ActionContract,
+) -> ActionContractDetail {
     ActionContractDetail {
         id: contract.id.get(),
         input_slot_count: contract.input_slot_count,
@@ -89,7 +88,7 @@ pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRe
 }
 
 #[derive(Debug, Clone)]
-struct CliActionSpec {
+pub(crate) struct CliActionSpec {
     id: u16,
     name: &'static str,
     idempotency: vb_core::action::Idempotency,
@@ -215,4 +214,3 @@ pub(crate) fn action_idempotency_rule(
         _ => "retry behavior follows the action contract",
     }
 }
-

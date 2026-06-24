@@ -1,4 +1,10 @@
-//! File I/O, run_id parsing, and journal event reading.
+//! Module: file_io
+
+use std::process::ExitCode;
+
+use crate::args::OutputFormat;
+use crate::exit_code::CliExitCode;
+
 // --- Helpers for reading files and printing errors ---
 
 pub(crate) fn read_file(
@@ -22,6 +28,10 @@ pub(crate) fn write_failure_message(message: &str, output: OutputFormat, exit_co
     } else {
         write_diagnostic_message_stderr(message, exit_code, output);
     }
+}
+
+fn write_diagnostic_message_stderr(message: &str, exit_code: CliExitCode, output: OutputFormat) {
+    crate::output::write_failure_message(message, output, exit_code);
 }
 
 pub(crate) fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitCode> {
@@ -95,5 +105,3 @@ pub(crate) fn read_journal_events(
 }
 
 // --- Command implementations ---
-
-

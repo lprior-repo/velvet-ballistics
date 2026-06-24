@@ -1,24 +1,38 @@
 //! Flag specification for known commands.
 #![forbid(unsafe_code)]
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum FlagSpec {
+pub(crate) enum FlagSpec {
     Switch,
     Value(&'static str),
 }
 
-pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ActionListParseState {
+    pub(crate) output: super::OutputFormat,
+    pub(crate) registry: super::ActionRegistryMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ActionInspectParseState {
+    pub(crate) output: super::OutputFormat,
+    pub(crate) registry: super::ActionRegistryMode,
+}
+
+pub(crate) fn known_flag_spec(command: &str, token: &str) -> Option<FlagSpec> {
     match command {
         "validate" | "explain" | "bench-run" | "graph" | "simulate" => output_flag_spec(token),
-        "ai-context" | "inspect" | "replay" | "retry" | "resume" | "incident" => {
+        "ai-context" => switch_flag_spec(token, "--json")
+            .or_else(|| output_flag_spec(token))
+            .or_else(|| value_flag_spec(token, "--db")),
+        "inspect" | "replay" | "retry" | "resume" | "incident" => {
             output_flag_spec(token).or_else(|| value_flag_spec(token, "--db"))
         }
         "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
         "compile" => match token {
+            "--json" | "--jsonl" => Some(FlagSpec::Switch),
             "--emit" => Some(FlagSpec::Value("--emit")),
             "--out" => Some(FlagSpec::Value("--out")),
-            "--json" | "--jsonl" => Some(FlagSpec::Switch),
             _ => None,
         },
         "run" => output_flag_spec(token).or(match token {
@@ -81,8 +95,8 @@ pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<Flag
 
 fn output_flag_spec(token: &str) -> Option<FlagSpec> {
     match token {
-        "--emit" => Some(FlagSpec::Value("--emit")),
         "--json" | "--jsonl" => Some(FlagSpec::Switch),
+        "--emit" => Some(FlagSpec::Value("--emit")),
         _ => None,
     }
 }
@@ -90,6 +104,14 @@ fn output_flag_spec(token: &str) -> Option<FlagSpec> {
 fn value_flag_spec(token: &str, flag: &'static str) -> Option<FlagSpec> {
     if token == flag {
         Some(FlagSpec::Value(flag))
+    } else {
+        None
+    }
+}
+
+fn switch_flag_spec(token: &str, flag: &'static str) -> Option<FlagSpec> {
+    if token == flag {
+        Some(FlagSpec::Switch)
     } else {
         None
     }

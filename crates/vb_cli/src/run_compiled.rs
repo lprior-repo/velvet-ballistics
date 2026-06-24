@@ -1,4 +1,7 @@
-//! Run-compiled command and runtime input mapping.
+//! Module: run_compiled
+
+use crate::app_impl::prelude::*;
+
 pub(crate) fn cmd_run_compiled(
     vbir_path: &std::path::Path,
     input_bin: &std::path::Path,
@@ -73,7 +76,7 @@ pub(crate) fn cmd_run_compiled(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InputMappingError {
+pub(crate) enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,
     SlotIndexOutOfRange,
@@ -113,3 +116,24 @@ pub(crate) fn map_runtime_inputs(
         .map(Vec::into_boxed_slice)
 }
 
+pub(crate) fn runtime_journal_for_mode(
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    match durability {
+        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
+    }
+}
+
+pub(crate) fn runtime_config_for_durability(
+    durability: DurabilityMode,
+) -> vb_runtime::shard::ShardConfig {
+    let mut config = vb_runtime::shard::ShardConfig::default();
+    if durability == DurabilityMode::None {
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    }
+    config
+}

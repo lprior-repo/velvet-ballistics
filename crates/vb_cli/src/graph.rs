@@ -1,4 +1,8 @@
-//! Workflow control flow graph (DOT) command.
+//! Module: graph
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -27,5 +31,3 @@
 
     CliExitCode::Success.into()
 }
-
-pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {

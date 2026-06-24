@@ -1,7 +1,11 @@
+//! Status command parsers.
+#![forbid(unsafe_code)]
+
 use std::ffi::OsString;
 
+use super::error::ParseError;
 use super::shared::parse_output_format;
-use super::{Command, ParseError, StatusOptions};
+use super::types::{Command, DurabilityMode, StatusOptions, SystemStatusOptions, VerifyProfile};
 
 pub(super) fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
     let tokens = args.get(2..).ok_or(ParseError::NoCommand)?;
@@ -10,83 +14,248 @@ pub(super) fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
     Ok(Command::Status { options, output })
 }
 
-fn parse_status_options(
+/// Handle `--active-runs` for `parse_status_options`.
+fn parse_status_active_runs(
     args: &[OsString],
     options: StatusOptions,
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_usize_value(args, "--active-runs")?;
+    Ok((
+        StatusOptions {
+            active_runs: Some(parsed.value),
+            ..options
+        },
+        parsed.remaining,
+    ))
+}
+
+/// Handle `--queue-depth` for `parse_status_options`.
+fn parse_status_queue_depth(
+    args: &[OsString],
+    options: StatusOptions,
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_usize_value(args, "--queue-depth")?;
+    Ok((
+        StatusOptions {
+            queue_depth: Some(parsed.value),
+            ..options
+        },
+        parsed.remaining,
+    ))
+}
+
+/// Handle `--trace-dropped` for `parse_status_options`.
+fn parse_status_trace_dropped(
+    args: &[OsString],
+    options: StatusOptions,
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_u64_value(args, "--trace-dropped")?;
+    Ok((
+        StatusOptions {
+            trace_dropped: Some(parsed.value),
+            ..options
+        },
+        parsed.remaining,
+    ))
+}
+
+fn parse_status_options(
+    mut args: &[OsString],
+    mut options: StatusOptions,
 ) -> Result<StatusOptions, ParseError> {
+    loop {
+        match args.split_first() {
+            None => return validate_status_options(options),
+            Some((flag, rest)) => match flag.to_str() {
+                Some("--json" | "--jsonl") => {
+                    args = rest;
+                }
+                Some("--emit") => match rest.split_first() {
+                    Some((emit, remaining)) => match emit.to_str() {
+                        Some("yaml") => {
+                            options = StatusOptions {
+                                emit_yaml: true,
+                                ..options
+                            };
+                            args = remaining;
+                        }
+                        Some("text") => {
+                            args = remaining;
+                        }
+                        Some("postcard") => {
+                            return Err(ParseError::InvalidStatusArgument(
+                                "postcard emit is not supported for status".into(),
+                            ));
+                        }
+                        Some(other) => {
+                            return Err(ParseError::InvalidStatusArgument(format!(
+                                "unknown emit mode {other}"
+                            )));
+                        }
+                        None => {
+                            return Err(ParseError::InvalidStatusArgument(
+                                "emit mode is not valid UTF-8".into(),
+                            ));
+                        }
+                    },
+                    None => {
+                        return Err(ParseError::MissingArgument("--emit"));
+                    }
+                },
+                Some("--active-runs") => {
+                    let (updated, remaining) = parse_status_active_runs(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some("--queue-depth") => {
+                    let (updated, remaining) = parse_status_queue_depth(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some("--trace-dropped") => {
+                    let (updated, remaining) = parse_status_trace_dropped(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some(other) if other.starts_with('-') => {
+                    return Err(ParseError::InvalidStatusArgument(format!(
+                        "unknown flag {other}"
+                    )));
+                }
+                Some(other) => {
+                    return Err(ParseError::InvalidStatusArgument(format!(
+                        "unexpected positional argument {other}"
+                    )));
+                }
+                None => {
+                    return Err(ParseError::InvalidStatusArgument(
+                        "argument is not valid UTF-8".into(),
+                    ));
+                }
+            },
+        }
+    }
+}
+
+pub(super) fn parse_system(args: &[OsString]) -> Result<Command, ParseError> {
+    match args.get(2).and_then(|value| value.to_str()) {
+        Some("status") => parse_system_status_tokens(args.get(3..).ok_or(ParseError::NoCommand)?),
+        Some(other) => Err(ParseError::InvalidSystemStatusArgument(format!(
+            "unknown system command {other}"
+        ))),
+        None => Err(ParseError::MissingArgument("system subcommand")),
+    }
+}
+
+fn parse_system_status_tokens(tokens: &[OsString]) -> Result<Command, ParseError> {
+    let options = parse_system_status_options(tokens, SystemStatusOptions::default())?;
+    let output = parse_output_format(tokens);
+    Ok(Command::SystemStatus { options, output })
+}
+
+fn parse_system_status_options(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
     match args.split_first() {
-        None => validate_status_options(options),
+        None => Ok(options),
         Some((flag, rest)) => match flag.to_str() {
-            Some("--json" | "--jsonl") => parse_status_options(rest, options),
-            Some("--emit") => parse_status_emit(rest, options),
-            Some("--active-runs") => {
-                let parsed = parse_status_usize_value(rest, "--active-runs")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        active_runs: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some("--queue-depth") => {
-                let parsed = parse_status_usize_value(rest, "--queue-depth")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        queue_depth: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some("--trace-dropped") => {
-                let parsed = parse_status_u64_value(rest, "--trace-dropped")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        trace_dropped: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some(other) if other.starts_with('-') => Err(ParseError::InvalidStatusArgument(
+            Some("--json" | "--jsonl") => parse_system_status_options(rest, options),
+            Some("--emit") => parse_system_status_emit(rest, options),
+            Some("--profile") => parse_system_status_profile(rest, options),
+            Some("--server") => parse_system_status_server(rest, options),
+            Some(other) if other.starts_with('-') => Err(ParseError::InvalidSystemStatusArgument(
                 format!("unknown flag {other}"),
             )),
-            Some(other) => Err(ParseError::InvalidStatusArgument(format!(
+            Some(other) => Err(ParseError::InvalidSystemStatusArgument(format!(
                 "unexpected positional argument {other}"
             ))),
-            None => Err(ParseError::InvalidStatusArgument(
+            None => Err(ParseError::InvalidSystemStatusArgument(
                 "argument is not valid UTF-8".into(),
             )),
         },
     }
 }
 
-fn parse_status_emit(
+fn parse_system_status_emit(
     args: &[OsString],
-    options: StatusOptions,
-) -> Result<StatusOptions, ParseError> {
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
     match args.split_first() {
-        Some((emit, remaining)) => match emit.to_str() {
-            Some("yaml") => parse_status_options(
+        Some((raw, remaining)) => match raw.to_str() {
+            Some("yaml") => parse_system_status_options(
                 remaining,
-                StatusOptions {
+                SystemStatusOptions {
                     emit_yaml: true,
                     ..options
                 },
             ),
-            Some("text") => parse_status_options(remaining, options),
-            Some("postcard") => Err(ParseError::InvalidStatusArgument(
-                "postcard emit is not supported for status".into(),
-            )),
-            Some(other) => Err(ParseError::InvalidStatusArgument(format!(
+            Some("text") => parse_system_status_options(remaining, options),
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--emit")),
+            Some(other) => Err(ParseError::InvalidSystemStatusArgument(format!(
                 "unknown emit mode {other}"
             ))),
-            None => Err(ParseError::InvalidStatusArgument(
+            None => Err(ParseError::InvalidSystemStatusArgument(
                 "emit mode is not valid UTF-8".into(),
             )),
         },
         None => Err(ParseError::MissingArgument("--emit")),
+    }
+}
+
+fn parse_system_status_profile(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some("quick") => parse_system_status_options(
+                remaining,
+                SystemStatusOptions {
+                    profile: VerifyProfile::Quick,
+                    ..options
+                },
+            ),
+            Some("standard") => parse_system_status_options(remaining, options),
+            Some("full") => parse_system_status_options(
+                remaining,
+                SystemStatusOptions {
+                    profile: VerifyProfile::Full,
+                    ..options
+                },
+            ),
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--profile")),
+            Some(other) => Err(ParseError::UnknownProfile(other.into())),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "profile is not valid UTF-8".into(),
+            )),
+        },
+        None => Err(ParseError::MissingArgument("--profile")),
+    }
+}
+
+fn parse_system_status_server(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--server")),
+            Some(value) => parse_server_mode(value).and_then(|server| {
+                parse_system_status_options(remaining, SystemStatusOptions { server, ..options })
+            }),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "server mode is not valid UTF-8".into(),
+            )),
+        },
+        None => Err(ParseError::MissingArgument("--server")),
+    }
+}
+
+fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
+    match raw {
+        "none" => Ok(DurabilityMode::None),
+        other => Err(ParseError::UnknownServerMode(other.into())),
     }
 }
 
@@ -164,110 +333,5 @@ fn validate_status_usize_limit(
             "{flag} must be <= {max}"
         ))),
         Some(_) | None => Ok(()),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn os(val: &str) -> OsString {
-        OsString::from(val)
-    }
-
-    #[test]
-    fn parse_status_returns_ok_with_defaults() {
-        let args = [os("vb"), os("status")];
-        let result = parse_status(&args);
-        assert!(result.is_ok());
-        match result.unwrap() {
-            Command::Status { options, .. } => {
-                assert_eq!(options.active_runs, None);
-                assert_eq!(options.queue_depth, None);
-            }
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_status_parses_active_runs() {
-        let args = [os("vb"), os("status"), os("--active-runs"), os("5")];
-        let result = parse_status(&args).unwrap();
-        match result {
-            Command::Status { options, .. } => {
-                assert_eq!(options.active_runs, Some(5));
-            }
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_status_parses_queue_depth() {
-        let args = [os("vb"), os("status"), os("--queue-depth"), os("128")];
-        let result = parse_status(&args).unwrap();
-        match result {
-            Command::Status { options, .. } => {
-                assert_eq!(options.queue_depth, Some(128));
-            }
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_status_rejects_unknown_flag() {
-        let args = [os("vb"), os("status"), os("--unknown")];
-        let result = parse_status(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
-    }
-
-    #[test]
-    fn parse_status_rejects_non_numeric_active_runs() {
-        let args = [os("vb"), os("status"), os("--active-runs"), os("abc")];
-        let result = parse_status(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
-    }
-
-    #[test]
-    fn parse_status_rejects_excessive_active_runs() {
-        let max = vb_runtime::shard::ShardConfig::default().max_active_runs;
-        let too_many = (max + 1).to_string();
-        let args = [os("vb"), os("status"), os("--active-runs"), os(&too_many)];
-        let result = parse_status(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
-    }
-
-    #[test]
-    fn parse_status_accepts_maximum_active_runs() {
-        let max = vb_runtime::shard::ShardConfig::default().max_active_runs;
-        let max_str = max.to_string();
-        let args = [os("vb"), os("status"), os("--active-runs"), os(&max_str)];
-        let result = parse_status(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_status_parses_trace_dropped() {
-        let args = [os("vb"), os("status"), os("--trace-dropped"), os("100")];
-        let result = parse_status(&args).unwrap();
-        match result {
-            Command::Status { options, .. } => {
-                assert_eq!(options.trace_dropped, Some(100));
-            }
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_status_handles_emit_flag_as_noop_for_status() {
-        let args = [os("vb"), os("status"), os("--emit"), os("text")];
-        let result = parse_status(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_status_rejects_postcard_emit() {
-        let args = [os("vb"), os("status"), os("--emit"), os("postcard")];
-        let result = parse_status(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
     }
 }

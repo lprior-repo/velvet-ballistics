@@ -1,4 +1,8 @@
-//! Workflow submit command.
+//! Module: submit
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_submit(
     workflow: &std::path::Path,
     input_bin: &std::path::Path,
     db: &std::path::Path,
@@ -177,6 +181,3 @@ pub(crate) fn generate_submit_run_id() -> u64 {
         Err(_) => now.as_secs(),
     }
 }
-
-/// Executes a single step in isolation using `step_once`.
-pub(crate) fn cmd_run_step(

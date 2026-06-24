@@ -4,8 +4,32 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::shared::{find_positional, named_flag, parse_output_format};
-use super::types::{Command, EventStatus, ParseError};
+use super::error::ParseError;
+use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
+use super::types::{Command, EventStatus, OutputFormat};
+
+pub(super) struct RunDbArgs {
+    pub(super) run_id: String,
+    pub(super) db: PathBuf,
+    pub(super) output: OutputFormat,
+}
+
+pub(super) fn parse_run_db_args(
+    args: &[OsString],
+    command: &'static str,
+) -> Result<RunDbArgs, ParseError> {
+    validate_known_flags(args, command)?;
+    let run_id = find_positional(args, 2)
+        .and_then(|path| path.to_str().map(String::from))
+        .ok_or(ParseError::MissingArgument("run_id"))?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let output = parse_output_format(args);
+    Ok(RunDbArgs {
+        run_id,
+        db: PathBuf::from(db),
+        output,
+    })
+}
 
 pub(super) fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args, "inspect")?;
@@ -16,30 +40,8 @@ pub(super) fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
-pub(super) struct RunDbArgs {
-    pub(super) run_id: String,
-    pub(super) db: PathBuf,
-    pub(super) output: super::types::OutputFormat,
-}
-
-pub(super) fn parse_run_db_args(
-    args: &[OsString],
-    command: &'static str,
-) -> Result<RunDbArgs, ParseError> {
-    let run_id = find_positional(args, 2, command)
-        .and_then(|path| path.to_str().map(String::from))
-        .ok_or(ParseError::MissingArgument("run_id"))?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
-    let output = super::shared::parse_output_format(args);
-    Ok(RunDbArgs {
-        run_id,
-        db: PathBuf::from(db),
-        output,
-    })
-}
-
 pub(super) fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "events")?;
+    validate_known_flags(args, "events")?;
     let a = parse_run_db_args(args, "events")?;
     let status = match named_flag(args, "--status") {
         Some(raw) => Some(parse_event_status(&raw)?),
@@ -76,7 +78,7 @@ fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {
 }
 
 pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "replay")?;
+    validate_known_flags(args, "replay")?;
     let a = parse_run_db_args(args, "replay")?;
     Ok(Command::Replay {
         run_id: a.run_id,
@@ -86,7 +88,7 @@ pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "retry")?;
+    validate_known_flags(args, "retry")?;
     let a = parse_run_db_args(args, "retry")?;
     Ok(Command::Retry {
         run_id: a.run_id,
@@ -96,7 +98,7 @@ pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 pub(super) fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "resume")?;
+    validate_known_flags(args, "resume")?;
     let a = parse_run_db_args(args, "resume")?;
     Ok(Command::Resume {
         run_id: a.run_id,
@@ -106,8 +108,8 @@ pub(super) fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 pub(super) fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "cancel")?;
-    let run_id = find_positional(args, 2, "cancel")
+    validate_known_flags(args, "cancel")?;
+    let run_id = find_positional(args, 2)
         .and_then(|path| path.to_str().map(String::from))
         .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -125,7 +127,7 @@ pub(super) fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 pub(super) fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "incident")?;
+    validate_known_flags(args, "incident")?;
     let a = parse_run_db_args(args, "incident")?;
     Ok(Command::Incident {
         run_id: a.run_id,
@@ -135,8 +137,8 @@ pub(super) fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 pub(super) fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
-    super::shared::validate_known_flags(args, "answer")?;
-    let run_id = find_positional(args, 2, "answer")
+    validate_known_flags(args, "answer")?;
+    let run_id = find_positional(args, 2)
         .and_then(|path| path.to_str().map(String::from))
         .ok_or(ParseError::MissingArgument("run_id"))?;
     let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;

@@ -1,10 +1,12 @@
-//! OutputError, json_out, stdout/stderr utilities.
-    match raw {
-        Some("yaml") => OutputFormat::Yaml,
-        Some("postcard") => OutputFormat::Postcard,
-        Some("text") | Some(_) | None => OutputFormat::Text,
-    }
-}
+#![forbid(unsafe_code)]
+//! Shared CLI output helpers.
+
+use std::io::{self, Write};
+use std::process::ExitCode;
+
+use crate::args::OutputFormat;
+use crate::cli_postcard;
+use crate::exit_code::CliExitCode;
 
 #[derive(Debug)]
 pub(crate) enum OutputError {
@@ -36,20 +38,60 @@ impl std::fmt::Display for OutputError {
 }
 
 pub(crate) fn output_error_exit(error: &OutputError) -> ExitCode {
-    write_stderr_best_effort(format_args!("output failed: {error}"));
+    write_stderr_line(format_args!("output failed: {error}"));
     CliExitCode::StorageError.into()
 }
 
-pub(crate) fn json_out_exit(value: &serde_json::Value, format: OutputFormat) -> ExitCode {
-    match json_out(value, format) {
+pub(crate) fn json_out_exit(value: &serde_json::Value, output: OutputFormat) -> ExitCode {
+    match json_out(value, output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),
     }
 }
 
+pub(crate) fn write_failure_message(message: &str, output: OutputFormat, code: CliExitCode) {
+    if output == OutputFormat::Text {
+        write_stderr_line(format_args!("{message}"));
+        return;
+    }
+
+    let value = serde_json::json!({
+        "success": false,
+        "error": format!("{code:?}"),
+        "exit_code": u8::from(code),
+        "message": message,
+    });
+    json_error(&value, output);
+}
+
+pub(crate) fn json_error(value: &serde_json::Value, output: OutputFormat) {
+    if let Err(error) = write_structured_stderr(value, output) {
+        write_stderr_line(format_args!("stderr write failed: {error}"));
+    }
+}
+
+pub(crate) fn write_structured_stderr(
+    value: &serde_json::Value,
+    output: OutputFormat,
+) -> io::Result<()> {
+    match output {
+        OutputFormat::Yaml => {
+            let yaml = serde_saphyr::to_string(value)
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            write_stderr_line_io(format_args!("{yaml}"))
+        }
+        OutputFormat::Postcard => {
+            let framed = encode_postcard_json_frame(value)
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            write_stderr_bytes(&framed)
+        }
+        OutputFormat::Text => write_stderr_line_io(format_args!("{value}")),
+    }
+}
+
 pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     if let Err(error) = write_stdout_line_io(args) {
-        write_stderr_best_effort(format_args!("stdout write failed: {error}"));
+        write_stderr_line(format_args!("stdout write failed: {error}"));
     }
 }
 
@@ -57,25 +99,40 @@ pub(crate) fn write_stdout_line_checked(args: std::fmt::Arguments<'_>) -> Result
     write_stdout_line_io(args).map_err(OutputError::Stdout)
 }
 
-pub(crate) fn write_stdout_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
-    handle.write_fmt(args)?;
-    handle.write_all(b"\n")
-}
-
-pub(crate) fn write_stdout_bytes(bytes: &[u8]) -> Result<(), OutputError> {
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
-    handle.write_all(bytes).map_err(OutputError::Stdout)
+pub(crate) fn json_out(value: &serde_json::Value, output: OutputFormat) -> Result<(), OutputError> {
+    match output {
+        OutputFormat::Yaml => {
+            let yaml = serde_saphyr::to_string(value)
+                .map_err(|error| OutputError::YamlSerialize(error.to_string()))?;
+            write_stdout_line_io(format_args!("{yaml}")).map_err(OutputError::Stdout)
+        }
+        OutputFormat::Postcard => {
+            let encoded = encode_postcard_json_frame(value)?;
+            write_stdout_bytes(&encoded)
+        }
+        OutputFormat::Text => write_json_pretty_stdout(value),
+    }
 }
 
 pub(crate) fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
-    let json_str = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
-    write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
+    let json = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
+    write_stdout_line_io(format_args!("{json}")).map_err(OutputError::Stdout)
 }
 
-pub(crate) fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
+pub(crate) fn write_contract_error_json(value: &serde_json::Value, output: OutputFormat) {
+    match output {
+        OutputFormat::Text => {
+            let message = value
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .map_or("command failed", |message| message);
+            write_stderr_line(format_args!("{message}"));
+        }
+        OutputFormat::Yaml | OutputFormat::Postcard => json_error(value, output),
+    }
+}
+
+fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
     let json_utf8 = serde_json::to_vec(value).map_err(OutputError::JsonSerialize)?;
     let payload = cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)
         .map_err(OutputError::PostcardFrame)?;
@@ -89,68 +146,41 @@ pub(crate) fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Ve
     .map_err(OutputError::PostcardFrame)
 }
 
+fn write_stdout_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    handle.write_fmt(args)?;
+    handle.write_all(b"\n")
+}
+
+fn write_stdout_bytes(bytes: &[u8]) -> Result<(), OutputError> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    handle.write_all(bytes).map_err(OutputError::Stdout)
+}
+
 pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
+    if let Err(error) = write_stderr_line_io(args) {
+        write_stderr_line_best_effort(format_args!("stderr write failed: {error}"));
+    }
+}
+
+fn write_stderr_line_best_effort(args: std::fmt::Arguments<'_>) {
+    match write_stderr_line_io(args) {
+        Ok(()) => {}
+        Err(_error) => {}
+    }
+}
+
+fn write_stderr_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    if let Err(error) = handle.write_fmt(args) {
-        write_stderr_best_effort(format_args!("stderr write failed: {error}"));
-        return;
-    }
-    if let Err(error) = handle.write_all(b"\n") {
-        write_stderr_best_effort(format_args!("stderr newline write failed: {error}"));
-    }
+    handle.write_fmt(args)?;
+    handle.write_all(b"\n")
 }
 
-pub(crate) fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
+fn write_stderr_bytes(bytes: &[u8]) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    if let Err(_write_error) = handle
-        .write_fmt(args)
-        .and_then(|()| handle.write_all(b"\n"))
-    {}
+    handle.write_all(bytes)
 }
-
-/// Output a JSON value to stdout in the specified format.
-pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Result<(), OutputError> {
-    match format {
-        OutputFormat::Yaml => {
-            let yaml = serde_saphyr::to_string(value)
-                .map_err(|error| OutputError::YamlSerialize(error.to_string()))?;
-            write_stdout_line_io(format_args!("{yaml}")).map_err(OutputError::Stdout)
-        }
-        OutputFormat::Postcard => match encode_postcard_json_frame(value) {
-            Ok(encoded) => write_stdout_bytes(&encoded),
-            Err(error) => Err(error),
-        },
-        OutputFormat::Text => write_json_pretty_stdout(value),
-    }
-}
-
-/// Output a contract-format error JSON directly to stdout.
-///
-/// Used for PRE-001 through PRE-004 failures where the contract specifies
-/// the exact error format with "error", "message", and optional context fields.
-pub(crate) fn write_contract_error_json(value: &serde_json::Value, format: OutputFormat) {
-    if format == OutputFormat::Text {
-        if let Some(msg) = value.get("message").and_then(serde_json::Value::as_str) {
-            errln!("{msg}");
-        }
-    } else {
-        if let Err(error) = write_structured_stderr(value, format) {
-            write_stderr_best_effort(format_args!("error write failed: {error}"));
-        }
-    }
-}
-
-/// Output a JSON error value to stderr in the specified format.
-pub(crate) fn json_error(value: &serde_json::Value, format: OutputFormat) {
-    let message = legacy_json_error_message(value);
-    let code = infer_legacy_json_error_code(&message);
-    if format == OutputFormat::Text {
-        errln!("{message}");
-    } else {
-        write_diagnostic_message_stderr(&message, code, format);
-    }
-}
-
-#[cfg(test)]

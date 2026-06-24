@@ -1,4 +1,8 @@
-//! Workflow run command and artifact storage.
+//! Module: run
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_run(
     workflow: &std::path::Path,
     input_bin: &std::path::Path,
     durability: DurabilityMode,
@@ -130,5 +134,3 @@ pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, outp
         errln!("{args}");
     }
 }
-
-pub(crate) fn cmd_submit(

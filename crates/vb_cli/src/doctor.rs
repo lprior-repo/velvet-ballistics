@@ -1,4 +1,26 @@
-//! Diagnostic check command.
+//! Module: doctor
+
+use crate::app_impl::prelude::*;
+use crate::doctor_helpers::cmd_doctor_without_db;
+
+pub(crate) fn open_doctor_journal(
+    db: &std::path::Path,
+) -> Result<vb_storage::FjallJournal, vb_storage::JournalError> {
+    for delay in [
+        std::time::Duration::from_millis(5),
+        std::time::Duration::from_millis(25),
+    ] {
+        match vb_storage::FjallJournal::open(db, None) {
+            Ok(journal) => return Ok(journal),
+            Err(vb_storage::JournalError::ProcessLockHeld { .. }) => std::thread::sleep(delay),
+            Err(err) => return Err(err),
+        }
+    }
+
+    vb_storage::FjallJournal::open(db, None)
+}
+
+pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     let Some(db) = db else {
         return cmd_doctor_without_db(output);
     };
@@ -280,5 +302,3 @@
     }
     ExitCode::SUCCESS
 }
-
-pub(crate) fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {

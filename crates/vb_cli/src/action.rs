@@ -1,4 +1,8 @@
-//! Action registry output formatting — table and JSON display.
+//! Module: action
+
+use crate::action_specs::{write_action_table_rows, write_no_registered_actions};
+use crate::app_impl::prelude::*;
+
 pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
     let message = "action registry is not initialized";
     if output == OutputFormat::Text {
@@ -133,21 +137,21 @@ pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
 }
 
 #[derive(Debug, Clone)]
-struct ActionContractDetail {
-    id: u16,
-    input_slot_count: u16,
-    output_slot_count: u16,
-    max_input_bytes: u32,
-    max_output_bytes: u32,
-    timeout_ms: u64,
-    idempotency: &'static str,
-    retry_safety: &'static str,
-    side_effect: &'static str,
-    required_capabilities: Vec<String>,
-    failure_codes: Vec<&'static str>,
-    idempotency_rule: &'static str,
-    example_input_schema: &'static str,
-    example_output_schema: &'static str,
+pub(crate) struct ActionContractDetail {
+    pub(crate) id: u16,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) max_input_bytes: u32,
+    pub(crate) max_output_bytes: u32,
+    pub(crate) timeout_ms: u64,
+    pub(crate) idempotency: &'static str,
+    pub(crate) retry_safety: &'static str,
+    pub(crate) side_effect: &'static str,
+    pub(crate) required_capabilities: Vec<String>,
+    pub(crate) failure_codes: Vec<&'static str>,
+    pub(crate) idempotency_rule: &'static str,
+    pub(crate) example_input_schema: &'static str,
+    pub(crate) example_output_schema: &'static str,
 }
 
 impl ActionContractDetail {
@@ -175,8 +179,12 @@ impl ActionContractDetail {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ActionTableRow {
-    id: u16,
-    idempotency: &'static str,
-
-pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
+pub(crate) struct ActionTableRow {
+    pub(crate) id: u16,
+    pub(crate) idempotency: &'static str,
+    pub(crate) retry_safety: &'static str,
+    pub(crate) side_effect: &'static str,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) timeout_ms: u64,
+}

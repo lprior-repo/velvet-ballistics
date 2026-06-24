@@ -1,4 +1,8 @@
-//! Doctor stateless mode output.
+//! Module: doctor_helpers
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
     let remediation = "rerun with `doctor --db <path>` to verify Fjall journal storage";
     let checks = vec![serde_json::json!({
         "check": "database_path",

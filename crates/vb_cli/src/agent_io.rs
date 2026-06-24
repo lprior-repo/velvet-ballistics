@@ -1,4 +1,7 @@
-//! Agent context, status, and action registry commands.
+//! Module: agent_io
+
+use crate::app_impl::prelude::*;
+
 pub(crate) fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     let context = cli_envelope::serialize_with_version(
         &agent_context::build(VERSION),
@@ -50,7 +53,10 @@ pub(crate) fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> 
     }
 }
 
-pub(crate) fn cmd_system_status(options: args::SystemStatusOptions, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_system_status(
+    options: args::SystemStatusOptions,
+    output: OutputFormat,
+) -> ExitCode {
     let requested_output = if options.emit_yaml {
         OutputFormat::Yaml
     } else {

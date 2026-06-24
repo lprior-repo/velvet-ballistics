@@ -3,15 +3,17 @@
 
 use std::ffi::OsString;
 
-use super::run_ops::parse_run_db_args;
-use super::types::ParseError;
 use crate::commands_journal::{TraceFilters, TraceStatus};
 
-pub(super) fn parse_trace(args: &[OsString]) -> Result<super::types::Command, ParseError> {
+use super::error::ParseError;
+use super::run_ops::parse_run_db_args;
+use super::types::Command;
+
+pub(super) fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
     validate_trace_args(args)?;
     let a = parse_run_db_args(args, "trace")?;
     let filters = parse_trace_filters(args)?;
-    Ok(super::types::Command::Trace {
+    Ok(Command::Trace {
         run_id: a.run_id,
         db: a.db,
         output: a.output,
@@ -60,7 +62,7 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                     }));
                 }
                 if raw == "--emit" {
-                    validate_trace_emit(value)?;
+                    validate_flag_value_domain("trace", "--emit", value)?;
                 }
                 index = index.saturating_add(2);
             }
@@ -79,10 +81,25 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
     Ok(())
 }
 
-fn validate_trace_emit(value: &str) -> Result<(), ParseError> {
-    matches!(value, "text" | "yaml" | "postcard")
-        .then_some(())
-        .ok_or_else(|| ParseError::InvalidArgument(format!("unknown emit mode for trace: {value}")))
+fn validate_flag_value_domain(
+    command: &'static str,
+    name: &'static str,
+    value: &str,
+) -> Result<(), ParseError> {
+    if name != "--emit" {
+        return Ok(());
+    }
+    if command == "compile" {
+        return Ok(());
+    }
+    let valid = matches!(value, "text" | "yaml" | "postcard");
+    if valid {
+        Ok(())
+    } else {
+        Err(ParseError::InvalidArgument(format!(
+            "unknown emit mode for {command}: {value}"
+        )))
+    }
 }
 
 fn parse_trace_filters(args: &[OsString]) -> Result<TraceFilters, ParseError> {
