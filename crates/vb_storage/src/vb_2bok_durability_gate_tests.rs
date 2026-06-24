@@ -1129,10 +1129,10 @@ mod durability_gate_tests {
         };
 
         journal
-            .append_unpersisted(&e0)
+            .append_unfsynced(&e0)
             .map_err(|e| format!("append 0: {e}"))?;
         journal
-            .append_unpersisted(&e2)
+            .append_unfsynced(&e2)
             .map_err(|e| format!("append 2: {e}"))?;
 
         let result = journal.events_for_run(run);
@@ -1910,10 +1910,10 @@ mod durability_gate_tests {
         };
 
         journal
-            .append_unpersisted(&e0)
+            .append_unfsynced(&e0)
             .map_err(|e| format!("append 0: {e}"))?;
         journal
-            .append_unpersisted(&e2)
+            .append_unfsynced(&e2)
             .map_err(|e| format!("append 2: {e}"))?;
 
         let result = journal.events_for_run(run);

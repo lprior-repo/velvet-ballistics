@@ -27,7 +27,15 @@ impl FjallJournal {
         Ok(Some(record))
     }
 
-    pub(crate) fn append_unpersisted(&self, event: &JournalEvent) -> Result<(), JournalError> {
+    /// Appends one event to the LSM memtable without forcing a durability barrier.
+    ///
+    /// The event is committed to the WAL-backed LSM memtable and is visible
+    /// to subsequent readers (replay / `events_for_run`) immediately on
+    /// return.  "Unfsynced" is precise: the write survives process-level
+    /// recovery (crash + restart reads back the memtable) but has not been
+    /// force-flushed to stable storage.  Callers that require strict
+    /// durability must invoke `persist_strict` after staging.
+    pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
             .lock()
@@ -63,7 +71,7 @@ impl FjallJournal {
         &self,
         event: &JournalEvent,
     ) -> Result<(), JournalError> {
-        match self.append_unpersisted(event) {
+        match self.append_unfsynced(event) {
             Ok(()) => Ok(()),
             Err(JournalError::DuplicateEvent { run, seq }) => {
                 let key = run_event_key(run, seq)?;

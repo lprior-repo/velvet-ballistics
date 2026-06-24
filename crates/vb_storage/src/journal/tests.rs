@@ -381,8 +381,8 @@ fn events_for_run_rejects_sequence_gap() {
     // Write seq 0 and seq 2 (gap at seq 1)
     let e0 = make_event(run, 0);
     let e2 = make_event(run, 2);
-    journal.append_unpersisted(&e0).expect("append 0");
-    journal.append_unpersisted(&e2).expect("append 2");
+    journal.append_unfsynced(&e0).expect("append 0");
+    journal.append_unfsynced(&e2).expect("append 2");
 
     let result = journal.events_for_run(run);
     assert!(
@@ -1780,7 +1780,7 @@ fn events_for_run_starts_after_snapshot_when_pre_snapshot_trimmed() {
             attempt: 1,
         };
         journal
-            .append_unpersisted(&event)
+            .append_unfsynced(&event)
             .expect("append should succeed");
     }
 
@@ -1801,7 +1801,7 @@ fn events_for_run_bounded_rejects_over_limit() -> Result<(), String> {
     let run = RunId::new(10301);
     for seq in 0u16..2 {
         journal
-            .append_unpersisted(&make_step_started(run, u64::from(seq), seq))
+            .append_unfsynced(&make_step_started(run, u64::from(seq), seq))
             .map_err(|err| err.to_string())?;
     }
 
@@ -1839,7 +1839,7 @@ fn events_for_run_detects_missing_first_tail_event_after_snapshot() -> Result<()
         .put_snapshot(&snapshot)
         .map_err(|err| err.to_string())?;
     journal
-        .append_unpersisted(&make_step_started(run, 4, 4))
+        .append_unfsynced(&make_step_started(run, 4, 4))
         .map_err(|err| err.to_string())?;
 
     let result = journal.events_for_run(run);
@@ -1861,7 +1861,7 @@ fn events_for_run_without_snapshot_rejects_missing_initial_sequence() -> Result<
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10303);
     journal
-        .append_unpersisted(&make_step_started(run, 4, 4))
+        .append_unfsynced(&make_step_started(run, 4, 4))
         .map_err(|err| err.to_string())?;
 
     let result = journal.events_for_run(run);
@@ -1893,7 +1893,7 @@ fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Re
         .put_snapshot(&snapshot)
         .map_err(|err| err.to_string())?;
     journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
+        .append_unfsynced(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
     let key =
@@ -1935,7 +1935,7 @@ fn events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_re
         .put_snapshot(&snapshot)
         .map_err(|err| err.to_string())?;
     journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
+        .append_unfsynced(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
     let key =
@@ -1970,7 +1970,7 @@ fn events_for_run_rejects_latest_snapshot_postcard_decode_failure_before_tail_re
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10307);
     journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
+        .append_unfsynced(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
     let key =
@@ -2004,7 +2004,7 @@ fn events_for_run_skips_corrupt_pre_snapshot_event_by_key_range() -> Result<(), 
     let run = RunId::new(10305);
     for seq in 0_u64..3 {
         journal
-            .append_unpersisted(&make_step_started(run, seq, seq as u16))
+            .append_unfsynced(&make_step_started(run, seq, seq as u16))
             .map_err(|err| err.to_string())?;
     }
     let snapshot = RunSnapshot {
@@ -2083,7 +2083,7 @@ fn many_runs_one_event_each_are_isolated() {
         let run = RunId::new(11000_u64.saturating_add(i));
         let event = make_event(run, 0);
         journal
-            .append_unpersisted(&event)
+            .append_unfsynced(&event)
             .expect("append should succeed");
     }
 
@@ -2139,7 +2139,7 @@ fn boundary_sequence_numbers_roundtrip() {
         seq: EventSeq::new(0),
         workflow: digest,
     };
-    journal.append_unpersisted(&e0).expect("append seq 0");
+    journal.append_unfsynced(&e0).expect("append seq 0");
 
     let e1 = JournalEvent::StepStarted {
         run,
@@ -2147,7 +2147,7 @@ fn boundary_sequence_numbers_roundtrip() {
         step: StepIdx::new(0),
         attempt: 1,
     };
-    journal.append_unpersisted(&e1).expect("append seq 1");
+    journal.append_unfsynced(&e1).expect("append seq 1");
 
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(replayed.len(), 2);
@@ -2591,4 +2591,75 @@ fn append_queued_unfsynced_commits_to_memtable_and_is_visible_to_readers() {
         "event must be visible to readers immediately after append_queued_unfsynced"
     );
     assert_eq!(replayed[0], event, "replayed event must equal appended event");
+}
+
+// =========================================================================
+// Regression test for SA-016 — wave-15 follow-up bead vb-y8tyj
+// =========================================================================
+//
+// The wave-13 parent bead (vb-s9iyv) renamed the public wrapper from
+// `append_queued_unpersisted` to `append_queued_unfsynced`. The wave-15
+// follow-up bead (vb-y8tyj) finishes the rename by renaming the inner
+// helper from `append_unpersisted` to `append_unfsynced` so the entire
+// append path carries the accurate "unfsynced" semantics.
+//
+// This test exercises the renamed helper directly (not via the wrapper)
+// to lock the rename in place at the source-of-truth symbol. Any
+// re-introduction of the old `append_unpersisted` name will fail to
+// compile this test.
+
+#[test]
+fn append_unfsynced_helper_commits_event_to_memtable() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7001);
+    let event = make_event(run, 0);
+
+    // Direct invocation of the renamed inner helper. The wrapper's
+    // idempotency layer is intentionally bypassed: this test pins the
+    // rename to the source-of-truth function symbol.
+    journal
+        .append_unfsynced(&event)
+        .expect("append_unfsynced should commit to the LSM memtable");
+
+    let replayed = journal
+        .events_for_run(run)
+        .expect("replay should succeed after an unfsynced commit");
+    assert_eq!(
+        replayed.len(),
+        1,
+        "event must be visible to readers immediately after append_unfsynced"
+    );
+    assert_eq!(replayed[0], event, "replayed event must equal appended event");
+}
+
+#[test]
+fn append_unfsynced_helper_rejects_duplicate_key() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7002);
+    let event_a = make_event(run, 0);
+
+    journal
+        .append_unfsynced(&event_a)
+        .expect("first append_unfsynced should succeed");
+
+    // Build a different event at the same (run, seq) — the helper must
+    // reject with DuplicateEvent (not silently overwrite, not panic).
+    let event_b = make_step_started(run, 0, 0);
+    let result = journal.append_unfsynced(&event_b);
+
+    match result {
+        Err(JournalError::DuplicateEvent { run: r, seq }) => {
+            assert_eq!(r, run, "DuplicateEvent must carry the colliding run");
+            assert_eq!(seq.get(), 0, "DuplicateEvent must carry the colliding seq");
+        }
+        Ok(()) => panic!("append_unfsynced must reject a duplicate (run, seq)"),
+        Err(other) => panic!("append_unfsynced returned unexpected error: {other:?}"),
+    }
+
+    // The original record must remain intact.
+    let replayed = journal
+        .events_for_run(run)
+        .expect("replay should succeed after rejected duplicate");
+    assert_eq!(replayed.len(), 1, "duplicate must not overwrite original");
+    assert_eq!(replayed[0], event_a, "original record must remain intact");
 }

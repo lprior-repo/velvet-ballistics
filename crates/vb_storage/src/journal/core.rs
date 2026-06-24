@@ -61,7 +61,7 @@ pub struct FjallJournal {
     pub(crate) index_action: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
-    // SAFETY: write_lock is used in append_unpersisted() for poison detection.
+    // SAFETY: write_lock is used in append_unfsynced() for poison detection.
     // The lock guard is acquired and dropped, never read directly.
     pub(crate) write_lock: Mutex<()>,
     pub(crate) _process_lock: ProcessLock,
