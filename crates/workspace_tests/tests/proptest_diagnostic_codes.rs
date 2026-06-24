@@ -449,7 +449,7 @@ fn diagnostic_code_stability_against_frozen_baseline() {
 // INTENTIONAL: catches future widening of DiagnosticCode to u32.
 #[allow(clippy::absurd_extreme_comparisons)]
 #[test]
- fn diagnostic_code_range_and_pairwise_uniqueness() {
+fn diagnostic_code_range_and_pairwise_uniqueness() {
     /// Inclusive lower bound of the wave-15 runtime-code range.
     const WAVE_15_LOW: u16 = 0x2001;
     /// Inclusive upper bound of the wave-15 runtime-code range.

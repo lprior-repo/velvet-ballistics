@@ -545,6 +545,14 @@ fn bdd_g09_accepts_error_slot_within_bounds() {
     // Given: WorkflowParts with error_slot Some(valid_index)
     let mut node = nop_node(0);
     node.error_slot = Some(SlotIdx::new(0));
+    // BLOCK_GLOBAL prerequisite repair (vb-jpq7.audit.2): the nop_node helper
+    // sets `next: Some(StepIdx::new(1))`, but `make_parts(vec![node], 1)`
+    // only contains node 0. StepIdx 1 is out of range for a 1-node parts,
+    // so the structural step-range check (`LoopBodyStepOutOfRange`) trips
+    // BEFORE the error-slot check runs. Clearing `next` to `None` makes
+    // the parts structurally valid for the slot-count check this scenario
+    // is meant to exercise.
+    node.next = None;
     let parts = make_parts(vec![node], 1);
     // When: validate is called
     let result = validate(&parts);
