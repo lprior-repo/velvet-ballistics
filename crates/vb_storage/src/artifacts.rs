@@ -15,10 +15,7 @@ impl FjallJournal {
     /// Returns all stored compiled IR artifact digests.
     pub fn list_artifacts(&self) -> Result<Vec<vb_core::WorkflowDigest>, JournalError> {
         let prefix = [PREFIX_COMPILED_IR];
-        // CC-003 capacity hint: 4 covers the typical "few compiled
-        // artifacts per workflow" case. Standard Vec doubling covers
-        // larger deployments without over-allocating on small ones.
-        let mut digests = Vec::with_capacity(4);
+        let mut digests = Vec::new();
         for item in self.compiled_ir.prefix(prefix) {
             let raw_key = item.key()?;
             let digest_bytes = raw_key.get(1..).ok_or(JournalError::UnexpectedEof)?;

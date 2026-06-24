@@ -32,10 +32,6 @@ use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
 /// - Total bytes accumulated across all entries <= `config.max_bytes()`
 /// - `result.truncated` is true iff a cap was hit before all entries
 ///   were processed.
-/// - The function performs at most `config.max_records().get()` `Vec<u8>`
-///   clones of `value_bytes` (CC-003: bounded by the caller-supplied cap;
-///   the caller owns `entries` and the result must outlive it, so the
-///   clone is necessary — see findings/cross-cutting/CC-003-scan-path-allocations.md).
 ///
 /// # Errors
 ///
