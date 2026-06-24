@@ -822,7 +822,6 @@ fn validate_input_bytes_rejects_positive_limit_overflow() -> ActionResult<()> {
     Ok(())
 }
 
-
 #[test]
 fn len_counts_registered_actions_not_sparse_slots_vb_atmh2() {
     // RP-018: ActionRegistry::len must report the number of registered
