@@ -639,6 +639,7 @@ fn key_prefix_to_u8_roundtrip_with_try_key_prefix() {
 
 #[test]
 fn preview_keyspace_bounded_by_max_records() {
+    use vb_storage::keys::KeyspaceScanPolicy;
     use vb_storage::preview::preview_keyspace;
 
     let config = PreviewConfig::new(3, 10_000).unwrap();
@@ -653,13 +654,19 @@ fn preview_keyspace_bounded_by_max_records() {
         .collect();
     let mut scratch: Vec<u8> = Vec::new();
 
-    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
+    let result = preview_keyspace(
+        KeyspaceScanPolicy::default_doctor(),
+        config,
+        &entries,
+        &mut scratch,
+    )
+    .unwrap();
     assert_eq!(result.entries.len(), 3);
     assert!(result.truncated);
 }
-
 #[test]
 fn preview_keyspace_bounded_by_max_bytes() {
+    use vb_storage::keys::KeyspaceScanPolicy;
     use vb_storage::preview::preview_keyspace;
 
     let config = PreviewConfig::new(100, 25).unwrap();
@@ -674,7 +681,13 @@ fn preview_keyspace_bounded_by_max_bytes() {
         .collect();
     let mut scratch: Vec<u8> = Vec::new();
 
-    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
+    let result = preview_keyspace(
+        KeyspaceScanPolicy::default_doctor(),
+        config,
+        &entries,
+        &mut scratch,
+    )
+    .unwrap();
     // max_bytes=25, each entry value is 10 bytes. Entries 0 and 1 = 20 bytes (ok),
     // entry 2 would bring it to 30 > 25, so max 2 entries.
     assert_eq!(result.entries.len(), 2);
@@ -683,13 +696,20 @@ fn preview_keyspace_bounded_by_max_bytes() {
 
 #[test]
 fn preview_keyspace_empty_entries() {
+    use vb_storage::keys::KeyspaceScanPolicy;
     use vb_storage::preview::preview_keyspace;
 
     let config = PreviewConfig::new(10, 1024).unwrap();
     let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![];
     let mut scratch: Vec<u8> = Vec::new();
 
-    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
+    let result = preview_keyspace(
+        KeyspaceScanPolicy::default_doctor(),
+        config,
+        &entries,
+        &mut scratch,
+    )
+    .unwrap();
     assert_eq!(result.entries.len(), 0);
     assert!(!result.truncated);
     assert_eq!(result.total_keyspace_records, 0);
@@ -697,6 +717,7 @@ fn preview_keyspace_empty_entries() {
 
 #[test]
 fn preview_keyspace_skips_corrupt_keys_silently() {
+    use vb_storage::keys::KeyspaceScanPolicy;
     use vb_storage::preview::preview_keyspace;
 
     let config = PreviewConfig::new(10, 1024).unwrap();
@@ -712,7 +733,13 @@ fn preview_keyspace_skips_corrupt_keys_silently() {
     ];
     let mut scratch: Vec<u8> = Vec::new();
 
-    let result = preview_keyspace(config, &entries, &mut scratch).unwrap();
+    let result = preview_keyspace(
+        KeyspaceScanPolicy::default_doctor(),
+        config,
+        &entries,
+        &mut scratch,
+    )
+    .unwrap();
     // Only the valid entry should appear (corrupt key silently skipped).
     assert_eq!(result.entries.len(), 1);
     let (decoded_key, val_bytes, payload) = &result.entries[0];
