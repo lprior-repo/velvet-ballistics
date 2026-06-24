@@ -100,8 +100,15 @@ def load_issues(parent: str, fixture: str | None, bd_workdir: Path) -> list[Issu
     if fixture is not None:
         text = Path(fixture).read_text(encoding="utf-8")
     else:
+        # `bd children` is a thin alias for `bd list --parent <id> --status all`
+        # but its stub does not forward the `-n/--limit` flag. With vb-jpq7
+        # carrying 53 closed children, the default 50-row pagination cap hid
+        # vb-jpq7.3, vb-jpq7.4, and vb-jpq7.53 from this checker, so the
+        # corresponding manifest rows were never validated. Calling `bd list`
+        # directly with `-n 0` (unlimited) restores the full closed-children
+        # set. The output schema is identical to `bd children --json`.
         result = subprocess.run(
-            ["bd", "children", parent, "--json"],
+            ["bd", "list", "--parent", parent, "--status", "all", "--json", "-n", "0"],
             cwd=bd_workdir,
             text=True,
             stdout=subprocess.PIPE,
@@ -109,7 +116,7 @@ def load_issues(parent: str, fixture: str | None, bd_workdir: Path) -> list[Issu
             check=False,
         )
         if result.returncode != 0:
-            return f"bd children failed exit={result.returncode} stderr={compact(result.stderr)}"
+            return f"bd list failed exit={result.returncode} stderr={compact(result.stderr)}"
         text = result.stdout
     try:
         data = json.loads(text)
