@@ -1629,11 +1629,9 @@ fn validate_kind_edges(
             otherwise,
         } => validate_choose_expr_edges(branches, otherwise, ci, cid),
         CompiledNodeKind::ForEachStart { body, done, .. } => {
-            validate_loop_done_only(*body, *done, ci, cid)
+            validate_loop_start_edges(*body, *done, ci, cid)
         }
-        CompiledNodeKind::ForEachNext { body, done, .. } => {
-            validate_loop_done_only(*body, *done, ci, cid)
-        }
+        CompiledNodeKind::ForEachNext { done, .. } => validate_loop_done_only(*done, ci, cid),
         CompiledNodeKind::TogetherStart { branches, join } => {
             validate_together_start_edges(branches, *join, ci, cid)
         }
@@ -1641,20 +1639,20 @@ fn validate_kind_edges(
             validate_together_branch_edges(*entry, *join, ci, cid)
         }
         CompiledNodeKind::CollectStart { body, done, .. }
-        | CompiledNodeKind::CollectPage { body, done, .. }
-        | CompiledNodeKind::CollectNext { body, done, .. }
         | CompiledNodeKind::ReduceStart { body, done, .. }
-        | CompiledNodeKind::ReduceNext { body, done, .. }
-        | CompiledNodeKind::RepeatStart { body, done, .. }
-        | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
-            validate_loop_done_only(*body, *done, ci, cid)
+        | CompiledNodeKind::RepeatStart { body, done, .. } => {
+            validate_loop_start_edges(*body, *done, ci, cid)
         }
+        CompiledNodeKind::CollectPage { done, .. }
+        | CompiledNodeKind::CollectNext { done, .. }
+        | CompiledNodeKind::ReduceNext { done, .. }
+        | CompiledNodeKind::RepeatAttempt { done, .. } => validate_loop_done_only(*done, ci, cid),
         CompiledNodeKind::RepeatCheck { done, .. } => validate_forward_target(*done, ci, cid),
-        CompiledNodeKind::RetryCheck {
-            body, exhausted, ..
-        } => validate_loop_done_only(*body, *exhausted, ci, cid),
-        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
-            validate_loop_done_only(*body, *handler, ci, cid)
+        CompiledNodeKind::RetryCheck { exhausted, .. } => {
+            validate_loop_done_only(*exhausted, ci, cid)
+        }
+        CompiledNodeKind::ErrorHandler { handler, .. } => {
+            validate_loop_done_only(*handler, ci, cid)
         }
     }
 }
@@ -1689,12 +1687,21 @@ fn validate_choose_expr_edges(
     Ok(())
 }
 
-fn validate_loop_done_only(
-    _body: StepIdx,
+fn validate_loop_done_only(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
+    validate_forward_target(done, ci, cid)
+}
+
+/// Validates that both `body` and `done` edges of a `*Start` loop node point
+/// strictly forward from the current node. `body` here is the entry into the
+/// loop body (a forward edge); only `*Next` carries the back-edge in its
+/// `body` slot, so `*Start` must require `body` to be forward.
+fn validate_loop_start_edges(
+    body: StepIdx,
     done: StepIdx,
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
+    validate_forward_target(body, ci, cid)?;
     validate_forward_target(done, ci, cid)
 }
 

@@ -1602,6 +1602,51 @@ fn phase46_accepts_jump_backward() -> Result<(), String> {
 }
 
 #[test]
+fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
+    // Node 0 is a ForEachStart whose `body` points back at itself (StepIdx(0)).
+    // Before the split, `validate_loop_done_only` ignored `body`, so this
+    // configuration passed. After the split, `validate_loop_start_edges`
+    // rejects the backward `body` edge with WorkflowError::BackwardEdge.
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit: 1,
+                    body: StepIdx::new(0),
+                    done: StepIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ],
+        2,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
 fn phase46_accepts_foreach_forward() -> Result<(), String> {
     let parts = WorkflowParts {
         name: Box::<str>::from("phase46_foreach"),
