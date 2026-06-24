@@ -140,4 +140,5 @@ mod header_tests {
         let loaded = journal.run_header(run).expect("get should succeed").expect("should exist");
         assert_eq!(loaded.run, run);
     }
+
 }

@@ -143,6 +143,24 @@ pub enum JournalError {
     /// Record ended before the declared header or payload length.
     #[error("unexpected end of record")]
     UnexpectedEof,
+    /// Keyspace scan encountered a row whose key does not match the
+    /// expected typed shape for its prefix. Returned only when the
+    /// caller selected [`crate::keys::KeyspaceScanPolicy::FailClosed`];
+    /// [`crate::keys::KeyspaceScanPolicy::SkipMalformed`] never
+    /// surfaces this variant. The scan aborts on the first malformed
+    /// row so the operator can act on the earliest evidence of
+    /// corruption.
+    #[error(
+        "malformed keyspace row under prefix {prefix:#04x}: actual_len={actual_len} expected_len={expected_len}"
+    )]
+    MalformedKeyspaceRow {
+        /// First byte of the offending key (the prefix).
+        prefix: u8,
+        /// Expected key length for this prefix in bytes.
+        expected_len: usize,
+        /// Actual key length observed in storage.
+        actual_len: usize,
+    },
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,

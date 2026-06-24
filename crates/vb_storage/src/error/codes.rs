@@ -70,6 +70,8 @@ impl JournalError {
     pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
     /// Diagnostic code for journal batch accumulated byte budget exceeded.
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
+    /// Diagnostic code for keyspace scan encountering a malformed row under a known prefix.
+    pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -122,6 +124,7 @@ impl JournalError {
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
+            Self::MalformedKeyspaceRow { .. } => Self::MALFORMED_KEYSPACE_ROW_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
         }
     }
@@ -178,6 +181,7 @@ impl JournalError {
             Self::Trim(_) => "FJALL_ERROR",
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
+            Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;
