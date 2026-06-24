@@ -103,8 +103,8 @@ fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
     evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;
+    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
     Ok(Some(DriveStep { pc, node }))
 }
 
