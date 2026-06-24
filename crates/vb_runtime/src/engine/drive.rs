@@ -103,7 +103,9 @@ fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;
+    evidence
+        .push_step_started(pc)
+        .map_err(RuntimeEngineError::Core)?;
     run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
     Ok(Some(DriveStep { pc, node }))
 }
@@ -1415,17 +1417,11 @@ mod tests {
         // collect branch (push_slot_written_with_extra) instead of the
         // silent-drop push_slot_written_with_taint branch that the
         // previous SetConst+Finish workflow used.
-        let wf = mkwf(
-            vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)],
-            2,
-        )?;
+        let wf = mkwf(vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)], 2)?;
         let mut run = mkr(3, 2)?;
         let mut store = ValueStore::new();
-        let source_page: Box<[SlotValue]> =
-            Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
-        let source_list_id = store
-            .insert_list(source_page)
-            .map_err(|e| format!("{e}"))?;
+        let source_page: Box<[SlotValue]> = Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
+        let source_list_id = store.insert_list(source_page).map_err(|e| format!("{e}"))?;
         run.write_slot(SlotIdx::new(0), SlotValue::List(source_list_id))
             .map_err(|e| format!("{e}"))?;
         let mut budget = StepBudget::new(10);
@@ -1498,9 +1494,7 @@ mod tests {
                 }
             }
             other => {
-                return Err(format!(
-                    "RE-011: unexpected drive error variant: {other:?}"
-                ));
+                return Err(format!("RE-011: unexpected drive error variant: {other:?}"));
             }
         }
 

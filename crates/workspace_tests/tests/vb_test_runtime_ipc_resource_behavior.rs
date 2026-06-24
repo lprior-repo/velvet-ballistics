@@ -341,8 +341,11 @@ fn ipc_cancel_after_submit_processed_in_order() {
 // IPC-004: Ask/Answer message passing — answers route to correct run
 // ============================================================================
 
-/// Given a 1-shard runtime, when answering an Ask,
-/// then the answer enqueues successfully for later processing.
+/// Given a 1-shard runtime, when answering an Ask for a run that has no
+/// AskTicket in the shard, then `answer_ask` fails closed with `RunNotFound`
+/// (RA-030: routing requires the run to live on some shard; answers for
+/// unknown runs are rejected at the boundary so the IPC layer surfaces a
+/// typed error rather than enqueuing onto a phantom home shard).
 #[test]
 fn ipc_ask_answer_enqueues_successfully() {
     use vb_runtime::shard::{AskAnswer, AskTicket};
@@ -364,12 +367,17 @@ fn ipc_ask_answer_enqueues_successfully() {
         encoded_len: 1u32,
     };
 
-    // Answer enqueues successfully (validation happens at tick time)
-    assert_eq!(runtime.answer_ask(answer), Ok(()));
+    // Unknown run -> RunNotFound at the boundary (RA-030 fail-closed routing).
+    assert_eq!(
+        runtime.answer_ask(answer),
+        Err(vb_runtime::RuntimeError::RunNotFound),
+        "answer_ask for unknown run must fail closed with RunNotFound"
+    );
 }
 
 /// Given a 1-shard runtime, when answering an Ask for a non-existent run
-/// that is NOT in terminal_runs, then the answer still enqueues successfully.
+/// that is NOT in terminal_runs, then `answer_ask` fails closed with
+/// `RunNotFound` (RA-030 fail-closed routing).
 #[test]
 fn ipc_ask_answer_enqueues_for_unknown_run() {
     use vb_runtime::shard::{AskAnswer, AskTicket};
@@ -391,10 +399,13 @@ fn ipc_ask_answer_enqueues_for_unknown_run() {
         encoded_len: 1u32,
     };
 
-    // Answer enqueues for non-existent run - command is queued for later processing
-    // RunNotFound is only returned if run is in terminal_runs
     let result = runtime.answer_ask(answer);
-    assert_eq!(result, Ok(()));
+    assert_eq!(
+        result,
+        Err(vb_runtime::RuntimeError::RunNotFound),
+        "answer_ask for unknown run must return RunNotFound, got {:?}",
+        result
+    );
 }
 
 // ============================================================================

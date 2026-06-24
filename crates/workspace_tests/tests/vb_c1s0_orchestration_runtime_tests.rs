@@ -855,13 +855,18 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
 // Group I: Ask Lifecycle (answer_ask)
 // =============================================================================
 
-// Scenario I1: answer_ask enqueues answer to correct shard
+// Scenario I1: answer_ask returns RunNotFound for unknown run
+//
+// RA-030: answer_ask must locate the run on its current shard (which may have
+// been migrated away from the home shard). For an unknown run, no shard holds
+// the state and the call must fail closed with RunNotFound rather than
+// silently enqueueing onto the home shard.
 #[test]
-fn answer_ask_enqueues_to_correct_run_shard() -> Result<(), String> {
+fn answer_ask_returns_run_not_found_for_unknown_run() -> Result<(), String> {
     use vb_runtime::shard::AskAnswer;
     use vb_runtime::shard::AskTicket;
 
-    // Given: a runtime with 2 shards
+    // Given: a runtime with 2 shards and no submitted run
     let runtime = Runtime::new(shard_count(2)?, relaxed_config());
 
     // Create an ask answer for run 5 (5 % 2 = 1 -> shard 1)
@@ -877,11 +882,16 @@ fn answer_ask_enqueues_to_correct_run_shard() -> Result<(), String> {
         encoded_len: 1,
     };
 
-    // When: answer_ask is called
+    // When: answer_ask is called for an unknown run
     let result = runtime.answer_ask(answer);
 
-    // Then: enqueue succeeds (answer is queued for the correct shard)
-    assert_eq!(result, Ok(()));
+    // Then: RunNotFound (fail-closed; routing is tested by the migrated-shard
+    // and runtime_answer_ask_routes_to_run_shard tests in vb_runtime).
+    assert!(
+        matches!(result, Err(vb_runtime::RuntimeError::RunNotFound)),
+        "answer_ask on unknown run must return RunNotFound, got {:?}",
+        result
+    );
     Ok(())
 }
 
@@ -922,10 +932,12 @@ fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
     };
     let result = runtime.answer_ask(answer);
 
-    // Then: RunNotFound is returned (terminal runs don't accept answers)
-    assert!(
-        matches!(result, Err(vb_runtime::RuntimeError::RunNotFound)),
-        "answer_ask on terminal run must return RunNotFound, got {:?}",
+    // Then: terminal runs are still routed (RA-030: home or terminal shard),
+    // the answer is enqueued so the shard can no-op the obsolete command.
+    assert_eq!(
+        result,
+        Ok(()),
+        "answer_ask on terminal run must enqueue onto the terminal shard (RA-030 routing), got {:?}",
         result
     );
     Ok(())

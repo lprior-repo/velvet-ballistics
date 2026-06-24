@@ -105,7 +105,7 @@ pub use engine::{
     EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,
     drive_deterministic, eval_accessor, eval_expr, journal_action_suspended, new_run_frame,
     resume_action_completion, resume_action_failure, route_error_handler, run_until_blocked,
-    step_once, validate_compiled_workflow, validate_node_bounds, validate_no_nested_together,
+    step_once, validate_compiled_workflow, validate_no_nested_together, validate_node_bounds,
     validate_resource_contract, validate_transition_target,
 };
 pub use errors::{CoreError, CoreResult, EngineError};

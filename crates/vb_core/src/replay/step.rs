@@ -10,7 +10,7 @@ use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
-use super::{ReplayError, eval_expr_for_replay, engine_to_replay_err};
+use super::{ReplayError, engine_to_replay_err, eval_expr_for_replay};
 
 /// Typed non-deterministic suspension kind observed during replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -307,8 +307,12 @@ fn replay_collect_finish(
     node: &CompiledNode,
     collector_slot: SlotIdx,
 ) -> Result<ReplayAction, ReplayError> {
-    let value = *run.read_slot(collector_slot).map_err(engine_to_replay_err)?;
-    let taint = run.read_taint(collector_slot).map_err(engine_to_replay_err)?;
+    let value = *run
+        .read_slot(collector_slot)
+        .map_err(engine_to_replay_err)?;
+    let taint = run
+        .read_taint(collector_slot)
+        .map_err(engine_to_replay_err)?;
     let output = node.output.ok_or(ReplayError::Internal {
         reason: "CollectFinish node missing output slot",
     })?;

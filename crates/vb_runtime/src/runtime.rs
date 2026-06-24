@@ -372,9 +372,7 @@ impl Runtime {
         let run = answer.ticket.run;
         let home_index = self.shard_index(run);
         let shard = match self.shards.get(home_index) {
-            Some(shard)
-                if shard.run_state_contains(run) || shard.terminal_runs_contains(run) =>
-            {
+            Some(shard) if shard.run_state_contains(run) || shard.terminal_runs_contains(run) => {
                 shard
             }
             _ => self

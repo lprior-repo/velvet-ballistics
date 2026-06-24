@@ -1688,9 +1688,7 @@ mod tests {
     /// without simulating 2^64 register calls.
     fn registry_with_next_epoch(next_epoch: u64) -> IntrospectionRegistry {
         IntrospectionRegistry {
-            inner: std::sync::Arc::new(std::sync::Mutex::new(
-                std::collections::HashMap::new(),
-            )),
+            inner: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             next_epoch,
         }
     }
@@ -1707,9 +1705,7 @@ mod tests {
 
         match result {
             Err(RuntimeError::IntrospectionEpochExhausted) => {}
-            Err(other) => panic!(
-                "expected IntrospectionEpochExhausted, got {other:?}"
-            ),
+            Err(other) => panic!("expected IntrospectionEpochExhausted, got {other:?}"),
             Ok(handle) => panic!(
                 "expected IntrospectionEpochExhausted, got Ok handle with epoch {}",
                 handle.epoch()
@@ -1739,12 +1735,8 @@ mod tests {
 
         match result {
             Err(RuntimeError::IntrospectionEpochExhausted) => {}
-            Err(other) => panic!(
-                "expected IntrospectionEpochExhausted, got {other:?}"
-            ),
-            Ok(_) => panic!(
-                "expected IntrospectionEpochExhausted, got Ok(_) at saturation"
-            ),
+            Err(other) => panic!("expected IntrospectionEpochExhausted, got {other:?}"),
+            Ok(_) => panic!("expected IntrospectionEpochExhausted, got Ok(_) at saturation"),
         }
 
         assert!(!registry.is_visible(run));
@@ -1755,7 +1747,8 @@ mod tests {
     /// caller supplies an existing registration. This is the precise path that
     /// would have aliased the live handle's epoch under saturating arithmetic.
     #[test]
-    fn introspection_register_with_overlap_policy_overlap_branch_returns_typed_error_on_saturation() {
+    fn introspection_register_with_overlap_policy_overlap_branch_returns_typed_error_on_saturation()
+    {
         let mut registry = registry_with_next_epoch(u64::MAX - 1);
         let run = vb_core::ids::RunId::new(9301);
 
@@ -1770,12 +1763,10 @@ mod tests {
         let result = registry.register_with_overlap_policy(run);
         match result {
             Err(RuntimeError::IntrospectionEpochExhausted) => {}
-            Err(other) => panic!(
-                "expected IntrospectionEpochExhausted on overlap branch, got {other:?}"
-            ),
-            Ok(_) => panic!(
-                "expected IntrospectionEpochExhausted on overlap branch, got Ok(_)"
-            ),
+            Err(other) => {
+                panic!("expected IntrospectionEpochExhausted on overlap branch, got {other:?}")
+            }
+            Ok(_) => panic!("expected IntrospectionEpochExhausted on overlap branch, got Ok(_)"),
         }
 
         // The original handle's epoch must remain unchanged.
@@ -1869,10 +1860,7 @@ mod introspection_poison_regression_tests {
         poison_arc_mutex(registry.inner_arc_for_test());
 
         let result = registry.unregister(RunId::new(3));
-        assert!(
-            result.is_ok(),
-            "unregister must recover, got {result:?}"
-        );
+        assert!(result.is_ok(), "unregister must recover, got {result:?}");
     }
 
     #[test]

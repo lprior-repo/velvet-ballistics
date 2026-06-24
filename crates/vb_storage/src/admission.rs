@@ -202,7 +202,7 @@ pub struct AcceptedArtifact {
 /// from the resource contract by hashing its canonical serialization.
 ///
 /// YAGNI FIX: the serialization buffer is pre-sized to
-/// [`resource_contract_policy_bytes_bound`] (115 bytes) as a single
+/// `resource_contract_policy_bytes_bound` (115 bytes) as a single
 /// `vec![0u8; bound]` allocation. `postcard::to_slice` honors the slice
 /// length it is given, so the Vec must be initialized to its full bound
 /// length (not just capacity) before the call. The bound is derived from

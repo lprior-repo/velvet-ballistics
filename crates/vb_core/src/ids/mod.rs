@@ -358,7 +358,10 @@ impl WorkflowDigest {
 
 #[cfg(test)]
 mod tests {
-    use super::{ActionId, AccessorIdx, BlobId, EventSeq, ExprIdx, ListId, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowId};
+    use super::{
+        AccessorIdx, ActionId, BlobId, EventSeq, ExprIdx, ListId, RunId, SeqNo, SlotIdx, StepIdx,
+        SymbolId, WorkflowId,
+    };
     use core::str::FromStr;
 
     #[test]
@@ -836,9 +839,9 @@ mod tests {
                     "reason must be stable for downstream matching",
                 );
             }
-            other => panic!(
-                "expected EngineError::InvalidRepeatState for zero input, got {other:?}",
-            ),
+            other => {
+                panic!("expected EngineError::InvalidRepeatState for zero input, got {other:?}",)
+            }
         }
     }
 
@@ -1195,11 +1198,46 @@ mod tests {
     #[test]
     fn cf013_from_str_round_trip_for_all_numeric_id_types() -> Result<(), String> {
         let cases: Vec<(&str, Box<dyn Fn(&str) -> Result<String, String>>)> = vec![
-            ("1", Box::new(|s| WorkflowId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
-            ("2", Box::new(|s| RunId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
-            ("3", Box::new(|s| StepIdx::from_str(s).map(|v| v.0.to_string()).map_err(|e| e.to_string()))),
-            ("4", Box::new(|s| SymbolId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
-            ("5", Box::new(|s| BlobId::from_str(s).map(|v| v.get().to_string()).map_err(|e| e.to_string()))),
+            (
+                "1",
+                Box::new(|s| {
+                    WorkflowId::from_str(s)
+                        .map(|v| v.get().to_string())
+                        .map_err(|e| e.to_string())
+                }),
+            ),
+            (
+                "2",
+                Box::new(|s| {
+                    RunId::from_str(s)
+                        .map(|v| v.get().to_string())
+                        .map_err(|e| e.to_string())
+                }),
+            ),
+            (
+                "3",
+                Box::new(|s| {
+                    StepIdx::from_str(s)
+                        .map(|v| v.0.to_string())
+                        .map_err(|e| e.to_string())
+                }),
+            ),
+            (
+                "4",
+                Box::new(|s| {
+                    SymbolId::from_str(s)
+                        .map(|v| v.get().to_string())
+                        .map_err(|e| e.to_string())
+                }),
+            ),
+            (
+                "5",
+                Box::new(|s| {
+                    BlobId::from_str(s)
+                        .map(|v| v.get().to_string())
+                        .map_err(|e| e.to_string())
+                }),
+            ),
         ];
         for (input, parse) in &cases {
             if parse(input).is_err() {

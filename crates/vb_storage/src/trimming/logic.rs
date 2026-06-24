@@ -310,7 +310,7 @@ impl FjallJournal {
     /// retention policy, without performing any trim.
     ///
     /// This is a thin I/O wrapper: it fetches all run headers, asks
-    /// [`Self::has_terminal_event`] for each one (which scans the durable
+    /// `Self::has_terminal_event` for each one (which scans the durable
     /// journal), groups the terminal runs by workflow, and delegates the
     /// pure compute to
     /// [`retained_terminal_runs_top_n`](Self::retained_terminal_runs_top_n).

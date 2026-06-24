@@ -36,6 +36,10 @@ enum ObservedAdmissionDiagnostic {
         required: Capability,
         granted: CapabilitySet,
     },
+    CapabilityCountMismatch {
+        required_count: usize,
+        granted_count: usize,
+    },
     ResourceCapacityExceeded {
         resource: &'static str,
         requested: u64,
@@ -380,6 +384,11 @@ fn public_diagnostic_from_observed(
             digest: None,
             cause: "capability_profile_mismatch",
         },
+        ObservedAdmissionDiagnostic::CapabilityCountMismatch { .. } => PublicAdmissionDiagnostic {
+            category: "capability_count_mismatch",
+            digest: None,
+            cause: "capability_cardinality_mismatch",
+        },
         ObservedAdmissionDiagnostic::ResourceCapacityExceeded { .. } => PublicAdmissionDiagnostic {
             category: "resource_capacity_exceeded",
             digest: None,
@@ -428,6 +437,13 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
             action,
             required,
             granted,
+        },
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count,
+            granted_count,
+        }) => ObservedAdmissionDiagnostic::CapabilityCountMismatch {
+            required_count,
+            granted_count,
         },
         Err(AdmissionError::ResourceCapacityExceeded {
             resource,
@@ -721,10 +737,9 @@ fn given_required_capability_with_extras_or_duplicates_then_denied() {
         );
         assert_eq!(
             observed(result),
-            ObservedAdmissionDiagnostic::CapabilityDenied {
-                action: required.action_id(),
-                required: required.clone(),
-                granted,
+            ObservedAdmissionDiagnostic::CapabilityCountMismatch {
+                required_count: 1,
+                granted_count: granted.len(),
             },
             "capability cardinality-mismatch case {label} must deny closed"
         );
@@ -1493,7 +1508,21 @@ proptest! {
 
         if mutation == 0 {
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(501), granted, RuntimePolicy::Strict)));
+        } else if mutation == 2 || mutation == 5 {
+            // Cardinality differs but the required capability is granted (or duplicated).
+            // Surfaces as typed CapabilityCountMismatch (RA-023 honesty fix).
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::CapabilityCountMismatch {
+                    required_count: 1,
+                    granted_count: granted.len(),
+                }
+            );
         } else {
+            // mutation 1: empty set (required missing)
+            // mutation 3: wrong name (required missing)
+            // mutation 4: wrong action (required missing)
+            // All surface as CapabilityDenied (required capability not covered).
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::CapabilityDenied { action: required.action_id(), required, granted });
         }
     }

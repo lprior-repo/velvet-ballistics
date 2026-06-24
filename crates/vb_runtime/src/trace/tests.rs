@@ -1216,13 +1216,7 @@ fn trace_ring_fill_pct_f32_f64_within_one_ulp_for_general_caps() {
     let max_cap: usize = 1_048_576;
     let mut cap: usize = 1;
     while cap <= max_cap {
-        let sample_lens: [usize; 5] = [
-            0,
-            cap / 4,
-            cap / 2,
-            (cap * 3) / 4,
-            cap,
-        ];
+        let sample_lens: [usize; 5] = [0, cap / 4, cap / 2, (cap * 3) / 4, cap];
         for &len in sample_lens.iter() {
             let f32_pct = (len as f32) / (cap as f32) * 100.0_f32;
             let f64_pct = ((len as f64) / (cap as f64) * 100.0_f64) as f32;

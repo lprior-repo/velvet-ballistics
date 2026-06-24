@@ -224,7 +224,9 @@ pub enum AdmissionError {
     /// error instead. Carries the raw counts so callers and the operator
     /// diagnostic surface can render an honest "set size mismatch" message
     /// without inventing capability data.
-    #[error("admission rejected: capability count mismatch: required {required_count}, granted {granted_count}")]
+    #[error(
+        "admission rejected: capability count mismatch: required {required_count}, granted {granted_count}"
+    )]
     CapabilityCountMismatch {
         /// Number of capabilities the artifact requires.
         required_count: usize,

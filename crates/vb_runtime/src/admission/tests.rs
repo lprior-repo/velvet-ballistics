@@ -174,10 +174,8 @@ fn admit_artifact_run_rejects_capability_superset() {
     let store = FixedAcceptedStore {
         artifact: accepted_artifact_with_caps(Box::new([required])),
     };
-    let granted = CapabilitySet::from_grants(Box::new([
-        Capability::new("network".into(), action),
-        extra,
-    ]));
+    let granted =
+        CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action), extra]));
 
     let result = admit_artifact_run(
         &store,
@@ -205,8 +203,7 @@ fn admit_artifact_run_rejects_capability_duplicate() {
     let store = FixedAcceptedStore {
         artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
     };
-    let granted =
-        CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
+    let granted = CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
 
     let result = admit_artifact_run(
         &store,
@@ -274,10 +271,7 @@ fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let extra = Capability::new("storage.write".into(), ActionId::new(9));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([
-            network.clone(),
-            filesystem.clone(),
-        ])),
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
     };
     let granted = CapabilitySet::from_grants(Box::new([network, filesystem, extra]));
 
@@ -307,10 +301,7 @@ fn admit_artifact_run_count_match_with_missing_capability_still_returns_capabili
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let wrong = Capability::new("network.other".into(), ActionId::new(11));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([
-            network.clone(),
-            filesystem.clone(),
-        ])),
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
     };
     // Granted has the right count (2) but the second cap is wrong.
     let granted = CapabilitySet::from_grants(Box::new([network, wrong]));

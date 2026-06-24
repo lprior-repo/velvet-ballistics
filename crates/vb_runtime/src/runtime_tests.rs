@@ -273,10 +273,7 @@ mod tests {
             nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
             expressions: Box::from([]),
             accessors: Box::from([]),
-            constants: Box::from([
-                ConstValue::I64(0),
-                ConstValue::I64(0),
-            ]),
+            constants: Box::from([ConstValue::I64(0), ConstValue::I64(0)]),
             slot_count: 3,
             symbols_count: 0,
             entry: StepIdx::ZERO,

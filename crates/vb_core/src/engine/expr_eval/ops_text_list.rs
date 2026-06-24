@@ -212,8 +212,13 @@ pub(super) fn eval_append(
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut new_items: Vec<SlotValue> = Vec::new();
-    let new_len = items.len().checked_add(1).ok_or(EngineError::AllocationFailed)?;
-    new_items.try_reserve_exact(new_len).map_err(|_| EngineError::AllocationFailed)?;
+    let new_len = items
+        .len()
+        .checked_add(1)
+        .ok_or(EngineError::AllocationFailed)?;
+    new_items
+        .try_reserve_exact(new_len)
+        .map_err(|_| EngineError::AllocationFailed)?;
     #[cfg(test)]
     {
         if oom_inject::dec() {
@@ -235,12 +240,18 @@ pub(super) fn eval_append_if(
     let (list, item, condition) = pop_triple(stack)?;
     let list_id = expect_list(list)?;
     let cond = super::stack::expect_bool(condition)?;
-    let items = store.list(list_id).map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut new_items: Vec<SlotValue> = Vec::new();
     let base_len = items.len();
     if cond {
-        let new_len = base_len.checked_add(1).ok_or(EngineError::AllocationFailed)?;
-        new_items.try_reserve_exact(new_len).map_err(|_| EngineError::AllocationFailed)?;
+        let new_len = base_len
+            .checked_add(1)
+            .ok_or(EngineError::AllocationFailed)?;
+        new_items
+            .try_reserve_exact(new_len)
+            .map_err(|_| EngineError::AllocationFailed)?;
         #[cfg(test)]
         {
             if oom_inject::dec() {
@@ -250,7 +261,9 @@ pub(super) fn eval_append_if(
         new_items.extend_from_slice(items);
         new_items.push(item);
     } else {
-        new_items.try_reserve_exact(base_len).map_err(|_| EngineError::AllocationFailed)?;
+        new_items
+            .try_reserve_exact(base_len)
+            .map_err(|_| EngineError::AllocationFailed)?;
         #[cfg(test)]
         {
             if oom_inject::dec() {
@@ -275,7 +288,8 @@ pub(super) fn eval_unique(
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut seen: Vec<SlotValue> = Vec::new();
-    seen.try_reserve_exact(items.len()).map_err(|_| EngineError::AllocationFailed)?;
+    seen.try_reserve_exact(items.len())
+        .map_err(|_| EngineError::AllocationFailed)?;
     #[cfg(test)]
     {
         if oom_inject::dec() {
@@ -1213,8 +1227,7 @@ mod tests {
         // The hook must be cleared by guard Drop. Verify by arming
         // a fresh state and observing it is at 0.
         oom_inject::reset();
-        let (mut store2, mut stack2, _list2) =
-            fresh_list_with_items(vec![SlotValue::I64(10)])?;
+        let (mut store2, mut stack2, _list2) = fresh_list_with_items(vec![SlotValue::I64(10)])?;
         push_value(&mut stack2, SlotValue::I64(20)).map_err(|e| e.to_string())?;
         let result = eval_append(&mut stack2, &mut store2);
         ensure_equal(result, Ok(()))?;
@@ -1231,5 +1244,4 @@ mod tests {
         let result = eval_append(&mut stack, &mut store);
         ensure_equal(result, Ok(()))
     }
-
 }

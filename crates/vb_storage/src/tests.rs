@@ -1858,7 +1858,9 @@ mod tests {
             status: 1,
             accepted_at_ms: 0,
         };
-        journal.put_run_header(&record).expect("setup: put_run_header");
+        journal
+            .put_run_header(&record)
+            .expect("setup: put_run_header");
 
         // When a malformed key (3 bytes — well-formed keys are 9 bytes) is
         // planted directly into the run_header partition

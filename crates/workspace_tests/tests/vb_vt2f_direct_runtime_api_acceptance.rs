@@ -692,16 +692,19 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
     let counters_before = runtime.counters_snapshot();
 
     // When: a stale ask ticket is answered after its run is no longer active.
+    // RA-030: terminal_runs membership is the routing key. The stale run is
+    // in terminal_runs (it finished after two ticks), so answer_ask routes
+    // to the terminal shard for no-op processing rather than failing.
     assert_eq!(
         runtime.answer_ask(ask_answer(
             stale,
             SlotValue::I64(6060),
             Taint::DerivedFromSecret
         )),
-        Err(RuntimeError::RunNotFound)
+        Ok(())
     );
 
-    // Then: stale answer_ask fails immediately with exact RunNotFound and unrelated observable state is unchanged.
+    // Then: stale answer_ask enqueues onto the terminal shard and unrelated observable state is unchanged.
     assert_eq!(runtime.snapshot_run(unrelated, 607), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(
@@ -758,8 +761,11 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
         Taint::DerivedFromSecret,
     ));
 
-    // Then: stale answer_ask still fails immediately with exact RunNotFound, independent of trace retention.
-    assert_eq!(answer_result, Err(RuntimeError::RunNotFound));
+    // Then: RA-030 routes to the terminal shard (terminal_runs membership
+    // is independent of trace retention), so answer_ask enqueues onto the
+    // terminal shard for no-op processing. Err(RunNotFound) is reserved
+    // for runs that live on NO shard (unknown runs).
+    assert_eq!(answer_result, Ok(()));
     assert_eq!(runtime.snapshot_run(unrelated, 617), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(
@@ -796,13 +802,16 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
     let counters_before = runtime.counters_snapshot();
 
     // When: an ask answer is enqueued for an absent run id while another run remains active.
+    // RA-030: answer_ask fails closed at the boundary when the run lives on
+    // no shard, rather than enqueueing onto the home shard and surfacing the
+    // error at tick time.
     assert_eq!(
         runtime.answer_ask(ask_answer(wrong, SlotValue::I64(6061), Taint::Clean)),
-        Ok(())
+        Err(RuntimeError::RunNotFound)
     );
 
-    // Then: tick fails with exact RunNotFound and unrelated observable state is unchanged.
-    assert_eq!(runtime.tick_all(), Err(RuntimeError::RunNotFound));
+    // Then: tick is not affected and unrelated observable state is unchanged.
+    assert_eq!(runtime.tick_all(), Ok(true));
     assert_eq!(runtime.snapshot_run(unrelated, 608), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(

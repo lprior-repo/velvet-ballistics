@@ -67,10 +67,7 @@ impl FjallJournal {
     /// memtable) but has not been force-flushed to stable storage.
     /// Callers that require strict durability must invoke
     /// `persist_strict` after staging.
-    pub(crate) fn append_queued_unfsynced(
-        &self,
-        event: &JournalEvent,
-    ) -> Result<(), JournalError> {
+    pub(crate) fn append_queued_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
         match self.append_unfsynced(event) {
             Ok(()) => Ok(()),
             Err(JournalError::DuplicateEvent { run, seq }) => {

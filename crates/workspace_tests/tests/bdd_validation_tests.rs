@@ -545,6 +545,7 @@ fn bdd_g09_accepts_error_slot_within_bounds() {
     // Given: WorkflowParts with error_slot Some(valid_index)
     let mut node = nop_node(0);
     node.error_slot = Some(SlotIdx::new(0));
+    node.next = None;
     let parts = make_parts(vec![node], 1);
     // When: validate is called
     let result = validate(&parts);

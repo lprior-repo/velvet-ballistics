@@ -1763,7 +1763,8 @@ fn ce_004_replay_invalid_program_counter_yields_typed_step_not_found() -> Result
 }
 
 #[test]
-fn ce_004_engine_to_replay_err_reserves_internal_for_unexpected_failures() -> Result<(), CoreError> {
+fn ce_004_engine_to_replay_err_reserves_internal_for_unexpected_failures() -> Result<(), CoreError>
+{
     // CE-004 boundary: the converter must continue to route genuinely
     // unexpected engine errors to `Internal` and must not silently
     // promote them to `StepNotFound` or `SlotNotAvailable`.
