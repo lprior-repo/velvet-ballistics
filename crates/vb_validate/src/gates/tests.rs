@@ -963,6 +963,54 @@ fn gate_11_accepts_single_node_workflow() {
     assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
 }
 
+#[test]
+fn gate_11_rejects_next_step_at_node_count_boundary() {
+    // 2 nodes (indices 0 and 1); node_count == 2.
+    // next == StepIdx::new(2) == node_count is one past the last valid index
+    // and must be rejected to prevent out-of-bounds dispatch at runtime.
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        finish_node(1, 0),
+    ];
+    let parts = make_parts(nodes, 1);
+    assert!(
+        matches!(
+            validate_gate_11_loop_body_graph(&parts),
+            Err(ValidationError::LoopBodyStepOutOfRange {
+                source_node: 0,
+                label,
+                ..
+            }) if label == "next"
+        ),
+        "gate 11 must reject next step equal to node_count (off-by-one)"
+    );
+}
+
+#[test]
+fn gate_11_accepts_next_step_within_node_count() {
+    // Sanity check: next == node_count - 1 (last valid index) is accepted.
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        finish_node(1, 0),
+    ];
+    let parts = make_parts(nodes, 1);
+    assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
+}
+
 // =========================================================================
 // BLACKHAT security regression tests
 // =========================================================================
