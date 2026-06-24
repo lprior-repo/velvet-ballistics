@@ -385,7 +385,10 @@ impl IntrospectionRegistry {
         }
 
         let epoch = self.next_epoch;
-        self.next_epoch = self.next_epoch.saturating_add(1);
+        self.next_epoch = self
+            .next_epoch
+            .checked_add(1)
+            .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
         guard.insert(run, epoch);
 
         Ok(InspectHandle {
@@ -410,7 +413,10 @@ impl IntrospectionRegistry {
         let (outcome, epoch) = if let Some(&old_epoch) = guard.get(&run) {
             // Overlap detected - replace with new epoch
             let new_epoch = self.next_epoch;
-            self.next_epoch = self.next_epoch.saturating_add(1);
+            self.next_epoch = self
+                .next_epoch
+                .checked_add(1)
+                .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
             guard.insert(run, new_epoch);
             (
                 Err(RegisterOverlapOutcome::Replaced {
@@ -422,7 +428,10 @@ impl IntrospectionRegistry {
         } else {
             // No overlap - insert with new epoch
             let epoch = self.next_epoch;
-            self.next_epoch = self.next_epoch.saturating_add(1);
+            self.next_epoch = self
+                .next_epoch
+                .checked_add(1)
+                .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
             guard.insert(run, epoch);
             (Ok(()), epoch)
         };
@@ -1655,5 +1664,113 @@ mod tests {
         let k2 = TimerKind::DelayedAction(ActionId::new(42));
         let s2 = format!("{:?}", k2);
         assert!(s2.contains("42"));
+    }
+
+    // ---- IntrospectionRegistry epoch saturation (RS-214) ----
+
+    /// Constructs an `IntrospectionRegistry` whose internal `next_epoch` is
+    /// pre-seeded to a chosen value. Used to exercise the saturation boundary
+    /// without simulating 2^64 register calls.
+    fn registry_with_next_epoch(next_epoch: u64) -> IntrospectionRegistry {
+        IntrospectionRegistry {
+            inner: std::sync::Arc::new(std::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            next_epoch,
+        }
+    }
+
+    /// RS-214: `register` must return `IntrospectionEpochExhausted` (typed)
+    /// once `next_epoch == u64::MAX`, instead of silently reusing the same
+    /// epoch for the new handle.
+    #[test]
+    fn introspection_register_returns_typed_error_when_next_epoch_is_max() {
+        let mut registry = registry_with_next_epoch(u64::MAX);
+        let run = vb_core::ids::RunId::new(9101);
+
+        let result = registry.register(run);
+
+        match result {
+            Err(RuntimeError::IntrospectionEpochExhausted) => {}
+            Err(other) => panic!(
+                "expected IntrospectionEpochExhausted, got {other:?}"
+            ),
+            Ok(handle) => panic!(
+                "expected IntrospectionEpochExhausted, got Ok handle with epoch {}",
+                handle.epoch()
+            ),
+        }
+
+        // The exhausted sentinel must persist: subsequent registers must keep
+        // failing rather than silently reusing u64::MAX.
+        let again = registry.register(vb_core::ids::RunId::new(9102));
+        assert!(
+            matches!(again, Err(RuntimeError::IntrospectionEpochExhausted)),
+            "post-exhaustion registers must also return IntrospectionEpochExhausted, got {again:?}"
+        );
+
+        // No handle should have been inserted into the registry.
+        assert!(!registry.is_visible(run));
+    }
+
+    /// RS-214: `register_with_overlap_policy` (no overlap branch) must return
+    /// `IntrospectionEpochExhausted` at the saturation boundary.
+    #[test]
+    fn introspection_register_with_overlap_policy_returns_typed_error_on_saturation() {
+        let mut registry = registry_with_next_epoch(u64::MAX);
+        let run = vb_core::ids::RunId::new(9201);
+
+        let result = registry.register_with_overlap_policy(run);
+
+        match result {
+            Err(RuntimeError::IntrospectionEpochExhausted) => {}
+            Err(other) => panic!(
+                "expected IntrospectionEpochExhausted, got {other:?}"
+            ),
+            Ok(_) => panic!(
+                "expected IntrospectionEpochExhausted, got Ok(_) at saturation"
+            ),
+        }
+
+        assert!(!registry.is_visible(run));
+    }
+
+    /// RS-214: `register_with_overlap_policy` (overlap branch) must return
+    /// `IntrospectionEpochExhausted` at the saturation boundary even when the
+    /// caller supplies an existing registration. This is the precise path that
+    /// would have aliased the live handle's epoch under saturating arithmetic.
+    #[test]
+    fn introspection_register_with_overlap_policy_overlap_branch_returns_typed_error_on_saturation() {
+        let mut registry = registry_with_next_epoch(u64::MAX - 1);
+        let run = vb_core::ids::RunId::new(9301);
+
+        // First register succeeds and advances next_epoch to u64::MAX.
+        let _first = registry
+            .register(run)
+            .expect("first register at u64::MAX - 1 must succeed");
+        assert_eq!(registry.next_epoch_for_test(), u64::MAX);
+
+        // Second call (overlap branch) must fail with the typed exhaustion error
+        // instead of reusing u64::MAX as the new epoch for the replacement handle.
+        let result = registry.register_with_overlap_policy(run);
+        match result {
+            Err(RuntimeError::IntrospectionEpochExhausted) => {}
+            Err(other) => panic!(
+                "expected IntrospectionEpochExhausted on overlap branch, got {other:?}"
+            ),
+            Ok(_) => panic!(
+                "expected IntrospectionEpochExhausted on overlap branch, got Ok(_)"
+            ),
+        }
+
+        // The original handle's epoch must remain unchanged.
+        assert_eq!(_first.epoch(), u64::MAX - 1);
+    }
+
+    impl IntrospectionRegistry {
+        #[cfg(test)]
+        fn next_epoch_for_test(&self) -> u64 {
+            self.next_epoch
+        }
     }
 }

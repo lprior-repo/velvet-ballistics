@@ -55,6 +55,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         }
         RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
         RuntimeError::MigrateSelf => Some("migration target is the source shard"),
+        RuntimeError::IntrospectionEpochExhausted => {
+            Some("introspection registry epoch space exhausted (u64::MAX)")
+        }
         _ => None,
     }
 }

@@ -39,6 +39,7 @@ impl RuntimeError {
     pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
+    pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -89,6 +90,7 @@ impl RuntimeError {
             Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
             Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
             Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
+            Self::IntrospectionEpochExhausted => Self::INTROSPECTION_EPOCH_EXHAUSTED_CODE,
         }
     }
 
@@ -144,7 +146,8 @@ impl RuntimeError {
             | Self::SecretResultNotAllowed
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
-            | Self::MigrateSelf => None,
+            | Self::MigrateSelf
+            | Self::IntrospectionEpochExhausted => None,
         }
     }
 
