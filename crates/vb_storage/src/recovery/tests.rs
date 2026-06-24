@@ -3828,13 +3828,13 @@ mod hydrate_run_frame_tests {
     // through the `recovery` module path so a future rewrite that moves
     // the function or its helper still has to honour the same contract.
     //
-    // We pick N = 2048 with mixed taint entries and assert:
+    // We pick N = 32_768 with mixed taint entries and assert:
     //   1. Correctness: every decoded entry's `(slot, value, taint)` matches
     //      the override rule (taint vector wins when present, else `Clean`).
-    //   2. Linear-time: total decode completes in well under a second.
-    //      At N = 2048 the pre-fix O(N·M) loop performs ~2M comparisons
-    //      and exceeds the budget on any reasonable CI; the post-fix
-    //      HashMap path completes in tens of microseconds.
+    //   2. Linear-time: total decode completes in well under 50 ms.
+    //      At N = 32_768 the pre-fix O(N·M) loop performs ~5.4e8
+    //      comparisons and reliably exceeds 50 ms on any CI; the post-fix
+    //      HashMap path completes in well under 10 ms.
     // =========================================================================
 
     fn sr_012_build_snapshot_bytes(
@@ -3862,17 +3862,19 @@ mod hydrate_run_frame_tests {
     fn sr_012_decode_snapshot_slots_resolves_taint_in_linear_time() {
         use std::time::Instant;
 
-        // N = 2048 slots, M = N / 2 taint overrides (every other slot is
+        // N = 32_768 slots, M = N / 2 taint overrides (every other slot is
         // explicitly dirty; the rest default to Clean). With N ~= M the
-        // pre-fix O(N*M) loop performs ~2.1M comparisons; the post-fix
-        // HashMap path performs O(N + M) ~= 3072 ops.
-        const N: u16 = 2048;
+        // pre-fix O(N*M) loop performs ~5.4e8 comparisons and exceeds the
+        // 50 ms budget on any reasonable CI; the post-fix HashMap path
+        // performs O(N + M) ~= 49_152 ops and completes in well under
+        // 10 ms on release x86_64.
+        const N: u16 = 32_768;
         let run = RunId::new(0x5E_012);
         let mut slot_entries: Vec<(SlotIdx, SlotValue, Taint)> = Vec::with_capacity(N as usize);
         for i in 0..N {
             let slot = SlotIdx::new(i);
             // `i` is `u16` and the formula `i * 7 + 1` stays in `i64` range
-            // for every `i < 2048`, so the direct `i64::from(i)` conversion
+            // for every `i < 32_768`, so the direct `i64::from(i)` conversion
             // is total and cannot fail.
             let value = SlotValue::I64(i64::from(i) * 7 + 1);
             // Half the slots get an explicit `Secret` override, half stay
@@ -3903,7 +3905,7 @@ mod hydrate_run_frame_tests {
         );
         for (idx, entry) in decoded.iter().enumerate() {
             let expected_slot = SlotIdx::new(u16::try_from(idx).expect("idx fits u16"));
-            // `idx < 2048 < i64::MAX`, so the `try_from` cannot fail; the
+            // `idx < 32_768 < i64::MAX`, so the `try_from` cannot fail; the
             // explicit `expect` documents the invariant for any future
             // bump of `N` past `i64::MAX`.
             let expected_value = SlotValue::I64(i64::try_from(idx).expect("idx fits i64") * 7 + 1);
@@ -3926,14 +3928,19 @@ mod hydrate_run_frame_tests {
             );
         }
 
-        // Linear-time budget. At N = 2048 the pre-fix O(N*M) loop performs
-        // ~2.1M comparisons and takes tens to hundreds of milliseconds; the
-        // post-fix HashMap path completes in tens of microseconds. 1 second
-        // is generous enough to avoid CI flakes but tight enough to fail
-        // loudly if a future regression re-introduces the quadratic lookup.
+        // Linear-time budget. The previous regression check used N = 2048
+        // with a 1 s wall-clock budget, but the pre-fix O(N*M) loop at
+        // N = 2048 completes in ~256 µs on release x86_64 — the budget
+        // was 4000x too loose and would NOT catch a regression. At
+        // N = 32_768 (M = N/2) the pre-fix O(N*M) loop performs
+        // ~5.4e8 comparisons and reliably exceeds 50 ms on any CI,
+        // while the post-fix HashMap path stays well under 10 ms.
+        // 50 ms is tight enough to fail loudly on regression while still
+        // leaving headroom for slow CI runners (debug builds, shared
+        // hosts, etc.) so this test does not flake.
         assert!(
-            elapsed < std::time::Duration::from_secs(1),
-            "SR-012: decode_snapshot_slots must complete in O(N + M); took {elapsed:?} for N ~= 2048, M ~= 1024, which exceeds the linear-time budget and indicates the taint-lookup regression has returned"
+            elapsed < std::time::Duration::from_millis(50),
+            "SR-012: decode_snapshot_slots must complete in O(N + M); took {elapsed:?} for N = 32_768, M = 16_384, which exceeds the linear-time budget and indicates the taint-lookup regression has returned"
         );
     }
 
