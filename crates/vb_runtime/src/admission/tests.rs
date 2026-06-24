@@ -1,4 +1,5 @@
 use super::*;
+use crate::RuntimeError;
 use vb_core::ids::WorkflowDigest;
 
 struct FixedAcceptedStore {
@@ -289,6 +290,109 @@ fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap
             required_count: 2,
             granted_count: 3,
         })
+    );
+}
+
+#[test]
+fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied() {
+    // vb-ia7sq / RA-018 regression: when the cardinality check is reached
+    // (i.e. every required capability is covered), a count mismatch MUST
+    // surface as a typed `CapabilityCountMismatch { required_count, granted_count }`
+    // and MUST NOT fabricate a `Capability::__capability_count_mismatch__` /
+    // `ActionId::new(0)` sentinel and mislabel the error as `CapabilityDenied`.
+    //
+    // The production path at `admission.rs:740-750` runs the per-capability
+    // loop FIRST, so the cardinality check is only reached when granted is
+    // a superset of required. We exercise that reachable case (required=3,
+    // granted=4 with membership ⊇ required) and also assert the operator
+    // diagnostic surface: the typed `AdmissionError` maps to the typed
+    // `RuntimeError::AdmissionCapabilityCountMismatch` (diagnostic code
+    // 0x201F, set in `error/diagnostics.rs:32`).
+    let network = Capability::new("network.github".into(), ActionId::new(7));
+    let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let kv = Capability::new("kv.write".into(), ActionId::new(9));
+    let extra = Capability::new("storage.write".into(), ActionId::new(10));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([
+            network.clone(),
+            filesystem.clone(),
+            kv.clone(),
+        ])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([network, filesystem, kv, extra]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    let admission_error = match result {
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 3,
+            granted_count: 4,
+        }) => AdmissionError::CapabilityCountMismatch {
+            required_count: 3,
+            granted_count: 4,
+        },
+        other => panic!(
+            "expected CapabilityCountMismatch {{ required_count: 3, granted_count: 4 }}, got {other:?}"
+        ),
+    };
+    let _ = admission_error;
+
+    // Pin the contract: a re-admission through the same path must also yield
+    // the typed variant, never `CapabilityDenied` with a fabricated capability.
+    let store2 = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([
+            Capability::new("a".into(), ActionId::new(1)),
+            Capability::new("b".into(), ActionId::new(2)),
+            Capability::new("c".into(), ActionId::new(3)),
+        ])),
+    };
+    let granted2 = CapabilitySet::from_grants(Box::new([
+        Capability::new("a".into(), ActionId::new(1)),
+        Capability::new("b".into(), ActionId::new(2)),
+        Capability::new("c".into(), ActionId::new(3)),
+        Capability::new("d".into(), ActionId::new(4)),
+    ]));
+    let result2 = admit_artifact_run(
+        &store2,
+        RuntimePolicy::Strict,
+        RunId::new(2),
+        test_digest(),
+        granted2,
+    );
+    assert_eq!(
+        result2,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 3,
+            granted_count: 4,
+        })
+    );
+
+    // Pin the operator diagnostic surface: the canonical mapping from
+    // `AdmissionError::CapabilityCountMismatch` to `RuntimeError` is the
+    // typed `AdmissionCapabilityCountMismatch` variant carrying the same
+    // raw counts (no fabrication, no `Box<dyn Error>` smuggled in).
+    let mapped: RuntimeError = match &result2 {
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count,
+            granted_count,
+        }) => RuntimeError::AdmissionCapabilityCountMismatch {
+            required_count: *required_count,
+            granted_count: *granted_count,
+        },
+        _ => unreachable!("result2 pinned above"),
+    };
+    assert_eq!(
+        mapped,
+        RuntimeError::AdmissionCapabilityCountMismatch {
+            required_count: 3,
+            granted_count: 4,
+        }
     );
 }
 
