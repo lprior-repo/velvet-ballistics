@@ -61,7 +61,7 @@ pub enum ActionQueueError {
 /// Thread-safe bounded action completion queue.
 ///
 /// Tracks action completion tickets with a fixed capacity bound.
-/// Emits backpressure warnings when the queue reaches 80% capacity.
+/// Emits backpressure warnings when the queue reaches at least 80% capacity.
 #[derive(Debug)]
 pub struct BoundedActionCompletionQueue {
     inner: std::sync::Mutex<Inner>,
@@ -223,14 +223,25 @@ fn parse_capacity(capacity: usize) -> Result<ActionQueueCapacity, ActionQueueErr
     Ok(ActionQueueCapacity(capacity))
 }
 
+/// Returns the backpressure threshold for a given capacity.
+///
+/// The threshold is the smallest integer `>= capacity * 8 / 10` (ceiling of 80%),
+/// with a minimum of 1 so even a capacity-1 queue still emits a warning at depth 1.
+/// Uses checked arithmetic; if `capacity * 8` would overflow `usize`, the function
+/// falls back to `capacity` itself (which is already > the would-be threshold
+/// in any realistic capacity that could overflow).
 fn backpressure_threshold(capacity: ActionQueueCapacity) -> usize {
-    match capacity
-        .get()
-        .checked_mul(8)
-        .and_then(|scaled| scaled.checked_div(10))
-    {
-        Some(threshold) => threshold.max(1),
-        None => capacity.get(),
+    let raw = capacity.get();
+    // INVARIANT: ceiling division `ceil(raw * 8 / 10) = (raw * 8 + 9) / 10` is
+    // computed via checked arithmetic so that capacity values near `usize::MAX / 8`
+    // cannot wrap. On overflow we return `raw` (the original capacity) which is
+    // always >= any valid threshold for inputs the queue can hold.
+    let threshold = usize::checked_mul(raw, 8)
+        .and_then(|scaled| usize::checked_add(scaled, 9))
+        .and_then(|numerator| usize::checked_div(numerator, 10));
+    match threshold {
+        Some(value) => value.max(1),
+        None => raw,
     }
 }
 
@@ -485,28 +496,25 @@ mod unit_tests {
 
     #[test]
     fn action_queue_no_warning_at_79_percent_capacity() {
-        // Given: capacity=19, threshold = (19*8)/10 = 15 (integer division)
-        // At depth=15: 15/19 = 78.9% < 80%, so no warning
-        // At depth=16: 16/19 = 84.2% >= 80%, warning fires
+        // Given: capacity=19, threshold = ceil(19 * 8 / 10) = ceil(15.2) = 16.
+        // At depth=15: 15/19 = 78.9% < 80%, so no warning.
+        // At depth=16: 16/19 = 84.2% >= 80%, warning fires.
+        // Regression: previously the floor-division bug made threshold=15, which
+        // produced a misleading warning at 78.9% (RP-019 / bead vb-lxkqh).
         let capacity = 19;
         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
 
-        // Enqueue 15 items (78.9%) — threshold=15, depth=15 >= threshold → warning fires
-        // This exposes the integer-division rounding: actual 80% of 19 = 15.2, but we get threshold=15
+        // Enqueue 15 items (78.9%) — below the ceiling-of-80% threshold of 16.
         for i in 0..15 {
             queue.enqueue(make_ticket(i)).unwrap();
         }
 
-        // At depth=15 with threshold=15, warning fires (even though 15/19=78.9% < 80%)
-        // This is the integer-division edge case: the implementation rounds down the threshold
+        // Depth=15 < threshold=16 → no warning should be emitted.
         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
         assert_eq!(
             warning,
-            Ok(BackpressureWarning {
-                depth: 15,
-                capacity: 19
-            }),
-            "with integer-division threshold, warning fires at depth=15 (threshold=15)"
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout),
+            "no warning should fire below the ceiling-of-80% threshold (depth=15, threshold=16)"
         );
     }
 
@@ -639,5 +647,48 @@ mod unit_tests {
         }
         // If we get here without panic, the test passes
         assert_eq!(queue.len(), 8);
+    }
+    #[test]
+    fn backpressure_threshold_meets_documented_80_percent_vb_lxkqh() {
+        // Regression test for RP-019 (bead vb-lxkqh).
+        // The queue documents warnings at 80% capacity, so the threshold must be
+        // the *smallest* integer >= capacity * 8 / 10 (ceiling division), not the
+        // largest integer <= capacity * 8 / 10 (floor division). Floor division
+        // causes noisy and misleading backpressure signals for capacities where
+        // capacity * 8 is not a multiple of 10 (e.g. capacity=7 warns at 5, ~71%).
+        //
+        // For every c in `capacities`, the threshold must satisfy:
+        //   threshold(c) >= c * 4 / 5            (>= 80% in integer arithmetic)
+        //   threshold(c) >= ceil(c * 8 / 10)     (ceiling of 80%)
+        // and the minimum-1 clamp must hold for c = 1.
+        let capacities: &[usize] = &[1, 2, 3, 5, 7, 9, 10, 20, 100, 1_000];
+        for &c in capacities {
+            let threshold = backpressure_threshold(ActionQueueCapacity(c));
+            let floor_80pct = (c * 4) / 5;
+            let ceiling_80pct = (c * 8 + 9) / 10;
+            assert!(
+                threshold >= floor_80pct,
+                "threshold for capacity {c} must be >= 80% ({floor_80pct}); got {threshold}"
+            );
+            assert!(
+                threshold >= ceiling_80pct,
+                "threshold for capacity {c} must be >= ceil(80%) = {ceiling_80pct}; got {threshold}"
+            );
+        }
+
+        // Minimum-1 clamp must still apply: with capacity = 1, floor(1 * 8 / 10) = 0
+        // but the queue must still warn at depth 1 (the queue itself).
+        assert_eq!(backpressure_threshold(ActionQueueCapacity(1)), 1);
+
+        // Documented 80% on a capacity-100 queue must yield threshold == 80 exactly.
+        assert_eq!(backpressure_threshold(ActionQueueCapacity(100)), 80);
+
+        // The original floor-division bug returned 5 for capacity = 7 (7 * 8 / 10 = 5).
+        // Ceiling division must return 6 (7 * 8 / 10 = 5.6 -> 6).
+        let threshold_7 = backpressure_threshold(ActionQueueCapacity(7));
+        assert!(
+            threshold_7 >= 6,
+            "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
+        );
     }
 }
