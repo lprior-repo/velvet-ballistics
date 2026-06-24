@@ -257,21 +257,58 @@ impl StorageRuntimeJournal {
     }
 
     fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<JournalEvent> {
-        if let Some(storage_event) = Self::run_storage_event(event.clone(), seq) {
+        // Dispatch on `&event` so the full event is cloned at most once, by the
+        // matched arm that actually consumes it. The previous chain cloned the
+        // event three times before the real variant was determined.
+        let result = match &event {
+            RuntimeJournalEvent::RunSubmitted { .. }
+            | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::RunFinished { .. }
+            | RuntimeJournalEvent::RunFailed { .. }
+            | RuntimeJournalEvent::RunCancelled { .. }
+            | RuntimeJournalEvent::RunKilled { .. }
+            | RuntimeJournalEvent::StepStarted { .. }
+            | RuntimeJournalEvent::StepSucceeded { .. } => {
+                Ok(Self::run_storage_event(clone_for_dispatch(&event), seq))
+            }
+            RuntimeJournalEvent::ActionScheduled { .. }
+            | RuntimeJournalEvent::ActionCompleted { .. }
+            | RuntimeJournalEvent::ActionScheduledTicket { .. }
+            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+            | RuntimeJournalEvent::ActionFailed { .. } => {
+                Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
+            }
+            _ => Self::boundary_storage_event(clone_for_dispatch(&event), seq),
+        }?;
+        if let Some(storage_event) = result {
             return Ok(storage_event);
         }
-        if let Some(storage_event) = Self::action_storage_event(event.clone(), seq) {
-            return Ok(storage_event);
-        }
-        match Self::boundary_storage_event(event.clone(), seq)? {
-            Some(storage_event) => Ok(storage_event),
-            None => Ok(JournalEvent::RunFailedEvent {
-                run: event.run_id(),
-                seq,
-                attempt: 1,
-            }),
-        }
+        Ok(JournalEvent::RunFailedEvent {
+            run: event.run_id(),
+            seq,
+            attempt: 1,
+        })
     }
+}
+
+/// Counts the number of times `clone_for_dispatch` is invoked. Used by the
+/// `storage_event_clones_the_event_exactly_once_per_dispatch` regression test
+/// to assert that dispatching a `RuntimeJournalEvent` through `storage_event`
+/// performs exactly one full-event clone.
+#[cfg(test)]
+static STORAGE_EVENT_CLONE_COUNT: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// Clones a `RuntimeJournalEvent` for dispatch into one of the per-variant
+/// helpers. In test builds this also increments `STORAGE_EVENT_CLONE_COUNT`
+/// so the single-clone invariant is enforced by an executable assertion; in
+/// release builds it is a plain clone.
+fn clone_for_dispatch(event: &RuntimeJournalEvent) -> RuntimeJournalEvent {
+    #[cfg(test)]
+    {
+        STORAGE_EVENT_CLONE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
+    event.clone()
 }
 
 fn encoded_slot_taint_extra(

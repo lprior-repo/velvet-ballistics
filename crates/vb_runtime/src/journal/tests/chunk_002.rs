@@ -338,3 +338,101 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
         Ok(events) if matches!(events.as_slice(), [JournalEvent::RunFailedEvent { seq, attempt: 1, ..}] if *seq == EventSeq::new(0))
     ));
 }
+
+// ---------------------------------------------------------------------------
+// Regression test for bug-hunt RE-020: `storage_event` previously cloned the
+// full `RuntimeJournalEvent` three times before determining the matched
+// variant. The refactor dispatches on `&event` and clones exactly once, by
+// the matched arm, via the `clone_for_dispatch` helper which is instrumented
+// with `STORAGE_EVENT_CLONE_COUNT` in test builds. This test exercises one
+// variant from each of the three dispatch arms and asserts the counter
+// advances by exactly 1 per dispatch, and that the mapped `JournalEvent` is
+// correct. A 64 KiB payload is used to make the single-clone property
+// behaviorally meaningful (the old code would have copied the full payload
+// three times).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn storage_event_clones_the_event_exactly_once_per_dispatch() {
+    use std::sync::atomic::Ordering;
+
+    let run = RunId::new(101);
+    let workflow = WorkflowDigest::from_bytes([42; 32]);
+    let seq = EventSeq::new(7);
+
+    // Arm 1: run_storage_event (via RunAdmission).
+    let admission = crate::admission::RunAdmission::new(
+        workflow,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+    );
+    let run_admission_event = RuntimeJournalEvent::RunAdmission { admission };
+
+    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    let mapped = StorageRuntimeJournal::storage_event(run_admission_event, seq)
+        .expect("run-admission dispatch succeeds");
+    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert!(matches!(
+        mapped,
+        JournalEvent::RunAdmission {
+            run: mapped_run,
+            seq: mapped_seq,
+            artifact_digest: mapped_digest,
+            ..
+        } if mapped_run == run
+            && mapped_seq == seq
+            && mapped_digest == workflow
+    ));
+
+    // Arm 2: action_storage_event (via ActionScheduled).
+    let action_event = RuntimeJournalEvent::ActionScheduled {
+        run,
+        step: StepIdx::new(2),
+        action: ActionId::new(9),
+    };
+
+    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    let mapped = StorageRuntimeJournal::storage_event(action_event, seq)
+        .expect("action-scheduled dispatch succeeds");
+    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        mapped,
+        JournalEvent::ActionScheduled {
+            run,
+            seq,
+            step: StepIdx::new(2),
+            action: ActionId::new(9),
+            attempt: 1,
+        }
+    );
+
+    // Arm 3: boundary_storage_event (via SlotWritten with a large payload).
+    let large_payload: Vec<u8> = vec![0xAB; 64 * 1024];
+    let slot_written_event = RuntimeJournalEvent::SlotWritten {
+        run,
+        slot: SlotIdx::new(3),
+        value: large_payload,
+        taint: Taint::Clean,
+        extra: None,
+    };
+
+    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    let mapped = StorageRuntimeJournal::storage_event(slot_written_event, seq)
+        .expect("slot-written dispatch succeeds");
+    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert!(matches!(
+        &mapped,
+        JournalEvent::SlotWrittenEvent {
+            run: mapped_run,
+            seq: mapped_seq,
+            slot: mapped_slot,
+            value: Some(payload),
+            attempt: 1,
+            ..
+        } if mapped_run == &run
+            && mapped_seq == &seq
+            && mapped_slot == &SlotIdx::new(3)
+            && payload.len() == 64 * 1024
+    ));
+}
