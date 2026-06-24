@@ -65,7 +65,7 @@ impl TrimError {
     pub const fn diagnostic_code(&self) -> vb_core::DiagnosticCode {
         match self {
             Self::Fjall(_) => JournalError::FJALL_CODE,
-            Self::Journal(_) => JournalError::FJALL_CODE,
+            Self::Journal(inner) => inner.diagnostic_code(),
             Self::NoDurableSnapshot { .. } => Self::NO_DURABLE_SNAPSHOT_CODE,
             Self::RetentionPolicyBlocks { .. } => Self::RETENTION_POLICY_BLOCKS_CODE,
             Self::IncompleteTrim { .. } => Self::INCOMPLETE_TRIM_CODE,

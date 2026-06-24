@@ -73,7 +73,7 @@ impl FjallJournal {
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
             if key.len() < 17 {
-                continue;
+                return Err(TrimError::IncompleteTrim { deleted_count });
             }
             let slice = key
                 .get(9..17)
@@ -96,7 +96,7 @@ impl FjallJournal {
             }
         }
 
-        if deleted_count == 0 && policy.skip_noop_runs {
+        if deleted_count == 0 {
             return Ok(TrimmedRunResult {
                 run,
                 deleted_count: 0,
@@ -220,7 +220,9 @@ impl FjallJournal {
         for item in snap.prefix(&self.events, prefix_key) {
             let key = item.key().map_err(JournalError::from)?;
             if key.len() < 17 {
-                continue;
+                return Err(JournalError::from(TrimError::IncompleteTrim {
+                    deleted_count: count,
+                }));
             }
             let slice = key.get(9..17).ok_or_else(|| {
                 JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
