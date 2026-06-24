@@ -104,6 +104,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
         JournalWriteFailure { .. } => "JOURNAL_WRITE_FAILURE",
         ReplayCorruption { .. } => "REPLAY_CORRUPTION",
+        InvalidSpan { .. } => "INVALID_SPAN",
     }
 }
 

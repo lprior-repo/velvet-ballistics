@@ -116,7 +116,7 @@ pub use ids::{
     SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use policy::RuntimePolicy;
-pub use span::{Located, SourceMap, Span, Spanned};
+pub use span::{Located, SourceMap, Span, SpanError, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
