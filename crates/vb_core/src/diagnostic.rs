@@ -1070,6 +1070,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
+        symbolic: "JOURNAL_DUPLICATE_STAGED_KEY",
+        numeric: 0x4031,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
         symbolic: "JOURNAL_WRONG_RUN",
         numeric: 0x4008,
         category: CodeCategory::RuntimeBoundary,

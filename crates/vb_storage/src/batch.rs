@@ -216,16 +216,21 @@ impl<'j> JournalWriteBatch<'j> {
     /// # Invariant I20
     /// Duplicate event detection is enforced at `append_event` time by
     /// checking the journal's keyspace for already-committed events.
-    /// Same-batch idempotent inserts are allowed (duplicates within
-    /// the same batch are collapsed at commit time).
+    /// Same-batch duplicates (same `(run, seq)`) are rejected with
+    /// [`JournalError::DuplicateStagedKey`]. The key is added to
+    /// `staged_event_keys` after a successful insert so subsequent
+    /// appends with the same key are detected before the durable
+    /// Fjall lookup.
     ///
     /// # Guard Precedence (C6)
     /// 1. Key construction
-    /// 2. Durable duplicate check → aborts batch
-    /// 3. Count capacity check (QueueFull)
-    /// 4. Per-record encoding / payload size check (PayloadTooLarge)
-    /// 5. Accumulated byte admission check (JournalBatchBytesExceeded)
-    /// 6. Insert into inner OwnedWriteBatch
+    /// 2. Durable duplicate check → aborts batch (`DuplicateEvent`)
+    /// 3. Same-batch duplicate check (`DuplicateStagedKey`)
+    /// 4. Count capacity check (QueueFull)
+    /// 5. Per-record encoding / payload size check (PayloadTooLarge)
+    /// 6. Accumulated byte admission check (JournalBatchBytesExceeded)
+    /// 7. Insert into inner OwnedWriteBatch
+    /// 8. Record key into `staged_event_keys` after success
     ///
     /// # Preconditions (requires)
     /// - The batch is not already aborted.
@@ -233,9 +238,13 @@ impl<'j> JournalWriteBatch<'j> {
     /// - `event` payload is bounded by `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`.
     ///
     /// # Postconditions (ensures)
-    /// - On success: the event is staged in `inner`, `staged_bytes` is
+    /// - On success: the event is staged in `inner`, the key is
+    ///   recorded in `staged_event_keys`, and `staged_bytes` is
     ///   incremented by the full encoded record length.
     /// - On `DuplicateEvent`: batch is aborted, no state mutated.
+    /// - On `DuplicateStagedKey`: no state mutated, batch remains
+    ///   open. The caller can choose to commit the prior events
+    ///   without the duplicate, or roll back the batch.
     /// - On `QueueFull`: no state mutated, batch remains open.
     /// - On `PayloadTooLarge`: no state mutated.
     /// - On `JournalBatchBytesExceeded`: no state mutated,
@@ -245,6 +254,20 @@ impl<'j> JournalWriteBatch<'j> {
         if self.journal.events.contains_key(key)? {
             self.aborted = true;
             return Err(JournalError::DuplicateEvent {
+                run: event.run_id(),
+                seq: event.seq(),
+            });
+        }
+        // Same-batch duplicate guard (SA-003 fix).
+        //
+        // `journal.events.contains_key` only inspects the durable
+        // memtable; it cannot see entries staged into the current
+        // `OwnedWriteBatch` but not yet committed. Without this
+        // check, two `append_event` calls with the same `(run, seq)`
+        // would both pass the durable check and Fjall would
+        // silently overwrite the first value at commit time.
+        if self.staged_event_keys.contains(&key) {
+            return Err(JournalError::DuplicateStagedKey {
                 run: event.run_id(),
                 seq: event.seq(),
             });
@@ -260,7 +283,7 @@ impl<'j> JournalWriteBatch<'j> {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
 
-        // Byte admission check: guard 5 per C6 contract.
+        // Byte admission check: guard 6 per C6 contract.
         //
         // Uses checked_add to avoid overflow; overflow is rejected
         // with the same JournalBatchBytesExceeded error as a budget
@@ -286,6 +309,10 @@ impl<'j> JournalWriteBatch<'j> {
         }
 
         self.inner.insert(&self.journal.events, key, value);
+        // Record the key as staged so a subsequent append_event with
+        // the same `(run, seq)` is rejected before the durable
+        // lookup (DuplicateStagedKey fires).
+        self.staged_event_keys.insert(key);
         Ok(())
     }
 
@@ -1754,6 +1781,76 @@ mod byte_accounting_tests {
     // =====================================================================
     // B-GROUP-09: Duplicate Accounting Policy (C2)
     // =====================================================================
+
+    // SA-003 regression: same-batch duplicate `(run, seq)` is
+    // rejected with `DuplicateStagedKey`. Prior behavior silently
+    // allowed Fjall last-write-wins to drop the first event's
+    // value; the staged_event_keys HashSet now catches the
+    // collision before the durable lookup. Verifies that
+    //   1. the second append returns DuplicateStagedKey (not Ok),
+    //   2. the batch is NOT aborted (DuplicateEvent would abort,
+    //      but DuplicateStagedKey leaves the batch usable),
+    //   3. the first event remains durably committed after the
+    //      caller drops the rejection and commits.
+    #[test]
+    fn sa003_same_batch_duplicate_returns_duplicate_staged_key() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(14_003);
+        let event = make_event(run, 0);
+
+        let mut batch = JournalWriteBatch::new(&journal);
+        batch.append_event(&event).expect("first append must succeed");
+
+        let second = batch.append_event(&event);
+        assert!(
+            matches!(second, Err(JournalError::DuplicateStagedKey { .. })),
+            "same-batch duplicate must reject with DuplicateStagedKey, got {:?}",
+            second
+        );
+
+        // DuplicateStagedKey is a recoverable error: the batch
+        // must NOT be aborted, so the prior staged event survives
+        // and can still be committed.
+        assert_eq!(
+            batch.len(),
+            1,
+            "rejected duplicate must not stage a second event"
+        );
+        assert!(
+            !batch.is_empty(),
+            "batch must remain open after DuplicateStagedKey"
+        );
+
+        batch.commit().expect("commit must succeed after rejection");
+
+        // The durable state contains exactly one event for this run.
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(
+            replayed.len(),
+            1,
+            "duplicate must be rejected, not silently overwritten"
+        );
+        assert_eq!(replayed[0], event);
+    }
+
+    // SA-003 follow-up: distinct keys in the same batch are still
+    // accepted; only same-(run, seq) collisions are rejected.
+    #[test]
+    fn sa003_distinct_keys_in_same_batch_are_accepted() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(14_004);
+
+        let mut batch = JournalWriteBatch::new(&journal);
+        batch.append_event(&make_event(run, 0)).expect("seq 0");
+        batch.append_event(&make_event(run, 1)).expect("seq 1");
+        batch.append_event(&make_event(run, 2)).expect("seq 2");
+
+        assert_eq!(batch.len(), 3);
+        batch.commit().expect("commit must succeed");
+
+        let replayed = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(replayed.len(), 3, "all distinct keys must be persisted");
+    }
 
     #[test]
     fn cross_batch_duplicate_is_rejected_with_duplicate_event() {
