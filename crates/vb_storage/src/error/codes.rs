@@ -124,7 +124,15 @@ impl JournalError {
             Self::ReplayAllocationFailed { .. } => Self::REPLAY_ALLOCATION_FAILED_CODE,
             Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
-            Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
+            // SC-009 (vb-1rqz7.28): `JournalError::Trim(inner)` wraps a
+            // `TrimError`. Delegate to the inner error's diagnostic code so
+            // a journal-wrapped trim error still surfaces its underlying
+            // failure code (e.g. INCOMPLETE_TRIM, WRONG_RUN) instead of
+            // collapsing to the generic FJALL fallback. `TrimError::diagnostic_code`
+            // already delegates `TrimError::Journal(inner_journal_err) => inner_journal_err.diagnostic_code()`,
+            // so the chain `JournalError::Trim(TrimError::Journal(inner))` propagates
+            // `inner.diagnostic_code()` correctly.
+            Self::Trim(inner) => inner.diagnostic_code(),
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
             Self::MalformedKeyspaceRow { .. } => Self::MALFORMED_KEYSPACE_ROW_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
@@ -134,6 +142,18 @@ impl JournalError {
     /// Returns the stable symbolic diagnostic code for this error.
     #[must_use]
     pub fn symbolic_code(&self) -> SymbolicCode {
+        // SC-009 (vb-1rqz7.28): `JournalError::Trim(inner)` wraps a
+        // `TrimError`. Delegate to the inner error's symbolic code so a
+        // journal-wrapped trim error exposes the underlying registered
+        // symbolic name (e.g. JOURNAL_WRONG_RUN, JOURNAL_INCOMPLETE_TRIM)
+        // instead of collapsing to INTERNAL_INVARIANT via a non-registered
+        // fallback string.
+        if let Self::Trim(inner) = self {
+            return inner
+                .diagnostic_code()
+                .symbolic_code()
+                .unwrap_or(SymbolicCode::INTERNAL_INVARIANT);
+        }
         let s: &'static str = match self {
             Self::Fjall(_) => "FJALL_ERROR",
             Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
