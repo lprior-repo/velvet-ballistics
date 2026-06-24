@@ -83,6 +83,7 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
         IterationLimitExceeded { .. } => "ITERATION_LIMIT_EXCEEDED",
         RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
+        InvalidRepeatState { .. } => "INVALID_REPEAT_STATE",
         CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
         CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
         CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
