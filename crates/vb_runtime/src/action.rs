@@ -19,6 +19,10 @@ const MAX_REGISTERED_ACTIONS: usize = 65_535;
 pub struct ActionRegistry {
     slots: Vec<ActionSlot>,
     by_name: HashMap<ActionName, ActionId>,
+    // INVARIANT: equals the number of `Registered` slots in `slots`.
+    // Maintained incrementally in `register` (and only there) so `len()`
+    // returns in O(1) without re-scanning the slot vector.
+    registered_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +38,7 @@ impl ActionRegistry {
         Self {
             slots: Vec::new(),
             by_name: HashMap::new(),
+            registered_count: 0,
         }
     }
 
@@ -66,6 +71,10 @@ impl ActionRegistry {
         let contract_id = contract.id;
 
         self.write_empty_slot(slot, contract)?;
+        self.registered_count = self
+            .registered_count
+            .checked_add(1)
+            .ok_or(ActionError::DispatchFailed)?;
 
         // Register by name for lookup
         self.by_name.insert(contract_name, contract_id);
@@ -138,15 +147,13 @@ impl ActionRegistry {
     /// Returns the number of registered actions.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.slots.len()
+        self.registered_count
     }
 
     /// Returns true when no actions are registered.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.slots
-            .iter()
-            .all(|slot| matches!(slot, ActionSlot::Empty))
+        self.registered_count == 0
     }
 
     /// Returns registered action contracts in deterministic [`ActionId`] order.

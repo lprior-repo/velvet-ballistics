@@ -161,7 +161,8 @@ fn len_increases_after_register() {
     assert_eq!(registry.len(), 0);
     assert_eq!(registry.register(contract_fixture(1)), Ok(()));
     assert_eq!(registry.register(contract_fixture(5)), Ok(()));
-    assert_eq!(registry.len(), 6);
+    // RP-018: len() counts registered actions, not slot capacity.
+    assert_eq!(registry.len(), 2);
 }
 
 #[test]
@@ -219,8 +220,8 @@ fn action_registry_register_fills_gaps() {
     // Given a registry where action 10 is registered first
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(10)), Ok(()));
-    // Then len is 11 (slots 0..10)
-    assert_eq!(registry.len(), 11);
+    // Then len counts registered actions (RP-018), not slot capacity.
+    assert_eq!(registry.len(), 1);
     // And action 10 resolves correctly
     let resolved = registry.resolve_compile_time(ActionId::new(10));
     assert_eq!(resolved.map(|c| c.id), Ok(ActionId::new(10)));
@@ -394,8 +395,8 @@ fn action_registry_len_increases_with_gap() {
     // Given a registry with action 5
     let mut registry = ActionRegistry::new();
     assert_eq!(registry.register(contract_fixture(5)), Ok(()));
-    // Then len is 6 (slots 0..5)
-    assert_eq!(registry.len(), 6);
+    // Then len counts registered actions (RP-018), not slot capacity.
+    assert_eq!(registry.len(), 1);
 }
 
 #[test]
@@ -484,7 +485,8 @@ fn action_registry_register_max_action_id_does_not_overflow() {
     let result = registry.register(contract);
     // Then it succeeds (65534 < 65535 = MAX_REGISTERED_ACTIONS)
     assert_eq!(result, Ok(()));
-    assert_eq!(registry.len(), 65535);
+    // RP-018: len() counts registered actions, not slot capacity.
+    assert_eq!(registry.len(), 1);
 }
 
 #[test]
@@ -600,7 +602,8 @@ fn registered_contracts_returns_only_real_contracts_sorted_by_action_id() {
         listed,
         vec![ActionId::new(2), ActionId::new(5), ActionId::new(10)]
     );
-    assert_eq!(registry.len(), 11);
+    // RP-018: len() counts registered actions, not slot capacity.
+    assert_eq!(registry.len(), 3);
 }
 
 #[test]
@@ -817,4 +820,16 @@ fn validate_input_bytes_rejects_positive_limit_overflow() -> ActionResult<()> {
         })
     );
     Ok(())
+}
+
+
+#[test]
+fn len_counts_registered_actions_not_sparse_slots_vb_atmh2() {
+    // RP-018: ActionRegistry::len must report the number of registered
+    // actions, not the backing slot vector length. Registering a single
+    // high-id action must NOT make len() report (id + 1) slots.
+    let mut registry = ActionRegistry::new();
+    let high_id: u16 = 1000;
+    assert_eq!(registry.register(contract_fixture(high_id)), Ok(()));
+    assert_eq!(registry.len(), 1);
 }
