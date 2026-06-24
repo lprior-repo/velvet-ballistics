@@ -1191,3 +1191,79 @@ fn cat9_set_const_bool_evidence() -> Result<(), String> {
     }
     Ok(())
 }
+
+    // =====================================================================
+    // RE-001: Nested TogetherStart must be rejected at validation time
+    //
+    // Before this fix, `compute_max_parallel_in_flight` walked every
+    // `TogetherStart` once and returned the maximum branch count. A
+    // branch whose body contains another `TogetherStart` would silently
+    // share that high-water mark with the inner TogetherStart, yielding
+    // a misleading `ParallelLimitExceeded` at runtime even though no
+    // real concurrency limit had been exceeded (the runtime is
+    // deterministic-synchronous). The fix surfaces a typed
+    // `WorkflowError::NestedTogether` at validation time instead.
+    // =====================================================================
+
+    /// Validation must reject a workflow where a branch body of an outer
+    /// `TogetherStart` contains another `TogetherStart` node.
+    #[test]
+    fn validation_rejects_nested_together_start() -> Result<(), String> {
+        // Outer TogetherStart at id 0 with branches 1 and 3; join at 5.
+        // Branch 1's body begins at id 1 (Nop), then id 2 is an inner
+        // TogetherStart with branches 6,7 and join 5. The inner
+        // TogetherStart is reachable from the outer branch 1's body
+        // without crossing the outer join 5, so the workflow is
+        // nested and must be rejected.
+        let wf = mkwf(
+            vec![
+                tog(0, Box::from([1u16, 3]), 5),
+                nop(1, 2),
+                tog(2, Box::from([6u16, 7]), 5),
+                nop(3, 4),
+                nop(4, 5),
+                fin(5, 0),
+                fin(6, 0),
+                fin(7, 0),
+            ],
+            1,
+        );
+        match wf {
+            Ok(_) => Err(
+                "mkwf should have rejected nested TogetherStart with WorkflowError::NestedTogether"
+                    .into(),
+            ),
+            Err(msg) => {
+                if msg.contains("nested TogetherStart") {
+                    Ok(())
+                } else {
+                    Err(format!("expected NestedTogether, got: {msg}"))
+                }
+            }
+        }
+    }
+
+    /// Validation must continue to accept a workflow with two sibling
+    /// `TogetherStart` nodes (not nested).
+    #[test]
+    fn validation_accepts_sibling_together_starts() -> Result<(), String> {
+        // Two sibling TogetherStart nodes that are not reachable from
+        // each other's branch bodies: outer at id 0 with branches 1,2,
+        // join 3; sibling at id 4 with branches 5,6, join 7.
+        let wf = mkwf(
+            vec![
+                tog(0, Box::from([1u16, 2]), 3),
+                fin(1, 0),
+                fin(2, 0),
+                fin(3, 0),
+                tog(4, Box::from([5u16, 6]), 7),
+                fin(5, 0),
+                fin(6, 0),
+                fin(7, 0),
+            ],
+            1,
+        )?;
+        let _ = wf;
+        Ok(())
+    }
+}

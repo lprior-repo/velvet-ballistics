@@ -430,6 +430,19 @@ pub enum WorkflowError {
         /// Jump target creating the cycle.
         target: StepIdx,
     },
+    /// A `TogetherStart` node is reachable from the body of another
+    /// `TogetherStart` node. Nested parallel sections are rejected because
+    /// `compute_max_parallel_in_flight` reports a per-node maximum and
+    /// therefore cannot represent the true peak concurrency of nested
+    /// parallel branches, leading to spurious `ParallelLimitExceeded`
+    /// failures at runtime. Surface this at compile time instead.
+    #[error("nested TogetherStart: outer {outer:?} contains inner {inner:?}")]
+    NestedTogether {
+        /// The outer `TogetherStart` step that owns the branch body.
+        outer: StepIdx,
+        /// The inner `TogetherStart` step reachable from the outer branch.
+        inner: StepIdx,
+    },
 }
 
 /// Bounded postfix expression bytecode program.
@@ -748,6 +761,12 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_build_object_symbols(&parts.nodes, parts.symbols_count)?;
     validate_reachability(parts)?;
     validate_forward_edges(parts)?;
+    // RE-001: reject nested `TogetherStart`. Walked inline here (the
+    // helper lives in `crate::engine::validate` to avoid an
+    // engine->workflow dependency cycle) so `try_from_parts` rejects
+    // the shape at the source. The helper returns
+    // `WorkflowError::NestedTogether { outer, inner }`.
+    crate::engine::validate::validate_no_nested_together(parts)?;
     Ok(())
 }
 
