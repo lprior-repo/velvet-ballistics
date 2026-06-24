@@ -18,7 +18,7 @@ source_finding_ids, 0 orphan child IDs, 0 unaccounted finding IDs.
 
 | File | Contents | Size | Source |
 | --- | --- | --- | --- |
-| `children.json` | Raw `bd list` dump of all 156 children of `vb-kij9n` (155 bug + 1 wave-16 epic). 2.1 MB. | 2.1 MB | `/tmp/opencode/vb-kij9n-all-children.json` |
+| `children.json` | Raw dump of 156 records returned by the audit query for vb-kij9n: 155 records with `parent=vb-kij9n` (the confirmed bug children) plus 1 record `vb-og75k` (wave-16 closure epic) with `parent=vb-8muyy`. The wave-16 epic was included in the audit dump for completeness; its 155-vs-156 reconciliation is documented in steps 1-3 below. 2.1 MB. | 2.1 MB | `/tmp/opencode/vb-kij9n-all-children.json` |
 | `audit.json` | Structured invariants + per-check counts (status distribution, planner-session coverage, final_status coverage, duplicate detection). | 1.0 KB | `/tmp/opencode/vb-kij9n-audit.json` |
 | `all-231-finding-ids.txt` | The 231 finding IDs that the bug-hunt-2026-06-21 final adjudication actually audited (155 confirmed + 76 rejected = 231). | 1.6 KB | `/tmp/opencode/all-231-finding-ids.txt` |
 | `child-155-finding-ids.txt` | The 155 `source_finding_id` values present in the `children.json` metadata (i.e. the 155 confirmed child beads). | 1.1 KB | `/tmp/opencode/child-155-finding-ids.txt` |
@@ -50,7 +50,10 @@ The raw `children.json` is sufficient to verify every structural claim:
 # 1) Total child count: must equal 156
 jq 'length' .beads/vb-kij9n/evidence/children.json
 
-# 2) Unique child IDs: must equal 155 (one of the 156 is a wave-16 epic)
+# 2) Unique child IDs in the dump: must equal 156
+#    The dump contains 156 unique IDs (155 bug children with parent=vb-kij9n +
+#    1 wave-16 closure epic vb-og75k with parent=vb-8muyy). The 155 figure is
+#    the parent-filtered count from step 3.
 jq -r '.[].id' .beads/vb-kij9n/evidence/children.json | sort -u | wc -l
 
 # 3) Children with parent=vb-kij9n: must equal 155
@@ -85,7 +88,7 @@ comm -23 \
   <(sort .beads/vb-kij9n/evidence/all-231-finding-ids.txt)
 ```
 
-If all nine checks return 156, 155, 155, 155, a single value, a single value, 0, empty,
+If all nine checks return 156, 156, 155, 155, a single value, a single value, 0, empty,
 and empty respectively, the original close-reason claim is independently verified.
 
 ## Cross-reference
