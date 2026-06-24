@@ -57,6 +57,13 @@ pub fn drive_deterministic_full(
 ) -> RuntimeEngineResult<RuntimeSignal> {
     initialize_drive(run, plan)?;
 
+    // RE-004: thread a drive-state object through the loop so that
+    // emit_slot_evidence can record evidence gaps (read_slot errors)
+    // instead of silently swallowing them. The counter is owned by
+    // the loop body and never escapes the public drive_deterministic_full
+    // signature.
+    let mut drive_state = DriveState::new();
+
     loop {
         let Some(step) = begin_drive_step(plan, run, budget, evidence)? else {
             return Ok(RuntimeSignal::StepBudgetExhausted);
@@ -71,11 +78,55 @@ pub fn drive_deterministic_full(
             collect_states,
             granted,
         )?;
-        finish_drive_step(run, evidence, collect_states, step, &signal)?;
+        finish_drive_step(
+            run,
+            evidence,
+            collect_states,
+            step,
+            &signal,
+            &mut drive_state,
+        )?;
         match signal {
             RuntimeSignal::Continue => {}
             other => return Ok(other),
         }
+    }
+}
+
+/// Drive-loop state threaded through `finish_drive_step` and
+/// `emit_slot_evidence` so evidence gaps (read_slot errors) can be
+/// surfaced to the drive loop instead of silently swallowed.
+///
+/// RE-004: the original `if let Ok(value) = run.read_slot(slot)`
+/// pattern dropped both the slot evidence AND the underlying read
+/// error. `record_evidence_gap` is the typed channel that the
+/// drive loop owns; callers can later expose or log the counter
+/// without changing the public signature of `drive_deterministic_full`.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct DriveState {
+    evidence_gaps: u64,
+}
+
+impl DriveState {
+    /// Creates a fresh drive state with no recorded gaps.
+    #[must_use]
+    pub(crate) const fn new() -> Self {
+        Self { evidence_gaps: 0 }
+    }
+
+    /// Records one evidence gap. RE-004 calls this when
+    /// `emit_slot_evidence` cannot read the slot it would emit
+    /// evidence for. Saturates on overflow so this method is
+    /// always safe to call.
+    pub(crate) fn record_evidence_gap(&mut self) {
+        self.evidence_gaps = self.evidence_gaps.saturating_add(1);
+    }
+
+    /// Returns the total number of recorded evidence gaps.
+    #[must_use]
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) const fn evidence_gaps(&self) -> u64 {
+        self.evidence_gaps
     }
 }
 
@@ -116,6 +167,7 @@ fn finish_drive_step(
     collect_states: &CollectStates,
     step: DriveStep<'_>,
     signal: &RuntimeSignal,
+    drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
     // RE-011: emit slot evidence BEFORE committing the step state. If
     // emit fails (e.g. CollectEvidenceCapacityExceeded), the step must
@@ -123,7 +175,11 @@ fn finish_drive_step(
     // fail-closed Err rather than a half-committed Succeeded step.
     // Slot evidence is emitted regardless of signal class because slot
     // writes are observable even on AwaitingAction/AwaitingWait paths.
-    emit_slot_evidence(run, evidence, collect_states, step.node)?;
+    //
+    // RE-004: emit_slot_evidence now records a gap (and returns Ok) when
+    // the underlying read_slot fails, instead of silently dropping both
+    // the evidence and the error.
+    emit_slot_evidence(run, evidence, collect_states, step.node, drive_state)?;
     if signal_is_success(signal) {
         mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
         evidence
@@ -131,7 +187,8 @@ fn finish_drive_step(
             .map_err(RuntimeEngineError::Core)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
-        // no StepSucceeded event, but slot evidence above is still valid.
+        // no StepSucceeded event, but slot evidence above is still valid
+        // (or recorded as a gap if read_slot failed).
         mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
     }
     Ok(())
@@ -146,22 +203,43 @@ fn emit_slot_evidence(
     evidence: &mut EvidenceCollector,
     collect_states: &CollectStates,
     node: &CompiledNode,
+    drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
-    if let Some(slot) = collect_written_slot(node)
-        && let Ok(value) = run.read_slot(slot)
-    {
-        let extra = collect_states.capture_state(run.run_id(), slot);
-        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-        evidence
-            .push_slot_written_with_extra(slot, *value, taint, extra)
-            .map_err(RuntimeEngineError::Core)?;
-    } else if let Some(slot) = node.output
-        && let Ok(value) = run.read_slot(slot)
-    {
-        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-        evidence
-            .push_slot_written_with_taint(slot, *value, taint)
-            .map_err(RuntimeEngineError::Core)?;
+    // RE-004: surface read_slot errors via `record_evidence_gap` rather
+    // than silently swallowing them. The previous `if let Ok(value) =
+    // run.read_slot(slot)` pattern hid both the slot evidence AND the
+    // underlying read error; explicit `match` makes the gap observable
+    // to the drive loop without changing the function's public
+    // success/failure contract (a read failure is recorded as a gap and
+    // the step continues — capacity overflows and other push_* errors
+    // still propagate via `?`).
+    if let Some(slot) = collect_written_slot(node) {
+        match run.read_slot(slot) {
+            Ok(value) => {
+                let extra = collect_states.capture_state(run.run_id(), slot);
+                let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+                evidence
+                    .push_slot_written_with_extra(slot, *value, taint, extra)
+                    .map_err(RuntimeEngineError::Core)?;
+            }
+            Err(_) => {
+                drive_state.record_evidence_gap();
+                return Ok(());
+            }
+        }
+    } else if let Some(slot) = node.output {
+        match run.read_slot(slot) {
+            Ok(value) => {
+                let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+                evidence
+                    .push_slot_written_with_taint(slot, *value, taint)
+                    .map_err(RuntimeEngineError::Core)?;
+            }
+            Err(_) => {
+                drive_state.record_evidence_gap();
+                return Ok(());
+            }
+        }
     }
     Ok(())
 }
@@ -1515,5 +1593,137 @@ mod tests {
                 "RE-011: step 0 in unexpected state {other:?}; expected Running (pre-success, fail-closed)"
             )),
         }
+    }
+
+    /// RE-004 regression: when `emit_slot_evidence` cannot read the
+    /// slot it would emit evidence for, the function must surface the
+    /// failure via `record_evidence_gap` on the drive state and must
+    /// NOT push any evidence event. The previous `if let Ok(value) =
+    /// run.read_slot(slot)` pattern silently swallowed both the
+    /// evidence and the underlying read error.
+    #[test]
+    fn re_004_emit_slot_evidence_records_gap_on_read_slot_error() -> Result<(), String> {
+        use crate::engine::drive::{DriveState, emit_slot_evidence};
+
+        // A RunFrame with slot_count=2 but no writes leaves both slots
+        // uninitialized, so read_slot(SlotIdx::new(0)) returns
+        // SlotUninitialized. That is the "read_slot error" the fix
+        // surfaces.
+        let run = mkr(1, 2)?;
+        let mut evidence = EvidenceCollector::new();
+        let collect_states = CollectStates::new();
+        let mut drive_state = DriveState::new();
+
+        // CollectStart with output = Some(slot 0) routes through the
+        // `collect_written_slot` branch, which is the first place the
+        // pre-fix code silently dropped a SlotWritten event.
+        let node = collect_start(0, 0, 0, 0, 0);
+
+        let result = emit_slot_evidence(
+            &run,
+            &mut evidence,
+            &collect_states,
+            &node,
+            &mut drive_state,
+        );
+        if let Err(e) = result {
+            return Err(format!(
+                "RE-004: emit_slot_evidence must NOT propagate read_slot errors as gaps; got {e:?}"
+            ));
+        }
+
+        if drive_state.evidence_gaps() != 1 {
+            return Err(format!(
+                "RE-004: record_evidence_gap must increment to 1; got {}",
+                drive_state.evidence_gaps()
+            ));
+        }
+        if !evidence.is_empty() {
+            let events = evidence.drain();
+            return Err(format!(
+                "RE-004: no evidence must be emitted on a gap; got {events:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    /// RE-004 regression (output branch): nodes that fall through to
+    /// the `node.output` branch must also surface read_slot errors via
+    /// `record_evidence_gap` and must not emit evidence.
+    #[test]
+    fn re_004_emit_slot_evidence_records_gap_on_output_read_slot_error() -> Result<(), String> {
+        use crate::engine::drive::{DriveState, emit_slot_evidence};
+
+        let run = mkr(1, 2)?;
+        let mut evidence = EvidenceCollector::new();
+        let collect_states = CollectStates::new();
+        let mut drive_state = DriveState::new();
+
+        // setc has output = Some(slot 0) and a non-collect kind, so
+        // `collect_written_slot` returns None and the function takes
+        // the `node.output` branch.
+        let node = setc(0, 0, 0, 0);
+
+        let result = emit_slot_evidence(
+            &run,
+            &mut evidence,
+            &collect_states,
+            &node,
+            &mut drive_state,
+        );
+        if let Err(e) = result {
+            return Err(format!(
+                "RE-004: emit_slot_evidence must NOT propagate read_slot errors as gaps; got {e:?}"
+            ));
+        }
+        if drive_state.evidence_gaps() != 1 {
+            return Err(format!(
+                "RE-004: record_evidence_gap must increment to 1 on output-branch read failure; got {}",
+                drive_state.evidence_gaps()
+            ));
+        }
+        if !evidence.is_empty() {
+            let events = evidence.drain();
+            return Err(format!(
+                "RE-004: no evidence must be emitted on a gap (output branch); got {events:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    /// RE-004 positive control: when the slot IS initialized,
+    /// emit_slot_evidence pushes the SlotWritten event and does NOT
+    /// record a gap. Guards against an over-eager gap counter that
+    /// would fire on the happy path.
+    #[test]
+    fn re_004_emit_slot_evidence_does_not_record_gap_on_success() -> Result<(), String> {
+        use crate::engine::drive::{DriveState, emit_slot_evidence};
+
+        let mut run = mkr(1, 1)?;
+        ws(&mut run, 0, SlotValue::I64(42))?;
+        let mut evidence = EvidenceCollector::new();
+        let collect_states = CollectStates::new();
+        let mut drive_state = DriveState::new();
+
+        let node = setc(0, 0, 0, 0);
+        emit_slot_evidence(
+            &run,
+            &mut evidence,
+            &collect_states,
+            &node,
+            &mut drive_state,
+        )
+        .map_err(|e| format!("RE-004: happy path must not error: {e:?}"))?;
+
+        if drive_state.evidence_gaps() != 0 {
+            return Err(format!(
+                "RE-004: happy path must not record a gap; got {}",
+                drive_state.evidence_gaps()
+            ));
+        }
+        if evidence.is_empty() {
+            return Err("RE-004: happy path must emit SlotWritten evidence".into());
+        }
+        Ok(())
     }
 }
