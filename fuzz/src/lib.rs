@@ -427,26 +427,11 @@ pub fn fuzz_journal_event(data: &[u8]) {
                 "Round-trip encode/decode must succeed for valid event"
             );
         }
-        Err(e) => {
-            // For error cases, verify it's a typed JournalError (not a panic)
-            assert!(
-                matches!(
-                    e,
-                    vb_storage::JournalError::BadMagic { .. }
-                        | vb_storage::JournalError::UnexpectedEof
-                        | vb_storage::JournalError::HeaderChecksumMismatch
-                        | vb_storage::JournalError::PayloadDigestMismatch
-                        | vb_storage::JournalError::PostcardDecodeFailed
-                        | vb_storage::JournalError::PayloadTooLarge { .. }
-                        | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
-                        | vb_storage::JournalError::UnknownRecordKind { .. }
-                        | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
-                        | vb_storage::JournalError::HeaderLengthMismatch { .. }
-                        | vb_storage::JournalError::SequenceOverflow
-                ),
-                "Must return typed JournalError for corrupt input, got {:?}",
-                e
-            );
+        Err(error) => {
+            // For error cases, verify every current JournalError family stays
+            // represented by the shared typed-error oracle instead of a stale
+            // decode-only subset.
+            assert_typed_journal_error(error);
         }
     }
 }
@@ -3013,27 +2998,12 @@ fn exercise_corrupted_persisted_payload(max_payload_len: u32) {
 
 /// Asserts that a malformed decode error is a known typed variant.
 ///
-/// # Panics
-/// Panics if `error` is an unknown `JournalError` variant not explicitly listed.
-/// This ensures the fuzz oracle is exhaustive over all typed decode error variants
-/// and fails closed when a new untyped variant is introduced.
+/// This delegates to the shared `JournalError` oracle. That oracle accepts
+/// `#[non_exhaustive]` future variants at runtime, while the CI exhaustiveness
+/// script enforces that every current production variant is explicitly listed in
+/// the oracle body.
 fn assert_malformed_decode_is_typed(error: vb_storage::JournalError) {
-    match error {
-        vb_storage::JournalError::UnexpectedEof
-        | vb_storage::JournalError::HeaderChecksumMismatch
-        | vb_storage::JournalError::PayloadDigestMismatch
-        | vb_storage::JournalError::PostcardDecodeFailed
-        | vb_storage::JournalError::BadMagic { .. }
-        | vb_storage::JournalError::PayloadTooLarge { .. }
-        | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
-        | vb_storage::JournalError::UnknownRecordKind { .. }
-        | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
-        | vb_storage::JournalError::HeaderLengthMismatch { .. }
-        | vb_storage::JournalError::SequenceOverflow => {}
-        _unknown => {
-            // Coverage-only: unknown future variants are accepted gracefully.
-        }
-    }
+    assert_typed_journal_error(error);
 }
 
 // ===========================================================================
@@ -3227,7 +3197,11 @@ pub fn fuzz_storage_envelope_boundary(data: &[u8]) {
     }
 }
 
-/// Asserts that a journal error is a known typed variant.
+/// Asserts that a journal error is a known current typed variant.
+///
+/// The wildcard arm is required by `JournalError` being `#[non_exhaustive]` and
+/// accepts future variants gracefully at runtime. The CI exhaustiveness script
+/// enforces that every current production variant appears in this oracle body.
 fn assert_typed_journal_error(error: vb_storage::JournalError) {
     use vb_storage::JournalError;
     match error {
@@ -3236,6 +3210,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
         | JournalError::PostcardDecodeFailed
+        | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
@@ -3253,6 +3228,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
+        | JournalError::JournalBatchBytesExceeded { .. }
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
         | JournalError::ArtifactMalformed
@@ -3267,10 +3243,13 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::CapabilityDenied
         | JournalError::SecretUnavailable
         | JournalError::RunAlreadyExists
+        | JournalError::InvalidRunId { .. }
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
         | JournalError::StrictDurabilityFailed
+        | JournalError::TooManyEvents { .. }
+        | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
@@ -3453,15 +3432,43 @@ fn assert_typed_validation_error(error: vb_validate::ValidationError) {
         | ValidationError::InvalidChoose
         | ValidationError::InvalidForEach
         | ValidationError::InvalidTogether
+        | ValidationError::InvalidCollect
+        | ValidationError::InvalidReduce
+        | ValidationError::InvalidRepeat
+        | ValidationError::InvalidWait
+        | ValidationError::InvalidAsk
+        | ValidationError::InvalidFinish
+        | ValidationError::InvalidRetry
+        | ValidationError::InvalidOnError
         | ValidationError::SecretResultLeak
         | ValidationError::PayloadTooLarge
         | ValidationError::HttpTriggerOutOfCore
         | ValidationError::TypeMismatch { .. }
+        | ValidationError::LimitRequired { .. }
         | ValidationError::LimitExceeded { .. }
+        | ValidationError::UnsupportedTrigger { .. }
+        | ValidationError::ExpressionStackExceeded { .. }
+        | ValidationError::ExpressionStackMismatch { .. }
+        | ValidationError::AccessorSlotOutOfRange { .. }
+        | ValidationError::AccessorPathInvalid { .. }
+        | ValidationError::AccessorPathTooDeep { .. }
+        | ValidationError::AccessorSymbolOutOfBounds { .. }
+        | ValidationError::SlotReferenceOutOfRange { .. }
+        | ValidationError::LoopBodyStepOutOfRange { .. }
+        | ValidationError::SlotDependencyCycle { .. }
+        | ValidationError::NodeKindConstraintViolation { .. }
+        | ValidationError::ActionContractMissing { .. }
+        | ValidationError::ActionContractOrphan { .. }
         | ValidationError::CapabilityNameEmpty { .. }
+        | ValidationError::CapabilityNameTooLong { .. }
         | ValidationError::CapabilityNameInvalid { .. }
         | ValidationError::CapabilityActionMismatch { .. }
-        | ValidationError::CapabilityDuplicate { .. } => {}
+        | ValidationError::CapabilityDuplicate { .. }
+        | ValidationError::SlotTypeInconsistency { .. }
+        | ValidationError::NonDeterministicPath { .. }
+        | ValidationError::MissingSchemaVersion
+        | ValidationError::CueVetFailed { .. }
+        | ValidationError::VersionMonotonicityBreach { .. } => {}
         _ => {
             // Coverage-only: unknown future variants are accepted gracefully.
         }

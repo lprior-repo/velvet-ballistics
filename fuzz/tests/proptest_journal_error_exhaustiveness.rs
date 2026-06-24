@@ -2,8 +2,9 @@
 //!
 //! For arbitrary bytes, `decode_record` must return `JournalError` variants
 //! matching the currently-defined production variants.
-//! The wildcard arm panics if any unlisted variant is encountered at runtime,
-//! ensuring new variants cannot silently pass.
+//! The wildcard arm panics if any unlisted `#[non_exhaustive]` future variant is
+//! generated at runtime. Static current-variant exhaustiveness is enforced by
+//! `scripts/check-error-exhaustiveness.sh`.
 
 use proptest::prelude::*;
 use vb_storage::JournalError;
@@ -55,15 +56,18 @@ proptest! {
     }
 }
 
-/// Asserts that a journal error is a known typed variant.
-/// Panics if an unknown variant is encountered (new production variant added
-/// without updating this match).
+/// Asserts that a journal error is a known current typed variant.
+///
+/// Panics if an unlisted `#[non_exhaustive]` future variant is generated at
+/// runtime. The CI exhaustiveness script enforces that every current production
+/// variant appears in this oracle body.
 fn assert_known_journal_error(error: JournalError) {
     match error {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
         | JournalError::PostcardDecodeFailed
+        | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
@@ -80,6 +84,7 @@ fn assert_known_journal_error(error: JournalError) {
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
+        | JournalError::JournalBatchBytesExceeded { .. }
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
         | JournalError::ArtifactMalformed
@@ -94,10 +99,13 @@ fn assert_known_journal_error(error: JournalError) {
         | JournalError::CapabilityDenied
         | JournalError::SecretUnavailable
         | JournalError::RunAlreadyExists
+        | JournalError::InvalidRunId { .. }
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
         | JournalError::StrictDurabilityFailed
+        | JournalError::TooManyEvents { .. }
+        | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }

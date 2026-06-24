@@ -52,6 +52,7 @@ tasks:
     deps:
       - 'panic-surface'
       - 'ignored-fallible-results'
+      - 'unsafe-audit'
     toolchains:
       - rust
     inputs:
@@ -80,6 +81,40 @@ tasks:
       - 'scripts/check-ignored-fallible-results.sh'
       - 'scripts/ignored-fallible-results.allow'
       - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  unsafe-audit:
+    script: |
+      set -euo pipefail
+      if ! command -v rg >/dev/null 2>&1; then
+        printf 'Missing required scanner: rg\n' >&2
+        exit 127
+      fi
+      mkdir -p target/static-audit
+      unsafe_pattern='(^|[^A-Za-z0-9_])unsafe[[:space:]]*(\{|fn\b|trait\b|impl\b|extern\b|\()'
+      log_file='target/static-audit/unsafe-audit.log'
+      if rg -n "$unsafe_pattern" crates --glob '*.rs' --glob '!**/tests/**' --glob '!**/benches/**' --glob '!**/examples/**' --glob '!**/fixtures/**' --glob '!**/verification/**' --glob '!**/kani*/**' >"$log_file"; then
+        cat "$log_file" >&2
+        printf 'Forbidden first-party unsafe construct found.\n' >&2
+        exit 1
+      else
+        rg_status="$?"
+        if [ "$rg_status" -eq 1 ]; then
+          :
+        else
+          cat "$log_file" >&2
+          printf 'Unsafe audit scan failed with rg status %s.\n' "$rg_status" >&2
+          exit "$rg_status"
+        fi
+      fi
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '.moon/tasks/all.yml'
+    outputs:
+      - 'target/static-audit/unsafe-audit.log'
     options:
       runInCI: true
 
@@ -193,6 +228,7 @@ tasks:
       - 'panic-surface'
       - 'workspace-assertions'
       - 'ignored-fallible-results'
+      - 'unsafe-audit'
     inputs:
       - '@globs(sources)'
       - '@globs(configs)'
@@ -334,12 +370,22 @@ tasks:
       run_logged target/supply-chain/audit.log timeout 2m rustup run nightly-2026-04-28 cargo audit --quiet
       run_logged target/supply-chain/deny.log timeout 5m rustup run nightly-2026-04-28 cargo deny check --hide-inclusion-graph
       run_logged target/supply-chain/vet.log timeout 5m rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked --verbose error
-      # Geiger is reporting-only: first-party unsafe is forbidden by workspace
-      # lints; transitive unsafe remains visible here and governed by vet/deny.
-      for package in vb_boundary_inventory vb_compile vb_core vb_doc vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballistics velvet-ballistics-workspace-tests; do
+      run_geiger() {
+        package="$1"
         package_target_dir="target/supply-chain/geiger/$package"
         mkdir -p "$package_target_dir"
-        CARGO_TARGET_DIR="$package_target_dir" timeout --kill-after=10s 90s rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown >"target/supply-chain/geiger/$package.md" 2>"target/supply-chain/geiger/$package.err" || true
+        if ! CARGO_TARGET_DIR="$package_target_dir" timeout --kill-after=10s 90s rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown >"target/supply-chain/geiger/$package.md" 2>"target/supply-chain/geiger/$package.err"; then
+          cat "target/supply-chain/geiger/$package.md"
+          cat "target/supply-chain/geiger/$package.err"
+          return 1
+        fi
+      }
+
+      # Geiger execution is fail-closed. First-party unsafe is also forbidden by
+      # workspace lints and the unsafe-audit task; transitive unsafe remains
+      # visible here and governed by vet/deny.
+      for package in vb_boundary_inventory vb_compile vb_core vb_doc vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballistics velvet-ballistics-workspace-tests; do
+        run_geiger "$package"
       done
       run_logged target/supply-chain/machete.log timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_compile crates/vb_core crates/vb_doc crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/workspace_tests
       # SKIPPED: vb_boundary_inventory is not published to crates.io so semver-checks cannot run
@@ -571,7 +617,14 @@ tasks:
       runInCI: false
 
   pgo-optimized-build:
-    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
+    script: |
+      set -euo pipefail
+      profile_data="$PWD/target/pgo/merged.profdata"
+      if [ ! -s "$profile_data" ]; then
+        printf 'Missing non-empty PGO profile data: %s\n' "$profile_data" >&2
+        exit 1
+      fi
+      RUSTFLAGS="-Cprofile-use=$profile_data -Dwarnings" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
     toolchains:
       - rust
     inputs:
@@ -589,7 +642,7 @@ tasks:
       mkdir -p target/moon-locks
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
     deps:
       - 'test'
       - 'lint-src'
@@ -599,7 +652,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     outputs:
-      - 'target/maxperf/release/**'
+      - 'target/maxperf/maxperf/**'
     options:
       runInCI: false
 
@@ -610,7 +663,7 @@ tasks:
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf-native
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
     deps:
       - 'test'
       - 'lint-src'
@@ -620,7 +673,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     outputs:
-      - 'target/maxperf-native/release/**'
+      - 'target/maxperf-native/maxperf/**'
     options:
       runInCI: false
 

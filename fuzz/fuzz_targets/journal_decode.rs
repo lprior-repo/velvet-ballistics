@@ -73,9 +73,11 @@ fuzz_target!(|data: &[u8]| {
     }
 });
 
-/// Assert that a journal error is a known typed variant (exhaustive match).
-/// Wildcard arm is for forward compatibility only — new variants added to
-/// JournalError must be added here to maintain exhaustive coverage.
+/// Assert that a journal error is a known current typed variant.
+///
+/// The wildcard arm is required by `JournalError` being `#[non_exhaustive]` and
+/// accepts future variants gracefully at runtime. The CI exhaustiveness script
+/// enforces that every current production variant appears in this oracle body.
 fn assert_typed_journal_error(error: vb_storage::JournalError) {
     use vb_storage::JournalError;
     match error {
@@ -84,6 +86,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
         | JournalError::PostcardDecodeFailed
+        | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
@@ -101,6 +104,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
+        | JournalError::JournalBatchBytesExceeded { .. }
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
         | JournalError::ArtifactMalformed
@@ -115,10 +119,13 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::CapabilityDenied
         | JournalError::SecretUnavailable
         | JournalError::RunAlreadyExists
+        | JournalError::InvalidRunId { .. }
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
         | JournalError::StrictDurabilityFailed
+        | JournalError::TooManyEvents { .. }
+        | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
