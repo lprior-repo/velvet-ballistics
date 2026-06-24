@@ -10,7 +10,7 @@ use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
-use super::{ReplayError, eval_expr_for_replay, slot_to_replay_err};
+use super::{ReplayError, eval_expr_for_replay, engine_to_replay_err};
 
 /// Typed non-deterministic suspension kind observed during replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,7 +199,7 @@ fn replay_collect_start(
     args: ReplayCollectStartArgs,
 ) -> Result<ReplayAction, ReplayError> {
     let list_id = read_list_slot(run, args.source)?;
-    let source_taint = run.read_taint(args.source).map_err(slot_to_replay_err)?;
+    let source_taint = run.read_taint(args.source).map_err(engine_to_replay_err)?;
     let page_size = replay_page_size(args.page_size)?;
     let item_limit = replay_item_limit(args.limit)?;
     if page_size > item_limit {
@@ -307,19 +307,19 @@ fn replay_collect_finish(
     node: &CompiledNode,
     collector_slot: SlotIdx,
 ) -> Result<ReplayAction, ReplayError> {
-    let value = *run.read_slot(collector_slot).map_err(slot_to_replay_err)?;
-    let taint = run.read_taint(collector_slot).map_err(slot_to_replay_err)?;
+    let value = *run.read_slot(collector_slot).map_err(engine_to_replay_err)?;
+    let taint = run.read_taint(collector_slot).map_err(engine_to_replay_err)?;
     let output = node.output.ok_or(ReplayError::Internal {
         reason: "CollectFinish node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     states.remove(collector_slot);
     advance_to_next(run, node).map(ReplayAction::Continue)
 }
 
 fn read_list_slot(run: &RunFrame, slot: SlotIdx) -> Result<ListId, ReplayError> {
-    match *run.read_slot(slot).map_err(slot_to_replay_err)? {
+    match *run.read_slot(slot).map_err(engine_to_replay_err)? {
         SlotValue::List(list) => Ok(list),
         _ => Err(ReplayError::Internal {
             reason: "collect slot was not list during replay",
@@ -377,7 +377,7 @@ fn write_collect_page(
             reason: "insert collect page failed during replay",
         })?;
     run.write_slot_with_taint(collector, SlotValue::List(page_id), taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     Ok(page_id)
 }
 
@@ -394,7 +394,7 @@ fn replay_nop(node: &CompiledNode, run: &mut RunFrame) -> Result<ReplayAction, R
     let next = node.next.ok_or(ReplayError::Internal {
         reason: "Nop node missing next step",
     })?;
-    run.set_pc(next).map_err(slot_to_replay_err)?;
+    run.set_pc(next).map_err(engine_to_replay_err)?;
     increment_replay_executed(run)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -412,7 +412,7 @@ fn replay_finish(run: &mut RunFrame, result: SlotIdx) -> Result<ReplayAction, Re
 }
 
 fn replay_jump(run: &mut RunFrame, target: StepIdx) -> Result<ReplayAction, ReplayError> {
-    run.set_pc(target).map_err(slot_to_replay_err)?;
+    run.set_pc(target).map_err(engine_to_replay_err)?;
     increment_replay_executed(run)?;
     Ok(ReplayAction::Continue(target))
 }
@@ -442,7 +442,7 @@ fn replay_set_const(
         reason: "SetConst node missing output slot",
     })?;
     run.write_slot(output, slot_value)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     let next = advance_to_next(run, node)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -459,12 +459,12 @@ fn replay_copy(
             reason: "unexpected error reading copy source slot",
         },
     })?;
-    let taint = run.read_taint(source).map_err(slot_to_replay_err)?;
+    let taint = run.read_taint(source).map_err(engine_to_replay_err)?;
     let output = node.output.ok_or(ReplayError::Internal {
         reason: "Copy node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     let next = advance_to_next(run, node)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -482,7 +482,7 @@ fn replay_eval_expr(
         reason: "EvalExpr node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     let next = advance_to_next(run, node)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -512,7 +512,7 @@ fn replay_build_object(
                 reason: "unexpected error reading build_object field slot",
             },
         })?;
-        let slot_taint = run.read_taint(*slot).map_err(slot_to_replay_err)?;
+        let slot_taint = run.read_taint(*slot).map_err(engine_to_replay_err)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
         entries.push(ObjectField {
             key: *key,
@@ -532,7 +532,7 @@ fn replay_build_object(
         reason: "BuildObject node missing output slot",
     })?;
     run.write_slot_with_taint(output, SlotValue::Object(handle), accumulated_taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     let next = advance_to_next(run, node)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -562,7 +562,7 @@ fn replay_build_list(
                 reason: "unexpected error reading build_list item slot",
             },
         })?;
-        let slot_taint = run.read_taint(*slot).map_err(slot_to_replay_err)?;
+        let slot_taint = run.read_taint(*slot).map_err(engine_to_replay_err)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
         values.push(value);
         index = index.checked_add(1).ok_or(ReplayError::Internal {
@@ -579,7 +579,7 @@ fn replay_build_list(
         reason: "BuildList node missing output slot",
     })?;
     run.write_slot_with_taint(output, SlotValue::List(handle), accumulated_taint)
-        .map_err(slot_to_replay_err)?;
+        .map_err(engine_to_replay_err)?;
     let next = advance_to_next(run, node)?;
     Ok(ReplayAction::Continue(next))
 }
@@ -588,7 +588,7 @@ fn advance_to_next(run: &mut RunFrame, node: &CompiledNode) -> Result<StepIdx, R
     let next = node.next.ok_or(ReplayError::Internal {
         reason: "node missing next step",
     })?;
-    run.set_pc(next).map_err(slot_to_replay_err)?;
+    run.set_pc(next).map_err(engine_to_replay_err)?;
     increment_replay_executed(run)?;
     Ok(next)
 }

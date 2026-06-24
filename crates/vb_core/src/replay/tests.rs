@@ -1744,14 +1744,59 @@ fn replay_error_handler_node_reports_unsupported_replay_kind() -> Result<(), Cor
 }
 
 #[test]
+fn ce_004_replay_invalid_program_counter_yields_typed_step_not_found() -> Result<(), CoreError> {
+    // CE-004 regression: invalid jump/branch targets produced by `run.set_pc`
+    // must surface as `ReplayError::StepNotFound { step }`, not collapse to
+    // the generic `Internal` variant. Reserve `Internal` for genuinely
+    // unexpected engine failures.
+    let invalid = super::engine_to_replay_err(CoreError::InvalidProgramCounter {
+        step: StepIdx::new(99),
+    });
+    assert_eq!(
+        invalid,
+        ReplayError::StepNotFound {
+            step: StepIdx::new(99),
+        },
+        "CE-004: invalid jump target must map to typed StepNotFound"
+    );
+    Ok(())
+}
+
+#[test]
+fn ce_004_engine_to_replay_err_reserves_internal_for_unexpected_failures() -> Result<(), CoreError> {
+    // CE-004 boundary: the converter must continue to route genuinely
+    // unexpected engine errors to `Internal` and must not silently
+    // promote them to `StepNotFound` or `SlotNotAvailable`.
+    let budget = super::engine_to_replay_err(CoreError::StepBudgetExhausted);
+    assert_eq!(
+        budget,
+        ReplayError::Internal {
+            reason: "unexpected engine error during replay",
+        },
+        "CE-004: non-slot, non-PC engine errors must still map to Internal"
+    );
+    let slot = super::engine_to_replay_err(CoreError::SlotOutOfBounds {
+        slot: SlotIdx::new(3),
+    });
+    assert_eq!(
+        slot,
+        ReplayError::SlotNotAvailable {
+            slot: SlotIdx::new(3),
+        },
+        "CE-004: slot errors must continue to map to SlotNotAvailable"
+    );
+    Ok(())
+}
+
+#[test]
 fn replay_slot_error_conversion_preserves_exact_slot_variants() -> Result<(), CoreError> {
-    let out_of_bounds = super::slot_to_replay_err(CoreError::SlotOutOfBounds {
+    let out_of_bounds = super::engine_to_replay_err(CoreError::SlotOutOfBounds {
         slot: SlotIdx::new(6),
     });
-    let uninitialized = super::slot_to_replay_err(CoreError::SlotUninitialized {
+    let uninitialized = super::engine_to_replay_err(CoreError::SlotUninitialized {
         slot: SlotIdx::new(7),
     });
-    let other = super::slot_to_replay_err(CoreError::StepBudgetExhausted);
+    let other = super::engine_to_replay_err(CoreError::StepBudgetExhausted);
 
     assert_eq!(
         out_of_bounds,

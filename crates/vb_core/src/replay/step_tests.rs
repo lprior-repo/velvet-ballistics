@@ -1431,6 +1431,59 @@ fn replay_jump_advances_pc_to_target() -> Result<(), CoreError> {
     Ok(())
 }
 
+#[test]
+fn ce_004_replay_jump_out_of_bounds_yields_typed_step_not_found() -> Result<(), CoreError> {
+    // CE-004 E2E regression: a Jump node whose target is outside the run
+    // frame's step array must reach the caller as `ReplayError::StepNotFound`,
+    // not collapse to the generic `Internal` variant.
+    let plan = make_plan(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Jump {
+                    target: StepIdx::new(1),
+                },
+                output: None,
+                next: None,
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                output: None,
+                next: None,
+            },
+        ],
+        vec![ConstValue::I64(0)],
+        vec![],
+    )?;
+
+    let step_count = plan.node_count();
+    let slot_count = plan.slot_count();
+    let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
+    let mut store = ValueStore::new();
+
+    // Drive `replay_jump` with an out-of-bounds target (99) directly to
+    // exercise the `set_pc` failure path without relying on workflow
+    // validation rejecting the plan.
+    let result = super::replay_jump(&mut run, StepIdx::new(99));
+    match result {
+        Ok(_) => Err(CoreError::InternalInvariantViolation {
+            reason: "replay_jump accepted out-of-bounds target",
+        }),
+        Err(ReplayError::StepNotFound { step }) if step == StepIdx::new(99) => Ok(()),
+        Err(_) => Err(CoreError::InternalInvariantViolation {
+            reason: "CE-004: out-of-bounds Jump must surface as typed StepNotFound",
+        }),
+    }
+}
+
 // ---- Suspend steps ----
 
 #[test]

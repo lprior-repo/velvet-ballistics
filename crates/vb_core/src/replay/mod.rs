@@ -127,8 +127,20 @@ impl ReplayExprStack {
 // Error conversion
 // ---------------------------------------------------------------------------
 
-fn slot_to_replay_err(e: EngineError) -> ReplayError {
+/// Replay-wide mapping from `EngineError` to `ReplayError`.
+///
+/// Routes evidence-bearing engine failures (slot bounds, uninitialized slots,
+/// invalid program counter) to typed `ReplayError` variants that preserve the
+/// offending slot/step index. Reserves `ReplayError::Internal` for genuinely
+/// unexpected failures so the variant retains its invariant: "this should
+/// never happen in a correct journal".
+///
+/// CE-004: invalid jump/branch targets produced by `run.set_pc` now surface
+/// as `ReplayError::StepNotFound { step }` instead of collapsing to
+/// `Internal`, preserving the offending step index.
+fn engine_to_replay_err(e: EngineError) -> ReplayError {
     match e {
+        EngineError::InvalidProgramCounter { step } => ReplayError::StepNotFound { step },
         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
         _ => ReplayError::Internal {
