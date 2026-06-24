@@ -475,6 +475,119 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
     Ok(())
 }
 
+// =========================================================================
+// SA-013: idempotency_evidence ownership parity between relaxed and checked
+// admission paths. Both paths must consume the same IdempotencyEvidence and
+// surface identical `idempotency_keyed` / `idempotency_attested` arrays in
+// the resulting proof.
+// =========================================================================
+
+#[test]
+fn sa013_relaxed_carries_idempotency_evidence_from_contracts() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let action = vb_core::ActionId::new(11);
+    let contract = vb_core::action::ActionContract {
+        id: action,
+        name: vb_core::action::ActionName::new("sa013-relaxed").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 2048,
+        timeout_ms: 1000,
+        idempotency: vb_core::action::Idempotency::IdempotentExternal,
+        side_effect: vb_core::action::SideEffect::Writes,
+        retry_safety: vb_core::action::RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
+    };
+
+    let artifact = submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::RuntimePolicy::Relaxed,
+        &[contract],
+    )
+    .map_err(|e| format!("submit_artifact_with_contracts(relaxed) failed: {e}"))?;
+
+    assert!(artifact.verification.idempotency_verified_claimed);
+    assert_eq!(artifact.verification.idempotency_keyed.as_ref(), &[action]);
+    assert_eq!(
+        artifact.verification.idempotency_attested.as_ref(),
+        &[action]
+    );
+    Ok(())
+}
+
+#[test]
+fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let action_a = vb_core::ActionId::new(13);
+    let action_b = vb_core::ActionId::new(14);
+    let build_contract = |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+        id,
+        name: vb_core::action::ActionName::new(name).unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 2048,
+        timeout_ms: 1000,
+        idempotency: vb_core::action::Idempotency::IdempotentExternal,
+        side_effect: vb_core::action::SideEffect::Writes,
+        retry_safety: vb_core::action::RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
+    };
+    let build_pure_contract = |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+        id,
+        name: vb_core::action::ActionName::new(name).unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 2048,
+        timeout_ms: 1000,
+        idempotency: vb_core::action::Idempotency::IdempotentExternal,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let relaxed_contracts = [
+        build_contract(action_a, "sa013-parity-relaxed-a"),
+        build_pure_contract(action_b, "sa013-parity-relaxed-b"),
+    ];
+    let journaled_contracts = [
+        build_contract(action_a, "sa013-parity-journaled-a"),
+        build_pure_contract(action_b, "sa013-parity-journaled-b"),
+    ];
+
+    let relaxed = submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::RuntimePolicy::Relaxed,
+        &relaxed_contracts,
+    )
+    .map_err(|e| format!("submit_artifact_with_contracts(relaxed) failed: {e}"))?;
+    let journaled = submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        vb_core::RuntimePolicy::Journaled,
+        &journaled_contracts,
+    )
+    .map_err(|e| format!("submit_artifact_with_contracts(journaled) failed: {e}"))?;
+
+
+    assert_eq!(
+        relaxed.verification.idempotency_keyed.as_ref(),
+        journaled.verification.idempotency_keyed.as_ref(),
+        "relaxed and journaled must surface identical idempotency_keyed arrays"
+    );
+    assert_eq!(
+        relaxed.verification.idempotency_attested.as_ref(),
+        journaled.verification.idempotency_attested.as_ref(),
+        "relaxed and journaled must surface identical idempotency_attested arrays"
+    );
+    Ok(())
+}
+
 #[test]
 fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
