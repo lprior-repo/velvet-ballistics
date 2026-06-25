@@ -428,13 +428,90 @@ fn apply_accounting_event(
     match event {
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionCompletedEvent { .. }
-        | JournalEvent::ActionFailedEvent { .. } => apply_simple_action_event(frame, tracker, event),
+        | JournalEvent::ActionFailedEvent { .. } => {
+            apply_simple_action_event(frame, tracker, event)
+        }
         JournalEvent::ActionScheduledTicket { .. } => {
             apply_action_scheduled_ticket_event(frame, tracker, event)
         }
         JournalEvent::ActionCompletedEnvelope { .. } => {
             apply_action_completed_envelope_event(frame, tracker, event)
         }
+        _ => classify_metadata_event(event),
+    }
+}
+
+fn apply_simple_action_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+) -> RecoveryResult<bool> {
+    match event {
+        JournalEvent::ActionScheduled { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            add_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        JournalEvent::ActionCompletedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_completed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        JournalEvent::ActionFailedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_failed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn apply_action_scheduled_ticket_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+) -> RecoveryResult<bool> {
+    let JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } = event else {
+        return Ok(false);
+    };
+    verify_action_ticket_event(*run, *ticket)?;
+    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+    if effect == ActionReplayEffect::Apply {
+        add_replay_parallel_in_flight(frame, ticket.step)?;
+    }
+    Ok(effect == ActionReplayEffect::Apply)
+}
+
+fn apply_action_completed_envelope_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+) -> RecoveryResult<bool> {
+    let JournalEvent::ActionCompletedEnvelope {
+        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
+    } = event
+    else {
+        return Ok(false);
+    };
+    let verified_digest =
+        verified_action_envelope_digest(*run, *ticket, *outcome, value, *encoded_len, *value_digest)?;
+    tracker.require_scheduled_ticket(*ticket, *output)?;
+    let effect = tracker.mark_completed_envelope_effect(
+        *ticket, *output, *encoded_len, *taint, verified_digest,
+    )?;
+    if effect == ActionReplayEffect::Apply {
+        sub_replay_parallel_in_flight(frame, ticket.step)?;
+    }
+    Ok(effect == ActionReplayEffect::Apply)
+}
+
+// VB-NOORE (wildcard elimination): explicit arms for every
+// JournalEvent variant so adding a new variant forces a
+// compile-time failure. The dispatcher routes action events
+// to dedicated helpers, so this classifier returns Ok(false)
+// for any action variant that ever reaches it (a defensive
+// belt-and-braces for the dispatcher's `_ =>` arm).
+fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
+    match event {
         JournalEvent::StepStarted { .. }
         | JournalEvent::StepSucceeded { .. }
         | JournalEvent::SlotWrittenEvent { .. }
@@ -444,20 +521,14 @@ fn apply_accounting_event(
         | JournalEvent::WaitResolvedEvent { .. }
         | JournalEvent::AskAnsweredEvent { .. }
         | JournalEvent::RetryScheduledEvent { .. } => Ok(true),
-        // VB-NOORE (wildcard elimination): explicit arms for every
-        // run-lifecycle / metadata variant so adding a new variant
-        // forces a compile-time failure rather than silently
-        // absorbing into `_ => Ok(false)`.
-        JournalEvent::RunAccepted { .. }
-        | JournalEvent::RunAdmission { .. }
-        | JournalEvent::RunCancelled { .. }
-        | JournalEvent::RunKilled { .. }
-        | JournalEvent::RunFinished { .. }
-        | JournalEvent::RunFailedEvent { .. }
-        | JournalEvent::RunResumed { .. }
-        | JournalEvent::RunRetried { .. }
-        | JournalEvent::RunAnswered { .. }
-        | JournalEvent::ActionAbandoned { .. } => Ok(false),
+        JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
+        | JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionCompletedEnvelope { .. }
+        | JournalEvent::ActionFailedEvent { .. } | JournalEvent::ActionAbandoned { .. }
+        | JournalEvent::RunAccepted { .. } | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunCancelled { .. } | JournalEvent::RunKilled { .. }
+        | JournalEvent::RunFinished { .. } | JournalEvent::RunFailedEvent { .. }
+        | JournalEvent::RunResumed { .. } | JournalEvent::RunRetried { .. }
+        | JournalEvent::RunAnswered { .. } => Ok(false),
     }
 }
 
