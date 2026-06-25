@@ -61,7 +61,6 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_proof_kernels": "vb_proof_kernels",
     "crates/vb_cli": "velvet-ballistics",
     "crates/vb_verification": "vb_verification",
-    "crates/vb_test_util": "vb_test_util",
     "crates/workspace_tests/idempotency_suite": "velvet-ballistics-idempotency-workspace-tests",
     "crates/workspace_tests": "velvet-ballistics-workspace-tests",
     "fuzz": "velvet-ballistics-fuzz",
