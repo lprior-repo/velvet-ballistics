@@ -8,7 +8,7 @@
 
 use proptest::prelude::*;
 use std::time::Duration;
-use vb_benchmark::{
+use xtask::benchmark_metadata::{
     baseline_within_budget, budget_utilization_percent, capture_metadata, latency_within_budget,
     result_exceeds_threshold,
 };

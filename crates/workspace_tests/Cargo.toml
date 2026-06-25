@@ -26,6 +26,7 @@ crc32c.workspace = true
 mio = { workspace = true, features = ["net", "os-poll"] }
 criterion.workspace = true
 crossbeam-queue.workspace = true
+fjall.workspace = true
 postcard.workspace = true
 proptest.workspace = true
 rand.workspace = true
@@ -33,6 +34,7 @@ rtrb.workspace = true
 saphyr.workspace = true
 serde.workspace = true
 tempfile.workspace = true
+thiserror.workspace = true
 toml.workspace = true
 xtask = { path = "../../xtask" }
 vb_compile = { path = "../vb_compile" }
@@ -43,12 +45,8 @@ vb_proof_kernels = { path = "../vb_proof_kernels" }
 vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
 vb_validate = { path = "../vb_validate" }
-vb_benchmark = { path = "../vb_benchmark" }
-vb_boundary_inventory = { path = "../vb_boundary_inventory" }
-vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
 vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
-vb_test_util = { path = "../vb_test_util" }
 
 [[test]]
 name = "vb_test_util_crate"
@@ -275,6 +273,10 @@ path = "tests/restate_sync_drr_scheduler_tests.rs"
 [[test]]
 name = "vb_8mdp_7_resource_admission_props"
 path = "tests/vb_8mdp_7_resource_admission_props.rs"
+
+[[test]]
+name = "vb_ko29_5_public_idempotency"
+path = "tests/vb_ko29_5_public_idempotency.rs"
 
 [[bench]]
 name = "rtrb"

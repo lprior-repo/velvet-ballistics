@@ -8,7 +8,7 @@
 //! Once the correct implementation is provided, all tests should pass.
 
 use std::time::Duration;
-use vb_benchmark::{
+use xtask::benchmark_metadata::{
     BenchmarkMetadata, EvidenceError, baseline_within_budget, budget_utilization_percent,
     capture_metadata, check_evidence_gate, latency_within_budget, result_exceeds_threshold,
 };

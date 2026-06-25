@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 13] = [
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 12] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
@@ -18,14 +18,9 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 13] = [
     ("crates/vb_verification", "vb_verification"),
     ("crates/vb_test_util", "vb_test_util"),
     (
-        "crates/workspace_tests/idempotency_suite",
-        "velvet-ballistics-idempotency-workspace-tests",
-    ),
-    (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
     ),
-    ("crates/vb_benchmark", "vb_benchmark"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
@@ -75,9 +70,7 @@ members = [
     "crates/vb_cli",
     "crates/vb_verification",
     "crates/vb_test_util",
-    "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
-    "crates/vb_benchmark",
 {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 "#

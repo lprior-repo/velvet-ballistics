@@ -1,17 +1,16 @@
-//! Standalone Kani verification crate for vb-rpch recovery functions.
+//! Kani verification harnesses for vb_storage recovery functions.
 //!
-//! This crate exists because Kani doesn't compile #[cfg(kani)] modules in
-//! dependencies. By placing harnesses here (in a leaf crate), we ensure
-//! vb_core and vb_storage are compiled with kani cfg set.
+//! These harnesses live here (instead of vb_verification leaf crate) to
+//! enable Kani to compile vb_storage with `#[cfg(kani)]` set.
 
 #![forbid(unsafe_code)]
 
 #[cfg(kani)]
 mod kani_harnesses {
     use vb_core::{RunId, StepIdx, WorkflowDigest};
-    use vb_storage::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
-    use vb_storage::recovery::types::RunSnapshot as VbRunSnapshot;
-    use vb_storage::{EventSeq, JournalEvent};
+    use crate::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
+    use crate::recovery::types::RunSnapshot as VbRunSnapshot;
+    use crate::{EventSeq, JournalEvent};
 
     // Newtype wrapper to bypass orphan rule: we can impl Arbitrary for our own types
     #[derive(kani::Arbitrary)]

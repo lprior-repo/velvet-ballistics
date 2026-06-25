@@ -17,10 +17,8 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
-    "crates/vb_test_util",
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
-    "crates/vb_benchmark",
 ];
 
 const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
@@ -58,7 +56,6 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
-    ("crates/vb_test_util", "vb_test_util"),
     (
         "crates/workspace_tests/idempotency_suite",
         "velvet-ballistics-idempotency-workspace-tests",
@@ -67,7 +64,6 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
     ),
-    ("crates/vb_benchmark", "vb_benchmark"),
 ];
 
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[

@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use vb_benchmark::{
+use xtask::benchmark_metadata::{
     BenchmarkMetadata, EvidenceError, IpcBenchmarkError, RecoveryBenchmarkError,
     RuntimeBenchmarkError, StorageBenchmarkError, YamlBenchmarkError, baseline_within_budget,
     budget_utilization_percent, check_evidence_gate, latency_within_budget,

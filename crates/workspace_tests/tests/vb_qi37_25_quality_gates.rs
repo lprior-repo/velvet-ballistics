@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 17] = [
+const MEMBERS: [(&str, &str); 16] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_core", "vb_core"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -22,14 +22,9 @@ const MEMBERS: [(&str, &str); 17] = [
     ("crates/vb_verification", "vb_verification"),
     ("crates/vb_test_util", "vb_test_util"),
     (
-        "crates/workspace_tests/idempotency_suite",
-        "velvet-ballistics-idempotency-workspace-tests",
-    ),
-    (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
     ),
-    ("crates/vb_benchmark", "vb_benchmark"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {

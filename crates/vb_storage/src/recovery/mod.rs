@@ -20,6 +20,9 @@ pub mod recover;
 pub mod replay;
 pub mod types;
 
+#[cfg(kani)]
+pub mod kani;
+
 #[cfg(test)]
 mod tests;
 

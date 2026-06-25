@@ -23,10 +23,8 @@ ACTIVE_MEMBERS = frozenset(
         "crates/vb_proof_kernels",
         "crates/vb_cli",
         "crates/vb_verification",
-        "crates/vb_test_util",
         "crates/workspace_tests/idempotency_suite",
         "crates/workspace_tests",
-        "crates/vb_benchmark",
     }
 )
 
@@ -66,7 +64,6 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_test_util": "vb_test_util",
     "crates/workspace_tests/idempotency_suite": "velvet-ballistics-idempotency-workspace-tests",
     "crates/workspace_tests": "velvet-ballistics-workspace-tests",
-    "crates/vb_benchmark": "vb_benchmark",
     "fuzz": "velvet-ballistics-fuzz",
 }
 EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballistics"}}

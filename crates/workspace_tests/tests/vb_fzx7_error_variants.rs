@@ -6,7 +6,7 @@
 //! # RED PHASE
 //! These tests COMPILE but FAIL because the implementation contains intentional bugs.
 
-use vb_benchmark::{
+use xtask::benchmark_metadata::{
     EvidenceError, IpcBenchmarkError, RecoveryBenchmarkError, RuntimeBenchmarkError,
     StorageBenchmarkError, YamlBenchmarkError,
 };

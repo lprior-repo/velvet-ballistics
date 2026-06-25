@@ -12,7 +12,6 @@ use std::path::{Path, PathBuf};
 
 /// Default first-party crates to scan when no globs are provided.
 const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
-    "vb_benchmark",
     "vb_compile",
     "vb_core",
     "vb_doc",

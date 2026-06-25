@@ -7,7 +7,7 @@
 //! These tests COMPILE but FAIL because the implementation contains intentional bugs.
 
 use std::time::Duration;
-use vb_benchmark::{
+use xtask::benchmark_metadata::{
     baseline_within_budget, budget_utilization_percent, latency_within_budget,
     result_exceeds_threshold,
 };

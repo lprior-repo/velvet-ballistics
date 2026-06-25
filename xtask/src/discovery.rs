@@ -39,7 +39,6 @@ fn parse_crates(metadata: &Metadata) -> Vec<CrateInfo> {
         .filter(|pkg| workspace_members.contains(pkg.id.repr.as_str()))
         .filter(|pkg| pkg.name != "xtask")
         .filter(|pkg| pkg.name != "workspace_tests")
-        .filter(|pkg| pkg.name != "vb_benchmark")
         .map(pkg_to_crate_info)
         .collect()
 }
