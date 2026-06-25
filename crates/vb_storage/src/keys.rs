@@ -442,6 +442,9 @@ fn sequenced_run_key(
     run: RunId,
     seq: EventSeq,
 ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+    if seq.get() == u64::MAX {
+        return Err(JournalError::SequenceOverflow);
+    }
     let mut key = ArrayVec::<u8, JOURNAL_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;
