@@ -12,6 +12,7 @@ impl JournalError {
     pub const DUPLICATE_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x4004);
     /// Diagnostic code for duplicate event staged in the same batch.
     pub const DUPLICATE_STAGED_KEY_CODE: DiagnosticCode = DiagnosticCode::new(0x4023);
+    pub const BATCH_ABORTED_CODE: DiagnosticCode = DiagnosticCode::new(0x4024);
     /// Diagnostic code for write lock poisoned.
     pub const WRITE_LOCK_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x4005);
     /// Diagnostic code for queue capacity zero.
@@ -108,7 +109,7 @@ impl JournalError {
             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
-            Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
+            Self::PostcardDecodeFailed{..} => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::PostcardDecodeError(_) => Self::POSTCARD_DECODE_ERROR_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
@@ -195,7 +196,7 @@ impl JournalError {
             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
             Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
             Self::UnexpectedEof => "UNEXPECTED_EOF",
-            Self::PostcardDecodeFailed => "POSTCARD_DECODE_FAILED",
+            Self::PostcardDecodeFailed{..} => "POSTCARD_DECODE_FAILED",
             Self::PostcardDecodeError(_) => "ARTIFACT_POSTCARD_SERIALIZE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",

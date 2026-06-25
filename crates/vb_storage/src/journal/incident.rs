@@ -170,38 +170,6 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
     events.last().map(event_to_lifecycle).unwrap_or(LifecycleState::Pending)
 }
 
-/// Map a single `JournalEvent` to the lifecycle state implied by that event.
-///
-/// Enumerates every known variant of `JournalEvent` so that adding a new
-/// variant produces a compile-time error in the defining crate.
-#[must_use]
-pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
-    match event {
-        JournalEvent::RunAccepted { .. } => LifecycleState::Active,
-        JournalEvent::RunAdmission { .. } => LifecycleState::Active,
-        JournalEvent::StepStarted { .. } => LifecycleState::Active,
-        JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
-        JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
-        JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
-        JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
-        JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
-        JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
-        JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
-        JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-        JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-        JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
-        JournalEvent::WaitResolvedEvent { .. } => LifecycleState::Active,
-        JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
-        JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
-        JournalEvent::RunKilled { .. } => LifecycleState::Cancelled,
-        JournalEvent::RunFinished { .. } => LifecycleState::Completed,
-        JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
-        JournalEvent::RunResumed { .. } => LifecycleState::Active,
-        JournalEvent::RunRetried { .. } => LifecycleState::Active,
-        JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
-        JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
-    }
-}
 
 /// Map a single `JournalEvent` to the lifecycle state implied by that event.
 #[must_use]
