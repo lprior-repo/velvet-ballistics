@@ -175,7 +175,8 @@ mod snapshot_tests {
         let result = journal.put_snapshot(&snapshot);
         assert!(
             matches!(result, Err(crate::JournalError::SequenceOverflow)),
-            "EventSeq::MAX snapshot must be rejected (SC-002), got {result:?}"
+            "put_snapshot must reject EventSeq::MAX sentinel (SC-002), got {:?}",
+            result
         );
     }
 
