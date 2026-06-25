@@ -2,20 +2,23 @@
 //! Single-step execution engine.
 
 use super::choose;
-use super::error_routing::{ErrorHandlerOutcome, route_error_handler};
+use super::error_routing::ErrorHandlerOutcome;
 use super::expr_eval;
 use super::node_helpers;
 use super::object_list;
 use crate::EngineSignal;
-use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPolicy};
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
-use crate::ids::ActionId;
 use crate::ids::{ExprIdx, SlotIdx, StepIdx};
 use crate::value::SlotValue;
-use crate::value::Taint;
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNodeKind, CompiledWorkflow};
+
+mod action_resume;
+
+pub use action_resume::{
+    journal_action_suspended, resume_action_completion, resume_action_failure,
+};
 
 pub fn step_once(
     plan: &CompiledWorkflow,
@@ -32,7 +35,7 @@ pub fn step_once(
         Err(error) => {
             run.mark_failed(pc)?;
             // Check if this step has an error handler.
-            match route_error_handler(plan, run, pc, &error)? {
+            match super::error_routing::route_error_handler(plan, run, pc, &error)? {
                 ErrorHandlerOutcome::Routed => {
                     // PC is now at the handler step. Continue execution.
                     return Ok(EngineSignal::Continue);

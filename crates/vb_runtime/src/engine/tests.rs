@@ -1739,8 +1739,18 @@ mod blackhat_engine {
     // Severity: Low-Medium. On resume, the drive loop re-marks the step.
     // =====================================================================
 
+    // BUG-PIN (BH-ENG-02): asserts the CURRENT BUGGY behavior where
+    // budget exhaustion leaves step 0 in stale Running state. The spec
+    // requires the step to be transitioned to a terminal state so that
+    // resume does not re-execute it. Production code does NOT do this;
+    // this test pins the gap so future drift is visible.
+    //
+    // TODO(close-reason vb-3p9f7): rewrite this test to assert that
+    // step 0's state after StepBudgetExhausted is NOT `Running`. When
+    // `mark_step_after_signal` is fixed to transition Running → terminal
+    // on budget exhaustion, remove the `_bug_pin_` suffix.
     #[test]
-    fn bh_eng_02_budget_exhaustion_leaves_step_in_running_state() {
+    fn bh_eng_02_budget_exhaustion_leaves_step_in_running_state_bug_pin() {
         let nop = CompiledNode {
             id: StepIdx::ZERO,
             output: None,
@@ -1790,8 +1800,20 @@ mod blackhat_engine {
     // whether the finished value was Clean, Secret, or DerivedFromSecret.
     // =====================================================================
 
+    // BUG-PIN (BH-ENG-04): asserts the CURRENT BUGGY behavior where
+    // `runtime_from_core` discards taint from `EngineSignal::Finished`,
+    // collapsing `Finished(_, Clean)` and `Finished(_, Secret)` to the
+    // same `RuntimeSignal::Finished`. The spec requires taint to be
+    // preserved so downstream consumers can distinguish Clean/Secret/
+    // DerivedFromSecret outcomes. Production `signal.rs:16` does NOT
+    // preserve taint; this test pins the gap.
+    //
+    // TODO(close-reason vb-3p9f7): rewrite this test to assert
+    // `clean_signal != secret_signal`. When `runtime_from_core` is
+    // patched to thread taint through Finished, remove the
+    // `_bug_pin_` suffix.
     #[test]
-    fn bh_eng_04_runtime_from_core_discards_taint_from_finished() {
+    fn bh_eng_04_runtime_from_core_discards_taint_from_finished_bug_pin() {
         let clean_signal =
             runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
         let secret_signal =

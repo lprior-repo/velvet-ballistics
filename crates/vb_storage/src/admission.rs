@@ -215,31 +215,17 @@ pub struct AcceptedArtifact {
 /// guarantees no reallocation occurs and the buffer is bounded to the
 /// policy bound (no dynamic growth).
 #[must_use]
-pub fn compute_policy_digest(workflow: &vb_core::CompiledWorkflow) -> vb_core::WorkflowDigest {
+pub fn compute_policy_digest(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<vb_core::WorkflowDigest, JournalError> {
     let bound = resource_contract_policy_bytes_bound();
     let mut contract_bytes: Vec<u8> = vec![0u8; bound];
-    let used_len = {
-        let used = postcard::to_slice(&workflow.resource_contract(), &mut contract_bytes)
-            .map_err(|_| JournalError::ArtifactMalformed);
-        match used {
-            Ok(used) => used.len(),
-            Err(_) => {
-                // Fallback: serialize the entire workflow parts and extract resource_contract field
-                // This should never fail as ResourceContract serializes without error
-                let parts = workflow.to_parts();
-                match postcard::to_slice(&parts.resource_contract, &mut contract_bytes) {
-                    Ok(used) => used.len(),
-                    Err(_) => {
-                        // Absolute fallback: use zero digest if serialization fails
-                        return vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-                    }
-                }
-            }
-        }
-    };
+    let used_len = postcard::to_slice(&workflow.resource_contract(), &mut contract_bytes)
+        .map_err(|_| JournalError::ArtifactMalformed)?
+        .len();
     contract_bytes.truncate(used_len);
     let hash = blake3::hash(&contract_bytes);
-    vb_core::WorkflowDigest::from_bytes(*hash.as_bytes())
+    Ok(vb_core::WorkflowDigest::from_bytes(*hash.as_bytes()))
 }
 
 /// Returns the maximum serialized size of a `ResourceContract` in bytes.
@@ -344,7 +330,7 @@ pub fn submit_artifact_with_contracts(
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow),
+                policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
@@ -391,7 +377,7 @@ pub fn submit_artifact_with_contracts(
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow),
+                policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),

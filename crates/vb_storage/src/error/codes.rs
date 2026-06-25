@@ -104,6 +104,13 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
+            // vb-l9jqs: the three typed variants below preserve their inner
+            // source error for diagnostics while still reporting as the
+            // structural-defect bucket so callers that pattern-match on the
+            // diagnostic code continue to observe the same 0x4017 value.
+            Self::WorkflowReconstruction(_) => Self::ARTIFACT_MALFORMED_CODE,
+            Self::CompiledIrReadback(_) => Self::ARTIFACT_MALFORMED_CODE,
+            Self::AdmissionAllocationFailed(_) => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
             Self::InvalidGateCount { .. } => Self::INVALID_GATE_COUNT_CODE,
             Self::MissingRequiredProofFlag { .. } => Self::MISSING_REQUIRED_PROOF_FLAG_CODE,
@@ -180,6 +187,11 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => "POSTCARD_DECODE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
+            // vb-l9jqs: typed variants preserve inner source while reporting
+            // the same symbolic code as the collapsed bucket they replaced.
+            Self::WorkflowReconstruction(_) => "ARTIFACT_MALFORMED",
+            Self::CompiledIrReadback(_) => "ARTIFACT_MALFORMED",
+            Self::AdmissionAllocationFailed(_) => "ARTIFACT_MALFORMED",
             Self::ArtifactChecksumMismatch => "ARTIFACT_CHECKSUM_MISMATCH",
             Self::InvalidGateCount { .. } => "INVALID_GATE_COUNT",
             Self::MissingRequiredProofFlag { .. } => "MISSING_REQUIRED_PROOF_FLAG",

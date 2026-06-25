@@ -160,19 +160,23 @@ mod snapshot_tests {
         assert!(loaded.taint.is_empty());
     }
 
+    // SC-002 / master §18: EventSeq::MAX is a reserved sentinel and must NOT
+    // be encodable. `put_snapshot` calls `run_snapshot_key` (which routes to
+    // `sequenced_run_key`); that encoder currently accepts MAX. When the
+    // encoder is patched to reject MAX, `put_snapshot` will return
+    // `Err(JournalError::SequenceOverflow)` and this test will pass.
     #[test]
-    fn snapshot_sequence_max_value_works() {
+    fn put_snapshot_rejects_event_seq_max_sentinel() {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(6);
         let digest = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
         let snapshot = make_snapshot(run, u64::MAX, digest);
 
-        journal.put_snapshot(&snapshot).expect("put at MAX seq should succeed");
-        let loaded = journal
-            .snapshot(run, EventSeq::MAX)
-            .expect("get should succeed")
-            .expect("should exist");
-        assert_eq!(loaded.seq, EventSeq::MAX);
+        let result = journal.put_snapshot(&snapshot);
+        assert!(
+            matches!(result, Err(crate::JournalError::SequenceOverflow)),
+            "EventSeq::MAX snapshot must be rejected (SC-002), got {result:?}"
+        );
     }
 
     #[test]

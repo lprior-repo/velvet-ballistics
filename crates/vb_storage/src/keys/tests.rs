@@ -488,12 +488,19 @@ fn run_event_key_with_zero_seq() -> Result<(), JournalError> {
     Ok(())
 }
 
+// SC-002 / master §18: EventSeq::MAX is a reserved sentinel and must NOT
+// be encodable. The decoder rejects it with `KeyDecodeError::ReservedSeqSentinel`
+// (`keys.rs:379-381`); the encoder must be symmetric and fail closed.
+// `sequenced_run_key` currently accepts MAX; this test pins the spec. When
+// the encoder is patched to return `Err(JournalError::SequenceOverflow)` for
+// MAX, this test will pass.
 #[test]
-fn run_event_key_with_max_values() -> Result<(), JournalError> {
-    let key = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX))?;
-    assert_eq!(&key[1..9], &u64::MAX.to_be_bytes());
-    assert_eq!(&key[9..], &u64::MAX.to_be_bytes());
-    Ok(())
+fn run_event_key_rejects_event_seq_max_sentinel() {
+    let result = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX));
+    assert!(
+        matches!(result, Err(JournalError::SequenceOverflow)),
+        "EventSeq::MAX must be rejected by encoder (SC-002), got {result:?}"
+    );
 }
 
 #[test]

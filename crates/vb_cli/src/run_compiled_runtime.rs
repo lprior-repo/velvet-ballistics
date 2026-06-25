@@ -146,10 +146,20 @@ pub(crate) fn store_compiled_artifact(
             return Err(CliExitCode::StorageError.into());
         }
     };
+    let policy_digest = match vb_storage::admission::compute_policy_digest(compiled) {
+        Ok(d) => d,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("policy digest computation failed: {e}"),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
     let artifact = vb_storage::admission::AcceptedArtifact {
         digest: compiled.digest(),
         source_digest: compiled.digest(),
-        policy_digest: vb_storage::admission::compute_policy_digest(compiled),
+        policy_digest,
         ir: ir_bytes,
         verification: vb_storage::admission::VerificationProof::new(
             compiled.digest(),

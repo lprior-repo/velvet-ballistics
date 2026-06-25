@@ -2,8 +2,8 @@ use super::step_once;
 use super::test_support::{ensure_equal, test_frame};
 use crate::EngineSignal;
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-use crate::value::{ConstValue, SlotValue};
-use crate::value_store::ValueStore;
+use crate::value::{ConstValue, SlotValue, Taint};
+use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
     WorkflowParts,
@@ -104,7 +104,18 @@ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
     )?;
 
     match *run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())? {
-        SlotValue::Object(_) => Ok(()),
+        SlotValue::Object(handle) => {
+            let fields = store.object(handle).map_err(|e| e.to_string())?;
+            ensure_equal(fields.len(), 1usize)?;
+            let field = fields
+                .first()
+                .copied()
+                .ok_or_else(|| String::from("missing object field"))?;
+            ensure_equal(
+                field,
+                ObjectField::clean(SymbolId::new(1), SlotValue::I64(100)),
+            )
+        }
         ref other => Err(format!("expected Object, got {other:?}")),
     }
 }
@@ -152,7 +163,19 @@ fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
     )?;
 
     match *run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())? {
-        SlotValue::List(_) => Ok(()),
+        SlotValue::List(handle) => {
+            let items = store.list(handle).map_err(|e| e.to_string())?;
+            ensure_equal(items.len(), 1usize)?;
+            let item = items
+                .first()
+                .copied()
+                .ok_or_else(|| String::from("missing list item"))?;
+            let tainted_item = store
+                .list_item_with_taint(handle, 0)
+                .map_err(|e| e.to_string())?;
+            ensure_equal(item, SlotValue::Bool(true))?;
+            ensure_equal(tainted_item, (SlotValue::Bool(true), Taint::Clean))
+        }
         ref other => Err(format!("expected List, got {other:?}")),
     }
 }
