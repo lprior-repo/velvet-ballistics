@@ -633,6 +633,7 @@ fn stable_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::NonIdempotentActionBlocked { .. } => "ReplayPolicyBlocked",
         RecoveryError::ReplayDivergence { .. }
         | RecoveryError::CorruptSnapshot { .. }
+        | RecoveryError::MissingSnapshot { .. }
         | RecoveryError::Journal(_)
         | RecoveryError::NoRecoveryData { .. }
         | RecoveryError::TerminalStateMismatch { .. }
@@ -650,6 +651,7 @@ fn exact_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::NonIdempotentActionBlocked { .. } => "NonIdempotentActionBlocked",
         RecoveryError::ReplayDivergence { .. } => "ReplayDivergence",
         RecoveryError::CorruptSnapshot { .. } => "CorruptSnapshot",
+        RecoveryError::MissingSnapshot { .. } => "MissingSnapshot",
         RecoveryError::Journal(_) => "Journal",
         RecoveryError::NoRecoveryData { .. } => "NoRecoveryData",
         RecoveryError::TerminalStateMismatch { .. } => "TerminalStateMismatch",
@@ -1007,7 +1009,7 @@ fn repeated_compiled_ir_digest_mismatch(
     })
 }
 
-fn repeated_missing_snapshot_as_corrupt(
+fn repeated_missing_snapshot_as_missing(
     run: RunId,
     seq: EventSeq,
 ) -> Result<CorruptReplayObservation, VbKyyfScenarioDiagnostic> {
@@ -1034,7 +1036,7 @@ fn repeated_missing_snapshot_as_corrupt(
         case_label: label,
         first_attempt: attempt()?,
         second_attempt: attempt()?,
-        expected_typed_error: "CorruptSnapshot",
+        expected_typed_error: "MissingSnapshot",
     })
 }
 
@@ -1439,8 +1441,8 @@ fn collect_bdd_kyyf_004() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     let actual_cases = vec![
         corrupt_replay_observation_or_unavailable(
             "corrupt-snapshot",
-            "CorruptSnapshot",
-            repeated_missing_snapshot_as_corrupt(run, EventSeq::new(4)),
+            "MissingSnapshot",
+            repeated_missing_snapshot_as_missing(run, EventSeq::new(4)),
         ),
         corrupt_replay_observation_or_unavailable(
             "sequence-gap",
