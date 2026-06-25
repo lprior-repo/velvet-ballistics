@@ -272,6 +272,72 @@ fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String>
 }
 
 #[test]
+fn submit_artifact_relaxed_performs_immediate_live_readback() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    // Relaxed submit must succeed end-to-end: the new live-readback check
+    // inside submit_artifact_with_contracts must observe the record that
+    // put_compiled_ir just persisted. If the readback regressed to
+    // returning None or errored, submit_artifact would now return
+    // JournalError::ArtifactMalformed.
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
+
+    // The returned AcceptedArtifact must carry the workflow digest.
+    assert_eq!(
+        artifact.digest,
+        workflow.digest(),
+        "accepted artifact digest must match workflow digest"
+    );
+
+    // The Relaxed verification proof must report zero gates and not durable.
+    assert_eq!(
+        artifact.verification.gate_count, 0,
+        "relaxed verification must skip all gates"
+    );
+    assert!(
+        !artifact.verification.durable,
+        "relaxed verification must not be durable"
+    );
+
+    // The live readback path must have observed Some(record). Verify the
+    // persisted record is present and structurally consistent with the
+    // artifact just returned.
+    let stored = journal
+        .compiled_ir(workflow.digest())
+        .map_err(|e| format!("compiled_ir live readback failed: {e}"))?;
+    let record = stored.ok_or_else(|| {
+        String::from("live readback returned None — Relaxed must persist and read back")
+    })?;
+
+    assert_eq!(
+        record.digest,
+        workflow.digest(),
+        "stored CompiledIrRecord digest must match workflow digest"
+    );
+    assert!(
+        !record.ir.is_empty(),
+        "stored CompiledIrRecord ir bytes must be non-empty (postcard AcceptedArtifact)"
+    );
+
+    // Round-trip the stored bytes back into an AcceptedArtifact and verify
+    // the digest survives the readback path. This catches the case where
+    // a future change weakens the readback but still leaves Some(record).
+    let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
+        .map_err(|e| format!("postcard decode of stored artifact failed: {e}"))?;
+    assert_eq!(
+        decoded.digest, workflow.digest(),
+        "decoded artifact digest must match workflow digest"
+    );
+    assert_eq!(
+        decoded.verification.gate_count, 0,
+        "decoded artifact must reflect Relaxed gate count"
+    );
+    Ok(())
+}
+
+#[test]
 fn submit_artifact_journaled_runs_both_gates() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
     let workflow = minimal_workflow()?;

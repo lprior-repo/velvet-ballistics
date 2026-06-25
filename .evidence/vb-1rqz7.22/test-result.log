@@ -1,0 +1,93 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)
+
+running 83 tests
+test admission::tests::all_valid_gates_pass_is_valid ... ok
+test admission::tests::gap_proof_flags_always_true_regardless_of_gate_count ... ok
+test admission::tests::gap_proof_flags_true_for_any_digest_value ... ok
+test admission::tests::gate_values_outside_range_fail_is_valid ... ok
+test admission::tests::is_valid_accepts_gate_fourteen ... ok
+test admission::tests::is_valid_accepts_gate_one ... ok
+test admission::tests::is_valid_accepts_gate_two ... ok
+test admission::tests::is_valid_rejects_gate_zero ... ok
+test admission::tests::verification_proof_new_initializes_empty_warnings ... ok
+test admission::tests::verification_proof_warnings_can_be_populated ... ok
+test admission::tests::verification_warning_clone_preserves_fields ... ok
+test admission::tests::verification_warning_equality_works ... ok
+test admission::tests::verification_warning_display_formats_gate_code_message ... ok
+test admission::tests::verification_warning_inequality_different_gate ... ok
+test codec::tests::kill_kind_admission::decode_journal_event_runkilled_passes_validation ... ok
+test admission::tests::policy_buffer_fits_canonical_resource_contract ... ok
+test codec::tests::kill_kind_admission::decode_journal_event_runkilled_zero_attempt_rejected ... ok
+test admission::tests::verification_warning_inequality_different_code ... ok
+test admission::tests::verification_warning_serde_roundtrip ... ok
+test admission::tests::verification_proof_serde_roundtrip ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_0_returns_false ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_40_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_50_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_51_returns_false ... ok
+test codec::tests::kill_kind_admission::kind_28_does_not_affect_known_kinds_elsewhere ... ok
+test codec::tests::kill_kind_admission::record_kind_run_killed_id_is_28 ... ok
+test codec::tests::kill_kind_admission::unknown_record_kind_value_0_returns_some_0 ... ok
+test codec::tests::kill_kind_admission::unknown_record_kind_value_28_returns_none ... ok
+test codec::tests::kill_kind_admission::unknown_record_kind_value_29_returns_none ... ok
+test codec::tests::kill_kind_admission::unknown_record_kind_value_known_returns_none_for_kind_1 ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_accepts_kind_27_with_journal_magic ... ok
+test codec::tests::kill_kind_admission::decode_record_runkilled_roundtrip ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_accepts_kind_10_with_journal_magic ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_accepts_kind_29_with_journal_magic ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_blob_28_returns_rejection ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_journal_event_28_returns_ok ... ok
+test codec::tests::kill_kind_admission::encode_record_runkilled_produces_valid_bytes ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_journal_event_29_returns_ok ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_rejects_kind_0_with_journal_magic ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_rejects_kind_9_with_journal_magic ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_rejects_unknown_magic ... ok
+test codec::tests::kill_kind_admission::validate_kind_family_snapshot_28_returns_rejection ... ok
+test codec::tests::kill_kind_admission::validate_known_kind_28_returns_ok ... ok
+test codec::tests::kill_kind_admission::validate_known_kind_accepts_kind_10 ... ok
+test codec::tests::kill_kind_admission::validate_known_kind_accepts_kind_29 ... ok
+test codec::tests::replay_integrity::kind_28_29_31_admission_for_journal_magic ... ok
+test error_tests::error_tests::admission_journal_failed_error_code ... ok
+test error_tests::error_tests::admission_journal_failed_variant_and_display ... ok
+test error_tests::error_tests::admission_required_variant_and_display ... ok
+test recovery::recovery_unit_tests::tests::apply_summary_event_run_admission_is_no_op ... ok
+test recovery::recovery_unit_tests::tests::recover_run_admission_from_events_returns_none_for_empty ... ok
+test recovery::recovery_unit_tests::tests::recover_run_admission_from_events_finds_latest ... ok
+test recovery::recovery_unit_tests::tests::recover_run_admission_from_events_returns_none_when_no_admission ... ok
+test recovery::replay::summary::tests::recover_run_admission_returns_latest_metadata_or_none ... ok
+test codec::tests::kill_kind_admission::decode_journal_event_runkilled_zero_run_rejected ... ok
+test recovery::replay::summary::tests::summary_events_cover_workflow_admission_retry_and_terminals ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_0xffff_returns_false ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_1_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_10_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_28_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_29_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_30_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_27_returns_true ... ok
+test codec::tests::kill_kind_admission::is_known_record_kind_3_returns_true ... ok
+test admission::tests::submit_artifact_journaled_roundtrip_bytes_match ... ok
+test admission::tests::submit_artifact_relaxed_persists_and_returns_artifact ... ok
+test admission::tests::submit_artifact_journaled_runs_both_gates ... ok
+test admission::tests::accepted_artifact_serde_roundtrip ... ok
+test admission::tests::relaxed_skips_gates_while_journaled_passes_them ... ok
+test admission::tests::compute_policy_digest_succeeds_and_yields_nonzero_digest ... ok
+test admission::tests::admit_compiled_artifact_succeeds_for_valid_workflow ... ok
+test admission::tests::admit_compiled_artifact_idempotent ... ok
+test admission::tests::sa013_relaxed_carries_idempotency_evidence_from_contracts ... ok
+test admission::tests::submit_artifact_rejects_failed_idempotency_contract ... ok
+test admission::tests::submit_artifact_carries_idempotency_evidence_from_contracts ... ok
+test admission::tests::sa013_relaxed_and_journaled_idempotency_evidence_parity ... ok
+test admission::tests::accepted_artifact_fields_are_populated ... ok
+test admission::tests::strict_and_journaled_have_same_gate_count ... ok
+test vb_2bok_durability_gate_tests::durability_gate_tests::bdd_duplicate_admission_is_idempotent ... ok
+test admission::tests::gap_submit_artifact_journaled_produces_unconditional_true_flags ... ok
+test admission::tests::submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability ... ok
+test admission::tests::submit_artifact_strict_is_durable ... ok
+test admission::tests::submit_artifact_relaxed_performs_immediate_live_readback ... ok
+
+test result: ok. 83 passed; 0 failed; 0 ignored; 0 measured; 1191 filtered out; finished in 0.03s
+
