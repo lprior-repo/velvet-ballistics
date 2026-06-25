@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use vb_boundary_inventory::boundary_inventory::{
+use xtask::boundary_inventory::{
     BoundaryClass, BoundaryInventory, BoundaryInventoryError, BoundaryRecordDraft, EvidenceKind,
     EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus, ThreatStatement,
     WorkspaceRoot, validate_inventory,

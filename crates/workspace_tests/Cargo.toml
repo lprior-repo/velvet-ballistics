@@ -44,6 +44,7 @@ vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
 vb_validate = { path = "../vb_validate" }
 vb_yaml = { path = "../vb_yaml" }
+xtask = { path = "../../xtask" }
 
 [[test]]
 name = "vb_test_util_crate"

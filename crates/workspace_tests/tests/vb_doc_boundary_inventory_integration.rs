@@ -4,19 +4,10 @@
 //! and vb_boundary_inventory (boundary inventory management) to ensure they
 //! work correctly together.
 
-use vb_boundary_inventory::boundary_inventory::{
+use xtask::boundary_inventory::{
     BoundaryClass, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts,
     ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner,
     ReviewStatus, ThreatStatement, WorkspaceRoot,
-};
-use vb_doc::evidence::{EvidenceIndex, EvidenceSupport};
-use vb_doc::reconcile::{
-    check_doc_taint_consistency, plan_taint_doc_reconciliation, scan_for_stale_clean_only_text,
-    validate_evidence_bounded_wording, validate_taint_vocabulary_consistency,
-};
-use vb_doc::{
-    ClaimKind, ConflictKind, DocReconcileError, EvidencePolicy, MasterDocSnapshot, PatchPlanStatus,
-    RequiredEvidence,
 };
 
 /// Helper to create a workspace root path.
@@ -112,7 +103,7 @@ fn doc_reconciliation_preserves_non_goals() {
     let plan = result.expect("should succeed");
     assert!(
         plan.preserved_non_goals
-            .contains(&vb_doc::PreservedNonGoal::ControlFlowTaintV1NonGoal)
+            .contains(&xtask::doc_reconcile::PreservedNonGoal::ControlFlowTaintV1NonGoal)
     );
 }
 
@@ -191,7 +182,7 @@ fn scan_detects_eval_expr_stale_phrase() {
     assert_eq!(
         err,
         DocReconcileError::StaleCleanOnlyTaintText {
-            node: vb_doc::ResolvedNode::EvalExpr,
+            node: xtask::doc_reconcile::ResolvedNode::EvalExpr,
             phrase: "Always Clean".to_owned(),
         }
     );
@@ -210,7 +201,7 @@ fn scan_detects_build_object_stale_phrase() {
     assert_eq!(
         err,
         DocReconcileError::StaleCleanOnlyTaintText {
-            node: vb_doc::ResolvedNode::BuildObject,
+            node: xtask::doc_reconcile::ResolvedNode::BuildObject,
             phrase: "no join of field taints".to_owned(),
         }
     );
@@ -229,7 +220,7 @@ fn scan_detects_build_list_stale_phrase() {
     assert_eq!(
         err,
         DocReconcileError::StaleCleanOnlyTaintText {
-            node: vb_doc::ResolvedNode::BuildList,
+            node: xtask::doc_reconcile::ResolvedNode::BuildList,
             phrase: "no join of item taints".to_owned(),
         }
     );
@@ -248,7 +239,7 @@ fn scan_detects_finish_without_taint() {
     assert_eq!(
         err,
         DocReconcileError::StaleCleanOnlyTaintText {
-            node: vb_doc::ResolvedNode::Finish,
+            node: xtask::doc_reconcile::ResolvedNode::Finish,
             phrase: "Finished(SlotValue)".to_owned(),
         }
     );
@@ -319,7 +310,7 @@ fn validate_vocabulary_returns_report_for_valid_lattice() {
     assert_eq!(report.lattice, vec!["Clean", "DerivedFromSecret", "Secret"]);
     assert_eq!(
         report.propagation_rule,
-        vb_doc::TaintVocabularyRule::JoinedDataFlowTaint
+        xtask::doc_reconcile::TaintVocabularyRule::JoinedDataFlowTaint
     );
     assert!(report.conflicts.is_empty());
 }
@@ -424,10 +415,10 @@ fn plan_reconciliation_includes_all_edit_types() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&vb_doc::PatchEdit::EvalExprJoin));
-    assert!(plan.edits.contains(&vb_doc::PatchEdit::BuildObjectJoin));
-    assert!(plan.edits.contains(&vb_doc::PatchEdit::BuildListJoin));
-    assert!(plan.edits.contains(&vb_doc::PatchEdit::FinishCarriesTaint));
+    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::EvalExprJoin));
+    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::BuildObjectJoin));
+    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::BuildListJoin));
+    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::FinishCarriesTaint));
 }
 
 #[test]
@@ -460,7 +451,7 @@ fn plan_reconciliation_target_is_master_doc() {
     let plan = result.expect("should not error");
     assert_eq!(
         plan.target,
-        vb_doc::PatchTarget::MasterDoc(master_doc_path())
+        xtask::doc_reconcile::PatchTarget::MasterDoc(master_doc_path())
     );
 }
 
@@ -645,19 +636,19 @@ fn scan_nodes_returns_all_expected_nodes() {
     assert!(
         report
             .scanned_nodes
-            .contains(&vb_doc::ResolvedNode::EvalExpr)
+            .contains(&xtask::doc_reconcile::ResolvedNode::EvalExpr)
     );
     assert!(
         report
             .scanned_nodes
-            .contains(&vb_doc::ResolvedNode::BuildObject)
+            .contains(&xtask::doc_reconcile::ResolvedNode::BuildObject)
     );
     assert!(
         report
             .scanned_nodes
-            .contains(&vb_doc::ResolvedNode::BuildList)
+            .contains(&xtask::doc_reconcile::ResolvedNode::BuildList)
     );
-    assert!(report.scanned_nodes.contains(&vb_doc::ResolvedNode::Finish));
+    assert!(report.scanned_nodes.contains(&xtask::doc_reconcile::ResolvedNode::Finish));
 }
 
 #[test]
@@ -667,11 +658,11 @@ fn classified_boundary_construction() {
         id: "boundary-1".into(),
         class: BoundaryClass::Ffi,
         source_path: std::path::PathBuf::from("/src/ffi.rs"),
-        exposure: vb_boundary_inventory::boundary_inventory::BoundaryExposure::none(),
+        exposure: BoundaryExposure::none(),
     };
 
     // When
-    let classified = vb_boundary_inventory::boundary_inventory::ClassifiedBoundary::new(input);
+    let classified = ClassifiedBoundary::new(input);
 
     // Then
     assert_eq!(classified.id, "boundary-1");
