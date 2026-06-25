@@ -1,11 +1,11 @@
 pub(crate) use std::path::PathBuf;
 
-pub(crate) use vb_doc::evidence::{EvidenceIndex, EvidenceSupport};
-pub(crate) use vb_doc::reconcile::{
+pub(crate) use xtask::doc_reconcile::evidence::{EvidenceIndex, EvidenceSupport};
+pub(crate) use xtask::doc_reconcile::reconcile::{
     plan_taint_doc_reconciliation, scan_for_stale_clean_only_text,
     validate_evidence_bounded_wording, validate_taint_vocabulary_consistency,
 };
-pub(crate) use vb_doc::{
+pub(crate) use xtask::doc_reconcile::{
     ClaimKind, ConflictKind, ContradictionReport, DocPatchPlan, DocReconcileError,
     EvidenceBoundedReport, EvidencePolicy, MasterDocSnapshot, PatchEdit, PatchPlanStatus,
     PatchTarget, PreservedNonGoal, RequiredEvidence, ResolvedNode, StalePhrase,

@@ -9,6 +9,15 @@ use xtask::boundary_inventory::{
     ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner,
     ReviewStatus, ThreatStatement, WorkspaceRoot,
 };
+use xtask::doc_reconcile::evidence::{EvidenceIndex, EvidenceSupport};
+use xtask::doc_reconcile::reconcile::{
+    check_doc_taint_consistency, plan_taint_doc_reconciliation, scan_for_stale_clean_only_text,
+    validate_evidence_bounded_wording, validate_taint_vocabulary_consistency,
+};
+use xtask::doc_reconcile::{
+    ClaimKind, ConflictKind, DocReconcileError, EvidencePolicy, MasterDocSnapshot, PatchPlanStatus,
+    RequiredEvidence,
+};
 
 /// Helper to create a workspace root path.
 fn workspace_root() -> std::path::PathBuf {

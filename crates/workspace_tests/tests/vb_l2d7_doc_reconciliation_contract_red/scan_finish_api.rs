@@ -6,7 +6,7 @@ fn check_doc_taint_consistency_reports_eval_expr_always_clean() {
     let text = "EvalExpr Always Clean";
 
     // When
-    let result = vb_doc::reconcile::check_doc_taint_consistency(text);
+    let result = xtask::doc_reconcile::reconcile::check_doc_taint_consistency(text);
 
     // Then
     assert_eq!(
@@ -24,7 +24,7 @@ fn check_doc_taint_consistency_returns_empty_report_for_joined_text() {
     let text = "EvalExpr output taint is join_taint over loaded slot taints.";
 
     // When
-    let result = vb_doc::reconcile::check_doc_taint_consistency(text);
+    let result = xtask::doc_reconcile::reconcile::check_doc_taint_consistency(text);
 
     // Then
     assert_eq!(

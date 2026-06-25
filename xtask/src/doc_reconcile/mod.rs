@@ -7,7 +7,11 @@
 
 use std::path::PathBuf;
 
-pub mod evidence;
+#[path = "../doc_evidence.rs"]
+pub mod evidence {
+    pub use crate::doc_evidence::evidence::EvidenceIndex;
+    pub use crate::doc_evidence::evidence::EvidenceSupport;
+}
 pub mod reconcile;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

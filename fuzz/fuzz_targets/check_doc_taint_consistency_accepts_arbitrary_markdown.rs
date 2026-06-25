@@ -1,8 +1,8 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use vb_doc::reconcile::check_doc_taint_consistency;
-use vb_doc::{DocReconcileError, ResolvedNode};
+use xtask::doc_reconcile::reconcile::check_doc_taint_consistency;
+use xtask::doc_reconcile::{DocReconcileError, ResolvedNode};
 
 fuzz_target!(|data: &[u8]| {
     let arbitrary = String::from_utf8_lossy(data);

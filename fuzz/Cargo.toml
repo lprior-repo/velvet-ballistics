@@ -46,7 +46,7 @@ vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
 # vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
 # vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }  # MISSING
-vb_doc = { path = "../crates/vb_doc" }
+xtask = { path = "../xtask" }
 crc32c = "0.6"
 anyhow = "1"
 
