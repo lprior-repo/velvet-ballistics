@@ -141,6 +141,10 @@ impl Shard {
             input,
             output,
         })?;
+        if let Err(error) = self.pending_action_insert(run, ticket) {
+            let _ = self.run_state_insert(run, state);
+            return Err(error);
+        }
         self.run_state_insert(run, state)?;
         Ok(())
     }

@@ -654,6 +654,10 @@ pub struct Shard {
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
+    /// In-flight `ActionTicket`s by run. Inserted when `await_action`
+    /// journal appends an `ActionScheduledTicket`; cleared when the
+    /// matching completion/failure/abandon event is journaled.
+    pub(crate) pending_actions: IndexMap<RunId, vb_core::action::ActionTicket>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,

@@ -102,6 +102,17 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this action.
         attempt: u16,
     },
+    /// Action was abandoned because the run was cancelled or killed
+    /// before the action boundary completed. Carries the full ticket
+    /// so recovery can deterministically finalize the step without
+    /// re-executing the external action. Master §45 Do-node "Resume"
+    /// sub-row requires this event.
+    ActionAbandoned {
+        /// Full ticket that was abandoned. All seven required
+        /// `ActionTicket` fields are preserved across the durability
+        /// boundary.
+        ticket: vb_core::action::ActionTicket,
+    },
     /// Wait was scheduled and the run suspended.
     WaitScheduled {
         /// Run identifier.
@@ -202,7 +213,8 @@ impl RuntimeJournalEvent {
             | Self::StepSucceeded { run, .. }
             | Self::Resumed { run, .. } => *run,
             Self::ActionScheduledTicket { ticket, .. }
-            | Self::ActionCompletedEnvelope { ticket, .. } => ticket.run,
+            | Self::ActionCompletedEnvelope { ticket, .. }
+            | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
         }
     }
@@ -351,23 +363,51 @@ impl RuntimeJournalConfig {
     }
 
     /// Builds a shared runtime journal for this profile.
-    #[must_use]
+    ///
+    /// Returns `Err(RuntimeError::UnsupportedDurabilityProfile { .. })`
+    /// for any future `DurabilityProfile` variant the runtime does not
+    /// yet implement. This replaces the prior silent downgrade to
+    /// `Volatile` (master §45 contract: missing transitions return a
+    /// typed error rather than silently absorbing into the
+    /// least-durable profile).
     pub fn shared_journal(
         self,
         journal: Arc<FjallJournal>,
         queue: Arc<JournalWriterQueue>,
-    ) -> SharedRuntimeJournal {
+    ) -> RuntimeResult<SharedRuntimeJournal> {
         match self.profile {
-            DurabilityProfile::Volatile => VolatileRuntimeJournal::shared(),
-            DurabilityProfile::Journaled => {
-                QueuedStorageRuntimeJournal::shared_journaled(journal, queue)
-            }
-            DurabilityProfile::Strict => StorageRuntimeJournal::shared_strict(journal),
-            // Handle any future DurabilityProfile variants as Volatile (safest fallback).
-            #[allow(unreachable_code)]
-            _ => VolatileRuntimeJournal::shared(),
+            DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+            DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+                journal, queue,
+            )),
+            DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+            #[allow(unreachable_patterns)]
+            _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+                profile_debug: format!("{:?}", self.profile),
+            }),
         }
     }
+
+    /// Compile-time exhaustiveness assertion for `shared_journal`.
+    #[allow(dead_code, unreachable_patterns)]
+    const _: () = {
+        fn _check_exhaustiveness(
+            profile: DurabilityProfile,
+            journal: std::sync::Arc<FjallJournal>,
+            queue: std::sync::Arc<JournalWriterQueue>,
+        ) -> RuntimeResult<SharedRuntimeJournal> {
+            match profile {
+                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+                    journal, queue,
+                )),
+                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+                    profile_debug: String::new(),
+                }),
+            }
+        }
+    };
 }
 
 impl RuntimeJournal for VolatileRuntimeJournal {

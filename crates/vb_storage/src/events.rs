@@ -138,6 +138,24 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Action was abandoned because the run was cancelled or killed
+    /// before the action boundary completed. Distinct from
+    /// `ActionFailedEvent` because no `ActionFailureCode` was ever
+    /// produced by the action — the suspension itself was terminated
+    /// by run-level cancellation. Master §45 Do-node "Resume" sub-row
+    /// requires this event so recovery can finalize the step without
+    /// re-running the external action.
+    ActionAbandoned {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket that was abandoned. Preserves all seven
+        /// required `ActionTicket` fields plus the journal position so
+        /// recovery can deterministically drop the pending action from
+        /// the resume queue without re-executing it.
+        ticket: ActionTicket,
+    },
     /// Slot was written during execution.
     SlotWrittenEvent {
         /// Run identifier.
@@ -311,6 +329,7 @@ impl JournalEvent {
             | Self::ActionScheduledTicket { run, .. }
             | Self::ActionCompletedEnvelope { run, .. }
             | Self::ActionFailedEvent { run, .. }
+            | Self::ActionAbandoned { run, .. }
             | Self::SlotWrittenEvent { run, .. }
             | Self::WaitScheduledEvent { run, .. }
             | Self::AskScheduledEvent { run, .. }
@@ -344,6 +363,7 @@ impl JournalEvent {
             | Self::ActionScheduledTicket { seq, .. }
             | Self::ActionCompletedEnvelope { seq, .. }
             | Self::ActionFailedEvent { seq, .. }
+            | Self::ActionAbandoned { seq, .. }
             | Self::SlotWrittenEvent { seq, .. }
             | Self::WaitScheduledEvent { seq, .. }
             | Self::AskScheduledEvent { seq, .. }
@@ -376,6 +396,7 @@ impl JournalEvent {
                 RecordKind::ActionCompleted
             }
             Self::ActionFailedEvent { .. } => RecordKind::ActionFailed,
+            Self::ActionAbandoned { .. } => RecordKind::ActionAbandoned,
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
@@ -454,7 +475,8 @@ impl JournalEvent {
             | Self::RunFailedEvent { attempt, .. }
             | Self::AskTimedOutEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
-            | Self::ActionCompletedEnvelope { ticket, .. } => Some(ticket.attempt),
+            | Self::ActionCompletedEnvelope { ticket, .. }
+            | Self::ActionAbandoned { ticket, .. } => Some(ticket.attempt),
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
             | Self::StepSucceeded { .. }
@@ -501,7 +523,8 @@ impl JournalEvent {
             | Self::RunFailedEvent { attempt, .. }
             | Self::AskTimedOutEvent { attempt, .. } => *attempt != 0,
             Self::ActionScheduledTicket { ticket, .. }
-            | Self::ActionCompletedEnvelope { ticket, .. } => ticket.attempt != 0,
+            | Self::ActionCompletedEnvelope { ticket, .. }
+            | Self::ActionAbandoned { ticket, .. } => ticket.attempt != 0,
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
             | Self::StepSucceeded { .. }

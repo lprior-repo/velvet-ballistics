@@ -42,7 +42,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::ActionScheduledTicket { .. } => {
             summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
         }
-        JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionFailedEvent { .. } => {
+        JournalEvent::ActionCompletedEvent { .. }
+        | JournalEvent::ActionFailedEvent { .. }
+        | JournalEvent::ActionAbandoned { .. } => {
             summary.actions_resolved = summary.actions_resolved.saturating_add(1);
         }
         JournalEvent::ActionCompletedEnvelope { .. } => {
@@ -185,6 +187,13 @@ fn apply_summary_event_checked(
         JournalEvent::ActionFailedEvent { action, step, .. } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
             tracker.mark_failed(*action, *step);
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionAbandoned { ticket, .. } => {
+            if !tracker.is_resolved(ticket.action, ticket.step) {
+                tracker.mark_failed(ticket.action, ticket.step);
+            }
             apply_summary_event(summary, event);
             Ok(())
         }
@@ -532,6 +541,9 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 self.record_action_failed(*action, *step)
             }
+            JournalEvent::ActionAbandoned { ticket, .. } => {
+                self.record_action_abandoned(*ticket)
+            }
             JournalEvent::ActionCompletedEnvelope {
                 run,
                 ticket,
@@ -686,7 +698,27 @@ impl FrameSeedAccumulator {
         if effect == ActionReplayEffect::Apply {
             self.summary.actions_scheduled = self.summary.actions_scheduled.saturating_add(1);
             self.pending_actions.insert((ticket.action, ticket.step));
+            // Master §45.18 Do-node: extend slot dimension to action
+            // output (and input) at schedule time so a crash before
+            // the completion envelope doesn't truncate the slot
+            // array. See sweep `vb-cc2my` / `vb-1rqz7.7`.
+            self.max_slot_idx = max_slot(self.max_slot_idx, output);
+            self.max_slot_idx = max_slot(self.max_slot_idx, input);
+            // The action's step is held `Running` while suspended;
+            // it must be visible in the recovered step dimension.
+            self.record_step(ticket.step, RecoveredStepState::Running);
         }
+        Ok(self)
+    }
+
+    fn record_action_abandoned(
+        mut self,
+        ticket: vb_core::ActionTicket,
+    ) -> RecoveryResult<Self> {
+        if !self.action_tracker.is_resolved(ticket.action, ticket.step) {
+            self.action_tracker.mark_failed(ticket.action, ticket.step);
+        }
+        self.pending_actions.remove(&(ticket.action, ticket.step));
         Ok(self)
     }
 
