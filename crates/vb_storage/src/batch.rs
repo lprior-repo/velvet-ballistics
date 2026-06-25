@@ -105,15 +105,40 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a compiled IR record into the batch.
+    ///
+    /// The IR bytes are verified against the claimed digest before staging
+    /// so a forged `CompiledIrRecord { digest, ir }` cannot be persisted
+    /// under the digest key (master §18 invariant 8: digest↔content binding).
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error.
     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        let key = compiled_ir_key(record.digest.as_bytes())?;
-        let value = encode_record(
+        if let Err(e) =
+            crate::journal::verify_content_digest(&record.ir, &record.digest.as_bytes())
+        {
+            self.aborted = true;
+            return Err(e);
+        }
+        let key = match compiled_ir_key(record.digest.as_bytes()) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_COMPILED_ARTIFACT,
             RecordKind::CompiledIr,
             0,
             record,
             MAX_COMPILED_IR_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.compiled_ir, key, value);
         Ok(())
     }

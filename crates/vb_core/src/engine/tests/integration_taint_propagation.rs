@@ -16,8 +16,8 @@ use crate::workflow::{
     ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use crate::action::ActionTicket;
-use crate::engine::{EngineSignal, eval_expr_with_store, resume_action_completion};
+use crate::action::{ActionTicket, compute_action_idempotency_key};
+use crate::engine::{EngineSignal, eval_expr_with_store, resume_action_completion, step_once};
 use crate::frame::RunFrame;
 
 // =============================================================================
@@ -38,6 +38,18 @@ where
 #[allow(dead_code)]
 fn test_store() -> ValueStore {
     ValueStore::new()
+}
+
+fn action_ticket(run: RunId, step: StepIdx, seq: SeqNo, action: ActionId) -> ActionTicket {
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        capacity: 1,
+    }
 }
 
 // =============================================================================
@@ -903,7 +915,10 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Nop,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
             },
             CompiledNode {
                 id: StepIdx::new(1),
@@ -927,16 +942,16 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;
+    let mut store = ValueStore::new();
+    let suspend = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
 
-    let ticket = ActionTicket {
-        run: RunId::new(1),
-        step: StepIdx::new(0),
-        seq: SeqNo::new(1),
-        action: ActionId::new(1),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
+    let ticket = action_ticket(
+        RunId::new(1),
+        StepIdx::new(0),
+        SeqNo::new(1),
+        ActionId::new(1),
+    );
 
     let (signal, _journal) = resume_action_completion(
         &workflow,
@@ -1782,7 +1797,10 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Nop,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
             },
             CompiledNode {
                 id: StepIdx::new(1),
@@ -1808,16 +1826,16 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;
+    let mut store = ValueStore::new();
+    let suspend = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
 
-    let ticket = ActionTicket {
-        run: RunId::new(1),
-        step: StepIdx::new(0),
-        seq: SeqNo::new(1),
-        action: ActionId::new(1),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
+    let ticket = action_ticket(
+        RunId::new(1),
+        StepIdx::new(0),
+        SeqNo::new(1),
+        ActionId::new(1),
+    );
 
     let (signal, _journal) = resume_action_completion(
         &workflow,
