@@ -185,6 +185,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
+        JournalEvent::ActionAbandoned { .. } => LifecycleState::Cancelled,
         JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
         JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
         JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
