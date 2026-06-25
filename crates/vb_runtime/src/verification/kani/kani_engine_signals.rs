@@ -19,7 +19,9 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 
 fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkflow> {
     let names: Box<[Box<str>]> = (0..nodes.len())
@@ -104,7 +106,10 @@ fn kani_drive_finished_signal_terminates_loop() {
     let is_ok = result.is_ok();
     match &result {
         Ok(RuntimeSignal::Finished(v)) => {
-            assert_eq!(*v, slot_value, "Finished must carry the slot value written before the drive");
+            assert_eq!(
+                *v, slot_value,
+                "Finished must carry the slot value written before the drive"
+            );
         }
         Ok(_other) => {
             kani::cover!(true, "unexpected_signal_on_finish");
@@ -202,11 +207,16 @@ fn kani_drive_continue_keeps_loop_running() {
     let is_ok = result.is_ok();
     match &result {
         Ok(RuntimeSignal::Finished(v)) => {
-            assert_eq!(*v, slot_value, "Final Finished must carry the correct slot value");
+            assert_eq!(
+                *v, slot_value,
+                "Final Finished must carry the correct slot value"
+            );
         }
         Ok(other) => {
-            assert!(!matches!(other, RuntimeSignal::Continue),
-                "drive must never return Continue to the caller");
+            assert!(
+                !matches!(other, RuntimeSignal::Continue),
+                "drive must never return Continue to the caller"
+            );
         }
         Err(_e) => {
             kani::cover!(true, "error_on_chain");

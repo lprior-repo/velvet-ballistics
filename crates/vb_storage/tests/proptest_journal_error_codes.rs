@@ -222,7 +222,7 @@ fn unexpected_eof_returns_correct_code() {
 
 #[test]
 fn postcard_decode_failed_returns_correct_code() {
-    let err = JournalError::PostcardDecodeFailed;
+    let err = JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint);
     assert_eq!(
         err.diagnostic_code(),
         DiagnosticCode::new(0x4015),
@@ -496,7 +496,7 @@ fn all_journal_error_codes_are_nonzero() {
         JournalError::HeaderChecksumMismatch,
         JournalError::PayloadDigestMismatch,
         JournalError::UnexpectedEof,
-        JournalError::PostcardDecodeFailed,
+        JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
         JournalError::InvalidEvent,
         JournalError::ArtifactMalformed,
         JournalError::ArtifactChecksumMismatch,

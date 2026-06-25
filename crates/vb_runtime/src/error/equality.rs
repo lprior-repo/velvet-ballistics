@@ -174,14 +174,39 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
 }
 
 fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    admission_capability_denied_eq(left, right)
+        || admission_capability_count_mismatch_eq(left, right)
+}
+
+fn admission_capability_denied_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
-            RuntimeError::AdmissionCapabilityDenied { action: la, required: lb, granted: lc },
-            RuntimeError::AdmissionCapabilityDenied { action: ra, required: rb, granted: rc },
+            RuntimeError::AdmissionCapabilityDenied {
+                action: la,
+                required: lb,
+                granted: lc,
+            },
+            RuntimeError::AdmissionCapabilityDenied {
+                action: ra,
+                required: rb,
+                granted: rc,
+            },
         ) => la == ra && lb == rb && lc == rc,
+        _ => false,
+    }
+}
+
+fn admission_capability_count_mismatch_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
         (
-            RuntimeError::AdmissionCapabilityCountMismatch { required_count: lc, granted_count: lg },
-            RuntimeError::AdmissionCapabilityCountMismatch { required_count: rc, granted_count: rg },
+            RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count: lc,
+                granted_count: lg,
+            },
+            RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count: rc,
+                granted_count: rg,
+            },
         ) => lc == rc && lg == rg,
         _ => false,
     }

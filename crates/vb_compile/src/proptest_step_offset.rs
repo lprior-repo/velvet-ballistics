@@ -16,8 +16,9 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
+use super::part_12::checked_step_offset;
+use crate::CompileError;
 use proptest::prelude::*;
-use vb_compile::mod_compile_lowering::part_03::checked_step_offset;
 use vb_core::ids::StepIdx;
 
 // ─────────────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ use vb_core::ids::StepIdx;
 
 /// Strategy for boundary u16 values near u16::MAX.
 /// Includes: u16::MAX-3, u16::MAX-2, u16::MAX-1, u16::MAX
-pub fn boundary_u16_strategy() -> impl Strategy<Value = u16> {
+fn boundary_u16_strategy() -> impl Strategy<Value = u16> {
     prop_oneof![
         Just(u16::MAX - 3),
         Just(u16::MAX - 2),
@@ -36,7 +37,7 @@ pub fn boundary_u16_strategy() -> impl Strategy<Value = u16> {
 }
 
 /// Strategy for offsets used in collect emission: {1, 2, 3}
-pub fn collect_offset_strategy() -> impl Strategy<Value = u8> {
+fn collect_offset_strategy() -> impl Strategy<Value = u16> {
     prop_oneof![Just(1), Just(2), Just(3)]
 }
 
@@ -55,13 +56,13 @@ proptest! {
             "field",
         );
 
-        let expected_sum = (id as u32) + (offset as u32);
+        let expected_sum = u32::from(id) + u32::from(offset);
 
-        if expected_sum <= u16::MAX as u32 {
+        if expected_sum <= u32::from(u16::MAX) {
             // Should succeed
             prop_assert!(result.is_ok(), "id + offset should succeed when <= u16::MAX");
             let new_id = result.unwrap();
-            prop_assert_eq!(new_id.get(), id + offset as u16, "new_id = id + offset");
+            prop_assert_eq!(u32::from(new_id.get()), expected_sum, "new_id = id + offset");
         } else {
             // Should return error
             prop_assert!(result.is_err(), "id + offset should error when > u16::MAX");
@@ -84,27 +85,26 @@ proptest! {
             "done",
         );
 
-        let sum = (id as u32) + (offset as u32);
+        let sum = u32::from(id) + u32::from(offset);
 
-        if sum > u16::MAX as u32 {
+        if sum > u32::from(u16::MAX) {
             // Must be error
             prop_assert!(result.is_err(), "overflow must return error");
 
             // Error variant must be StepIndexOutOfRange
             let err = result.unwrap_err();
-            prop_assert_eq!(err.0.len(), 1, "exactly one error");
             prop_assert!(
-                matches!(&err.0[0], vb_compile::CompileError::StepIndexOutOfRange { .. }),
-                "error is StepIndexOutOfRange"
+                matches!(err, CompileError::PrimitiveLoweringLimitExceeded { .. }),
+                "error is PrimitiveLoweringLimitExceeded"
             );
         }
     }
 
     /// PO-029 H2: Valid ids near boundary (u16::MAX - 3) with offset 3 succeed.
     #[test]
-    fn proptest_step_offset_max_minus_3() {
+    fn proptest_step_offset_max_minus_3(_unit in Just(())) {
         let id = u16::MAX - 3;
-        let offset: u8 = 3;
+        let offset: u16 = 3;
 
         let result = checked_step_offset(
             StepIdx::new(id),

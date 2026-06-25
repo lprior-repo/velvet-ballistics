@@ -66,7 +66,7 @@ fn assert_known_journal_error(error: JournalError) {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
-        | JournalError::PostcardDecodeFailed
+        | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }

@@ -302,7 +302,7 @@ fn all_journal_error_variants() -> Vec<JournalError> {
         JournalError::HeaderChecksumMismatch,
         JournalError::PayloadDigestMismatch,
         JournalError::UnexpectedEof,
-        JournalError::PostcardDecodeFailed,
+        JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
         JournalError::InvalidEvent,
         JournalError::ArtifactMalformed,
         JournalError::ArtifactChecksumMismatch,

@@ -14,17 +14,14 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
-use crate::primitives::together::{
-    together_start, together_branch, together_join,
-};
+use crate::primitives::together::{together_branch, together_join, together_start};
 
 /// Helper to create a RunFrame for testing.
 fn make_test_frame(slots: u16) -> Result<RunFrame, EngineError> {
-    RunFrame::new(RunId::new(0), StepIdx::new(0), 10, slots)
-        .map(|mut f| {
-            f.set_max_parallel_in_flight(256);
-            f
-        })
+    RunFrame::new(RunId::new(0), StepIdx::new(0), 10, slots).map(|mut f| {
+        f.set_max_parallel_in_flight(256);
+        f
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +109,8 @@ fn kani_together_branch_first_branch() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 assert_eq!(
-                    run.pc(), entry,
+                    run.pc(),
+                    entry,
                     "first branch must jump to entry without accumulation"
                 );
             }
@@ -122,10 +120,7 @@ fn kani_together_branch_first_branch() {
     }
 
     kani::cover!(true, "first_branch_without_accumulation_path");
-    kani::cover!(
-        run.pc() == entry,
-        "first_branch_jumps_to_entry"
-    );
+    kani::cover!(run.pc() == entry, "first_branch_jumps_to_entry");
 }
 
 /// PO-KANI-006: Proves that together_join reduces PIF and
@@ -148,7 +143,8 @@ fn kani_together_join_pif_reduction() {
 
     // Place a list in the accumulator to test join behavior
     let acc_list = vec![SlotValue::I64(1), SlotValue::I64(2)];
-    let acc_list_id = store.insert_list(acc_list.into_boxed_slice())
+    let acc_list_id = store
+        .insert_list(acc_list.into_boxed_slice())
         .expect("insert acc list");
     let accumulator = SlotIdx::new(3);
     run.write_slot(accumulator, SlotValue::List(acc_list_id))
@@ -181,10 +177,7 @@ fn kani_together_join_pif_reduction() {
     ) {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
-                assert_eq!(
-                    run.pc(), next_step,
-                    "join must continue to next step"
-                );
+                assert_eq!(run.pc(), next_step, "join must continue to next step");
                 // PIF should have been reduced
                 if pif_before >= branch_count {
                     assert_eq!(
@@ -200,10 +193,7 @@ fn kani_together_join_pif_reduction() {
     }
 
     kani::cover!(true, "join_pif_reduction_path");
-    kani::cover!(
-        run.pc() == next_step,
-        "join_advances_to_next_step"
-    );
+    kani::cover!(run.pc() == next_step, "join_advances_to_next_step");
     kani::cover!(
         run.parallel_in_flight() < pif_before,
         "pif_decreased_after_join"

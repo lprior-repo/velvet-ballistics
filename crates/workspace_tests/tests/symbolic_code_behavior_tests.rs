@@ -278,7 +278,7 @@ fn journal_error_all_symbolic_codes_are_registered() {
             actual: vb_core::ids::RunId::new(2),
         },
         JournalError::UnexpectedEof,
-        JournalError::PostcardDecodeFailed,
+        JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
     ];
     for error in &errors {
         let code = error.symbolic_code();

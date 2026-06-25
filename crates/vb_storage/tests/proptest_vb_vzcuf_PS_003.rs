@@ -71,7 +71,8 @@ proptest! {
             JournalError::QueueShutdown, JournalError::SequenceOverflow,
             JournalError::PayloadTooLarge { len: 1, max: 0 },
             JournalError::HeaderChecksumMismatch, JournalError::PayloadDigestMismatch,
-            JournalError::UnexpectedEof, JournalError::PostcardDecodeFailed,
+            JournalError::UnexpectedEof,
+            JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
             JournalError::InvalidEvent,
         ];
         for err in errors {

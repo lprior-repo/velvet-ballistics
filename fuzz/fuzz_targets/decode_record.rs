@@ -78,7 +78,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
-        | JournalError::PostcardDecodeFailed
+        | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }

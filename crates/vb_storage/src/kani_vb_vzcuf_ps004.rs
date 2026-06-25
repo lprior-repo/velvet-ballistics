@@ -87,7 +87,9 @@ mod kani_batch_state_ps004 {
         check_single_error(JournalError::HeaderChecksumMismatch);
         check_single_error(JournalError::PayloadDigestMismatch);
         check_single_error(JournalError::UnexpectedEof);
-        check_single_error(JournalError::PostcardDecodeFailed);
+        check_single_error(JournalError::PostcardDecodeFailed(
+            postcard::Error::DeserializeBadVarint,
+        ));
         check_single_error(JournalError::InvalidEvent);
         check_single_error(JournalError::ArtifactMalformed);
         check_single_error(JournalError::ArtifactChecksumMismatch);
@@ -132,7 +134,7 @@ mod kani_batch_state_ps004 {
             JournalError::HeaderChecksumMismatch => {}
             JournalError::PayloadDigestMismatch => {}
             JournalError::UnexpectedEof => {}
-            JournalError::PostcardDecodeFailed => {}
+            JournalError::PostcardDecodeFailed(_) => {}
             JournalError::InvalidEvent => {}
             JournalError::ArtifactMalformed => {}
             JournalError::ArtifactChecksumMismatch => {}

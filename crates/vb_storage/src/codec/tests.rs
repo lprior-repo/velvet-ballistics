@@ -91,7 +91,8 @@ fn encode_decode_roundtrip_journal_event_run_finished() -> Result<(), JournalErr
 
 #[test]
 fn encode_decode_roundtrip_journal_event_slot_written_with_value() -> Result<(), JournalError> {
-    let slot_bytes = postcard::to_allocvec(&vb_core::SlotValue::Bool(true))?;
+    let slot_bytes =
+        postcard::to_allocvec(&vb_core::SlotValue::Bool(true)).map_err(JournalError::Encode)?;
     let event = JournalEvent::SlotWrittenEvent {
         run: RunId::new(10),
         seq: EventSeq::new(3),
@@ -2115,7 +2116,8 @@ fn decode_rejects_old_schema_version_with_migration_required() -> Result<(), Jou
 fn every_event_variant_roundtrips_via_record_kind_method() -> Result<(), JournalError> {
     let run = RunId::new(42);
     let digest = WorkflowDigest::from_bytes([0xAA; DIGEST_BYTES]);
-    let slot_bytes = postcard::to_allocvec(&vb_core::SlotValue::Bool(true))?;
+    let slot_bytes =
+        postcard::to_allocvec(&vb_core::SlotValue::Bool(true)).map_err(JournalError::Encode)?;
 
     let events: Vec<JournalEvent> = vec![
         JournalEvent::RunAccepted {
@@ -2759,7 +2761,7 @@ fn decode_with_valid_header_but_garbage_payload_fails() -> Result<(), JournalErr
     let result =
         decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
-        matches!(result, Err(JournalError::PostcardDecodeFailed)),
+        matches!(result, Err(JournalError::PostcardDecodeFailed(_))),
         "garbage payload with valid header should yield PostcardDecodeFailed, got {:?}",
         result
     );

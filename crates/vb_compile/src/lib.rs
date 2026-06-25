@@ -37,10 +37,6 @@ mod proptest_choose_lowering;
 #[cfg(kani)]
 pub mod kani_finish_digest;
 
-// TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in bytecode_ast_parity.rs
-// #[cfg(test)]
-// mod property_tests;
-
 // Internal test modules (error variant completeness, together digest unit tests).
 #[cfg(test)]
 mod tests;

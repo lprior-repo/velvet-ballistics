@@ -29,6 +29,23 @@ mod kani;
 #[cfg(test)]
 mod tests;
 
+// vb-qb2k2: the stale aggregate `property_tests` module is retired because no
+// `property_tests.rs` or `property_tests/mod.rs` exists. Register the focused
+// lowering property suites here so they can exercise private lowering seams
+// without a silent disabled module declaration.
+#[cfg(test)]
+#[path = "proptest_body_dispatcher.rs"]
+mod proptest_body_dispatcher;
+#[cfg(test)]
+#[path = "proptest_collect.rs"]
+mod proptest_collect;
+#[cfg(test)]
+#[path = "proptest_error_parity.rs"]
+mod proptest_error_parity;
+#[cfg(test)]
+#[path = "proptest_step_offset.rs"]
+mod proptest_step_offset;
+
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
 // compile_source is needed by external integration tests.

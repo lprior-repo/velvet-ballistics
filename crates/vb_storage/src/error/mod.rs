@@ -24,7 +24,7 @@ pub enum JournalError {
     Fjall(#[from] fjall::Error),
     /// Binary encoding failed.
     #[error("journal event encoding failed: {0}")]
-    Encode(#[from] postcard::Error),
+    Encode(#[source] postcard::Error),
     /// Fixed-size key construction failed.
     #[error("journal key capacity exceeded")]
     KeyCapacity,
@@ -161,8 +161,8 @@ pub enum JournalError {
         actual_len: usize,
     },
     /// Postcard payload decode failed.
-    #[error("postcard payload decode failed")]
-    PostcardDecodeFailed,
+    #[error("postcard payload decode failed: {0}")]
+    PostcardDecodeFailed(#[source] postcard::Error),
     /// JournalEvent decoded from bytes is semantically invalid (run_id=0, seq overflow, or attempt=0).
     #[error("journal event is structurally encoded but semantically invalid")]
     InvalidEvent,

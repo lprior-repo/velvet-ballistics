@@ -129,7 +129,7 @@ fn journal_stage_observation(result: Result<(), JournalError>) -> ObservedAdmiss
                 causal_class: "workflow_source_digest_mismatch",
             })
         }
-        Err(JournalError::PostcardDecodeFailed) => ObservedAdmissionOutcome::Legacy(
+        Err(JournalError::PostcardDecodeFailed(_)) => ObservedAdmissionOutcome::Legacy(
             LegacyJournalObservation::PostcardAcceptedArtifactDecodeFailed,
         ),
         Err(_) => ObservedAdmissionOutcome::Legacy(
@@ -243,7 +243,7 @@ fn strict_submit_observation(
         Err(JournalError::PayloadDigestMismatch) => {
             ObservedAdmissionOutcome::Legacy(LegacyJournalObservation::PayloadDigestMismatch)
         }
-        Err(JournalError::PostcardDecodeFailed) => ObservedAdmissionOutcome::Legacy(
+        Err(JournalError::PostcardDecodeFailed(_)) => ObservedAdmissionOutcome::Legacy(
             LegacyJournalObservation::PostcardAcceptedArtifactDecodeFailed,
         ),
         Err(_) => ObservedAdmissionOutcome::Legacy(

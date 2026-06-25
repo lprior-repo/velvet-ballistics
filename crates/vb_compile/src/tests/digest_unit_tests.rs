@@ -12,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 use super::*;
+use vb_core::WorkflowDigest;
 use vb_yaml::ast::{ScalarValue, StepPrimitive};
 use vb_yaml::parse_workflow_source;
 

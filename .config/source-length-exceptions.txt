@@ -2,8 +2,6 @@
 # Format: <file_path>|<owner>|<split_bead>|<removal_plan>|<reason>
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
-# vb-b8i8f: cancel/kill lattice verification artifacts (added by bead vb-b8i8f)
-crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice Kani harness (380 lines); will split by proof obligation after landing.
 crates/vb_storage/src/codec/tests/kill_kind_admission.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f kill kind admission tests (486 lines); will split by test scenario after landing.
 crates/vb_storage/src/codec/tests/replay_integrity.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f replay integrity tests (321 lines); will split by test scenario after landing.
 crates/workspace_tests/tests/cancel_kill_lattice_props.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice property tests (378 lines); will split by property group after landing.
@@ -64,7 +62,6 @@ crates/vb_compile/src/type_taint.rs|lewis|vb-jpq7.47|split-or-retire-before-rele
 crates/vb_compile/src/type_taint/tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (854 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_compile/tests/v1_primitive_lowering.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1482 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_compile/tests/vb_a001_for_each_topology.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (438 lines); must be split by domain responsibility or retired before removing exception.
-crates/vb_core/src/action.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (2182 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_core/src/budget.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (2381 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_core/src/budget/tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (7227 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_core/src/budget/vb_qi37_2_4_state8_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1323 lines); must be split by domain responsibility or retired before removing exception.
@@ -185,7 +182,6 @@ crates/vb_runtime/src/shard/tests/tick_shard_tests.rs|lewis|vb-jpq7.47|split-or-
 crates/vb_runtime/src/shard/timer_wheel.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (348 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_runtime/src/shard/types.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (634 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_runtime/src/together_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1543 lines); must be split by domain responsibility or retired before removing exception.
-crates/vb_runtime/src/verification/kani/kani_idempotency_tracker.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (303 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_runtime/tests/durability_matrix_integration.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (533 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_runtime/tests/durable_resume_red_phase.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (693 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_runtime/tests/durable_retry_red_phase.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (743 lines); must be split by domain responsibility or retired before removing exception.
@@ -351,7 +347,6 @@ crates/vb_compile/src/kani_finish_digest.rs|lewis|vb-jpq7.47|split-or-retire-bef
 crates/vb_compile/src/kani_lower_control.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (376 lines); split lower-control Kani harness by primitive family before removing exception.
 crates/vb_compile/src/mod_compile_errors/collection.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (301 lines); split compile error collection helpers by diagnostic family before removing exception.
 crates/vb_compile/src/mod_compile_lowering/part_04.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (312 lines); split lowering part by primitive group before removing exception.
-crates/vb_compile/src/mod_compile_lowering/part_05.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (417 lines); split lowering part by primitive group before removing exception.
 crates/vb_compile/src/mod_compile_lowering/tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (614 lines); split lowering unit tests by behavior family before removing exception.
 crates/vb_compile/src/tests/digest_unit_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (594 lines); split digest unit tests by primitive family before removing exception.
 crates/vb_compile/src/tests/foreach_digest_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (1062 lines); split foreach digest tests by structural field family before removing exception.
@@ -367,7 +362,6 @@ crates/vb_core/src/diagnostic.rs|lewis|vb-jpq7.47|split-or-retire-before-release
 crates/vb_core/src/kani/kani_symbolic_code_validation.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (984 lines); split symbolic code Kani validation by proof family before removing exception.
 crates/vb_core/tests/resource_contract_validation.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (588 lines); split resource contract tests by validation family before removing exception.
 crates/vb_runtime/src/shard/tests/chunk_013.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (369 lines); split shard chunk tests by lifecycle scenario before removing exception.
-crates/vb_runtime/src/verification/kani/kani_shard_lifecycle_harnesses.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (580 lines); split shard lifecycle Kani harnesses by transition family before removing exception.
 crates/vb_storage/src/kani_hydrate_proofs.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (317 lines); split hydrate Kani proofs by event family before removing exception.
 crates/vb_storage/src/kani_postcard_envelope_wire.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (337 lines); split postcard envelope Kani proof by wire-field family before removing exception.
 crates/vb_validate/src/kani/kani_validation_error_code.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (453 lines); split validation error-code Kani harness by code-family before removing exception.
@@ -436,7 +430,6 @@ crates/vb_runtime/src/verification/kani/kani_admission_ordering.rs|lewis|vb-2lu1
 crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 320-line file.
 crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 630-line file.
 crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 461-line file.
-crates/vb_runtime/src/verification/kani/vb_fzgdn_timer_harnesses.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 576-line file.
 crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 617-line file.
 crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 465-line file.
 crates/vb_runtime/tests/proptest_runtime_error_codes.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 568-line file.

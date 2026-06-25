@@ -79,15 +79,62 @@ fn next_cursor_rejects_non_exhausted_with_zero_remaining() {
 /// Regression: RE-012 — the happy path for a consistent cursor must
 /// continue to advance by one attempt without regression.
 #[test]
-fn next_cursor_advances_consistent_cursor_by_one() {
+fn next_cursor_advances_consistent_cursor_by_one() -> Result<(), RetryPolicyMathError> {
     let policy = RetryPolicy::DEFAULT;
-    let cursor = policy.initial_cursor();
-    let advanced = policy
-        .next_cursor(MAX_INTERVAL_MS, cursor)
-        .expect("consistent cursor must advance");
+    let cursor = policy.initial_cursor()?;
+    let advanced = policy.next_cursor(MAX_INTERVAL_MS, cursor)?;
     assert_eq!(advanced.attempt, 2);
     assert_eq!(advanced.remaining, 2);
     assert!(!advanced.exhausted);
+    Ok(())
+}
+
+// =====================================================================
+// RE-013 regression tests: initial_cursor must reject zero-attempt
+// policies instead of silently returning a cursor with exhausted=true.
+// =====================================================================
+
+/// Regression: RE-013 — a policy with `max_attempts == 0` must be
+/// rejected by `initial_cursor` with the same typed error as
+/// `validate_against`. The previous behavior silently produced a cursor
+/// with `exhausted: true`, which the engine then treated as legitimate
+/// (silent corruption).
+#[test]
+fn initial_cursor_rejects_zero_max_attempts() {
+    let policy = RetryPolicy {
+        max_attempts: 0,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    assert_eq!(
+        policy.initial_cursor(),
+        Err(RetryPolicyMathError::ZeroMaxAttempts),
+    );
+}
+
+/// Regression: RE-013 — `RetryPolicy::DEFAULT` must produce a valid
+/// non-exhausted initial cursor with the documented `attempt=1` and
+/// `remaining=max_attempts` invariant.
+#[test]
+fn initial_cursor_default_policy_is_not_exhausted() -> Result<(), RetryPolicyMathError> {
+    let cursor = RetryPolicy::DEFAULT.initial_cursor()?;
+    assert_eq!(cursor.attempt, 1);
+    assert_eq!(cursor.remaining, 3);
+    assert_eq!(cursor.delay_ms, 0);
+    assert!(!cursor.exhausted);
+    Ok(())
+}
+
+/// Regression: RE-013 — `RetryPolicy::NEVER` has `max_attempts=1` and
+/// must produce a non-exhausted cursor (one attempt is allowed).
+#[test]
+fn initial_cursor_never_policy_is_not_exhausted() -> Result<(), RetryPolicyMathError> {
+    let cursor = RetryPolicy::NEVER.initial_cursor()?;
+    assert_eq!(cursor.attempt, 1);
+    assert_eq!(cursor.remaining, 1);
+    assert_eq!(cursor.delay_ms, 0);
+    assert!(!cursor.exhausted);
+    Ok(())
 }
 
 /// Regression: RE-012 — `fast_forward_cursor` must surface the typed

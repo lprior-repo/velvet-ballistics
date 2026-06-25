@@ -552,7 +552,8 @@ mod vb_h6ix_tests {
     #[test]
     fn recovery_error_journal_wraps_underlying() {
         // JournalError is defined in vb_storage::JournalError
-        let underlying = crate::JournalError::PostcardDecodeFailed;
+        let underlying =
+            crate::JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint);
         let err: RecoveryError = RecoveryError::Journal(underlying);
 
         match err {

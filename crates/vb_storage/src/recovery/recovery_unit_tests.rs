@@ -27,7 +27,8 @@ mod tests {
 
     #[test]
     fn recovery_error_journal_error_from_source() {
-        let source = crate::JournalError::PostcardDecodeFailed;
+        let source =
+            crate::JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint);
         let err = RecoveryError::Journal(source);
         assert!(matches!(err, RecoveryError::Journal(_)));
     }

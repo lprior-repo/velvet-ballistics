@@ -85,7 +85,13 @@ proptest! {
 
     #[test]
     fn fast_forward_matches_repeated_next((policy, max_interval_ms) in policy_strategy(), count in 0u16..=512) {
-        let start = policy.initial_cursor();
+        // RE-013: `initial_cursor` now returns `Result`. `policy_strategy()`
+        // constrains `max_attempts >= 1`, so the Err branch is unreachable.
+        // Proptest's macro doesn't support arbitrary Result `?`, so we
+        // convert a regression into a test failure with a typed message.
+        let start = policy.initial_cursor().unwrap_or_else(|error| {
+            panic!("policy_strategy must yield valid policies, initial_cursor error: {error:?}");
+        });
         let fast = policy.fast_forward_cursor(max_interval_ms, start, count);
         let repeated = (0..count).try_fold(start, |cursor, _| {
             if cursor.exhausted {

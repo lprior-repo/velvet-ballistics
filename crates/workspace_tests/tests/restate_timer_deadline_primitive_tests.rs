@@ -439,17 +439,18 @@ mod fast_forward_cursor_bounds {
     }
 
     #[test]
-    fn fast_forward_zero_count_returns_identity() {
+    fn fast_forward_zero_count_returns_identity() -> Result<(), RetryPolicyMathError> {
         let p = policy(5, 0, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 0);
         assert_eq!(result, Ok(start));
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_matches_repeated_next_cursor() {
+    fn fast_forward_matches_repeated_next_cursor() -> Result<(), RetryPolicyMathError> {
         let p = policy(10, 10, true);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let count: u16 = 5;
         let fast = p.fast_forward_cursor(MAX_INTERVAL, start, count);
         let repeated = (0..count).try_fold(start, |cursor, _| {
@@ -460,12 +461,13 @@ mod fast_forward_cursor_bounds {
             }
         });
         assert_eq!(fast, repeated);
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_stops_at_exhaustion() {
+    fn fast_forward_stops_at_exhaustion() -> Result<(), RetryPolicyMathError> {
         let p = policy(2, 10, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         // Policy has max_attempts=2. Fast-forward by 5 should exhaust after
         // consuming remaining attempts (2 attempts total).
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 5);
@@ -479,12 +481,13 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_attempt_never_exceeds_max_attempts() {
+    fn fast_forward_attempt_never_exceeds_max_attempts() -> Result<(), RetryPolicyMathError> {
         let p = policy(3, 0, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 100);
         match result {
             Ok(cursor) => {
@@ -495,6 +498,7 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 
     #[test]
@@ -519,10 +523,10 @@ mod fast_forward_cursor_bounds {
     }
 
     #[test]
-    fn fast_forward_with_max_u16_count_is_bounded() {
+    fn fast_forward_with_max_u16_count_is_bounded() -> Result<(), RetryPolicyMathError> {
         // Documented invariant: iterates at most count times (u16::MAX=65535).
         let p = policy(2, 0, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, u16::MAX);
         match result {
             Ok(cursor) => {
@@ -534,12 +538,13 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_remaining_decreases_monotonically() {
+    fn fast_forward_remaining_decreases_monotonically() -> Result<(), RetryPolicyMathError> {
         let p = policy(10, 5, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let mut prev_remaining = start.remaining;
         for step in 1u16..=5 {
             let result = p.fast_forward_cursor(MAX_INTERVAL, start, step);
@@ -554,12 +559,13 @@ mod fast_forward_cursor_bounds {
                 }
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_never_policy_exhausts_after_one_attempt() {
+    fn fast_forward_never_policy_exhausts_after_one_attempt() -> Result<(), RetryPolicyMathError> {
         let p = EngineRetryPolicy::NEVER;
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 10);
         match result {
             Ok(cursor) => {
@@ -570,12 +576,14 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_with_exponential_backoff_correct_delay_progression() {
+    fn fast_forward_with_exponential_backoff_correct_delay_progression()
+    -> Result<(), RetryPolicyMathError> {
         let p = policy(5, 10, true); // exponential backoff, base=10
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 2);
         match result {
             Ok(cursor) => {
@@ -588,12 +596,14 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn fast_forward_exact_count_exhausts_at_exactly_max_attempts() {
+    fn fast_forward_exact_count_exhausts_at_exactly_max_attempts()
+    -> Result<(), RetryPolicyMathError> {
         let p = policy(4, 1, false);
-        let start = p.initial_cursor();
+        let start = p.initial_cursor()?;
         // 3 fast-forwards from attempt 1 to attempt 4 (last attempt)
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 3);
         match result {
@@ -618,6 +628,7 @@ mod fast_forward_cursor_bounds {
                 panic!("{msg}");
             }
         }
+        Ok(())
     }
 }
 
@@ -1714,25 +1725,28 @@ mod retry_policy_limits_validation {
     }
 
     #[test]
-    fn initial_cursor_starts_at_attempt_1_with_full_remaining() {
+    fn initial_cursor_starts_at_attempt_1_with_full_remaining() -> Result<(), RetryPolicyMathError>
+    {
         let p = EngineRetryPolicy {
             max_attempts: 7,
             base_delay_ms: 0,
             exponential_backoff: false,
         };
-        let cursor = p.initial_cursor();
+        let cursor = p.initial_cursor()?;
         assert_eq!(cursor.attempt, 1);
         assert_eq!(cursor.remaining, 7);
         assert_eq!(cursor.delay_ms, 0);
         assert!(!cursor.exhausted);
+        Ok(())
     }
 
     #[test]
-    fn initial_cursor_never_policy_is_not_exhausted() {
-        let cursor = EngineRetryPolicy::NEVER.initial_cursor();
+    fn initial_cursor_never_policy_is_not_exhausted() -> Result<(), RetryPolicyMathError> {
+        let cursor = EngineRetryPolicy::NEVER.initial_cursor()?;
         assert_eq!(cursor.attempt, 1);
         assert_eq!(cursor.remaining, 1);
         assert!(!cursor.exhausted);
+        Ok(())
     }
 
     #[test]

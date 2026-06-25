@@ -908,7 +908,7 @@ mod skip_decode_tests {
         assert!(result.is_err(), "expected error on malformed payload");
 
         match result {
-            Err(JournalError::PostcardDecodeFailed)
+            Err(JournalError::PostcardDecodeFailed(_))
             | Err(JournalError::HeaderChecksumMismatch)
             | Err(JournalError::PayloadDigestMismatch) => { /* acceptable */ }
             Err(ref _e) => { /* any typed error is acceptable */ }
@@ -1569,7 +1569,7 @@ proptest! {
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        if matches!(result, Err(JournalError::PostcardDecodeFailed)) {
+        if matches!(result, Err(JournalError::PostcardDecodeFailed(_))) {
             prop_assert!(data.len() >= RECORD_HEADER_BYTES);
         }
         if data.len() < RECORD_HEADER_BYTES {

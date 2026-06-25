@@ -157,7 +157,10 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// If no events exist, defaults to `Pending`.
 #[must_use]
 pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleState {
-    events.last().map(event_to_lifecycle).unwrap_or(LifecycleState::Pending)
+    events
+        .last()
+        .map(event_to_lifecycle)
+        .unwrap_or(LifecycleState::Pending)
 }
 
 /// Map a single `JournalEvent` to the lifecycle state implied by that event.

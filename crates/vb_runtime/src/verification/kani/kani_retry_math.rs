@@ -6,6 +6,10 @@
 //! PO-KANI-001: Proves cursor.attempt ≤ policy.max_attempts,
 //! cursor.delay_ms ≤ max_interval_ms, and
 //! cursor.exhausted ⟺ cursor.remaining == 0.
+//!
+//! RE-013 note: `RetryPolicy::Arbitrary` constrains `max_attempts >= 1`,
+//! so `initial_cursor` always returns `Ok(_)` here. The harness asserts
+//! the post-fix invariant that a valid initial cursor is never exhausted.
 
 use crate::engine::retry_math::{RetryCursor, RetryPolicyLimits};
 use crate::engine::types::RetryPolicy;
@@ -82,17 +86,31 @@ fn kani_retry_cursor_bounds() {
     }
 
     // --- initial_cursor ---
-    let initial = policy.initial_cursor();
-    assert_eq!(initial.attempt, 1);
-    assert_eq!(initial.remaining, policy.max_attempts);
-    assert_eq!(initial.delay_ms, 0);
-    assert_eq!(
-        initial.exhausted,
-        policy.max_attempts == 0,
-        "initial cursor exhausted only when max_attempts == 0"
-    );
-    kani::cover!(initial.exhausted == false);
-    kani::cover!(initial.exhausted == true);
+    // RE-013: `initial_cursor` now returns `Result<RetryCursor, _>`.
+    // `RetryPolicy::Arbitrary` constrains `max_attempts >= 1`, so the
+    // Ok branch is the only reachable path. We match on the result to
+    // satisfy the same invariant checks previously expressed via
+    // `assert_eq!(initial.exhausted, policy.max_attempts == 0, ...)`.
+    match policy.initial_cursor() {
+        Ok(initial) => {
+            assert_eq!(initial.attempt, 1);
+            assert_eq!(initial.remaining, policy.max_attempts);
+            assert_eq!(initial.delay_ms, 0);
+            assert!(
+                !initial.exhausted,
+                "initial cursor for valid policy (max_attempts >= 1) must not be exhausted",
+            );
+            kani::cover!(!initial.exhausted);
+        }
+        Err(error) => {
+            // Unreachable under the Arbitrary constraint; surface the
+            // error so the harness fails loudly if the constraint drifts.
+            assert!(
+                false,
+                "initial_cursor must succeed for valid policy, got {error:?}"
+            );
+        }
+    }
 
     // --- next_cursor for arbitrary cursor state ---
     let cursor: RetryCursor = kani::any();
@@ -181,9 +199,11 @@ fn kani_retry_cursor_bounds() {
 
     // Reject attempt > max_attempts
     if policy.max_attempts < 10 {
-        assert!(policy
-            .delay_for_attempt(max_interval, policy.max_attempts + 1)
-            .is_err());
+        assert!(
+            policy
+                .delay_for_attempt(max_interval, policy.max_attempts + 1)
+                .is_err()
+        );
     }
 
     // Cover key states

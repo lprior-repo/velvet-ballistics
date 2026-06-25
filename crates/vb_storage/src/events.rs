@@ -396,7 +396,7 @@ impl JournalEvent {
     ///
     /// Returns `Ok(None)` if no value was captured (absent optional payload).
     /// Returns `Ok(Some(slot_value))` if decoding succeeded.
-    /// Returns `Err(JournalError::PostcardDecodeFailed)` if bytes are corrupt/truncated.
+    /// Returns `Err(JournalError::PostcardDecodeFailed(_))` if bytes are corrupt/truncated.
     /// Returns `Err(JournalError::PayloadTooLarge)` if bytes exceed the maximum allowed size.
     #[must_use = "slot_value returns a fallible result that must be handled"]
     pub fn slot_value(&self) -> Result<Option<SlotValue>, JournalError> {
@@ -418,10 +418,9 @@ impl JournalEvent {
                     });
                 }
                 // Decode with typed error propagation instead of silent erasure.
-                match postcard::from_bytes(bytes) {
-                    Ok(value) => Ok(Some(value)),
-                    Err(_) => Err(JournalError::PostcardDecodeFailed),
-                }
+                postcard::from_bytes(bytes)
+                    .map(Some)
+                    .map_err(JournalError::PostcardDecodeFailed)
             }
             // Explicit absent branch for optional payloads.
             Self::SlotWrittenEvent { value: None, .. } => Ok(None),

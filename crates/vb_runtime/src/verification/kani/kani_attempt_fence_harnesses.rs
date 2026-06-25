@@ -8,6 +8,7 @@
 //! Production binding: All harnesses call production functions from
 //! vb_runtime::shard::helpers and vb_core::action directly.
 
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 
 use vb_core::action::ActionTicket;

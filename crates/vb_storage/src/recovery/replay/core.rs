@@ -227,7 +227,7 @@ pub fn load_snapshot(
 ) -> RecoveryResult<crate::recovery::types::RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
-        Ok(None) | Err(crate::JournalError::PostcardDecodeFailed) => {
+        Ok(None) | Err(crate::JournalError::PostcardDecodeFailed(_)) => {
             Err(RecoveryError::CorruptSnapshot { run, seq })
         }
         Err(other) => Err(RecoveryError::Journal(other)),

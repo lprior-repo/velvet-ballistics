@@ -85,14 +85,21 @@ impl RetryPolicy {
     }
 
     /// Builds the initial retry cursor for this policy.
-    #[must_use]
-    pub const fn initial_cursor(self) -> RetryCursor {
-        RetryCursor {
+    ///
+    /// Returns `Err(ZeroMaxAttempts)` when the policy admits no attempts.
+    /// RE-013: previously this silently returned a cursor with
+    /// `exhausted: true`, masking the invalid policy at every entry point
+    /// that bypassed `validate_against`.
+    pub const fn initial_cursor(self) -> Result<RetryCursor, RetryPolicyMathError> {
+        if self.max_attempts == 0 {
+            return Err(RetryPolicyMathError::ZeroMaxAttempts);
+        }
+        Ok(RetryCursor {
             attempt: 1,
             remaining: self.max_attempts,
             delay_ms: 0,
-            exhausted: self.max_attempts == 0,
-        }
+            exhausted: false,
+        })
     }
 
     /// Advances a retry cursor by one attempt.

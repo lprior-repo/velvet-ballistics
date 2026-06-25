@@ -139,7 +139,7 @@ fn journal_error_symbolic_codes_are_registered() {
         JournalError::QueueFull,
         JournalError::WriteLockPoisoned,
         JournalError::UnexpectedEof,
-        JournalError::PostcardDecodeFailed,
+        JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
         JournalError::QueueShutdown,
         JournalError::ArtifactMalformed,
         JournalError::ArtifactChecksumMismatch,

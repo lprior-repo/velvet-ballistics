@@ -2173,7 +2173,7 @@ mod tests {
         encoded[59] = ((checksum >> 24) & 0xFF) as u8;
 
         let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
-        assert!(matches!(result, Err(JournalError::PostcardDecodeFailed)));
+        assert!(matches!(result, Err(JournalError::PostcardDecodeFailed(_))));
     }
 
     #[test]
@@ -3722,7 +3722,7 @@ mod tests {
         // Given a JournalError::PostcardDecodeFailed
         // When displayed
         // Then the message mentions postcard
-        let err = JournalError::PostcardDecodeFailed;
+        let err = JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint);
         let msg = format!("{}", err);
         assert!(msg.contains("postcard"));
     }
@@ -5039,7 +5039,7 @@ mod tests {
         enc[59] = ((cs >> 24) & 0xFF) as u8;
         assert!(matches!(
             decode_record::<JournalEvent>(&enc, MAGIC_JOURNAL_EVENT, 128),
-            Err(JournalError::PostcardDecodeFailed)
+            Err(JournalError::PostcardDecodeFailed(_))
         ));
     }
 
@@ -5136,7 +5136,7 @@ mod tests {
             JournalError::HeaderChecksumMismatch,
             JournalError::PayloadDigestMismatch,
             JournalError::UnexpectedEof,
-            JournalError::PostcardDecodeFailed,
+            JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint),
             JournalError::DuplicateEvent {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
@@ -5338,7 +5338,8 @@ mod tests {
     #[test]
     fn journal_error_diagnostic_code_postcard_decode_failed() {
         assert_eq!(
-            JournalError::PostcardDecodeFailed.diagnostic_code(),
+            JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint)
+                .diagnostic_code(),
             DiagnosticCode::new(0x4015)
         );
     }
@@ -7674,7 +7675,7 @@ mod tests {
                 JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",
                 JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
                 JournalError::UnexpectedEof => "unexpected_eof",
-                JournalError::PostcardDecodeFailed => "postcard_decode_failed",
+                JournalError::PostcardDecodeFailed(_) => "postcard_decode_failed",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",
                 JournalError::ArtifactChecksumMismatch => "artifact_checksum_mismatch",

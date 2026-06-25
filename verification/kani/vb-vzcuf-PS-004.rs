@@ -97,7 +97,7 @@ mod kani_batch_state_ps004 {
             JournalError::HeaderChecksumMismatch => {}
             JournalError::PayloadDigestMismatch => {}
             JournalError::UnexpectedEof => {}
-            JournalError::PostcardDecodeFailed => {}
+            JournalError::PostcardDecodeFailed(_) => {}
             JournalError::InvalidEvent => {}
             JournalError::ArtifactMalformed => {}
             JournalError::ArtifactChecksumMismatch => {}

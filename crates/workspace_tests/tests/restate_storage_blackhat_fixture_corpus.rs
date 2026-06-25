@@ -403,7 +403,7 @@ fn invalid_postcard_payload_returns_decode_failed() {
 
     // Then: returns PostcardDecodeFailed (digest matches, but postcard fails)
     assert!(
-        matches!(result, Err(JournalError::PostcardDecodeFailed)),
+        matches!(result, Err(JournalError::PostcardDecodeFailed(_))),
         "postcard-invalid payload should yield PostcardDecodeFailed, got: {result:?}"
     );
 }

@@ -13,7 +13,7 @@ use vb_core::ids::{FanoutLimit, RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
-use crate::primitives::for_each::{for_each_start, for_each_next, for_each_join};
+use crate::primitives::for_each::{for_each_join, for_each_next, for_each_start};
 
 /// Helper to create a RunFrame for testing.
 fn make_test_frame(slots: u16) -> Result<RunFrame, EngineError> {
@@ -85,24 +85,14 @@ fn kani_for_each_ordering() {
             EngineSignal::Continue => {
                 if item_count == 0 {
                     // Empty list: pc should now be at done
-                    assert_eq!(
-                        run.pc(), done_step,
-                        "empty list must jump to done"
-                    );
+                    assert_eq!(run.pc(), done_step, "empty list must jump to done");
                 } else {
                     // Non-empty list: pc should be at body
-                    assert_eq!(
-                        run.pc(), body_step,
-                        "non-empty list must jump to body"
-                    );
+                    assert_eq!(run.pc(), body_step, "non-empty list must jump to body");
 
                     // First item should be bound to item_slot
                     let bound = run.read_slot(item_slot).expect("read item_slot");
-                    assert_eq!(
-                        *bound,
-                        SlotValue::I64(0),
-                        "first item must be I64(0)"
-                    );
+                    assert_eq!(*bound, SlotValue::I64(0), "first item must be I64(0)");
                 }
             }
             _ => {
@@ -238,10 +228,7 @@ fn kani_for_each_join_passthrough() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 // join must continue to next step
-                assert_eq!(
-                    run.pc(), next_step,
-                    "join must continue to next step"
-                );
+                assert_eq!(run.pc(), next_step, "join must continue to next step");
                 // The output slot should hold the materialized value
                 let output = run.read_slot(output_slot).expect("read output");
                 assert_eq!(

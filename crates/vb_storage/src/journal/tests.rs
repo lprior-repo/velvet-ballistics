@@ -1991,7 +1991,7 @@ fn events_for_run_rejects_latest_snapshot_postcard_decode_failure_before_tail_re
 
     let result = journal.events_for_run(run);
     assert!(
-        matches!(result, Err(JournalError::PostcardDecodeFailed)),
+        matches!(result, Err(JournalError::PostcardDecodeFailed(_))),
         "invalid latest snapshot payload must fail before tail replay, got {:?}",
         result
     );

@@ -152,7 +152,7 @@ mod error_code_tests {
 
     #[test]
     fn postcard_decode_failed_error_has_correct_code() {
-        let err = JournalError::PostcardDecodeFailed;
+        let err = JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint);
         assert_eq!(
             err.diagnostic_code(),
             JournalError::POSTCARD_DECODE_FAILED_CODE

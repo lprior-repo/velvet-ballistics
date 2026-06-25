@@ -16,10 +16,10 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
+use super::SlotCompiler;
+use super::part_03::{CollectLowering, lower_canonical_collect};
+use super::part_04::emit_single_body_set;
 use proptest::prelude::*;
-use vb_compile::mod_compile_lowering::part_03::lower_canonical_collect;
-use vb_compile::mod_compile_lowering::part_04::emit_single_body_set;
-use vb_compile::compile::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_yaml::ast::{StepAst, StepPrimitive};
 
@@ -28,7 +28,7 @@ use vb_yaml::ast::{StepAst, StepPrimitive};
 // ─────────────────────────────────────────────────────────────────
 
 /// Strategy for a valid single-Set body (exactly one Set step).
-pub fn single_set_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
+fn single_set_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
     prop_oneof![
         // Single Set step with integer value
         any::<i64>().prop_map(|value| vec![StepAst {
@@ -49,19 +49,19 @@ pub fn single_set_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
 
 /// Strategy for collect input: source string, pages, items, body.
 #[derive(Debug, Clone)]
-pub struct CollectInput {
+struct CollectInput {
     pub source: String,
     pub pages: Option<u32>,
     pub items: Option<u32>,
     pub body: Vec<StepAst>,
 }
 
-pub fn collect_input_strategy() -> impl Strategy<Value = CollectInput> {
+fn collect_input_strategy() -> impl Strategy<Value = CollectInput> {
     (
-        "\\d+".prop_map(|s: String| s),  // source slot as string
-        any::<Option<u32>>(),            // pages
-        any::<Option<u32>>(),            // items
-        single_set_body_strategy(),      // single Set body
+        "\\d+".prop_map(|s: String| s), // source slot as string
+        any::<Option<u32>>(),           // pages
+        any::<Option<u32>>(),           // items
+        single_set_body_strategy(),     // single Set body
     )
         .prop_map(|(source, pages, items, body)| CollectInput {
             source,
@@ -83,30 +83,30 @@ proptest! {
         let slot = SlotIdx::new(1);
         let mut builder = SlotCompiler::new();
 
-        let result = emit_single_body_set(&body, id, slot, None, &mut builder, false);
+        let result = emit_single_body_set(&body, id, id.as_usize(), slot, None, &mut builder, false);
 
         // Valid Set body should succeed
         prop_assert!(result.is_ok(), "valid Set body should succeed");
 
         // Exactly one node should be emitted
-        prop_assert_eq!(builder.node_count(), 1, "exactly 1 node for single-Set body");
+        prop_assert_eq!(builder.nodes.len(), 1, "exactly 1 node for single-Set body");
     }
 
     /// PO-005 H2: emit_single_body_set terminates for empty body (returns error).
     #[test]
-    fn proptest_collect_empty() {
+    fn proptest_collect_empty(_unit in Just(())) {
         let empty_body: Vec<StepAst> = vec![];
         let id = StepIdx::new(0);
         let slot = SlotIdx::new(1);
         let mut builder = SlotCompiler::new();
 
-        let result = emit_single_body_set(&empty_body, id, slot, None, &mut builder, false);
+        let result = emit_single_body_set(&empty_body, id, id.as_usize(), slot, None, &mut builder, false);
 
         // Empty body should return error, not panic
         prop_assert!(result.is_err(), "empty body should return error");
 
         // No nodes should be emitted for empty body
-        prop_assert_eq!(builder.node_count(), 0, "no nodes for empty body");
+        prop_assert_eq!(builder.nodes.len(), 0, "no nodes for empty body");
     }
 
     /// PO-005 H3: Traversal terminates for collect with valid body.
@@ -116,19 +116,18 @@ proptest! {
         let mut builder = SlotCompiler::new();
 
         // This should not hang or panic
-        let result = lower_canonical_collect(
-            0,
-            id,
-            &input.source,
-            input.pages,
-            input.items,
-            &input.body,
-            &mut builder,
-        );
+        let collect = CollectLowering {
+            source: &input.source,
+            pages: input.pages,
+            items: input.items,
+            body: &input.body,
+            next: None,
+        };
+        let result = lower_canonical_collect(0, id, collect, &mut builder);
 
         // If source parses correctly, should succeed with 4 nodes
         if result.is_ok() {
-            prop_assert_eq!(builder.node_count(), 4, "exactly 4 nodes for valid collect");
+            prop_assert_eq!(builder.nodes.len(), 4, "exactly 4 nodes for valid collect");
         }
     }
 }
@@ -146,18 +145,17 @@ proptest! {
 
         let mut builder = SlotCompiler::new();
 
-        let result = lower_canonical_collect(
-            0,
-            StepIdx::new(id),
-            &input.source,
-            input.pages,
-            input.items,
-            &input.body,
-            &mut builder,
-        );
+        let collect = CollectLowering {
+            source: &input.source,
+            pages: input.pages,
+            items: input.items,
+            body: &input.body,
+            next: None,
+        };
+        let result = lower_canonical_collect(0, StepIdx::new(id), collect, &mut builder);
 
         if result.is_ok() {
-            let nodes = builder.into_nodes();
+            let nodes = builder.nodes.as_slice();
             prop_assert_eq!(nodes.len(), 4, "exactly 4 nodes emitted");
 
             // Check node IDs: id, id+1, id+2, id+3

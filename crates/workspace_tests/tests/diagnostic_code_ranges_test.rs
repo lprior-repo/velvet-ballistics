@@ -55,7 +55,7 @@ fn diagnostic_code_ranges_are_globally_partitioned_by_crate() {
         DiagnosticCode::new(0x4003)
     );
     assert_eq!(
-        JournalError::PostcardDecodeFailed.diagnostic_code(),
+        JournalError::PostcardDecodeFailed(postcard::Error::DeserializeBadVarint).diagnostic_code(),
         DiagnosticCode::new(0x4015)
     );
 }

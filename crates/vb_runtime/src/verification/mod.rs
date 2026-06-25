@@ -27,10 +27,7 @@ pub mod verus {
     pub mod vb_y9d3v_action_fence;
 }
 
-// Kani harnesses (compiled with cargo kani)
+// Kani harnesses (compiled with cargo kani).
+// Module declarations live in `kani/mod.rs` so the file count can scale.
 #[cfg(kani)]
-pub(crate) mod kani {
-    pub(crate) mod kani_attempt_fence_harnesses;
-    #[cfg(feature = "kani-sxkz6-shard-for-run")]
-    pub(crate) mod kani_sxkz6_shard_for_run;
-}
+pub(crate) mod kani;

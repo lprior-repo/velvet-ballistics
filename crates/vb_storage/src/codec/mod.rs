@@ -65,7 +65,7 @@ pub fn encode_record<T: Serialize>(
     max_payload_len: u32,
 ) -> Result<Vec<u8>, JournalError> {
     validate_record_kind_family(magic, kind.id())?;
-    let payload_bytes = postcard::to_allocvec(payload)?;
+    let payload_bytes = postcard::to_allocvec(payload).map_err(JournalError::Encode)?;
     let payload_len = self::payload::payload_len_u32(payload_bytes.len(), max_payload_len)?;
     self::payload::encode_record_payload(magic, kind, sequence, &payload_bytes, payload_len)
 }
@@ -89,7 +89,7 @@ where
 {
     let (envelope, payload) =
         self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
-    let value = postcard::from_bytes(payload).map_err(|_| JournalError::PostcardDecodeFailed)?;
+    let value = postcard::from_bytes(payload).map_err(JournalError::PostcardDecodeFailed)?;
     T::enforce_kind_parity(&envelope, &value)?;
     Ok((envelope, value))
 }

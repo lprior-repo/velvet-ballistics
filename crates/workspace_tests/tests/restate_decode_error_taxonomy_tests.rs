@@ -66,7 +66,7 @@ proptest! {
             4 => { write_u32(&mut header, 8, RECORD_HEADER_LEN.saturating_add(1)); let ok = matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, 8), Err(JournalError::HeaderLengthMismatch { .. })); prop_assert!(ok); }
             5 => { write_u32(&mut header, 12, 9); let ok = matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, 8), Err(JournalError::PayloadTooLarge { len: 9, max: 8 })); prop_assert!(ok); }
             6 => { write_u32(&mut header, 56, bad); let ok = matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, 8), Err(JournalError::HeaderChecksumMismatch)); prop_assert!(ok); }
-            _ => { let bad_postcard = [1_u8, 255_u8]; let header = storage_header(&bad_postcard, 8)?; let result = decode_record::<WorkflowSourceRecord>(&[header.as_slice(), bad_postcard.as_slice()].concat(), MAGIC_JOURNAL_EVENT, 8); let ok = matches!(result, Err(JournalError::PostcardDecodeFailed)); prop_assert!(ok); }
+            _ => { let bad_postcard = [1_u8, 255_u8]; let header = storage_header(&bad_postcard, 8)?; let result = decode_record::<WorkflowSourceRecord>(&[header.as_slice(), bad_postcard.as_slice()].concat(), MAGIC_JOURNAL_EVENT, 8); let ok = matches!(result, Err(JournalError::PostcardDecodeFailed(_))); prop_assert!(ok); }
         }
     }
 

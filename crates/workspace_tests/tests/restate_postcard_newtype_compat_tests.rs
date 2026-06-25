@@ -580,7 +580,7 @@ mod missing_bytes {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         assert!(
-            matches!(result, Err(JournalError::PostcardDecodeFailed)),
+            matches!(result, Err(JournalError::PostcardDecodeFailed(_))),
             "garbage payload must yield PostcardDecodeFailed, got {:?}",
             result
         );
