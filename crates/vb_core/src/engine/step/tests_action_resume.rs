@@ -69,7 +69,9 @@ fn expect_resume_reason<T>(
     expected: &'static str,
 ) -> Result<(), String> {
     match result {
-        Err(EngineError::InternalInvariantViolation { reason }) => ensure_equal(reason, expected),
+        Err(EngineError::ActionResumeRejected { rejection }) => {
+            ensure_equal(rejection.reason(), expected)
+        }
         Err(error) => Err(format!("expected resume rejection, got {error:?}")),
         Ok(_) => Err(String::from("expected resume error, got success")),
     }

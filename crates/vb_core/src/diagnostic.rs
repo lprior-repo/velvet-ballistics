@@ -1555,6 +1555,18 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Lifecycle,
         deprecated: false,
     },
+    CodeEntry {
+        symbolic: "ACTION_FAILED",
+        numeric: 0x1507,
+        category: CodeCategory::Lifecycle,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "ACTION_RESUME_REJECTED",
+        numeric: 0x1508,
+        category: CodeCategory::Lifecycle,
+        deprecated: false,
+    },
     // ---- Internal invariant (fallback code for HasSymbolicCode impls) ----
     CodeEntry {
         symbolic: "INTERNAL_INVARIANT_VIOLATION",

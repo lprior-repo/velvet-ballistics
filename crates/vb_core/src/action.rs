@@ -5,6 +5,7 @@
 mod contract;
 mod error;
 mod journal;
+mod lifecycle_error;
 mod name;
 mod payload;
 mod ticket;
@@ -24,6 +25,7 @@ pub use contract::{
 };
 pub use error::{ActionError, ActionFailure, ActionFailureCode, ActionResult};
 pub use journal::ActionJournalEvent;
+pub use lifecycle_error::{ActionFailureReport, ActionResumeRejection};
 pub use name::{ActionName, ActionNameError};
 pub use payload::{
     ActionInput, ActionOutcome, ActionOutput, ActionOutputReady, EncodedActionInputLen,
@@ -35,6 +37,10 @@ pub use validation::{
     propagate_action_taint, validate_action_dispatch, validate_action_outcome,
     validate_idempotency_key_ingredients, verify_idempotency,
 };
+
+#[cfg(test)]
+#[path = "action/journal_tests.rs"]
+mod journal_tests;
 
 #[cfg(test)]
 #[path = "action/tests.rs"]

@@ -1455,72 +1455,6 @@ fn journal_event_suspended_roundtrips_fields() {
 }
 
 #[test]
-fn journal_event_completed_roundtrips_fields() {
-    let ticket = ActionTicket {
-        run: RunId::new(11),
-        step: StepIdx::new(3),
-        seq: SeqNo::new(4),
-        action: ActionId::new(8),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-    let event = ActionJournalEvent::Completed {
-        ticket,
-        attempt: ticket.attempt,
-        output_slot: SlotIdx::new(2),
-        output_taint: Taint::Secret,
-    };
-    match event {
-        ActionJournalEvent::Completed {
-            ticket: t,
-            attempt,
-            output_slot,
-            output_taint,
-        } => {
-            assert_eq!(t.run, RunId::new(11));
-            assert_eq!(attempt, 1);
-            assert_eq!(output_slot, SlotIdx::new(2));
-            assert_eq!(output_taint, Taint::Secret);
-        }
-        other => panic!("expected Completed, got {other:?}"),
-    }
-}
-
-#[test]
-fn journal_event_failed_roundtrips_fields() {
-    let ticket = ActionTicket {
-        run: RunId::new(12),
-        step: StepIdx::new(4),
-        seq: SeqNo::new(5),
-        action: ActionId::new(9),
-        attempt: 3,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-    let event = ActionJournalEvent::Failed {
-        ticket,
-        attempt: ticket.attempt,
-        code: ActionFailureCode::Timeout,
-        retry_policy: RetryPolicy::Retryable,
-    };
-    match event {
-        ActionJournalEvent::Failed {
-            ticket: t,
-            attempt,
-            code,
-            retry_policy,
-        } => {
-            assert_eq!(t.run, RunId::new(12));
-            assert_eq!(attempt, 3);
-            assert_eq!(code, ActionFailureCode::Timeout);
-            assert_eq!(retry_policy, RetryPolicy::Retryable);
-        }
-        other => panic!("expected Failed, got {other:?}"),
-    }
-}
-
-#[test]
 fn journal_event_serialization_roundtrip() {
     let ticket = ActionTicket {
         run: RunId::new(99),
@@ -1544,56 +1478,6 @@ fn journal_event_serialization_roundtrip() {
     let bytes = bytes.ok().expect("test setup");
     let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
     assert!(recovered.is_ok(), "deserialization should succeed");
-    assert_eq!(recovered.ok().expect("test setup"), event);
-}
-
-#[test]
-fn journal_event_completed_serialization_roundtrip() {
-    let ticket = ActionTicket {
-        run: RunId::new(50),
-        step: StepIdx::new(5),
-        seq: SeqNo::new(10),
-        action: ActionId::new(2),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-    let event = ActionJournalEvent::Completed {
-        ticket,
-        attempt: ticket.attempt,
-        output_slot: SlotIdx::new(3),
-        output_taint: Taint::DerivedFromSecret,
-    };
-    let bytes = postcard::to_allocvec(&event);
-    assert!(bytes.is_ok());
-    let bytes = bytes.ok().expect("test setup");
-    let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
-    assert!(recovered.is_ok());
-    assert_eq!(recovered.ok().expect("test setup"), event);
-}
-
-#[test]
-fn journal_event_failed_serialization_roundtrip() {
-    let ticket = ActionTicket {
-        run: RunId::new(51),
-        step: StepIdx::new(6),
-        seq: SeqNo::new(11),
-        action: ActionId::new(4),
-        attempt: 2,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-    let event = ActionJournalEvent::Failed {
-        ticket,
-        attempt: ticket.attempt,
-        code: ActionFailureCode::Rejected,
-        retry_policy: RetryPolicy::NonRetryable,
-    };
-    let bytes = postcard::to_allocvec(&event);
-    assert!(bytes.is_ok());
-    let bytes = bytes.ok().expect("test setup");
-    let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
-    assert!(recovered.is_ok());
     assert_eq!(recovered.ok().expect("test setup"), event);
 }
 

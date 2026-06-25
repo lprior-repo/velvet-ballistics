@@ -14,9 +14,9 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNodeKind, CompiledWorkflow};
 
-mod action_resume;
+mod action_lifecycle;
 
-pub use action_resume::{
+pub use action_lifecycle::{
     journal_action_suspended, resume_action_completion, resume_action_failure,
 };
 

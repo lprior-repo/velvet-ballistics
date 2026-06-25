@@ -2,6 +2,7 @@
 
 //! Typed core failures with stable diagnostic codes.
 
+use crate::action::{ActionFailureReport, ActionResumeRejection};
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 use crate::ids::{
@@ -370,6 +371,18 @@ pub enum CoreError {
         /// Capabilities that were granted at admission time.
         granted: CapabilitySet,
     },
+    /// A Do-node action failed terminally.
+    #[error("{report}")]
+    ActionFailed {
+        /// Action failure with step/action context.
+        report: ActionFailureReport,
+    },
+    /// An action resume attempt was rejected before frame mutation.
+    #[error("action resume rejected: {rejection}")]
+    ActionResumeRejected {
+        /// Rejection reason.
+        rejection: ActionResumeRejection,
+    },
     /// A resource budget was exceeded during execution.
     #[error("budget exceeded: {budget} limit was {limit}")]
     BudgetExceeded {
@@ -609,6 +622,10 @@ impl CoreError {
     pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
     /// Capability denied diagnostic code.
     pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1409);
+    /// Action failed diagnostic code.
+    pub const ACTION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x1507);
+    /// Action resume rejected diagnostic code.
+    pub const ACTION_RESUME_REJECTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1508);
     /// Collect page order violation diagnostic code.
     pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode = DiagnosticCode::new(0x140B);
     /// Collect extra hydration failed diagnostic code.
@@ -660,6 +677,10 @@ impl CoreError {
     pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
     /// Capability denied runtime code.
     pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = "CAPABILITY_DENIED";
+    /// Action failed runtime code.
+    pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
+    /// Action resume rejected runtime code.
+    pub const ACTION_RESUME_REJECTED_RUNTIME_CODE: &str = "ACTION_RESUME_REJECTED";
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -703,6 +724,8 @@ impl CoreError {
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
             Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
             Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
+            Self::ActionFailed { .. } => Self::ACTION_FAILED_CODE,
+            Self::ActionResumeRejected { .. } => Self::ACTION_RESUME_REJECTED_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
             Self::BudgetParse { .. } => Self::BUDGET_PARSE_CODE,
             Self::CollectPageOrderViolation { .. } => Self::COLLECT_PAGE_ORDER_VIOLATION_CODE,
@@ -749,6 +772,8 @@ impl CoreError {
             | Self::CollectTimeLimitExceeded => Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE),
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
             Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
+            Self::ActionFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::ActionResumeRejected { .. } => Some(Self::ACTION_RESUME_REJECTED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -782,6 +807,10 @@ impl From<SpanError> for CoreError {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "errors/action_lifecycle_tests.rs"]
+mod action_lifecycle_tests;
 
 #[cfg(test)]
 #[path = "errors/tests.rs"]

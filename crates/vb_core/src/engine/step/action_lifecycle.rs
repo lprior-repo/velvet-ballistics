@@ -1,6 +1,7 @@
 use crate::EngineSignal;
 use crate::action::{
-    ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPolicy, action_ticket_has_valid_key,
+    ActionFailure, ActionFailureCode, ActionFailureReport, ActionJournalEvent,
+    ActionResumeRejection, ActionTicket, RetryPolicy, action_ticket_has_valid_key,
 };
 use crate::engine::error_routing::{ErrorHandlerOutcome, route_error_handler};
 use crate::errors::EngineError;
@@ -13,37 +14,6 @@ struct ResolvedActionResume {
     step: StepIdx,
     next: Option<StepIdx>,
     output: Option<SlotIdx>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ActionResumeRejection {
-    RunMismatch,
-    StepNotCurrentPc,
-    StepNotRunning,
-    ActionMismatch,
-    NonDoNode,
-    OutputMismatch,
-    AttemptZero,
-    CapacityZero,
-    AttemptExceedsCapacity,
-    IdempotencyKeyMismatch,
-}
-
-impl ActionResumeRejection {
-    const fn reason(self) -> &'static str {
-        match self {
-            Self::RunMismatch => "action_resume_run_mismatch",
-            Self::StepNotCurrentPc => "action_resume_step_not_current_pc",
-            Self::StepNotRunning => "action_resume_step_not_running",
-            Self::ActionMismatch => "action_resume_action_mismatch",
-            Self::NonDoNode => "action_resume_non_do_node",
-            Self::OutputMismatch => "action_resume_output_mismatch",
-            Self::AttemptZero => "action_resume_attempt_zero",
-            Self::CapacityZero => "action_resume_capacity_zero",
-            Self::AttemptExceedsCapacity => "action_resume_attempt_exceeds_capacity",
-            Self::IdempotencyKeyMismatch => "action_resume_idempotency_key_mismatch",
-        }
-    }
 }
 
 pub fn journal_action_suspended(
@@ -103,9 +73,18 @@ pub fn resume_action_failure(
         retry_policy,
     };
 
-    let error = EngineError::ResourceLimitExceeded {
-        resource: "action_failure",
-    };
+    let report = ActionFailureReport::new(
+        context.step,
+        ticket.action,
+        ActionFailure {
+            code: failure_code,
+            retry_policy,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        },
+    );
+    let error = EngineError::ActionFailed { report };
     match route_error_handler(plan, run, context.step, &error)? {
         ErrorHandlerOutcome::Routed => Ok((EngineSignal::Continue, journal)),
         ErrorHandlerOutcome::NoHandler => Ok((EngineSignal::AwaitingAction, journal)),
@@ -210,9 +189,7 @@ fn validate_can_increment(run: &RunFrame) -> Result<(), EngineError> {
 }
 
 fn resume_rejection(rejection: ActionResumeRejection) -> EngineError {
-    EngineError::InternalInvariantViolation {
-        reason: rejection.reason(),
-    }
+    EngineError::ActionResumeRejected { rejection }
 }
 
 struct ResolvedActionCompletion {
