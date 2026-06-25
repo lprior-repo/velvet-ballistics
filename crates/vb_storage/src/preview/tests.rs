@@ -1,5 +1,10 @@
-    use super::*;
-    use crate::types::PreviewConfig;
+#![forbid(unsafe_code)]
+#[cfg(test)]
+mod tests {
+    use crate::JournalError;
+    use crate::keys::{KeyspaceScanPolicy, run_header_key};
+    use crate::preview::preview_keyspace;
+    use crate::types::{PreviewConfig, StorageKey};
     #[test]
     fn empty_entries_produces_empty_preview() {
         let config = PreviewConfig::new(10, 1024).unwrap();

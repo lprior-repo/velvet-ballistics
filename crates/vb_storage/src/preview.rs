@@ -178,3 +178,7 @@ fn malformed_to_journal_error(err: KeyDecodeError, actual_len: usize) -> Journal
         }
     }
 }
+
+#[cfg(test)]
+#[path = "preview/tests.rs"]
+mod tests;

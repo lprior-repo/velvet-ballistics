@@ -134,6 +134,46 @@ mod type_tests;
 #[path = "index_tests.rs"]
 mod index_tests;
 
+#[cfg(test)]
+#[path = "artifact_tests.rs"]
+mod artifact_tests;
+
+#[cfg(test)]
+#[path = "blob_tests.rs"]
+mod blob_tests;
+
+#[cfg(test)]
+#[path = "header_tests.rs"]
+mod header_tests;
+
+#[cfg(test)]
+#[path = "hydrate_tests.rs"]
+mod hydrate_tests;
+
+#[cfg(test)]
+#[path = "process_lock_tests.rs"]
+mod process_lock_tests;
+
+#[cfg(test)]
+#[path = "record_tests.rs"]
+mod record_tests;
+
+#[cfg(test)]
+#[path = "recover_tests.rs"]
+mod recover_tests;
+
+#[cfg(test)]
+#[path = "recovery_type_tests.rs"]
+mod recovery_type_tests;
+
+#[cfg(test)]
+#[path = "replay_core_tests.rs"]
+mod replay_core_tests;
+
+#[cfg(test)]
+#[path = "snapshot_tests.rs"]
+mod snapshot_tests;
+
 pub mod queue;
 pub mod records;
 pub mod recovery;
