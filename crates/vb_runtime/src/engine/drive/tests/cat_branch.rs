@@ -2,18 +2,21 @@
 
 //! BranchLimitExceeded + compute_max_parallel_in_flight tests.
 
-use super::common::{fin, mkwf, mkr, tog, ws};
+use super::common::{dd, fin, mkr, mkwf, mkwfc, setc, tog};
 use crate::engine::drive::compute_max_parallel_in_flight;
-use crate::engine::types::RuntimeEngineError;
-use vb_core::ids::StepIdx;
-use vb_core::value::SlotValue;
+use crate::engine::types::{RuntimeEngineError, RuntimeSignal};
+use vb_core::engine::StepBudget;
+use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::value::{ConstValue, SlotValue};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
 #[cfg(test)]
 mod tests {
-        #[test]
+    use super::*;
+
+    #[test]
     fn branch_limit_exceeded_fields_are_correct() {
         let max_val = usize::from(u16::MAX);
         let requested = usize::from(u16::MAX).saturating_add(1);
@@ -39,7 +42,6 @@ mod tests {
     /// Verify that BranchLimitExceeded error display message contains both the
     /// max and requested count.
     #[test]
-        #[test]
     fn branch_limit_exceeded_display_message() {
         let max_val = usize::from(u16::MAX);
         let requested = usize::from(u16::MAX).saturating_add(1);
@@ -61,7 +63,6 @@ mod tests {
     /// Verify that BranchLimitExceeded returns the correct runtime code
     /// from runtime_code().
     #[test]
-        #[test]
     fn branch_limit_exceeded_runtime_code_is_set() {
         let error = RuntimeEngineError::BranchLimitExceeded {
             max: usize::from(u16::MAX),
@@ -85,9 +86,7 @@ mod tests {
     /// This confirms the function works correctly for the happy path
     /// (BranchLimitExceeded is the error path for > u16::MAX branches).
     #[test]
-        #[test]
     fn compute_max_parallel_returns_branch_count_for_valid_workflow() -> Result<(), String> {
-        use crate::engine::drive::compute_max_parallel_in_flight;
         let wf = mkwf(
             vec![
                 tog(0, Box::from([1u16, 2]), 3),
@@ -113,10 +112,7 @@ mod tests {
     /// `from_parts_unchecked` to bypass validation and exercise the
     /// defense-in-depth guard in compute_max_parallel_in_flight.
     #[test]
-        #[test]
     fn compute_max_parallel_rejects_branch_count_exceeding_u16_max() {
-        use crate::engine::drive::compute_max_parallel_in_flight;
-
         let branch_count = usize::from(u16::MAX).saturating_add(1);
         let branches: Box<[StepIdx]> = std::iter::repeat(StepIdx::new(0))
             .take(branch_count)
@@ -171,7 +167,6 @@ mod tests {
 
     /// SetConst with negative I64 propagates correctly.
     #[test]
-        #[test]
     fn cat8_set_const_negative_propagates() -> Result<(), String> {
         let wf = mkwfc(
             vec![setc(0, 0, 0, 1), fin(1, 0)],
@@ -187,7 +182,4 @@ mod tests {
         }
         Ok(())
     }
-
-    /// Copy propagates Bool values through the drive loop.
-    #[test]
-    }
+}

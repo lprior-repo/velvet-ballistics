@@ -2,21 +2,21 @@
 
 //! cat6 evidence emission tests + collect-pagination evidence test.
 
-use super::common::{collect_start, dde, fin, mkwf, mkr, setc, ws};
+use super::common::{collect_start, dd, dde, fin, mkr, mkwf, mkwfc, nop, setc, ws};
 use crate::engine::drive::drive_deterministic_full;
-use crate::engine::types::{
-    EvidenceCollector, EvidenceEvent, RetryPolicy,
-};
+use crate::engine::types::{EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::StepBudget;
 use vb_core::ids::SlotIdx;
-use vb_core::value::SlotValue;
+use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
 
 #[cfg(test)]
 mod tests {
-        #[test]
+    use super::*;
+
+    #[test]
     fn cat6_evidence_step_events() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
         let mut r = mkr(2, 1)?;
@@ -36,7 +36,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat6_evidence_slot_written() -> Result<(), String> {
         let wf = mkwfc(
             vec![setc(0, 0, 0, 1), fin(1, 0)],
@@ -59,7 +58,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn collect_pagination_extra_single_authoritative_evidence_write() -> Result<(), String> {
         let wf = mkwf(vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)], 2)?;
         let mut run = mkr(3, 2)?;
@@ -117,7 +115,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat7_multi_step_chain() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1)?;
         let mut r = mkr(4, 1)?;
@@ -130,6 +127,4 @@ mod tests {
         }
         Ok(())
     }
-
-    #[test]
-    }
+}

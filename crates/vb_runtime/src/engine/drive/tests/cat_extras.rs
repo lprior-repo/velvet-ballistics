@@ -3,21 +3,20 @@
 //! Additional cat1–cat9 variant tests, evidence ordering, and
 //! drive_with_actions multi-nop completion.
 
-use super::common::{
-    askn, cpy, cslot, dd, dde, fin, mkwf, mkwfc, mkr, nop, setc, ws, wuntil,
-};
+use super::common::{askn, cpy, cslot, dd, dde, fin, mkr, mkwf, mkwfc, nop, setc, ws, wuntil};
 use crate::engine::drive::{compute_max_parallel_in_flight, drive_with_actions};
-use crate::engine::types::{
-    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal,
-};
+use crate::engine::types::{EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal};
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::StepBudget;
-use vb_core::ids::{SlotIdx, SymbolId};
-use vb_core::value::SlotValue;
+use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::value::{ConstValue, SlotValue};
+use vb_core::workflow::SlotBranch;
 
 #[cfg(test)]
 mod tests {
-        #[test]
+    use super::*;
+
+    #[test]
     fn cat1_copy_propagates_bool() -> Result<(), String> {
         let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2)?;
         let mut r = mkr(2, 2)?;
@@ -34,7 +33,6 @@ mod tests {
 
     /// ChooseSlot second branch matches: slot 0=false, slot 1=true -> target 2.
     #[test]
-        #[test]
     fn cat2_choose_slot_second_branch_matches() -> Result<(), String> {
         let branches = Box::from([
             SlotBranch {
@@ -66,7 +64,6 @@ mod tests {
 
     /// StepStarted appears before StepSucceeded in evidence ordering.
     #[test]
-        #[test]
     fn cat6_evidence_started_before_succeeded() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
         let mut r = mkr(2, 1)?;
@@ -92,7 +89,6 @@ mod tests {
 
     /// Ask node emits StepStarted but not StepSucceeded (suspends).
     #[test]
-        #[test]
     fn cat3_ask_evidence_has_started_no_succeeded() -> Result<(), String> {
         let wf = mkwf(vec![askn(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -122,7 +118,6 @@ mod tests {
 
     /// WaitUntil node emits StepStarted but not StepSucceeded (suspends).
     #[test]
-        #[test]
     fn cat3_wait_evidence_has_started_no_succeeded() -> Result<(), String> {
         let wf = mkwf(vec![wuntil(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -152,7 +147,6 @@ mod tests {
 
     /// Single Finish node completes with budget=1.
     #[test]
-        #[test]
     fn cat1_single_finish_budget_one() -> Result<(), String> {
         let wf = mkwf(vec![fin(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -168,7 +162,6 @@ mod tests {
 
     /// 3-step chain produces >= 3 StepStarted and >= 3 StepSucceeded.
     #[test]
-        #[test]
     fn cat6_evidence_three_step_chain() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1)?;
         let mut r = mkr(3, 1)?;
@@ -192,7 +185,6 @@ mod tests {
 
     /// drive_with_actions with 4 Nop steps and adequate budget completes.
     #[test]
-        #[test]
     fn dwa_multi_nop_completes() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1)?;
         let mut r = mkr(4, 1)?;
@@ -209,9 +201,7 @@ mod tests {
 
     /// compute_max_parallel_in_flight returns 0 when no TogetherStart exists.
     #[test]
-        #[test]
     fn compute_max_parallel_returns_zero_without_together_start() -> Result<(), String> {
-        use crate::engine::drive::compute_max_parallel_in_flight;
         let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
         let result = compute_max_parallel_in_flight(&wf).map_err(|e| format!("{e}"))?;
         assert_eq!(result, 0, "should return 0 when no TogetherStart exists");
@@ -220,7 +210,6 @@ mod tests {
 
     /// SetConst with Bool(true) produces SlotWritten evidence.
     #[test]
-        #[test]
     fn cat9_set_const_bool_evidence() -> Result<(), String> {
         let wf = mkwfc(
             vec![setc(0, 0, 0, 1), fin(1, 0)],
@@ -243,17 +232,4 @@ mod tests {
         }
         Ok(())
     }
-
-    // RE-011: when the evidence collector runs out of capacity during
-    // finish_drive_step, the drive loop must surface the typed error
-    // and the run frame must NOT show step 0 as Succeeded (no
-    // half-committed state). The Collect* branch in emit_slot_evidence
-    // calls push_slot_written_with_extra with extra = Some(_), which
-    // returns Err(CollectEvidenceCapacityExceeded) at capacity 0. The
-    // mark_step_after_signal path is intentionally swapped to run
-    // AFTER emit_slot_evidence so that a capacity overflow leaves the
-    // step in its pre-success Running state and the caller sees a
-    // single fail-closed Err rather than a half-committed Succeeded
-    // step.
-    #[test]
-    }
+}

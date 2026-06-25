@@ -1,5 +1,7 @@
+#[cfg(test)]
+use crate::codec::decode_journal_event;
 use crate::{
-    codec::{EnforceKindParity, decode_journal_event, decode_record, encode_record},
+    codec::{EnforceKindParity, decode_record, encode_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
@@ -67,6 +69,7 @@ impl FjallJournal {
     /// memtable) but has not been force-flushed to stable storage.
     /// Callers that require strict durability must invoke
     /// `persist_strict` after staging.
+    #[cfg(test)]
     pub(crate) fn append_queued_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
         match self.append_unfsynced(event) {
             Ok(()) => Ok(()),

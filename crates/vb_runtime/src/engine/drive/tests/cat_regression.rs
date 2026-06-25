@@ -3,25 +3,23 @@
 //! RE-004 / RE-011 regression tests for evidence gaps and capacity
 //! overflow in the drive loop.
 
-use super::common::{collect_start, dde, fin, mkwf, mkr, setc, ws};
+use super::common::{collect_start, fin, mkr, mkwf, setc, ws};
 use crate::engine::drive::{drive_deterministic_full, emit_slot_evidence, DriveState};
-use crate::engine::types::{
-    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
-};
+use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineError};
 use crate::primitives::collect::{CollectPaginationState, CollectStates};
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::StepBudget;
+use vb_core::errors::EngineError;
 use vb_core::frame::StepState;
-use vb_core::ids::SlotIdx;
+use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts,
-};
 
 #[cfg(test)]
 mod tests {
-        #[test]
+    use super::*;
+
+    #[test]
     fn re_011_evidence_capacity_overflow_does_not_mark_step_succeeded() -> Result<(), String> {
         // CollectStart at step 0 forces emit_slot_evidence down the
         // collect branch (push_slot_written_with_extra) instead of the
@@ -117,10 +115,10 @@ mod tests {
             .step_state(StepIdx::new(0))
             .map_err(|e| format!("{e}"))?;
         match step_state {
-            vb_core::frame::StepState::Succeeded => Err(format!(
+            StepState::Succeeded => Err(format!(
                 "RE-011: step 0 marked Succeeded despite capacity overflow (half-committed state)"
             )),
-            vb_core::frame::StepState::Running => Ok(()),
+            StepState::Running => Ok(()),
             other => Err(format!(
                 "RE-011: step 0 in unexpected state {other:?}; expected Running (pre-success, fail-closed)"
             )),
@@ -134,10 +132,7 @@ mod tests {
     /// run.read_slot(slot)` pattern silently swallowed both the
     /// evidence and the underlying read error.
     #[test]
-        #[test]
     fn re_004_emit_slot_evidence_records_gap_on_read_slot_error() -> Result<(), String> {
-        use crate::engine::drive::{DriveState, emit_slot_evidence};
-
         // A RunFrame with slot_count=2 but no writes leaves both slots
         // uninitialized, so read_slot(SlotIdx::new(0)) returns
         // SlotUninitialized. That is the "read_slot error" the fix
@@ -184,10 +179,7 @@ mod tests {
     /// the `node.output` branch must also surface read_slot errors via
     /// `record_evidence_gap` and must not emit evidence.
     #[test]
-        #[test]
     fn re_004_emit_slot_evidence_records_gap_on_output_read_slot_error() -> Result<(), String> {
-        use crate::engine::drive::{DriveState, emit_slot_evidence};
-
         let run = mkr(1, 2)?;
         let mut evidence = EvidenceCollector::new();
         let collect_states = CollectStates::new();
@@ -230,10 +222,7 @@ mod tests {
     /// record a gap. Guards against an over-eager gap counter that
     /// would fire on the happy path.
     #[test]
-        #[test]
     fn re_004_emit_slot_evidence_does_not_record_gap_on_success() -> Result<(), String> {
-        use crate::engine::drive::{DriveState, emit_slot_evidence};
-
         let mut run = mkr(1, 1)?;
         ws(&mut run, 0, SlotValue::I64(42))?;
         let mut evidence = EvidenceCollector::new();
@@ -261,4 +250,4 @@ mod tests {
         }
         Ok(())
     }
-    }
+}

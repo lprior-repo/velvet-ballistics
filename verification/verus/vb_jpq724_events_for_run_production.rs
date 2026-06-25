@@ -1,13 +1,18 @@
-//! Production-bound Verus contracts for vb_storage journal replay seams.
+//! Standalone Verus model for vb_storage journal replay seam contracts.
 //!
 //! Obligation: VB-STORAGE-REPLAY-001 (events_for_run seam contracts)
 //!
-//! This module provides Verus requires/ensures contracts for the production
-//! `events_for_run` and `events_for_run_from` seams in:
+//! This module is intentionally self-contained because the registry runner invokes
+//! it with standalone `verus --crate-type=lib`, without Cargo crate resolution for
+//! production crates. It mirrors the replay properties expected of:
 //!   - crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run
 //!   - crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run_from
 //!
-//! Production types mirrored:
+//! It does not bind to those production functions in this standalone form; no
+//! external production imports or trusted function specifications are declared
+//! here. Production binding remains separate proof debt outside this artifact.
+//!
+//! Production concepts mirrored:
 //!   - vb_core::RunId  (u64-based numeric identifier)
 //!   - vb_storage::EventSeq  (u64-based per-run event sequence)
 //!   - vb_storage::JournalEvent  (run admission, step, action, slot events)
@@ -17,97 +22,16 @@
 //!   events_for_run(run):
 //!     requires: run is any valid RunId (RunId::new is total)
 //!     ensures:  latest snapshot authority failures return typed errors;
-//!               if Ok(events), then all events have run_id() == run and the
+//!               if Ok(events), then all events have run_id == run and the
 //!               first event, when present, starts at snapshot seq + 1 or 0
 //!   events_for_run_from(run, start_seq):
 //!     requires: run is any valid RunId, start_seq is any valid EventSeq
-//!     ensures:  if Ok(events), then all events have run_id() == run
+//!     ensures:  if Ok(events), then all events have run_id == run
 //!               first returned event equals start_seq when present
 //!               sequences are strictly increasing by 1
 use vstd::prelude::*;
-use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 
 verus! {
-
-// ============================================================
-// Production-type external bindings
-// ============================================================
-// Verus cannot natively reason about production types whose invariants are
-// proven by Holzman + cargo gates elsewhere. The bindings below are the
-// production-source-of-truth imports; the `Spec*` mirror types that follow
-// carry the verifiable contract. The refinement proof
-// `refinement_proof_events_for_run_from_contract_binds_production`
-// (further below) is the bridge between the two halves of this file.
-
-#[verifier::external_type_specification]
-pub struct ExEventSeq(EventSeq);
-
-#[verifier::external_type_specification]
-pub struct ExJournalEvent(JournalEvent);
-
-#[verifier::external_type_specification]
-pub struct ExJournalError(JournalError);
-
-#[verifier::external_type_specification]
-pub struct ExFjallJournal(FjallJournal);
-
-// Production-bound spec for FjallJournal::events_for_run.
-// This is the single source of truth: the spec contract below is the
-// property the production body must satisfy. The body itself is trusted
-// via the `assume_specification` external-fn-specification attribute; the
-// ensures clause re-states the spec contract in production-type terms.
-pub assume_specification[<FjallJournal as ?>::events_for_run](
-    &self,
-    run: vb_core::RunId,
-) -> (result: Result<Vec<JournalEvent>, JournalError>)
-    requires
-        run.valid_digest(),
-    ensures
-        match result {
-            Ok(events) => events_run_id_matches_run(events@, run),
-            Err(_) => true,
-        },
-;
-
-// Production-bound spec for FjallJournal::events_for_run_bounded (the
-// bounded form is `pub` and the body delegates to events_for_run_from).
-// The refinement lemma links the two contracts.
-pub assume_specification[<FjallJournal as ?>::events_for_run_bounded](
-    &self,
-    run: vb_core::RunId,
-    limit: vb_storage::EventReplayLimit,
-) -> (result: Result<Vec<JournalEvent>, JournalError>)
-    requires
-        run.valid_digest(),
-    ensures
-        match result {
-            Ok(events) => events_run_id_matches_run(events@, run),
-            Err(_) => true,
-        },
-;
-
-// ============================================================
-// Spec-level projection helpers (used by both the mirror types
-// and the production-binding ensures clauses)
-// ============================================================
-pub open spec fn events_run_id_matches_run(
-    events: Seq<JournalEvent>,
-    run: vb_core::RunId,
-) -> bool {
-    forall|i: int|
-        0 <= i && i < events.len() as int ==> #[trigger] events[i as int].run_id() == run
-}
-
-pub open spec fn events_seq_contiguous_from(
-    events: Seq<JournalEvent>,
-    start_seq: EventSeq,
-) -> bool {
-    &&& (events.len() as int > 0 ==> events[0].seq() == start_seq)
-    &&& (forall|i: int|
-        0 <= i && i < events.len() as int - 1
-            ==> #[trigger] events[i as int].seq() < events[(i + 1) as int].seq())
-}
-
 
 // ============================================================
 // Spec mirror types (verification-only abstractions)
@@ -260,12 +184,13 @@ pub open spec fn snapshot_authority_result(
 // from N + 1; no snapshot delegates from zero. If Ok(events), the first event
 // when present must equal the delegated start sequence exactly.
 //
-// Production implementation:
+// Intended production correspondence, not mechanically proved in this
+// standalone target:
 //   snapshot_seq = latest_durable_snapshot_seq(run)?
 //   start_seq = snapshot_seq.map_or(Ok(EventSeq::ZERO), codec::next_seq)?
 //   events_for_run_from(run, start_seq, limit)
 //
-// Refinement map:
+// Model relation to audit against production code:
 //   snapshot_authority_result -> trimming::latest_durable_snapshot_seq +
 //                                codec::next_seq in journal/replay.rs
 //   spec_events_for_run_from_contract -> validate_replay_sequence.
@@ -286,7 +211,7 @@ pub open spec fn spec_events_for_run_contract(
 // Contract: events_for_run_from
 // crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run_from
 // ============================================================
-// events_for_run_from(run, start_seq) returns Ok(events) iff:
+// If events_for_run_from(run, start_seq) returns Ok(events), then:
 //   1. All events have run_id == run
 //   2. The first returned event, when present, has seq == start_seq
 //   3. Sequences are strictly increasing by 1
@@ -298,7 +223,7 @@ pub open spec fn spec_events_for_run_from_contract(
     match result {
         Ok(events) => {
             &&& (forall|i: int|
-                0 <= i && i < events.len() as int ==> events[i as int].run_id == run)
+                0 <= i && i < events.len() as int ==> #[trigger] events[i as int].run_id == run)
             &&& (events.len() as int > 0 ==> events[0].seq.value == start_seq.value)
             &&& (forall|i: int|
                 0 <= i && i < events.len() as int - 1 ==> #[trigger] events[i as int].seq.value + 1
@@ -338,13 +263,14 @@ pub proof fn proof_events_for_run_from_run_preserved(
     requires
         spec_events_for_run_from_contract(run, start_seq, Ok(events)),
     ensures
-        forall|i: int| 0 <= i && i < events.len() as int ==> events[i as int].run_id == run,
+        forall|i: int|
+            0 <= i && i < events.len() as int ==> #[trigger] events[i as int].run_id == run,
 {
     assert_forall_by(
         |i: int|
             {
                 requires(0 <= i && i < events.len() as int);
-                ensures(events[i as int].run_id == run);
+                ensures(#[trigger] events[i as int].run_id == run);
                 reveal(spec_events_for_run_from_contract);
             },
     );

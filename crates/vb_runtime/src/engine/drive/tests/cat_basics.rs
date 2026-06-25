@@ -3,16 +3,18 @@
 //! cat1–cat5 drive-loop workflow tests: nop, set-const, copy, finish,
 //! choose-slot, wait/ask, error-handler, budget.
 
-use super::common::{
-    askn, cpy, cslot, dd, errh, fin, mkwf, mkwfc, mkr, nop, setc, ws, wuntil,
-};
-use vb_core::engine::StepBudget;
-use vb_core::value::SlotValue;
+use super::common::{askn, cpy, cslot, dd, errh, fin, mkr, mkwf, mkwfc, nop, setc, ws, wuntil};
 use crate::engine::types::RuntimeSignal;
+use vb_core::engine::StepBudget;
+use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::value::{ConstValue, SlotValue};
+use vb_core::workflow::SlotBranch;
 
 #[cfg(test)]
 mod tests {
-        #[test]
+    use super::*;
+
+    #[test]
     fn cat1_nop_continues() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
         let mut r = mkr(2, 1)?;
@@ -27,7 +29,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat1_set_const_writes() -> Result<(), String> {
         let wf = mkwfc(
             vec![setc(0, 0, 0, 1), fin(1, 0)],
@@ -45,7 +46,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat1_copy_propagates() -> Result<(), String> {
         let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2)?;
         let mut r = mkr(2, 2)?;
@@ -61,7 +61,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat1_finish_immediate() -> Result<(), String> {
         let wf = mkwf(vec![fin(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -76,7 +75,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat2_choose_slot_matching() -> Result<(), String> {
         let branches = Box::from([
             SlotBranch {
@@ -103,7 +101,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat2_choose_slot_no_match_errors() -> Result<(), String> {
         let branches = Box::from([SlotBranch {
             condition: SlotIdx::new(0),
@@ -122,7 +119,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat2_choose_otherwise() -> Result<(), String> {
         let branches = Box::from([SlotBranch {
             condition: SlotIdx::new(0),
@@ -142,7 +138,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat3_wait_until_awaiting() -> Result<(), String> {
         let wf = mkwf(vec![wuntil(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -156,7 +151,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat3_ask_awaiting() -> Result<(), String> {
         let wf = mkwf(vec![askn(0, 0)], 1)?;
         let mut r = mkr(1, 1)?;
@@ -170,7 +164,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat4_error_handler_body_succeeds() -> Result<(), String> {
         let wf = mkwf(
             vec![errh(0, 1, 2, None), nop(1, 3), fin(2, 0), fin(3, 0)],
@@ -188,7 +181,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn cat5_budget_exhausted() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1)?;
         let mut r = mkr(3, 1)?;
@@ -200,6 +192,4 @@ mod tests {
             other => Err(format!("expected StepBudgetExhausted, got {other:?}")),
         }
     }
-
-    #[test]
-    }
+}

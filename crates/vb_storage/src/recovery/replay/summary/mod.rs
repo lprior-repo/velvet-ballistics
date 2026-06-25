@@ -11,14 +11,17 @@
 //! - `accumulator`: `FrameSeedAccumulator` state machine
 //! - `hydrate`: slot hydration, taint recovery, and replay error mapping
 
+#[cfg(test)]
+use crate::JournalEvent;
+#[cfg(test)]
 use crate::recovery::types::{
-    RecoveredPendingAction, RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry,
-    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryResult, RecoveryRuntimeSummary,
-    RecoveryTerminalState, UnsupportedRecoveryState,
+    RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepState, RecoveryError,
+    RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
-use crate::{EventSeq, JournalEvent};
 
+#[cfg(test)]
 use derive::reject_workflow_digest_mismatch;
+#[cfg(test)]
 use hydrate::{RecoveredSlots, replay_error_to_recovery};
 
 pub mod accumulator;
@@ -37,4 +40,5 @@ pub use derive::{
     recovery_dimension_count_from_index, recovery_observed_dimension_is_positive,
     recovery_seed_dimensions_positive,
 };
+#[cfg(test)]
 pub(crate) use hydrate::legacy_slot_taint;
