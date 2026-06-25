@@ -5,7 +5,9 @@ use crate::frame::StepState;
 use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 
 #[test]
 fn step_once_nop_advances_pc_and_returns_continue() -> Result<(), String> {

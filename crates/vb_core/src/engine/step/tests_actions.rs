@@ -1,14 +1,14 @@
 use super::test_support::{ensure_equal, test_frame};
-use super::{
-    journal_action_suspended, resume_action_completion, resume_action_failure, step_once,
-};
+use super::{journal_action_suspended, resume_action_completion, resume_action_failure, step_once};
 use crate::EngineSignal;
 use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPolicy};
 use crate::frame::StepState;
 use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 
 #[test]
 fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String> {

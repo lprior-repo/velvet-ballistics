@@ -6,7 +6,9 @@ use crate::frame::StepState;
 use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 
 #[test]
 fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
