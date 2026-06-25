@@ -2,11 +2,11 @@ use super::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary, SummaryRecove
 use crate::RuntimeError;
 use crate::recovery::recovery_boundary_from_hydration;
 use vb_core::frame::StepState;
-use vb_core::{RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::recovery::{
-    RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
-    RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
+    RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
 };
 
 #[test]
@@ -389,4 +389,66 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
     assert_eq!(recovered_summary.steps_started, summary.steps_started);
     assert_eq!(recovered_summary.steps_succeeded, summary.steps_succeeded);
     assert_eq!(recovered_summary.terminal, summary.terminal);
+}
+
+#[test]
+fn pending_actions_hydration_round_trip() -> Result<(), String> {
+    let run = RunId::new(24);
+    let pending_action = RecoveredPendingAction {
+        step: StepIdx::new(2),
+        action: ActionId::new(7),
+    };
+    let summary = RecoveryRuntimeSummary {
+        run,
+        first_seq: EventSeq::new(0),
+        last_seq: EventSeq::new(4),
+        workflow: Some(WorkflowDigest::from_bytes([9; 32])),
+        steps_started: 3,
+        steps_succeeded: 2,
+        actions_scheduled: 1,
+        actions_resolved: 0,
+        suspensions: 1,
+        slots_written: 0,
+        terminal: None,
+    };
+    let seed = RecoveryFrameSeed {
+        summary,
+        first_step: StepIdx::ZERO,
+        step_count: 4,
+        slot_count: 0,
+        pc: StepIdx::new(2),
+        steps: vec![
+            RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Succeeded,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(1),
+                state: RecoveredStepState::Succeeded,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(2),
+                state: RecoveredStepState::Asking,
+            },
+        ],
+        slots: Vec::new(),
+        pending_actions: vec![pending_action],
+        unsupported: UnsupportedRecoveryState {
+            slot_values: false,
+            slot_taint: false,
+            action_payloads: false,
+            pending_actions: true,
+        },
+    };
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+
+    let frame = boundary
+        .hydrate_run_frame()
+        .map_err(|error| format!("pending-action hydration must succeed: {error:?}"))?;
+
+    assert_eq!(frame.run_id(), run);
+    assert_eq!(frame.pc(), StepIdx::new(2));
+    assert_eq!(frame.step_state(StepIdx::new(2)), Ok(StepState::Asking));
+    assert!(boundary.unsupported_state().pending_actions);
+    Ok(())
 }
