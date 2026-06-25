@@ -258,6 +258,17 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
     Ok((step_count, slot_count, first_step))
 }
 
+/// Categorizes the result of dispatching an event to a category helper.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ApplyOutcome {
+    /// Helper handled the event and contributed to the executed count.
+    Executed,
+    /// Helper handled the event but the caller must not increment (Duplicate skip).
+    Skipped,
+    /// Helper did not recognize the event variant.
+    NotApplicable,
+}
+
 /// Applies tail journal events to a mutable RunFrame, tracking action resolution.
 ///
 /// Returns the count of state-affecting events applied.
@@ -266,219 +277,263 @@ pub(super) fn apply_tail_events(
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<u64> {
-    // Reset max_parallel_in_flight to 0 so add_parallel_in_flight correctly
-    // tracks the peak observed during replay (matching the full-journal path).
     frame.set_max_parallel_in_flight(0);
     let mut executed = 0u64;
     for event in tail_events {
-        match event {
-            JournalEvent::StepStarted { step, .. } => {
-                frame
-                    .mark_running(*step)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_running failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::StepSucceeded { step, .. } => {
-                frame
-                    .mark_succeeded(*step)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_succeeded failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionScheduled { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                frame
-                    .add_parallel_in_flight(1)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight overflow".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionScheduledTicket {
-                run,
-                ticket,
-                input,
-                output,
-                ..
-            } => {
-                verify_action_ticket_event(*run, *ticket)?;
-                let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
-                if effect == ActionReplayEffect::Duplicate {
-                    continue;
-                }
-                frame
-                    .add_parallel_in_flight(1)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: ticket.step,
-                        detail: "parallel_in_flight overflow".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionCompletedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_completed(*action, *step);
-                sub_tail_parallel_in_flight(frame, *step)?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionCompletedEnvelope {
-                run,
-                ticket,
-                output,
-                outcome,
-                value,
-                encoded_len,
-                taint,
-                value_digest,
-                ..
-            } => {
-                let verified_digest = verified_action_envelope_digest(
-                    *run,
-                    *ticket,
-                    *outcome,
-                    value,
-                    *encoded_len,
-                    *value_digest,
-                )?;
-                let effect = tracker.mark_completed_envelope_effect(
-                    *ticket,
-                    *output,
-                    *encoded_len,
-                    *taint,
-                    verified_digest,
-                )?;
-                if effect == ActionReplayEffect::Duplicate {
-                    continue;
-                }
-                let slot_value = decode_action_envelope_slot(*ticket, *output, value)?;
-                frame
-                    .write_slot_with_taint(*output, slot_value, *taint)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: ticket.step,
-                        detail: "slot write out of bounds".to_owned(),
-                    })?;
-                frame
-                    .mark_succeeded(ticket.step)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: ticket.step,
-                        detail: "mark_succeeded failed".to_owned(),
-                    })?;
-                sub_tail_parallel_in_flight(frame, ticket.step)?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionFailedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_failed(*action, *step);
-                sub_tail_parallel_in_flight(frame, *step)?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::SlotWrittenEvent { slot, value, .. } => {
-                if let Some(bytes) = value {
-                    let slot_value = postcard::from_bytes(bytes).map_err(|_| {
-                        RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
-                            detail: format!("slot value decode failed for slot {:?}", slot),
-                        }
-                    })?;
-                    let taint = match resolve_slot_taint_read(observe_slot_taint_read(
-                        frame.read_taint(*slot),
-                    )) {
-                        SlotTaintResolution::Use(taint) => taint,
-                        SlotTaintResolution::FailClosed => {
-                            return Err(RecoveryError::SlotTaintReadFailed { slot: *slot });
-                        }
-                    };
-                    frame
-                        .write_slot_with_taint(*slot, slot_value, taint)
-                        .map_err(|_| RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
-                            detail: "slot write out of bounds".to_owned(),
-                        })?;
-                }
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::WaitScheduledEvent { step, .. } => {
-                // A wait can be scheduled before the step is marked Running.
-                // Transition through Running first to satisfy state machine rules.
-                let current_state =
-                    frame
-                        .step_state(*step)
-                        .map_err(|_| RecoveryError::ReplayDivergence {
-                            step: *step,
-                            detail: "step_state read failed".to_owned(),
-                        })?;
-                if current_state == vb_core::StepState::Pending {
-                    frame
-                        .mark_running(*step)
-                        .map_err(|_e| RecoveryError::ReplayDivergence {
-                            step: *step,
-                            detail: "mark_running before waiting failed".to_owned(),
-                        })?;
-                }
-                frame
-                    .mark_waiting(*step)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_waiting failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::AskScheduledEvent { step, .. } => {
-                let current_state =
-                    frame
-                        .step_state(*step)
-                        .map_err(|_| RecoveryError::ReplayDivergence {
-                            step: *step,
-                            detail: "step_state read failed".to_owned(),
-                        })?;
-                if current_state == vb_core::StepState::Pending {
-                    frame
-                        .mark_running(*step)
-                        .map_err(|_e| RecoveryError::ReplayDivergence {
-                            step: *step,
-                            detail: "mark_running before asking failed".to_owned(),
-                        })?;
-                }
-                frame
-                    .mark_asking(*step)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_asking failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::AskTimedOutEvent { step, .. } => {
-                frame
-                    .mark_running(*step)
-                    .and_then(|_| frame.mark_succeeded(*step))
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark ask timeout resolved failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            _ => {}
+        let outcome = match event {
+            JournalEvent::StepStarted { .. } | JournalEvent::StepSucceeded { .. } => apply_step_lifecycle(frame, event)?,
+            JournalEvent::ActionScheduled { .. } => apply_action_scheduled(frame, event, tracker)?,
+            JournalEvent::ActionScheduledTicket { .. } => apply_action_scheduled_ticket(frame, event, tracker)?,
+            JournalEvent::ActionCompletedEvent { .. } => apply_action_completed_event(frame, event, tracker)?,
+            JournalEvent::ActionCompletedEnvelope { .. } => apply_action_completed_envelope(frame, event, tracker)?,
+            JournalEvent::ActionFailedEvent { .. } => apply_action_failed(frame, event, tracker)?,
+            JournalEvent::SlotWrittenEvent { .. } => apply_slot_written(frame, event)?,
+            JournalEvent::WaitScheduledEvent { .. } | JournalEvent::AskScheduledEvent { .. } | JournalEvent::AskTimedOutEvent { .. } => apply_signal_event(frame, event)?,
+            _ => ApplyOutcome::NotApplicable,
+        };
+        if outcome == ApplyOutcome::Executed {
+            executed = executed.saturating_add(1);
         }
     }
     Ok(executed)
+}
+
+fn apply_step_lifecycle(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+) -> RecoveryResult<ApplyOutcome> {
+    match event {
+        JournalEvent::StepStarted { step, .. } => {
+            frame.mark_running(*step).map_err(|_e| RecoveryError::ReplayDivergence {
+                step: *step,
+                detail: "mark_running failed".to_owned(),
+            })?;
+            Ok(ApplyOutcome::Executed)
+        }
+        JournalEvent::StepSucceeded { step, .. } => {
+            frame.mark_succeeded(*step).map_err(|_e| RecoveryError::ReplayDivergence {
+                step: *step,
+                detail: "mark_succeeded failed".to_owned(),
+            })?;
+            Ok(ApplyOutcome::Executed)
+        }
+        _ => Ok(ApplyOutcome::NotApplicable),
+    }
+}
+
+fn apply_action_scheduled(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &ActionReplayTracker,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::ActionScheduled { action, step, .. } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    if tracker.is_resolved(*action, *step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked {
+            action: *action,
+            step: *step,
+        });
+    }
+    frame.add_parallel_in_flight(1).map_err(|_e| RecoveryError::ReplayDivergence {
+        step: *step,
+        detail: "parallel_in_flight overflow".to_owned(),
+    })?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_action_scheduled_ticket(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    verify_action_ticket_event(*run, *ticket)?;
+    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+    if effect == ActionReplayEffect::Duplicate {
+        return Ok(ApplyOutcome::Skipped);
+    }
+    frame.add_parallel_in_flight(1).map_err(|_e| RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: "parallel_in_flight overflow".to_owned(),
+    })?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_action_completed_event(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::ActionCompletedEvent { action, step, .. } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    if tracker.is_resolved(*action, *step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked {
+            action: *action,
+            step: *step,
+        });
+    }
+    tracker.mark_completed(*action, *step);
+    sub_tail_parallel_in_flight(frame, *step)?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_action_completed_envelope(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::ActionCompletedEnvelope {
+        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
+    } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    let verified = verified_action_envelope_digest(
+        *run, *ticket, *outcome, value, *encoded_len, *value_digest,
+    )?;
+    let effect = tracker.mark_completed_envelope_effect(
+        *ticket, *output, *encoded_len, *taint, verified,
+    )?;
+    if effect == ActionReplayEffect::Duplicate {
+        return Ok(ApplyOutcome::Skipped);
+    }
+    apply_envelope_slot_and_step(frame, *ticket, *output, value, *taint)?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_envelope_slot_and_step(
+    frame: &mut vb_core::RunFrame,
+    ticket: vb_core::ActionTicket,
+    output: vb_core::SlotIdx,
+    value: &[u8],
+    taint: vb_core::Taint,
+) -> RecoveryResult<()> {
+    let slot_value = decode_action_envelope_slot(ticket, output, value)?;
+    frame.write_slot_with_taint(output, slot_value, taint).map_err(|_| RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: "slot write out of bounds".to_owned(),
+    })?;
+    frame.mark_succeeded(ticket.step).map_err(|_| RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: "mark_succeeded failed".to_owned(),
+    })?;
+    sub_tail_parallel_in_flight(frame, ticket.step)
+}
+
+fn apply_action_failed(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::ActionFailedEvent { action, step, .. } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    if tracker.is_resolved(*action, *step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked {
+            action: *action,
+            step: *step,
+        });
+    }
+    tracker.mark_failed(*action, *step);
+    sub_tail_parallel_in_flight(frame, *step)?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_slot_written(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+) -> RecoveryResult<ApplyOutcome> {
+    let JournalEvent::SlotWrittenEvent { slot, value, .. } = event else {
+        return Ok(ApplyOutcome::NotApplicable);
+    };
+    if let Some(bytes) = value {
+        let slot_value = postcard::from_bytes(bytes).map_err(|_| RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!("slot value decode failed for slot {:?}", slot),
+        })?;
+        let taint = resolve_slot_taint_or_fail(frame, *slot)?;
+        frame.write_slot_with_taint(*slot, slot_value, taint).map_err(|_| RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: "slot write out of bounds".to_owned(),
+        })?;
+    }
+    Ok(ApplyOutcome::Executed)
+}
+
+fn resolve_slot_taint_or_fail(
+    frame: &vb_core::RunFrame,
+    slot: vb_core::SlotIdx,
+) -> RecoveryResult<vb_core::Taint> {
+    match resolve_slot_taint_read(observe_slot_taint_read(frame.read_taint(slot))) {
+        SlotTaintResolution::Use(taint) => Ok(taint),
+        SlotTaintResolution::FailClosed => Err(RecoveryError::SlotTaintReadFailed { slot }),
+    }
+}
+
+fn apply_signal_event(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+) -> RecoveryResult<ApplyOutcome> {
+    match event {
+        JournalEvent::WaitScheduledEvent { step, .. } => apply_signal_wait(frame, *step),
+        JournalEvent::AskScheduledEvent { step, .. } => apply_signal_ask(frame, *step),
+        JournalEvent::AskTimedOutEvent { step, .. } => apply_signal_ask_timeout(frame, *step),
+        _ => Ok(ApplyOutcome::NotApplicable),
+    }
+}
+
+fn apply_signal_wait(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<ApplyOutcome> {
+    ensure_step_running(frame, step, "waiting")?;
+    frame.mark_waiting(step).map_err(|_e| RecoveryError::ReplayDivergence {
+        step,
+        detail: "mark_waiting failed".to_owned(),
+    })?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_signal_ask(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<ApplyOutcome> {
+    ensure_step_running(frame, step, "asking")?;
+    frame.mark_asking(step).map_err(|_e| RecoveryError::ReplayDivergence {
+        step,
+        detail: "mark_asking failed".to_owned(),
+    })?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn apply_signal_ask_timeout(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<ApplyOutcome> {
+    frame.mark_running(step).and_then(|_| frame.mark_succeeded(step)).map_err(|_e| RecoveryError::ReplayDivergence {
+        step,
+        detail: "mark ask timeout resolved failed".to_owned(),
+    })?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn ensure_step_running(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+    context: &str,
+) -> RecoveryResult<()> {
+    let current = frame.step_state(step).map_err(|_| RecoveryError::ReplayDivergence {
+        step,
+        detail: "step_state read failed".to_owned(),
+    })?;
+    if current == vb_core::StepState::Pending {
+        frame.mark_running(step).map_err(|_e| RecoveryError::ReplayDivergence {
+            step,
+            detail: format!("mark_running before {context} failed"),
+        })?;
+    }
+    Ok(())
 }
