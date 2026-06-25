@@ -146,17 +146,17 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// The last event in the sequence determines the final state. Every known
 /// `JournalEvent` variant is enumerated explicitly:
 ///
-/// - `RunCancelled`, `RunKilled` → `Cancelled` (terminal)
-/// - `RunFinished`, `RunAnswered` → `Completed` (terminal)
-/// - `RunFailedEvent`, `ActionFailedEvent` → `Failed` (non-terminal; retry may
+/// - `RunCancelled`, `RunKilled` → Cancelled (terminal)
+/// - `RunFinished`, `RunAnswered` → Completed (terminal)
+/// - `RunFailedEvent`, `ActionFailedEvent` → Failed (non-terminal; retry may
 ///   transition a run away from `Failed`)
 /// - `WaitScheduledEvent`, `AskScheduledEvent`, `AskAnsweredEvent` →
-///   `WaitingAnswer`
+///   WaitingAnswer
 /// - All other variants (`RunAccepted`, `RunAdmission`, `StepStarted`,
 ///   `StepSucceeded`, `ActionScheduled`, `ActionScheduledTicket`,
 ///   `ActionCompletedEvent`, `ActionCompletedEnvelope`, `SlotWrittenEvent`,
 ///   `WaitResolvedEvent`, `RetryScheduledEvent`, `RunResumed`, `RunRetried`,
-///   `AskTimedOutEvent`) → `Active`
+///   `AskTimedOutEvent`) → Active
 ///
 /// No wildcard arm is used. `JournalEvent` is `#[non_exhaustive]`, but the
 /// compiler still treats a match within the defining crate as exhaustive
@@ -164,12 +164,15 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// build will fail, forcing it to be handled explicitly. Downstream crates
 /// that consume this function may keep their own wildcards.
 ///
-/// If no events exist, defaults to `Pending`.
-#[must_use]
+/// If no events exist, defaults to Pending.
 pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleState {
-    events.last().map(event_to_lifecycle).unwrap_or(LifecycleState::Pending)
+    events
+        .last()
+        .map(event_to_lifecycle)
+        .unwrap_or(LifecycleState::Pending)
 }
-/// variant produces a compile-time error in the defining crate.
+
+/// Map a single `JournalEvent` to the lifecycle state implied by that event.
 #[must_use]
 pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
     match event {
@@ -181,7 +184,6 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
-        JournalEvent::ActionAbandoned { .. } => LifecycleState::Cancelled,
         JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
         JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
         JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
