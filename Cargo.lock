@@ -1903,23 +1903,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f54a172d0620933a27a4360d3db3e2ae0dd6cceae9730751a036bbf182c4b23"
 
 [[package]]
-name = "vb_benchmark"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "proptest",
-]
-
-[[package]]
-name = "vb_boundary_inventory"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "vb_compile"
 version = "0.1.0"
 dependencies = [
@@ -1951,13 +1934,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_doc"
-version = "0.1.0"
-dependencies = [
- "proptest",
-]
-
-[[package]]
 name = "vb_expr"
 version = "0.1.0"
 dependencies = [
@@ -1985,10 +1961,6 @@ dependencies = [
  "vb_runtime",
  "vb_validate",
 ]
-
-[[package]]
-name = "vb_proof_kernels"
-version = "0.1.0"
 
 [[package]]
 name = "vb_runtime"
@@ -2028,17 +2000,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_test_util"
-version = "0.1.0"
-dependencies = [
- "fjall",
- "postcard",
- "rand",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
 name = "vb_validate"
 version = "0.1.0"
 dependencies = [
@@ -2046,14 +2007,6 @@ dependencies = [
  "proptest",
  "thiserror",
  "vb_core",
-]
-
-[[package]]
-name = "vb_verification"
-version = "0.1.0"
-dependencies = [
- "vb_core",
- "vb_storage",
 ]
 
 [[package]]
@@ -2092,17 +2045,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballistics-idempotency-workspace-tests"
-version = "0.1.0"
-dependencies = [
- "tempfile",
- "vb_core",
- "vb_runtime",
- "vb_storage",
- "velvet-ballistics",
-]
-
-[[package]]
 name = "velvet-ballistics-workspace-tests"
 version = "0.1.0"
 dependencies = [
@@ -2112,6 +2054,7 @@ dependencies = [
  "crc32c",
  "criterion",
  "crossbeam-queue",
+ "fjall",
  "mio",
  "postcard",
  "proptest",
@@ -2122,18 +2065,14 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tempfile",
+ "thiserror",
  "toml",
- "vb_benchmark",
- "vb_boundary_inventory",
  "vb_compile",
  "vb_core",
- "vb_doc",
  "vb_expr",
  "vb_ipc",
- "vb_proof_kernels",
  "vb_runtime",
  "vb_storage",
- "vb_test_util",
  "vb_validate",
  "vb_yaml",
  "velvet-ballistics",

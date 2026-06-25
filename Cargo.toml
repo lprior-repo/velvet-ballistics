@@ -1,17 +1,16 @@
 [workspace]
 members = [
-    "crates/vb_core",
-    "crates/vb_yaml",
-    "crates/vb_validate",
-    "crates/vb_expr",
-    "crates/vb_compile",
-    "crates/vb_storage",
-    "crates/vb_runtime",
-    "crates/vb_ipc",
-    "crates/vb_proof_kernels",
     "crates/vb_cli",
+    "crates/vb_compile",
+    "crates/vb_core",
+    "crates/vb_expr",
+    "crates/vb_ipc",
+    "crates/vb_queue_semantics",
+    "crates/vb_runtime",
+    "crates/vb_storage",
+    "crates/vb_validate",
+    "crates/vb_yaml",
     "crates/workspace_tests",
-    "xtask",
 ]
 resolver = "2"
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]

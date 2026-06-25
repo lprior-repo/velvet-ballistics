@@ -30,6 +30,9 @@ pub mod value;
 pub mod value_store;
 pub mod workflow;
 
+#[cfg(feature = "verus-kernels")]
+pub mod proof_kernels;
+
 #[cfg(kani)]
 pub mod kani_expr_bound;
 

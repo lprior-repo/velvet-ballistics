@@ -27,6 +27,7 @@ bench = []
 default = []
 kani-diagnostic-codes = []
 test-util = []
+verus-kernels = []
 volatile = []
 
 [lints]
