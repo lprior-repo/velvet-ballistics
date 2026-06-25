@@ -13,14 +13,24 @@ impl FjallJournal {
     }
 
     /// Appends multiple events with a single strict durability barrier.
+    ///
+    /// Atomicity: every event in `events` either becomes durable together or
+    /// no event is made durable. Implemented via a `fjall::OwnedWriteBatch`
+    /// wrapped through [`crate::batch::JournalWriteBatch`]: events are
+    /// staged into a single cross-event batch and committed with
+    /// `PersistMode::SyncAll`, so a process crash mid-batch leaves no
+    /// partial, durable-visible record set. Master §49 Crash-Consistency
+    /// Rule requires this single-barrier semantic; the previous
+    /// per-event `append_unfsynced` loop violated it.
     pub fn append_strict_batch(&self, events: &[JournalEvent]) -> Result<(), JournalError> {
+        if events.is_empty() {
+            return Ok(());
+        }
+        let mut batch = self.batch();
         for event in events {
-            self.append_unfsynced(event)?;
+            batch.append_event(event)?;
         }
-        if !events.is_empty() {
-            self.persist_strict()?;
-        }
-        Ok(())
+        batch.strict().commit()
     }
 
     /// Forces a strict durability barrier.

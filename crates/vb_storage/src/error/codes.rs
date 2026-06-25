@@ -74,6 +74,10 @@ impl JournalError {
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
     /// Diagnostic code for keyspace scan encountering a malformed row under a known prefix.
     pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
+    /// Diagnostic code for cross-keyspace write batch aborted by a fallible
+    /// staging step. Surfaced by [`crate::batch::JournalWriteBatch::commit`]
+    /// in place of the silent `Ok(())` that previously masked partial state.
+    pub const BATCH_ABORTED_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -83,6 +87,7 @@ impl JournalError {
             Self::Encode(_) => Self::ENCODE_CODE,
             Self::KeyCapacity => Self::KEY_CAPACITY_CODE,
             Self::DuplicateEvent { .. } => Self::DUPLICATE_EVENT_CODE,
+            Self::DuplicateStagedKey { .. } => Self::DUPLICATE_STAGED_KEY_CODE,
             Self::WriteLockPoisoned => Self::WRITE_LOCK_POISONED_CODE,
             Self::QueueCapacity => Self::QUEUE_CAPACITY_CODE,
             Self::QueueFull => Self::QUEUE_FULL_CODE,
@@ -104,6 +109,13 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
+            // vb-l9jqs: the three typed variants below preserve their inner
+            // source error for diagnostics while still reporting as the
+            // structural-defect bucket so callers that pattern-match on the
+            // diagnostic code continue to observe the same 0x4017 value.
+            Self::WorkflowReconstruction(_) => Self::ARTIFACT_MALFORMED_CODE,
+            Self::CompiledIrReadback(_) => Self::ARTIFACT_MALFORMED_CODE,
+            Self::AdmissionAllocationFailed(_) => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
             Self::InvalidGateCount { .. } => Self::INVALID_GATE_COUNT_CODE,
             Self::MissingRequiredProofFlag { .. } => Self::MISSING_REQUIRED_PROOF_FLAG_CODE,
@@ -136,6 +148,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
             Self::MalformedKeyspaceRow { .. } => Self::MALFORMED_KEYSPACE_ROW_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
+            Self::BatchAborted => Self::BATCH_ABORTED_CODE,
+            Self::IndexStatusStateCollision { .. } => Self::ARTIFACT_MALFORMED_CODE,
         }
     }
 
@@ -159,6 +173,7 @@ impl JournalError {
             Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
             Self::KeyCapacity => "KEY_CAPACITY_EXCEEDED",
             Self::DuplicateEvent { .. } => "DUPLICATE_EVENT",
+            Self::DuplicateStagedKey { .. } => "DUPLICATE_STAGED_KEY",
             Self::WriteLockPoisoned => "WRITE_LOCK_POISONED",
             Self::QueueCapacity => "QUEUE_CAPACITY_ZERO",
             Self::QueueFull => "JOURNAL_QUEUE_FULL",
@@ -180,6 +195,11 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => "POSTCARD_DECODE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
+            // vb-l9jqs: typed variants preserve inner source while reporting
+            // the same symbolic code as the collapsed bucket they replaced.
+            Self::WorkflowReconstruction(_) => "ARTIFACT_MALFORMED",
+            Self::CompiledIrReadback(_) => "ARTIFACT_MALFORMED",
+            Self::AdmissionAllocationFailed(_) => "ARTIFACT_MALFORMED",
             Self::ArtifactChecksumMismatch => "ARTIFACT_CHECKSUM_MISMATCH",
             Self::InvalidGateCount { .. } => "INVALID_GATE_COUNT",
             Self::MissingRequiredProofFlag { .. } => "MISSING_REQUIRED_PROOF_FLAG",
@@ -203,6 +223,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
+            Self::BatchAborted => "BATCH_ABORTED",
+            Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
             // SC-009 (vb-1rqz7.28): `Self::Trim(_)` is handled above by
             // the early return. Keep this arm so the match on `&Self`
             // satisfies exhaustiveness; it is not reachable at runtime.

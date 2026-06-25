@@ -3,7 +3,7 @@
 
 use crate::types::EventSeq;
 use std::path::Path;
-use vb_core::{RunId, WorkflowDigest};
+use vb_core::{RunId, WorkflowDigest, WorkflowError};
 
 mod artifact;
 pub(crate) mod codes;
@@ -36,6 +36,17 @@ pub enum JournalError {
         /// Existing sequence.
         seq: EventSeq,
     },
+    /// Two `append_event` calls in the same batch used the same
+    /// `(run, seq)` key. The batch remains open so the caller can
+    /// skip the duplicate and commit the prior staged events; the
+    /// durable journal never sees the in-flight overwrite.
+    #[error("duplicate staged journal event for run {run:?} seq {seq:?}")]
+    DuplicateStagedKey {
+        /// Run identifier.
+        run: RunId,
+        /// Existing sequence.
+        seq: EventSeq,
+    },
     /// Serialized append lock was poisoned by a panicking holder.
     #[error("journal write lock is poisoned")]
     WriteLockPoisoned,
@@ -53,6 +64,17 @@ pub enum JournalError {
         /// Configured byte budget for this batch.
         limit: u64,
     },
+    /// Cross-keyspace write batch was aborted by a fallible staging step.
+    ///
+    /// Returned by [`crate::batch::JournalWriteBatch::commit`] when a prior
+    /// `put_*` / `append_event` operation set the batch's `aborted` flag.
+    /// Per master §49 Crash-Consistency Rule, an aborted batch must NEVER
+    /// silently return `Ok(())` — that path would let callers conclude a
+    /// partial durability barrier succeeded. The commit always fails closed
+    /// with this typed variant, so operators can detect the abort and retry
+    /// with corrected inputs. No partial state was made durable.
+    #[error("journal write batch was aborted; commit is a no-op")]
+    BatchAborted,
     /// Queue has started deterministic shutdown and rejects new writes.
     #[error("journal writer queue is shut down")]
     QueueShutdown,
@@ -169,6 +191,27 @@ pub enum JournalError {
     /// Artifact structure validation failed.
     #[error("artifact structure validation failed")]
     ArtifactMalformed,
+    /// `CompiledWorkflow::try_from_parts` rejected an artifact whose parts
+    /// were reconstructed from the caller-supplied workflow. The wrapped
+    /// `WorkflowError` preserves the specific structural defect.
+    /// (vb-l9jqs: replaces the prior `.map_err(|_| ArtifactMalformed)`
+    /// swallowing pattern at L370 and L531 of `admission.rs`.)
+    #[error("compiled workflow reconstruction failed: {0}")]
+    WorkflowReconstruction(#[source] WorkflowError),
+    /// `compiled_ir` readback returned a typed storage error rather than
+    /// the expected artifact record. The inner `JournalError` carries the
+    /// underlying failure rather than collapsing every readback error to
+    /// `ArtifactMalformed`.
+    /// (vb-l9jqs: replaces the `.map_err(|_| ArtifactMalformed)` at
+    /// L435 of `admission.rs`.)
+    #[error("compiled_ir readback failed: {0}")]
+    CompiledIrReadback(#[source] Box<JournalError>),
+    /// Vec::try_reserve failed during admission pre-allocation of the
+    /// required-capability slice.
+    /// (vb-l9jqs: replaces the `.map_err(|_| ArtifactMalformed)` at
+    /// L454 of `admission.rs`.)
+    #[error("admission pre-allocation failed: {0}")]
+    AdmissionAllocationFailed(#[source] std::collections::TryReserveError),
     /// Artifact digest checksum mismatch.
     #[error("artifact checksum mismatch")]
     ArtifactChecksumMismatch,
@@ -234,6 +277,16 @@ pub enum JournalError {
     /// Runtime admission journal append failed.
     #[error("admission journal failed")]
     AdmissionJournalFailed,
+    /// `IndexStatusState::Other(v)` whose byte collides with a named
+    /// status variant (must be `>= MIN_OTHER_STATUS_BYTE`).
+    /// (SC-001 / vb-hexk6.)
+    #[error("IndexStatusState byte collision: 0x{byte:02x} below minimum 0x{min:02x} for named status range")]
+    IndexStatusStateCollision {
+        /// The conflicting byte that was rejected.
+        byte: u8,
+        /// Minimum byte reserved for the `Other` range.
+        min: u8,
+    },
     /// Strict durability failed.
     #[error("strict durability failed")]
     StrictDurabilityFailed,

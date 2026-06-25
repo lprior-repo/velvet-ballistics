@@ -2,9 +2,12 @@ use std::collections::VecDeque;
 use std::sync::Mutex;
 
 use crate::{
+    codec::{decode_journal_event, encode_record},
+    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
     journal::FjallJournal,
+    keys::run_event_key,
     types::{
         DurabilityProfile, JournalBatchSize, JournalQueueCapacity, JournalWriterFlushReport,
         JournalWriterQueueProfileCounts, StorageLimits,
@@ -128,6 +131,23 @@ impl JournalWriterQueue {
     }
 
     /// Flushes at most one configured batch to the journal.
+    ///
+    /// Atomicity: events drained in a single `flush_batch` either all
+    /// become durable together or none do. Per master §49
+    /// Crash-Consistency Rule, a partial prefix is forbidden: a process
+    /// crash mid-flush must leave no durable-visible record set. We
+    /// stage every event into one `fjall::OwnedWriteBatch` (acquired
+    /// directly via `journal.database.batch()`) and commit the batch
+    /// with `PersistMode::SyncAll` when any staged event requested the
+    /// `Strict` durability profile. The non-strict branch leaves
+    /// durability to Fjall's lazy WAL flush but is still atomic at the
+    /// OwnedWriteBatch boundary.
+    ///
+    /// Idempotency: an event already present in the durable store at
+    /// the same `(run, seq)` is treated as an idempotent retry — the
+    /// queued bytes are compared to the existing value, and the event is
+    /// skipped on match (so retries after a partial flush succeed) or
+    /// surface `DuplicateEvent` on mismatch.
     pub fn flush_batch(
         &self,
         journal: &FjallJournal,
@@ -156,44 +176,31 @@ impl JournalWriterQueue {
             });
         }
 
-        if has_strict {
-            let mut written = 0usize;
-            while written < batch_len {
-                let Some(item) = state.pending.get(written) else {
-                    break;
-                };
-                journal.append_queued_unfsynced(&item.event)?;
-                written = written.saturating_add(1);
-            }
-            journal.persist_strict()?;
-            let mut drained = 0usize;
-            while drained < written {
-                match state.pending.pop_front() {
-                    Some(_) => {
-                        drained = drained.saturating_add(1);
-                    }
-                    // LOGIC INVARIANT: `written` counts items we just indexed via
-                    // `get(index)` on the same deque, so `pop_front` cannot return
-                    // None here unless an upstream bug corrupts the counts.  We
-                    // use WriteLockPoisoned only because no dedicated
-                    // queue-drain-inconsistent variant exists.
-                    None => return Err(JournalError::WriteLockPoisoned),
-                }
-            }
-            return Ok(JournalWriterFlushReport { drained, written });
-        }
-
+        // Stage every event into a single OwnedWriteBatch so the commit
+        // is atomic. Either all `written` events become durable or none
+        // do. We accumulate errors into a single typed return without
+        // touching the durable store, preserving the §49 rule that a
+        // partial prefix is never observable.
+        let mut owned_batch = journal.database.batch();
         let mut written = 0usize;
         while written < batch_len {
             let Some(item) = state.pending.get(written) else {
                 break;
             };
-            journal.append_queued_unfsynced(&item.event)?;
+            stage_queued_event(&mut owned_batch, journal, &item.event)?;
             written = written.saturating_add(1);
         }
 
-        // Non-strict batch: skip persist_strict so journaled items are
-        // flushed lazily by the storage engine rather than forcing fsync.
+        // Apply durability: strict batches force SyncAll; journaled
+        // batches rely on Fjall's lazy WAL flush but still commit
+        // atomically through the OwnedWriteBatch.
+        let owned_batch = if has_strict {
+            owned_batch.durability(Some(fjall::PersistMode::SyncAll))
+        } else {
+            owned_batch.durability(None)
+        };
+        owned_batch.commit()?;
+
         let mut drained = 0usize;
         while drained < written {
             match state.pending.pop_front() {
@@ -258,4 +265,43 @@ impl JournalWriterQueue {
         }
         self.drain_all(journal)
     }
+}
+
+/// Stages one queued event into the supplied `OwnedWriteBatch`.
+///
+/// Idempotency: when the durable events keyspace already holds a value
+/// at the same `(run, seq)`, the existing bytes are decoded and compared
+/// against the queued event. A match means an idempotent retry — the
+/// event is silently skipped so the queue's eventual drain remains
+/// correct. A mismatch returns `DuplicateEvent` so the operator can
+/// diagnose the divergence.
+fn stage_queued_event(
+    owned_batch: &mut fjall::OwnedWriteBatch,
+    journal: &FjallJournal,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    let key = run_event_key(event.run_id(), event.seq())?;
+    if let Some(existing_bytes) = journal.events.get(key.as_slice())? {
+        let (_, existing) = decode_journal_event(
+            existing_bytes.as_ref(),
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        if existing == *event {
+            return Ok(());
+        }
+        return Err(JournalError::DuplicateEvent {
+            run: event.run_id(),
+            seq: event.seq(),
+        });
+    }
+    let value = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        event.record_kind(),
+        event.seq().get(),
+        event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    owned_batch.insert(&journal.events, key, value);
+    Ok(())
 }
