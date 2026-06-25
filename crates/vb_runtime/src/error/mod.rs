@@ -184,6 +184,16 @@ pub enum RuntimeError {
     },
     /// Migrate directive targeted the source shard (self-migrate).
     MigrateSelf,
+    /// `RuntimeJournalConfig::shared_journal` was invoked with a
+    /// `DurabilityProfile` variant the runtime does not yet implement.
+    /// This is a typed failure that replaces the prior silent
+    /// downgrade to `Volatile` (master §45 contract: missing
+    /// transitions return a typed error rather than silently
+    /// absorbing into the least-durable profile).
+    UnsupportedDurabilityProfile {
+        /// `Debug` rendering of the offending profile for diagnostics.
+        profile_debug: String,
+    },
     /// Introspection registry has issued the maximum number of epochs
     /// (u64::MAX) and can no longer guarantee unique epoch assignment for
     /// new or replaced handles. Without a typed error here, saturating

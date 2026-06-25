@@ -268,6 +268,12 @@ impl Shard {
             Ok(RuntimeSignal::AwaitingAsk) => {
                 self.apply_awaiting_timer(run, state, PendingTimerKind::Ask)
             }
+            // VB-NOORE: an unmapped core engine signal is a typed
+            // engine error; route to terminal-failed so the run
+            // does not silently commit a step state.
+            Ok(RuntimeSignal::UnknownEngineSignal { .. }) => {
+                self.apply_terminal_failed(run, state)
+            }
             Err(_) => self.apply_terminal_failed(run, state),
         }
     }

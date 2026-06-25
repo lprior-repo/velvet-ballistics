@@ -50,8 +50,32 @@ pub(crate) fn classify_replay_push_len(
 
 impl FjallJournal {
     /// Replays one run's events in contiguous per-run sequence order.
+    ///
+    /// This is the **snapshot+tail** reader: when a durable snapshot exists
+    /// for the run, the lower bound is set to the snapshot sequence + 1 so
+    /// that pre-snapshot events are not re-replayed (they are summarized
+    /// inside the snapshot). Use [`Self::events_for_run_full`] for the
+    /// full-journal counterpart.
     pub fn events_for_run(&self, run: vb_core::RunId) -> Result<Vec<JournalEvent>, JournalError> {
         self.events_for_run_bounded(run, EventReplayLimit::DEFAULT)
+    }
+
+    /// Replays one run's events from `EventSeq::new(0)` to the highest
+    /// observed seq for the run.
+    ///
+    /// This is the **full-journal** reader for the recovery boundary (master
+    /// §18 persistence invariant 3, "Recovery replays snapshots plus tail
+    /// journal or full journal deterministically"). It does NOT consult
+    /// `latest_durable_snapshot_seq`; every event from seq 0 is returned
+    /// regardless of any durable snapshot, so the caller can verify the
+    /// complete run history including the `RunAccepted`, `RunAdmission`,
+    /// pre-snapshot step / slot / action lifecycle events that the
+    /// snapshot+tail reader (`events_for_run`) skips.
+    pub fn events_for_run_full(
+        &self,
+        run: vb_core::RunId,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
+        self.events_for_run_full_bounded(run, EventReplayLimit::DEFAULT)
     }
 
     /// Returns the raw bytes for a specific event by (run, seq) key.
@@ -69,6 +93,9 @@ impl FjallJournal {
     }
 
     /// Replays one run's events with an explicit event collection bound.
+    ///
+    /// Snapshot+tail semantics: starts after `latest_durable_snapshot_seq`
+    /// when present, otherwise from `EventSeq::new(0)`.
     pub fn events_for_run_bounded(
         &self,
         run: vb_core::RunId,
@@ -82,6 +109,18 @@ impl FjallJournal {
             None => (EventSeq::new(0), EventSeq::new(0)),
         };
         self.events_for_run_from(run, start_seq, first_event, limit)
+    }
+
+    /// Replays one run's events from `EventSeq::new(0)` with an explicit
+    /// event collection bound. Full-journal semantics: pre-snapshot events
+    /// are returned; the durable snapshot is not consulted for sequencing.
+    pub fn events_for_run_full_bounded(
+        &self,
+        run: vb_core::RunId,
+        limit: EventReplayLimit,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
+        let start = EventSeq::new(0);
+        self.events_for_run_from(run, start, start, limit)
     }
 
     /// Returns events for a run starting from a given sequence, with validation.

@@ -42,6 +42,16 @@ pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 /// `index_action` key prefix.
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
 
+/// Minimum accepted byte value for `IndexStatusState::Other(_)`.
+///
+/// Bytes `0..MIN_OTHER_STATUS_BYTE` collide with the named variants
+/// `Submitted` (0), `Active` (1), and `Completed` (2). Encoding them
+/// would round-trip to the wrong variant on read. The
+/// `index_status_key` encoder rejects any `Other(v)` whose byte is
+/// below this threshold via a typed `JournalError::IndexStatusStateCollision`.
+/// See SC-001 / vb-f1xkn.
+pub const MIN_OTHER_STATUS_BYTE: u8 = 3;
+
 /// Record envelope header length.
 pub const RECORD_HEADER_LEN: u32 = 60;
 /// Current record schema version.

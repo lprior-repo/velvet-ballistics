@@ -59,7 +59,8 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::AskAnsweredEvent { .. }
             | JournalEvent::AskTimedOutEvent { .. }
             | JournalEvent::WaitResolvedEvent { .. }
-            | JournalEvent::RetryScheduledEvent { .. } => {}
+            | JournalEvent::RetryScheduledEvent { .. }
+            | JournalEvent::ActionAbandoned { .. } => {}
             JournalEvent::RunCancelled { .. }
             | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFinished { .. }
@@ -193,14 +194,19 @@ fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> 
 ///
 /// When `expected_policy_digests` is empty and `RunAdmission` is absent,
 /// return `PolicyDigestMismatch` because the policy digest cannot be verified.
+/// vb-xk9y9: Action ABI digest verification. When expected_action_abi_digests
+/// is non-empty, the journal must contain at least one ActionScheduled event,
+/// otherwise the action ABI digests cannot be verified and we return
+/// ActionAbiMismatch for the first expected action. This is the symmetric
+/// contract to GAP-3 (policy digest verification).
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
     tracker: &mut ActionReplayTracker,
-    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
     expected_policy_digests: &[(StepIdx, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -215,11 +221,32 @@ pub fn recover_full_journal(
         });
     }
 
-    replay_events(&events, tracker, _expected_action_abi_digests)
+    if !expected_action_abi_digests.is_empty() {
+        let has_action_scheduled = events
+            .iter()
+            .any(|e| matches!(e, JournalEvent::ActionScheduled { .. }));
+        if !has_action_scheduled {
+            if let Some((action_id, _)) = expected_action_abi_digests.first() {
+                return Err(RecoveryError::ActionAbiMismatch {
+                    action_id: *action_id,
+                });
+            }
+        }
+    }
+
+    replay_events(&events, tracker, expected_action_abi_digests)
 }
 
-/// Loads a snapshot from the journal, translating decode failures to
-/// `RecoveryError::CorruptSnapshot`.
+/// Loads a snapshot from the journal.
+///
+/// Translates the journal result into a typed recovery error:
+/// - `Ok(Some(snapshot))` → snapshot returned.
+/// - `Ok(None)` (no record in keyspace) → `RecoveryError::MissingSnapshot`
+///   so callers can pick snapshot-plus-tail recovery or full-journal
+///   recovery without conflating "absent" with "unreadable".
+/// - `Err(JournalError::PostcardDecodeFailed(_))` (record present but
+///   envelope / payload bytes undecodable) → `RecoveryError::CorruptSnapshot`.
+/// - any other journal error → `RecoveryError::Journal(other)`.
 pub fn load_snapshot(
     journal: &FjallJournal,
     run: RunId,
@@ -227,7 +254,8 @@ pub fn load_snapshot(
 ) -> RecoveryResult<crate::recovery::types::RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
-        Ok(None) | Err(crate::JournalError::PostcardDecodeFailed(_)) => {
+        Ok(None) => Err(RecoveryError::MissingSnapshot { run, seq }),
+        Err(crate::JournalError::PostcardDecodeFailed(_)) => {
             Err(RecoveryError::CorruptSnapshot { run, seq })
         }
         Err(other) => Err(RecoveryError::Journal(other)),

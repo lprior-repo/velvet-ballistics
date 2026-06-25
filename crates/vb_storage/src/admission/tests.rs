@@ -1025,7 +1025,10 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
         Err(e) => panic!("workflow build failed: {e}"),
     };
 
-    let digest = compute_policy_digest(&workflow);
+    let digest = match compute_policy_digest(&workflow) {
+        Ok(d) => d,
+        Err(e) => panic!("compute_policy_digest must succeed for canonical workflow: {e}"),
+    };
 
     let bytes: [u8; 32] = digest.as_bytes();
     assert!(
@@ -1036,7 +1039,10 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
 
     // The digest must also be deterministic: two consecutive calls on the
     // same workflow must return identical digests.
-    let digest_again = compute_policy_digest(&workflow);
+    let digest_again = match compute_policy_digest(&workflow) {
+        Ok(d) => d,
+        Err(e) => panic!("second compute_policy_digest call must succeed: {e}"),
+    };
     assert_eq!(
         digest, digest_again,
         "compute_policy_digest must be deterministic across calls"

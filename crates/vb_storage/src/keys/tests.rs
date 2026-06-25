@@ -1,9 +1,9 @@
 use crate::JournalError;
 use crate::constants::{
     DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
-    JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS,
-    PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT,
-    PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
+    JOURNAL_KEY_BYTES, MIN_OTHER_STATUS_BYTE, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
+    PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
+    PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
 };
 use crate::keys::{
     blob_key, compiled_ir_key, encode_key, index_action_key, index_status_key, index_workflow_key,
@@ -656,4 +656,80 @@ fn run_event_key_output_length_is_17_bytes() -> Result<(), JournalError> {
     let key = run_event_key(run, seq)?;
     assert_eq!(key.len(), JOURNAL_KEY_BYTES, "key must be exactly 17 bytes");
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// VB-NOORE (wildcard elimination): `to_u8_checked` must reject `Other(v)`
+// when `v` collides with the named `IndexStatusState` variants (Submitted=0,
+// Active=1, Completed=2). The `index_status_key` encoder must surface the
+// collision as a typed `JournalError::IndexStatusStateCollision` instead of
+// silently emitting a collision byte (SC-001 / vb-f1xkn).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn index_status_key_rejects_other_state_in_collision_range() {
+    let err = index_status_key(IndexStatusState::Other(0), 0, RunId::new(0))
+        .expect_err("Other(0) collides with Submitted");
+    match err {
+        JournalError::IndexStatusStateCollision { byte, min } => {
+            assert_eq!(byte, 0);
+            assert_eq!(min, MIN_OTHER_STATUS_BYTE);
+        }
+        other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+    }
+
+    let err = index_status_key(IndexStatusState::Other(1), 0, RunId::new(0))
+        .expect_err("Other(1) collides with Active");
+    match err {
+        JournalError::IndexStatusStateCollision { byte, min } => {
+            assert_eq!(byte, 1);
+            assert_eq!(min, MIN_OTHER_STATUS_BYTE);
+        }
+        other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+    }
+
+    let err = index_status_key(IndexStatusState::Other(2), 0, RunId::new(0))
+        .expect_err("Other(2) collides with Completed");
+    match err {
+        JournalError::IndexStatusStateCollision { byte, min } => {
+            assert_eq!(byte, 2);
+            assert_eq!(min, MIN_OTHER_STATUS_BYTE);
+        }
+        other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+    }
+}
+
+#[test]
+fn index_status_key_accepts_other_state_above_collision_range() -> Result<(), JournalError> {
+    for byte in MIN_OTHER_STATUS_BYTE..=u8::MAX {
+        let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(0))?;
+        assert_eq!(key[1], byte, "byte {byte} must round-trip");
+    }
+    Ok(())
+}
+
+#[test]
+fn to_u8_checked_accepts_named_variants() -> Result<(), JournalError> {
+    assert_eq!(IndexStatusState::Submitted.to_u8_checked()?, 0);
+    assert_eq!(IndexStatusState::Active.to_u8_checked()?, 1);
+    assert_eq!(IndexStatusState::Completed.to_u8_checked()?, 2);
+    assert_eq!(IndexStatusState::Other(3).to_u8_checked()?, 3);
+    assert_eq!(IndexStatusState::Other(255).to_u8_checked()?, 255);
+    Ok(())
+}
+
+#[test]
+fn to_u8_checked_rejects_other_variants_in_collision_range() {
+    for byte in 0u8..MIN_OTHER_STATUS_BYTE {
+        let err = IndexStatusState::Other(byte)
+            .to_u8_checked()
+            .expect_err("Other(byte) must be rejected");
+        match err {
+            JournalError::IndexStatusStateCollision { byte: b, min } => {
+                assert_eq!(b, byte);
+                assert_eq!(min, MIN_OTHER_STATUS_BYTE);
+            }
+            other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+        }
+    }
 }

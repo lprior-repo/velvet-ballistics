@@ -273,6 +273,13 @@ pub enum RuntimeEngineError {
         /// Requested branch count.
         requested: usize,
     },
+    /// Core engine returned an unknown variant that the runtime cannot
+    /// translate (master §45 invalid_state_transition contract).
+    #[error("unknown engine signal: {signal_debug}")]
+    UnknownEngineSignal {
+        /// `Debug` rendering of the offending core engine signal.
+        signal_debug: String,
+    },
 }
 
 impl From<EngineError> for RuntimeEngineError {
@@ -291,6 +298,7 @@ impl RuntimeEngineError {
     /// Runtime code for exhausted retry policies.
     pub const RETRY_EXHAUSTED_RUNTIME_CODE: &str = "RETRY_EXHAUSTED";
     pub const BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE: &str = "BRANCH_LIMIT_EXCEEDED";
+    pub const UNKNOWN_ENGINE_SIGNAL_RUNTIME_CODE: &str = "UNKNOWN_ENGINE_SIGNAL";
 
     /// Returns the stable section 17 runtime code when this error has a direct mapping.
     #[must_use]
@@ -301,6 +309,7 @@ impl RuntimeEngineError {
             Self::RetryExhausted { .. } => Some(Self::RETRY_EXHAUSTED_RUNTIME_CODE),
             Self::TaintViolation { .. } => None,
             Self::BranchLimitExceeded { .. } => Some(Self::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE),
+            Self::UnknownEngineSignal { .. } => Some(Self::UNKNOWN_ENGINE_SIGNAL_RUNTIME_CODE),
         }
     }
 }
@@ -348,6 +357,20 @@ pub enum RuntimeSignal {
     AwaitingWait,
     /// Run is awaiting external input (ask).
     AwaitingAsk,
+    /// Core engine produced a signal variant not handled by this runtime.
+    ///
+    /// `EngineSignal` is `#[non_exhaustive]` so a future vb_core revision
+    /// can add variants without breaking this crate's compile. The
+    /// wildcard arm of `runtime_from_core` catches those variants and
+    /// surfaces them as this typed marker instead of silently mapping
+    /// to `Continue` (which would advance the drive loop and commit the
+    /// step state to `Succeeded` — master §45 violation). Callers MUST
+    /// handle this variant explicitly; the drive loop aborts with
+    /// `RuntimeEngineError::UnknownEngineSignal`.
+    UnknownEngineSignal {
+        /// `Debug` rendering of the offending core signal for diagnostics.
+        signal_debug: String,
+    },
 }
 
 #[cfg(test)]

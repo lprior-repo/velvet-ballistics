@@ -126,6 +126,14 @@ mod error_tests;
 #[path = "error_code_tests.rs"]
 mod error_code_tests;
 
+#[cfg(test)]
+#[path = "type_tests.rs"]
+mod type_tests;
+
+#[cfg(test)]
+#[path = "index_tests.rs"]
+mod index_tests;
+
 pub mod queue;
 pub mod records;
 pub mod recovery;

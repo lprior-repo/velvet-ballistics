@@ -103,10 +103,16 @@ pub fn index_status_key(
     timestamp: u64,
     run: RunId,
 ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
+    // VB-NOORE (wildcard elimination): use `to_u8_checked` so an
+    // `Other(v)` whose byte is in the collision range
+    // `0..MIN_OTHER_STATUS_BYTE` is rejected with a typed
+    // `JournalError::IndexStatusStateCollision` instead of silently
+    // emitting a collision byte (SC-001 / vb-f1xkn).
+    let state_byte = state.to_u8_checked()?;
     let mut key = ArrayVec::<u8, INDEX_STATUS_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_STATUS)
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_push(state.to_u8())
+    key.try_push(state_byte)
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&timestamp.to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;

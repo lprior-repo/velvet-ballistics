@@ -704,11 +704,15 @@ impl FrameSeedAccumulator {
             // array. See sweep `vb-cc2my` / `vb-1rqz7.7`.
             self.max_slot_idx = max_slot(self.max_slot_idx, output);
             self.max_slot_idx = max_slot(self.max_slot_idx, input);
-            // The action's step is held `Running` while suspended;
-            // it must be visible in the recovered step dimension.
-            self.record_step(ticket.step, RecoveredStepState::Running);
         }
-        Ok(self)
+        let mut frame = self;
+        frame.max_step_idx = max_step(frame.max_step_idx, ticket.step);
+        frame.min_step_idx = min_step(frame.min_step_idx, ticket.step);
+        frame.pc = max_step(Some(frame.pc), ticket.step).map_or(frame.pc, |value| value);
+        frame
+            .step_states
+            .insert(ticket.step, RecoveredStepState::Running);
+        Ok(frame)
     }
 
     fn record_action_abandoned(
@@ -793,10 +797,18 @@ fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTai
     }
 }
 
-fn legacy_slot_taint(value: SlotValue) -> Taint {
+pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
+    // vb-i21a2 (SR-013): `Bool(false)` MUST NOT downgrade to `Taint::Clean`.
+    // Master §47 declares `Clean < DerivedFromSecret < Secret` and forbids
+    // any asymmetric downgrade from secret-provenance frames. Legacy
+    // frames lack a taint sidecar, so their taint provenance is unknown —
+    // the lattice-preserving choice is the most restrictive variant for
+    // the variant family rather than collapsing `Bool(false)` to Clean
+    // while `Bool(true)` stays `DerivedFromSecret`. We collapse every
+    // legacy `Bool` and `Null` to `Secret` so the recovered run never
+    // under-taints a value whose source provenance is unprovable.
     match value {
-        SlotValue::Bool(false) => Taint::Clean,
-        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
+        SlotValue::Bool(_) | SlotValue::Null => Taint::Secret,
         _ => Taint::Secret,
     }
 }

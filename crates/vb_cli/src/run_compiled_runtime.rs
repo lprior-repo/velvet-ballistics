@@ -149,8 +149,17 @@ pub(crate) fn store_compiled_artifact(
     let artifact = vb_storage::admission::AcceptedArtifact {
         digest: compiled.digest(),
         source_digest: compiled.digest(),
-        policy_digest: vb_storage::admission::compute_policy_digest(compiled),
-        ir: ir_bytes,
+            policy_digest: match vb_storage::admission::compute_policy_digest(compiled) {
+                Ok(digest) => digest,
+                Err(error) => {
+                    report_compiled_ir_store_error(
+                        format_args!("policy digest encode error: {error}"),
+                        output,
+                    );
+                    return Err(CliExitCode::StorageError.into());
+                }
+            },
+            ir: ir_bytes,
         verification: vb_storage::admission::VerificationProof::new(
             compiled.digest(),
             vb_runtime::admission::REQUIRED_GATE_COUNT,

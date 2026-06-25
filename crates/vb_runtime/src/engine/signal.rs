@@ -9,6 +9,15 @@ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use crate::engine::types::RuntimeSignal;
 
 /// Converts core engine signals to runtime engine signals.
+///
+/// `EngineSignal` is `#[non_exhaustive]`. The wildcard arm therefore
+/// remains mandatory, but it routes future variants to a typed
+/// [`RuntimeSignal::UnknownEngineSignal`] marker rather than silently
+/// mapping to `Continue`. The drive loop promotes this marker to
+/// [`crate::engine::types::RuntimeEngineError::UnknownEngineSignal`]
+/// so an unmapped core variant fails the drive loop instead of
+/// advancing the step state (master §45 invalid_state_transition
+/// contract).
 #[allow(clippy::needless_pass_by_value)]
 pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
     match signal {
@@ -26,9 +35,10 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
         }),
         EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
         EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
-        // Handle any future EngineSignal variants as Continue (safest default).
-        #[allow(unreachable_code)]
-        _ => RuntimeSignal::Continue,
+        #[allow(unreachable_patterns)]
+        _ => RuntimeSignal::UnknownEngineSignal {
+            signal_debug: format!("{signal:?}"),
+        },
     }
 }
 
@@ -164,4 +174,60 @@ mod tests {
         let b = runtime_from_core(EngineSignal::Finished(SlotValue::I64(2), Taint::Clean));
         assert_ne!(a, b);
     }
+
+    // =====================================================================
+    // VB-NOORE (wildcard elimination): the wildcard arm of runtime_from_core
+    // must route future EngineSignal variants to the typed
+    // RuntimeSignal::UnknownEngineSignal marker instead of silently mapping
+    // them to Continue.
+    // =====================================================================
+
+    #[test]
+    fn unknown_engine_signal_marker_carries_debug_payload() {
+        let marker = RuntimeSignal::UnknownEngineSignal {
+            signal_debug: "FutureVariant".to_owned(),
+        };
+        match marker {
+            RuntimeSignal::UnknownEngineSignal { signal_debug } => {
+                assert_eq!(signal_debug, "FutureVariant");
+            }
+            other => panic!("expected UnknownEngineSignal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_engine_signal_marker_differs_from_continue() {
+        let unknown = RuntimeSignal::UnknownEngineSignal {
+            signal_debug: "x".to_owned(),
+        };
+        assert_ne!(unknown, RuntimeSignal::Continue);
+        assert_ne!(unknown, RuntimeSignal::AwaitingWait);
+        assert_ne!(unknown, RuntimeSignal::StepBudgetExhausted);
+    }
+
+    /// Compile-time exhaustiveness assertion for `runtime_from_core`.
+    #[allow(dead_code, unreachable_code)]
+    const _: () = {
+        fn _check_exhaustiveness(signal: EngineSignal) -> RuntimeSignal {
+            match signal {
+                EngineSignal::Continue => RuntimeSignal::Continue,
+                EngineSignal::Finished(_, _) => RuntimeSignal::Finished(SlotValue::Null),
+                EngineSignal::StepBudgetExhausted => RuntimeSignal::StepBudgetExhausted,
+                EngineSignal::AwaitingAction => RuntimeSignal::AwaitingAction(ActionTicket {
+                    run: RunId::ZERO,
+                    step: StepIdx::ZERO,
+                    seq: SeqNo::ZERO,
+                    action: ActionId::new(0),
+                    attempt: 1,
+                    idempotency_key: 0,
+                    capacity: 1,
+                }),
+                EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
+                EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
+                _ => RuntimeSignal::UnknownEngineSignal {
+                    signal_debug: String::new(),
+                },
+            }
+        }
+    };
 }

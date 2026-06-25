@@ -444,6 +444,41 @@ fn latest_durable_snapshot_seq_returns_none_when_no_snapshots() {
     );
 }
 
+#[test]
+fn latest_durable_snapshot_seq_does_not_decode_snapshot_value() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x903);
+
+    let good_snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(7),
+        workflow: WorkflowDigest::from_bytes([0x71; DIGEST_BYTES]),
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&good_snapshot)
+        .expect("put_snapshot should succeed");
+
+    let poison_key = crate::keys::run_snapshot_key(run, EventSeq::new(42))
+        .expect("run_snapshot_key should succeed");
+    let poison_value: Vec<u8> = vec![0xDE, 0xAD, 0xBE, 0xEF];
+    journal
+        .run_snapshot
+        .insert(poison_key.to_vec(), poison_value)
+        .expect("direct insert should succeed");
+
+    let latest = journal
+        .latest_durable_snapshot_seq(run)
+        .expect("key-only lookup must not decode the poison value");
+    assert_eq!(
+        latest,
+        Some(EventSeq::new(42)),
+        "highest seq in the prefix must be returned even when its value is undecodable; \
+         a decode_record-based loop would have surfaced BadMagic instead"
+    );
+}
+
 // =========================================================================
 // vb-1rqz7.30 / SC-005 — batch trim computes retention in a single pass
 // =========================================================================

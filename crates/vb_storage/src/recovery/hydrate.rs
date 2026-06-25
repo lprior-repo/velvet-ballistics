@@ -495,8 +495,23 @@ fn apply_accounting_event(
         | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
         | JournalEvent::AskTimedOutEvent { .. }
-        | JournalEvent::WaitResolvedEvent { .. } => Ok(true),
-        _ => Ok(false),
+        | JournalEvent::WaitResolvedEvent { .. }
+        | JournalEvent::AskAnsweredEvent { .. }
+        | JournalEvent::RetryScheduledEvent { .. } => Ok(true),
+        // VB-NOORE (wildcard elimination): explicit arms for every
+        // run-lifecycle / metadata variant so adding a new variant
+        // forces a compile-time failure rather than silently
+        // absorbing into `_ => Ok(false)`.
+        JournalEvent::RunAccepted { .. }
+        | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunCancelled { .. }
+        | JournalEvent::RunKilled { .. }
+        | JournalEvent::RunFinished { .. }
+        | JournalEvent::RunFailedEvent { .. }
+        | JournalEvent::RunResumed { .. }
+        | JournalEvent::RunRetried { .. }
+        | JournalEvent::RunAnswered { .. }
+        | JournalEvent::ActionAbandoned { .. } => Ok(false),
     }
 }
 

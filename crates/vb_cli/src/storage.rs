@@ -33,8 +33,15 @@ pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let runtime_journal = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
-        .shared_journal(journal, queue);
+    let runtime_journal = match RuntimeJournalConfig::new(DurabilityProfile::Journaled)
+        .shared_journal(journal, queue)
+    {
+        Ok(j) => j,
+        Err(e) => {
+            errln!("error creating runtime journal: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
 
     let shard_count = std::num::NonZeroUsize::new(1).unwrap_or(std::num::NonZeroUsize::MIN);
     let config = ShardConfig::default();

@@ -51,6 +51,16 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                     certainty: SideEffectCertainty::Confirmed,
                 });
             }
+            JournalEvent::ActionAbandoned { .. } => {
+                // ActionAbandoned is a run-cancellation side effect;
+                // surface it as a confirmed side effect so downstream
+                // rollback / compensation logic sees the cancellation.
+                side_effects.push(SideEffect {
+                    step: 0,
+                    action: 0,
+                    certainty: SideEffectCertainty::Confirmed,
+                });
+            }
             JournalEvent::ActionFailedEvent { step, action, .. } => {
                 side_effects.push(SideEffect {
                     step: step.get(),
@@ -178,6 +188,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
+        JournalEvent::ActionAbandoned { .. } => LifecycleState::Cancelled,
         JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
         JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
         JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,

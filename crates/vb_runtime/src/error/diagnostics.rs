@@ -96,6 +96,11 @@ impl RuntimeError {
             Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
             Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
             Self::IntrospectionEpochExhausted => Self::INTROSPECTION_EPOCH_EXHAUSTED_CODE,
+            // VB-NOORE: typed profile-mismatch error. No dedicated
+            // diagnostic code; routed to INTERNAL_INVARIANT.
+            Self::UnsupportedDurabilityProfile { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
         }
     }
 
@@ -153,7 +158,8 @@ impl RuntimeError {
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
             | Self::MigrateSelf
-            | Self::IntrospectionEpochExhausted => None,
+            | Self::IntrospectionEpochExhausted
+            | Self::UnsupportedDurabilityProfile { .. } => None,
         }
     }
 

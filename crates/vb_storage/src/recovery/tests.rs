@@ -2553,6 +2553,84 @@ mod hydrate_run_frame_tests {
         );
     }
 
+    // vb-i21a2 (SR-013): legacy frames without a taint sidecar must NOT
+    // under-taint a `Bool(false)` value to `Taint::Clean`. Master §47
+    // forbids asymmetric downgrades from secret-provenance frames; the
+    // lattice-preserving choice for an unknown-provenance Bool is
+    // `Taint::Secret`, not `Taint::Clean`. The existing test above only
+    // asserted `result.is_ok()` so the asymmetric leak was invisible.
+    // This test asserts the actual recovered taint is `Secret`.
+    #[test]
+    fn legacy_bool_false_slot_does_not_downgrade_to_clean_taint() {
+        use crate::recovery::replay::summary::legacy_slot_taint;
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Bool(false)),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Bool(false)) MUST be Taint::Secret, not Taint::Clean \
+             (master §47 forbids asymmetric downgrade of unknown-provenance frames)"
+        );
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Bool(true)),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Bool(true)) MUST be Taint::Secret \
+             (lattice-preserving recovery for unknown provenance)"
+        );
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Null),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Null) MUST be Taint::Secret"
+        );
+    }
+
+    #[test]
+    fn legacy_bool_false_recovered_via_hydration_carries_secret_taint() {
+        let run = RunId::new(1);
+        let slot = SlotIdx::new(0);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot,
+                value: Some(
+                    postcard::to_allocvec(&SlotValue::Bool(false))
+                        .expect("slot value serialization must succeed"),
+                ),
+                // No `extra` bytes forces the legacy_slot_taint path.
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let frame = hydrate_run_frame_from_events(&events, run)
+            .expect("legacy Bool(false) slot must hydrate without error");
+
+        let recovered_taint = frame
+            .read_taint(slot)
+            .expect("Bool(false) slot must have a recoverable taint");
+
+        assert_ne!(
+            recovered_taint,
+            vb_core::Taint::Clean,
+            "vb-i21a2: legacy Bool(false) MUST NOT downgrade to Taint::Clean"
+        );
+        assert_eq!(
+            recovered_taint,
+            vb_core::Taint::Secret,
+            "vb-i21a2: lattice-preserving taint for legacy Bool(false) is Taint::Secret"
+        );
+    }
+
     // --- Error: mismatched snapshot run_id ---
 
     #[test]

@@ -791,7 +791,7 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
     // resume signal, not a rejection signal. The unsupported flag may
     // remain set as audit metadata but live-frame hydration must succeed
     // so the runtime can resume the in-flight action.
-    let frame_recovery = vb_storage::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
+    let frame_recovery = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
         .expect("summary recoverable");
     let _ = frame_recovery;
 }
