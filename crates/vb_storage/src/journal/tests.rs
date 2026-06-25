@@ -2177,21 +2177,19 @@ fn blob_large_payload_roundtrips() {
 }
 
 // =========================================================================
-// =========================================================================
-// Edge case: batch append_event rejects same-batch duplicate keys (SA-003)
+// Edge case: batch append_event rejects duplicate key within same batch
 // =========================================================================
 //
-// vb-1rqz7.18 (vb-byk3q) replaces the previous "last write wins" behaviour
-// (OwnedWriteBatch::insert silently overwrites the prior value at the same
-// key) with an explicit same-batch dedup guard backed by `staged_event_keys`.
-// A second `append_event` with the same `(run, seq)` in one batch is now
-// rejected with `JournalError::DuplicateStagedKey`. The batch is NOT
-// aborted — the caller can skip the duplicate and commit the prior events,
-// so the durable journal never sees the in-flight overwrite that previously
-// produced silent data loss.
+// SA-003: prior behavior allowed duplicate `(run, seq)` insertions
+// within a single `JournalWriteBatch`, relying on Fjall's
+// last-write-wins semantics to collapse them at commit time. That
+// silent overwrite dropped the first event's value without
+// signaling an error. The fixed behavior rejects the second
+// append with `DuplicateStagedKey` so callers can detect the
+// intra-batch collision explicitly.
 
 #[test]
-fn batch_append_event_rejects_same_batch_duplicate_with_duplicate_staged_key() {
+fn batch_append_event_rejects_intra_batch_duplicate() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(14000);
     let event = make_event(run, 0);
@@ -2201,26 +2199,21 @@ fn batch_append_event_rejects_same_batch_duplicate_with_duplicate_staged_key() {
 
     let second = batch.append_event(&event);
     assert!(
-        matches!(second, Err(crate::JournalError::DuplicateStagedKey { .. })),
-        "same-batch duplicate must reject with DuplicateStagedKey, got {:?}",
+        matches!(second, Err(JournalError::DuplicateStagedKey { .. })),
+        "second same-batch append must reject with DuplicateStagedKey, got {:?}",
         second
     );
-    // Batch is NOT aborted by DuplicateStagedKey — caller can still
-    // commit the prior staged events. The first event round-trips intact.
-    assert!(
-        !batch.is_aborted(),
-        "DuplicateStagedKey must not abort the batch"
-    );
 
-    batch
-        .commit()
-        .expect("commit must succeed after staged duplicate rejected");
+    // The rejection must not mutate the prior staged event: the
+    // batch still contains exactly one event and commits cleanly.
+    assert_eq!(batch.len(), 1, "rejected append must not stage a second event");
+    batch.commit().expect("commit should succeed");
 
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(
         replayed.len(),
         1,
-        "exactly one event must be persisted after staged duplicate rejection"
+        "duplicate must be rejected, leaving a single durable event"
     );
 }
 

@@ -177,7 +177,7 @@ impl JournalError {
             Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
             Self::KeyCapacity => "KEY_CAPACITY_EXCEEDED",
             Self::DuplicateEvent { .. } => "DUPLICATE_EVENT",
-            Self::DuplicateStagedKey { .. } => "DUPLICATE_STAGED_KEY",
+            Self::DuplicateStagedKey { .. } => "JOURNAL_DUPLICATE_STAGED_KEY",
             Self::WriteLockPoisoned => "WRITE_LOCK_POISONED",
             Self::QueueCapacity => "QUEUE_CAPACITY_ZERO",
             Self::QueueFull => "JOURNAL_QUEUE_FULL",

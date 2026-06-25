@@ -1070,7 +1070,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
-        symbolic: "INDEX_STATUS_STATE_COLLISION",
+        symbolic: "JOURNAL_DUPLICATE_STAGED_KEY",
         numeric: 0x4031,
         category: CodeCategory::RuntimeBoundary,
         deprecated: false,

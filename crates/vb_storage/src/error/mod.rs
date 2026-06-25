@@ -45,15 +45,16 @@ pub enum JournalError {
         /// Existing sequence.
         seq: EventSeq,
     },
-    /// Two `append_event` calls in the same batch used the same
-    /// `(run, seq)` key. The batch remains open so the caller can
-    /// skip the duplicate and commit the prior staged events; the
-    /// durable journal never sees the in-flight overwrite.
-    #[error("duplicate staged journal event for run {run:?} seq {seq:?}")]
+    /// Append attempted to insert the same `(run, seq)` twice within
+    /// a single [`crate::batch::JournalWriteBatch`] before the batch
+    /// was committed. Distinct from [`JournalError::DuplicateEvent`],
+    /// which only fires when the key already exists in the durable
+    /// Fjall memtable at append time. Both checks are required.
+    #[error("duplicate journal event staged in the same batch for run {run:?} seq {seq:?}")]
     DuplicateStagedKey {
         /// Run identifier.
         run: RunId,
-        /// Existing sequence.
+        /// Conflicting sequence.
         seq: EventSeq,
     },
     /// Serialized append lock was poisoned by a panicking holder.

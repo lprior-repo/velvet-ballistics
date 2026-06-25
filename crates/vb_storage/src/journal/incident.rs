@@ -170,8 +170,10 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
     events.last().map(event_to_lifecycle).unwrap_or(LifecycleState::Pending)
 }
 
-
 /// Map a single `JournalEvent` to the lifecycle state implied by that event.
+///
+/// Enumerates every known variant of `JournalEvent` so that adding a new
+/// variant produces a compile-time error in the defining crate.
 #[must_use]
 pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
     match event {
@@ -183,7 +185,6 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
-        JournalEvent::ActionAbandoned { .. } => LifecycleState::Cancelled,
         JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
         JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
         JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,

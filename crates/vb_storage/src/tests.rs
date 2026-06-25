@@ -7709,11 +7709,7 @@ mod tests {
                 JournalError::Trim(_) => "trim",
                 JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
                 JournalError::MalformedKeyspaceRow { .. } => "malformed_keyspace_row",
-                JournalError::WorkflowReconstruction(_) => "workflow_reconstruction",
-                JournalError::CompiledIrReadback(_) => "compiled_ir_readback",
-                JournalError::AdmissionAllocationFailed(_) => "admission_allocation_failed",
-                JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
-                JournalError::BatchAborted => "batch_aborted",
+                JournalError::DuplicateStagedKey { .. } => "duplicate_staged_key",
             }
         }
         let _ = _exhaustive_match;
