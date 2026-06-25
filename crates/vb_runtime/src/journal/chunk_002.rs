@@ -91,6 +91,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionScheduledTicket { .. }
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
+            | RuntimeJournalEvent::ActionAbandoned { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
@@ -161,6 +162,11 @@ impl StorageRuntimeJournal {
                 step,
                 action,
                 attempt,
+            }),
+            RuntimeJournalEvent::ActionAbandoned { ticket } => Some(JournalEvent::ActionAbandoned {
+                run: ticket.run,
+                seq,
+                ticket,
             }),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
@@ -250,6 +256,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionScheduledTicket { .. }
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
+            | RuntimeJournalEvent::ActionAbandoned { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
@@ -275,7 +282,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionScheduledTicket { .. }
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
-            | RuntimeJournalEvent::ActionFailed { .. } => {
+            | RuntimeJournalEvent::ActionFailed { .. }
+            | RuntimeJournalEvent::ActionAbandoned { .. } => {
                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
             }
             _ => Self::boundary_storage_event(clone_for_dispatch(&event), seq),

@@ -24,7 +24,8 @@ const _BLACKHAT_SECURITY_TESTS_LOADED: () = ();
 )]
 mod tests {
     use crate::{
-        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, WorkflowSourceRecord,
+        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        WorkflowSourceRecord,
         codec::{
             decode_record, decode_record_header, encode_record, encode_record_header,
             verify_digest_match,
@@ -174,6 +175,102 @@ mod tests {
         batch
             .put_blob(&BlobRecord { digest, bytes })
             .expect("correct digest in batch must be accepted");
+    }
+
+    // =========================================================================
+    // BH-04: Digest forgery prevention -- put_compiled_ir (direct + batch)
+    //
+    // Master §18 invariant 8 binds the storage digest key to the content
+    // bytes. The direct and batch put_compiled_ir paths must verify
+    // blake3(ir) == record.digest before persisting. A forged record
+    // (digest does not hash the ir bytes) must be rejected with
+    // PayloadDigestMismatch so the digest↔content binding holds at the
+    // storage admission boundary, not only at the recovery boundary.
+    // =========================================================================
+
+    /// SECURITY: put_compiled_ir rejects a forged digest where IR bytes do
+    /// not hash to the claimed digest.
+    #[test]
+    fn forged_compiled_ir_digest_rejected() {
+        let (_temp, journal) = temp_journal();
+        let forged_digest = WorkflowDigest::from_bytes([0xC0; DIGEST_BYTES]);
+        let record = CompiledIrRecord {
+            digest: forged_digest,
+            ir: b"compiled ir bytes that do not hash to 0xC0..C0".to_vec(),
+        };
+        let result = journal.put_compiled_ir(&record);
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "forged compiled IR digest must be rejected, got {:?}",
+            result
+        );
+    }
+
+    /// SECURITY: put_compiled_ir accepts a record whose digest matches the IR
+    /// bytes, proving the verify is real (not a no-op that would silently
+    /// accept forgeries).
+    #[test]
+    fn valid_compiled_ir_digest_accepted() {
+        let (_temp, journal) = temp_journal();
+        let ir = b"valid compiled artifact".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
+        let record = CompiledIrRecord {
+            digest,
+            ir: ir.clone(),
+        };
+        journal
+            .put_compiled_ir(&record)
+            .expect("correct compiled IR digest must be accepted");
+        let loaded = journal
+            .compiled_ir(digest)
+            .expect("get should succeed")
+            .expect("compiled IR should be readable after persist");
+        assert_eq!(loaded.ir, ir);
+    }
+
+    /// SECURITY: batch put_compiled_ir rejects a forged digest. The batch
+    /// must not have staged the put.
+    #[test]
+    fn batch_forged_compiled_ir_digest_rejected() {
+        let (_temp, journal) = temp_journal();
+        let forged_digest = WorkflowDigest::from_bytes([0xC1; DIGEST_BYTES]);
+        let mut batch = journal.batch();
+        let result = batch.put_compiled_ir(&CompiledIrRecord {
+            digest: forged_digest,
+            ir: b"forged batch ir payload".to_vec(),
+        });
+        assert!(
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
+            "batch forged compiled IR digest must be rejected, got {:?}",
+            result
+        );
+        assert_eq!(
+            batch.len(),
+            0,
+            "forged put must not increment the staged put count"
+        );
+    }
+
+    /// SECURITY: batch put_compiled_ir accepts a record whose digest matches
+    /// the IR bytes and the IR is readable after commit.
+    #[test]
+    fn batch_valid_compiled_ir_digest_accepted() {
+        let (_temp, journal) = temp_journal();
+        let ir = b"valid batch compiled artifact".to_vec();
+        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
+        let mut batch = journal.batch();
+        batch
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: ir.clone(),
+            })
+            .expect("correct batch compiled IR digest must be accepted");
+        batch.commit().expect("commit should succeed");
+        let loaded = journal
+            .compiled_ir(digest)
+            .expect("get should succeed")
+            .expect("compiled IR should be readable after batch commit");
+        assert_eq!(loaded.ir, ir);
     }
 
     // =========================================================================

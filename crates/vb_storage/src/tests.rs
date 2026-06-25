@@ -415,9 +415,14 @@ mod tests {
         let events = vec![event.clone(), event.clone()];
 
         let result = journal.append_strict_batch(&events);
+        // vb-1rqz7.18 / vb-byk3q: same-batch duplicates are now rejected
+        // with the typed `DuplicateStagedKey` (not `DuplicateEvent`).
+        // The batch is NOT aborted — `DuplicateStagedKey` is recoverable
+        // so the caller can skip the duplicate and commit the prior
+        // staged events. See `batch_append_event_rejects_same_batch_*`.
         assert!(
-            matches!(result, Err(JournalError::DuplicateEvent { .. })),
-            "expected DuplicateEvent, got {:?}",
+            matches!(result, Err(JournalError::DuplicateStagedKey { .. })),
+            "expected DuplicateStagedKey for in-batch duplicate, got {:?}",
             result
         );
     }
@@ -7657,6 +7662,7 @@ mod tests {
                 JournalError::Encode(_) => "encode",
                 JournalError::KeyCapacity => "key_capacity",
                 JournalError::DuplicateEvent { .. } => "duplicate_event",
+                JournalError::DuplicateStagedKey { .. } => "duplicate_staged_key",
                 JournalError::WriteLockPoisoned => "write_lock_poisoned",
                 JournalError::QueueCapacity => "queue_capacity",
                 JournalError::QueueFull => "queue_full",
@@ -7702,6 +7708,11 @@ mod tests {
                 JournalError::Trim(_) => "trim",
                 JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
                 JournalError::MalformedKeyspaceRow { .. } => "malformed_keyspace_row",
+                JournalError::WorkflowReconstruction(_) => "workflow_reconstruction",
+                JournalError::CompiledIrReadback(_) => "compiled_ir_readback",
+                JournalError::AdmissionAllocationFailed(_) => "admission_allocation_failed",
+                JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
+                JournalError::BatchAborted => "batch_aborted",
             }
         }
         let _ = _exhaustive_match;

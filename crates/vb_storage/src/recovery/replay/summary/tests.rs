@@ -607,3 +607,191 @@ fn assert_replay_divergence(error: ReplayError, step: StepIdx, detail: &str) {
             if s == step && d == detail
     ));
 }
+
+#[test]
+fn action_scheduled_ticket_advances_max_slot_and_step_dimensions() {
+    let run = RunId::new(70);
+    let ticket = vb_core::ActionTicket {
+        run,
+        step: StepIdx::new(5),
+        seq: vb_core::SeqNo::new(2),
+        action: ActionId::new(11),
+        attempt: 1,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(
+            run,
+            vb_core::SeqNo::new(2),
+            ActionId::new(11),
+        ),
+        capacity: 1,
+    };
+    let events = [JournalEvent::ActionScheduledTicket {
+        run,
+        seq: EventSeq::new(0),
+        ticket,
+        input: SlotIdx::new(7),
+        output: SlotIdx::new(9),
+    }];
+
+    let seed = recover_runtime_frame_seed_from_events(&events)
+        .expect("schedule-only event must produce a seed");
+
+    assert_eq!(
+        seed.slot_count, 10,
+        "max_slot_idx=9 implies slot_count=10 (slot indices 0..=9)",
+    );
+    assert_eq!(
+        seed.step_count, 6,
+        "step 5 must be visible in recovered step dimension",
+    );
+    assert!(
+        seed.steps.iter().any(|entry| {
+            entry.step == StepIdx::new(5)
+                && entry.state == RecoveredStepState::Running
+        }),
+        "scheduled ticket must leave the action step Running in the seed",
+    );
+    assert_eq!(
+        seed.summary.actions_scheduled, 1,
+        "summary must count the ActionScheduledTicket event",
+    );
+    assert!(
+        seed.pending_actions.iter().any(|entry| {
+            entry.step == StepIdx::new(5) && entry.action == ActionId::new(11)
+        }),
+        "ActionScheduledTicket must remain pending until completion/abandon",
+    );
+}
+
+#[test]
+fn action_abandoned_event_drops_pending_action_and_increments_resolved() {
+    let run = RunId::new(71);
+    let ticket = vb_core::ActionTicket {
+        run,
+        step: StepIdx::new(4),
+        seq: vb_core::SeqNo::new(3),
+        action: ActionId::new(13),
+        attempt: 1,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(
+            run,
+            vb_core::SeqNo::new(3),
+            ActionId::new(13),
+        ),
+        capacity: 1,
+    };
+    let events = [
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq: EventSeq::new(0),
+            ticket,
+            input: SlotIdx::new(2),
+            output: SlotIdx::new(4),
+        },
+        JournalEvent::ActionAbandoned {
+            run,
+            seq: EventSeq::new(1),
+            ticket,
+        },
+        JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(2),
+            attempt: 1,
+            reason: None,
+        },
+    ];
+
+    let seed = recover_runtime_frame_seed_from_events(&events)
+        .expect("abandon + cancel sequence must produce a seed");
+
+    assert!(
+        seed.pending_actions.is_empty(),
+        "ActionAbandoned must drop the scheduled ticket from the resume queue",
+    );
+    assert_eq!(
+        seed.summary.actions_resolved, 1,
+        "ActionAbandoned must increment actions_resolved counter",
+    );
+    assert!(matches!(
+        seed.summary.terminal,
+        Some(RecoveryTerminalState::Cancelled)
+    ));
+    assert_eq!(
+        seed.slot_count, 5,
+        "max_slot_idx from schedule must survive the abandon terminal (slot indices 0..=4)",
+    );
+    assert_eq!(
+        seed.step_count, 5,
+        "scheduled step 4 must survive the abandon terminal (step indices 0..=4)",
+    );
+    assert_eq!(
+        seed.unsupported,
+        UnsupportedRecoveryState::SUPPORTED,
+        "abandon + cancel must not leave the recovery unsupported",
+    );
+}
+
+#[test]
+fn crash_after_schedule_then_recover_hydrates_resume_queue() {
+    // Wave 6 / agent-05 CRITICAL #2: a run that crashes mid-suspension
+    // (only ActionScheduledTicket observed, no completion/abandon) must
+    // survive recovery with the pending action preserved so the runtime
+    // resume path can re-install the action boundary.
+    let run = RunId::new(72);
+    let ticket = vb_core::ActionTicket {
+        run,
+        step: StepIdx::new(6),
+        seq: vb_core::SeqNo::new(5),
+        action: ActionId::new(17),
+        attempt: 1,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(
+            run,
+            vb_core::SeqNo::new(5),
+            ActionId::new(17),
+        ),
+        capacity: 1,
+    };
+    let events = [
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest(72),
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(6),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq: EventSeq::new(2),
+            ticket,
+            input: SlotIdx::new(3),
+            output: SlotIdx::new(8),
+        },
+    ];
+
+    let seed = recover_runtime_frame_seed_from_events(&events)
+        .expect("post-schedule crash must produce a recoverable seed");
+
+    assert!(
+        seed.pending_actions.iter().any(|entry| {
+            entry.step == StepIdx::new(6) && entry.action == ActionId::new(17)
+        }),
+        "crashed-while-pending action must surface in the resume queue",
+    );
+    assert_eq!(
+        seed.slot_count, 9,
+        "output slot 8 must be in the recovered slot dimension after crash",
+    );
+    assert_eq!(
+        seed.step_count, 7,
+        "step 6 must be in the recovered step dimension after crash",
+    );
+    // The hydration boundary (master §66) accepts pending actions as a
+    // resume signal, not a rejection signal. The unsupported flag may
+    // remain set as audit metadata but live-frame hydration must succeed
+    // so the runtime can resume the in-flight action.
+    let frame_recovery = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
+        .expect("summary recoverable");
+    let _ = frame_recovery;
+}

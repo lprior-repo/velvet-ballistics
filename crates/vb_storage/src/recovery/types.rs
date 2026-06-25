@@ -112,6 +112,22 @@ pub enum RecoveryError {
         /// Snapshot sequence.
         seq: EventSeq,
     },
+    /// No snapshot has been written for the requested (run, seq).
+    ///
+    /// This is distinct from `CorruptSnapshot`: a missing snapshot has no
+    /// record in the keyspace (`Ok(None)` from `journal.snapshot`), while a
+    /// corrupt snapshot exists but its envelope / postcard payload cannot
+    /// be decoded (`Err(JournalError::PostcardDecodeFailed(_))`). Master §18
+    /// line 873 requires a typed storage-error surface so the recovery
+    /// boundary can pick snapshot-plus-tail recovery (missing) versus
+    /// fail-closed on real corruption (corrupt) without conflating them.
+    #[error("no snapshot found for run {run:?} at seq {seq:?}")]
+    MissingSnapshot {
+        /// Run identifier.
+        run: RunId,
+        /// Snapshot sequence that was requested.
+        seq: EventSeq,
+    },
     /// Recovery produced a terminal state that does not match expectations.
     #[error("recovery terminal state mismatch: expected {expected:?}, found {found:?}")]
     TerminalStateMismatch {
@@ -196,6 +212,10 @@ impl PartialEq for RecoveryError {
             (
                 Self::CorruptSnapshot { run: lr, seq: ls },
                 Self::CorruptSnapshot { run: rr, seq: rs },
+            ) => lr == rr && ls == rs,
+            (
+                Self::MissingSnapshot { run: lr, seq: ls },
+                Self::MissingSnapshot { run: rr, seq: rs },
             ) => lr == rr && ls == rs,
             (
                 Self::TerminalStateMismatch {

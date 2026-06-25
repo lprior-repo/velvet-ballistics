@@ -74,6 +74,10 @@ impl JournalError {
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
     /// Diagnostic code for keyspace scan encountering a malformed row under a known prefix.
     pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
+    /// Diagnostic code for cross-keyspace write batch aborted by a fallible
+    /// staging step. Surfaced by [`crate::batch::JournalWriteBatch::commit`]
+    /// in place of the silent `Ok(())` that previously masked partial state.
+    pub const BATCH_ABORTED_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -83,6 +87,7 @@ impl JournalError {
             Self::Encode(_) => Self::ENCODE_CODE,
             Self::KeyCapacity => Self::KEY_CAPACITY_CODE,
             Self::DuplicateEvent { .. } => Self::DUPLICATE_EVENT_CODE,
+            Self::DuplicateStagedKey { .. } => Self::DUPLICATE_STAGED_KEY_CODE,
             Self::WriteLockPoisoned => Self::WRITE_LOCK_POISONED_CODE,
             Self::QueueCapacity => Self::QUEUE_CAPACITY_CODE,
             Self::QueueFull => Self::QUEUE_FULL_CODE,
@@ -143,6 +148,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
             Self::MalformedKeyspaceRow { .. } => Self::MALFORMED_KEYSPACE_ROW_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
+            Self::BatchAborted => Self::BATCH_ABORTED_CODE,
+            Self::IndexStatusStateCollision { .. } => Self::ARTIFACT_MALFORMED_CODE,
         }
     }
 
@@ -166,6 +173,7 @@ impl JournalError {
             Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
             Self::KeyCapacity => "KEY_CAPACITY_EXCEEDED",
             Self::DuplicateEvent { .. } => "DUPLICATE_EVENT",
+            Self::DuplicateStagedKey { .. } => "DUPLICATE_STAGED_KEY",
             Self::WriteLockPoisoned => "WRITE_LOCK_POISONED",
             Self::QueueCapacity => "QUEUE_CAPACITY_ZERO",
             Self::QueueFull => "JOURNAL_QUEUE_FULL",
@@ -215,6 +223,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
+            Self::BatchAborted => "BATCH_ABORTED",
+            Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
             // SC-009 (vb-1rqz7.28): `Self::Trim(_)` is handled above by
             // the early return. Keep this arm so the match on `&Self`
             // satisfies exhaustiveness; it is not reachable at runtime.

@@ -2177,27 +2177,50 @@ fn blob_large_payload_roundtrips() {
 }
 
 // =========================================================================
-// Edge case: batch append_event allows duplicate key (last write wins)
 // =========================================================================
+// Edge case: batch append_event rejects same-batch duplicate keys (SA-003)
+// =========================================================================
+//
+// vb-1rqz7.18 (vb-byk3q) replaces the previous "last write wins" behaviour
+// (OwnedWriteBatch::insert silently overwrites the prior value at the same
+// key) with an explicit same-batch dedup guard backed by `staged_event_keys`.
+// A second `append_event` with the same `(run, seq)` in one batch is now
+// rejected with `JournalError::DuplicateStagedKey`. The batch is NOT
+// aborted — the caller can skip the duplicate and commit the prior events,
+// so the durable journal never sees the in-flight overwrite that previously
+// produced silent data loss.
 
 #[test]
-fn batch_append_event_allows_duplicate_key_insertion() {
+fn batch_append_event_rejects_same_batch_duplicate_with_duplicate_staged_key() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(14000);
     let event = make_event(run, 0);
 
     let mut batch = journal.batch();
     batch.append_event(&event).expect("first batch append");
+
+    let second = batch.append_event(&event);
+    assert!(
+        matches!(second, Err(crate::JournalError::DuplicateStagedKey { .. })),
+        "same-batch duplicate must reject with DuplicateStagedKey, got {:?}",
+        second
+    );
+    // Batch is NOT aborted by DuplicateStagedKey — caller can still
+    // commit the prior staged events. The first event round-trips intact.
+    assert!(
+        !batch.is_aborted(),
+        "DuplicateStagedKey must not abort the batch"
+    );
+
     batch
-        .append_event(&event)
-        .expect("second batch append in same batch");
-    batch.commit().expect("commit should succeed");
+        .commit()
+        .expect("commit must succeed after staged duplicate rejected");
 
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(
         replayed.len(),
         1,
-        "duplicate in batch should result in single event"
+        "exactly one event must be persisted after staged duplicate rejection"
     );
 }
 

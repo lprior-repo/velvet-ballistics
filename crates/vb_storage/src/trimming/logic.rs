@@ -1,5 +1,3 @@
-use crate::codec::decode_record;
-use crate::constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES};
 use crate::trimming::helpers::snapshot_prefix_key;
 use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
@@ -10,49 +8,36 @@ use fjall::Readable;
 use vb_core::{RunId, WorkflowId};
 
 impl FjallJournal {
-    /// Returns the latest durable snapshot sequence for a run.
+    /// Reads only the highest-sequence snapshot key for the given run. The
+    /// snapshot keyspace is sorted in big-endian order on `(run, seq)` so the
+    /// maximum-seq entry is the last item in the reverse prefix scan; this
+    /// avoids decoding every snapshot's value (BLAKE3 + postcard) on every
+    /// trim pass.
     ///
-    /// Scans all snapshots for the given run and returns the one with the
-    /// highest sequence number. Returns `None` if no snapshot exists.
+    /// Returns `None` if no snapshot exists.
+    ///
+    /// (vb-n65x4 / SC-004: re-applies the perf fix from commit `7586b096f`
+    /// that was reverted in `944b95d5c`. The previous full-prefix loop
+    /// paid `O(N_snapshots × MAX_SNAPSHOT_BYTES)` of BLAKE3+postcard per
+    /// trim call. The key-only `next_back()` lookup is `O(1)` once the
+    /// LSM tree has the prefix cursor positioned.)
     pub fn latest_durable_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
         let prefix_key = snapshot_prefix_key(run);
-        let mut latest: Option<EventSeq> = None;
-
-        for item in self.run_snapshot.prefix(prefix_key) {
-            let (key, value) = item.into_inner().map_err(TrimError::from)?;
-            if key.len() < 17 {
-                return Err(TrimError::IncompleteTrim { deleted_count: 0 });
-            }
-            let slice = key
-                .get(9..17)
-                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_bytes: [u8; 8] = slice
-                .try_into()
-                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let key_seq_u64 = u64::from_be_bytes(seq_bytes);
-            let key_seq = EventSeq::new(key_seq_u64);
-            let (_, snapshot): (_, crate::recovery::RunSnapshot) =
-                decode_record(value.as_ref(), MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)
-                    .map_err(TrimError::from)?;
-            if snapshot.run != run {
-                return Err(TrimError::Journal(JournalError::WrongRun {
-                    expected: run,
-                    actual: snapshot.run,
-                }));
-            }
-            if snapshot.seq != key_seq {
-                return Err(TrimError::Journal(JournalError::SequenceGap {
-                    expected: key_seq,
-                    actual: snapshot.seq,
-                }));
-            }
-            latest = Some(match latest {
-                Some(current) if current.get() >= key_seq_u64 => current,
-                _ => key_seq,
-            });
+        let Some(item) = self.run_snapshot.prefix(prefix_key).next_back() else {
+            return Ok(None);
+        };
+        let (key, _) = item.into_inner().map_err(TrimError::from)?;
+        if key.len() < 17 {
+            return Err(TrimError::IncompleteTrim { deleted_count: 0 });
         }
-
-        Ok(latest)
+        let slice = key
+            .get(9..17)
+            .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+        let seq_bytes: [u8; 8] = slice
+            .try_into()
+            .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+        let key_seq_u64 = u64::from_be_bytes(seq_bytes);
+        Ok(Some(EventSeq::new(key_seq_u64)))
     }
 
     pub fn trim_events_for_run(

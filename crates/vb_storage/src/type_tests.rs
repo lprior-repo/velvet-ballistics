@@ -11,11 +11,12 @@
 )]
 mod type_tests {
     use crate::{
-        DurabilityProfile, EventSeq, FjallConfig, IndexStatusState,
+        DurabilityProfile, EventSeq, FjallConfig, IndexStatusState, JournalError,
         JournalBatchSize, JournalQueueCapacity, JournalWriterFlushReport,
         KeyspaceProfile, RecordEnvelope, RecordHeader, StorageKey, StorageLimits,
         constants::{DIGEST_BYTES, RECORD_HEADER_LEN},
     };
+    use crate::keys::index_status_key;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowId};
     use std::num::NonZeroUsize;
 
@@ -145,6 +146,30 @@ mod type_tests {
     }
 
     #[test]
+    fn index_status_state_other_byte_collides_with_named_variant_at_byte_level() {
+        assert_eq!(
+            IndexStatusState::Other(0).to_u8(),
+            IndexStatusState::Submitted.to_u8(),
+            "SC-001 byte collision: Other(0) and Submitted share byte 0"
+        );
+        assert_eq!(
+            IndexStatusState::Other(1).to_u8(),
+            IndexStatusState::Active.to_u8(),
+            "SC-001 byte collision: Other(1) and Active share byte 1"
+        );
+        assert_eq!(
+            IndexStatusState::Other(2).to_u8(),
+            IndexStatusState::Completed.to_u8(),
+            "SC-001 byte collision: Other(2) and Completed share byte 2"
+        );
+        assert_ne!(
+            IndexStatusState::Other(3).to_u8(),
+            IndexStatusState::Submitted.to_u8(),
+            "boundary byte 3 must not collide with any named variant"
+        );
+    }
+
+    #[test]
     fn record_envelope_has_expected_fields() {
         let envelope = RecordEnvelope {
             magic: 0x5642_4A45,
@@ -223,5 +248,55 @@ mod type_tests {
         let _volatile = DurabilityProfile::Volatile;
         let _journaled = DurabilityProfile::Journaled;
         let _strict = DurabilityProfile::Strict;
+    }
+
+    #[test]
+    fn index_status_key_rejects_other_with_named_variant_collision_byte() {
+        let run = RunId::new(0x1234_5678);
+        let timestamp = 0x0102_0304_0506_0708_u64;
+
+        for collision_byte in [0u8, 1, 2] {
+            let result = index_status_key(IndexStatusState::Other(collision_byte), timestamp, run);
+            match result {
+                Err(JournalError::IndexStatusStateCollision { byte, min }) => {
+                    assert_eq!(
+                        byte, collision_byte,
+                        "collision variant must carry the rejected byte"
+                    );
+                    assert_eq!(
+                        min,
+                        crate::constants::MIN_OTHER_STATUS_BYTE,
+                        "collision variant must surface MIN_OTHER_STATUS_BYTE"
+                    );
+                    assert_eq!(
+                        min, 3,
+                        "MIN_OTHER_STATUS_BYTE contract is 3 (first non-reserved byte)"
+                    );
+                }
+                other => panic!(
+                    "expected JournalError::IndexStatusStateCollision for Other({collision_byte}), got {other:?}"
+                ),
+            }
+        }
+
+        for ok_byte in [3u8, 4, 7, 42, 99, 255] {
+            let result = index_status_key(IndexStatusState::Other(ok_byte), timestamp, run);
+            assert!(
+                result.is_ok(),
+                "Other({ok_byte}) must encode without collision (>= MIN_OTHER_STATUS_BYTE)"
+            );
+        }
+
+        for named in [
+            IndexStatusState::Submitted,
+            IndexStatusState::Active,
+            IndexStatusState::Completed,
+        ] {
+            let result = index_status_key(named, timestamp, run);
+            assert!(
+                result.is_ok(),
+                "named variant {named:?} must always encode successfully"
+            );
+        }
     }
 }

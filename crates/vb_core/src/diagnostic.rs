@@ -1070,6 +1070,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
+        symbolic: "INDEX_STATUS_STATE_COLLISION",
+        numeric: 0x4031,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
         symbolic: "JOURNAL_WRONG_RUN",
         numeric: 0x4008,
         category: CodeCategory::RuntimeBoundary,

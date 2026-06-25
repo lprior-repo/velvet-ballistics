@@ -24,6 +24,7 @@ impl Shard {
             journal_sequences: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             pending_timers: IndexMap::new(),
+            pending_actions: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
@@ -179,6 +180,10 @@ impl Shard {
 
     pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
         Self::reserve_index_map_slot(&mut self.pending_timers, run_id, self.max_active_runs)
+    }
+
+    fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.pending_actions, run_id, self.max_active_runs)
     }
 
     fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
@@ -355,6 +360,40 @@ impl Shard {
     #[must_use]
     pub fn pending_timer_contains(&self, run_id: RunId) -> bool {
         self.pending_timers.contains_key(&run_id)
+    }
+
+    /// Inserts an in-flight action ticket for the given run ID.
+    pub fn pending_action_insert(
+        &mut self,
+        run_id: RunId,
+        ticket: vb_core::action::ActionTicket,
+    ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
+        self.reserve_pending_action_slot(run_id)?;
+        Ok(self.pending_actions.insert(run_id, ticket))
+    }
+
+    /// Returns the in-flight action ticket for the given run, if any.
+    #[must_use]
+    pub fn pending_action_get(
+        &self,
+        run_id: RunId,
+    ) -> Option<vb_core::action::ActionTicket> {
+        self.pending_actions.get(&run_id).copied()
+    }
+
+    /// Returns a clone of all pending action tickets.
+    #[must_use]
+    pub fn pending_action_clone(&self) -> IndexMap<RunId, vb_core::action::ActionTicket> {
+        self.pending_actions.clone()
+    }
+
+    /// Removes and returns the in-flight action ticket for the given
+    /// run ID.
+    pub fn pending_action_remove(
+        &mut self,
+        run_id: RunId,
+    ) -> Option<vb_core::action::ActionTicket> {
+        self.pending_actions.swap_remove(&run_id)
     }
 
     /// Advances the deterministic clock to the given tick.

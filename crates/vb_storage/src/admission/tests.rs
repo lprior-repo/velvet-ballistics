@@ -1027,7 +1027,7 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
 
     let digest = match compute_policy_digest(&workflow) {
         Ok(d) => d,
-        Err(e) => panic!("compute_policy_digest must succeed for valid input, got {e:?}"),
+        Err(e) => panic!("compute_policy_digest must succeed for canonical workflow: {e}"),
     };
 
     let bytes: [u8; 32] = digest.as_bytes();
@@ -1041,7 +1041,7 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
     // same workflow must return identical digests.
     let digest_again = match compute_policy_digest(&workflow) {
         Ok(d) => d,
-        Err(e) => panic!("compute_policy_digest must succeed on second call, got {e:?}"),
+        Err(e) => panic!("second compute_policy_digest call must succeed: {e}"),
     };
     assert_eq!(
         digest, digest_again,

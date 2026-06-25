@@ -998,7 +998,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 | JournalEvent::AskTimedOutEvent { .. }
                 | JournalEvent::RunResumed { .. }
                 | JournalEvent::RunRetried { .. }
-                | JournalEvent::RunAnswered { .. } => {}
+                | JournalEvent::RunAnswered { .. }
+                | JournalEvent::ActionAbandoned { .. } => {}
             }
             summary
         })
@@ -1734,6 +1735,8 @@ fn verify_digests_returns_ok_when_all_match() {
         sample_digest(8),
         sample_digest(8),
         DigestCheck::Full,
+        &[],
+        &[],
     )
     .expect("matching digests at Full level should succeed");
 }
@@ -1761,11 +1764,159 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         sample_digest(8),
         sample_digest(9),
         DigestCheck::WorkflowAndIr,
+        &[],
+        &[],
     );
     assert!(matches!(
         result,
         Err(RecoveryError::CompiledIrDigestMismatch { .. })
     ));
+}
+
+#[test]
+fn verify_digests_full_rejects_mismatched_action_abi_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(300);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let action = ActionId::new(11);
+    let expected_action_abi = sample_digest(11);
+    let mismatched_action_abi = sample_digest(12);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[(action, expected_action_abi, mismatched_action_abi)],
+        &[],
+    );
+
+    assert!(
+        matches!(
+            result,
+            Err(RecoveryError::ActionAbiMismatch { action_id: a }) if a == action
+        ),
+        "verify_digests::Full must reject mismatched action-ABI digest with ActionAbiMismatch, got {result:?}"
+    );
+}
+
+#[test]
+fn verify_digests_full_rejects_mismatched_policy_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(301);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let step = StepIdx::new(2);
+    let expected_policy = sample_digest(21);
+    let mismatched_policy = sample_digest(22);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[],
+        &[(step, expected_policy, mismatched_policy)],
+    );
+
+    assert!(
+        matches!(
+            result,
+            Err(RecoveryError::PolicyDigestMismatch { step: s }) if s == step
+        ),
+        "verify_digests::Full must reject mismatched policy digest with PolicyDigestMismatch, got {result:?}"
+    );
+}
+
+#[test]
+fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(302);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let zero = WorkflowDigest::from_bytes([0u8; 32]);
+    let action = ActionId::new(13);
+    let step = StepIdx::new(0);
+
+    // Sanity: zero digests are byte-equal (this is why the typed-error
+    // path is required). If a future regression re-introduces a
+    // zero-digest fallback, two corrupted contracts would compare as
+    // equal and silently pass.
+    assert_eq!(zero, zero, "sanity: zero digests are byte-equal");
+
+    // Two mismatched non-zero digests must surface as ActionAbiMismatch.
+    let result_action = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[(action, sample_digest(1), sample_digest(2))],
+        &[],
+    );
+    assert!(
+        matches!(result_action, Err(RecoveryError::ActionAbiMismatch { .. })),
+        "asymmetric action-ABI digest must reject, got {result_action:?}"
+    );
+
+    // Two mismatched non-zero policy digests must surface as
+    // PolicyDigestMismatch, not silently pass.
+    let result_policy = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[],
+        &[(step, sample_digest(1), sample_digest(2))],
+    );
+    assert!(
+        matches!(result_policy, Err(RecoveryError::PolicyDigestMismatch { .. })),
+        "asymmetric policy digest must reject, got {result_policy:?}"
+    );
 }
 
 #[test]
@@ -2399,6 +2550,84 @@ mod hydrate_run_frame_tests {
         assert!(
             result.is_ok(),
             "legacy frame extra must not be corrupt taint"
+        );
+    }
+
+    // vb-i21a2 (SR-013): legacy frames without a taint sidecar must NOT
+    // under-taint a `Bool(false)` value to `Taint::Clean`. Master §47
+    // forbids asymmetric downgrades from secret-provenance frames; the
+    // lattice-preserving choice for an unknown-provenance Bool is
+    // `Taint::Secret`, not `Taint::Clean`. The existing test above only
+    // asserted `result.is_ok()` so the asymmetric leak was invisible.
+    // This test asserts the actual recovered taint is `Secret`.
+    #[test]
+    fn legacy_bool_false_slot_does_not_downgrade_to_clean_taint() {
+        use crate::recovery::replay::summary::legacy_slot_taint;
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Bool(false)),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Bool(false)) MUST be Taint::Secret, not Taint::Clean \
+             (master §47 forbids asymmetric downgrade of unknown-provenance frames)"
+        );
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Bool(true)),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Bool(true)) MUST be Taint::Secret \
+             (lattice-preserving recovery for unknown provenance)"
+        );
+        assert_eq!(
+            legacy_slot_taint(vb_core::SlotValue::Null),
+            vb_core::Taint::Secret,
+            "vb-i21a2: legacy_slot_taint(Null) MUST be Taint::Secret"
+        );
+    }
+
+    #[test]
+    fn legacy_bool_false_recovered_via_hydration_carries_secret_taint() {
+        let run = RunId::new(1);
+        let slot = SlotIdx::new(0);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot,
+                value: Some(
+                    postcard::to_allocvec(&SlotValue::Bool(false))
+                        .expect("slot value serialization must succeed"),
+                ),
+                // No `extra` bytes forces the legacy_slot_taint path.
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let frame = hydrate_run_frame_from_events(&events, run)
+            .expect("legacy Bool(false) slot must hydrate without error");
+
+        let recovered_taint = frame
+            .read_taint(slot)
+            .expect("Bool(false) slot must have a recoverable taint");
+
+        assert_ne!(
+            recovered_taint,
+            vb_core::Taint::Clean,
+            "vb-i21a2: legacy Bool(false) MUST NOT downgrade to Taint::Clean"
+        );
+        assert_eq!(
+            recovered_taint,
+            vb_core::Taint::Secret,
+            "vb-i21a2: lattice-preserving taint for legacy Bool(false) is Taint::Secret"
         );
     }
 

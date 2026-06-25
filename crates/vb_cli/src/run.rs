@@ -101,20 +101,19 @@ pub(crate) fn store_workflow_artifacts(
         vb_runtime::admission::REQUIRED_GATE_COUNT,
         true,
     );
-    let policy_digest = match vb_storage::admission::compute_policy_digest(compiled) {
-        Ok(d) => d,
-        Err(e) => {
-            report_compiled_ir_store_error(
-                format_args!("policy digest computation failed: {e}"),
-                output,
-            );
-            return Err(CliExitCode::StorageError.into());
-        }
-    };
     let artifact = vb_storage::admission::AcceptedArtifact {
         digest: compiled.digest(),
         source_digest: compiled.digest(),
-        policy_digest,
+        policy_digest: match vb_storage::admission::compute_policy_digest(compiled) {
+            Ok(digest) => digest,
+            Err(error) => {
+                report_compiled_ir_store_error(
+                    format_args!("policy digest encode error: {error}"),
+                    output,
+                );
+                return Err(CliExitCode::StorageError.into());
+            }
+        },
         ir: ir_bytes,
         verification: proof,
         accepted_at_seq: vb_storage::EventSeq::new(0),

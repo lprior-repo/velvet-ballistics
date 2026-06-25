@@ -176,6 +176,14 @@ pub enum RecordKind {
     /// Distinct from `RetryScheduled = 19` because a wait resolution is the
     /// resumption of a suspended run, not a retry attempt. See bug-hunt RE-009.
     WaitResolved = 31,
+    /// Action abandoned event.
+    ///
+    /// Emitted when an in-flight `ActionScheduledTicket` is dropped
+    /// because the run was cancelled or killed before the action
+    /// boundary completed. Distinct from `ActionFailed = 15` because
+    /// the action itself never returned a typed failure code: the run
+    /// terminated the suspension.
+    ActionAbandoned = 32,
     /// Run finished event.
     RunFinished = 22,
     /// Run failed event.
@@ -226,6 +234,7 @@ impl RecordKind {
             Self::AskTimedOut => 29,
             Self::Snapshot => 30,
             Self::WaitResolved => 31,
+            Self::ActionAbandoned => 32,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }

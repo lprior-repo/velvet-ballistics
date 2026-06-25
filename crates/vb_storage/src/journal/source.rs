@@ -44,7 +44,12 @@ impl FjallJournal {
     }
 
     /// Stores compiled IR bytes by digest.
+    ///
+    /// The IR bytes are verified against the claimed digest before storage so
+    /// a forged `CompiledIrRecord { digest, ir }` cannot be persisted under
+    /// the digest key (master §18 invariant 8: digest↔content binding).
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+        verify_content_digest(&record.ir, &record.digest.as_bytes())?;
         let key = compiled_ir_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_COMPILED_ARTIFACT,

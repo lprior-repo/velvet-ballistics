@@ -287,8 +287,13 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     let run = RunId::new(47);
     let workflow = WorkflowDigest::from_bytes([10; 32]);
 
-    let volatile = RuntimeJournalConfig::new(DurabilityProfile::Volatile)
-        .shared_journal(journal.clone(), volatile_queue.clone());
+    let volatile = require_ok(
+        RuntimeJournalConfig::new(DurabilityProfile::Volatile)
+            .shared_journal(journal.clone(), volatile_queue.clone())
+            .map_err(|e| format!("volatile shared_journal: {e}")),
+        "volatile shared_journal resolves",
+    )
+    .expect("volatile shared_journal already checked");
     assert_eq!(
         volatile.append(RuntimeJournalEvent::RunSubmitted { run, workflow }),
         Ok(())
@@ -302,8 +307,13 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     let Some(journaled_queue) = require_ok(journal_queue(4, 4), "journaled queue opens") else {
         return;
     };
-    let journaled = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
-        .shared_journal(journal.clone(), journaled_queue.clone());
+    let journaled = require_ok(
+        RuntimeJournalConfig::new(DurabilityProfile::Journaled)
+            .shared_journal(journal.clone(), journaled_queue.clone())
+            .map_err(|e| format!("journaled shared_journal: {e}")),
+        "journaled shared_journal resolves",
+    )
+    .expect("journaled shared_journal already checked");
     assert_eq!(
         journaled.append_sequenced(
             RuntimeJournalEvent::RunCancelled { run, reason: None },
@@ -320,8 +330,13 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
         return;
     };
     let strict_run = RunId::new(48);
-    let strict = RuntimeJournalConfig::new(DurabilityProfile::Strict)
-        .shared_journal(journal.clone(), strict_queue.clone());
+    let strict = require_ok(
+        RuntimeJournalConfig::new(DurabilityProfile::Strict)
+            .shared_journal(journal.clone(), strict_queue.clone())
+            .map_err(|e| format!("strict shared_journal: {e}")),
+        "strict shared_journal resolves",
+    )
+    .expect("strict shared_journal already checked");
     assert_eq!(
         strict.append_sequenced(
             RuntimeJournalEvent::RunFailed { run: strict_run },
@@ -337,6 +352,46 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
         journal.events_for_run(strict_run),
         Ok(events) if matches!(events.as_slice(), [JournalEvent::RunFailedEvent { seq, attempt: 1, ..}] if *seq == EventSeq::new(0))
     ));
+}
+
+// ---------------------------------------------------------------------------
+// VB-NOORE (wildcard elimination): shared_journal must return a typed
+// RuntimeError::UnsupportedDurabilityProfile for any DurabilityProfile
+// variant the runtime does not yet implement.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn shared_journal_returns_unsupported_durability_profile_error_for_future_variant() {
+    use crate::RuntimeError;
+
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let Some(queue) = require_ok(journal_queue(4, 4), "queue opens") else {
+        return;
+    };
+
+    let result = RuntimeJournalConfig::new(DurabilityProfile::Volatile)
+        .shared_journal(journal.clone(), queue.clone());
+    assert!(result.is_ok(), "Volatile profile must still resolve");
+
+    let result = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
+        .shared_journal(journal.clone(), queue.clone());
+    assert!(result.is_ok(), "Journaled profile must still resolve");
+
+    let result = RuntimeJournalConfig::new(DurabilityProfile::Strict)
+        .shared_journal(journal.clone(), queue);
+    assert!(result.is_ok(), "Strict profile must still resolve");
+
+    let err = RuntimeError::UnsupportedDurabilityProfile {
+        profile_debug: "FutureProfile".to_owned(),
+    };
+    match err {
+        RuntimeError::UnsupportedDurabilityProfile { profile_debug } => {
+            assert_eq!(profile_debug, "FutureProfile");
+        }
+        other => panic!("expected UnsupportedDurabilityProfile, got {other:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------

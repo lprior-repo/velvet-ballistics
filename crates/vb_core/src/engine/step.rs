@@ -106,113 +106,6 @@ fn execute_boundary_node(
     }
 }
 
-/// Constructs a journal event for Do-node suspension.
-///
-/// Callers should record this event before acknowledging the suspension.
-/// The event captures the ticket, action ID, input/output slots, and step.
-pub fn journal_action_suspended(
-    ticket: ActionTicket,
-    action: ActionId,
-    input_slot: SlotIdx,
-    output_slot: SlotIdx,
-    step: StepIdx,
-) -> ActionJournalEvent {
-    ActionJournalEvent::Suspended {
-        ticket,
-        attempt: ticket.attempt,
-        action,
-        input_slot,
-        output_slot,
-        step,
-    }
-}
-
-/// Resumes a run after a successful action completion.
-///
-/// Writes the output value and taint to the designated slot, marks the
-/// suspended step as succeeded, and advances the PC to the next step.
-/// Returns a journal event recording the completion.
-///
-/// # Errors
-///
-/// Returns `EngineError` if the output slot write fails, the step state
-/// transition is invalid, or the next step is missing.
-pub fn resume_action_completion(
-    plan: &CompiledWorkflow,
-    run: &mut RunFrame,
-    ticket: ActionTicket,
-    output_slot: SlotIdx,
-    output_value: SlotValue,
-    output_taint: Taint,
-) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
-    let step = ticket.step;
-    let next = plan
-        .node(step)
-        .ok_or(EngineError::InvalidProgramCounter { step })?
-        .next
-        .ok_or(EngineError::MissingNextStep { step })?;
-
-    // Write the action output to the designated slot.
-    run.write_slot_with_taint(output_slot, output_value, output_taint)?;
-
-    // Mark the suspended step as succeeded.
-    run.mark_succeeded(step)?;
-
-    // Advance the program counter past the Do node.
-    run.set_pc(next)?;
-    run.increment_executed()?;
-
-    let journal = ActionJournalEvent::Completed {
-        ticket,
-        attempt: ticket.attempt,
-        output_slot,
-        output_taint,
-    };
-
-    Ok((EngineSignal::Continue, journal))
-}
-
-/// Resumes a run after an action failure.
-///
-/// Marks the suspended step as failed. If the workflow has an error handler
-/// for this step, the PC is advanced to the handler and the engine signal
-/// is `Continue`; otherwise the step remains in the Failed state and the
-/// caller receives `AwaitingAction` to handle the failure externally.
-///
-/// Returns a journal event recording the failure.
-///
-/// # Errors
-///
-/// Returns `EngineError` if the step state transition is invalid.
-pub fn resume_action_failure(
-    plan: &CompiledWorkflow,
-    run: &mut RunFrame,
-    ticket: ActionTicket,
-    failure_code: ActionFailureCode,
-    retry_policy: RetryPolicy,
-) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
-    let step = ticket.step;
-
-    // Mark the suspended step as failed.
-    run.mark_failed(step)?;
-
-    let journal = ActionJournalEvent::Failed {
-        ticket,
-        attempt: ticket.attempt,
-        code: failure_code,
-        retry_policy,
-    };
-
-    // Attempt to route to the error handler if configured.
-    let error = EngineError::ResourceLimitExceeded {
-        resource: "action_failure",
-    };
-    match route_error_handler(plan, run, step, &error)? {
-        ErrorHandlerOutcome::Routed => Ok((EngineSignal::Continue, journal)),
-        ErrorHandlerOutcome::NoHandler => Ok((EngineSignal::AwaitingAction, journal)),
-    }
-}
-
 fn mark_step_after_signal(
     run: &mut RunFrame,
     step: StepIdx,
@@ -279,6 +172,14 @@ mod test_support;
 #[cfg(test)]
 #[path = "step/tests_actions.rs"]
 mod tests_actions;
+
+#[cfg(test)]
+#[path = "step/tests_action_resume.rs"]
+mod tests_action_resume;
+
+#[cfg(test)]
+#[path = "step/tests_action_resume_tickets.rs"]
+mod tests_action_resume_tickets;
 
 #[cfg(test)]
 #[path = "step/tests_basic.rs"]

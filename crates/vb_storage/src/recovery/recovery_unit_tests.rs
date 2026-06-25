@@ -1113,10 +1113,52 @@ mod tests {
                 RecoveryError::CorruptSlotTaint { .. } => "corrupt_slot_taint",
                 RecoveryError::NoRecoveryData { .. } => "no_recovery_data",
                 RecoveryError::CorruptSnapshot { .. } => "corrupt_snapshot",
+                RecoveryError::MissingSnapshot { .. } => "missing_snapshot",
                 RecoveryError::TerminalStateMismatch { .. } => "terminal_state_mismatch",
                 RecoveryError::FrameDimensionOverflow { .. } => "frame_dimension_overflow",
             }
         }
         let _ = _exhaustive_match;
     }
+
+    // -------------------------------------------------------------------
+    // VB-NOORE (wildcard elimination): `apply_accounting_event` must
+    // enumerate every `JournalEvent` variant explicitly so that adding a
+    // new variant fails the recovery build at compile time.
+    // -------------------------------------------------------------------
+
+    #[allow(dead_code)]
+    const _: () = {
+        fn _check_exhaustiveness(
+            event: &JournalEvent,
+        ) -> crate::recovery::types::RecoveryResult<bool> {
+            use crate::JournalEvent;
+            match event {
+                JournalEvent::ActionScheduled { .. } => Ok(true),
+                JournalEvent::ActionScheduledTicket { .. } => Ok(true),
+                JournalEvent::ActionCompletedEvent { .. } => Ok(true),
+                JournalEvent::ActionCompletedEnvelope { .. } => Ok(true),
+                JournalEvent::ActionFailedEvent { .. } => Ok(true),
+                JournalEvent::ActionAbandoned { .. } => Ok(true),
+                JournalEvent::StepStarted { .. } => Ok(true),
+                JournalEvent::StepSucceeded { .. } => Ok(true),
+                JournalEvent::SlotWrittenEvent { .. } => Ok(true),
+                JournalEvent::WaitScheduledEvent { .. } => Ok(true),
+                JournalEvent::AskScheduledEvent { .. } => Ok(true),
+                JournalEvent::AskTimedOutEvent { .. } => Ok(true),
+                JournalEvent::WaitResolvedEvent { .. } => Ok(true),
+                JournalEvent::AskAnsweredEvent { .. } => Ok(true),
+                JournalEvent::RetryScheduledEvent { .. } => Ok(true),
+                JournalEvent::RunAccepted { .. } => Ok(false),
+                JournalEvent::RunAdmission { .. } => Ok(false),
+                JournalEvent::RunCancelled { .. } => Ok(false),
+                JournalEvent::RunKilled { .. } => Ok(false),
+                JournalEvent::RunFinished { .. } => Ok(false),
+                JournalEvent::RunFailedEvent { .. } => Ok(false),
+                JournalEvent::RunResumed { .. } => Ok(false),
+                JournalEvent::RunRetried { .. } => Ok(false),
+                JournalEvent::RunAnswered { .. } => Ok(false),
+            }
+        }
+    };
 }

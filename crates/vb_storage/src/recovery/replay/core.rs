@@ -42,117 +42,127 @@ fn replay_events_with_schedule_requirement(
     let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
     let mut last_step: Option<StepIdx> = None;
+
     for event in events {
+        // PRE-001: skip state-affecting events from older attempts
         if replay_attempt_is_stale(event.attempt(), max_attempt) {
             replayed.push(event.clone());
             continue;
         }
-        last_step = dispatch_replay_event(event, tracker, require_schedule, last_step)?;
+
+        match event {
+            JournalEvent::RunAccepted { .. }
+            | JournalEvent::RunAdmission { .. }
+            | JournalEvent::StepSucceeded { .. }
+            | JournalEvent::WaitScheduledEvent { .. }
+            | JournalEvent::AskScheduledEvent { .. }
+            | JournalEvent::AskAnsweredEvent { .. }
+            | JournalEvent::AskTimedOutEvent { .. }
+            | JournalEvent::WaitResolvedEvent { .. }
+            | JournalEvent::RetryScheduledEvent { .. }
+            | JournalEvent::ActionAbandoned { .. } => {}
+            JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
+            | JournalEvent::RunFinished { .. }
+            | JournalEvent::RunFailedEvent { .. }
+            | JournalEvent::RunResumed { .. }
+            | JournalEvent::RunRetried { .. }
+            | JournalEvent::RunAnswered { .. } => {}
+            JournalEvent::StepStarted { step, .. } => {
+                // Verify step ordering
+                if replay_step_order_diverges(last_step, *step) {
+                    let previous_step = match last_step {
+                        Some(value) => value,
+                        None => StepIdx::ZERO,
+                    };
+                    return Err(RecoveryError::ReplayDivergence {
+                        step: *step,
+                        detail: format!(
+                            "step {} executed before previous step {}",
+                            step.get(),
+                            previous_step.get()
+                        ),
+                    });
+                }
+                last_step = Some(*step);
+            }
+            JournalEvent::ActionScheduled { action, step, .. } => {
+                // Check if this action was already resolved
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
+            }
+            JournalEvent::ActionScheduledTicket {
+                run,
+                ticket,
+                input,
+                output,
+                ..
+            } => {
+                verify_action_ticket_event(*run, *ticket)?;
+                tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+            }
+            JournalEvent::ActionCompletedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
+                // Mark action as completed to prevent re-execution
+                tracker.mark_completed(*action, *step);
+            }
+            JournalEvent::ActionCompletedEnvelope {
+                run,
+                ticket,
+                output,
+                outcome,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+                ..
+            } => {
+                let verified_digest = verified_action_envelope_digest(
+                    *run,
+                    *ticket,
+                    *outcome,
+                    value,
+                    *encoded_len,
+                    *value_digest,
+                )?;
+                if require_schedule {
+                    tracker.require_scheduled_ticket(*ticket, *output)?;
+                }
+                tracker.mark_completed_envelope(
+                    *ticket,
+                    *output,
+                    *encoded_len,
+                    *taint,
+                    verified_digest,
+                )?;
+            }
+            JournalEvent::ActionFailedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
+                // Mark action as failed to prevent re-execution
+                tracker.mark_failed(*action, *step);
+            }
+            JournalEvent::SlotWrittenEvent { .. } => {
+                // Slot writes are allowed for latest attempt
+            }
+        }
         replayed.push(event.clone());
     }
+
     Ok(replayed)
-}
-
-/// Dispatch a single non-stale event to its per-variant helper. Returns
-/// the updated `last_step` so `StepStarted` ordering state flows across
-/// iterations; all other variants pass `last_step` through unchanged.
-fn dispatch_replay_event(
-    event: &JournalEvent,
-    tracker: &mut ActionReplayTracker,
-    require_schedule: bool,
-    last_step: Option<StepIdx>,
-) -> RecoveryResult<Option<StepIdx>> {
-    match event {
-        JournalEvent::StepStarted { step, .. } => {
-            replay_step_started_event(*step, last_step)
-        }
-        JournalEvent::ActionCompletedEnvelope { .. } => {
-            replay_action_completed_envelope_event(event, tracker, require_schedule)?;
-            Ok(last_step)
-        }
-        JournalEvent::ActionScheduled { .. }
-        | JournalEvent::ActionScheduledTicket { .. }
-        | JournalEvent::ActionCompletedEvent { .. }
-        | JournalEvent::ActionFailedEvent { .. } => {
-            replay_action_event(event, tracker)?;
-            Ok(last_step)
-        }
-        _ => Ok(last_step),
-    }
-}
-
-/// Step ordering check for `StepStarted` events.
-fn replay_step_started_event(
-    step: StepIdx,
-    last_step: Option<StepIdx>,
-) -> RecoveryResult<Option<StepIdx>> {
-    if replay_step_order_diverges(last_step, step) {
-        let previous_step = last_step.unwrap_or(StepIdx::ZERO);
-        return Err(RecoveryError::ReplayDivergence {
-            step,
-            detail: format!(
-                "step {} executed before previous step {}",
-                step.get(),
-                previous_step.get()
-            ),
-        });
-    }
-    Ok(Some(step))
-}
-
-/// Dispatch the four non-envelope action variants.
-fn replay_action_event(event: &JournalEvent, tracker: &mut ActionReplayTracker) -> RecoveryResult<()> {
-    match event {
-        JournalEvent::ActionScheduled { action, step, .. } => {
-            reject_if_resolved(tracker, *action, *step)
-        }
-        JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } => {
-            verify_action_ticket_event(*run, *ticket)?;
-            tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
-            Ok(())
-        }
-        JournalEvent::ActionCompletedEvent { action, step, .. } => {
-            reject_if_resolved(tracker, *action, *step)?;
-            tracker.mark_completed(*action, *step);
-            Ok(())
-        }
-        JournalEvent::ActionFailedEvent { action, step, .. } => {
-            reject_if_resolved(tracker, *action, *step)?;
-            tracker.mark_failed(*action, *step);
-            Ok(())
-        }
-        _ => Ok(()),
-    }
-}
-
-/// Envelope variant: verifies the action envelope digest, optionally
-/// requires a prior scheduled ticket (driven by `require_schedule`), then
-/// marks the envelope complete.
-fn replay_action_completed_envelope_event(
-    event: &JournalEvent,
-    tracker: &mut ActionReplayTracker,
-    require_schedule: bool,
-) -> RecoveryResult<()> {
-    let JournalEvent::ActionCompletedEnvelope {
-        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
-    } = event else { return Ok(()) };
-    let verified_digest = verified_action_envelope_digest(*run, *ticket, *outcome, value, *encoded_len, *value_digest)?;
-    if require_schedule {
-        tracker.require_scheduled_ticket(*ticket, *output)?;
-    }
-    tracker.mark_completed_envelope(*ticket, *output, *encoded_len, *taint, verified_digest)?;
-    Ok(())
-}
-
-fn reject_if_resolved(
-    tracker: &ActionReplayTracker,
-    action: ActionId,
-    step: StepIdx,
-) -> RecoveryResult<()> {
-    if tracker.is_resolved(action, step) {
-        return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
-    }
-    Ok(())
 }
 
 fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {
@@ -184,14 +194,19 @@ fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> 
 ///
 /// When `expected_policy_digests` is empty and `RunAdmission` is absent,
 /// return `PolicyDigestMismatch` because the policy digest cannot be verified.
+/// vb-xk9y9: Action ABI digest verification. When expected_action_abi_digests
+/// is non-empty, the journal must contain at least one ActionScheduled event,
+/// otherwise the action ABI digests cannot be verified and we return
+/// ActionAbiMismatch for the first expected action. This is the symmetric
+/// contract to GAP-3 (policy digest verification).
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
     tracker: &mut ActionReplayTracker,
-    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
     expected_policy_digests: &[(StepIdx, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -206,11 +221,32 @@ pub fn recover_full_journal(
         });
     }
 
-    replay_events(&events, tracker, _expected_action_abi_digests)
+    if !expected_action_abi_digests.is_empty() {
+        let has_action_scheduled = events
+            .iter()
+            .any(|e| matches!(e, JournalEvent::ActionScheduled { .. }));
+        if !has_action_scheduled {
+            if let Some((action_id, _)) = expected_action_abi_digests.first() {
+                return Err(RecoveryError::ActionAbiMismatch {
+                    action_id: *action_id,
+                });
+            }
+        }
+    }
+
+    replay_events(&events, tracker, expected_action_abi_digests)
 }
 
-/// Loads a snapshot from the journal, translating decode failures to
-/// `RecoveryError::CorruptSnapshot`.
+/// Loads a snapshot from the journal.
+///
+/// Translates the journal result into a typed recovery error:
+/// - `Ok(Some(snapshot))` → snapshot returned.
+/// - `Ok(None)` (no record in keyspace) → `RecoveryError::MissingSnapshot`
+///   so callers can pick snapshot-plus-tail recovery or full-journal
+///   recovery without conflating "absent" with "unreadable".
+/// - `Err(JournalError::PostcardDecodeFailed(_))` (record present but
+///   envelope / payload bytes undecodable) → `RecoveryError::CorruptSnapshot`.
+/// - any other journal error → `RecoveryError::Journal(other)`.
 pub fn load_snapshot(
     journal: &FjallJournal,
     run: RunId,
@@ -218,7 +254,8 @@ pub fn load_snapshot(
 ) -> RecoveryResult<crate::recovery::types::RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
-        Ok(None) | Err(crate::JournalError::PostcardDecodeFailed(_)) => {
+        Ok(None) => Err(RecoveryError::MissingSnapshot { run, seq }),
+        Err(crate::JournalError::PostcardDecodeFailed(_)) => {
             Err(RecoveryError::CorruptSnapshot { run, seq })
         }
         Err(other) => Err(RecoveryError::Journal(other)),

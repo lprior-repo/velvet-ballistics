@@ -248,6 +248,12 @@ path = "tests/e2e_diagnostic_chain.rs"
 name = "restate_doctor_key_decode_tests"
 path = "tests/restate_doctor_key_decode_tests.rs"
 
+# === vb-s25h2 Full-Journal Reader (recovery equivalence) ===
+
+[[test]]
+name = "vb_s25h2_full_journal_reader"
+path = "tests/vb_s25h2_full_journal_reader.rs"
+
 # === vb-8mdp.7 Resource Admission Proptests ===
 
 [[test]]

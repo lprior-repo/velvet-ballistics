@@ -412,6 +412,7 @@ impl Shard {
             .mark_succeeded(preflight.ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
+        let _ = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
             slot: preflight.output_slot,
@@ -457,6 +458,7 @@ impl Shard {
         let code = failure.code;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
         let outcome = self.apply_action_failure_to_state(ticket, failure)?;
+        let _ = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: ticket.step,

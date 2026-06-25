@@ -23,9 +23,17 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
                 return CliExitCode::IpcError.into();
             }
         };
-    let runtime_journal =
-        vb_runtime::journal::RuntimeJournalConfig::new(vb_storage::DurabilityProfile::Journaled)
-            .shared_journal(journal, queue);
+    let runtime_journal = match vb_runtime::journal::RuntimeJournalConfig::new(
+        vb_storage::DurabilityProfile::Journaled,
+    )
+    .shared_journal(journal, queue)
+    {
+        Ok(j) => j,
+        Err(e) => {
+            errln!("error creating runtime journal: {e}");
+            return CliExitCode::IpcError.into();
+        }
+    };
 
     // Create runtime
     let shard_count = match NonZeroUsize::new(1) {

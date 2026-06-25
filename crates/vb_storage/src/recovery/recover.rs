@@ -6,6 +6,14 @@
 //! - Frame seed recovery
 //! - Incomplete run discovery
 //! - Digest verification
+//!
+//! Master §18 (Fjall Persistence Behavior), persistence invariant 3:
+//! "Recovery replays snapshots plus tail journal or full journal
+//! deterministically." All public entry points in this module use
+//! `events_for_run_full` so that pre-snapshot events (RunAccepted,
+//! RunAdmission, step / action lifecycle prior to the durable snapshot)
+//! are visible to recovery; the snapshot+tail reader (`events_for_run`)
+//! skips them by design and is reserved for hot-path replay.
 
 use crate::recovery::types::{DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult};
 use crate::{FjallJournal, JournalEvent};
@@ -23,7 +31,7 @@ pub fn check_workflow_source_digest(
     run: RunId,
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     for event in &events {
         if let JournalEvent::RunAccepted { workflow, .. } = event {
             if *workflow != expected {
@@ -77,9 +85,13 @@ pub fn check_policy_digest(
 }
 
 /// Verifies all digests at the requested check level.
-/// POST-003: returns Ok only when ALL digests match (workflow, compiled IR).
-/// For action ABI and policy digest checks, use `check_action_abi_digests`
-/// and `check_policy_digests` separately with explicit verifier inputs.
+///
+/// Master §18.8 mandates that replay check workflow source, compiled IR, action ABI,
+/// and policy digests. `DigestCheck::Full` therefore consults every category.
+/// `action_abi_digests` and `policy_digests` are each `(subject, expected, found)`
+/// triples; an empty slice skips that category without raising an error. A non-empty
+/// slice whose entries do not all match returns the matching typed `RecoveryError`.
+/// POST-003: returns Ok only when ALL requested digests match.
 pub fn verify_digests(
     journal: &FjallJournal,
     run: RunId,
@@ -87,6 +99,8 @@ pub fn verify_digests(
     ir_digest: WorkflowDigest,
     found_ir_digest: WorkflowDigest,
     level: DigestCheck,
+    action_abi_digests: &[(ActionId, WorkflowDigest, WorkflowDigest)],
+    policy_digests: &[(StepIdx, WorkflowDigest, WorkflowDigest)],
 ) -> RecoveryResult<()> {
     if matches!(
         level,
@@ -96,6 +110,10 @@ pub fn verify_digests(
     }
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
+    }
+    if matches!(level, DigestCheck::Full) {
+        check_action_abi_digests(action_abi_digests)?;
+        check_policy_digests(policy_digests)?;
     }
     Ok(())
 }
@@ -141,7 +159,7 @@ pub fn recover_runtime_summary(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -157,7 +175,7 @@ pub fn recover_runtime_summary_with_expected(
     run: RunId,
     expected: crate::recovery::types::RecoveryTerminalState,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -196,7 +214,7 @@ pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<crate::recovery::types::RecoveryFrameSeed> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -208,7 +226,7 @@ pub fn recover_run_admission(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<Option<crate::recovery::types::RecoveredRunAdmission>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -225,7 +243,7 @@ pub fn recover_all_incomplete_runs(
     let mut recovered = Vec::new();
 
     for header in headers {
-        let events = journal.events_for_run(header.run)?;
+        let events = journal.events_for_run_full(header.run)?;
         if events.is_empty() {
             return Err(RecoveryError::NoRecoveryData { run: header.run });
         }

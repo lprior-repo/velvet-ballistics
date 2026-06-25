@@ -42,7 +42,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::ActionScheduledTicket { .. } => {
             summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
         }
-        JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionFailedEvent { .. } => {
+        JournalEvent::ActionCompletedEvent { .. }
+        | JournalEvent::ActionFailedEvent { .. }
+        | JournalEvent::ActionAbandoned { .. } => {
             summary.actions_resolved = summary.actions_resolved.saturating_add(1);
         }
         JournalEvent::ActionCompletedEnvelope { .. } => {
@@ -185,6 +187,13 @@ fn apply_summary_event_checked(
         JournalEvent::ActionFailedEvent { action, step, .. } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
             tracker.mark_failed(*action, *step);
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionAbandoned { ticket, .. } => {
+            if !tracker.is_resolved(ticket.action, ticket.step) {
+                tracker.mark_failed(ticket.action, ticket.step);
+            }
             apply_summary_event(summary, event);
             Ok(())
         }
@@ -532,6 +541,9 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 self.record_action_failed(*action, *step)
             }
+            JournalEvent::ActionAbandoned { ticket, .. } => {
+                self.record_action_abandoned(*ticket)
+            }
             JournalEvent::ActionCompletedEnvelope {
                 run,
                 ticket,
@@ -686,7 +698,31 @@ impl FrameSeedAccumulator {
         if effect == ActionReplayEffect::Apply {
             self.summary.actions_scheduled = self.summary.actions_scheduled.saturating_add(1);
             self.pending_actions.insert((ticket.action, ticket.step));
+            // Master §45.18 Do-node: extend slot dimension to action
+            // output (and input) at schedule time so a crash before
+            // the completion envelope doesn't truncate the slot
+            // array. See sweep `vb-cc2my` / `vb-1rqz7.7`.
+            self.max_slot_idx = max_slot(self.max_slot_idx, output);
+            self.max_slot_idx = max_slot(self.max_slot_idx, input);
         }
+        let mut frame = self;
+        frame.max_step_idx = max_step(frame.max_step_idx, ticket.step);
+        frame.min_step_idx = min_step(frame.min_step_idx, ticket.step);
+        frame.pc = max_step(Some(frame.pc), ticket.step).map_or(frame.pc, |value| value);
+        frame
+            .step_states
+            .insert(ticket.step, RecoveredStepState::Running);
+        Ok(frame)
+    }
+
+    fn record_action_abandoned(
+        mut self,
+        ticket: vb_core::ActionTicket,
+    ) -> RecoveryResult<Self> {
+        if !self.action_tracker.is_resolved(ticket.action, ticket.step) {
+            self.action_tracker.mark_failed(ticket.action, ticket.step);
+        }
+        self.pending_actions.remove(&(ticket.action, ticket.step));
         Ok(self)
     }
 
@@ -761,10 +797,18 @@ fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTai
     }
 }
 
-fn legacy_slot_taint(value: SlotValue) -> Taint {
+pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
+    // vb-i21a2 (SR-013): `Bool(false)` MUST NOT downgrade to `Taint::Clean`.
+    // Master §47 declares `Clean < DerivedFromSecret < Secret` and forbids
+    // any asymmetric downgrade from secret-provenance frames. Legacy
+    // frames lack a taint sidecar, so their taint provenance is unknown —
+    // the lattice-preserving choice is the most restrictive variant for
+    // the variant family rather than collapsing `Bool(false)` to Clean
+    // while `Bool(true)` stays `DerivedFromSecret`. We collapse every
+    // legacy `Bool` and `Null` to `Secret` so the recovered run never
+    // under-taints a value whose source provenance is unprovable.
     match value {
-        SlotValue::Bool(false) => Taint::Clean,
-        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
+        SlotValue::Bool(_) | SlotValue::Null => Taint::Secret,
         _ => Taint::Secret,
     }
 }
