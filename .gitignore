@@ -79,6 +79,19 @@ fuzz/corpus/
 test_string
 agent-invocation-ledger.jsonl
 
+# Orphaned root-level build artifacts (proptest failures, stray tool outputs)
+EOF
+budget_computation
+collect_ir_structure
+collect_lowering
+emit_single_body_set
+error_parity
+step_offset
+try_from_parts
+vb_jnz9_journal_event_seq_valid
+tarpaulin-report.json
+mutants.toml
+
 # Evidence and landing artifacts
 .evidence/
 
