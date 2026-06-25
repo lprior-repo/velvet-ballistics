@@ -514,6 +514,10 @@ impl FrameSeedAccumulator {
         self.apply_frame_event(event)
     }
 
+    #[allow(
+        unreachable_patterns,
+        reason = "trailing wildcard arm required for #[non_exhaustive] JournalEvent safety"
+    )]
     fn apply_frame_event(self, event: &JournalEvent) -> RecoveryResult<Self> {
         match event {
             JournalEvent::StepStarted { step, .. } => {
@@ -577,6 +581,17 @@ impl FrameSeedAccumulator {
                 slot, value, extra, ..
             } => self.record_slot_write(*slot, value, extra),
             JournalEvent::RunFinished { result, .. } => Ok(self.record_slot(*result)),
+            JournalEvent::RunAccepted { .. }
+            | JournalEvent::RunAdmission { .. }
+            | JournalEvent::AskAnsweredEvent { .. }
+            | JournalEvent::WaitResolvedEvent { .. }
+            | JournalEvent::RetryScheduledEvent { .. }
+            | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
+            | JournalEvent::RunFailedEvent { .. }
+            | JournalEvent::RunResumed { .. }
+            | JournalEvent::RunRetried { .. }
+            | JournalEvent::RunAnswered { .. } => Ok(self),
             _ => Ok(self),
         }
     }
@@ -797,6 +812,10 @@ fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTai
     }
 }
 
+#[allow(
+    unreachable_patterns,
+    reason = "trailing wildcard arm required for #[non_exhaustive] SlotValue safety"
+)]
 pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
     // vb-i21a2 (SR-013): `Bool(false)` MUST NOT downgrade to `Taint::Clean`.
     // Master §47 declares `Clean < DerivedFromSecret < Secret` and forbids
@@ -808,7 +827,14 @@ pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
     // legacy `Bool` and `Null` to `Secret` so the recovered run never
     // under-taints a value whose source provenance is unprovable.
     match value {
-        SlotValue::Bool(_) | SlotValue::Null => Taint::Secret,
+        SlotValue::Bool(_)
+        | SlotValue::Null
+        | SlotValue::I64(_)
+        | SlotValue::F64(_)
+        | SlotValue::Symbol(_)
+        | SlotValue::List(_)
+        | SlotValue::Object(_)
+        | SlotValue::Blob(_) => Taint::Secret,
         _ => Taint::Secret,
     }
 }
