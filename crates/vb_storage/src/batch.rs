@@ -43,7 +43,6 @@ pub const DEFAULT_JOURNAL_BATCH_BYTE_LIMIT: u64 = 1_048_576;
 pub struct JournalWriteBatch<'j> {
     inner: fjall::OwnedWriteBatch,
     journal: &'j FjallJournal,
-    #[allow(dead_code)]
     staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     aborted: bool,
     /// Accumulated encoded-byte total for journal events accepted in this batch.
@@ -120,29 +119,63 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a run header record into the batch.
+    ///
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error, so a
+    /// subsequent `commit()` cannot persist a partial batch.
     pub fn put_run_header(&mut self, record: &RunHeaderRecord) -> Result<(), JournalError> {
-        let key = run_header_key(record.run)?;
-        let value = encode_record(
+        let key = match run_header_key(record.run) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_INDEX_RECORD,
             RecordKind::RunHeader,
             record.run.get(),
             record,
             MAX_RUN_HEADER_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.run_header, key, value);
         Ok(())
     }
 
     /// Inserts a run snapshot record into the batch.
+    ///
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error, so a
+    /// subsequent `commit()` cannot persist a partial batch.
     pub fn put_snapshot(&mut self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
-        let key = run_snapshot_key(snapshot.run, snapshot.seq)?;
-        let value = encode_record(
+        let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_SNAPSHOT,
             RecordKind::Snapshot,
             snapshot.seq.get(),
             snapshot,
             MAX_SNAPSHOT_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.run_snapshot, key, value);
         Ok(())
     }
@@ -242,6 +275,20 @@ impl<'j> JournalWriteBatch<'j> {
     ///   `staged_bytes` unchanged, batch remains open.
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
+        // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
+        //
+        // `journal.events.contains_key` only inspects the durable
+        // memtable; it cannot see entries staged into the current
+        // `OwnedWriteBatch` but not yet committed. Without this
+        // HashSet-based guard, two `append_event` calls with the same
+        // `(run, seq)` would both pass the durable check and Fjall
+        // would silently overwrite the first value at commit time.
+        if self.staged_event_keys.contains(&key) {
+            return Err(JournalError::DuplicateStagedKey {
+                run: event.run_id(),
+                seq: event.seq(),
+            });
+        }
         if self.journal.events.contains_key(key)? {
             self.aborted = true;
             return Err(JournalError::DuplicateEvent {
@@ -260,7 +307,7 @@ impl<'j> JournalWriteBatch<'j> {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
 
-        // Byte admission check: guard 5 per C6 contract.
+        // Byte admission check: guard 6 per C6 contract.
         //
         // Uses checked_add to avoid overflow; overflow is rejected
         // with the same JournalBatchBytesExceeded error as a budget
@@ -286,6 +333,10 @@ impl<'j> JournalWriteBatch<'j> {
         }
 
         self.inner.insert(&self.journal.events, key, value);
+        // Record the key as staged so a subsequent append_event with
+        // the same `(run, seq)` is rejected by the same-batch
+        // duplicate guard above before the durable lookup.
+        self.staged_event_keys.insert(key);
         Ok(())
     }
 
@@ -299,6 +350,20 @@ impl<'j> JournalWriteBatch<'j> {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns true if the batch is in the aborted state.
+    ///
+    /// A batch becomes aborted when a fallible step sets
+    /// `self.aborted = true` before propagating a typed error
+    /// (`DuplicateEvent`, `KeyCapacity`, `PayloadTooLarge`, etc.).
+    /// The `commit()` short-circuit then refuses to persist the
+    /// partial batch. This accessor is the canonical way to
+    /// distinguish an aborted batch from a fresh empty batch (both
+    /// have `len() == 0`).
+    #[must_use]
+    pub fn is_aborted(&self) -> bool {
+        self.aborted
     }
 
     /// Returns the accumulated encoded-byte total for journal events
@@ -321,9 +386,16 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Commits the batch atomically.
+    ///
+    /// Returns `Err(JournalError::BatchAborted)` when a prior `put_*` /
+    /// `append_event` staging step set `self.aborted = true`. The batch
+    /// is **never** committed in this case — neither the staged records
+    /// nor any partial state are made durable. Master §49
+    /// Crash-Consistency Rule forbids silent success on a partial
+    /// barrier; the typed error is the only honest return value.
     pub fn commit(self) -> Result<(), JournalError> {
         if self.aborted {
-            return Ok(());
+            return Err(JournalError::BatchAborted);
         }
         self.inner.commit()?;
         Ok(())
@@ -1838,33 +1910,69 @@ mod byte_accounting_tests {
     }
 
     #[test]
-    fn e2e_aborted_batch_commit_succeeds_with_no_persist() {
-        // E03: Aborted batch (duplicate) commit succeeds as no-op.
+    fn e2e_aborted_batch_commit_returns_typed_batch_aborted_error() {
+        // E03: Aborted batch (duplicate) commit must surface the typed
+        // BatchAborted error rather than silently reporting success.
+        // Prior waves enshrined `commit() -> Ok(())` here; master §52
+        // requires typed errors, so this is now the negative contract.
         let (_temp, journal) = temp_journal();
         let run = RunId::new(402);
         let event = make_event(run, 0);
 
-        // First: commit normally
         let mut batch1 = JournalWriteBatch::new(&journal);
         batch1.append_event(&event).expect("append");
         batch1.commit().expect("commit");
 
-        // Second: duplicate aborts
         let mut batch2 = JournalWriteBatch::new(&journal);
-        let result = batch2.append_event(&event); // DuplicateEvent + abort
+        let result = batch2.append_event(&event);
         assert!(
             matches!(result, Err(JournalError::DuplicateEvent { run: _, seq: _ })),
             "duplicate event must produce DuplicateEvent error, got {result:?}"
         );
-        // Commit should succeed (no-op for aborted batch)
-        batch2.commit().expect("aborted batch commit must succeed");
+        let commit_result = batch2.commit();
+        assert!(
+            matches!(commit_result, Err(JournalError::BatchAborted)),
+            "aborted batch commit must return Err(JournalError::BatchAborted), got {commit_result:?}"
+        );
 
-        // Only one event persists
         let events = journal.events_for_run(run).expect("replay");
         assert_eq!(
             events.len(),
             1,
             "only one event must persist after aborted batch"
+        );
+    }
+
+    #[test]
+    fn append_strict_batch_atomicity_rolls_back_on_duplicate() {
+        // Wave-6 §49 fix: append_strict_batch stages every event into one
+        // OwnedWriteBatch and commits atomically. A duplicate collision
+        // must roll back the entire strict batch — no event from the
+        // input slice is made durable.
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(900);
+        let seed = make_event(run, 0);
+
+        let mut seed_batch = JournalWriteBatch::new(&journal);
+        seed_batch.append_event(&seed).expect("seed append");
+        seed_batch.commit().expect("seed commit");
+
+        let colliding = vec![
+            make_event(run, 0),
+            make_event(run, 1),
+            make_event(run, 2),
+        ];
+        let result = journal.append_strict_batch(&colliding);
+        assert!(
+            matches!(result, Err(JournalError::DuplicateEvent { .. })),
+            "strict batch with collision must surface DuplicateEvent, got {result:?}"
+        );
+
+        let events = journal.events_for_run(run).expect("replay");
+        assert_eq!(
+            events.len(),
+            1,
+            "collision must roll back the entire strict batch; expected only seeded seq=0, got {events:?}"
         );
     }
 
