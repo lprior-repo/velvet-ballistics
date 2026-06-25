@@ -6,6 +6,14 @@
 //! - Frame seed recovery
 //! - Incomplete run discovery
 //! - Digest verification
+//!
+//! Master §18 (Fjall Persistence Behavior), persistence invariant 3:
+//! "Recovery replays snapshots plus tail journal or full journal
+//! deterministically." All public entry points in this module use
+//! `events_for_run_full` so that pre-snapshot events (RunAccepted,
+//! RunAdmission, step / action lifecycle prior to the durable snapshot)
+//! are visible to recovery; the snapshot+tail reader (`events_for_run`)
+//! skips them by design and is reserved for hot-path replay.
 
 use crate::recovery::types::{DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult};
 use crate::{FjallJournal, JournalEvent};
@@ -23,7 +31,7 @@ pub fn check_workflow_source_digest(
     run: RunId,
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     for event in &events {
         if let JournalEvent::RunAccepted { workflow, .. } = event {
             if *workflow != expected {
@@ -151,7 +159,7 @@ pub fn recover_runtime_summary(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -167,7 +175,7 @@ pub fn recover_runtime_summary_with_expected(
     run: RunId,
     expected: crate::recovery::types::RecoveryTerminalState,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -206,7 +214,7 @@ pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<crate::recovery::types::RecoveryFrameSeed> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -218,7 +226,7 @@ pub fn recover_run_admission(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<Option<crate::recovery::types::RecoveredRunAdmission>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -235,7 +243,7 @@ pub fn recover_all_incomplete_runs(
     let mut recovered = Vec::new();
 
     for header in headers {
-        let events = journal.events_for_run(header.run)?;
+        let events = journal.events_for_run_full(header.run)?;
         if events.is_empty() {
             return Err(RecoveryError::NoRecoveryData { run: header.run });
         }
