@@ -1740,7 +1740,8 @@ mod blackhat_engine {
     // =====================================================================
 
     #[test]
-    fn bh_eng_02_budget_exhaustion_leaves_step_in_running_state() {
+    fn bh_eng_02_budget_exhaustion_leaves_step_in_running_state_bug_pin() {
+        // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
         let nop = CompiledNode {
             id: StepIdx::ZERO,
             output: None,
@@ -1791,7 +1792,8 @@ mod blackhat_engine {
     // =====================================================================
 
     #[test]
-    fn bh_eng_04_runtime_from_core_discards_taint_from_finished() {
+    fn bh_eng_04_runtime_from_core_discards_taint_from_finished_bug_pin() {
+        // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
         let clean_signal =
             runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
         let secret_signal =
@@ -1861,7 +1863,8 @@ mod blackhat_engine {
     // =====================================================================
 
     #[test]
-    fn bh_eng_06_zero_max_attempts_policy_exhausts_immediately() {
+    fn bh_eng_06_zero_max_attempts_policy_exhausts_immediately_bug_pin() {
+        // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
         let policy = RetryPolicy {
             max_attempts: 0,
             base_delay_ms: 0,
@@ -2125,12 +2128,14 @@ mod blackhat_engine {
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::CapabilityDenied { action, .. },
+            )) if action == ActionId::new(0) => {}
             other => {
                 assert!(
-                    other.is_err(),
-                    "expected AwaitingAction or error, got {other:?}"
+                    false,
+                    "BH-ENG-09: expected AwaitingAction or CapabilityDenied {{ action: 0 }}, got {other:?}"
                 );
-                return;
             }
         }
         let events = evidence.drain();
@@ -2255,7 +2260,8 @@ mod blackhat_engine {
     // =====================================================================
 
     #[test]
-    fn bh_eng_13_suspended_outcome_ignores_original_ticket() {
+    fn bh_eng_13_suspended_outcome_ignores_original_ticket_bug_pin() {
+        // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
         let _run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
