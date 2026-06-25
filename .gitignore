@@ -92,8 +92,17 @@ vb_jnz9_journal_event_seq_valid
 tarpaulin-report.json
 mutants.toml
 
-# Evidence and landing artifacts
-.evidence/
+# Cargo registry cache (committed accidentally — should never be in repo)
+/.cargo_temp/
+
+# Evidence and landing artifacts (cache/scratch subdirs also tracked before .evidence/ ignore)
+/.evidence/
+.evidence/landing/cache/
+.evidence/landing/cargo-home/
+.evidence/landing/scratch/
+
+# Stale git worktrees (not tracked by design — committed before ignore rule)
+/.worktrees/
 
 # Isolates
 isolates/
