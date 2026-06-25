@@ -325,7 +325,7 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         let hydration = result.unwrap();
         let summary = hydration.summary();
         assert_eq!(summary.run, run);
@@ -356,7 +356,7 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         let hydration = result.unwrap();
         let summary = hydration.summary();
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
@@ -378,7 +378,7 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         let hydration = result.unwrap();
         let summary = hydration.summary();
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
@@ -435,7 +435,7 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         let hydration = result.unwrap();
         let summary = hydration.summary();
         assert_eq!(summary.steps_started, 1);
@@ -607,11 +607,7 @@ mod tests {
     fn recover_runtime_frame_seed_from_events_empty_returns_error() {
         let events: Vec<JournalEvent> = vec![];
         let result = recover_runtime_frame_seed_from_events(&events);
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            RecoveryError::NoRecoveryData { .. }
-        ));
+        assert!(matches!(result, Err(RecoveryError::NoRecoveryData { .. })));
     }
 
     // =========================================================================
@@ -836,7 +832,7 @@ mod tests {
         ];
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker, &[]);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         let replayed = result.unwrap();
         assert_eq!(replayed.len(), 2);
     }
@@ -864,7 +860,7 @@ mod tests {
         ];
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker, &[]);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         assert!(tracker.is_resolved(action, step));
     }
 
@@ -872,7 +868,7 @@ mod tests {
     fn replay_events_empty_input_succeeds() {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&[], &mut tracker, &[]);
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)));
         assert!(result.unwrap().is_empty());
     }
 

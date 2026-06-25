@@ -725,7 +725,12 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized input, got {result:?}"
     );
 }
@@ -765,7 +770,12 @@ fn execute_for_each_join_errors_on_missing_step_state() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::StepStateOutOfBounds { .. }
+            ))
+        ),
         "expected error for missing step state, got {result:?}"
     );
 }
@@ -790,8 +800,8 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
     };
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
-    let wf = make_workflow(vec![node0, node1, node2], 8);
-    let mut run = make_run(8, 4);
+    let wf = make_workflow(vec![node0, node1, node2], 4);
+    let mut run = make_run(4, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
     let n = match wf.node(StepIdx::ZERO) {
@@ -809,7 +819,12 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized iterator, got {result:?}"
     );
 }
@@ -897,7 +912,12 @@ fn execute_together_join_errors_on_missing_step_state() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::StepStateOutOfBounds { .. }
+            ))
+        ),
         "expected error for missing step state, got {result:?}"
     );
 }
@@ -943,7 +963,12 @@ fn execute_collect_start_errors_on_uninitialized_source() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized source, got {result:?}"
     );
 }
@@ -987,7 +1012,12 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized collector, got {result:?}"
     );
 }
@@ -1031,7 +1061,12 @@ fn execute_collect_next_errors_on_uninitialized_collector() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized collector, got {result:?}"
     );
 }
@@ -1071,7 +1106,12 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized collector, got {result:?}"
     );
 }
@@ -1118,7 +1158,12 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized input, got {result:?}"
     );
 }
@@ -1162,7 +1207,12 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized iterator, got {result:?}"
     );
 }
@@ -1202,7 +1252,12 @@ fn execute_reduce_finish_errors_on_missing_step_state() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::StepStateOutOfBounds { .. }
+            ))
+        ),
         "expected error for missing step state, got {result:?}"
     );
 }
@@ -1292,7 +1347,12 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized attempt slot, got {result:?}"
     );
 }
@@ -1332,7 +1392,12 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized result slot, got {result:?}"
     );
 }
@@ -1372,7 +1437,12 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized deadline, got {result:?}"
     );
 }
@@ -1413,7 +1483,12 @@ fn execute_wait_event_errors_on_uninitialized_event() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized event, got {result:?}"
     );
 }
@@ -1454,7 +1529,12 @@ fn execute_ask_errors_on_uninitialized_prompt() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized prompt, got {result:?}"
     );
 }
@@ -1494,7 +1574,12 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
         &CapabilitySet::empty(),
     );
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized answer, got {result:?}"
     );
 }
@@ -1537,7 +1622,12 @@ fn execute_repeat_check_routes_forward_on_done() {
     );
     // RepeatCheck reads attempt_slot, but since it is uninitialized we expect an error
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
+                ..
+            }))
+        ),
         "expected error for uninitialized attempt slot, got {result:?}"
     );
 }

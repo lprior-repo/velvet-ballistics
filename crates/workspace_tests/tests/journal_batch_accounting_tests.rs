@@ -59,7 +59,7 @@ fn batch_has_no_byte_limit_enforcement_at_storage_layer() {
 
     let result = batch.append_event(&make_event(run, 0));
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(())),
         "append_event should succeed at storage layer regardless of byte budget"
     );
 }
@@ -83,7 +83,7 @@ fn batch_append_event_returns_queue_full_at_count_limit() {
         };
         let result = batch.append_event(&evt);
         assert!(
-            result.is_ok(),
+            matches!(result, Ok(())),
             "append_event {i} should succeed, got {:?}",
             result
         );
@@ -273,7 +273,10 @@ fn batch_len_unchanged_after_queue_full() {
         workflow: WorkflowDigest::from_bytes([0; 32]),
     };
     let result = batch.append_event(&evt_over);
-    assert!(result.is_err(), "should fail at limit");
+    assert!(
+        matches!(result, Err(JournalError::QueueFull)),
+        "should fail at limit"
+    );
 
     let len_after = batch.len();
     assert_eq!(
@@ -380,7 +383,7 @@ fn batch_limit_checked_before_commit() {
 
     let commit_result = batch.commit();
     assert!(
-        commit_result.is_ok(),
+        matches!(commit_result, Ok(())),
         "batch commit should succeed even after QueueFull on append, got {:?}",
         commit_result
     );
@@ -496,7 +499,7 @@ fn batch_len_at_max_minus_one() {
     };
     let result = batch.append_event(&evt);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(())),
         "append at MAX_BATCH_COUNT - 1 should succeed, got {:?}",
         result
     );

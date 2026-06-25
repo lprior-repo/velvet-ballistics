@@ -1,7 +1,8 @@
 use crate::EventSeq;
 use crate::recovery::replay::summary::*;
 use crate::recovery::types::RecoveryTerminalState;
-use vb_core::replay::SuspensionKind;
+use vb_core::replay::{ReplayError, SuspensionKind};
+use vb_core::SlotValue;
 use vb_core::{
     ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx, StepIdx,
     Taint, WorkflowDigest,

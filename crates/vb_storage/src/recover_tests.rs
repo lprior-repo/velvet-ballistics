@@ -26,7 +26,7 @@ mod recover_tests {
         let d = digest(0x11);
         let result = check_compiled_ir_digest(d, d);
         assert!(
-            result.is_ok(),
+            matches!(result, Ok(())),
             "matching digest should succeed, got {:?}",
             result
         );
@@ -50,7 +50,7 @@ mod recover_tests {
         let d = digest(0x33);
         let result = check_action_abi_digest(ActionId::new(1), d, d);
         assert!(
-            result.is_ok(),
+            matches!(result, Ok(())),
             "matching ABI digest should succeed, got {:?}",
             result
         );
@@ -72,7 +72,7 @@ mod recover_tests {
         let d = digest(0x44);
         let result = check_policy_digest(StepIdx::new(0), d, d);
         assert!(
-            result.is_ok(),
+            matches!(result, Ok(())),
             "matching policy digest should succeed, got {:?}",
             result
         );
@@ -96,13 +96,21 @@ mod recover_tests {
             (ActionId::new(2), digest(0x22), digest(0x22)),
         ];
         let result = check_action_abi_digests(&entries);
-        assert!(result.is_ok(), "all matching should succeed, got {:?}", result);
+        assert!(
+            matches!(result, Ok(())),
+            "all matching should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn check_action_abi_digests_accepts_empty_entries() {
         let result = check_action_abi_digests(&[]);
-        assert!(result.is_ok(), "empty entries should succeed, got {:?}", result);
+        assert!(
+            matches!(result, Ok(())),
+            "empty entries should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
@@ -127,13 +135,21 @@ mod recover_tests {
             (StepIdx::new(1), digest(0x66), digest(0x66)),
         ];
         let result = check_policy_digests(&entries);
-        assert!(result.is_ok(), "all matching should succeed, got {:?}", result);
+        assert!(
+            matches!(result, Ok(())),
+            "all matching should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn check_policy_digests_accepts_empty_entries() {
         let result = check_policy_digests(&[]);
-        assert!(result.is_ok(), "empty entries should succeed, got {:?}", result);
+        assert!(
+            matches!(result, Ok(())),
+            "empty entries should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]

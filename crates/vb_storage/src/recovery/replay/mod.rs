@@ -15,6 +15,7 @@ pub use core::{
     recover_snapshot_plus_tail, replay_events,
 };
 pub use summary::{
-    RecoveryFrameSeedBuilder, apply_summary_event, recover_runtime_frame_seed_from_events,
-    recover_runtime_frame_seed_from_events_with_workflow, summarize_recovery_events,
+    RecoveryFrameSeedBuilder, apply_summary_event, recover_run_admission_from_events,
+    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
+    summarize_recovery_events,
 };

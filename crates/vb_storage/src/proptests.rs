@@ -396,7 +396,7 @@ mod proptests {
                 if result.is_err() {
                     return Ok(());
                 }
-                prop_assert!(result.is_ok());
+                prop_assert!(matches!(result, Ok(_)));
             }
         }
 
@@ -416,7 +416,11 @@ mod proptests {
                 .unwrap();
 
             let result = recover_runtime_summary(&journal, run);
-            prop_assert!(result.is_err(), "recover_runtime_summary should fail for nonexistent run: {:?}", result);
+            prop_assert!(
+                matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
+                "recover_runtime_summary should fail for nonexistent run: {:?}",
+                result
+            );
             if let Err(RecoveryError::NoRecoveryData { run: found }) = result {
                 prop_assert_eq!(found, run);
             }
@@ -753,7 +757,7 @@ fn submit_artifact_valid_workflow_succeeds() {
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "submit_artifact should succeed: {:?}",
         result
     );
@@ -998,10 +1002,6 @@ fn remove_artifact_not_found_returns_error() {
     let missing = WorkflowDigest::from_bytes([0xFF; 32]);
     let result = journal.remove_artifact(missing);
 
-    assert!(
-        result.is_err(),
-        "removing non-existent artifact should return error"
-    );
     let Err(JournalError::ArtifactNotFound { digest }) = result else {
         panic!("expected ArtifactNotFound error variant");
     };
