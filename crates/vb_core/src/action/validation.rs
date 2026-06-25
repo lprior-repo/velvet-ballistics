@@ -52,13 +52,9 @@ pub fn validate_idempotency_key_ingredients(
         let Some(&slot) = key_slots.get(i) else {
             break;
         };
-        let Ok(slot_taint) = frame.read_taint(slot) else {
-            i = match i.checked_add(1) {
-                Some(next) => next,
-                None => break,
-            };
-            continue;
-        };
+        let slot_taint = frame
+            .read_taint(slot)
+            .map_err(|_| IdempotencyViolation::UnavailableKeySlot(u32::from(slot.get())))?;
         match slot_taint {
             Taint::Clean => {}
             Taint::Secret | Taint::DerivedFromSecret => {
@@ -142,7 +138,7 @@ pub fn validate_action_outcome(
     match outcome {
         ActionOutcome::Ready(output_ready) => validate_ready_outcome(contract, output_ready),
         ActionOutcome::Suspended(_) => validate_suspended_outcome(),
-        ActionOutcome::Failed(_) => validate_failed_outcome(),
+        ActionOutcome::Failed(failure) => validate_failed_outcome(contract, failure.encoded_len),
     }
 }
 
@@ -151,7 +147,7 @@ fn validate_ready_outcome(
     contract: &ActionContract,
     output_ready: &ActionOutputReady,
 ) -> Result<(), ActionError> {
-    check_output_slot_in_bounds(output_ready.output_slot, contract.output_slot_count)?;
+    check_output_slot_declared(output_ready.output_slot, contract.output_slot_count)?;
     check_output_size_in_bounds(output_ready.encoded_len, contract.max_output_bytes)?;
     Ok(())
 }
@@ -166,10 +162,10 @@ fn check_output_size_in_bounds(actual_bytes: u32, max_bytes: u32) -> Result<(), 
     Ok(())
 }
 
-/// Checks that the output slot index is within the contract's declared bounds.
-fn check_output_slot_in_bounds(slot: SlotIdx, max_slots: u16) -> Result<(), ActionError> {
+/// Checks that the action contract declares at least one output.
+fn check_output_slot_declared(slot: SlotIdx, max_slots: u16) -> Result<(), ActionError> {
     let slot_raw = slot.get();
-    if u32::from(slot_raw) >= u32::from(max_slots) && max_slots > 0 {
+    if max_slots == 0 {
         return Err(ActionError::OutputSlotOutOfBounds {
             slot: slot_raw,
             max_slots,
@@ -184,6 +180,7 @@ fn validate_suspended_outcome() -> Result<(), ActionError> {
 }
 
 /// Failure outcomes are always valid terminal completions.
-fn validate_failed_outcome() -> Result<(), ActionError> {
+fn validate_failed_outcome(contract: &ActionContract, encoded_len: u32) -> Result<(), ActionError> {
+    check_output_size_in_bounds(encoded_len, contract.max_output_bytes)?;
     Ok(())
 }

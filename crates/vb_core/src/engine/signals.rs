@@ -106,6 +106,8 @@ pub enum EngineSignal {
     StepBudgetExhausted,
     /// The run suspended on an action.
     AwaitingAction,
+    /// An action failed without an error handler and needs external policy.
+    ActionFailureUnhandled,
     /// The run suspended on wait.
     AwaitingWait,
     /// The run suspended on ask.

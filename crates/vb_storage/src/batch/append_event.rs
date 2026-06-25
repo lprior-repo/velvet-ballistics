@@ -1,12 +1,10 @@
 #![forbid(unsafe_code)]
+use super::types::JournalWriteBatch;
 use crate::codec::encode_record;
-use crate::constants::{
-    MAGIC_JOURNAL_EVENT, MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-};
+use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use crate::error::JournalError;
 use crate::events::JournalEvent;
 use crate::keys::run_event_key;
-use super::types::JournalWriteBatch;
 
 impl<'j> JournalWriteBatch<'j> {
     /// Appends a journal event into the batch.

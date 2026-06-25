@@ -8,7 +8,7 @@ use thiserror::Error;
 pub type ActionResult<T> = Result<T, ActionError>;
 
 /// Failure details for a rejected, timed-out, or errored action.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionFailure {
     /// Machine-readable failure code.
     pub code: ActionFailureCode,

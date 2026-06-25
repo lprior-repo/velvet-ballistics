@@ -133,9 +133,7 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 self.record_action_failed(*action, *step)
             }
-            JournalEvent::ActionAbandoned { ticket, .. } => {
-                self.record_action_abandoned(*ticket)
-            }
+            JournalEvent::ActionAbandoned { ticket, .. } => self.record_action_abandoned(*ticket),
             JournalEvent::ActionCompletedEnvelope {
                 run,
                 ticket,
@@ -147,7 +145,14 @@ impl FrameSeedAccumulator {
                 value_digest,
                 ..
             } => self.record_action_completion_envelope(
-                *run, *ticket, *output, *outcome, value, *encoded_len, *taint, *value_digest,
+                *run,
+                *ticket,
+                *output,
+                *outcome,
+                value,
+                *encoded_len,
+                *taint,
+                *value_digest,
             ),
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))

@@ -10,10 +10,7 @@
     clippy::unwrap_used
 )]
 mod blob_tests {
-    use crate::{
-        BlobRecord, DIGEST_BYTES, FjallJournal, JournalError,
-        keys::blob_key,
-    };
+    use crate::{BlobRecord, DIGEST_BYTES, FjallJournal, JournalError, keys::blob_key};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -62,7 +59,9 @@ mod blob_tests {
     fn blob_returns_none_for_missing_digest() {
         let (_temp, journal) = temp_journal();
         let missing_digest: [u8; DIGEST_BYTES] = [0xAB; 32];
-        let result = journal.blob(missing_digest).expect("blob lookup should succeed");
+        let result = journal
+            .blob(missing_digest)
+            .expect("blob lookup should succeed");
         assert!(result.is_none(), "should return None for missing digest");
     }
 
@@ -71,7 +70,9 @@ mod blob_tests {
         let (_temp, journal) = temp_journal();
         let empty: &[u8] = &[];
         let record = make_blob_record(empty);
-        journal.put_blob(&record).expect("put_blob of empty should succeed");
+        journal
+            .put_blob(&record)
+            .expect("put_blob of empty should succeed");
         let loaded = journal
             .blob(record.digest)
             .expect("get should succeed")
@@ -84,7 +85,9 @@ mod blob_tests {
         let (_temp, journal) = temp_journal();
         let payload = vec![0x42u8; 1024];
         let record = make_blob_record(&payload);
-        journal.put_blob(&record).expect("put_blob of max payload should succeed");
+        journal
+            .put_blob(&record)
+            .expect("put_blob of max payload should succeed");
         let loaded = journal
             .blob(record.digest)
             .expect("get should succeed")

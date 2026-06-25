@@ -118,9 +118,9 @@ fn step_once_bounds_harness() {
                 matches!(signal, EngineSignal::Finished(_, _)),
                 "Finished reachable"
             );
-            kani::cover!(
-                matches!(signal, EngineSignal::StepBudgetExhausted),
-                "StepBudgetExhausted reachable"
+            kani::assert(
+                !matches!(signal, EngineSignal::StepBudgetExhausted),
+                "step_once does not emit StepBudgetExhausted",
             );
             kani::cover!(
                 matches!(signal, EngineSignal::AwaitingAction),
@@ -199,7 +199,9 @@ fn step_once_state_mapping_harness() {
         // Map signal to expected state (per contract.md INV-002)
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
-            EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
+            EngineSignal::AwaitingAction => StepState::Running,
+            EngineSignal::StepBudgetExhausted => StepState::Running,
+            EngineSignal::ActionFailureUnhandled => StepState::Failed,
             EngineSignal::AwaitingWait => StepState::Waiting,
             EngineSignal::AwaitingAsk => StepState::Asking,
         };

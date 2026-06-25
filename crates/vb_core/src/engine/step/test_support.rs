@@ -1,7 +1,11 @@
-use crate::action::{ActionTicket, compute_action_idempotency_key};
+use crate::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect, compute_action_idempotency_key,
+};
 use crate::frame::RunFrame;
 use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
+use crate::value::{SlotValue, Taint};
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
@@ -77,6 +81,55 @@ pub(super) fn action_ticket(run: u64, step: u16, action: u16, capacity: u16) -> 
         idempotency_key: compute_action_idempotency_key(run, seq, action),
         capacity,
     }
+}
+
+pub(super) fn action_contract(action: u16, max_output_bytes: u32) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(action),
+        name: ActionName::from_static_infallible("test-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 128,
+        max_output_bytes,
+        timeout_ms: 1_000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    }
+}
+
+pub(super) fn payload_len(payload: &[u8]) -> Result<u32, String> {
+    u32::try_from(payload.len()).map_err(|_| String::from("payload length exceeds u32"))
+}
+
+pub(super) fn ready_output(
+    output_slot: SlotIdx,
+    value: SlotValue,
+    taint: Taint,
+    payload: &[u8],
+) -> Result<ActionOutputReady, String> {
+    Ok(ActionOutputReady {
+        output_slot,
+        value,
+        taint,
+        encoded_len: payload_len(payload)?,
+    })
+}
+
+pub(super) fn failure_payload(
+    code: ActionFailureCode,
+    retry_policy: RetryPolicy,
+    taint: Taint,
+    payload: &[u8],
+) -> Result<ActionFailure, String> {
+    Ok(ActionFailure {
+        code,
+        retry_policy,
+        taint,
+        detail: None,
+        encoded_len: payload_len(payload)?,
+    })
 }
 
 pub(super) fn single_do_workflow(

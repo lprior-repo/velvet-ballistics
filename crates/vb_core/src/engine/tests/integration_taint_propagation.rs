@@ -16,7 +16,10 @@ use crate::workflow::{
     ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use crate::action::{ActionTicket, compute_action_idempotency_key};
+use crate::action::{
+    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetrySafety,
+    SideEffect, compute_action_idempotency_key,
+};
 use crate::engine::{EngineSignal, eval_expr_with_store, resume_action_completion, step_once};
 use crate::frame::RunFrame;
 
@@ -49,6 +52,31 @@ fn action_ticket(run: RunId, step: StepIdx, seq: SeqNo, action: ActionId) -> Act
         attempt: 1,
         idempotency_key: compute_action_idempotency_key(run, seq, action),
         capacity: 1,
+    }
+}
+
+fn action_contract(action: ActionId, max_output_bytes: u32) -> ActionContract {
+    ActionContract {
+        id: action,
+        name: ActionName::from_static_infallible("taint-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 128,
+        max_output_bytes,
+        timeout_ms: 1_000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn action_output(output_slot: SlotIdx, value: SlotValue, taint: Taint) -> ActionOutputReady {
+    ActionOutputReady {
+        output_slot,
+        value,
+        taint,
+        encoded_len: 2,
     }
 }
 
@@ -952,16 +980,12 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
         SeqNo::new(1),
         ActionId::new(1),
     );
+    let contract = action_contract(ActionId::new(1), 8);
+    let output = action_output(SlotIdx::ZERO, SlotValue::Bool(true), Taint::Secret);
 
-    let (signal, _journal) = resume_action_completion(
-        &workflow,
-        &mut run,
-        ticket,
-        SlotIdx::ZERO,
-        SlotValue::Bool(true),
-        Taint::Secret,
-    )
-    .map_err(|e| e.to_string())?;
+    let (signal, _journal) =
+        resume_action_completion(&workflow, &mut run, ticket, output, b"ok", &contract)
+            .map_err(|e| e.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
 
@@ -1836,16 +1860,12 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         SeqNo::new(1),
         ActionId::new(1),
     );
+    let contract = action_contract(ActionId::new(1), 8);
+    let output = action_output(SlotIdx::ZERO, SlotValue::Bool(true), Taint::Random);
 
-    let (signal, _journal) = resume_action_completion(
-        &workflow,
-        &mut run,
-        ticket,
-        SlotIdx::ZERO,
-        SlotValue::Bool(true),
-        Taint::Random,
-    )
-    .map_err(|e| e.to_string())?;
+    let (signal, _journal) =
+        resume_action_completion(&workflow, &mut run, ticket, output, b"ok", &contract)
+            .map_err(|e| e.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
 

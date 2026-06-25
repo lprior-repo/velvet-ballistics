@@ -470,7 +470,14 @@ fn apply_action_scheduled_ticket_event(
     tracker: &mut ActionReplayTracker,
     event: &JournalEvent,
 ) -> RecoveryResult<bool> {
-    let JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } = event else {
+    let JournalEvent::ActionScheduledTicket {
+        run,
+        ticket,
+        input,
+        output,
+        ..
+    } = event
+    else {
         return Ok(false);
     };
     verify_action_ticket_event(*run, *ticket)?;
@@ -487,16 +494,34 @@ fn apply_action_completed_envelope_event(
     event: &JournalEvent,
 ) -> RecoveryResult<bool> {
     let JournalEvent::ActionCompletedEnvelope {
-        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
+        run,
+        ticket,
+        output,
+        outcome,
+        value,
+        encoded_len,
+        taint,
+        value_digest,
+        ..
     } = event
     else {
         return Ok(false);
     };
-    let verified_digest =
-        verified_action_envelope_digest(*run, *ticket, *outcome, value, *encoded_len, *value_digest)?;
+    let verified_digest = verified_action_envelope_digest(
+        *run,
+        *ticket,
+        *outcome,
+        value,
+        *encoded_len,
+        *value_digest,
+    )?;
     tracker.require_scheduled_ticket(*ticket, *output)?;
     let effect = tracker.mark_completed_envelope_effect(
-        *ticket, *output, *encoded_len, *taint, verified_digest,
+        *ticket,
+        *output,
+        *encoded_len,
+        *taint,
+        verified_digest,
     )?;
     if effect == ActionReplayEffect::Apply {
         sub_replay_parallel_in_flight(frame, ticket.step)?;
@@ -521,13 +546,20 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::WaitResolvedEvent { .. }
         | JournalEvent::AskAnsweredEvent { .. }
         | JournalEvent::RetryScheduledEvent { .. } => Ok(true),
-        JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
-        | JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionCompletedEnvelope { .. }
-        | JournalEvent::ActionFailedEvent { .. } | JournalEvent::ActionAbandoned { .. }
-        | JournalEvent::RunAccepted { .. } | JournalEvent::RunAdmission { .. }
-        | JournalEvent::RunCancelled { .. } | JournalEvent::RunKilled { .. }
-        | JournalEvent::RunFinished { .. } | JournalEvent::RunFailedEvent { .. }
-        | JournalEvent::RunResumed { .. } | JournalEvent::RunRetried { .. }
+        JournalEvent::ActionScheduled { .. }
+        | JournalEvent::ActionScheduledTicket { .. }
+        | JournalEvent::ActionCompletedEvent { .. }
+        | JournalEvent::ActionCompletedEnvelope { .. }
+        | JournalEvent::ActionFailedEvent { .. }
+        | JournalEvent::ActionAbandoned { .. }
+        | JournalEvent::RunAccepted { .. }
+        | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunCancelled { .. }
+        | JournalEvent::RunKilled { .. }
+        | JournalEvent::RunFinished { .. }
+        | JournalEvent::RunFailedEvent { .. }
+        | JournalEvent::RunResumed { .. }
+        | JournalEvent::RunRetried { .. }
         | JournalEvent::RunAnswered { .. } => Ok(false),
     }
 }

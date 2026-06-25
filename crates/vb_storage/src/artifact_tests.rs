@@ -10,9 +10,7 @@
     clippy::unwrap_used
 )]
 mod artifact_tests {
-    use crate::{
-        DIGEST_BYTES, FjallJournal, JournalError, CompiledIrRecord,
-    };
+    use crate::{CompiledIrRecord, DIGEST_BYTES, FjallJournal, JournalError};
     use vb_core::WorkflowDigest;
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -26,14 +24,19 @@ mod artifact_tests {
             digest,
             ir: b"test-artifact-ir-bytes".to_vec(),
         };
-        journal.put_compiled_ir(&record).expect("put should succeed");
+        journal
+            .put_compiled_ir(&record)
+            .expect("put should succeed");
     }
 
     #[test]
     fn list_artifacts_returns_empty_for_empty_journal() {
         let (_temp, journal) = temp_journal();
         let artifacts = journal.list_artifacts().expect("list should succeed");
-        assert!(artifacts.is_empty(), "should return empty list for empty journal");
+        assert!(
+            artifacts.is_empty(),
+            "should return empty list for empty journal"
+        );
     }
 
     #[test]
@@ -60,7 +63,9 @@ mod artifact_tests {
         let digest = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
         put_test_artifact(&journal, digest);
 
-        let exists = journal.artifact_exists(digest).expect("check should succeed");
+        let exists = journal
+            .artifact_exists(digest)
+            .expect("check should succeed");
         assert!(exists, "artifact should exist after put");
     }
 
@@ -68,7 +73,9 @@ mod artifact_tests {
     fn artifact_exists_returns_false_for_missing_digest() {
         let (_temp, journal) = temp_journal();
         let missing = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
-        let exists = journal.artifact_exists(missing).expect("check should succeed");
+        let exists = journal
+            .artifact_exists(missing)
+            .expect("check should succeed");
         assert!(!exists, "artifact should not exist for unknown digest");
     }
 
@@ -78,8 +85,14 @@ mod artifact_tests {
         let digest = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
         put_test_artifact(&journal, digest);
 
-        assert!(journal.artifact_exists(digest).expect("check before remove"));
-        journal.remove_artifact(digest).expect("remove should succeed");
+        assert!(
+            journal
+                .artifact_exists(digest)
+                .expect("check before remove")
+        );
+        journal
+            .remove_artifact(digest)
+            .expect("remove should succeed");
         assert!(
             !journal.artifact_exists(digest).expect("check after remove"),
             "artifact should not exist after removal"
@@ -107,7 +120,9 @@ mod artifact_tests {
         put_test_artifact(&journal, d1);
         put_test_artifact(&journal, d2);
 
-        journal.remove_artifact(d1).expect("remove d1 should succeed");
+        journal
+            .remove_artifact(d1)
+            .expect("remove d1 should succeed");
 
         let artifacts = journal.list_artifacts().expect("list should succeed");
         assert_eq!(artifacts.len(), 1);
@@ -120,7 +135,9 @@ mod artifact_tests {
         let (_temp, journal) = temp_journal();
         let digest = WorkflowDigest::from_bytes([0x88; DIGEST_BYTES]);
         put_test_artifact(&journal, digest);
-        journal.remove_artifact(digest).expect("first remove should succeed");
+        journal
+            .remove_artifact(digest)
+            .expect("first remove should succeed");
 
         let result = journal.remove_artifact(digest);
         assert!(

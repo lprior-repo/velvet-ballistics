@@ -47,7 +47,7 @@ pub(crate) fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalE
             matches!(kind, 10..=29)
                 || kind == RecordKind::WaitResolved.id()
                 || kind == RecordKind::ActionAbandoned.id()
-        },
+        }
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),

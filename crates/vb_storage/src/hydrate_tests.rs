@@ -11,8 +11,9 @@
 )]
 mod hydrate_tests {
     use crate::EventSeq;
-    use crate::recovery::{
-        hydrate::{validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot, validate_recovery_data_present, TailEventMetadata, SnapshotRecoveryInputViolation},
+    use crate::recovery::hydrate::{
+        SnapshotRecoveryInputViolation, TailEventMetadata, validate_recovery_data_present,
+        validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot,
     };
     use vb_core::RunId;
 
@@ -87,7 +88,10 @@ mod hydrate_tests {
         let snapshot_seq = EventSeq::new(5);
         let result = validate_tail_seq_after_snapshot(meta, snapshot_seq);
         assert!(
-            matches!(result, Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })),
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })
+            ),
             "equal seq should be rejected, got {:?}",
             result
         );
@@ -99,7 +103,10 @@ mod hydrate_tests {
         let snapshot_seq = EventSeq::new(5);
         let result = validate_tail_seq_after_snapshot(meta, snapshot_seq);
         assert!(
-            matches!(result, Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })),
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })
+            ),
             "smaller seq should be rejected, got {:?}",
             result
         );

@@ -280,7 +280,9 @@ pub enum JournalError {
     /// `IndexStatusState::Other(v)` whose byte collides with a named
     /// status variant (must be `>= MIN_OTHER_STATUS_BYTE`).
     /// (SC-001 / vb-hexk6.)
-    #[error("IndexStatusState byte collision: 0x{byte:02x} below minimum 0x{min:02x} for named status range")]
+    #[error(
+        "IndexStatusState byte collision: 0x{byte:02x} below minimum 0x{min:02x} for named status range"
+    )]
     IndexStatusStateCollision {
         /// The conflicting byte that was rejected.
         byte: u8,

@@ -20,7 +20,8 @@ use vb_storage::recovery::replay::core::{
 };
 use vb_storage::recovery::types::{ActionReplayTracker, RecoveryError, RunSnapshot};
 use vb_storage::{
-    EventSeq, FjallJournal, JournalEvent, codec::encode_record,
+    EventSeq, FjallJournal, JournalEvent,
+    codec::encode_record,
     constants::{DIGEST_BYTES, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
     records::RecordKind,
 };
@@ -104,7 +105,11 @@ fn events_for_run_full_returns_pre_snapshot_events() -> Result<(), Box<dyn std::
     assert_eq!(tail.last().map(|e| e.seq().get()), Some(10));
 
     let full = journal.events_for_run_full(run)?;
-    assert_eq!(full.len(), total, "full-journal reader returns every event from seq 0");
+    assert_eq!(
+        full.len(),
+        total,
+        "full-journal reader returns every event from seq 0"
+    );
     assert_eq!(full.first().map(|e| e.seq().get()), Some(0));
     assert_eq!(full.last().map(|e| e.seq().get()), Some(10));
     Ok(())
@@ -150,7 +155,11 @@ fn recover_full_journal_includes_pre_snapshot_events() -> Result<(), Box<dyn std
     let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])?;
     assert_eq!(replayed.len(), total);
     match replayed.first() {
-        Some(JournalEvent::RunAccepted { run: r, seq, workflow }) => {
+        Some(JournalEvent::RunAccepted {
+            run: r,
+            seq,
+            workflow,
+        }) => {
             assert_eq!(*r, run);
             assert_eq!(seq.get(), 0);
             assert_eq!(*workflow, digest(0x42));
@@ -161,8 +170,8 @@ fn recover_full_journal_includes_pre_snapshot_events() -> Result<(), Box<dyn std
 }
 
 #[test]
-fn recover_snapshot_plus_tail_returns_only_post_snapshot_events(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_snapshot_plus_tail_returns_only_post_snapshot_events()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(20_004);
     let total = write_full_run(&journal, run, 4)?;
@@ -184,8 +193,8 @@ fn recover_snapshot_plus_tail_returns_only_post_snapshot_events(
 }
 
 #[test]
-fn load_snapshot_returns_missing_snapshot_for_unknown_run_seq(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn load_snapshot_returns_missing_snapshot_for_unknown_run_seq()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(20_005);
     let result = load_snapshot(&journal, run, EventSeq::new(0));
@@ -201,8 +210,8 @@ fn load_snapshot_returns_missing_snapshot_for_unknown_run_seq(
 }
 
 #[test]
-fn load_snapshot_returns_corrupt_snapshot_for_unreadable_payload(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn load_snapshot_returns_corrupt_snapshot_for_unreadable_payload()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(20_006);
     let snapshot_seq = EventSeq::new(7);
@@ -247,8 +256,8 @@ fn missing_snapshot_and_corrupt_snapshot_are_distinct_variants() {
 }
 
 #[test]
-fn load_snapshot_returns_snapshot_when_record_is_present(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn load_snapshot_returns_snapshot_when_record_is_present() -> Result<(), Box<dyn std::error::Error>>
+{
     let (_temp, journal) = temp_journal();
     let run = RunId::new(20_007);
     let snapshot = make_snapshot(run, 3);

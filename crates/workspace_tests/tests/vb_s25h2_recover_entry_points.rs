@@ -20,13 +20,12 @@
 use std::collections::BTreeSet;
 
 use vb_core::{CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_storage::records::{RunHeaderRecord, RunHeaderStatus};
 use vb_storage::recovery::recover::{
     check_workflow_source_digest, recover_all_incomplete_runs, recover_run_admission,
-    recover_runtime_frame_seed, recover_runtime_summary,
-    recover_runtime_summary_with_expected,
+    recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
 };
 use vb_storage::recovery::types::{RecoveryHydration, RecoveryTerminalState, RunSnapshot};
-use vb_storage::records::{RunHeaderRecord, RunHeaderStatus};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent, constants::DIGEST_BYTES};
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -96,8 +95,8 @@ fn make_header(run: RunId, workflow_id: u32, compiled_digest: WorkflowDigest) ->
 }
 
 #[test]
-fn check_workflow_source_digest_finds_pre_snapshot_run_accepted(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn check_workflow_source_digest_finds_pre_snapshot_run_accepted()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(30_001);
     let wf = digest(0xA1);
@@ -110,8 +109,8 @@ fn check_workflow_source_digest_finds_pre_snapshot_run_accepted(
 }
 
 #[test]
-fn recover_runtime_summary_includes_pre_snapshot_events(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_runtime_summary_includes_pre_snapshot_events() -> Result<(), Box<dyn std::error::Error>>
+{
     let (_temp, journal) = temp_journal();
     let run = RunId::new(30_002);
     let wf = digest(0xA2);
@@ -136,8 +135,8 @@ fn recover_runtime_summary_includes_pre_snapshot_events(
 }
 
 #[test]
-fn recover_runtime_summary_with_expected_sees_pre_snapshot_finish(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_runtime_summary_with_expected_sees_pre_snapshot_finish()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(30_003);
     let wf = digest(0xA3);
@@ -155,15 +154,14 @@ fn recover_runtime_summary_with_expected_sees_pre_snapshot_finish(
     let expected = RecoveryTerminalState::Finished {
         result: SlotIdx::new(0),
     };
-    let hydration =
-        recover_runtime_summary_with_expected(&journal, run, expected)?;
+    let hydration = recover_runtime_summary_with_expected(&journal, run, expected)?;
     assert_eq!(hydration.summary().terminal, Some(expected));
     Ok(())
 }
 
 #[test]
-fn recover_runtime_frame_seed_includes_pre_snapshot_events(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_runtime_frame_seed_includes_pre_snapshot_events()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(30_004);
     let wf = digest(0xA4);
@@ -181,8 +179,8 @@ fn recover_runtime_frame_seed_includes_pre_snapshot_events(
 }
 
 #[test]
-fn recover_run_admission_finds_pre_snapshot_admission_event(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_run_admission_finds_pre_snapshot_admission_event()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(30_005);
     let wf = digest(0xA5);
@@ -200,17 +198,14 @@ fn recover_run_admission_finds_pre_snapshot_admission_event(
 }
 
 #[test]
-fn recover_all_incomplete_runs_finds_pre_snapshot_events_per_run(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn recover_all_incomplete_runs_finds_pre_snapshot_events_per_run()
+-> Result<(), Box<dyn std::error::Error>> {
     let (_temp, journal) = temp_journal();
     let run_a = RunId::new(30_006);
     let run_b = RunId::new(30_007);
     let wf_a = digest(0xA7);
     let wf_b = digest(0xA8);
-    for (run, wf, workflow_id) in [
-        (run_a, wf_a, 60_u32),
-        (run_b, wf_b, 61_u32),
-    ] {
+    for (run, wf, workflow_id) in [(run_a, wf_a, 60_u32), (run_b, wf_b, 61_u32)] {
         journal.append_journaled(&run_accepted(run, 0, wf))?;
         journal.append_journaled(&step_started(run, 1, 0))?;
         journal.append_journaled(&step_succeeded(run, 2, 0, 0))?;

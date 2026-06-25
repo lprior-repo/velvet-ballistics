@@ -1914,7 +1914,10 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
         &[(step, sample_digest(1), sample_digest(2))],
     );
     assert!(
-        matches!(result_policy, Err(RecoveryError::PolicyDigestMismatch { .. })),
+        matches!(
+            result_policy,
+            Err(RecoveryError::PolicyDigestMismatch { .. })
+        ),
         "asymmetric policy digest must reject, got {result_policy:?}"
     );
 }

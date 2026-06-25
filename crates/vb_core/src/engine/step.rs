@@ -115,6 +115,7 @@ fn mark_step_after_signal(
         EngineSignal::AwaitingWait => run.mark_waiting(step),
         EngineSignal::AwaitingAsk => run.mark_asking(step),
         EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => Ok(()),
+        EngineSignal::ActionFailureUnhandled => run.mark_failed(step),
         EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),
     }
 }

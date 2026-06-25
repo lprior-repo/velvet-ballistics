@@ -1,4 +1,7 @@
-use super::test_support::{action_ticket, do_then_finish_workflow, ensure_equal, test_frame};
+use super::test_support::{
+    action_contract, action_ticket, do_then_finish_workflow, ensure_equal, failure_payload,
+    ready_output, test_frame,
+};
 use super::{resume_action_completion, resume_action_failure, step_once};
 use crate::EngineSignal;
 use crate::action::{ActionFailureCode, ActionTicket, RetryPolicy};
@@ -41,24 +44,39 @@ fn expect_completion_and_failure_rejection(
     reason: &'static str,
 ) -> Result<(), String> {
     let workflow = do_then_finish_workflow("malformed_action_ticket", [0xD1; 32], 1)?;
+    let contract = action_contract(1, 8);
+    let encoded_payload = b"ok";
     let mut completion_run = suspended_run(&workflow)?;
+    let output = ready_output(
+        SlotIdx::new(0),
+        SlotValue::I64(1),
+        Taint::Clean,
+        encoded_payload,
+    )?;
     let completion = resume_action_completion(
         &workflow,
         &mut completion_run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::I64(1),
-        Taint::Clean,
+        output,
+        encoded_payload,
+        &contract,
     );
     expect_resume_reason(completion, reason)?;
 
     let mut failure_run = suspended_run(&workflow)?;
+    let failure_payload = failure_payload(
+        ActionFailureCode::Timeout,
+        RetryPolicy::NonRetryable,
+        Taint::Clean,
+        encoded_payload,
+    )?;
     let failure = resume_action_failure(
         &workflow,
         &mut failure_run,
         ticket,
-        ActionFailureCode::Timeout,
-        RetryPolicy::NonRetryable,
+        failure_payload,
+        encoded_payload,
+        &contract,
     );
     expect_resume_reason(failure, reason)
 }
@@ -76,8 +94,8 @@ fn expect_resume_reason<T>(
     expected: &'static str,
 ) -> Result<(), String> {
     match result {
-        Err(EngineError::ActionResumeRejected { rejection }) => {
-            ensure_equal(rejection.reason(), expected)
+        Err(EngineError::ActionResumeRejected { report }) => {
+            ensure_equal(report.rejection.reason(), expected)
         }
         Err(error) => Err(format!("expected resume rejection, got {error:?}")),
         Ok(_) => Err(String::from("expected resume error, got success")),

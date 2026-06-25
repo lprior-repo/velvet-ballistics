@@ -1,8 +1,8 @@
 use crate::EventSeq;
 use crate::recovery::replay::summary::*;
 use crate::recovery::types::RecoveryTerminalState;
-use vb_core::replay::{ReplayError, SuspensionKind};
 use vb_core::SlotValue;
+use vb_core::replay::{ReplayError, SuspensionKind};
 use vb_core::{
     ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx, StepIdx,
     Taint, WorkflowDigest,
@@ -646,8 +646,7 @@ fn action_scheduled_ticket_advances_max_slot_and_step_dimensions() {
     );
     assert!(
         seed.steps.iter().any(|entry| {
-            entry.step == StepIdx::new(5)
-                && entry.state == RecoveredStepState::Running
+            entry.step == StepIdx::new(5) && entry.state == RecoveredStepState::Running
         }),
         "scheduled ticket must leave the action step Running in the seed",
     );
@@ -656,9 +655,9 @@ fn action_scheduled_ticket_advances_max_slot_and_step_dimensions() {
         "summary must count the ActionScheduledTicket event",
     );
     assert!(
-        seed.pending_actions.iter().any(|entry| {
-            entry.step == StepIdx::new(5) && entry.action == ActionId::new(11)
-        }),
+        seed.pending_actions
+            .iter()
+            .any(|entry| { entry.step == StepIdx::new(5) && entry.action == ActionId::new(11) }),
         "ActionScheduledTicket must remain pending until completion/abandon",
     );
 }
@@ -775,9 +774,9 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
         .expect("post-schedule crash must produce a recoverable seed");
 
     assert!(
-        seed.pending_actions.iter().any(|entry| {
-            entry.step == StepIdx::new(6) && entry.action == ActionId::new(17)
-        }),
+        seed.pending_actions
+            .iter()
+            .any(|entry| { entry.step == StepIdx::new(6) && entry.action == ActionId::new(17) }),
         "crashed-while-pending action must surface in the resume queue",
     );
     assert_eq!(
@@ -792,7 +791,8 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
     // resume signal, not a rejection signal. The unsupported flag may
     // remain set as audit metadata but live-frame hydration must succeed
     // so the runtime can resume the in-flight action.
-    let frame_recovery = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
-        .expect("summary recoverable");
+    let frame_recovery =
+        crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
+            .expect("summary recoverable");
     let _ = frame_recovery;
 }

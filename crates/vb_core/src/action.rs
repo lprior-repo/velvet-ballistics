@@ -25,7 +25,7 @@ pub use contract::{
 };
 pub use error::{ActionError, ActionFailure, ActionFailureCode, ActionResult};
 pub use journal::ActionJournalEvent;
-pub use lifecycle_error::{ActionFailureReport, ActionResumeRejection};
+pub use lifecycle_error::{ActionFailureReport, ActionResumeRejection, ActionResumeReport};
 pub use name::{ActionName, ActionNameError};
 pub use payload::{
     ActionInput, ActionOutcome, ActionOutput, ActionOutputReady, EncodedActionInputLen,

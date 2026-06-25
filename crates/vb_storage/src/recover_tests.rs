@@ -11,9 +11,8 @@
 )]
 mod recover_tests {
     use crate::recovery::{
-        RecoveryError,
-        check_compiled_ir_digest, check_action_abi_digest, check_policy_digest,
-        check_action_abi_digests, check_policy_digests,
+        RecoveryError, check_action_abi_digest, check_action_abi_digests, check_compiled_ir_digest,
+        check_policy_digest, check_policy_digests,
     };
     use vb_core::{ActionId, StepIdx, WorkflowDigest};
 

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
-use crate::error::JournalError;
 use super::types::JournalWriteBatch;
+use crate::error::JournalError;
 
 impl<'j> JournalWriteBatch<'j> {
     /// Sets strict durability for the commit.

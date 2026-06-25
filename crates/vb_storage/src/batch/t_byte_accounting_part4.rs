@@ -113,11 +113,7 @@ fn append_strict_batch_atomicity_rolls_back_on_duplicate() {
     seed_batch.append_event(&seed).expect("seed append");
     seed_batch.commit().expect("seed commit");
 
-    let colliding = vec![
-        make_event(run, 0),
-        make_event(run, 1),
-        make_event(run, 2),
-    ];
+    let colliding = vec![make_event(run, 0), make_event(run, 1), make_event(run, 2)];
     let result = journal.append_strict_batch(&colliding);
     assert!(
         matches!(result, Err(JournalError::DuplicateEvent { .. })),

@@ -73,6 +73,9 @@ pub enum IdempotencyViolation {
     /// Idempotency key ingredient contains a time-dependent value.
     #[error("idempotency key ingredient contains time-dependent value at slot {0}")]
     TimeInKey(u32),
+    /// Idempotency key ingredient references a missing or unavailable slot.
+    #[error("idempotency key ingredient slot is unavailable at slot {0}")]
+    UnavailableKeySlot(u32),
 }
 
 /// Static contract describing an action's resource and correctness bounds.

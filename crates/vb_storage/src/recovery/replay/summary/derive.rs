@@ -13,11 +13,11 @@ use std::collections::{HashMap, HashSet};
 
 use vb_core::{ActionId, CompiledWorkflow, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
+use crate::JournalEvent;
 use crate::recovery::types::{
     RecoveredPendingAction, RecoveredRunAdmission, RecoveredStepEntry, RecoveredStepState,
     RecoveryError, RecoveryFrameSeed, RecoveryResult, UnsupportedRecoveryState,
 };
-use crate::JournalEvent;
 
 use super::accumulator::FrameSeedAccumulator;
 use super::hydrate::RecoveredSlots;

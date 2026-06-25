@@ -1,18 +1,20 @@
 #![forbid(unsafe_code)]
+use super::types::JournalWriteBatch;
 use crate::codec::encode_record;
 use crate::constants::{
-    MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_SNAPSHOT,
-    MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_RUN_HEADER_BYTES,
-    MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+    MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
+    MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES,
+    MAX_WORKFLOW_SOURCE_BYTES,
 };
 use crate::error::JournalError;
 use crate::keys::{
     blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
     run_header_key, run_snapshot_key, workflow_source_key,
 };
-use crate::records::{BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord};
+use crate::records::{
+    BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+};
 use crate::recovery::RunSnapshot;
-use super::types::JournalWriteBatch;
 
 impl<'j> JournalWriteBatch<'j> {
     /// Inserts a workflow source record into the batch.
@@ -61,8 +63,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// and [`Self::put_blob`]: every fallible step sets
     /// `self.aborted = true` before propagating the typed error.
     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        if let Err(e) =
-            crate::journal::verify_content_digest(&record.ir, &record.digest.as_bytes())
+        if let Err(e) = crate::journal::verify_content_digest(&record.ir, &record.digest.as_bytes())
         {
             self.aborted = true;
             return Err(e);

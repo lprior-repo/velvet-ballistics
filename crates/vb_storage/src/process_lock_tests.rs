@@ -56,8 +56,8 @@ mod process_lock_tests {
     fn process_lock_is_released_on_drop() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         {
-            let _journal = crate::FjallJournal::open(temp.path(), None)
-                .expect("first journal should open");
+            let _journal =
+                crate::FjallJournal::open(temp.path(), None).expect("first journal should open");
             // Drop happens here
         }
         // After drop, we should be able to open again
@@ -74,8 +74,8 @@ mod process_lock_tests {
     #[test]
     fn process_lock_file_is_created() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
-        let _journal = crate::FjallJournal::open(temp.path(), None)
-            .expect("journal should open successfully");
+        let _journal =
+            crate::FjallJournal::open(temp.path(), None).expect("journal should open successfully");
 
         let lock_path = temp.path().join(".process.lock");
         assert!(
@@ -87,8 +87,8 @@ mod process_lock_tests {
     #[test]
     fn process_lock_file_contains_holder_pid() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
-        let _journal = crate::FjallJournal::open(temp.path(), None)
-            .expect("journal should open successfully");
+        let _journal =
+            crate::FjallJournal::open(temp.path(), None).expect("journal should open successfully");
 
         let lock_path = temp.path().join(".process.lock");
         if lock_path.exists() {
@@ -98,8 +98,10 @@ mod process_lock_tests {
                 .parse()
                 .expect("lock file should contain a valid PID");
             // The PID should be the current process ID or 0
-            assert!(pid > 0 || pid == std::process::id(),
-                "lock file PID should be positive or equal to current process ID");
+            assert!(
+                pid > 0 || pid == std::process::id(),
+                "lock file PID should be positive or equal to current process ID"
+            );
         }
     }
 
@@ -114,9 +116,6 @@ mod process_lock_tests {
     fn init_keyspaces_acquires_process_lock() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         let result = crate::init_keyspaces(temp.path());
-        assert!(
-            result.is_ok(),
-            "init_keyspaces should acquire process lock"
-        );
+        assert!(result.is_ok(), "init_keyspaces should acquire process lock");
     }
 }

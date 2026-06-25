@@ -3,6 +3,7 @@ use super::error::{ActionError, ActionFailure, ActionResult};
 use super::ticket::ActionTicket;
 use crate::ids::{ActionId, RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
+use serde::{Deserialize, Serialize};
 
 /// Input payload for one action invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,7 +138,7 @@ impl ActionInput {
 }
 
 /// Output payload produced by a completed action.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionOutput {
     /// Output slot to receive the result.
     pub output: SlotIdx,
@@ -146,7 +147,7 @@ pub struct ActionOutput {
 }
 
 /// Successful action result with output value and metadata.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionOutputReady {
     /// Output slot receiving the result value.
     pub output_slot: SlotIdx,
@@ -159,7 +160,7 @@ pub struct ActionOutputReady {
 }
 
 /// Terminal outcome of an action invocation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ActionOutcome {
     /// Action completed successfully with output.

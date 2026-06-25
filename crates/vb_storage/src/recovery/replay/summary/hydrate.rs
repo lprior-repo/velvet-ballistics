@@ -55,7 +55,9 @@ pub(super) fn recover_slots(
         )),
         (Some(_), None) => Ok(RecoveredSlots::supported(Vec::new())),
         (None, _) if accumulator.slot_values.is_empty() => Ok(RecoveredSlots::unsupported()),
-        (None, _) => Ok(RecoveredSlots::supported(recovered_event_slots(accumulator))),
+        (None, _) => Ok(RecoveredSlots::supported(recovered_event_slots(
+            accumulator,
+        ))),
     }
 }
 

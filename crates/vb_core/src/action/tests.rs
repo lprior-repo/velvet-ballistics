@@ -790,7 +790,17 @@ fn verify_idempotency_key_required_clean_keys_passes() {
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
     assert!(frame.is_ok());
-    let frame = frame.ok().expect("test setup");
+    let mut frame = frame.ok().expect("test setup");
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
+            .is_ok()
+    );
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
+            .is_ok()
+    );
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = verify_idempotency(&action, &key_slots, &frame);
     assert_eq!(result, Ok(()));
@@ -826,10 +836,40 @@ fn verify_idempotency_key_required_secret_key_rejected() {
 fn validate_key_ingredients_clean_slots_pass() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
     assert!(frame.is_ok());
-    let frame = frame.ok().expect("test setup");
+    let mut frame = frame.ok().expect("test setup");
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
+            .is_ok()
+    );
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
+            .is_ok()
+    );
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = validate_idempotency_key_ingredients(&key_slots, &frame);
     assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_key_ingredients_uninitialized_slot_rejected() {
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    assert!(frame.is_ok());
+    let frame = frame.ok().expect("test setup");
+    let key_slots = [SlotIdx::new(0)];
+    let result = validate_idempotency_key_ingredients(&key_slots, &frame);
+    assert_eq!(result, Err(IdempotencyViolation::UnavailableKeySlot(0)));
+}
+
+#[test]
+fn validate_key_ingredients_out_of_bounds_slot_rejected() {
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1);
+    assert!(frame.is_ok());
+    let frame = frame.ok().expect("test setup");
+    let key_slots = [SlotIdx::new(2)];
+    let result = validate_idempotency_key_ingredients(&key_slots, &frame);
+    assert_eq!(result, Err(IdempotencyViolation::UnavailableKeySlot(2)));
 }
 
 #[test]
@@ -1326,7 +1366,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
 }
 
 #[test]
-fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
+fn validate_action_outcome_ready_accepts_absolute_slot_when_output_declared() {
     let contract = ActionContract {
         id: ActionId::new(1),
         name: ActionName::new("test-action").unwrap(),
@@ -1348,11 +1388,37 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
     };
     let outcome = ActionOutcome::Ready(output);
     let result = validate_action_outcome(&contract, &outcome);
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_action_outcome_ready_rejects_zero_output_slots() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 0,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome);
     assert_eq!(
         result,
         Err(ActionError::OutputSlotOutOfBounds {
-            slot: 5,
-            max_slots: 1,
+            slot: 0,
+            max_slots: 0,
         })
     );
 }
@@ -1382,6 +1448,39 @@ fn validate_action_outcome_failed_always_succeeds() {
     let outcome = ActionOutcome::Failed(failure);
     let result = validate_action_outcome(&contract, &outcome);
     assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_action_outcome_failed_rejects_oversized_payload() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 3,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: RetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 4,
+    };
+    let outcome = ActionOutcome::Failed(failure);
+    let result = validate_action_outcome(&contract, &outcome);
+    assert_eq!(
+        result,
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 3,
+            actual_bytes: 4,
+        })
+    );
 }
 
 #[test]

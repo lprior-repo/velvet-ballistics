@@ -1,19 +1,17 @@
 use crate::EngineSignal;
 use crate::action::{
-    ActionFailure, ActionFailureCode, ActionFailureReport, ActionJournalEvent,
-    ActionResumeRejection, ActionTicket, RetryPolicy, action_ticket_has_valid_key,
+    ActionContract, ActionFailure, ActionFailureReport, ActionJournalEvent, ActionOutputReady,
+    ActionResumeRejection, ActionResumeReport, ActionTicket, action_ticket_has_valid_key,
 };
 use crate::engine::error_routing::{ErrorHandlerOutcome, route_error_handler};
 use crate::errors::EngineError;
 use crate::frame::{RunFrame, StepState};
 use crate::ids::{ActionId, SlotIdx, StepIdx};
-use crate::value::{SlotValue, Taint};
 use crate::workflow::{CompiledNodeKind, CompiledWorkflow};
 
-struct ResolvedActionResume {
+struct SuspendedActionContext {
     step: StepIdx,
-    next: Option<StepIdx>,
-    output: Option<SlotIdx>,
+    output: SlotIdx,
 }
 
 pub fn journal_action_suspended(
@@ -22,27 +20,42 @@ pub fn journal_action_suspended(
     input_slot: SlotIdx,
     output_slot: SlotIdx,
     step: StepIdx,
-) -> ActionJournalEvent {
-    ActionJournalEvent::Suspended {
+) -> Result<ActionJournalEvent, EngineError> {
+    if ticket.action != action {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::ActionMismatch,
+        ));
+    }
+    if ticket.step != step {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::StepNotCurrentPc,
+        ));
+    }
+    validate_ticket_shape(ticket)?;
+    Ok(ActionJournalEvent::Suspended {
         ticket,
         attempt: ticket.attempt,
         action,
         input_slot,
         output_slot,
         step,
-    }
+    })
 }
 
 pub fn resume_action_completion(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     ticket: ActionTicket,
-    output_slot: SlotIdx,
-    output_value: SlotValue,
-    output_taint: Taint,
+    output: ActionOutputReady,
+    encoded_payload: &[u8],
+    contract: &ActionContract,
 ) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
-    let context = resolve_completion_context(plan, run, ticket, output_slot)?;
-    run.write_slot_with_taint(output_slot, output_value, output_taint)?;
+    let context = resolve_completion_context(plan, run, ticket, output.output_slot)?;
+    validate_contract_output_slot(ticket, contract)?;
+    validate_resume_payload(ticket, output.encoded_len, encoded_payload, contract)?;
+    run.write_slot_with_taint(output.output_slot, output.value, output.taint)?;
     run.mark_succeeded(context.step)?;
     run.set_pc(context.next)?;
     run.increment_executed()?;
@@ -50,8 +63,7 @@ pub fn resume_action_completion(
     let journal = ActionJournalEvent::Completed {
         ticket,
         attempt: ticket.attempt,
-        output_slot,
-        output_taint,
+        output,
     };
     Ok((EngineSignal::Continue, journal))
 }
@@ -60,35 +72,48 @@ pub fn resume_action_failure(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     ticket: ActionTicket,
-    failure_code: ActionFailureCode,
-    retry_policy: RetryPolicy,
+    failure: ActionFailure,
+    encoded_payload: &[u8],
+    contract: &ActionContract,
 ) -> Result<(EngineSignal, ActionJournalEvent), EngineError> {
     let context = resolve_action_resume(plan, run, ticket)?;
-    run.mark_failed(context.step)?;
+    validate_contract_output_slot(ticket, contract)?;
+    validate_resume_payload(ticket, failure.encoded_len, encoded_payload, contract)?;
 
     let journal = ActionJournalEvent::Failed {
         ticket,
         attempt: ticket.attempt,
-        code: failure_code,
-        retry_policy,
+        output_slot: context.output,
+        failure: failure.clone(),
     };
 
-    let report = ActionFailureReport::new(
-        context.step,
-        ticket.action,
-        ActionFailure {
-            code: failure_code,
-            retry_policy,
-            taint: Taint::Clean,
-            detail: None,
-            encoded_len: 0,
-        },
-    );
+    let report = ActionFailureReport::new(context.step, ticket.action, failure);
     let error = EngineError::ActionFailed { report };
-    match route_error_handler(plan, run, context.step, &error)? {
-        ErrorHandlerOutcome::Routed => Ok((EngineSignal::Continue, journal)),
-        ErrorHandlerOutcome::NoHandler => Ok((EngineSignal::AwaitingAction, journal)),
+    let mut staged = run.clone();
+    staged.mark_failed(context.step)?;
+    match route_error_handler(plan, &mut staged, context.step, &error)? {
+        ErrorHandlerOutcome::Routed => {
+            *run = staged;
+            Ok((EngineSignal::Continue, journal))
+        }
+        ErrorHandlerOutcome::NoHandler => {
+            *run = staged;
+            Ok((EngineSignal::ActionFailureUnhandled, journal))
+        }
     }
+}
+
+fn validate_contract_output_slot(
+    ticket: ActionTicket,
+    contract: &ActionContract,
+) -> Result<(), EngineError> {
+    if contract.output_slot_count == 0 {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::ContractOutputUndeclared,
+        ));
+    }
+    Ok(())
 }
 
 fn resolve_completion_context(
@@ -98,16 +123,19 @@ fn resolve_completion_context(
     output_slot: SlotIdx,
 ) -> Result<ResolvedActionCompletion, EngineError> {
     let resume = resolve_action_resume(plan, run, ticket)?;
-    let expected = resume
-        .output
-        .ok_or(EngineError::MissingOutputSlot { step: resume.step })?;
+    let expected = resume.output;
     if expected != output_slot {
-        return Err(resume_rejection(ActionResumeRejection::OutputMismatch));
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::OutputMismatch,
+        ));
     }
     if output_slot.as_usize() >= usize::from(run.slot_count()) {
         return Err(EngineError::SlotOutOfBounds { slot: output_slot });
     }
-    let next = resume
+    let next = plan
+        .node(resume.step)
+        .ok_or(EngineError::InvalidProgramCounter { step: resume.step })?
         .next
         .ok_or(EngineError::MissingNextStep { step: resume.step })?;
     validate_next_step(plan, run, next)?;
@@ -122,16 +150,22 @@ fn resolve_action_resume(
     plan: &CompiledWorkflow,
     run: &RunFrame,
     ticket: ActionTicket,
-) -> Result<ResolvedActionResume, EngineError> {
+) -> Result<SuspendedActionContext, EngineError> {
     if ticket.run != run.run_id() {
-        return Err(resume_rejection(ActionResumeRejection::RunMismatch));
+        return Err(resume_rejection(ticket, ActionResumeRejection::RunMismatch));
     }
     if ticket.step != run.pc() {
-        return Err(resume_rejection(ActionResumeRejection::StepNotCurrentPc));
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::StepNotCurrentPc,
+        ));
     }
     validate_ticket_shape(ticket)?;
     if run.step_state(ticket.step)? != StepState::Running {
-        return Err(resume_rejection(ActionResumeRejection::StepNotRunning));
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::StepNotRunning,
+        ));
     }
 
     let node = plan
@@ -139,31 +173,41 @@ fn resolve_action_resume(
         .ok_or(EngineError::InvalidProgramCounter { step: ticket.step })?;
     match &node.kind {
         CompiledNodeKind::Do { action, .. } if *action == ticket.action => {
-            Ok(ResolvedActionResume {
+            let output = node
+                .output
+                .ok_or(EngineError::MissingOutputSlot { step: ticket.step })?;
+            Ok(SuspendedActionContext {
                 step: ticket.step,
-                next: node.next,
-                output: node.output,
+                output,
             })
         }
-        CompiledNodeKind::Do { .. } => Err(resume_rejection(ActionResumeRejection::ActionMismatch)),
-        _ => Err(resume_rejection(ActionResumeRejection::NonDoNode)),
+        CompiledNodeKind::Do { .. } => Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::ActionMismatch,
+        )),
+        _ => Err(resume_rejection(ticket, ActionResumeRejection::NonDoNode)),
     }
 }
 
 fn validate_ticket_shape(ticket: ActionTicket) -> Result<(), EngineError> {
     if ticket.attempt == 0 {
-        return Err(resume_rejection(ActionResumeRejection::AttemptZero));
+        return Err(resume_rejection(ticket, ActionResumeRejection::AttemptZero));
     }
     if ticket.capacity == 0 {
-        return Err(resume_rejection(ActionResumeRejection::CapacityZero));
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::CapacityZero,
+        ));
     }
     if ticket.attempt > ticket.capacity {
         return Err(resume_rejection(
+            ticket,
             ActionResumeRejection::AttemptExceedsCapacity,
         ));
     }
     if !action_ticket_has_valid_key(ticket) {
         return Err(resume_rejection(
+            ticket,
             ActionResumeRejection::IdempotencyKeyMismatch,
         ));
     }
@@ -188,8 +232,39 @@ fn validate_can_increment(run: &RunFrame) -> Result<(), EngineError> {
     Ok(())
 }
 
-fn resume_rejection(rejection: ActionResumeRejection) -> EngineError {
-    EngineError::ActionResumeRejected { rejection }
+fn validate_resume_payload(
+    ticket: ActionTicket,
+    reported_len: u32,
+    encoded_payload: &[u8],
+    contract: &ActionContract,
+) -> Result<(), EngineError> {
+    if contract.id != ticket.action {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::ContractMismatch,
+        ));
+    }
+    let actual_len = u32::try_from(encoded_payload.len())
+        .map_err(|_| resume_rejection(ticket, ActionResumeRejection::EncodedPayloadTooLarge))?;
+    if actual_len != reported_len {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::EncodedPayloadLenMismatch,
+        ));
+    }
+    if actual_len > contract.max_output_bytes {
+        return Err(resume_rejection(
+            ticket,
+            ActionResumeRejection::EncodedPayloadTooLarge,
+        ));
+    }
+    Ok(())
+}
+
+fn resume_rejection(ticket: ActionTicket, rejection: ActionResumeRejection) -> EngineError {
+    EngineError::ActionResumeRejected {
+        report: ActionResumeReport::new(rejection, ticket),
+    }
 }
 
 struct ResolvedActionCompletion {

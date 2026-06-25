@@ -90,56 +90,6 @@
       "ids::kani_shard_index_bounds::shard_index_cover_boundaries",
       "ids::kani_shard_index_bounds::shard_index_u64_max"
     ],
-    "crates/vb_core/src/kani/kani_determinism.rs": [
-      "kani::kani_determinism::harnesses::kani_symbolic_code_consistency",
-      "kani::kani_determinism::harnesses::kani_symbolic_code_determinism"
-    ],
-    "crates/vb_core/src/kani/kani_diagnostic_constructor.rs": [
-      "kani::kani_diagnostic_constructor::harnesses::kani_diagnostic_constructor_consistency",
-      "kani::kani_diagnostic_constructor::harnesses::kani_diagnostic_no_mismatch"
-    ],
-    "crates/vb_core/src/kani/kani_from_str_compat.rs": [
-      "kani::kani_from_str_compat::harnesses::kani_from_str_backward_compat",
-      "kani::kani_from_str_compat::harnesses::kani_from_str_new_codes_parse",
-      "kani::kani_from_str_compat::harnesses::kani_from_str_rejects_unsupported"
-    ],
-    "crates/vb_core/src/kani/kani_is_supported_code.rs": [
-      "kani::kani_is_supported_code::harnesses::kani_is_supported_code_accepts_ranges",
-      "kani::kani_is_supported_code::harnesses::kani_is_supported_code_all_constants",
-      "kani::kani_is_supported_code::harnesses::kani_is_supported_code_rejects_gaps"
-    ],
-    "crates/vb_core/src/kani/kani_registry_bijection.rs": [
-      "kani::kani_registry_bijection::harnesses::kani_registry_bijection",
-      "kani::kani_registry_bijection::harnesses::kani_registry_bijection_roundtrip_symbolic_to_numeric",
-      "kani::kani_registry_bijection::harnesses::kani_registry_bijection_unique_numeric",
-      "kani::kani_registry_bijection::harnesses::kani_registry_bijection_unique_symbolic",
-      "kani::kani_registry_bijection::harnesses::kani_registry_nonzero"
-    ],
-    "crates/vb_core/src/kani/kani_registry_category.rs": [
-      "kani::kani_registry_category::harnesses::kani_registry_category_match",
-      "kani::kani_registry_category::harnesses::kani_registry_schema_low_byte_nonzero"
-    ],
-    "crates/vb_core/src/kani/kani_reverse_lookup.rs": [
-      "kani::kani_reverse_lookup::harnesses::kani_reverse_lookup",
-      "kani::kani_reverse_lookup::harnesses::kani_reverse_lookup_returns_none_outside"
-    ],
-    "crates/vb_core/src/kani/kani_serde_roundtrip.rs": [
-      "kani::kani_serde_roundtrip::harnesses::kani_serde_rejects_unknown",
-      "kani::kani_serde_roundtrip::harnesses::kani_serde_roundtrip"
-    ],
-    "crates/vb_core/src/kani/kani_span_try_new.rs": [
-      "kani::kani_span_try_new::harnesses::kani_span_new_unchanged",
-      "kani::kani_span_try_new::harnesses::kani_span_try_new_error_carries_operands",
-      "kani::kani_span_try_new::harnesses::kani_span_try_new_is_empty_consistent",
-      "kani::kani_span_try_new::harnesses::kani_span_try_new_returns_ok_or_err"
-    ],
-    "crates/vb_core/src/kani/kani_symbolic_code_validation.rs": [
-      "kani::kani_symbolic_code_validation::harnesses::kani_from_static_rejects_unknown",
-      "kani::kani_symbolic_code_validation::harnesses::kani_from_static_validation"
-    ],
-    "crates/vb_core/src/kani/kani_zero_alloc.rs": [
-      "kani::kani_zero_alloc::harnesses::kani_zero_alloc_hot_path"
-    ],
     "crates/vb_core/src/kani_budget_arithmetic_refinement.rs": [
       "kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64",
       "kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains",
@@ -176,7 +126,7 @@
       "kani_idempotency_gates::idempotency_divergent_digest_symbolic_certificate_rejected",
       "kani_idempotency_gates::kani_action_ticket_has_valid_key",
       "kani_idempotency_gates::kani_verify_idempotency_missing_key",
-      "kani_idempotency_gates::validate_action_outcome_certificate_conflict_oob",
+      "kani_idempotency_gates::validate_action_outcome_certificate_rejects_undeclared_output",
       "kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal",
       "kani_idempotency_gates::validate_action_outcome_symbolic_completion_matrix",
       "kani_idempotency_gates::verify_idempotency_boundary_key_lengths_pass_clean_frame",
@@ -322,7 +272,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 234,
+    "standard-harnesses": 206,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

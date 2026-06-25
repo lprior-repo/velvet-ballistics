@@ -7,6 +7,11 @@ use crate::engine::{
     EngineSignal, StepBudget, new_run_frame, resume_action_completion, resume_action_failure,
     step_once,
 };
+use crate::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionJournalEvent, ActionName,
+    ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
+    compute_action_idempotency_key,
+};
 use crate::errors::EngineError;
 use crate::frame::{RunFrame, StepState, is_valid_step_state_transition};
 use crate::ids::{
@@ -994,15 +999,61 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     .map_err(|error| error.to_string())
 }
 
-fn make_ticket(run: RunId, step: StepIdx, seq: u32, action: ActionId, attempt: u16) -> crate::action::ActionTicket {
-    crate::action::ActionTicket {
+fn make_ticket(run: RunId, step: StepIdx, seq_raw: u32, action: ActionId, attempt: u16) -> ActionTicket {
+    let seq = SeqNo::new(u64::from(seq_raw));
+    ActionTicket {
         run,
         step,
-        seq: SeqNo::new(seq),
+        seq,
         action,
         attempt,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
         capacity: 3,
+    }
+}
+
+fn make_contract(action: ActionId, max_output_bytes: u32) -> ActionContract {
+    ActionContract {
+        id: action,
+        name: ActionName::from_static_infallible("test-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 128,
+        max_output_bytes,
+        timeout_ms: 1_000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn ready_output(
+    output_slot: SlotIdx,
+    value: SlotValue,
+    taint: Taint,
+    encoded_len: u32,
+) -> ActionOutputReady {
+    ActionOutputReady {
+        output_slot,
+        value,
+        taint,
+        encoded_len,
+    }
+}
+
+fn failure_payload(
+    code: ActionFailureCode,
+    retry_policy: RetryPolicy,
+    taint: Taint,
+    encoded_len: u32,
+) -> ActionFailure {
+    ActionFailure {
+        code,
+        retry_policy,
+        taint,
+        detail: None,
+        encoded_len,
     }
 }
 
@@ -1016,13 +1067,16 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
     ensure_equal(suspend, EngineSignal::AwaitingAction)?;
 
     let ticket = make_ticket(RunId::new(240), StepIdx::new(0), 1, ActionId::new(7), 1);
+    let contract = make_contract(ActionId::new(7), 8);
+    let encoded_payload = b"ok";
+    let output = ready_output(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean, 2);
     let (signal, _journal) = resume_action_completion(
         &workflow,
         &mut run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::I64(42),
-        Taint::Clean,
+        output,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
@@ -1043,13 +1097,16 @@ fn resume_action_completion_increments_executed_counter() -> Result<(), String> 
     let executed_before = run.executed();
 
     let ticket = make_ticket(RunId::new(241), StepIdx::new(0), 1, ActionId::new(7), 1);
+    let contract = make_contract(ActionId::new(7), 8);
+    let encoded_payload = b"ok";
+    let output = ready_output(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean, 2);
     let (signal, _journal) = resume_action_completion(
         &workflow,
         &mut run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::I64(10),
-        Taint::Clean,
+        output,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
@@ -1067,28 +1124,35 @@ fn resume_action_completion_journal_has_completed_variant_with_correct_fields() 
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(242), StepIdx::new(0), 1, ActionId::new(7), 2);
+    let contract = make_contract(ActionId::new(7), 8);
+    let encoded_payload = b"ok";
+    let output = ready_output(
+        SlotIdx::new(0),
+        SlotValue::Bool(true),
+        Taint::DerivedFromSecret,
+        2,
+    );
     let (_signal, journal) = resume_action_completion(
         &workflow,
         &mut run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::Bool(true),
-        Taint::DerivedFromSecret,
+        output,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
     match journal {
-        crate::action::ActionJournalEvent::Completed {
+        ActionJournalEvent::Completed {
             ticket: t,
             attempt,
-            output_slot,
-            output_taint,
+            output,
         } => {
             ensure_equal(t.run, RunId::new(242))?;
             ensure_equal(t.step, StepIdx::new(0))?;
             ensure_equal(attempt, 2)?;
-            ensure_equal(output_slot, SlotIdx::new(0))?;
-            ensure_equal(output_taint, Taint::DerivedFromSecret)?;
+            ensure_equal(output.output_slot, SlotIdx::new(0))?;
+            ensure_equal(output.taint, Taint::DerivedFromSecret)?;
             Ok(())
         }
         other => Err(format!("expected Completed journal event, got {other:?}")),
@@ -1128,16 +1192,25 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(243), StepIdx::new(0), 1, ActionId::new(8), 1);
+    let contract = make_contract(ActionId::new(8), 8);
+    let encoded_payload = b"err";
+    let failure = failure_payload(
+        ActionFailureCode::Timeout,
+        RetryPolicy::NonRetryable,
+        Taint::Clean,
+        3,
+    );
     let (signal, _journal) = resume_action_failure(
         &workflow,
         &mut run,
         ticket,
-        crate::action::ActionFailureCode::Timeout,
-        crate::action::RetryPolicy::NonRetryable,
+        failure,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
-    ensure_equal(signal, EngineSignal::AwaitingAction)?;
+    ensure_equal(signal, EngineSignal::ActionFailureUnhandled)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
     Ok(())
 }
@@ -1175,29 +1248,35 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(244), StepIdx::new(0), 1, ActionId::new(9), 3);
+    let contract = make_contract(ActionId::new(9), 8);
+    let encoded_payload = b"err";
+    let failure = failure_payload(
+        ActionFailureCode::ExternalUnavailable,
+        RetryPolicy::Retryable,
+        Taint::Clean,
+        3,
+    );
     let (_signal, journal) = resume_action_failure(
         &workflow,
         &mut run,
         ticket,
-        crate::action::ActionFailureCode::ServiceUnavailable,
-        crate::action::RetryPolicy::Retryable { max_attempts: 5, backoff_ms: 100 },
+        failure,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
     match journal {
-        crate::action::ActionJournalEvent::Failed {
+        ActionJournalEvent::Failed {
             ticket: t,
             attempt,
-            code,
-            ref retry_policy,
+            failure,
+            ..
         } => {
             ensure_equal(t.step, StepIdx::new(0))?;
             ensure_equal(attempt, 3)?;
-            ensure_equal(code, crate::action::ActionFailureCode::ServiceUnavailable)?;
-            ensure_equal(
-                *retry_policy,
-                crate::action::RetryPolicy::Retryable { max_attempts: 5, backoff_ms: 100 },
-            )?;
+            ensure_equal(failure.code, ActionFailureCode::ExternalUnavailable)?;
+            ensure_equal(failure.retry_policy, RetryPolicy::Retryable)?;
             Ok(())
         }
         other => Err(format!("expected Failed journal event, got {other:?}")),
@@ -1237,18 +1316,27 @@ fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Resu
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(245), StepIdx::new(0), 2, ActionId::new(10), 1);
+    let contract = make_contract(ActionId::new(10), 8);
+    let encoded_payload = b"err";
+    let failure = failure_payload(
+        ActionFailureCode::Conflict,
+        RetryPolicy::Retryable,
+        Taint::Clean,
+        3,
+    );
     let (_signal, journal) = resume_action_failure(
         &workflow,
         &mut run,
         ticket,
-        crate::action::ActionFailureCode::Cancelled,
-        crate::action::RetryPolicy::Retryable { max_attempts: 10, backoff_ms: 5000 },
+        failure,
+        encoded_payload,
+        &contract,
     )
     .map_err(|error| error.to_string())?;
 
     match journal {
-        crate::action::ActionJournalEvent::Failed { code, .. } => {
-            ensure_equal(code, crate::action::ActionFailureCode::Cancelled)
+        ActionJournalEvent::Failed { failure, .. } => {
+            ensure_equal(failure.code, ActionFailureCode::Conflict)
         }
         other => Err(format!("expected Failed journal, got {other:?}")),
     }
@@ -1584,17 +1672,20 @@ fn resume_action_completion_nonexistent_step_returns_invalid_pc() -> Result<(), 
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(273), StepIdx::new(99), 1, ActionId::new(7), 1);
+    let contract = make_contract(ActionId::new(7), 8);
+    let output = ready_output(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean, 2);
     let result = resume_action_completion(
         &workflow,
         &mut run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::I64(1),
-        Taint::Clean,
+        output,
+        b"ok",
+        &contract,
     );
 
     match result {
-        Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),
+        Err(EngineError::ActionResumeRejected { report })
+            if report.rejection.reason() == "action_resume_step_not_current_pc" => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -1632,13 +1723,15 @@ fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     let ticket = make_ticket(RunId::new(274), StepIdx::new(0), 1, ActionId::new(11), 1);
+    let contract = make_contract(ActionId::new(11), 8);
+    let output = ready_output(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean, 2);
     let result = resume_action_completion(
         &workflow,
         &mut run,
         ticket,
-        SlotIdx::new(0),
-        SlotValue::I64(1),
-        Taint::Clean,
+        output,
+        b"ok",
+        &contract,
     );
 
     match result {
@@ -1690,10 +1783,14 @@ fn step_budget_run_until_blocked_exhausts_at_limit() -> Result<(), String> {
 #[cfg(kani)]
 mod kani_boundedness {
     use crate::EngineSignal;
+    use crate::action::{
+        ActionContract, ActionName, ActionOutputReady, Idempotency, RetrySafety, SideEffect,
+        compute_action_idempotency_key,
+    };
     use crate::engine::{step_once, resume_action_completion, new_run_frame};
     use crate::errors::EngineError;
     use crate::frame::StepState;
-    use crate::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::value_store::ValueStore;
     use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
@@ -1805,19 +1902,41 @@ mod kani_boundedness {
 
         let _ = step_once(&plan, &mut run, &mut store);
 
+        let run_id = RunId::new(2);
+        let seq = SeqNo::new(1);
+        let action = ActionId::new(1);
         let ticket = crate::action::ActionTicket {
-            run: RunId::new(2),
+            run: run_id,
             step: StepIdx::new(0),
-            seq: crate::ids::SeqNo::new(1),
-            action: ActionId::new(1),
+            seq,
+            action,
             attempt: 1,
-            idempotency_key: 0,
+            idempotency_key: compute_action_idempotency_key(run_id, seq, action),
             capacity: 1,
+        };
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(0),
+            value: SlotValue::I64(0),
+            taint: Taint::Clean,
+            encoded_len: 2,
+        };
+        let contract = ActionContract {
+            id: action,
+            name: ActionName::from_static_infallible("kani-action"),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 16,
+            max_output_bytes: 16,
+            timeout_ms: 1_000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
 
         let result = resume_action_completion(
             &plan, &mut run, ticket,
-            SlotIdx::new(0), SlotValue::I64(0), Taint::Clean,
+            output, b"ok", &contract,
         );
         let _ = result;
     }

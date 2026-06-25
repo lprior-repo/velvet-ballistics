@@ -10,12 +10,12 @@
     clippy::unwrap_used
 )]
 mod recovery_type_tests {
-    use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredStepEntry,
-        RecoveredStepState, RecoveryRuntimeSummary, RecoveryTerminalState,
-        UnsupportedRecoveryState, RecoveryFrameSeed, RecoveredSlotEntry, RecoveryHydration,
-    };
     use crate::EventSeq;
+    use crate::recovery::{
+        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
+        RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
+        RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    };
     use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
     #[test]

@@ -2,7 +2,7 @@
 
 //! Typed core failures with stable diagnostic codes.
 
-use crate::action::{ActionFailureReport, ActionResumeRejection};
+use crate::action::{ActionFailureReport, ActionResumeReport};
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 use crate::ids::{
@@ -378,10 +378,10 @@ pub enum CoreError {
         report: ActionFailureReport,
     },
     /// An action resume attempt was rejected before frame mutation.
-    #[error("action resume rejected: {rejection}")]
+    #[error("action resume rejected: {report}")]
     ActionResumeRejected {
-        /// Rejection reason.
-        rejection: ActionResumeRejection,
+        /// Rejection report.
+        report: ActionResumeReport,
     },
     /// A resource budget was exceeded during execution.
     #[error("budget exceeded: {budget} limit was {limit}")]

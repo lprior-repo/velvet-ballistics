@@ -176,9 +176,15 @@ fn apply_summary_event_checked(
             value_digest,
             ..
         } => {
-            let verified_digest = crate::recovery::hydrate_support::verified_action_envelope_digest(
-                *run, *ticket, *outcome, value, *encoded_len, *value_digest,
-            )?;
+            let verified_digest =
+                crate::recovery::hydrate_support::verified_action_envelope_digest(
+                    *run,
+                    *ticket,
+                    *outcome,
+                    value,
+                    *encoded_len,
+                    *value_digest,
+                )?;
             tracker.require_scheduled_ticket(*ticket, *output)?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
@@ -226,12 +232,21 @@ impl FrameSeedAccumulator {
         value_digest: [u8; 32],
     ) -> RecoveryResult<Self> {
         let verified_digest = verify_action_envelope_digest_for_apply(
-            run, ticket, outcome, value, encoded_len, value_digest,
+            run,
+            ticket,
+            outcome,
+            value,
+            encoded_len,
+            value_digest,
         )?;
         self.action_tracker
             .require_scheduled_ticket(ticket, output)?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
-            ticket, output, encoded_len, taint, verified_digest,
+            ticket,
+            output,
+            encoded_len,
+            taint,
+            verified_digest,
         )?;
         if effect == ActionReplayEffect::Duplicate {
             return Ok(self);
@@ -275,6 +290,11 @@ fn verify_action_envelope_digest_for_apply(
     value_digest: [u8; 32],
 ) -> RecoveryResult<[u8; 32]> {
     crate::recovery::hydrate_support::verified_action_envelope_digest(
-        run, ticket, outcome, value, encoded_len, value_digest,
+        run,
+        ticket,
+        outcome,
+        value,
+        encoded_len,
+        value_digest,
     )
 }

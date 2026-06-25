@@ -10,15 +10,15 @@
     clippy::unwrap_used
 )]
 mod type_tests {
+    use crate::keys::index_status_key;
     use crate::{
-        DurabilityProfile, EventSeq, FjallConfig, IndexStatusState, JournalError,
-        JournalBatchSize, JournalQueueCapacity, JournalWriterFlushReport,
-        KeyspaceProfile, RecordEnvelope, RecordHeader, StorageKey, StorageLimits,
+        DurabilityProfile, EventSeq, FjallConfig, IndexStatusState, JournalBatchSize, JournalError,
+        JournalQueueCapacity, JournalWriterFlushReport, KeyspaceProfile, RecordEnvelope,
+        RecordHeader, StorageKey, StorageLimits,
         constants::{DIGEST_BYTES, RECORD_HEADER_LEN},
     };
-    use crate::keys::index_status_key;
-    use vb_core::{ActionId, RunId, StepIdx, WorkflowId};
     use std::num::NonZeroUsize;
+    use vb_core::{ActionId, RunId, StepIdx, WorkflowId};
 
     #[test]
     fn event_seq_zero_is_min() {
@@ -66,10 +66,7 @@ mod type_tests {
         assert_eq!(cap.get(), 5);
 
         let err = JournalQueueCapacity::try_from_usize(0);
-        assert!(
-            err.is_err(),
-            "zero should fail with QueueCapacity error"
-        );
+        assert!(err.is_err(), "zero should fail with QueueCapacity error");
     }
 
     #[test]

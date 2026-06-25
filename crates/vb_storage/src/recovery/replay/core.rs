@@ -64,9 +64,7 @@ fn dispatch_replay_event(
     last_step: Option<StepIdx>,
 ) -> RecoveryResult<Option<StepIdx>> {
     match event {
-        JournalEvent::StepStarted { step, .. } => {
-            replay_step_started_event(*step, last_step)
-        }
+        JournalEvent::StepStarted { step, .. } => replay_step_started_event(*step, last_step),
         JournalEvent::ActionCompletedEnvelope { .. } => {
             replay_action_completed_envelope_event(event, tracker, require_schedule)?;
             Ok(last_step)
@@ -113,9 +111,17 @@ fn replay_action_event(
         JournalEvent::ActionScheduled { action, step, .. } => {
             reject_if_resolved(tracker, *action, *step)
         }
-        JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } => {
+        JournalEvent::ActionScheduledTicket {
+            run,
+            ticket,
+            input,
+            output,
+            ..
+        } => {
             verify_action_ticket_event(*run, *ticket)?;
-            tracker.mark_scheduled_ticket_effect(*ticket, *input, *output).map(|_| ())
+            tracker
+                .mark_scheduled_ticket_effect(*ticket, *input, *output)
+                .map(|_| ())
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_if_resolved(tracker, *action, *step)?;
@@ -140,13 +146,27 @@ fn replay_action_completed_envelope_event(
     require_schedule: bool,
 ) -> RecoveryResult<()> {
     let JournalEvent::ActionCompletedEnvelope {
-        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
+        run,
+        ticket,
+        output,
+        outcome,
+        value,
+        encoded_len,
+        taint,
+        value_digest,
+        ..
     } = event
     else {
         return Ok(());
     };
-    let verified_digest =
-        verified_action_envelope_digest(*run, *ticket, *outcome, value, *encoded_len, *value_digest)?;
+    let verified_digest = verified_action_envelope_digest(
+        *run,
+        *ticket,
+        *outcome,
+        value,
+        *encoded_len,
+        *value_digest,
+    )?;
     if require_schedule {
         tracker.require_scheduled_ticket(*ticket, *output)?;
     }

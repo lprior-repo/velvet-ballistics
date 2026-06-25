@@ -10,9 +10,7 @@
     clippy::unwrap_used
 )]
 mod snapshot_tests {
-    use crate::{
-        DIGEST_BYTES, EventSeq, FjallJournal, RunSnapshot,
-    };
+    use crate::{DIGEST_BYTES, EventSeq, FjallJournal, RunSnapshot};
     use vb_core::{RunId, WorkflowDigest};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -38,7 +36,9 @@ mod snapshot_tests {
         let digest = WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]);
         let snapshot = make_snapshot(run, 5, digest);
 
-        journal.put_snapshot(&snapshot).expect("put_snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot should succeed");
 
         let loaded = journal
             .snapshot(run, EventSeq::new(5))

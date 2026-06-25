@@ -1,8 +1,7 @@
-use super::contract::RetryPolicy;
-use super::error::ActionFailureCode;
+use super::error::ActionFailure;
+use super::payload::ActionOutputReady;
 use super::ticket::ActionTicket;
 use crate::ids::{ActionId, SlotIdx, StepIdx};
-use crate::value::Taint;
 use serde::{Deserialize, Serialize};
 
 /// Journal events for Do-node action lifecycle.
@@ -33,10 +32,8 @@ pub enum ActionJournalEvent {
         ticket: ActionTicket,
         /// Monotonic per-step attempt number captured for replay.
         attempt: u16,
-        /// Output slot written by the action.
-        output_slot: SlotIdx,
-        /// Taint propagated from input to output.
-        output_taint: Taint,
+        /// Successful output payload written by the action.
+        output: ActionOutputReady,
     },
     /// Action failed terminally.
     Failed {
@@ -44,9 +41,9 @@ pub enum ActionJournalEvent {
         ticket: ActionTicket,
         /// Monotonic per-step attempt number captured for replay.
         attempt: u16,
-        /// Failure code for diagnostics.
-        code: ActionFailureCode,
-        /// Whether the failure is retryable.
-        retry_policy: RetryPolicy,
+        /// Output slot targeted by the action.
+        output_slot: SlotIdx,
+        /// Failure payload reported by the action lifecycle.
+        failure: ActionFailure,
     },
 }

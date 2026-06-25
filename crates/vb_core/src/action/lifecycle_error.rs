@@ -1,4 +1,5 @@
 use super::error::ActionFailure;
+use super::ticket::ActionTicket;
 use crate::ids::{ActionId, StepIdx};
 use core::fmt;
 
@@ -11,6 +12,29 @@ pub struct ActionFailureReport {
     pub action: ActionId,
     /// Failure details reported by the action lifecycle.
     pub failure: ActionFailure,
+}
+
+/// Rejected action resume with the rejected ticket for diagnostics and replay triage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActionResumeReport {
+    /// Rejection reason.
+    pub rejection: ActionResumeRejection,
+    /// Ticket that was rejected before frame mutation.
+    pub ticket: ActionTicket,
+}
+
+impl ActionResumeReport {
+    /// Creates a rejected resume report.
+    #[must_use]
+    pub const fn new(rejection: ActionResumeRejection, ticket: ActionTicket) -> Self {
+        Self { rejection, ticket }
+    }
+}
+
+impl fmt::Display for ActionResumeReport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} for ticket {:?}", self.rejection, self.ticket)
+    }
 }
 
 impl ActionFailureReport {
@@ -59,6 +83,14 @@ pub enum ActionResumeRejection {
     AttemptExceedsCapacity,
     /// Ticket idempotency key does not match its deterministic ingredients.
     IdempotencyKeyMismatch,
+    /// Encoded payload length does not match the reported encoded length.
+    EncodedPayloadLenMismatch,
+    /// Encoded payload length exceeds the action contract bound.
+    EncodedPayloadTooLarge,
+    /// Action contract does not match the ticket action.
+    ContractMismatch,
+    /// Action contract declares no output for a Do-node output target.
+    ContractOutputUndeclared,
 }
 
 impl ActionResumeRejection {
@@ -76,6 +108,10 @@ impl ActionResumeRejection {
             Self::CapacityZero => "action_resume_capacity_zero",
             Self::AttemptExceedsCapacity => "action_resume_attempt_exceeds_capacity",
             Self::IdempotencyKeyMismatch => "action_resume_idempotency_key_mismatch",
+            Self::EncodedPayloadLenMismatch => "action_resume_encoded_payload_len_mismatch",
+            Self::EncodedPayloadTooLarge => "action_resume_encoded_payload_too_large",
+            Self::ContractMismatch => "action_resume_contract_mismatch",
+            Self::ContractOutputUndeclared => "action_resume_contract_output_undeclared",
         }
     }
 }

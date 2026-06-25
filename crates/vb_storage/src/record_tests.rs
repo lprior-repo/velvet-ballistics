@@ -92,7 +92,11 @@ mod record_tests {
         let mut sorted = ids.clone();
         sorted.sort();
         sorted.dedup();
-        assert_eq!(ids.len(), sorted.len(), "all record kind IDs must be unique");
+        assert_eq!(
+            ids.len(),
+            sorted.len(),
+            "all record kind IDs must be unique"
+        );
     }
 
     #[test]

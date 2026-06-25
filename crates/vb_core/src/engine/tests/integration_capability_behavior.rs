@@ -952,6 +952,7 @@ mod kani {
                 matches!(err, IdempotencyViolation::SecretInKey(_)),
                 matches!(err, IdempotencyViolation::RandomInKey(_)),
                 matches!(err, IdempotencyViolation::TimeInKey(_)),
+                matches!(err, IdempotencyViolation::UnavailableKeySlot(_)),
             ];
             let count = variants.iter().filter(|&&b| b).count();
             kani::assert(

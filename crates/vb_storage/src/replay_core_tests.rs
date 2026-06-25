@@ -10,13 +10,11 @@
     clippy::unwrap_used
 )]
 mod replay_core_tests {
-    use crate::{
-        DIGEST_BYTES, EventSeq, JournalEvent,
-    };
     use crate::recovery::{
         ActionReplayTracker, RecoveryError,
-        replay::core::{is_terminal_event, extract_terminal, replay_events},
+        replay::core::{extract_terminal, is_terminal_event, replay_events},
     };
+    use crate::{DIGEST_BYTES, EventSeq, JournalEvent};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
     fn make_step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
@@ -244,7 +242,10 @@ mod replay_core_tests {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker, &[]);
         assert!(
-            matches!(result, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+            matches!(
+                result,
+                Err(RecoveryError::NonIdempotentActionBlocked { .. })
+            ),
             "should block action after failure, got {:?}",
             result
         );

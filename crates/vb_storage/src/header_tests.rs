@@ -35,7 +35,9 @@ mod header_tests {
         let run = RunId::new(100);
         let header = make_header(run);
 
-        journal.put_run_header(&header).expect("put_run_header should succeed");
+        journal
+            .put_run_header(&header)
+            .expect("put_run_header should succeed");
 
         let loaded = journal.run_header(run).expect("get should succeed");
         let found = loaded.expect("header should exist");
@@ -50,7 +52,10 @@ mod header_tests {
         let (_temp, journal) = temp_journal();
         let missing = RunId::new(9999);
         let result = journal.run_header(missing).expect("get should succeed");
-        assert!(result.is_none(), "should return None for missing run header");
+        assert!(
+            result.is_none(),
+            "should return None for missing run header"
+        );
     }
 
     #[test]
@@ -93,7 +98,9 @@ mod header_tests {
             status: 0,
             accepted_at_ms: 100,
         };
-        journal.put_run_header(&h1).expect("first put should succeed");
+        journal
+            .put_run_header(&h1)
+            .expect("first put should succeed");
 
         let h2 = RunHeaderRecord {
             run,
@@ -102,7 +109,9 @@ mod header_tests {
             status: 1,
             accepted_at_ms: 200,
         };
-        journal.put_run_header(&h2).expect("second put should succeed");
+        journal
+            .put_run_header(&h2)
+            .expect("second put should succeed");
 
         let loaded = journal.run_header(run).expect("get should succeed");
         let found = loaded.expect("header should exist after update");
@@ -121,7 +130,9 @@ mod header_tests {
             status: 255,
             accepted_at_ms: u64::MAX,
         };
-        journal.put_run_header(&header).expect("put should succeed with extreme values");
+        journal
+            .put_run_header(&header)
+            .expect("put should succeed with extreme values");
 
         let loaded = journal.run_header(run).expect("get should succeed");
         let found = loaded.expect("header should exist");
@@ -137,8 +148,10 @@ mod header_tests {
         let header = make_header(run);
         crate::put_run_header(&journal, &header).expect("convenience wrapper should succeed");
 
-        let loaded = journal.run_header(run).expect("get should succeed").expect("should exist");
+        let loaded = journal
+            .run_header(run)
+            .expect("get should succeed")
+            .expect("should exist");
         assert_eq!(loaded.run, run);
     }
-
 }

@@ -266,6 +266,10 @@ fn check_symbolic_key_array<const N: usize>(
         matches!(result, Err(IdempotencyViolation::TimeInKey(_))),
         "time-dependent key failure covered"
     );
+    kani::cover!(
+        matches!(result, Err(IdempotencyViolation::UnavailableKeySlot(_))),
+        "unavailable key slot failure covered"
+    );
     kani::assert(
         result.is_ok()
             || matches!(
@@ -273,6 +277,7 @@ fn check_symbolic_key_array<const N: usize>(
                 Err(IdempotencyViolation::SecretInKey(_))
                     | Err(IdempotencyViolation::RandomInKey(_))
                     | Err(IdempotencyViolation::TimeInKey(_))
+                    | Err(IdempotencyViolation::UnavailableKeySlot(_))
             ),
         "non-empty bounded key only succeeds or reports the first tainted key ingredient",
     );
@@ -506,11 +511,11 @@ fn validate_action_outcome_certificate_stale_nonterminal() {
 
 #[kani::proof]
 #[kani::unwind(4)]
-fn validate_action_outcome_certificate_conflict_oob() {
+fn validate_action_outcome_certificate_rejects_undeclared_output() {
     let mut contract = symbolic_contract_no_caps();
-    contract.output_slot_count = 1;
+    contract.output_slot_count = 0;
     let outcome = ActionOutcome::Ready(ActionOutputReady {
-        output_slot: SlotIdx::new(1),
+        output_slot: SlotIdx::new(0),
         value: SlotValue::I64(kani::any::<i64>()),
         taint: kani::any::<Taint>(),
         encoded_len: kani::any(),
@@ -521,11 +526,11 @@ fn validate_action_outcome_certificate_conflict_oob() {
             result,
             Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
         ),
-        "conflict certificate covered"
+        "undeclared output certificate covered"
     );
     kani::assert(
         result.is_err(),
-        "out-of-bounds completion certificate is rejected",
+        "completion without a declared output is rejected",
     );
 }
 
@@ -594,9 +599,9 @@ fn validate_action_outcome_symbolic_completion_matrix() {
     kani::cover!(
         matches!(
             result,
-            Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
+            Err(crate::action::ActionError::PayloadTooLarge { .. })
         ),
-        "conflict/out-of-bounds completion covered"
+        "oversized completion payload covered"
     );
 }
 

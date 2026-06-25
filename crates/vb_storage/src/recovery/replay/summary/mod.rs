@@ -18,8 +18,8 @@ use crate::recovery::types::{
 };
 use crate::{EventSeq, JournalEvent};
 
-use hydrate::{replay_error_to_recovery, RecoveredSlots};
 use derive::reject_workflow_digest_mismatch;
+use hydrate::{RecoveredSlots, replay_error_to_recovery};
 
 pub mod accumulator;
 pub mod apply;
