@@ -532,68 +532,6 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
     }
 }
 
-fn apply_simple_action_event(
-    frame: &mut vb_core::RunFrame,
-    tracker: &mut ActionReplayTracker,
-    event: &JournalEvent,
-) -> RecoveryResult<bool> {
-    match event {
-        JournalEvent::ActionScheduled { action, step, .. } => {
-            reject_resolved_action(tracker, *action, *step)?;
-            add_replay_parallel_in_flight(frame, *step)?;
-            Ok(true)
-        }
-        JournalEvent::ActionCompletedEvent { action, step, .. } => {
-            reject_resolved_action(tracker, *action, *step)?;
-            tracker.mark_completed(*action, *step);
-            sub_replay_parallel_in_flight(frame, *step)?;
-            Ok(true)
-        }
-        JournalEvent::ActionFailedEvent { action, step, .. } => {
-            reject_resolved_action(tracker, *action, *step)?;
-            tracker.mark_failed(*action, *step);
-            sub_replay_parallel_in_flight(frame, *step)?;
-            Ok(true)
-        }
-        _ => Ok(false),
-    }
-}
-
-fn apply_action_scheduled_ticket_event(
-    frame: &mut vb_core::RunFrame,
-    tracker: &mut ActionReplayTracker,
-    event: &JournalEvent,
-) -> RecoveryResult<bool> {
-    let JournalEvent::ActionScheduledTicket { run, ticket, input, output, .. } = event else {
-        return Ok(false);
-    };
-    verify_action_ticket_event(*run, *ticket)?;
-    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
-    if effect == ActionReplayEffect::Apply {
-        add_replay_parallel_in_flight(frame, ticket.step)?;
-    }
-    Ok(effect == ActionReplayEffect::Apply)
-}
-
-fn apply_action_completed_envelope_event(
-    frame: &mut vb_core::RunFrame,
-    tracker: &mut ActionReplayTracker,
-    event: &JournalEvent,
-) -> RecoveryResult<bool> {
-    let JournalEvent::ActionCompletedEnvelope {
-        run, ticket, output, outcome, value, encoded_len, taint, value_digest, ..
-    } = event else {
-        return Ok(false);
-    };
-    let verified_digest = verified_action_envelope_digest(*run, *ticket, *outcome, value, *encoded_len, *value_digest)?;
-    tracker.require_scheduled_ticket(*ticket, *output)?;
-    let effect = tracker.mark_completed_envelope_effect(*ticket, *output, *encoded_len, *taint, verified_digest)?;
-    if effect == ActionReplayEffect::Apply {
-        sub_replay_parallel_in_flight(frame, ticket.step)?;
-    }
-    Ok(effect == ActionReplayEffect::Apply)
-}
-
 fn add_replay_parallel_in_flight(
     frame: &mut vb_core::RunFrame,
     step: vb_core::StepIdx,

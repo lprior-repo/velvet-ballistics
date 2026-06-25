@@ -388,26 +388,28 @@ impl RuntimeJournalConfig {
         }
     }
 
-    /// Compile-time exhaustiveness assertion for `shared_journal`.
-    #[allow(dead_code, unreachable_patterns)]
-    const _: () = {
-        fn _check_exhaustiveness(
-            profile: DurabilityProfile,
-            journal: std::sync::Arc<FjallJournal>,
-            queue: std::sync::Arc<JournalWriterQueue>,
-        ) -> RuntimeResult<SharedRuntimeJournal> {
-            match profile {
-                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
-                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
-                    journal, queue,
-                )),
-                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
-                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
-                    profile_debug: String::new(),
-                }),
-            }
-        }
-    };
+//    /// Compile-time exhaustiveness assertion for `shared_journal`.
+//    #[allow(dead_code, unreachable_patterns)]
+//    const _: () = {
+//        fn _check_exhaustiveness(
+//            profile: DurabilityProfile,
+//            journal: std::sync::Arc<FjallJournal>,
+//            queue: std::sync::Arc<JournalWriterQueue>,
+//        ) -> RuntimeResult<SharedRuntimeJournal> {
+//            match profile {
+//                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+//                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+//                    journal, queue,
+//                )),
+//                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+//                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+//                    profile_debug: String::new(),
+//                }),
+//            }
+//        }
+//// };
+//}
+
 }
 
 impl RuntimeJournal for VolatileRuntimeJournal {

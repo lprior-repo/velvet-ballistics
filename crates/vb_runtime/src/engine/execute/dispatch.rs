@@ -53,6 +53,7 @@ use crate::engine::execute::handlers_suspend::{
 };
 use crate::engine::execute::signals::handle_core_step_once;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
+use crate::engine::execute::budget::handle_retry_check;
 use crate::primitives::collect::CollectStates;
 
 #[allow(clippy::too_many_arguments)]
