@@ -161,18 +161,18 @@ mod snapshot_tests {
     }
 
     #[test]
-    fn snapshot_sequence_max_value_works() {
+    fn put_snapshot_rejects_event_seq_max_sentinel() {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(6);
         let digest = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
         let snapshot = make_snapshot(run, u64::MAX, digest);
 
-        journal.put_snapshot(&snapshot).expect("put at MAX seq should succeed");
-        let loaded = journal
-            .snapshot(run, EventSeq::MAX)
-            .expect("get should succeed")
-            .expect("should exist");
-        assert_eq!(loaded.seq, EventSeq::MAX);
+        let result = journal.put_snapshot(&snapshot);
+        assert!(
+            matches!(result, Err(crate::JournalError::SequenceOverflow)),
+            "put_snapshot must reject EventSeq::MAX sentinel (SC-002), got {:?}",
+            result
+        );
     }
 
     #[test]

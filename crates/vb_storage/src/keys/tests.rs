@@ -489,11 +489,13 @@ fn run_event_key_with_zero_seq() -> Result<(), JournalError> {
 }
 
 #[test]
-fn run_event_key_with_max_values() -> Result<(), JournalError> {
-    let key = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX))?;
-    assert_eq!(&key[1..9], &u64::MAX.to_be_bytes());
-    assert_eq!(&key[9..], &u64::MAX.to_be_bytes());
-    Ok(())
+fn run_event_key_rejects_event_seq_max_sentinel() {
+    let result = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX));
+    assert!(
+        matches!(result, Err(JournalError::SequenceOverflow)),
+        "run_event_key must reject EventSeq::MAX sentinel (SC-002), got {:?}",
+        result
+    );
 }
 
 #[test]
@@ -651,7 +653,7 @@ fn run_event_key_is_deterministic() -> Result<(), JournalError> {
 #[test]
 fn run_event_key_output_length_is_17_bytes() -> Result<(), JournalError> {
     let run = RunId::new(u64::MAX);
-    let seq = EventSeq::new(u64::MAX);
+    let seq = EventSeq::new(u64::MAX - 1);
 
     let key = run_event_key(run, seq)?;
     assert_eq!(key.len(), JOURNAL_KEY_BYTES, "key must be exactly 17 bytes");
