@@ -74,10 +74,12 @@ impl JournalError {
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
     /// Diagnostic code for keyspace scan encountering a malformed row under a known prefix.
     pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
-    /// Diagnostic code for cross-keyspace write batch aborted by a fallible
-    /// staging step. Surfaced by [`crate::batch::JournalWriteBatch::commit`]
-    /// in place of the silent `Ok(())` that previously masked partial state.
-    pub const BATCH_ABORTED_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
+    /// Diagnostic code for artifact-side postcard serialize failure surfaced
+    /// by `JournalError::PostcardDecodeError(_)`. Distinct from
+    /// `ENCODE_CODE` (0x4002) so admission callers can distinguish a
+    /// serializer defect from a generic journal-encode failure (SA-015,
+    /// vb-36fly).
+    pub const POSTCARD_DECODE_ERROR_CODE: DiagnosticCode = DiagnosticCode::new(0x4031);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -106,7 +108,8 @@ impl JournalError {
             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
-            Self::PostcardDecodeFailed(_) => Self::POSTCARD_DECODE_FAILED_CODE,
+            Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
+            Self::PostcardDecodeError(_) => Self::POSTCARD_DECODE_ERROR_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
             // vb-l9jqs: the three typed variants below preserve their inner
@@ -192,7 +195,8 @@ impl JournalError {
             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
             Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
             Self::UnexpectedEof => "UNEXPECTED_EOF",
-            Self::PostcardDecodeFailed(_) => "POSTCARD_DECODE_FAILED",
+            Self::PostcardDecodeFailed => "POSTCARD_DECODE_FAILED",
+            Self::PostcardDecodeError(_) => "ARTIFACT_POSTCARD_SERIALIZE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
             // vb-l9jqs: typed variants preserve inner source while reporting

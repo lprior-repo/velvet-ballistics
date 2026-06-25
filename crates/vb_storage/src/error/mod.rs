@@ -24,7 +24,16 @@ pub enum JournalError {
     Fjall(#[from] fjall::Error),
     /// Binary encoding failed.
     #[error("journal event encoding failed: {0}")]
-    Encode(#[source] postcard::Error),
+    Encode(#[from] postcard::Error),
+    /// Artifact-side postcard serialization failed at admission.
+    ///
+    /// Distinct from [`Self::Encode`] so admission callers can surface the
+    /// underlying [`postcard::Error`] instead of collapsing every postcard
+    /// failure into the generic [`Self::ArtifactMalformed`] bucket (SA-015,
+    /// vb-36fly). Carries the source error so operators can distinguish a
+    /// serializer defect from a structural artifact defect.
+    #[error("artifact postcard serialize failed: {0}")]
+    PostcardDecodeError(#[source] postcard::Error),
     /// Fixed-size key construction failed.
     #[error("journal key capacity exceeded")]
     KeyCapacity,

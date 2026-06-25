@@ -331,7 +331,7 @@ pub fn submit_artifact_with_contracts(
             // Relaxed: skip gate validation, no durability, gate_count=0
             let parts = workflow.to_parts();
             let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
+                postcard::to_allocvec(&parts).map_err(JournalError::PostcardDecodeError)?;
             let mut proof = VerificationProof::new(workflow.digest(), 0, false);
             proof.idempotency_keyed = idempotency_evidence.keyed;
             proof.idempotency_attested = idempotency_evidence.attested;
@@ -345,7 +345,7 @@ pub fn submit_artifact_with_contracts(
                 required_capabilities,
             };
             let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardDecodeError)?;
             let record = CompiledIrRecord {
                 digest: workflow.digest(),
                 ir: artifact_bytes,
@@ -368,7 +368,7 @@ pub fn submit_artifact_with_contracts(
             let mut parts_for_hash = parts.clone();
             parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
             let hash_bytes = postcard::to_allocvec(&parts_for_hash)
-                .map_err(|_| JournalError::ArtifactMalformed)?;
+                .map_err(JournalError::PostcardDecodeError)?;
             let computed = blake3::hash(&hash_bytes);
             if computed.as_bytes() != &workflow.digest().as_bytes() {
                 return Err(JournalError::ArtifactChecksumMismatch);
@@ -382,7 +382,7 @@ pub fn submit_artifact_with_contracts(
             proof.idempotency_attested = idempotency_evidence.attested;
 
             let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
+                postcard::to_allocvec(&parts).map_err(JournalError::PostcardDecodeError)?;
 
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
@@ -395,7 +395,7 @@ pub fn submit_artifact_with_contracts(
             };
 
             let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardDecodeError)?;
             let record = CompiledIrRecord {
                 digest: workflow.digest(),
                 ir: artifact_bytes,
@@ -534,14 +534,14 @@ pub fn admit_compiled_artifact(
     let mut parts_for_hash = parts.clone();
     parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
     let hash_bytes =
-        postcard::to_allocvec(&parts_for_hash).map_err(|_| JournalError::ArtifactMalformed)?;
+        postcard::to_allocvec(&parts_for_hash).map_err(JournalError::PostcardDecodeError)?;
     let computed = blake3::hash(&hash_bytes);
     if computed.as_bytes() != &workflow.digest().as_bytes() {
         return Err(JournalError::ArtifactChecksumMismatch);
     }
 
     // Persist accepted artifact with full serialization (includes digest).
-    let bytes = postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
+    let bytes = postcard::to_allocvec(&parts).map_err(JournalError::PostcardDecodeError)?;
     let record = CompiledIrRecord {
         digest: workflow.digest(),
         ir: bytes,
