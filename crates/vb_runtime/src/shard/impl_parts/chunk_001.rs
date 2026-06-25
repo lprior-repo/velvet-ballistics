@@ -210,6 +210,17 @@ impl Shard {
         Ok(())
     }
 
+    /// `#[cfg(kani)]`-only accessor for the per-run journal sequence.
+    /// Returns the current `EventSeq` recorded for `run_id`, or `None`
+    /// if no sequence has been allocated yet. Used by kani harnesses
+    /// (e.g. `kani_ask_answer_lifecycle::kani_ask_answer_journal_monotonicity`)
+    /// to inspect monotonicity invariants without exposing the field
+    /// outside the `kani` build.
+    #[cfg(kani)]
+    pub(crate) fn journal_seq_get(&self, run_id: RunId) -> Option<EventSeq> {
+        self.journal_sequences.get(&run_id).copied()
+    }
+
     fn journal_sequence_for(&self, run: RunId) -> EventSeq {
         self.journal_sequences
             .get(&run)
