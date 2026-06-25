@@ -998,7 +998,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 | JournalEvent::AskTimedOutEvent { .. }
                 | JournalEvent::RunResumed { .. }
                 | JournalEvent::RunRetried { .. }
-                | JournalEvent::RunAnswered { .. } => {}
+                | JournalEvent::RunAnswered { .. }
+                | JournalEvent::ActionAbandoned { .. } => {}
             }
             summary
         })
@@ -1734,6 +1735,8 @@ fn verify_digests_returns_ok_when_all_match() {
         sample_digest(8),
         sample_digest(8),
         DigestCheck::Full,
+        &[],
+        &[],
     )
     .expect("matching digests at Full level should succeed");
 }
@@ -1761,11 +1764,159 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         sample_digest(8),
         sample_digest(9),
         DigestCheck::WorkflowAndIr,
+        &[],
+        &[],
     );
     assert!(matches!(
         result,
         Err(RecoveryError::CompiledIrDigestMismatch { .. })
     ));
+}
+
+#[test]
+fn verify_digests_full_rejects_mismatched_action_abi_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(300);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let action = ActionId::new(11);
+    let expected_action_abi = sample_digest(11);
+    let mismatched_action_abi = sample_digest(12);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[(action, expected_action_abi, mismatched_action_abi)],
+        &[],
+    );
+
+    assert!(
+        matches!(
+            result,
+            Err(RecoveryError::ActionAbiMismatch { action_id: a }) if a == action
+        ),
+        "verify_digests::Full must reject mismatched action-ABI digest with ActionAbiMismatch, got {result:?}"
+    );
+}
+
+#[test]
+fn verify_digests_full_rejects_mismatched_policy_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(301);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let step = StepIdx::new(2);
+    let expected_policy = sample_digest(21);
+    let mismatched_policy = sample_digest(22);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[],
+        &[(step, expected_policy, mismatched_policy)],
+    );
+
+    assert!(
+        matches!(
+            result,
+            Err(RecoveryError::PolicyDigestMismatch { step: s }) if s == step
+        ),
+        "verify_digests::Full must reject mismatched policy digest with PolicyDigestMismatch, got {result:?}"
+    );
+}
+
+#[test]
+fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(302);
+    let source = sample_digest(7);
+    let ir = sample_digest(8);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: source,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let zero = WorkflowDigest::from_bytes([0u8; 32]);
+    let action = ActionId::new(13);
+    let step = StepIdx::new(0);
+
+    // Sanity: zero digests are byte-equal (this is why the typed-error
+    // path is required). If a future regression re-introduces a
+    // zero-digest fallback, two corrupted contracts would compare as
+    // equal and silently pass.
+    assert_eq!(zero, zero, "sanity: zero digests are byte-equal");
+
+    // Two mismatched non-zero digests must surface as ActionAbiMismatch.
+    let result_action = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[(action, sample_digest(1), sample_digest(2))],
+        &[],
+    );
+    assert!(
+        matches!(result_action, Err(RecoveryError::ActionAbiMismatch { .. })),
+        "asymmetric action-ABI digest must reject, got {result_action:?}"
+    );
+
+    // Two mismatched non-zero policy digests must surface as
+    // PolicyDigestMismatch, not silently pass.
+    let result_policy = verify_digests(
+        &journal,
+        run,
+        source,
+        ir,
+        ir,
+        DigestCheck::Full,
+        &[],
+        &[(step, sample_digest(1), sample_digest(2))],
+    );
+    assert!(
+        matches!(result_policy, Err(RecoveryError::PolicyDigestMismatch { .. })),
+        "asymmetric policy digest must reject, got {result_policy:?}"
+    );
 }
 
 #[test]
