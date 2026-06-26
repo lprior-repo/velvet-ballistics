@@ -18,17 +18,17 @@ pub fn fuzz_expression(data: &[u8]) {
     let Ok(text) = std::str::from_utf8(data) else {
         return;
     };
-    let Ok(tokens) = vb_expr::lexer::lex_expr(text) else {
+    let Ok(tokens) = vb_compile::lexer::lex_expr(text) else {
         return;
     };
-    let Ok(ast) = vb_expr::parser::parse_expr(&tokens) else {
+    let Ok(ast) = vb_compile::parser::parse_expr(&tokens) else {
         return;
     };
     let mut constants = Vec::new();
-    let Ok(program) = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) else {
+    let Ok(program) = vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) else {
         return;
     };
-    let eval_result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    let eval_result = vb_compile::eval::eval_expr_program(&program, &[], &constants);
     if let Ok(value) = eval_result {
         let type_name = value.type_name();
         assert!(

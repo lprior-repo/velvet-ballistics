@@ -6,7 +6,7 @@ fuzz_target!(|data: &[u8]| {
     let Ok(text) = std::str::from_utf8(data) else {
         return;
     };
-    let result = vb_expr::lexer::lex_expr(text);
+    let result = vb_compile::lexer::lex_expr(text);
     #[allow(clippy::let_underscore_must_use)]
     let _ = result
         .map(|tokens| {

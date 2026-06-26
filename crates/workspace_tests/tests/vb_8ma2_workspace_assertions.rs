@@ -7,7 +7,6 @@ use std::process::{Command, Output};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
-    ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_queue_semantics", "vb_queue_semantics"),
@@ -59,9 +58,8 @@ members = [
     "crates/vb_runtime",
     "crates/vb_storage",
     "crates/vb_validate",
-    "crates/vb_yaml",
     "crates/workspace_tests",
-{extra}]
+ {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 "#
         ),

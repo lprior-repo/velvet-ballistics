@@ -15,7 +15,6 @@ const MEMBERS: &[(&str, &str)] = &[
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_storage", "vb_storage"),
     ("crates/vb_validate", "vb_validate"),
-    ("crates/vb_yaml", "vb_yaml"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",

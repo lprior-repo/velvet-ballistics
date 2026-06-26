@@ -14,14 +14,11 @@ use std::path::{Path, PathBuf};
 const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_compile",
     "vb_core",
-    "vb_doc",
-    "vb_expr",
     "vb_ipc",
-    "vb_proof_kernels",
+    "vb_queue_semantics",
     "vb_runtime",
     "vb_storage",
     "vb_validate",
-    "vb_yaml",
     "vb_cli",
     "workspace_tests",
 ];

@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballastics-fuzz"
+name = "velvet-ballistics-fuzz"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -36,7 +36,6 @@ blake3 = "1"
 bytes = { version = "1", features = ["serde"] }
 tempfile = "3"
 vb_core = { path = "../crates/vb_core" }
-vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
@@ -64,13 +63,6 @@ overflow-checks = true
 lto = "off"
 opt-level = 2
 codegen-units = 1
-
-[[bin]]
-name = "vb_f04l_yaml_compiler_compile"
-path = "fuzz_targets/vb_f04l_yaml_compiler_compile.rs"
-test = false
-doc = false
-bench = false
 
 [[bin]]
 name = "vb_qi37_12_persisted_payload_decode"
@@ -310,7 +302,14 @@ test = false
 doc = false
 bench = false
 
-# === fuzz_targets/ orphans (declared 2026-05-24 Phase 0) ===
+# === fuzz_targets/ (active) ===
+
+[[bin]]
+name = "lex_expr"
+path = "fuzz_targets/lex_expr.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
@@ -320,65 +319,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "decode_record"
-path = "fuzz_targets/decode_record.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "journal_event_fuzz"
-path = "fuzz_targets/journal_event.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "expr_eval_fuzz"
-path = "fuzz_targets/expr_eval.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "lex_expr"
-path = "fuzz_targets/lex_expr.rs"
-test = false
-doc = false
-bench = false
-
-# [[bin]]
-# name = "ui_redaction_artifact"
-# path = "fuzz_targets/ui_redaction_artifact.rs"
-# test = false
-# doc = false
-# bench = false
-
-# vb_5xs4_* targets SKIPPED (Phase 0): vb_boundary_inventory::quality::test_loop_inventory
-# module has been removed (quality.rs is empty). These targets need separate beads
-# for API compatibility analysis and rewrite.
-# [[bin]] name = "vb_5xs4_generated_source_mapping" ...
-# [[bin]] name = "vb_5xs4_inventory_report" ...
-# [[bin]] name = "vb_5xs4_label_sufficiency" ...
-# [[bin]] name = "vb_5xs4_scan_source_text" ...
-
-[[bin]]
-name = "kind_validation"
-path = "fuzz_targets/kind_validation.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "journal_decode"
-path = "fuzz_targets/journal_decode.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_storage_codec"
-path = "fuzz_targets/vb_storage_codec.rs"
+name = "compile_source_ast_marks"
+path = "fuzz_targets/compile_source_ast_marks.rs"
 test = false
 doc = false
 bench = false
@@ -448,127 +390,3 @@ test = false
 doc = false
 bench = false
 
-# === new libfuzzer targets (vb-64nl Phase 0) ===
-
-[[bin]]
-name = "compiled_ir"
-path = "fuzz_targets/compiled_ir.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "ipc_frame"
-path = "fuzz_targets/ipc_frame.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "expression"
-path = "fuzz_targets/expression.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "yaml_events"
-path = "fuzz_targets/yaml_events.rs"
-test = false
-doc = false
-bench = false
-
-# === vb-xi2f.9 Span Enrichment Fuzz Targets ===
-
-[[bin]]
-name = "diagnostic_from_error"
-path = "fuzz_targets/diagnostic_from_error.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "diagnostic_code_from_str"
-path = "fuzz_targets/diagnostic_code_from_str.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "span_bridge_fuzz"
-path = "fuzz_targets/span_bridge_fuzz.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "compile_source_ast_marks"
-path = "fuzz_targets/compile_source_ast_marks.rs"
-test = false
-doc = false
-bench = false
-
-# === vb-vzcuf JournalWriteBatch Fuzz Targets (PS-001 through PS-009) ===
-
-[[bin]]
-name = "vb_vzcuf_PS_001"
-path = "fuzz_targets/vb_vzcuf_PS_001.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_002"
-path = "fuzz_targets/vb_vzcuf_PS_002.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_003"
-path = "fuzz_targets/vb_vzcuf_PS_003.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_004"
-path = "fuzz_targets/vb_vzcuf_PS_004.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_005"
-path = "fuzz_targets/vb_vzcuf_PS_005.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_006"
-path = "fuzz_targets/vb_vzcuf_PS_006.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_007"
-path = "fuzz_targets/vb_vzcuf_PS_007.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_008"
-path = "fuzz_targets/vb_vzcuf_PS_008.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_vzcuf_PS_009"
-path = "fuzz_targets/vb_vzcuf_PS_009.rs"
-test = false
-doc = false
-bench = false

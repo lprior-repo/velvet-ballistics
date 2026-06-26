@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Velvet-Ballistics Final Vision: The Machine That Builds the Machine</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #111827;
+      --muted: #4b5563;
+      --quiet: #6b7280;
+      --paper: #fffaf0;
+      --panel: #ffffff;
+      --line: #d8c7a5;
+      --accent: #8b1e3f;
+      --accent-2: #14532d;
+      --accent-3: #1d4ed8;
+      --code: #1f2937;
+      --code-bg: #f3eee3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e8dec9;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.48;
+    }
+
+    main {
+      width: min(100%, 9in);
+      margin: 0 auto;
+      padding: 0.35in 0;
+    }
+
+    .page {
+      position: relative;
+      min-height: 10.35in;
+      margin: 0 auto 0.35in;
+      padding: 0.62in 0.66in 0.58in;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 45px rgba(31, 41, 55, 0.18);
+      overflow: hidden;
+      break-after: page;
+    }
+
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 0.22in;
+      border: 1px solid rgba(139, 30, 63, 0.18);
+      pointer-events: none;
+    }
+
+    .page-number {
+      position: absolute;
+      right: 0.66in;
+      bottom: 0.28in;
+      color: var(--quiet);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    header.kicker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.22in;
+      color: var(--quiet);
+      font-size: 0.78rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+    }
+
+    h1 {
+      max-width: 12ch;
+      font-size: 4.35rem;
+    }
+
+    h2 {
+      margin-bottom: 0.18in;
+      font-size: 2.25rem;
+    }
+
+    h3 {
+      margin: 0.16in 0 0.07in;
+      color: var(--accent);
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+
+    p {
+      margin: 0 0 0.12in;
+      font-size: 0.98rem;
+    }
+
+    .lead {
+      max-width: 38rem;
+      margin-top: 0.28in;
+      color: var(--muted);
+      font-size: 1.27rem;
+      line-height: 1.38;
+    }
+
+    .thesis {
+      margin: 0.32in 0;
+      padding: 0.22in 0.25in;
+      background: var(--panel);
+      border-left: 0.12in solid var(--accent);
+      box-shadow: 0 8px 20px rgba(31, 41, 55, 0.08);
+      font-size: 1.18rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .callout {
+      margin: 0.16in 0;
+      padding: 0.18in 0.2in;
+      background: var(--panel);
+      border: 1px solid rgba(216, 199, 165, 0.92);
+      border-radius: 16px;
+    }
+
+    .callout strong {
+      color: var(--accent);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.16in;
+      margin: 0.16in 0;
+    }
+
+    .card {
+      padding: 0.16in;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(216, 199, 165, 0.88);
+      border-radius: 14px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    ol, ul {
+      margin: 0.08in 0 0.16in 0.22in;
+      padding: 0;
+    }
+
+    li {
+      margin: 0.045in 0;
+      padding-left: 0.03in;
+      font-size: 0.96rem;
+    }
+
+    .compact li {
+      margin: 0.025in 0;
+      font-size: 0.92rem;
+    }
+
+    code, pre {
+      color: var(--code);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    pre {
+      margin: 0.14in 0;
+      padding: 0.14in;
+      overflow: hidden;
+      background: var(--code-bg);
+      border: 1px solid rgba(216, 199, 165, 0.96);
+      border-radius: 12px;
+      font-size: 0.83rem;
+      line-height: 1.34;
+      white-space: pre-wrap;
+    }
+
+    .stack {
+      display: grid;
+      gap: 0.07in;
+      margin: 0.15in 0;
+    }
+
+    .stack-row {
+      display: grid;
+      grid-template-columns: 1.45in 1fr;
+      gap: 0.12in;
+      align-items: start;
+      padding: 0.11in 0.14in;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(216, 199, 165, 0.86);
+      border-radius: 12px;
+    }
+
+    .stack-row b {
+      color: var(--accent-2);
+      font-size: 0.9rem;
+    }
+
+    .stack-row span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    table {
+      width: 100%;
+      margin: 0.12in 0 0.16in;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+
+    th, td {
+      padding: 0.07in;
+      vertical-align: top;
+      border: 1px solid rgba(216, 199, 165, 0.95);
+    }
+
+    th {
+      background: rgba(139, 30, 63, 0.1);
+      color: var(--accent);
+      text-align: left;
+    }
+
+    .small {
+      color: var(--quiet);
+      font-size: 0.86rem;
+    }
+
+    .signature {
+      margin-top: 0.35in;
+      padding-top: 0.2in;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    @media print {
+      @page {
+        size: letter;
+        margin: 0;
+      }
+
+      body {
+        background: var(--paper);
+      }
+
+      main {
+        width: auto;
+        padding: 0;
+      }
+
+      .page {
+        min-height: 10.35in;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="page" id="page-1">
+    <header class="kicker"><span>Velvet-Ballistics</span><span>Final Vision</span></header>
+    <h1>The Machine That Builds the Machine</h1>
+    <p class="lead">Velvet-Ballistics is the adaptive software layer for building the best internal development platform: an AI-native compiler and durable runtime that turns proposed automation into verified, bounded, replayable, policy-governed artifacts.</p>
+    <div class="thesis">The product promise: AI can propose automation, but only Velvet decides what becomes real.</div>
+    <p>The long-term ambition is not another workflow runner, CI wrapper, or agent chat surface. The ambition is a machine that writes, verifies, operates, observes, and improves the automation that builds the internal development platform itself. It is the machine that builds the machine.</p>
+    <p>That machine must be adaptive, but not self-modifying in the dangerous sense. It adapts by evidence. It records what happened, explains why a decision was made, emits incidents when its current artifact is insufficient, and feeds those incidents back into a new verify → compile → accept cycle.</p>
+    <p>Swamp provides the useful pattern: typed agent-facing authoring, explicit runtime knowledge, review before production, and governed execution. Velvet hardens that pattern with accepted artifacts, numeric IR, replayable journals, idempotency checks, capability gates, and NASA/JPL-style Rust discipline.</p>
+    <div class="callout"><strong>North star:</strong> Velvet is adaptive automation for internal platforms where every new behavior crosses a compiler boundary before it can run.</div>
+    <div class="page-number">Page 1 / 10</div>
+  </section>
+
+  <section class="page" id="page-2">
+    <header class="kicker"><span>Goal</span><span>Internal Development Platform</span></header>
+    <h2>1. The Platform We Are Building</h2>
+    <p>The best internal development platform is not a pile of dashboards. It is an operating system for engineering work. It gives teams safe defaults, fast feedback, repeatable delivery, known failure modes, and trustworthy automation that does not surprise operators at 3 AM.</p>
+    <p>Velvet’s role is to become the compiler-enforced automation plane for that platform. It should help AI and humans author platform workflows, but it should not trust either of them blindly. It should verify intent, reject unsafe plans, produce accepted artifacts, execute them durably, and report evidence back to the platform.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h3>The platform provides</h3>
+        <ul class="compact">
+          <li>golden paths for build, test, release, deploy, and rollback;</li>
+          <li>artifact provenance and policy-bound admission;</li>
+          <li>operator approvals and human-in-the-loop gates;</li>
+          <li>incident evidence, replay, and recovery guidance;</li>
+          <li>bounded automation that fails closed.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Velvet enforces</h3>
+        <ul class="compact">
+          <li>compiler acceptance before runtime execution;</li>
+          <li>numeric IR only in the hot path;</li>
+          <li>outbox/inbox effect boundaries;</li>
+          <li>capability grants separate from requirements;</li>
+          <li>idempotency and replay evidence.</li>
+        </ul>
+      </div>
+    </div>
+    <p>In this vision, AI is not the authority. AI is a proposal engine. It drafts workflows, repairs diagnostics, summarizes incident bundles, and proposes new artifacts. Velvet is the customs office. Only accepted artifacts cross the border.</p>
+    <pre>AI proposes automation
+Velvet verifies automation
+Accepted artifacts run
+Runtime emits evidence
+Evidence feeds the next proposal</pre>
+    <div class="page-number">Page 2 / 10</div>
+  </section>
+
+  <section class="page" id="page-3">
+    <header class="kicker"><span>Principle</span><span>Swamp Adapted, Not Copied</span></header>
+    <h2>2. What We Borrow From Swamp</h2>
+    <p>The useful Swamp idea is not YAML, a repository data layout, or remote workers. The useful idea is control architecture for AI-authored automation: typed cold authoring, reviewable intermediate state, explicit runtime knowledge, policy-governed execution, and feedback loops that remain visible.</p>
+    <p>Velvet translates that into a stricter system. Authoring is cold. The compiler is heavy. Runtime is thin. The artifact is the trust unit. The journal is the knowledge model. Feedback does not mutate live workflow logic; it produces evidence for the next compiler cycle.</p>
+    <table>
+      <thead><tr><th>Swamp pattern</th><th>Velvet incarnation</th></tr></thead>
+      <tbody>
+        <tr><td>Typed agent-facing automation</td><td>Rust SDK source model that builds inspectable workflow specs, not arbitrary execution.</td></tr>
+        <tr><td>Review before production</td><td>Verify, simulate, compile, and accept before runtime admission.</td></tr>
+        <tr><td>Runtime state as knowledge</td><td>Journal, snapshots, tickets, receipts, signal observations, and incident bundles.</td></tr>
+        <tr><td>Policy-governed execution</td><td>Admission and execution policy digests recorded in artifacts and journal events.</td></tr>
+        <tr><td>Agent productivity</td><td>Structured diagnostics and repair hints; AI patches source, but cannot bypass acceptance.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>Translation:</strong> Swamp makes automation explicit and reviewable. Velvet makes automation explicit, reviewable, compiled, replayable, and artifact-bound.</div>
+    <p>The boundary matters. Velvet should never become “AI runs scripts against production.” It should become “AI submits candidate automation to a compiler that has the power to say no.”</p>
+    <div class="page-number">Page 3 / 10</div>
+  </section>
+
+  <section class="page" id="page-4">
+    <header class="kicker"><span>Architecture</span><span>Adaptive Evidence Loop</span></header>
+    <h2>3. The Adaptive Evidence Loop</h2>
+    <p>The central mechanism is the Adaptive Evidence Loop. It merges Swamp’s visible automation posture with MAPE-K’s monitor, analyze, plan, execute, and knowledge separation, while preserving Velvet’s accepted-artifact boundary.</p>
+    <div class="stack">
+      <div class="stack-row"><b>Author</b><span>AI or human uses the Rust SDK source model to construct a workflow specification.</span></div>
+      <div class="stack-row"><b>Verify</b><span>The compiler checks bounds, effects, capabilities, idempotency, policy, taint, replayability, and resource contracts.</span></div>
+      <div class="stack-row"><b>Accept</b><span>The compiler emits an accepted artifact with source, IR, policy, SDK ABI, action ABI, and resource digests.</span></div>
+      <div class="stack-row"><b>Execute</b><span>The runtime executes numeric IR only, through durable state transitions and bounded effect scheduling.</span></div>
+      <div class="stack-row"><b>Observe</b><span>The runtime writes journal evidence: admissions, tickets, completions, gates, signals, policy decisions, and incidents.</span></div>
+      <div class="stack-row"><b>Evolve</b><span>Incident bundles and replay evidence feed a new out-of-band proposal that must pass the compiler again.</span></div>
+    </div>
+    <p>Runtime adaptation is deliberately narrow. It may select only behavior already encoded in the accepted artifact. If no verified path exists, it emits an incident and stops, gates, or suspends. Supervisory adaptation is broad, but it is outside the runtime and mediated by the compiler.</p>
+    <pre>Bounded runtime adaptation:
+  observe journaled signal -> evaluate compiled guard -> select accepted branch or emit incident
+
+Unbounded supervisory adaptation:
+  incident -> AI/human proposal -> verify -> compile -> accept -> install</pre>
+    <div class="page-number">Page 4 / 10</div>
+  </section>
+
+  <section class="page" id="page-5">
+    <header class="kicker"><span>Trust</span><span>Artifact Boundary</span></header>
+    <h2>4. The Accepted Artifact Is the Border</h2>
+    <p>The accepted artifact is the unit of trust. It is not just a compiled file. It is a knowledge capsule that records what source was accepted, which compiler and SDK ABI shaped it, which action registry it depends on, which policies governed acceptance, and which resource contracts bound execution.</p>
+    <pre>ArtifactHeader:
+  artifact_digest
+  source_spec_digest
+  ir_digest
+  sdk_abi_digest
+  action_abi_digest
+  admission_policy_digest
+  execution_policy_digest
+  resource_contract_digest
+  signal_schema_digest
+  adaptation_envelope_digest</pre>
+    <p>The runtime must independently validate the artifact at admission. It must not trust the compiler by reputation, local profile names, or filenames. Digest mismatch, unknown artifact version, stale action registry, incompatible policy, malformed IR, or missing grants are hard rejections.</p>
+    <h3>Artifact admission rules</h3>
+    <ul>
+      <li>Runtime accepts accepted artifacts, not loose IR and not source files.</li>
+      <li>Policy names are labels; policy digests are the trust boundary.</li>
+      <li>Action requirements are not grants. Operator/runtime grants remain separate.</li>
+      <li>Debug maps and diagnostics are cold metadata; they cannot affect execution.</li>
+      <li>Old artifacts either replay under a compatibility contract or fail with explicit migration state.</li>
+    </ul>
+    <div class="callout"><strong>Border rule:</strong> if it did not pass verify → compile → accept, it is not real to the runtime.</div>
+    <div class="page-number">Page 5 / 10</div>
+  </section>
+
+  <section class="page" id="page-6">
+    <header class="kicker"><span>Authoring</span><span>Rust SDK Source Model</span></header>
+    <h2>5. Rust as Authoring Syntax, Not Runtime Logic</h2>
+    <p>Velvet should dump YAML as an active authoring surface, but it must not replace YAML with arbitrary Rust workflow functions. Rust becomes the host language for constructing inspectable data. The SDK is a compiler front-end. The workflow is a specification, not a closure.</p>
+    <p>The v1 ergonomic surface should be a boring builder API. Macro syntax can come later as sugar over the same source model. This avoids making proc-macro magic the foundation of the product.</p>
+    <pre>let workflow = Workflow::new(name!("deploy"))
+    .input_schema::<DeployInput>()
+    .action(ActionRef::new(DB_APPLY_MIGRATION), migrate_input)
+    .idempotency_key(key!(workflow_digest(), step_id(), input.change_id))
+    .gate(Gate::manual("production_signoff", Timeout::minutes(30)?))
+    .finish(result_expr)
+    .build()?;</pre>
+    <h3>Forbidden in workflow semantics</h3>
+    <ul class="compact">
+      <li>Rust closures, callbacks, custom predicates, and trait-object workflow logic;</li>
+      <li>ambient I/O such as files, environment, network, process execution, or wall-clock reads;</li>
+      <li>runtime string lookup of action names, capability names, or policy names;</li>
+      <li>raw IR authoring as an escape hatch;</li>
+      <li>proc macros that hide control flow, allocation, panics, or side effects.</li>
+    </ul>
+    <p>Conditions, transforms, idempotency keys, signal guards, and resource bounds must be typed AST nodes the compiler can inspect. That is how Rust authoring remains Gleam-like: friendly syntax, strict compiler, limited escape hatches, boring artifact.</p>
+    <div class="page-number">Page 6 / 10</div>
+  </section>
+
+  <section class="page" id="page-7">
+    <header class="kicker"><span>Effects</span><span>Outbox, Inbox, Actions</span></header>
+    <h2>6. Sensors and Effectors Are Durable Boundaries</h2>
+    <p>MAPE-K talks about sensors and effectors. Velvet’s concrete version is outbox and inbox. The deterministic core emits bounded effect requests into a durable outbox. External completions, approvals, observations, and answers return through a durable inbox. Nothing else gets to poke the workflow state.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Outbox</h3>
+        <p>Action tickets, gate openings, scheduled timers, incident emissions, and durable effect intents. Every record has sequence numbers, capability requirements, payload digests, timeout bounds, and idempotency evidence.</p>
+      </div>
+      <div class="card">
+        <h3>Inbox</h3>
+        <p>Action completions, operator decisions, observed signals, timer firings, cancellation requests, and recovered receipts. Every record is deduplicated, ordered, and replayable.</p>
+      </div>
+    </div>
+    <p>Actions are manifest-first. The compiler reasons over manifests before any executor code is trusted. Executors are separate adapters that receive scoped capability tokens and durable tickets. An action manifest describes side effect class, retry safety, idempotency scope, input/output schema digests, timeout policy, secret requirements, and required capabilities.</p>
+    <pre>ActionManifest:
+  action_id
+  side_effect
+  retry_safety
+  idempotency_scope
+  input_schema_digest
+  output_schema_digest
+  required_capabilities
+  timeout_policy</pre>
+    <div class="callout"><strong>Effect rule:</strong> all external reality crosses through tickets and receipts, never through hidden runtime callbacks.</div>
+    <div class="page-number">Page 7 / 10</div>
+  </section>
+
+  <section class="page" id="page-8">
+    <header class="kicker"><span>Runtime</span><span>Bounded Adaptation</span></header>
+    <h2>7. Runtime Knowledge and Bounded Adaptation</h2>
+    <p>Velvet should use reflection in the engineering sense: the system keeps a durable model of itself. But that model is evidence, not a permission slip for self-modification. The runtime knowledge model consists of journal events, snapshots, action tickets, gate states, signal observations, policy decisions, receipts, and incident bundles.</p>
+    <table>
+      <thead><tr><th>MAPE-K role</th><th>Velvet implementation</th><th>Safety rule</th></tr></thead>
+      <tbody>
+        <tr><td>Monitor</td><td>Journal readers, signal extractors, action receipts</td><td>Observe typed, replay-stable signals only.</td></tr>
+        <tr><td>Analyze</td><td>Deterministic policy evaluator</td><td>No LLM or text scripting in the runtime path.</td></tr>
+        <tr><td>Plan</td><td>Preverified variant selector or incident request</td><td>Choose accepted variants only; otherwise emit incident.</td></tr>
+        <tr><td>Execute</td><td>Numeric IR transitions and durable effect scheduling</td><td>Journal every state change and effect intent.</td></tr>
+        <tr><td>Knowledge</td><td>Artifacts, policy digests, snapshots, receipts</td><td>Durable, bounded, replayable, inspectable.</td></tr>
+      </tbody>
+    </table>
+    <p>Runtime policy guards, if added, must compile to numeric predicates. They may evaluate journaled observations and artifact metadata. They may not parse CEL, YAML, JSON, Rust, JavaScript, or any other source language in the hot path.</p>
+    <p>Preverified variants are allowed only when each branch has already passed compiler checks. Variant selection is a switch over accepted alternatives, not a planner. If the runtime needs behavior that is not already in the artifact, it emits an incident bundle for the supervisory loop.</p>
+    <div class="page-number">Page 8 / 10</div>
+  </section>
+
+  <section class="page" id="page-9">
+    <header class="kicker"><span>Assurance</span><span>NASA/JPL and Evidence</span></header>
+    <h2>8. Engineering Discipline Is Product Surface</h2>
+    <p>The internal platform should trust Velvet because Velvet is boring where it matters. The runtime core uses bounded control flow, typed errors, checked arithmetic, explicit resource caps, no panic paths, no unchecked indexing, no lossy casts, no ignored fallible results, and no production unsafe by default.</p>
+    <p>NASA/JPL discipline is not just a code style. It is part of the product promise: Velvet rejects automation that cannot be bounded, replayed, inspected, or safely retried. The compiler performs expensive analysis before acceptance so the runtime can execute compact numeric artifacts with minimal dynamic work.</p>
+    <h3>Acceptance evidence</h3>
+    <ul>
+      <li>Artifact golden tests for canonical serialization and digest stability.</li>
+      <li>Compile-fail tests for illegal SDK workflow shapes.</li>
+      <li>IR decoder and validator fuzzing.</li>
+      <li>Capability-forgery and grant-mismatch suites.</li>
+      <li>Crash matrix tests at every outbox/inbox boundary.</li>
+      <li>Replay determinism tests across runtime upgrades.</li>
+      <li>Incident bundle conformance and evidence rendering snapshots.</li>
+      <li>Strict Rust gates for no unsafe, unwrap, expect, panic, todo, unchecked indexing, unchecked arithmetic, or lossy casts in production code.</li>
+    </ul>
+    <div class="callout"><strong>Assurance rule:</strong> absence of evidence is not approval. Missing proof, missing benchmark, missing replay, or missing policy digest is a blocker or residual risk.</div>
+    <p>The platform becomes better because the machine is forced to produce evidence every time it changes itself.</p>
+    <div class="page-number">Page 9 / 10</div>
+  </section>
+
+  <section class="page" id="page-10">
+    <header class="kicker"><span>Roadmap</span><span>Stop at the Right Place</span></header>
+    <h2>9. Roadmap and Final Shape</h2>
+    <p>The safest roadmap strengthens trust boundaries before adding adaptive behavior. Do not start with a beautiful macro language. Start with artifact envelopes, manifest-first actions, idempotency, durable effects, and incident evidence.</p>
+    <ol>
+      <li><strong>Trust envelope:</strong> artifact digests, SDK ABI digest, action ABI digest, policy digest, admission receipts, mismatch rejection.</li>
+      <li><strong>Effect model:</strong> manifest-first actions, capability tokens, idempotency AST, durable outbox/inbox.</li>
+      <li><strong>Evidence loop:</strong> incident bundles, replay reports, operator answers, and supervisory recompile/install tooling.</li>
+      <li><strong>Authoring model:</strong> Rust SDK source model with compile-fail tests and structured diagnostics.</li>
+      <li><strong>Bounded adaptation:</strong> journaled signals, numeric policy guards, preverified variants, gates, and incident emission.</li>
+      <li><strong>Ergonomics later:</strong> macro DSL, LSP, agent adapter, action packs, and policy packs.</li>
+    </ol>
+    <div class="thesis">Final vision: Velvet is the adaptive, compiler-enforced machine that builds the automation for building the internal development platform.</div>
+    <p>It watches the platform, records evidence, rejects unsafe proposals, accepts bounded artifacts, executes only numeric IR, and turns incidents into new compiler-mediated improvements. The system gets faster at building the machine without becoming less accountable.</p>
+    <p>That is the final product wedge: not a Temporal clone, not a DAG runner, not a YAML executor, not an agent free-for-all. Velvet is the machine that writes automation under law.</p>
+    <div class="signature">AI proposes. Velvet verifies. Accepted artifacts run. Evidence builds the next machine.</div>
+    <div class="page-number">Page 10 / 10</div>
+  </section>
+</main>
+</body>
+</html>
