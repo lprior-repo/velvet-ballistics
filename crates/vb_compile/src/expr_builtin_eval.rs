@@ -10,7 +10,7 @@ use crate::stack_ops::{expect_bool, expect_i64, pop_pair, pop_value, push_value}
 use crate::{ExprError, ExprResult};
 
 /// Evaluates equality comparison (Eq or NotEq).
-pub fn eval_eq(
+fn eval_eq(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     positive: bool,
 ) -> ExprResult<()> {
@@ -19,7 +19,7 @@ pub fn eval_eq(
 }
 
 /// Evaluates a binary operation by popping two values from the stack.
-pub fn eval_binary_stack(
+fn eval_binary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     op: BinaryOp,
 ) -> ExprResult<()> {
@@ -29,7 +29,7 @@ pub fn eval_binary_stack(
 }
 
 /// Evaluates a unary operation by popping one value from the stack.
-pub fn eval_unary_stack(
+fn eval_unary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     op: UnaryOp,
 ) -> ExprResult<()> {
@@ -39,7 +39,7 @@ pub fn eval_unary_stack(
 }
 
 /// Evaluates one binary operation over two already-popped values.
-pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     match op {
         BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
         BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
@@ -57,7 +57,7 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
 }
 
 /// Evaluates one unary operation over an already-popped value.
-pub fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
+fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
     match op {
         UnaryOp::Not => Ok(SlotValue::Bool(!expect_bool(value)?)),
         UnaryOp::Neg => {

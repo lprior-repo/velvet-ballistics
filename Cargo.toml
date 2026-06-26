@@ -3,7 +3,6 @@ members = [
     "crates/vb_cli",
     "crates/vb_compile",
     "crates/vb_core",
-    "crates/vb_expr",
     "crates/vb_ipc",
     "crates/vb_queue_semantics",
     "crates/vb_runtime",

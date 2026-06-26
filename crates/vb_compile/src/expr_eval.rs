@@ -1012,5 +1012,5 @@ fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
     }
 }
 
-#[path = "eval_tests.rs"]
+#[path = "expr_eval_tests.rs"]
 mod tests;

@@ -1009,9 +1009,9 @@ fn validate_schema_rejects_bad_version() {
 
 #[test]
 fn expr_lex_and_parse_simple_addition() {
-    match vb_expr::lexer::lex_expr("1 + 2") {
-        Ok(tokens) => match vb_expr::parser::parse_expr(&tokens) {
-            Ok(ast) => assert!(matches!(ast, vb_expr::parser::ExprAst::Binary { .. })),
+    match vb_compile::lexer::lex_expr("1 + 2") {
+        Ok(tokens) => match vb_compile::parser::parse_expr(&tokens) {
+            Ok(ast) => assert!(matches!(ast, vb_compile::parser::ExprAst::Binary { .. })),
             Err(err) => assert!(forced_assertion_failure(), "parse failed: {err:?}"),
         },
         Err(err) => assert!(forced_assertion_failure(), "lex failed: {err:?}"),
@@ -1020,14 +1020,14 @@ fn expr_lex_and_parse_simple_addition() {
 
 #[test]
 fn expr_bytecode_compile_and_eval() {
-    let tokens = match vb_expr::lexer::lex_expr("1 + 2") {
+    let tokens = match vb_compile::lexer::lex_expr("1 + 2") {
         Ok(tokens) => tokens,
         Err(err) => {
             assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
             assert!(forced_assertion_failure(), "parse failed: {err:?}");
@@ -1035,7 +1035,7 @@ fn expr_bytecode_compile_and_eval() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
             assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
@@ -1043,7 +1043,7 @@ fn expr_bytecode_compile_and_eval() {
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
-    match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
+    match vb_compile::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(3)),
         Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }
@@ -1051,14 +1051,14 @@ fn expr_bytecode_compile_and_eval() {
 
 #[test]
 fn expr_rejects_division_by_zero() {
-    let tokens = match vb_expr::lexer::lex_expr("1 / 0") {
+    let tokens = match vb_compile::lexer::lex_expr("1 / 0") {
         Ok(tokens) => tokens,
         Err(err) => {
             assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
             assert!(forced_assertion_failure(), "parse failed: {err:?}");
@@ -1066,7 +1066,7 @@ fn expr_rejects_division_by_zero() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
             assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
@@ -1074,20 +1074,20 @@ fn expr_rejects_division_by_zero() {
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &const_vals);
-    assert_eq!(result, Err(vb_expr::ExprError::DivisionByZero));
+    let result = vb_compile::eval::eval_expr_program(&program, &[], &const_vals);
+    assert_eq!(result, Err(vb_compile::ExprError::DivisionByZero));
 }
 
 #[test]
 fn expr_boolean_logic() {
-    let tokens = match vb_expr::lexer::lex_expr("true and false") {
+    let tokens = match vb_compile::lexer::lex_expr("true and false") {
         Ok(tokens) => tokens,
         Err(err) => {
             assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
             assert!(forced_assertion_failure(), "parse failed: {err:?}");
@@ -1095,7 +1095,7 @@ fn expr_boolean_logic() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
             assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
@@ -1103,7 +1103,7 @@ fn expr_boolean_logic() {
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
-    match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
+    match vb_compile::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::Bool(false)),
         Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }
@@ -1111,7 +1111,7 @@ fn expr_boolean_logic() {
 
 #[test]
 fn expr_variable_reference() {
-    let compiled = match vb_expr::bytecode::compile_expr("$x + 1", &resolve_test_reference) {
+    let compiled = match vb_compile::bytecode::compile_expr("$x + 1", &resolve_test_reference) {
         Ok(compiled) => compiled,
         Err(err) => {
             assert!(forced_assertion_failure(), "compile failed: {err:?}");
@@ -1121,7 +1121,7 @@ fn expr_variable_reference() {
     let (program, constants) = compiled;
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     let slots: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
-    match vb_expr::eval::eval_expr_program(&program, &slots, &const_vals) {
+    match vb_compile::eval::eval_expr_program(&program, &slots, &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(42)),
         Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }

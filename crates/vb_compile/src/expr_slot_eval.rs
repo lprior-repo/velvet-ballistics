@@ -9,7 +9,7 @@ use crate::stack_ops::push_value;
 use crate::{ExprError, ExprResult};
 
 /// Loads a slot value onto the evaluation stack.
-pub fn eval_load_slot(
+fn eval_load_slot(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     slots: &[Option<SlotValue>],
     idx: SlotIdx,
@@ -22,7 +22,7 @@ pub fn eval_load_slot(
 }
 
 /// Loads a constant value onto the evaluation stack.
-pub fn eval_load_const(
+fn eval_load_const(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     constants: &[ConstValue],
     idx: ConstIdx,

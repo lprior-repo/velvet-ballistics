@@ -125,4 +125,7 @@ mod references_tests;
 mod gate_tests;
 
 #[cfg(test)]
+mod test_helpers;
+
+#[cfg(test)]
 mod type_taint_tests;

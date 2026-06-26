@@ -1131,14 +1131,14 @@ fn bench_expr(
 ) {
     group.bench_function(metadata(name, expr.as_bytes(), "fixture=expression"), |b| {
         checked_iter(b, name, || {
-            let tokens = vb_expr::lexer::lex_expr(black_box(expr));
+            let tokens = vb_compile::lexer::lex_expr(black_box(expr));
             if let Ok(tokens) = tokens.as_ref() {
-                let ast = vb_expr::parser::parse_expr(tokens);
+                let ast = vb_compile::parser::parse_expr(tokens);
                 if let Ok(ast) = ast.as_ref() {
                     let mut constants = Vec::new();
-                    let program = vb_expr::bytecode::compile_expr_with_pool(ast, &mut constants);
+                    let program = vb_compile::bytecode::compile_expr_with_pool(ast, &mut constants);
                     if let Ok(program) = program.as_ref() {
-                        let _evaluated = vb_expr::eval::eval_expr_program(program, &[], &constants);
+                        let _evaluated = vb_compile::eval::eval_expr_program(program, &[], &constants);
                     }
                     program.map(|_| constants)
                 } else {

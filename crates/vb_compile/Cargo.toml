@@ -5,7 +5,9 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+arrayvec.workspace = true
 blake3.workspace = true
+logos.workspace = true
 postcard.workspace = true
 saphyr.workspace = true
 saphyr-parser.workspace = true

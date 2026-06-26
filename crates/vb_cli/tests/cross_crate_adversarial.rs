@@ -1025,14 +1025,14 @@ fn limits_resource_contract_default_max_steps_is_10000() {
 #[test]
 fn expr_compile_to_eval_simple_arithmetic_produces_correct_result() {
     // Given: expression "1 + 2"
-    let tokens = match vb_expr::lexer::lex_expr("1 + 2") {
+    let tokens = match vb_compile::lexer::lex_expr("1 + 2") {
         Ok(t) => t,
         Err(err) => {
             fail_assert!("lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(a) => a,
         Err(err) => {
             fail_assert!("parse failed: {err:?}");
@@ -1040,7 +1040,7 @@ fn expr_compile_to_eval_simple_arithmetic_produces_correct_result() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(p) => p,
         Err(err) => {
             fail_assert!("bytecode compile failed: {err:?}");
@@ -1048,7 +1048,7 @@ fn expr_compile_to_eval_simple_arithmetic_produces_correct_result() {
         }
     };
     // When: evaluating the compiled bytecode
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    let result = vb_compile::eval::eval_expr_program(&program, &[], &constants);
     // Then: result is 3
     match result {
         Ok(value) => assert_eq!(value, SlotValue::I64(3)),
@@ -1059,14 +1059,14 @@ fn expr_compile_to_eval_simple_arithmetic_produces_correct_result() {
 #[test]
 fn expr_compile_to_eval_division_by_zero_returns_error() {
     // Given: expression "1 / 0"
-    let tokens = match vb_expr::lexer::lex_expr("1 / 0") {
+    let tokens = match vb_compile::lexer::lex_expr("1 / 0") {
         Ok(t) => t,
         Err(err) => {
             fail_assert!("lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(a) => a,
         Err(err) => {
             fail_assert!("parse failed: {err:?}");
@@ -1074,7 +1074,7 @@ fn expr_compile_to_eval_division_by_zero_returns_error() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(p) => p,
         Err(err) => {
             fail_assert!("bytecode compile failed: {err:?}");
@@ -1082,7 +1082,7 @@ fn expr_compile_to_eval_division_by_zero_returns_error() {
         }
     };
     // When: evaluating
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    let result = vb_compile::eval::eval_expr_program(&program, &[], &constants);
     // Then: evaluation fails
     assert!(result.is_err(), "division by zero should fail");
 }
@@ -1096,7 +1096,7 @@ fn expr_compile_to_eval_variable_reference_with_slot() {
         }
     }
     // Given: expression "$x + 1"
-    let compiled = match vb_expr::bytecode::compile_expr("$x + 1", &resolve) {
+    let compiled = match vb_compile::bytecode::compile_expr("$x + 1", &resolve) {
         Ok(c) => c,
         Err(err) => {
             fail_assert!("compile failed: {err:?}");
@@ -1106,7 +1106,7 @@ fn expr_compile_to_eval_variable_reference_with_slot() {
     let (program, constants) = compiled;
     let slots: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
     // When: evaluating with slot[0] = 41
-    let result = vb_expr::eval::eval_expr_program(&program, &slots, &constants);
+    let result = vb_compile::eval::eval_expr_program(&program, &slots, &constants);
     // Then: result is 42
     match result {
         Ok(value) => assert_eq!(value, SlotValue::I64(42)),
@@ -1117,14 +1117,14 @@ fn expr_compile_to_eval_variable_reference_with_slot() {
 #[test]
 fn expr_compile_to_eval_boolean_and_produces_false() {
     // Given: expression "true and false"
-    let tokens = match vb_expr::lexer::lex_expr("true and false") {
+    let tokens = match vb_compile::lexer::lex_expr("true and false") {
         Ok(t) => t,
         Err(err) => {
             fail_assert!("lex failed: {err:?}");
             return;
         }
     };
-    let ast = match vb_expr::parser::parse_expr(&tokens) {
+    let ast = match vb_compile::parser::parse_expr(&tokens) {
         Ok(a) => a,
         Err(err) => {
             fail_assert!("parse failed: {err:?}");
@@ -1132,7 +1132,7 @@ fn expr_compile_to_eval_boolean_and_produces_false() {
         }
     };
     let mut constants = Vec::new();
-    let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
+    let program = match vb_compile::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(p) => p,
         Err(err) => {
             fail_assert!("bytecode compile failed: {err:?}");
@@ -1140,7 +1140,7 @@ fn expr_compile_to_eval_boolean_and_produces_false() {
         }
     };
     // When: evaluating
-    let result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    let result = vb_compile::eval::eval_expr_program(&program, &[], &constants);
     // Then: false
     match result {
         Ok(value) => assert_eq!(value, SlotValue::Bool(false)),

@@ -9,7 +9,6 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
-    ("crates/vb_expr", "vb_expr"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_cli", "velvet-ballistics"),
@@ -55,7 +54,6 @@ members = [
     "crates/vb_cli",
     "crates/vb_compile",
     "crates/vb_core",
-    "crates/vb_expr",
     "crates/vb_ipc",
     "crates/vb_queue_semantics",
     "crates/vb_runtime",

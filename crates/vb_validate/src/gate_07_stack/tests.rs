@@ -1,35 +1,8 @@
 use super::*;
-use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, ResourceContract};
+use vb_core::ids::SlotIdx;
+use vb_core::workflow::{ExprProgram, ResourceContract};
 
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
-    WorkflowParts {
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-    }
-}
+use super::super::test_helpers::{make_parts, finish_node};
 
 // -- Pass cases --
 

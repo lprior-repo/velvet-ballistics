@@ -4,7 +4,7 @@ use super::*;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, ResourceContract};
+use vb_core::workflow::CompiledNode;
 
 use crate::ValidationError;
 use crate::gate_12_14_15::{
@@ -12,45 +12,7 @@ use crate::gate_12_14_15::{
     validate_gate_15_determinism_proof,
 };
 
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
-    WorkflowParts {
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-    }
-}
-
-fn nop_node(index: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
-}
+use super::super::test_helpers::{make_parts, finish_node, nop_node};
 
 fn do_node(index: u16, action: u16, input: u16) -> CompiledNode {
     CompiledNode {

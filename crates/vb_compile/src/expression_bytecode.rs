@@ -12,7 +12,7 @@ use vb_core::{
 ///
 /// String literals and source references require the later symbol/accessor tables,
 /// so Phase 10 rejects them instead of smuggling runtime string lookup into IR.
-pub fn compile_expr_to_bytecode(
+fn compile_expr_to_bytecode(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
 ) -> Result<ExprProgram, CompileError> {
@@ -25,7 +25,7 @@ pub fn compile_expr_to_bytecode(
 /// Object field segments require a compiler-owned symbol table. Until that
 /// table exists in `vb_compile`, they are rejected instead of guessing
 /// `SymbolId`s.
-pub fn compile_expr_to_bytecode_with_accessors(
+fn compile_expr_to_bytecode_with_accessors(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
     accessors: &mut Vec<AccessorProgram>,

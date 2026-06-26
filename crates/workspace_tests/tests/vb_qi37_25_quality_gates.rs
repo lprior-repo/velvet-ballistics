@@ -10,7 +10,6 @@ const MEMBERS: &[(&str, &str)] = &[
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_core", "vb_core"),
-    ("crates/vb_expr", "vb_expr"),
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_runtime", "vb_runtime"),
