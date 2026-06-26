@@ -536,7 +536,6 @@ tasks:
       - 'fuzz/fuzz_targets/**/*'
       - 'fuzz/src/**/*'
       - 'crates/vb_core/**/*'
-      - 'crates/vb_expr/**/*'
       - 'crates/vb_compile/**/*'
       - 'crates/vb_ipc/**/*'
       - 'crates/vb_storage/**/*'

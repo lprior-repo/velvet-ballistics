@@ -1,4 +1,0 @@
-{"bead":"vb-y4pa","phase":"formal-verifier","state":11,"gate":"workspace-build","result":"PASS","evidence":"4 crates compiled","timestamp":"2026-05-19T18:30:00Z"}
-{"bead":"vb-y4pa","phase":"formal-verifier","state":11,"gate":"nextest-vb-runtime","result":"PASS","evidence":"1651 tests passed, 0 skipped","timestamp":"2026-05-19T18:30:00Z"}
-{"bead":"vb-y4pa","phase":"formal-verifier","state":11,"gate":"jump_to_body-conditional-fix","result":"PASS","evidence":"helpers.rs:60-69 - Succeeded→Pending resets; Waiting/Asking preserved","timestamp":"2026-05-19T18:30:00Z"}
-{"bead":"vb-y4pa","phase":"formal-verifier","state":11,"fix":"jump_to_body-conditional","file":"crates/vb_runtime/src/primitives/helpers.rs","lines":"60-69","issue":"Unconditional mark_pending failed for Waiting/Asking states","fix_applied":"if current == StepState::Succeeded { run.mark_pending(body)?; }","result":"PASS"}

@@ -2,16 +2,12 @@
 set -euo pipefail
 
 packages=(
-  vb_boundary_inventory
   vb_compile
   vb_core
-  vb_doc
-  vb_expr
   vb_ipc
   vb_runtime
   vb_storage
   vb_validate
-  vb_yaml
   velvet-ballistics
 )
 

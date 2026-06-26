@@ -29,7 +29,6 @@ pub enum StepState {
 }
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
-/// Inlines the step-state machine contract from vb_proof_kernels::step_state.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
     if current == new {

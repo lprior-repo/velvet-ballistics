@@ -1,2 +1,0 @@
-{"id":"vb-gjxn-step-budget","command":"verus verification/verus/step_budget.rs","result":"PASS","evidence":"verification results:: 6 verified, 0 errors","claim":"try-take success never underflows; failure preserves remaining; remaining monotonic."}
-{"id":"vb-gjxn-resource-budget","command":"verus verification/verus/resource_budget.rs","result":"PASS","evidence":"verification results:: 10 verified, 0 errors","claim":"sequential, branch, loop, and policy-check budget specs preserve bounded dimensions."}

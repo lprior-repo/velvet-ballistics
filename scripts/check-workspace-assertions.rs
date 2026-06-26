@@ -7,13 +7,11 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_cli",
     "crates/vb_compile",
     "crates/vb_core",
-    "crates/vb_expr",
     "crates/vb_ipc",
     "crates/vb_queue_semantics",
     "crates/vb_runtime",
     "crates/vb_storage",
     "crates/vb_validate",
-    "crates/vb_yaml",
     "crates/workspace_tests",
 ];
 
@@ -42,13 +40,11 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_core", "vb_core"),
-    ("crates/vb_expr", "vb_expr"),
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_storage", "vb_storage"),
     ("crates/vb_validate", "vb_validate"),
-    ("crates/vb_yaml", "vb_yaml"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",

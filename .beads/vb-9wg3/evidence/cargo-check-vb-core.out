@@ -1,3 +1,0 @@
-+ cargo check -p vb_core
-    Checking vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.28s
