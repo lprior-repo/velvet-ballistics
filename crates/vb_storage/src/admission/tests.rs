@@ -1128,14 +1128,14 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
 // =========================================================================
 // SA-015 (vb-36fly): postcard-wrapping sites in submit_artifact_with_contracts
 // and admit_compiled_artifact must surface the underlying `postcard::Error`
-// as `JournalError::PostcardDecodeError(_)`, NOT collapse it into the generic
+// as `JournalError::PostcardEncodeFailed(_)`, NOT collapse it into the generic
 // `ArtifactMalformed` bucket. Forces a deterministic postcard failure via
 // `to_slice` against a zero-length output buffer (the production code at
 // admission.rs:222 uses the same `to_slice` call shape).
 // =========================================================================
 
 #[test]
-fn admission_postcard_decode_error_surfaces_typed_variant() {
+fn admission_postcard_encode_failed_surfaces_typed_variant() {
     use vb_core::workflow::ResourceContract;
 
     // (1) Force a deterministic postcard encode failure with the same
@@ -1146,25 +1146,26 @@ fn admission_postcard_decode_error_surfaces_typed_variant() {
     let to_slice_result = postcard::to_slice(&ResourceContract::DEFAULT, &mut zero_len_buffer);
     let source_err = to_slice_result.expect_err("zero-length buffer must fail to_slice");
 
-    // (2) Apply the SA-015 wrapping pattern: `map_err(JournalError::PostcardDecodeError)`,
+    // (2) Apply the SA-015 wrapping pattern: `map_err(JournalError::PostcardEncodeFailed)`,
     // the same transformation now used at the seven postcard sites in
     // `submit_artifact_with_contracts` (lines 340/354/371/385/398) and
     // `admit_compiled_artifact` (lines 521/528).
-    let journal_err: JournalError = match postcard::to_slice(&ResourceContract::DEFAULT, &mut zero_len_buffer) {
-        Ok(_) => panic!("zero-length buffer must not succeed"),
-        Err(e) => JournalError::PostcardDecodeError(e),
-    };
+    let journal_err: JournalError =
+        match postcard::to_slice(&ResourceContract::DEFAULT, &mut zero_len_buffer) {
+            Ok(_) => panic!("zero-length buffer must not succeed"),
+            Err(e) => JournalError::PostcardEncodeFailed(e),
+        };
 
     // (3) The typed variant must capture the source error verbatim so
     // operators can read the underlying postcard category from logs.
     match &journal_err {
-        JournalError::PostcardDecodeError(inner) => {
+        JournalError::PostcardEncodeFailed(inner) => {
             assert_eq!(
                 *inner, source_err,
-                "PostcardDecodeError must preserve the source postcard::Error"
+                "PostcardEncodeFailed must preserve the source postcard::Error"
             );
         }
-        other => panic!("expected PostcardDecodeError, got {other:?}"),
+        other => panic!("expected PostcardEncodeFailed, got {other:?}"),
     }
 
     // (4) Diagnostic code must be distinct from `ARTIFACT_MALFORMED_CODE`
@@ -1173,12 +1174,12 @@ fn admission_postcard_decode_error_surfaces_typed_variant() {
     assert_ne!(
         journal_err.diagnostic_code(),
         JournalError::ARTIFACT_MALFORMED_CODE,
-        "PostcardDecodeError must NOT collapse into the ArtifactMalformed bucket"
+        "PostcardEncodeFailed must NOT collapse into the ArtifactMalformed bucket"
     );
     assert_eq!(
         journal_err.diagnostic_code(),
-        JournalError::POSTCARD_DECODE_ERROR_CODE,
-        "PostcardDecodeError must map to its own diagnostic code (0x4031)"
+        JournalError::POSTCARD_ENCODE_FAILED_CODE,
+        "PostcardEncodeFailed must map to its own diagnostic code (0x4032)"
     );
 
     // (5) The `Display` impl must render the inner postcard error category
@@ -1187,28 +1188,28 @@ fn admission_postcard_decode_error_surfaces_typed_variant() {
     let rendered = format!("{journal_err}");
     assert!(
         rendered.contains("serialize") || rendered.contains("postcard"),
-        "PostcardDecodeError Display must mention the inner error category, got: {rendered:?}"
+        "PostcardEncodeFailed Display must mention the inner error category, got: {rendered:?}"
     );
 
-    // (6) `PostcardDecodeError` is a distinct sum-type variant from the
+    // (6) `PostcardEncodeFailed` is a distinct sum-type variant from the
     // existing `Encode` variant so admission callers can pattern-match on
     // the admission-side failure without confusing it with the generic
     // journal-encode bucket.
     let encode_err = JournalError::Encode(postcard::Error::SerializeBufferFull);
-    let journal_is_postcard_decode = matches!(journal_err, JournalError::PostcardDecodeError(_));
+    let journal_is_postcard_encode = matches!(journal_err, JournalError::PostcardEncodeFailed(_));
     let journal_is_encode = matches!(journal_err, JournalError::Encode(_));
     assert_eq!(
-        journal_is_postcard_decode, true,
-        "journal_err must be PostcardDecodeError"
+        journal_is_postcard_encode, true,
+        "journal_err must be PostcardEncodeFailed"
     );
     assert_eq!(
         journal_is_encode, false,
-        "PostcardDecodeError must remain a distinct variant from Encode"
+        "PostcardEncodeFailed must remain a distinct variant from Encode"
     );
     assert_ne!(
         journal_err.diagnostic_code(),
         encode_err.diagnostic_code(),
-        "PostcardDecodeError and Encode must have distinct diagnostic codes"
+        "PostcardEncodeFailed and Encode must have distinct diagnostic codes"
     );
 
     // (7) `From<postcard::Error>` continues to route through `Encode` so

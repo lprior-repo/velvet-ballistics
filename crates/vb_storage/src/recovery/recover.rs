@@ -15,7 +15,10 @@
 //! are visible to recovery; the snapshot+tail reader (`events_for_run`)
 //! skips them by design and is reserved for hot-path replay.
 
-use crate::recovery::types::{DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult};
+use crate::recovery::types::{
+    ActionAbiDigestComparison, DigestVerificationRequest, PolicyDigestComparison, RecoveryError,
+    RecoveryHydration, RecoveryResult,
+};
 use crate::{FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
@@ -84,36 +87,53 @@ pub fn check_policy_digest(
     }
 }
 
-/// Verifies all digests at the requested check level.
+/// Verifies digests described by a typed request.
 ///
-/// Master §18.8 mandates that replay check workflow source, compiled IR, action ABI,
-/// and policy digests. `DigestCheck::Full` therefore consults every category.
-/// `action_abi_digests` and `policy_digests` are each `(subject, expected, found)`
-/// triples; an empty slice skips that category without raising an error. A non-empty
-/// slice whose entries do not all match returns the matching typed `RecoveryError`.
-/// POST-003: returns Ok only when ALL requested digests match.
+/// The request shape prevents workflow-only and workflow+IR callers from
+/// passing meaningless action/policy placeholders. Full verification must carry
+/// [`crate::recovery::FullDigestEvidence`] so action ABI and policy subjects are
+/// explicit at the call site.
 pub fn verify_digests(
     journal: &FjallJournal,
     run: RunId,
-    workflow_digest: WorkflowDigest,
-    ir_digest: WorkflowDigest,
-    found_ir_digest: WorkflowDigest,
-    level: DigestCheck,
-    action_abi_digests: &[(ActionId, WorkflowDigest, WorkflowDigest)],
-    policy_digests: &[(StepIdx, WorkflowDigest, WorkflowDigest)],
+    request: DigestVerificationRequest<'_>,
 ) -> RecoveryResult<()> {
-    if matches!(
-        level,
-        DigestCheck::WorkflowSourceOnly | DigestCheck::WorkflowAndIr | DigestCheck::Full
-    ) {
-        check_workflow_source_digest(journal, run, workflow_digest)?;
+    match request {
+        DigestVerificationRequest::WorkflowSourceOnly {
+            expected_workflow_digest,
+        } => check_workflow_source_digest(journal, run, expected_workflow_digest),
+        DigestVerificationRequest::WorkflowAndIr {
+            expected_workflow_digest,
+            expected_ir_digest,
+            found_ir_digest,
+        } => {
+            check_workflow_source_digest(journal, run, expected_workflow_digest)?;
+            check_compiled_ir_digest(expected_ir_digest, found_ir_digest)
+        }
+        DigestVerificationRequest::Full {
+            expected_workflow_digest,
+            expected_ir_digest,
+            found_ir_digest,
+            evidence,
+        } => {
+            check_workflow_source_digest(journal, run, expected_workflow_digest)?;
+            check_compiled_ir_digest(expected_ir_digest, found_ir_digest)?;
+            check_action_abi_comparisons(evidence.action_abi())?;
+            check_policy_comparisons(evidence.policy())
+        }
     }
-    if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
-        check_compiled_ir_digest(ir_digest, found_ir_digest)?;
+}
+
+fn check_action_abi_comparisons(entries: &[ActionAbiDigestComparison]) -> RecoveryResult<()> {
+    for entry in entries {
+        check_action_abi_digest(entry.action_id, entry.digest.expected, entry.digest.found)?;
     }
-    if matches!(level, DigestCheck::Full) {
-        check_action_abi_digests(action_abi_digests)?;
-        check_policy_digests(policy_digests)?;
+    Ok(())
+}
+
+fn check_policy_comparisons(entries: &[PolicyDigestComparison]) -> RecoveryResult<()> {
+    for entry in entries {
+        check_policy_digest(entry.step, entry.digest.expected, entry.digest.found)?;
     }
     Ok(())
 }

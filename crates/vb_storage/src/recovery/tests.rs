@@ -1,12 +1,14 @@
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
 use crate::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
-    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
-    check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
-    recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
-    recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+    ActionAbiDigestComparison, ActionReplayTracker, DigestVerificationRequest,
+    FullDigestEvidence, PolicyDigestComparison, RecoveredStepState, RecoveryError,
+    RecoveryHydration, RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
+    check_compiled_ir_digest, check_workflow_source_digest, extract_terminal, is_terminal_event,
+    recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
+    recover_runtime_summary, recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    verify_digests,
 };
 use crate::{
     DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RecordKind, RunHeaderRecord,
@@ -1731,12 +1733,12 @@ fn verify_digests_returns_ok_when_all_match() {
     verify_digests(
         &journal,
         run,
-        digest,
-        sample_digest(8),
-        sample_digest(8),
-        DigestCheck::Full,
-        &[],
-        &[],
+        DigestVerificationRequest::full(
+            digest,
+            sample_digest(8),
+            sample_digest(8),
+            FullDigestEvidence::no_contracts(),
+        ),
     )
     .expect("matching digests at Full level should succeed");
 }
@@ -1760,12 +1762,7 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
     let result = verify_digests(
         &journal,
         run,
-        digest,
-        sample_digest(8),
-        sample_digest(9),
-        DigestCheck::WorkflowAndIr,
-        &[],
-        &[],
+        DigestVerificationRequest::workflow_and_ir(digest, sample_digest(8), sample_digest(9)),
     );
     assert!(matches!(
         result,
@@ -1795,15 +1792,15 @@ fn verify_digests_full_rejects_mismatched_action_abi_digest() {
     let expected_action_abi = sample_digest(11);
     let mismatched_action_abi = sample_digest(12);
 
+    let action_evidence = [ActionAbiDigestComparison::new(
+        action,
+        expected_action_abi,
+        mismatched_action_abi,
+    )];
     let result = verify_digests(
         &journal,
         run,
-        source,
-        ir,
-        ir,
-        DigestCheck::Full,
-        &[(action, expected_action_abi, mismatched_action_abi)],
-        &[],
+        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::action_abi_only(&action_evidence)),
     );
 
     assert!(
@@ -1837,15 +1834,15 @@ fn verify_digests_full_rejects_mismatched_policy_digest() {
     let expected_policy = sample_digest(21);
     let mismatched_policy = sample_digest(22);
 
+    let policy_evidence = [PolicyDigestComparison::new(
+        step,
+        expected_policy,
+        mismatched_policy,
+    )];
     let result = verify_digests(
         &journal,
         run,
-        source,
-        ir,
-        ir,
-        DigestCheck::Full,
-        &[],
-        &[(step, expected_policy, mismatched_policy)],
+        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::policy_only(&policy_evidence)),
     );
 
     assert!(
@@ -1886,15 +1883,15 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
     assert_eq!(zero, zero, "sanity: zero digests are byte-equal");
 
     // Two mismatched non-zero digests must surface as ActionAbiMismatch.
+    let action_evidence = [ActionAbiDigestComparison::new(
+        action,
+        sample_digest(1),
+        sample_digest(2),
+    )];
     let result_action = verify_digests(
         &journal,
         run,
-        source,
-        ir,
-        ir,
-        DigestCheck::Full,
-        &[(action, sample_digest(1), sample_digest(2))],
-        &[],
+        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::action_abi_only(&action_evidence)),
     );
     assert!(
         matches!(result_action, Err(RecoveryError::ActionAbiMismatch { .. })),
@@ -1903,15 +1900,15 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
 
     // Two mismatched non-zero policy digests must surface as
     // PolicyDigestMismatch, not silently pass.
+    let policy_evidence = [PolicyDigestComparison::new(
+        step,
+        sample_digest(1),
+        sample_digest(2),
+    )];
     let result_policy = verify_digests(
         &journal,
         run,
-        source,
-        ir,
-        ir,
-        DigestCheck::Full,
-        &[],
-        &[(step, sample_digest(1), sample_digest(2))],
+        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::policy_only(&policy_evidence)),
     );
     assert!(
         matches!(

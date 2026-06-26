@@ -1076,6 +1076,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
+        symbolic: "ARTIFACT_POSTCARD_ENCODE_FAILED",
+        numeric: 0x4032,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
         symbolic: "JOURNAL_WRONG_RUN",
         numeric: 0x4008,
         category: CodeCategory::RuntimeBoundary,

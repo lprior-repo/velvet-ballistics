@@ -18,11 +18,11 @@ use vb_core::{
 };
 use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
-    recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
-    verify_digests,
+    ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry,
+    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, hydrate_run_frame,
+    hydrate_run_frame_from_events, recover_full_journal, recover_runtime_frame_seed,
+    recover_runtime_summary, recover_runtime_summary_with_expected, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -1611,10 +1611,7 @@ fn verify_digests_workflow_source_only_level_passes() {
     let result = verify_digests(
         &journal,
         run,
-        source_digest,
-        test_digest(0xFF),
-        test_digest(0xFE),
-        DigestCheck::WorkflowSourceOnly,
+        DigestVerificationRequest::workflow_source_only(source_digest),
     );
     assert!(
         result.is_ok(),
@@ -1647,10 +1644,11 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
     let result = verify_digests(
         &journal,
         run,
-        source_digest,
-        test_digest(0x24),
-        test_digest(0x25),
-        DigestCheck::WorkflowAndIr,
+        DigestVerificationRequest::workflow_and_ir(
+            source_digest,
+            test_digest(0x24),
+            test_digest(0x25),
+        ),
     );
     let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
         panic!("expected CompiledIrDigestMismatch, got: {result:?}");

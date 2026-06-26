@@ -32,8 +32,8 @@ pub enum JournalError {
     /// failure into the generic [`Self::ArtifactMalformed`] bucket (SA-015,
     /// vb-36fly). Carries the source error so operators can distinguish a
     /// serializer defect from a structural artifact defect.
-    #[error("artifact postcard serialize failed: {0}")]
-    PostcardDecodeError(#[source] postcard::Error),
+    #[error("artifact postcard encode failed: {0}")]
+    PostcardEncodeFailed(#[source] postcard::Error),
     /// Fixed-size key construction failed.
     #[error("journal key capacity exceeded")]
     KeyCapacity,

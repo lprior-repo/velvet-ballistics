@@ -20,6 +20,3 @@ mod handlers_suspend;
 mod signals;
 
 pub use dispatch::execute_node_full;
-
-#[cfg(test)]
-mod execute_tests;

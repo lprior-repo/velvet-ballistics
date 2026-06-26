@@ -5,6 +5,7 @@
 use super::*;
 use crate::primitives::collect::CollectStates;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};

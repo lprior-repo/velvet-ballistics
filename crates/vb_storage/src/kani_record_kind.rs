@@ -174,15 +174,16 @@ fn check_kind_28_blob_family_rejected() {
     );
 }
 
-/// PO-KANI-004-H6: Unknown kind 32 must be rejected (boundary check; 31 is now WaitResolved).
+/// PO-KANI-004-H6: Unknown kind 33 must be rejected.
+/// Kind 32 is now ActionAbandoned.
 #[kani::proof]
 fn check_unknown_kind_rejected() {
-    let kind: u16 = 32;
+    let kind: u16 = 33;
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
     kani::assert(
         result.is_err(),
-        "unknown kind 32 must be rejected by validate_kind_family",
+        "unknown kind 33 must be rejected by validate_kind_family",
     );
 }
 
@@ -213,21 +214,54 @@ fn check_wait_resolved_kind_id() {
     kani::assert(id == 31, "WaitResolved wire kind must remain 31");
 }
 
-/// PO-KANI-004-H7: All existing known kinds (1,2,3,10-29,30,31,40,50) remain known.
+/// PO-KANI-004-H6e: Kind 32 (ActionAbandoned) must now be admitted for
+/// MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_32_journal_family() {
+    let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
+    let kind: u16 = 32;
+    let result = crate::codec::validation::validate_kind_family(magic, kind);
+    kani::assert(
+        result.is_ok(),
+        "kind 32 (ActionAbandoned) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
+/// PO-KANI-004-H6f: is_known_record_kind(32) must return true.
+#[kani::proof]
+fn check_kind_32_known() {
+    let kind: u16 = 32;
+    let result = crate::codec::validation::is_known_record_kind(kind);
+    kani::assert(
+        result,
+        "kind 32 (ActionAbandoned) must be a known record kind",
+    );
+}
+
+/// PO-KANI-004-H6g: RecordKind::ActionAbandoned.id() returns the stable wire
+/// kind 32.
+#[kani::proof]
+fn check_action_abandoned_kind_id() {
+    let id = crate::RecordKind::ActionAbandoned.id();
+    kani::assert(id == 32, "ActionAbandoned wire kind must remain 32");
+}
+
+/// PO-KANI-004-H7: All existing known kinds remain known.
 #[kani::proof]
 fn check_all_existing_kinds_known() {
-    let known_kinds: [u16; 27] = [
+    let known_kinds: [u16; 28] = [
         1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-        30, 31, 40, 50,
+        30, 31, 32, 40, 50,
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
-        assert!(result, "kind {} must remain a known record kind", kind);
+        kani::assert(result, "known kind must remain a known record kind");
     }
 }
 
 /// PO-KANI-004-H8: Exhaustive: for any arbitrary u16 kind value,
-/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=29 | 31.
+/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds
+/// 10..=29 | 31 | 32.
 #[kani::proof]
 #[kani::unwind(3)]
 fn check_journal_family_exhaustive() {
@@ -235,22 +269,21 @@ fn check_journal_family_exhaustive() {
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
 
-    // Expected valid set: 10..=29 or 31 (WaitResolved).
-    let is_valid_journal_kind = (10u16..=29u16).contains(&kind) || kind == 31u16;
+    // Expected valid set: 10..=29, 31 (WaitResolved), or 32 (ActionAbandoned).
+    let is_valid_journal_kind =
+        (kind >= 10u16 && kind <= 29u16) || kind == 31u16 || kind == 32u16;
 
     match result {
         Ok(()) => {
-            assert!(
+            kani::assert(
                 is_valid_journal_kind,
-                "kind {} returned Ok but is not in valid journal set 10..=29 | 31",
-                kind
+                "Ok journal kind must be in valid set 10..=29 | 31 | 32",
             );
         }
         Err(_) => {
-            assert!(
+            kani::assert(
                 !is_valid_journal_kind,
-                "kind {} returned Err but is in valid journal set 10..=29 | 31",
-                kind
+                "Err journal kind must not be in valid set 10..=29 | 31 | 32",
             );
         }
     }

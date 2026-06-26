@@ -7681,10 +7681,13 @@ mod tests {
                 JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",
                 JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
                 JournalError::UnexpectedEof => "unexpected_eof",
-                JournalError::PostcardDecodeFailed => "postcard_decode_failed",
-                JournalError::PostcardDecodeError(_) => "postcard_decode_error",
+                JournalError::PostcardDecodeFailed(_) => "postcard_decode_failed",
+                JournalError::PostcardEncodeFailed(_) => "postcard_encode_failed",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",
+                JournalError::WorkflowReconstruction(_) => "workflow_reconstruction",
+                JournalError::CompiledIrReadback(_) => "compiled_ir_readback",
+                JournalError::AdmissionAllocationFailed(_) => "admission_allocation_failed",
                 JournalError::ArtifactChecksumMismatch => "artifact_checksum_mismatch",
                 JournalError::InvalidGateCount { .. } => "invalid_gate_count",
                 JournalError::MissingRequiredProofFlag { .. } => "missing_required_proof_flag",
@@ -7709,7 +7712,8 @@ mod tests {
                 JournalError::Trim(_) => "trim",
                 JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
                 JournalError::MalformedKeyspaceRow { .. } => "malformed_keyspace_row",
-                JournalError::DuplicateStagedKey { .. } => "duplicate_staged_key",
+                JournalError::BatchAborted => "batch_aborted",
+                JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
             }
         }
         let _ = _exhaustive_match;

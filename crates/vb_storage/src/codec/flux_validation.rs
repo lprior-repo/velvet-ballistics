@@ -7,10 +7,12 @@
 extern crate flux_rs;
 use flux_rs::attrs::*;
 
-/// Trusted model for known storage record kinds, including journal kinds 10..=29 and WaitResolved=31.
+/// Trusted model for known storage record kinds, including journal kinds
+/// 10..=29, WaitResolved=31, and ActionAbandoned=32.
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
-    kind == 1 || kind == 2 || kind == 3 || kind == 30 || kind == 31 || kind == 40 || kind == 50 ||
+    kind == 1 || kind == 2 || kind == 3 || kind == 30 || kind == 31 || kind == 32 ||
+    kind == 40 || kind == 50 ||
     (kind >= 10 && kind <= 29)
 }])]
 fn model_is_known_record_kind(kind: u16) -> bool {
@@ -24,10 +26,12 @@ fn model_validate_kind_family(magic: u32, kind: u16) -> Result<(), crate::Journa
     crate::codec::validation::validate_kind_family(magic, kind)
 }
 
-/// Journal magic admits journal kinds 10..=29 plus WaitResolved=31.
+/// Journal magic admits journal kinds 10..=29 plus WaitResolved=31 and
+/// ActionAbandoned=32.
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
-    ((kind >= 10 && kind <= 29) || kind == 31) == model_validate_kind_family_ok(kind)
+    ((kind >= 10 && kind <= 29) || kind == 31 || kind == 32) ==
+        model_validate_kind_family_ok(kind)
 }])]
 fn model_journal_kind_valid(kind: u16) -> bool {
     let result =
@@ -207,8 +211,19 @@ mod flux_validation_tests {
     }
 
     #[test]
+    fn kind_32_valid_for_journal_family() {
+        let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 32);
+        assert!(result.is_ok(), "kind 32 must be admitted: {:?}", result);
+    }
+
+    #[test]
     fn kind_31_is_known_record_kind() {
         assert!(model_is_known_record_kind(31));
+    }
+
+    #[test]
+    fn kind_32_is_known_record_kind() {
+        assert!(model_is_known_record_kind(32));
     }
 
     #[test]

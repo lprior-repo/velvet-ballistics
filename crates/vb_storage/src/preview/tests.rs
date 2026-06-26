@@ -2,9 +2,9 @@
 #[cfg(test)]
 mod tests {
     use crate::JournalError;
-    use crate::keys::{KeyspaceScanPolicy, run_header_key};
+    use crate::keys::KeyspaceScanPolicy;
     use crate::preview::preview_keyspace;
-    use crate::types::{PreviewConfig, StorageKey};
+    use crate::types::PreviewConfig;
     #[test]
     fn empty_entries_produces_empty_preview() {
         let config = PreviewConfig::new(10, 1024).unwrap();

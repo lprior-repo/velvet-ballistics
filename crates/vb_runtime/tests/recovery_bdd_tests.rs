@@ -11,11 +11,12 @@ use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    RunSnapshot, check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
-    check_workflow_source_digest, hydrate_run_frame, hydrate_run_frame_from_events,
-    recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
+    ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry,
+    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, check_action_abi_digests,
+    check_compiled_ir_digest, check_policy_digests, check_workflow_source_digest,
+    hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
+    recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -1620,10 +1621,11 @@ fn verify_digests_returns_ok_when_all_match() {
     let result = verify_digests(
         &journal,
         run,
-        source_digest,
-        ir_digest,
-        ir_digest, // found_ir_digest = ir_digest (distinct from source_digest)
-        DigestCheck::WorkflowAndIr,
+        DigestVerificationRequest::workflow_and_ir(
+            source_digest,
+            ir_digest,
+            ir_digest, // found_ir_digest = ir_digest (distinct from source_digest)
+        ),
     );
     assert!(
         result.is_ok(),
@@ -1654,10 +1656,11 @@ fn verify_digests_returns_workflow_mismatch_error() {
     let result = verify_digests(
         &journal,
         run,
-        wrong_digest, // expected source digest
-        test_digest(0xBB),
-        stored_digest,
-        DigestCheck::WorkflowAndIr,
+        DigestVerificationRequest::workflow_and_ir(
+            wrong_digest, // expected source digest
+            test_digest(0xBB),
+            stored_digest,
+        ),
     );
 
     let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
@@ -1886,10 +1889,11 @@ fn verify_digests_detects_ir_digest_mismatch() {
     let result = verify_digests(
         &journal,
         run,
-        source_digest,
-        ir_digest,
-        wrong_ir_digest, // found != expected
-        DigestCheck::WorkflowAndIr,
+        DigestVerificationRequest::workflow_and_ir(
+            source_digest,
+            ir_digest,
+            wrong_ir_digest, // found != expected
+        ),
     );
 
     let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
@@ -2794,8 +2798,6 @@ fn verify_digests_at_workflow_source_only_level() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(9025);
     let source_digest = test_digest(0xA1);
-    let ir_digest = test_digest(0xB2);
-
     {
         let journal = open_journal(&dir);
         write_events_strict(
@@ -2812,10 +2814,7 @@ fn verify_digests_at_workflow_source_only_level() {
     let result = verify_digests(
         &journal,
         run,
-        source_digest,
-        ir_digest,
-        ir_digest,
-        DigestCheck::WorkflowSourceOnly,
+        DigestVerificationRequest::workflow_source_only(source_digest),
     );
     assert!(
         result.is_ok(),

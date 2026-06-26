@@ -21,8 +21,10 @@ pub(crate) mod transitions;
 
 pub use loop_step::{drive_deterministic_full, drive_with_actions};
 
+#[cfg(test)]
 #[doc(hidden)]
 pub(crate) use actions::{compute_max_parallel_in_flight, emit_slot_evidence};
+#[cfg(test)]
 #[doc(hidden)]
 pub(crate) use recovery::DriveState;
 

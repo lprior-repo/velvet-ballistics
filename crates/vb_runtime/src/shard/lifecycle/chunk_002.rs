@@ -182,8 +182,8 @@ impl Shard {
         for ticket in &tickets {
             self.append_journal_event(RuntimeJournalEvent::ActionAbandoned { ticket: *ticket })?;
         }
-        for ticket in &tickets {
-            let _ = self.pending_action_remove(run);
+        for _ in &tickets {
+            let _removed_ticket = self.pending_action_remove(run);
         }
         Ok(())
     }

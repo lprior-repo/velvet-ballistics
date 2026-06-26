@@ -520,10 +520,11 @@ fn verify_digests_detects_compiled_ir_mismatch() {
     let result = vb_storage::recovery::verify_digests(
         &journal,
         run,
-        workflow,
-        ir_digest,
-        wrong_ir,
-        vb_storage::recovery::DigestCheck::WorkflowAndIr,
+        vb_storage::recovery::DigestVerificationRequest::workflow_and_ir(
+            workflow,
+            ir_digest,
+            wrong_ir,
+        ),
     );
     assert!(
         matches!(

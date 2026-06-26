@@ -184,13 +184,14 @@ fn next_seq_max_minus_one_returns_max() {
 }
 
 // =============================================================================
-// B60: journal-specific kind admission does not open unknown kind 31
+// B60: journal-specific kind admission does not open unknown adjacent kinds
 // =============================================================================
 
-/// Confirms that WaitResolved (kind 31) is admitted for the journal magic
-/// while genuinely unknown kinds (e.g. 32, 9) remain rejected.
+/// Confirms that WaitResolved (kind 31) and ActionAbandoned (kind 32) are
+/// admitted for the journal magic while genuinely unknown adjacent kinds remain
+/// rejected.
 #[test]
-fn kind_28_29_31_admission_for_journal_magic() {
+fn kind_28_29_31_32_admission_for_journal_magic() {
     assert!(is_known_record_kind(28), "kind 28 must be known");
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 28).is_ok(),
@@ -210,14 +211,24 @@ fn kind_28_29_31_admission_for_journal_magic() {
         validate_kind_family(MAGIC_JOURNAL_EVENT, 31).is_ok(),
         "kind 31 (WaitResolved) must be admitted for journal magic"
     );
+    // ActionAbandoned (32) is the dedicated journal kind for killed/cancelled
+    // in-flight action tickets.
+    assert!(
+        is_known_record_kind(32),
+        "kind 32 (ActionAbandoned) must be known"
+    );
+    assert!(
+        validate_kind_family(MAGIC_JOURNAL_EVENT, 32).is_ok(),
+        "kind 32 (ActionAbandoned) must be admitted for journal magic"
+    );
     // Kinds outside the journal range remain rejected.
-    assert!(!is_known_record_kind(32), "kind 32 must remain unknown");
+    assert!(!is_known_record_kind(33), "kind 33 must remain unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 32),
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 33),
             Err(JournalError::RecordKindFamilyMismatch { .. })
         ),
-        "kind 32 must be rejected for journal magic"
+        "kind 33 must be rejected for journal magic"
     );
 }
 

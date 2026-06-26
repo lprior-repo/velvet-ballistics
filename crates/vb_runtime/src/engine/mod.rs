@@ -14,6 +14,8 @@
 pub mod action;
 pub mod drive;
 pub mod execute;
+#[cfg(test)]
+mod execute_tests;
 pub mod helpers;
 #[cfg(test)]
 pub mod property_tests;

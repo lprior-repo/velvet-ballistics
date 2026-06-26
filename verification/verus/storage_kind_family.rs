@@ -11,7 +11,7 @@
 // Production Binding:
 //   - is_known_record_kind in crates/vb_storage/src/codec/validation.rs:23
 //   - validate_kind_family in crates/vb_storage/src/codec/validation.rs:42
-//   - RecordKind::RunKilled in crates/vb_storage/src/records.rs:171
+//   - RecordKind::RunKilled/WaitResolved/ActionAbandoned in crates/vb_storage/src/records.rs
 //   - validate_replay_sequence in crates/vb_storage/src/journal/replay.rs
 //
 // GOD RULE 2: Verus specs bind to actual Rust implementation behavior.
@@ -41,7 +41,11 @@ pub open spec fn MAGIC_INDEX_RECORD() -> u32 { 0x5642_4958u32 }
 
 // Known record kind identifiers (matches RecordKind enum in records.rs)
 pub open spec fn KNOWN_JOURNAL_KINDS() -> Set<int> {
-    set![10int, 11int, 12int, 13int, 14int, 15int, 16int, 17int, 18int, 19int, 20int, 21int, 22int, 23int, 24int, 25int, 26int, 27int, 28int, 29int]
+    set![
+        10int, 11int, 12int, 13int, 14int, 15int, 16int, 17int, 18int,
+        19int, 20int, 21int, 22int, 23int, 24int, 25int, 26int, 27int,
+        28int, 29int, 31int, 32int,
+    ]
 }
 
 pub open spec fn KNOWN_NON_JOURNAL_KINDS() -> Set<int> {
@@ -63,7 +67,8 @@ pub open spec fn spec_is_known_record_kind(kind: int) -> bool {
 }
 
 /// Proof: Kind 28 (RunKilled) is a known record kind.
-/// Proved directly: 28 is in the journal kinds set (10..=29) which is a subset of ALL_KNOWN_KINDS.
+/// Proved directly: 28 is in the journal kinds set (10..=29) which is a
+/// subset of ALL_KNOWN_KINDS.
 pub proof fn lemma_kind_28_is_known()
     ensures
         spec_is_known_record_kind(28),
@@ -73,7 +78,7 @@ pub proof fn lemma_kind_28_is_known()
     assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
 }
 
-/// Proof: All journal event kinds (10..=29) are known.
+/// Proof: All base journal event kinds (10..=29) are known.
 pub proof fn lemma_all_journal_kinds_known()
     ensures
         forall |k: int| 10 <= k <= 29 ==> spec_is_known_record_kind(k),
@@ -84,14 +89,31 @@ pub proof fn lemma_all_journal_kinds_known()
     assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
 }
 
-/// Proof: Kind 31 is NOT a known record kind (boundary check).
-pub proof fn lemma_kind_31_is_unknown()
+/// Proof: Kind 31 (WaitResolved) is a known record kind.
+pub proof fn lemma_kind_31_is_known()
     ensures
-        !spec_is_known_record_kind(31),
+        spec_is_known_record_kind(31),
 {
-    // 31 is not in any known set
-    assert(!KNOWN_JOURNAL_KINDS().contains(31));
-    assert(!KNOWN_NON_JOURNAL_KINDS().contains(31));
+    assert(KNOWN_JOURNAL_KINDS().contains(31));
+    assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
+}
+
+/// Proof: Kind 32 (ActionAbandoned) is a known record kind.
+pub proof fn lemma_kind_32_is_known()
+    ensures
+        spec_is_known_record_kind(32),
+{
+    assert(KNOWN_JOURNAL_KINDS().contains(32));
+    assert(KNOWN_JOURNAL_KINDS().subset_of(ALL_KNOWN_KINDS()));
+}
+
+/// Proof: Kind 33 is NOT a known record kind (boundary check).
+pub proof fn lemma_kind_33_is_unknown()
+    ensures
+        !spec_is_known_record_kind(33),
+{
+    assert(!KNOWN_JOURNAL_KINDS().contains(33));
+    assert(!KNOWN_NON_JOURNAL_KINDS().contains(33));
 }
 
 /// Proof: Kind 0 is NOT a known record kind.
@@ -116,7 +138,9 @@ pub enum SpecKindFamilyResult {
 /// Returns Ok when the (magic, kind) pair is a valid family combination.
 pub open spec fn spec_validate_kind_family(magic: u32, kind: int) -> SpecKindFamilyResult {
     let valid = match magic {
-        m if m == MAGIC_JOURNAL_EVENT() => 10 <= kind <= 29,
+        m if m == MAGIC_JOURNAL_EVENT() => {
+            (10 <= kind <= 29) || kind == 31 || kind == 32
+        },
         m if m == MAGIC_SNAPSHOT() => kind == 30,
         m if m == MAGIC_BLOB() => kind == 40,
         m if m == MAGIC_WORKFLOW_SOURCE() => kind == 1,
@@ -141,6 +165,22 @@ pub proof fn lemma_kind_29_journal_family_ok()
         spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 29) == SpecKindFamilyResult::Ok,
 {
     assert(10 <= 29 <= 29);
+}
+
+/// Proof: validate_kind_family(MAGIC_JOURNAL_EVENT, 31) returns Ok.
+pub proof fn lemma_kind_31_journal_family_ok()
+    ensures
+        spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 31) == SpecKindFamilyResult::Ok,
+{
+    assert(31 == 31);
+}
+
+/// Proof: validate_kind_family(MAGIC_JOURNAL_EVENT, 32) returns Ok.
+pub proof fn lemma_kind_32_journal_family_ok()
+    ensures
+        spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 32) == SpecKindFamilyResult::Ok,
+{
+    assert(32 == 32);
 }
 
 /// Proof: validate_kind_family(MAGIC_SNAPSHOT, 28) returns Err.
@@ -185,8 +225,10 @@ pub proof fn lemma_kind_28_wrong_magic_err()
 /// Proof function binding the Verus spec model to the production Rust
 /// is_known_record_kind() function in crates/vb_storage/src/codec/validation.rs:23.
 ///
-/// The production function uses `matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)`.
-/// This includes RunKilled(28) and AskTimedOut(29).
+/// The production function uses
+/// `matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 32 | 40 | 50)`.
+/// This includes RunKilled(28), AskTimedOut(29), WaitResolved(31), and
+/// ActionAbandoned(32).
 pub proof fn lemma_production_binding_is_known_record_kind_28()
     ensures
         spec_is_known_record_kind(28) == true,
@@ -195,7 +237,8 @@ pub proof fn lemma_production_binding_is_known_record_kind_28()
 }
 
 /// Production binding for validate_kind_family at validation.rs:42.
-/// The current production line 46 uses `matches!(kind, 10..=29)`.
+/// The current production line 46 uses `matches!(kind, 10..=29) ||
+/// kind == WaitResolved || kind == ActionAbandoned`.
 pub proof fn lemma_production_binding_validate_kind_family_28()
     ensures
         spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), 28) == SpecKindFamilyResult::Ok,
@@ -232,6 +275,8 @@ pub enum SpecJournalEventKind {
     RunRetried,
     RunAnswered,
     AskTimedOut,
+    WaitResolved,
+    ActionAbandoned,
 }
 
 /// Model of JournalEvent::record_kind().id() from events.rs:347-374.
@@ -259,6 +304,8 @@ pub open spec fn spec_event_record_kind(event: SpecJournalEventKind) -> int {
         SpecJournalEventKind::RunRetried => 26,
         SpecJournalEventKind::RunAnswered => 27,
         SpecJournalEventKind::AskTimedOut => 29,
+        SpecJournalEventKind::WaitResolved => 31,
+        SpecJournalEventKind::ActionAbandoned => 32,
     }
 }
 
@@ -273,6 +320,24 @@ pub proof fn lemma_ask_timed_out_payload_kind_is_29()
         spec_event_record_kind(SpecJournalEventKind::AskTimedOut) == 29,
         spec_payload_kind_matches(29, SpecJournalEventKind::AskTimedOut),
         !spec_payload_kind_matches(18, SpecJournalEventKind::AskTimedOut),
+{
+}
+
+/// Proof: WaitResolved payload maps exactly to durable record kind 31.
+pub proof fn lemma_wait_resolved_payload_kind_is_31()
+    ensures
+        spec_event_record_kind(SpecJournalEventKind::WaitResolved) == 31,
+        spec_payload_kind_matches(31, SpecJournalEventKind::WaitResolved),
+        !spec_payload_kind_matches(19, SpecJournalEventKind::WaitResolved),
+{
+}
+
+/// Proof: ActionAbandoned payload maps exactly to durable record kind 32.
+pub proof fn lemma_action_abandoned_payload_kind_is_32()
+    ensures
+        spec_event_record_kind(SpecJournalEventKind::ActionAbandoned) == 32,
+        spec_payload_kind_matches(32, SpecJournalEventKind::ActionAbandoned),
+        !spec_payload_kind_matches(15, SpecJournalEventKind::ActionAbandoned),
 {
 }
 
@@ -295,6 +360,18 @@ pub proof fn lemma_production_binding_ask_timed_out_payload_parity()
         !spec_payload_kind_matches(18, SpecJournalEventKind::AskTimedOut),
 {
     lemma_ask_timed_out_payload_kind_is_29();
+}
+
+/// Production binding for WaitResolved and ActionAbandoned extension kinds.
+pub proof fn lemma_production_binding_extension_payload_parity()
+    ensures
+        spec_payload_kind_matches(31, SpecJournalEventKind::WaitResolved),
+        spec_payload_kind_matches(32, SpecJournalEventKind::ActionAbandoned),
+        !spec_payload_kind_matches(19, SpecJournalEventKind::WaitResolved),
+        !spec_payload_kind_matches(15, SpecJournalEventKind::ActionAbandoned),
+{
+    lemma_wait_resolved_payload_kind_is_31();
+    lemma_action_abandoned_payload_kind_is_32();
 }
 
 // ─────────────────────────────────────────────────────────────────
