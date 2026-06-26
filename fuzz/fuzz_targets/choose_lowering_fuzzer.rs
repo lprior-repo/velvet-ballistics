@@ -35,6 +35,12 @@ fn fuzz_choose_lowering(
     // Limit branch_count to avoid OOM
     let count = if branch_count > 128 { 128 } else { branch_count } as usize;
 
+    // Empty conditions or targets would trigger RemByZero panics in the modulo.
+    // Lowering empty branches is a degenerate case; skip it instead of crashing.
+    if conditions.is_empty() || targets.is_empty() {
+        return;
+    }
+
     // Build branches from fuzzer data
     let branches: Vec<SlotBranch> = (0..count)
         .map(|i| {

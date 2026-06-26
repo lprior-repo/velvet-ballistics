@@ -74,6 +74,7 @@ crates/workspace_tests/nonexistent-db/
 # Binary files and corpora
 *.bin
 fuzz/corpus/
+fuzz/artifacts/
 
 # Large test artifacts
 test_string
