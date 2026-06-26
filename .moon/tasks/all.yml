@@ -393,10 +393,10 @@ tasks:
       # Geiger execution is fail-closed. First-party unsafe is also forbidden by
       # workspace lints and the unsafe-audit task; transitive unsafe remains
       # visible here and governed by vet/deny.
-      for package in vb_compile vb_core vb_expr vb_ipc vb_queue_semantics vb_runtime vb_storage vb_validate vb_yaml velvet-ballistics velvet-ballistics-workspace-tests; do
+       for package in vb_compile vb_core vb_expr vb_ipc vb_queue_semantics vb_runtime vb_storage vb_validate velvet-ballistics velvet-ballistics-workspace-tests; do
         run_geiger "$package"
       done
-      run_logged target/supply-chain/machete.log timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_cli crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_queue_semantics crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/workspace_tests
+      run_logged target/supply-chain/machete.log timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_cli crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_queue_semantics crates/vb_runtime crates/vb_storage crates/vb_validate crates/workspace_tests
       # SKIPPED: first-party crates are not published to crates.io so semver-checks cannot run
       # run_logged target/supply-chain/semver.log timeout 5m rustup run nightly-2026-04-28 cargo semver-checks check-release
       # SKIPPED: requires published crate for diff baseline
@@ -536,7 +536,6 @@ tasks:
       - 'fuzz/fuzz_targets/**/*'
       - 'fuzz/src/**/*'
       - 'crates/vb_core/**/*'
-      - 'crates/vb_yaml/**/*'
       - 'crates/vb_expr/**/*'
       - 'crates/vb_compile/**/*'
       - 'crates/vb_ipc/**/*'
@@ -733,7 +732,7 @@ tasks:
     toolchains:
       - rust
     inputs:
-      - 'crates/vb_proof_kernels/src/step_state.rs'
+      - 'crates/vb_core/src/proof_kernels/step_state.rs'
     outputs:
       - 'scripts/check-stepstate-matrix.sh'
     options:

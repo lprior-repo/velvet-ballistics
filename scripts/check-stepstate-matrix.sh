@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/crates/vb_proof_kernels/src/step_state.rs"
+SRC="$ROOT/crates/vb_core/src/proof_kernels/step_state.rs"
 
 if [[ ! -f "$SRC" ]]; then
   echo "ERROR: $SRC not found" >&2
