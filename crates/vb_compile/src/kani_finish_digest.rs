@@ -23,11 +23,11 @@
 //!
 //! ```ignore
 //! // Production code (part_05.rs:150-156):
-//! vb_yaml::ast::StepPrimitive::Finish { result } => {
+//! crate::ast::StepPrimitive::Finish { result } => {
 //!     hasher.update(b"finish");
 //!     match result {
-//!         vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
-//!         vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+//!         crate::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+//!         crate::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
 //!         _ => hasher.update(b"unsupported"),
 //!     };
 //! }
@@ -65,7 +65,7 @@
 //! cargo kani -p vb_compile --harness finish_scalarvalue_variant_discrimination --unwind 32
 //! ```
 
-use vb_yaml::ast::ScalarValue;
+use crate::ast::ScalarValue;
 
 // =========================================================================
 // Constants

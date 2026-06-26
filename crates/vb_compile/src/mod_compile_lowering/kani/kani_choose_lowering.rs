@@ -18,7 +18,7 @@ use crate::mod_compile_lowering::{
     SlotCompiler, lower_canonical_choose, lower_choose, validate_branch_route,
 };
 use vb_core::{CompiledNodeKind, SlotBranch, SlotIdx, StepIdx, WorkflowError};
-use vb_yaml::ast::ChooseBranch;
+use crate::ChooseBranch;
 
 // =========================================================================
 // Bounded input generators

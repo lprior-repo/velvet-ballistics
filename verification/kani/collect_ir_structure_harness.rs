@@ -19,7 +19,7 @@
 use vb_compile::mod_compile_lowering::part_03::lower_canonical_collect;
 use vb_compile::compile::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use vb_compile::{StepAst, StepPrimitive};
 
 /// PO-013 H1: lower_canonical_collect emits exactly 4 nodes with correct IDs.
 /// Tests with a valid single-Set body.

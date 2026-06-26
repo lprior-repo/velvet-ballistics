@@ -40,8 +40,7 @@ vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
-vb_yaml = { path = "../crates/vb_yaml" }
-vb_compile = { path = "../crates/vb_compile" }
+vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
 vb_ipc = { path = "../crates/vb_ipc" }
 # vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
 # vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }  # MISSING

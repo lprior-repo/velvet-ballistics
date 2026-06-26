@@ -15,7 +15,7 @@
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
     let steps = vec![StepAst {

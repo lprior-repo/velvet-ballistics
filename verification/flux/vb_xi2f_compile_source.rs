@@ -16,7 +16,7 @@
 
 use vb_compile::{CompileErrors, compile_source};
 use vb_core::CompiledWorkflow;
-use vb_yaml::ast::WorkflowSource;
+use vb_compile::WorkflowSource;
 
 // ─────────────────────────────────────────────────────────────────
 // Flux: Refined type aliases

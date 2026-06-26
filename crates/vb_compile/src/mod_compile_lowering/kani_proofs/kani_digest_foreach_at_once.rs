@@ -5,7 +5,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 fn fixed_string<const N: usize>() -> String {
     let bytes: [u8; N] = kani::any();

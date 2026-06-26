@@ -13,8 +13,8 @@
 
 use super::*;
 use vb_core::WorkflowDigest;
-use vb_yaml::ast::{ScalarValue, StepPrimitive};
-use vb_yaml::parse_workflow_source;
+use crate::ast::{ScalarValue, StepPrimitive};
+use crate::parse_workflow_source;
 
 // ── Helpers ────────────────────────────────────────────────────────
 

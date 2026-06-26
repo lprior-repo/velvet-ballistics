@@ -20,7 +20,7 @@
 use vb_compile::mod_compile_lowering::part_04::emit_single_body_set;
 use vb_compile::compile::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use vb_compile::{StepAst, StepPrimitive};
 
 /// PO-010 H1: All non-Set StepPrimitive variants return UnsupportedStepPrimitive, not panic.
 /// Uses kani::any() to generate a non-Set step.

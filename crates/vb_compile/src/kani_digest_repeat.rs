@@ -27,7 +27,7 @@
 //! coverage of the same Repeat digest properties.
 
 use crate::mod_compile_lowering::digest_step_primitive;
-use vb_yaml::ast::{ScalarValue, StepAst, StepPrimitive};
+use crate::ast::{ScalarValue, StepAst, StepPrimitive};
 
 // =========================================================================
 // Kani-friendly arbitrary string helpers

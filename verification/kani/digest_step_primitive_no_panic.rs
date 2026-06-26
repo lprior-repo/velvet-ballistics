@@ -16,7 +16,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::mod_compile_lowering::part_05::{canonical_digest, digest_step_primitive};
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
 
 /// Maximum prompt length for bounded panic-freedom checking.
 const MAX_PROMPT_LEN: usize = 256;

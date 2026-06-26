@@ -25,6 +25,17 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
+// YAML parsing layer (moved from vb_yaml)
+pub mod yaml_ast;
+pub mod yaml_events;
+pub mod yaml_profile;
+pub mod yaml_source_map;
+pub mod yaml_error;
+pub mod yaml_limits;
+
+#[cfg(kani)]
+pub mod yaml_kani;
+
 // Proptest properties for Finish digest verification (vb-xi2f.34).
 #[cfg(test)]
 mod proptest_finish_digest;
@@ -117,3 +128,39 @@ pub(crate) use validation::validate_public_name;
 // downstream consumers of this crate can optionally use the standalone
 // validator's error domain without depending on `vb_validate` directly.
 pub use vb_validate::{ValidationError, ValidationResult};
+
+// Re-export YAML parsing layer (formerly vb_yaml)
+pub use yaml_error::YamlError;
+pub use yaml_error::YamlResult;
+
+pub use yaml_events::{collect_events, convert_event, EventSpan, ScalarStyle, YamlEvent};
+pub use yaml_profile::{
+    reject_anchors_aliases_merges, reject_duplicate_keys, reject_forbidden_features,
+    reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
+};
+pub use yaml_source_map::{build_semantic_source_map, build_source_map, span_for_node, SourceMap, SourceSpan, SemanticSourceMap};
+pub use yaml_ast::types::{
+    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst, InputField, ResultMapping,
+    RetryPolicy, ScalarValue, SecretField, StepAst, StepPrimitive, TogetherBranch, TriggerAst,
+    VarField, WorkflowSource,
+};
+#[cfg(any(test, feature = "test-util"))]
+pub use yaml_ast::types::WorkflowSourceParts;
+
+pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
+    yaml_profile::validate_yaml_profile(text)?;
+    yaml_events::collect_events(text)
+}
+
+pub fn parse_workflow_source(text: &str) -> YamlResult<yaml_ast::WorkflowSource> {
+    yaml_profile::validate_yaml_profile(text)?;
+    yaml_ast::parse_workflow_ast(text)
+}
+
+pub fn load_fixture_source(text: &str) -> YamlResult<yaml_ast::WorkflowSource> {
+    parse_workflow_source(text)
+}
+
+pub fn reject_forbidden_yaml_features(events: &[YamlEvent]) -> YamlResult<()> {
+    yaml_profile::reject_forbidden_features(events)
+}

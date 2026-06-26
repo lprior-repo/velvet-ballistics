@@ -47,7 +47,7 @@ fn lower_canonical_choose_otherwise_resolution() {
     };
 
     // Empty branches with a valid next step to satisfy empty_fallback
-    let branches: Vec<vb_yaml::ast::ChooseBranch> = vec![];
+    let branches: Vec<crate::ChooseBranch> = vec![];
     let mut builder = SlotCompiler::new();
 
     let result = lower_canonical_choose(

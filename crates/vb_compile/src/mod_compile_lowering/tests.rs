@@ -25,7 +25,7 @@
 //! idempotence, and determinism for `StepPrimitive::Aggregate` (reduce).
 
 use blake3::Hasher;
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 use crate::compute_compiled_digest;
 use crate::mod_compile_lowering::part_05::digest_step_primitive;
@@ -737,12 +737,12 @@ use crate::mod_compile_lowering::part_02::lower_canonical_choose;
 use crate::mod_compile_lowering::part_05::slot_from_text;
 use crate::mod_compile_lowering::part_06::lower_choose;
 
-fn choose_body_set_step(id: &str, value: &str) -> vb_yaml::ast::StepAst {
-    vb_yaml::ast::StepAst {
+fn choose_body_set_step(id: &str, value: &str) -> crate::StepAst {
+    crate::StepAst {
         id: id.to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::Set {
+        primitive: crate::StepPrimitive::Set {
             output: id.to_string(),
             value: value.to_string(),
         },
@@ -754,12 +754,12 @@ fn choose_body_set_step(id: &str, value: &str) -> vb_yaml::ast::StepAst {
 }
 
 #[allow(dead_code)]
-fn choose_body_do_step(id: &str, action: &str, input: &str) -> vb_yaml::ast::StepAst {
-    vb_yaml::ast::StepAst {
+fn choose_body_do_step(id: &str, action: &str, input: &str) -> crate::StepAst {
+    crate::StepAst {
         id: id.to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::Do {
+        primitive: crate::StepPrimitive::Do {
             action: action.to_string(),
             input: input.to_string(),
         },
@@ -773,11 +773,11 @@ fn choose_body_do_step(id: &str, action: &str, input: &str) -> vb_yaml::ast::Ste
 #[test]
 fn choose_width_counts_branch_body_steps() {
     let branches = vec![
-        vb_yaml::ast::ChooseBranch {
+        crate::ChooseBranch {
             when: "0".to_string(),
             steps: vec![choose_body_set_step("body_a", "1")],
         },
-        vb_yaml::ast::ChooseBranch {
+        crate::ChooseBranch {
             when: "1".to_string(),
             steps: vec![
                 choose_body_set_step("body_b", "2"),
@@ -791,8 +791,8 @@ fn choose_width_counts_branch_body_steps() {
 
 #[test]
 fn choose_width_64_empty_branches_returns_1() {
-    let branches: Vec<vb_yaml::ast::ChooseBranch> = (0..64)
-        .map(|i| vb_yaml::ast::ChooseBranch {
+    let branches: Vec<crate::ChooseBranch> = (0..64)
+        .map(|i| crate::ChooseBranch {
             when: i.to_string(),
             steps: vec![],
         })
@@ -804,11 +804,11 @@ fn choose_width_64_empty_branches_returns_1() {
 #[test]
 fn lower_canonical_choose_accepts_two_branches() {
     let branches = vec![
-        vb_yaml::ast::ChooseBranch {
+        crate::ChooseBranch {
             when: "0".to_string(),
             steps: vec![],
         },
-        vb_yaml::ast::ChooseBranch {
+        crate::ChooseBranch {
             when: "1".to_string(),
             steps: vec![],
         },
@@ -833,7 +833,7 @@ fn lower_canonical_choose_accepts_two_branches() {
 
 #[test]
 fn lower_canonical_choose_single_body_set_targets_body_start() {
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
         steps: vec![choose_body_set_step("body_a", "7")],
     }];
@@ -865,7 +865,7 @@ fn lower_canonical_choose_single_body_set_targets_body_start() {
 
 #[test]
 fn lower_canonical_choose_multi_body_steps_chain_to_common_next() {
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
         steps: vec![
             choose_body_set_step("body_a", "7"),
@@ -898,7 +898,7 @@ fn lower_canonical_choose_multi_body_steps_chain_to_common_next() {
 
 #[test]
 fn lower_canonical_choose_rejects_unknown_otherwise_label() {
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
         steps: vec![],
     }];
@@ -930,8 +930,8 @@ fn lower_canonical_choose_rejects_unknown_otherwise_label() {
 
 #[test]
 fn lower_canonical_choose_rejects_65_branches() {
-    let branches: Vec<vb_yaml::ast::ChooseBranch> = (0..65)
-        .map(|i| vb_yaml::ast::ChooseBranch {
+    let branches: Vec<crate::ChooseBranch> = (0..65)
+        .map(|i| crate::ChooseBranch {
             when: i.to_string(),
             steps: vec![],
         })
@@ -980,11 +980,11 @@ fn lower_canonical_choose_rejects_65_branches() {
 #[test]
 fn choose_width_overflow_returns_error() {
     // Given: a branch with an unsupported body primitive (ForEach)
-    let unsupported_step = vb_yaml::ast::StepAst {
+    let unsupported_step = crate::StepAst {
         id: "unsupported".to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::ForEach {
+        primitive: crate::StepPrimitive::ForEach {
             variable: "x".to_string(),
             input: "items".to_string(),
             at_once: None,
@@ -995,7 +995,7 @@ fn choose_width_overflow_returns_error() {
         on_error: None,
         then: None,
     };
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
         steps: vec![unsupported_step],
     }];
@@ -1327,7 +1327,7 @@ fn lower_choose_fanout_exceeds_limit() {
 #[test]
 fn lower_canonical_choose_emits_no_yaml_strings() {
     // Given: a choose with when="5" and one Set body step
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "5".to_string(),
         steps: vec![choose_body_set_step("body_a", "42")],
     }];
@@ -1373,7 +1373,7 @@ fn lower_canonical_choose_emits_no_yaml_strings() {
 #[test]
 fn slot_compiler_records_unique_indices() {
     // Given: a choose with one Set body step
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "1".to_string(),
         steps: vec![choose_body_set_step("body_a", "7")],
     }];
@@ -1422,7 +1422,7 @@ fn slot_compiler_records_unique_indices() {
 #[test]
 fn lower_canonical_choose_slots_disjoint_from_conditions() {
     // Given: a choose with when="99" and one Set body step
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "99".to_string(),
         steps: vec![choose_body_set_step("body_a", "42")],
     }];
@@ -1486,7 +1486,7 @@ fn lower_canonical_choose_otherwise_target_past_body() {
     // Given: a choose with 2 body steps and an otherwise label pointing past
     // the body. step_names has 4 entries so "done" maps to StepIdx(3),
     // which is beyond the body span (StepIdx 0 ChooseSlot + body at 1,2).
-    let branches = vec![vb_yaml::ast::ChooseBranch {
+    let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
         steps: vec![
             choose_body_set_step("body_a", "7"),
@@ -1545,7 +1545,7 @@ fn lower_canonical_choose_otherwise_target_past_body() {
 
 #[test]
 fn lower_canonical_choose_empty_branches_without_otherwise_returns_empty_branch_table_error() {
-    let branches: Vec<vb_yaml::ast::ChooseBranch> = vec![];
+    let branches: Vec<crate::ChooseBranch> = vec![];
     let step_names: [Box<str>; 1] = [Box::from("pick")];
     let mut builder = crate::SlotCompiler::new();
     let result = lower_canonical_choose(
@@ -1576,8 +1576,8 @@ fn lower_canonical_choose_empty_branches_without_otherwise_returns_empty_branch_
 
 #[test]
 fn lower_canonical_choose_accepts_exactly_64_branches() {
-    let branches: Vec<vb_yaml::ast::ChooseBranch> = (0..64)
-        .map(|i| vb_yaml::ast::ChooseBranch {
+    let branches: Vec<crate::ChooseBranch> = (0..64)
+        .map(|i| crate::ChooseBranch {
             when: i.to_string(),
             steps: vec![],
         })

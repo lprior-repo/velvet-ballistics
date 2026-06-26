@@ -15,7 +15,7 @@
 #![forbid(unsafe_code)]
 
 use crate::lwr::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum timeout value length for Kani bounded checking.
 const MAX_TIMEOUT_LEN: usize = 256;

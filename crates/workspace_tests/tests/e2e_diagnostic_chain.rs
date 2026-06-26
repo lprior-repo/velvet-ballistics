@@ -11,7 +11,7 @@ use vb_core::ids::StepIdx;
 use vb_runtime::RuntimeError;
 use vb_storage::JournalError;
 use vb_validate::ValidationError;
-use vb_yaml::YamlError;
+use vb_compile::YamlError;
 
 // ---------------------------------------------------------------------------
 // E2E: YamlError → code() → SymbolicCode → as_str → Display

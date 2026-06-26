@@ -14,7 +14,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::canonical_digest;
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 // ── E2E: YAML with Ask + timeout → digest reflects timeout ──
 

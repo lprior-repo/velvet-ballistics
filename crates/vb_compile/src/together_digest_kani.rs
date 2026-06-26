@@ -22,7 +22,7 @@
 //! - GOD RULE 3: No hardcoded structural inputs (uses kani::any() for enum variants)
 //! - GOD RULE 4: Fixed unwind bounds documented in trusted-base-ledger.jsonl
 
-use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
+use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
 
 // =========================================================================
 // PO-xi2f29-009: Recursion Bounded Harness

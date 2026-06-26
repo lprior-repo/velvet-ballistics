@@ -17,9 +17,9 @@
 
 use vb_core::workflow::ResourceContract;
 
-fn representative_source() -> vb_yaml::ast::WorkflowSource {
+fn representative_source() -> crate::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: dual_path_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
-    vb_yaml::parse_workflow_source(yaml).expect("valid representative YAML source for Kani")
+    crate::parse_workflow_source(yaml).expect("valid representative YAML source for Kani")
 }
 
 /// PO-K10: Prove that canonical_digest is consistent within the compilation pipeline.

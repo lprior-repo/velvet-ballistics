@@ -880,15 +880,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indoc"
-version = "2.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79cf5c93f93228cf8efb3ba362535fb11199ac548a09ce117c9b1adc3030d706"
-dependencies = [
- "rustversion",
-]
-
-[[package]]
 name = "interval-heap"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1914,7 +1905,6 @@ dependencies = [
  "thiserror",
  "vb_core",
  "vb_validate",
- "vb_yaml",
 ]
 
 [[package]]
@@ -2013,17 +2003,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_yaml"
-version = "0.1.0"
-dependencies = [
- "indoc",
- "saphyr",
- "saphyr-parser",
- "thiserror",
- "vb_core",
-]
-
-[[package]]
 name = "velvet-ballistics"
 version = "0.1.0"
 dependencies = [
@@ -2044,7 +2023,6 @@ dependencies = [
  "vb_runtime",
  "vb_storage",
  "vb_validate",
- "vb_yaml",
 ]
 
 [[package]]
@@ -2077,7 +2055,6 @@ dependencies = [
  "vb_runtime",
  "vb_storage",
  "vb_validate",
- "vb_yaml",
  "velvet-ballistics",
  "xtask",
 ]

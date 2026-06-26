@@ -21,7 +21,7 @@ use super::part_03::{CollectLowering, lower_canonical_collect};
 use super::part_04::emit_single_body_set;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 // ─────────────────────────────────────────────────────────────────
 // Helper: Generate a valid single-Set StepAst body

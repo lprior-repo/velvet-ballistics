@@ -86,6 +86,5 @@ fn push_count(_op: &ExprOp) -> u8 {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "gate_07_stack/tests.rs"]
 mod tests;

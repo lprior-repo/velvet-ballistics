@@ -16,7 +16,7 @@
 #![forbid(unsafe_code)]
 
 use crate::lwr::{canonical_digest, digest_step_primitive};
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum prompt length for bounded panic-freedom checking.
 const MAX_PROMPT_LEN: usize = 256;

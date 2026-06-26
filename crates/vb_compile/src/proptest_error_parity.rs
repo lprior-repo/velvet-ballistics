@@ -18,7 +18,7 @@ use super::part_04::emit_single_body_set;
 use crate::CompileError;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 // ─────────────────────────────────────────────────────────────────
 // Error parity strategies
@@ -68,7 +68,7 @@ fn unsupported_primitive_strategy() -> impl Strategy<Value = StepPrimitive> {
             .prop_map(|(prompt, timeout)| { StepPrimitive::Ask { prompt, timeout } }),
         // Finish
         Just(StepPrimitive::Finish {
-            result: vb_yaml::ast::ScalarValue::Integer(0),
+            result: crate::ast::ScalarValue::Integer(0),
         }),
     ]
 }

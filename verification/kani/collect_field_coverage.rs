@@ -19,7 +19,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::mod_compile_lowering::part_05::digest_step_primitive;
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use vb_compile::{StepAst, StepPrimitive};
 
 // ─────────────────────────────────────────────────────────────────
 // Bounded string helpers for kani::Arbitrary
@@ -63,7 +63,7 @@ fn bounded_body(len: usize) -> Vec<StepAst> {
                 name: None,
                 condition: None,
                 primitive: StepPrimitive::Finish {
-                    result: vb_yaml::ast::ScalarValue::Integer(0),
+                    result: vb_compile::ScalarValue::Integer(0),
                 },
                 with: None,
                 retry: None,
@@ -199,8 +199,8 @@ fn kani_collect_field_coverage_body() {
         id: extra_id.as_str().to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Finish {
-            result: vb_yaml::ast::ScalarValue::Integer(0),
+                primitive: StepPrimitive::Finish {
+                    result: vb_compile::ScalarValue::Integer(0),
         },
         with: None,
         retry: None,

@@ -33,8 +33,8 @@ fuzz_target!(|data: &[u8]| {
     let src_a = build_workflow(Some(&event), Some(&ta));
     let src_b = build_workflow(Some(&event), Some(&tb));
 
-    let parsed_a = vb_yaml::parse_workflow_source(&src_a);
-    let parsed_b = vb_yaml::parse_workflow_source(&src_b);
+    let parsed_a = vb_compile::parse_workflow_source(&src_a);
+    let parsed_b = vb_compile::parse_workflow_source(&src_b);
     let (Ok(source_a), Ok(source_b)) = (parsed_a, parsed_b) else { return; };
 
     let compiled_a = vb_compile::compile_source(&source_a);

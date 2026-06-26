@@ -64,18 +64,18 @@ impl StepIdxSlotExt for StepIdx {
 }
 
 pub(in crate::mod_compile_lowering) fn canonical_finish_slot(
-    result: &vb_yaml::ast::ScalarValue,
+    result: &crate::ScalarValue,
     outputs: &HashMap<String, SlotIdx>,
 ) -> Result<SlotIdx, CompileErrors> {
     match result {
-        vb_yaml::ast::ScalarValue::String(name) => {
+        crate::ScalarValue::String(name) => {
             outputs.get(name.as_str()).copied().ok_or_else(|| {
                 CompileErrors(vec![CompileError::UnknownOutputName {
                     name: name.clone().into_boxed_str(),
                 }])
             })
         }
-        vb_yaml::ast::ScalarValue::Integer(value) => {
+        crate::ScalarValue::Integer(value) => {
             let raw = u16::try_from(*value).map_err(|_| {
                 CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: *value }])
             })?;

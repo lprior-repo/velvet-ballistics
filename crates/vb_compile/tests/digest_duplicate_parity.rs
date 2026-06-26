@@ -28,43 +28,43 @@ use vb_core::WorkflowDigest;
 // catch-all is never reached, so the exhaustive-match vs catch-all difference
 // is not observable here.
 
-fn private_canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+fn private_canonical_primitive_name(primitive: &vb_compile::StepPrimitive) -> &'static str {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. } => "set",
-        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
-        vb_yaml::ast::StepPrimitive::Do { .. } => "do",
-        vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
-        vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
-        vb_yaml::ast::StepPrimitive::Together { .. } => "parallel",
-        vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
-        vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
-        vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
-        vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
-        vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+        vb_compile::StepPrimitive::Set { .. } => "set",
+        vb_compile::StepPrimitive::Save { .. } => "save",
+        vb_compile::StepPrimitive::Do { .. } => "do",
+        vb_compile::StepPrimitive::Choose { .. } => "choose",
+        vb_compile::StepPrimitive::ForEach { .. } => "for_each",
+        vb_compile::StepPrimitive::Together { .. } => "parallel",
+        vb_compile::StepPrimitive::Collect { .. } => "collect",
+        vb_compile::StepPrimitive::Aggregate { .. } => "aggregate",
+        vb_compile::StepPrimitive::Repeat { .. } => "repeat",
+        vb_compile::StepPrimitive::Wait { .. } => "wait",
+        vb_compile::StepPrimitive::Ask { .. } => "ask",
+        vb_compile::StepPrimitive::Finish { .. } => "finish",
         _ => "unknown",
     }
 }
 
 fn private_digest_step_primitive(
     hasher: &mut blake3::Hasher,
-    primitive: &vb_yaml::ast::StepPrimitive,
+    primitive: &vb_compile::StepPrimitive,
 ) {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+        vb_compile::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
             hasher.update(output.as_bytes());
             hasher.update(value.as_bytes());
         }
-        vb_yaml::ast::StepPrimitive::Finish { result } => {
+        vb_compile::StepPrimitive::Finish { result } => {
             hasher.update(b"finish");
             match result {
-                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
-                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+                vb_compile::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+                vb_compile::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
                 _ => hasher.update(b"unsupported"),
             };
         }
-        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+        vb_compile::StepPrimitive::Ask { prompt, timeout } => {
             hasher.update(b"ask");
             hasher.update(prompt.as_bytes());
             match timeout {
@@ -83,21 +83,21 @@ fn private_digest_step_primitive(
     }
 }
 
-fn private_canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+fn private_canonical_digest(source: &vb_compile::WorkflowSource) -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
     match source.trigger() {
-        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
-        vb_yaml::ast::TriggerAst::Schedule { cron } => {
+        vb_compile::TriggerAst::Manual => hasher.update(b"manual"),
+        vb_compile::TriggerAst::Schedule { cron } => {
             hasher.update(b"schedule");
             hasher.update(cron.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Event { event_type } => {
+        vb_compile::TriggerAst::Event { event_type } => {
             hasher.update(b"event");
             hasher.update(event_type.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+        vb_compile::TriggerAst::Webhook => hasher.update(b"webhook"),
         _ => hasher.update(b"unknown"),
     };
     for step in source.steps() {

@@ -15,7 +15,7 @@ use vb_core::{
 pub(super) fn lower_canonical_parallel(
     index: usize,
     id: StepIdx,
-    branches: &[vb_yaml::ast::TogetherBranch],
+    branches: &[crate::TogetherBranch],
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -80,7 +80,7 @@ pub(super) fn lower_canonical_parallel(
 }
 
 pub(super) fn together_join_offset(
-    branches: &[vb_yaml::ast::TogetherBranch],
+    branches: &[crate::TogetherBranch],
 ) -> Result<u16, CompileError> {
     let width = together_width(branches)?;
     let offset = width
@@ -91,7 +91,7 @@ pub(super) fn together_join_offset(
 
 pub(super) fn emit_together_branches(
     base: StepIdx,
-    branches: &[vb_yaml::ast::TogetherBranch],
+    branches: &[crate::TogetherBranch],
     join: StepIdx,
     accumulator: SlotIdx,
     diagnostic_step: usize,
@@ -162,7 +162,7 @@ pub(super) struct CollectLowering<'a> {
     pub(super) source: &'a str,
     pub(super) pages: Option<u32>,
     pub(super) items: Option<u32>,
-    pub(super) body: &'a [vb_yaml::ast::StepAst],
+    pub(super) body: &'a [crate::StepAst],
     pub(super) next: Option<StepIdx>,
 }
 

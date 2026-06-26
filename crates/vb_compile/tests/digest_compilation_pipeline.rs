@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::canonical_digest;
-use vb_yaml::{ast::WorkflowSource, parse_workflow_source};
+use vb_compile::{WorkflowSource, parse_workflow_source};
 
 /// YAML fixture: workflow with an Ask step and a timeout.
 const ASK_YAML: &str = r#"

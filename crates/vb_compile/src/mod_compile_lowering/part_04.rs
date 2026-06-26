@@ -17,7 +17,7 @@ pub(super) fn lower_canonical_aggregate(
     id: StepIdx,
     input: &str,
     initial: &str,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -86,7 +86,7 @@ pub(super) fn lower_canonical_repeat(
     index: usize,
     id: StepIdx,
     max_attempts: u16,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -211,7 +211,7 @@ pub(super) fn lower_canonical_ask(
 }
 
 pub(super) fn emit_single_body_set(
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     id: StepIdx,
     diagnostic_step: usize,
     slot: SlotIdx,
@@ -234,14 +234,14 @@ pub(super) fn emit_single_body_set(
         }])
     })?;
     match &step.primitive {
-        vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+        crate::StepPrimitive::Set { value, .. } => {
             let constant =
                 body_constant_index(builder, value, diagnostic_step, reuse_first_constant)?;
             builder.record_slot(slot);
             builder.push_node(lower_set(id, slot, constant, next));
             Ok(())
         }
-        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+        crate::StepPrimitive::Do { action, input } => {
             // Parse action as integer (ActionId) - action field contains numeric ID
             let action_value = action.parse::<i64>().map_err(|_| {
                 CompileErrors(vec![CompileError::StepFieldShape {

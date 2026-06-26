@@ -210,6 +210,5 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "gate_13_cycles/tests.rs"]
 mod tests;

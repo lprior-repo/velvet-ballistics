@@ -82,12 +82,12 @@ mod tests {
     use vb_compile::mod_compile_lowering::part_02::lower_canonical_choose;
     use vb_core::ids::StepIdx;
 
-    fn make_set_step(id: &str) -> vb_yaml::ast::StepAst {
-        vb_yaml::ast::StepAst {
+    fn make_set_step(id: &str) -> vb_compile::StepAst {
+        vb_compile::StepAst {
             id: id.to_string(),
             name: None,
             condition: None,
-            primitive: vb_yaml::ast::StepPrimitive::Set {
+            primitive: vb_compile::StepPrimitive::Set {
                 output: format!("out_{id}"),
                 value: "1".to_string(),
             },
@@ -101,11 +101,11 @@ mod tests {
     #[test]
     fn slot_count_increases_with_body_steps() {
         let branches = vec![
-            vb_yaml::ast::ChooseBranch {
+            vb_compile::ChooseBranch {
                 when: "0".to_string(),
                 steps: vec![make_set_step("body_a")],
             },
-            vb_yaml::ast::ChooseBranch {
+            vb_compile::ChooseBranch {
                 when: "1".to_string(),
                 steps: vec![make_set_step("body_b")],
             },

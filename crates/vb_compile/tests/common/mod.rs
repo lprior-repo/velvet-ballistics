@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // shared test helpers used across multiple test targets
 
-use vb_yaml::ast::{
+use vb_compile::{
     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
 };
 

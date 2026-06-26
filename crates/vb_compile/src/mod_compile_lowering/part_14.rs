@@ -8,7 +8,7 @@ use vb_core::{
 pub(crate) fn lower_canonical_choose(
     index: usize,
     id: StepIdx,
-    branches: &[vb_yaml::ast::ChooseBranch],
+    branches: &[crate::ChooseBranch],
     otherwise: Option<&str>,
     next: Option<StepIdx>,
     step_names: &[Box<str>],
@@ -59,7 +59,7 @@ pub(crate) fn lower_canonical_choose(
 }
 
 fn reject_excess_choose_branches(
-    branches: &[vb_yaml::ast::ChooseBranch],
+    branches: &[crate::ChooseBranch],
 ) -> Result<(), CompileErrors> {
     if branches.len() <= 64 {
         return Ok(());
@@ -75,7 +75,7 @@ fn reject_excess_choose_branches(
 }
 
 fn reject_empty_choose_without_otherwise(
-    branches: &[vb_yaml::ast::ChooseBranch],
+    branches: &[crate::ChooseBranch],
     otherwise: Option<&str>,
 ) -> Result<(), CompileErrors> {
     if !branches.is_empty() || otherwise.is_some() {
@@ -145,7 +145,7 @@ pub(crate) fn add_body_offset(
 }
 
 pub(crate) fn emit_choose_branch_body(
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     base_id: StepIdx,
     start_offset: u16,
     diagnostic_step: usize,
@@ -177,17 +177,17 @@ pub(crate) fn emit_choose_branch_body(
 }
 
 fn emit_choose_body_step(
-    step: &vb_yaml::ast::StepAst,
+    step: &crate::StepAst,
     step_id: StepIdx,
     step_next: Option<StepIdx>,
     diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     match &step.primitive {
-        vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+        crate::StepPrimitive::Set { value, .. } => {
             emit_choose_body_set(value, step_id, step_next, diagnostic_step, builder)
         }
-        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+        crate::StepPrimitive::Do { action, input } => {
             emit_choose_body_do(action, input, step_id, step_next, diagnostic_step, builder)
         }
         other => Err(CompileErrors(vec![

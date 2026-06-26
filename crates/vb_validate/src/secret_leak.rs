@@ -142,6 +142,5 @@ fn check_declared_bound(
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "secret_leak/tests.rs"]
 mod tests;

@@ -7,7 +7,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use vb_yaml::ast::{ScalarValue, StepAst, StepPrimitive};
+use crate::ast::{ScalarValue, StepAst, StepPrimitive};
 
 /// H1: Changing Set body step output changes digest (1-char strings for Kani tractability).
 #[kani::proof]

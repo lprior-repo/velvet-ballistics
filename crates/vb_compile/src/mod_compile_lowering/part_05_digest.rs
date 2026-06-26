@@ -3,27 +3,27 @@
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
 
-pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. } => "set",
-        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
-        vb_yaml::ast::StepPrimitive::Do { .. } => "do",
-        vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
-        vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
-        vb_yaml::ast::StepPrimitive::Together { .. } => "together",
-        vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "reduce",
-        vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
-        vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
-        vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
-        vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+        crate::StepPrimitive::Set { .. } => "set",
+        crate::StepPrimitive::Save { .. } => "save",
+        crate::StepPrimitive::Do { .. } => "do",
+        crate::StepPrimitive::Choose { .. } => "choose",
+        crate::StepPrimitive::ForEach { .. } => "for_each",
+        crate::StepPrimitive::Together { .. } => "together",
+        crate::StepPrimitive::Collect { .. } => "collect",
+        crate::StepPrimitive::Aggregate { .. } => "reduce",
+        crate::StepPrimitive::Repeat { .. } => "repeat",
+        crate::StepPrimitive::Wait { .. } => "wait",
+        crate::StepPrimitive::Ask { .. } => "ask",
+        crate::StepPrimitive::Finish { .. } => "finish",
         _ => "unknown",
     }
 }
 
 /// Computes a deterministic, content-addressable digest of the workflow source.
 pub fn canonical_digest(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::WorkflowSource,
 ) -> Result<WorkflowDigest, CompileErrors> {
     validate_branch_counts(source)?;
 
@@ -31,16 +31,16 @@ pub fn canonical_digest(
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
     match source.trigger() {
-        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
-        vb_yaml::ast::TriggerAst::Schedule { cron } => {
+        crate::TriggerAst::Manual => hasher.update(b"manual"),
+        crate::TriggerAst::Schedule { cron } => {
             hasher.update(b"schedule");
             hasher.update(cron.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Event { event_type } => {
+        crate::TriggerAst::Event { event_type } => {
             hasher.update(b"event");
             hasher.update(event_type.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+        crate::TriggerAst::Webhook => hasher.update(b"webhook"),
         _ => hasher.update(b"unknown"),
     };
     for step in source.steps() {
@@ -51,7 +51,7 @@ pub fn canonical_digest(
 }
 
 pub(crate) fn validate_branch_counts(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::WorkflowSource,
 ) -> Result<(), CompileErrors> {
     for step in source.steps() {
         validate_step_branch_counts(&step.primitive)?;
@@ -60,9 +60,9 @@ pub(crate) fn validate_branch_counts(
 }
 
 fn validate_step_branch_counts(
-    primitive: &vb_yaml::ast::StepPrimitive,
+    primitive: &crate::StepPrimitive,
 ) -> Result<(), CompileErrors> {
-    if let vb_yaml::ast::StepPrimitive::Together { branches } = primitive {
+    if let crate::StepPrimitive::Together { branches } = primitive {
         if branches.len() > usize::from(u16::MAX) {
             return Err(CompileErrors(vec![
                 CompileError::PrimitiveLoweringLimitExceeded {
@@ -84,48 +84,48 @@ fn validate_step_branch_counts(
 
 pub(crate) fn digest_step_primitive(
     hasher: &mut blake3::Hasher,
-    primitive: &vb_yaml::ast::StepPrimitive,
+    primitive: &crate::StepPrimitive,
 ) -> Result<(), CompileErrors> {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+        crate::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
             hasher.update(output.as_bytes());
             hasher.update(value.as_bytes());
         }
-        vb_yaml::ast::StepPrimitive::Finish { result } => digest_finish(hasher, result),
-        vb_yaml::ast::StepPrimitive::ForEach {
+        crate::StepPrimitive::Finish { result } => digest_finish(hasher, result),
+        crate::StepPrimitive::ForEach {
             variable,
             input,
             at_once,
             body,
         } => digest_for_each(hasher, variable, input, *at_once, body)?,
-        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+        crate::StepPrimitive::Ask { prompt, timeout } => {
             hasher.update(b"ask");
             hasher.update(prompt.as_bytes());
             digest_optional_text(hasher, b"timeout", b"no_timeout", timeout.as_deref());
         }
-        vb_yaml::ast::StepPrimitive::Together { branches } => {
+        crate::StepPrimitive::Together { branches } => {
             digest_together(hasher, primitive, branches)?;
         }
-        vb_yaml::ast::StepPrimitive::Collect {
+        crate::StepPrimitive::Collect {
             variable,
             source,
             pages,
             items,
             body,
         } => digest_collect(hasher, variable, source, *pages, *items, body)?,
-        vb_yaml::ast::StepPrimitive::Aggregate {
+        crate::StepPrimitive::Aggregate {
             variable,
             input,
             initial,
             body,
         } => digest_aggregate(hasher, variable, input, initial, body)?,
-        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => {
+        crate::StepPrimitive::Wait { event, timeout } => {
             hasher.update(b"wait");
             digest_optional_text(hasher, b"", b"none", event.as_deref());
             digest_optional_text(hasher, b"", b"none", timeout.as_deref());
         }
-        vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
+        crate::StepPrimitive::Repeat { max_attempts, body } => {
             hasher.update(b"repeat");
             hasher.update(&max_attempts.to_le_bytes());
             for step in body {
@@ -140,11 +140,11 @@ pub(crate) fn digest_step_primitive(
     Ok(())
 }
 
-fn digest_finish(hasher: &mut blake3::Hasher, result: &vb_yaml::ast::ScalarValue) {
+fn digest_finish(hasher: &mut blake3::Hasher, result: &crate::ScalarValue) {
     hasher.update(b"finish");
     match result {
-        vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
-        vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+        crate::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+        crate::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
         _ => hasher.update(b"unsupported"),
     };
 }
@@ -154,7 +154,7 @@ fn digest_for_each(
     variable: &str,
     input: &str,
     at_once: Option<u32>,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
     hasher.update(b"for_each");
     hasher.update(b":variable:");
@@ -174,8 +174,8 @@ fn digest_for_each(
 
 fn digest_together(
     hasher: &mut blake3::Hasher,
-    primitive: &vb_yaml::ast::StepPrimitive,
-    branches: &[vb_yaml::ast::TogetherBranch],
+    primitive: &crate::StepPrimitive,
+    branches: &[crate::TogetherBranch],
 ) -> Result<(), CompileErrors> {
     hasher.update(canonical_primitive_name(primitive).as_bytes());
     let count = u16::try_from(branches.len()).map_err(|_| {
@@ -202,7 +202,7 @@ fn digest_collect(
     source: &str,
     pages: Option<u32>,
     items: Option<u32>,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
     hasher.update(b"collect");
     hasher.update(b":variable:");
@@ -223,7 +223,7 @@ fn digest_aggregate(
     variable: &str,
     input: &str,
     initial: &str,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
     hasher.update(b"reduce");
     hasher.update(b":variable:");
@@ -271,7 +271,7 @@ fn digest_optional_u32(hasher: &mut blake3::Hasher, tag: &[u8], value: Option<u3
 
 fn digest_sub_step(
     hasher: &mut blake3::Hasher,
-    step: &vb_yaml::ast::StepAst,
+    step: &crate::StepAst,
 ) -> Result<(), CompileErrors> {
     hasher.update(step.id.as_bytes());
     digest_step_primitive(hasher, &step.primitive)?;

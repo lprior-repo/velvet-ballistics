@@ -50,8 +50,8 @@ pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
         }
     };
 
-    // Phase 1: strict YAML profile and AST parse via vb_yaml
-    match vb_yaml::parse_workflow_source(text) {
+    // Phase 1: strict YAML profile and AST parse via vb_compile yaml layer
+    match vb_compile::parse_workflow_source(text) {
         Ok(_ast) => {}
         Err(e) => {
             write_failure_message(

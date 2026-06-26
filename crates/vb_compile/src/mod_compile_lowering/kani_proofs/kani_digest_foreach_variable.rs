@@ -6,7 +6,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 #[kani::proof]
 #[kani::unwind(4)]

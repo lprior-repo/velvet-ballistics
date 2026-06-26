@@ -16,7 +16,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::mod_compile_lowering::part_05::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
 
 fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
     let steps = vec![StepAst {

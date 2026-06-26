@@ -65,10 +65,10 @@ fn yaml_to_validate_parse_invalid_yaml_propagates_parse_error_code() {
     // Given: YAML text that is structurally broken
     let yaml = "{{{broken";
     // When: parsing the YAML source
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     // Then: a parse error is returned with a line number
     match result {
-        Err(vb_yaml::YamlError::ParseError { line, reason }) => {
+        Err(vb_compile::YamlError::ParseError { line, reason }) => {
             assert!(line > 0, "parse error should report a line number");
             assert!(!reason.is_empty(), "parse error should report a reason");
         }
@@ -81,9 +81,9 @@ fn yaml_to_validate_parse_invalid_yaml_propagates_parse_error_code() {
 fn yaml_to_validate_empty_string_propagates_empty_source_error() {
     // Given: empty source text
     // When: parsing
-    let result = vb_yaml::parse_workflow_source("");
+    let result = vb_compile::parse_workflow_source("");
     // Then: EmptySource error variant is returned exactly
-    assert_eq!(result, Err(vb_yaml::YamlError::EmptySource));
+    assert_eq!(result, Err(vb_compile::YamlError::EmptySource));
 }
 
 #[test]
@@ -91,9 +91,9 @@ fn yaml_to_validate_anchor_rejection_propagates_exact_variant() {
     // Given: YAML with an anchor
     let yaml = "version: &v velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     // When: parsing through the profile gate
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     // Then: AnchorAliasMerge variant exactly
-    assert_eq!(result, Err(vb_yaml::YamlError::AnchorAliasMerge));
+    assert_eq!(result, Err(vb_compile::YamlError::AnchorAliasMerge));
 }
 
 #[test]
@@ -101,11 +101,11 @@ fn yaml_to_validate_ambiguous_scalar_propagates_exact_scalar_value() {
     // Given: YAML with an unquoted YAML 1.1 ambiguous boolean
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: yes\n";
     // When: parsing through profile validation
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     // Then: AmbiguousScalar with the exact rejected scalar
     assert_eq!(
         result,
-        Err(vb_yaml::YamlError::AmbiguousScalar {
+        Err(vb_compile::YamlError::AmbiguousScalar {
             scalar: "yes".into()
         })
     );
@@ -116,11 +116,11 @@ fn yaml_to_validate_missing_required_field_has_correct_field_name() {
     // Given: YAML missing the "name" field
     let yaml = "version: velvet-ballistics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    finish:\n      result: x\n";
     // When: parsing
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     // Then: MissingField with field = "name"
     assert_eq!(
         result,
-        Err(vb_yaml::YamlError::MissingField { field: "name" })
+        Err(vb_compile::YamlError::MissingField { field: "name" })
     );
 }
 
@@ -129,11 +129,11 @@ fn yaml_to_validate_field_shape_error_has_field_and_expected() {
     // Given: YAML where the root is a scalar
     let yaml = "just a string\n";
     // When: parsing
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     // Then: FieldShape with exact field and expected shape
     assert_eq!(
         result,
-        Err(vb_yaml::YamlError::FieldShape {
+        Err(vb_compile::YamlError::FieldShape {
             field: "workflow",
             expected: "mapping"
         })

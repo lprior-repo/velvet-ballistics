@@ -6,7 +6,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 fn bounded_string(max_len: usize) -> String {
     let mut buf: Vec<u8> = Vec::with_capacity(max_len);

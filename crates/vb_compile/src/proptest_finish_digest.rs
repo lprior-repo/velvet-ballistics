@@ -28,7 +28,7 @@ use vb_core::ids::WorkflowDigest;
 // ─────────────────────────────────────────────────────────────────
 
 fn digest_from_yaml(yaml: &str) -> Result<WorkflowDigest, String> {
-    let source = vb_yaml::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
+    let source = crate::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
     let compiled = compile_source(&source).map_err(|e| format!("compile error: {e:?}"))?;
     Ok(compiled.digest())
 }
@@ -95,7 +95,7 @@ proptest! {
         let yaml = yaml_with_steps(&format!(
             "  - id: {id}\n    finish:\n      result: {slot}"
         ));
-        let source = vb_yaml::parse_workflow_source(&yaml)
+        let source = crate::parse_workflow_source(&yaml)
             .expect("valid YAML must parse");
 
         let c1 = compile_source(&source).expect("must compile");

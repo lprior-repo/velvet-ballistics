@@ -16,7 +16,7 @@ use common::{
     set_source,
 };
 use vb_compile::canonical_digest;
-use vb_yaml::ast::StepPrimitive;
+use vb_compile::StepPrimitive;
 
 // ── B8: Explicit Ask arm verification (runtime) ──
 
@@ -191,7 +191,7 @@ fn digest_step_primitive_does_not_panic_for_empty_source() {
 #[test]
 fn digest_step_primitive_does_not_panic_for_do_primitive_catch_all() {
     // Do falls through to catch-all arm — must not panic
-    use vb_yaml::ast::{StepAst, TriggerAst, WorkflowSource, WorkflowSourceParts};
+    use vb_compile::{StepAst, TriggerAst, WorkflowSource, WorkflowSourceParts};
     let source = WorkflowSource::new(WorkflowSourceParts {
         version: "velvet-ballistics/v1".to_string(),
         name: "test_do".to_string(),

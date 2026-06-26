@@ -20,7 +20,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use vb_compile::compile_source;
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 8 {

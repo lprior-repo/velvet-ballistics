@@ -997,11 +997,11 @@ steps:
       result: 0
 ";
 
-    let source1 = vb_yaml::parse_workflow_source(yaml).expect("parse should succeed");
+    let source1 = crate::parse_workflow_source(yaml).expect("parse should succeed");
     let workflow1 = crate::compile_source(&source1).expect("compile 1 should succeed");
     let digest1 = workflow1.digest();
 
-    let source2 = vb_yaml::parse_workflow_source(yaml).expect("parse should succeed");
+    let source2 = crate::parse_workflow_source(yaml).expect("parse should succeed");
     let workflow2 = crate::compile_source(&source2).expect("compile 2 should succeed");
     let digest2 = workflow2.digest();
 
@@ -1037,7 +1037,7 @@ steps:
       result: 0
 ";
     let source_mod =
-        vb_yaml::parse_workflow_source(yaml_modified).expect("modified parse should succeed");
+        crate::parse_workflow_source(yaml_modified).expect("modified parse should succeed");
     let workflow_mod = crate::compile_source(&source_mod).expect("modified compile should succeed");
 
     assert_ne!(
@@ -1091,7 +1091,7 @@ steps:
       result: 0
 ";
 
-    let source_base = vb_yaml::parse_workflow_source(yaml_base).expect("base parse");
+    let source_base = crate::parse_workflow_source(yaml_base).expect("base parse");
     let workflow_base = crate::compile_source(&source_base).expect("base compile");
     let digest_base = workflow_base.digest();
 
@@ -1122,7 +1122,7 @@ steps:
       result: 0
 ";
 
-    let source_var = vb_yaml::parse_workflow_source(yaml_variant).expect("variant parse");
+    let source_var = crate::parse_workflow_source(yaml_variant).expect("variant parse");
     let workflow_var = crate::compile_source(&source_var).expect("variant compile");
 
     assert_ne!(
@@ -1132,7 +1132,7 @@ steps:
     );
 
     // Determinism check on base
-    let source_base2 = vb_yaml::parse_workflow_source(yaml_base).expect("base parse 2");
+    let source_base2 = crate::parse_workflow_source(yaml_base).expect("base parse 2");
     let workflow_base2 = crate::compile_source(&source_base2).expect("base compile 2");
     assert_eq!(
         digest_base,
@@ -1167,7 +1167,7 @@ steps:
       result: 0
 ";
 
-    let source_reordered = vb_yaml::parse_workflow_source(yaml_reordered).expect("reordered parse");
+    let source_reordered = crate::parse_workflow_source(yaml_reordered).expect("reordered parse");
     let workflow_reordered = crate::compile_source(&source_reordered).expect("reordered compile");
 
     assert_ne!(
@@ -1214,9 +1214,9 @@ steps:
       result: 0
 ";
 
-    let source1 = vb_yaml::parse_workflow_source(yaml).expect("parse 1");
-    let source2 = vb_yaml::parse_workflow_source(yaml).expect("parse 2");
-    let source3 = vb_yaml::parse_workflow_source(yaml).expect("parse 3");
+    let source1 = crate::parse_workflow_source(yaml).expect("parse 1");
+    let source2 = crate::parse_workflow_source(yaml).expect("parse 2");
+    let source3 = crate::parse_workflow_source(yaml).expect("parse 3");
 
     let workflow1 = crate::compile_source(&source1).expect("compile 1");
     let workflow2 = crate::compile_source(&source2).expect("compile 2");
@@ -1301,8 +1301,8 @@ steps:
       result: 0
 ";
 
-    let source_2 = vb_yaml::parse_workflow_source(yaml_2_branch).expect("parse 2-branch");
-    let source_3 = vb_yaml::parse_workflow_source(yaml_3_branch).expect("parse 3-branch");
+    let source_2 = crate::parse_workflow_source(yaml_2_branch).expect("parse 2-branch");
+    let source_3 = crate::parse_workflow_source(yaml_3_branch).expect("parse 3-branch");
     let wf_2 = crate::compile_source(&source_2).expect("compile 2-branch");
     let wf_3 = crate::compile_source(&source_3).expect("compile 3-branch");
 
@@ -1364,8 +1364,8 @@ steps:
       result: 0
 ";
 
-    let source_la = vb_yaml::parse_workflow_source(yaml_label_a).expect("parse label-a");
-    let source_lb = vb_yaml::parse_workflow_source(yaml_label_b).expect("parse label-b");
+    let source_la = crate::parse_workflow_source(yaml_label_a).expect("parse label-a");
+    let source_lb = crate::parse_workflow_source(yaml_label_b).expect("parse label-b");
     let wf_la = crate::compile_source(&source_la).expect("compile label-a");
     let wf_lb = crate::compile_source(&source_lb).expect("compile label-b");
 
@@ -1427,8 +1427,8 @@ steps:
       result: 0
 ";
 
-    let source_ida = vb_yaml::parse_workflow_source(yaml_id_a).expect("parse id-a");
-    let source_idb = vb_yaml::parse_workflow_source(yaml_id_b).expect("parse id-b");
+    let source_ida = crate::parse_workflow_source(yaml_id_a).expect("parse id-a");
+    let source_idb = crate::parse_workflow_source(yaml_id_b).expect("parse id-b");
     let wf_ida = crate::compile_source(&source_ida).expect("compile id-a");
     let wf_idb = crate::compile_source(&source_idb).expect("compile id-b");
 
@@ -1483,7 +1483,7 @@ steps:
       result: 0
 ";
 
-    let source = vb_yaml::parse_workflow_source(yaml).expect("parse should succeed");
+    let source = crate::parse_workflow_source(yaml).expect("parse should succeed");
 
     // Verify that a Together step exists in the parsed source
     let steps = source.steps();
@@ -1491,7 +1491,7 @@ steps:
     assert!(
         matches!(
             steps[0].primitive,
-            vb_yaml::ast::StepPrimitive::Together { .. }
+            crate::ast::StepPrimitive::Together { .. }
         ),
         "first step should be Together (parsed from 'together' key)"
     );
@@ -1506,7 +1506,7 @@ steps:
     assert!(!is_all_zero, "digest must not be all zeros");
 
     // Compile again to verify determinism
-    let source2 = vb_yaml::parse_workflow_source(yaml).expect("parse 2 should succeed");
+    let source2 = crate::parse_workflow_source(yaml).expect("parse 2 should succeed");
     let workflow2 = crate::compile_source(&source2).expect("compile 2 should succeed");
     assert_eq!(
         workflow.digest(),
@@ -1532,7 +1532,7 @@ steps:
 #[test]
 fn canonical_primitive_name_together_returns_together_direct() {
     use crate::mod_compile_lowering::canonical_primitive_name;
-    use vb_yaml::ast::{StepPrimitive, TogetherBranch};
+    use crate::ast::{StepPrimitive, TogetherBranch};
 
     let together = StepPrimitive::Together {
         branches: vec![TogetherBranch {
@@ -1560,7 +1560,7 @@ fn canonical_primitive_name_together_returns_together_direct() {
 #[test]
 fn canonical_primitive_name_returns_correct_names_for_all_variants() {
     use crate::mod_compile_lowering::canonical_primitive_name;
-    use vb_yaml::ast::{ChooseBranch, ScalarValue, StepPrimitive, TogetherBranch};
+    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive, TogetherBranch};
 
     let cases: Vec<(StepPrimitive, &'static str)> = vec![
         (
@@ -1699,7 +1699,7 @@ steps:
       result: 0
 ";
 
-    let source = vb_yaml::parse_workflow_source(yaml).expect("single-branch parse");
+    let source = crate::parse_workflow_source(yaml).expect("single-branch parse");
     let workflow = crate::compile_source(&source).expect("single-branch compile");
 
     // Non-zero
@@ -1711,7 +1711,7 @@ steps:
     );
 
     // Deterministic
-    let source2 = vb_yaml::parse_workflow_source(yaml).expect("parse 2");
+    let source2 = crate::parse_workflow_source(yaml).expect("parse 2");
     let workflow2 = crate::compile_source(&source2).expect("compile 2");
     assert_eq!(
         digest,
@@ -1743,7 +1743,7 @@ fn test_many_branch_together_produces_deterministic_digest() {
     }
     yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
 
-    let source = vb_yaml::parse_workflow_source(&yaml).expect("many-branch parse");
+    let source = crate::parse_workflow_source(&yaml).expect("many-branch parse");
     let workflow = crate::compile_source(&source).expect("many-branch compile");
 
     let digest = workflow.digest();
@@ -1754,7 +1754,7 @@ fn test_many_branch_together_produces_deterministic_digest() {
     );
 
     // Deterministic
-    let source2 = vb_yaml::parse_workflow_source(&yaml).expect("parse 2");
+    let source2 = crate::parse_workflow_source(&yaml).expect("parse 2");
     let workflow2 = crate::compile_source(&source2).expect("compile 2");
     assert_eq!(
         digest,
@@ -1778,7 +1778,7 @@ fn test_many_branch_together_produces_deterministic_digest() {
 fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use vb_yaml::ast::{StepPrimitive, TogetherBranch};
+    use crate::ast::{StepPrimitive, TogetherBranch};
 
     let together = StepPrimitive::Together {
         branches: vec![TogetherBranch {
@@ -1821,7 +1821,7 @@ fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
 fn test_zero_branch_together_produces_deterministic_digest() {
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use vb_yaml::ast::StepPrimitive;
+    use crate::ast::StepPrimitive;
 
     let together = StepPrimitive::Together {
         branches: vec![], // zero branches
@@ -1844,7 +1844,7 @@ fn test_zero_branch_together_produces_deterministic_digest() {
 
     // Zero-branch and single-branch should differ (branch count changed)
     let single = StepPrimitive::Together {
-        branches: vec![vb_yaml::ast::TogetherBranch {
+        branches: vec![crate::ast::TogetherBranch {
             label: "solo".into(),
             steps: vec![],
         }],
@@ -1879,7 +1879,7 @@ fn test_zero_branch_together_produces_deterministic_digest() {
 fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_digest() {
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
+    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
 
     // Construct a Together with a branch containing a ForEach sub-step.
     // The compile-time restriction (emit_single_body_set) doesn't apply
@@ -1992,7 +1992,7 @@ fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_dige
 fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use vb_yaml::ast::{ChooseBranch, ScalarValue, StepPrimitive};
+    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive};
 
     let other_variants: Vec<(&str, StepPrimitive)> = vec![
         (
@@ -2125,7 +2125,7 @@ fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
 fn test_digest_sub_step_produces_deterministic_nonzero_digest() {
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
+    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
 
     // Base sub-step — will be cloned to avoid move-after-move issues
     let base_sub_step = StepAst {

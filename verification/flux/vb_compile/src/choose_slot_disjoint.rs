@@ -82,12 +82,12 @@ mod tests {
         );
     }
 
-    fn make_set_step(id: &str) -> vb_yaml::ast::StepAst {
-        vb_yaml::ast::StepAst {
+    fn make_set_step(id: &str) -> vb_compile::StepAst {
+        vb_compile::StepAst {
             id: id.to_string(),
             name: None,
             condition: None,
-            primitive: vb_yaml::ast::StepPrimitive::Set {
+            primitive: vb_compile::StepPrimitive::Set {
                 output: format!("out_{id}"),
                 value: "1".to_string(),
             },
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn lowering_produces_disjoint_slots() {
         let branches = vec![
-            vb_yaml::ast::ChooseBranch {
+            vb_compile::ChooseBranch {
                 when: "0".to_string(), // SlotIdx(0)
                 steps: vec![make_set_step("body_a")],
             },

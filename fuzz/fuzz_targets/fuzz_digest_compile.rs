@@ -10,7 +10,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use vb_compile::compile_source;
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 fuzz_target!(|data: &[u8]| {
     // Attempt to parse arbitrary bytes as YAML → WorkflowSource.
@@ -29,7 +29,7 @@ fuzz_target!(|data: &[u8]| {
 
 /// Try to parse bytes as UTF-8 then parse YAML.
 /// Non-UTF-8 bytes are benign and simply fail parsing.
-fn parse_workflow_source_bytes(data: &[u8]) -> Result<vb_yaml::ast::WorkflowSource, ()> {
+fn parse_workflow_source_bytes(data: &[u8]) -> Result<vb_compile::WorkflowSource, ()> {
     let text = std::str::from_utf8(data).map_err(|_| ())?;
     parse_workflow_source(text).map_err(|_| ())
 }

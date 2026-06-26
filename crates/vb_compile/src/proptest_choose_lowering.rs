@@ -11,7 +11,7 @@
 use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use proptest::prelude::*;
 use vb_core::StepIdx;
-use vb_yaml::ast::ChooseBranch;
+use crate::ast::ChooseBranch;
 
 proptest! {
     /// PO-vb282my-CL-PROP-001: Label resolution edge cases

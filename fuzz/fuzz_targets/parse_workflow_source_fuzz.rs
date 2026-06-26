@@ -22,6 +22,6 @@ fuzz_target!(|data: &[u8]| {
     // Only attempt to parse valid UTF-8; random bytes that aren't
     // UTF-8 are silently dropped (the parser operates on &str).
     if let Ok(s) = std::str::from_utf8(data) {
-        let _ = vb_yaml::parse_workflow_source(s);
+        let _ = vb_compile::parse_workflow_source(s);
     }
 });

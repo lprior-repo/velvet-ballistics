@@ -9,7 +9,6 @@ members = [
     "crates/vb_runtime",
     "crates/vb_storage",
     "crates/vb_validate",
-    "crates/vb_yaml",
     "crates/workspace_tests",
 ]
 resolver = "2"

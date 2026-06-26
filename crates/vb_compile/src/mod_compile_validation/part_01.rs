@@ -22,41 +22,41 @@ pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), Compile
     }
 }
 
-pub(crate) fn canonical_yaml_error(error: vb_yaml::YamlError) -> CompileError {
+pub(crate) fn canonical_yaml_error(error: crate::YamlError) -> CompileError {
     CompileError::CanonicalYaml {
         category: yaml_error_category(&error),
         message: error.to_string().into_boxed_str(),
     }
 }
 
-pub(crate) fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
+pub(crate) fn yaml_error_category(error: &crate::YamlError) -> &'static str {
     match error {
-        vb_yaml::YamlError::UnsupportedTrigger { .. }
-        | vb_yaml::YamlError::UnsupportedFeature { .. }
-        | vb_yaml::YamlError::AnchorAliasMerge
-        | vb_yaml::YamlError::CustomTag { .. }
-        | vb_yaml::YamlError::BinaryScalar
-        | vb_yaml::YamlError::AmbiguousScalar { .. }
-        | vb_yaml::YamlError::ForbiddenFeature { .. } => "forbidden_feature",
-        vb_yaml::YamlError::DuplicateKey { .. } => "duplicate_key",
-        vb_yaml::YamlError::MultipleDocuments { .. } => "document_count",
-        vb_yaml::YamlError::SourceTooLarge { .. }
-        | vb_yaml::YamlError::NestingTooDeep { .. }
-        | vb_yaml::YamlError::NodeLimitExceeded { .. }
-        | vb_yaml::YamlError::ScalarTooLong { .. }
-        | vb_yaml::YamlError::SequenceTooLong { .. }
-        | vb_yaml::YamlError::MappingTooLarge { .. } => "limit_exceeded",
-        vb_yaml::YamlError::UnknownField { .. } => "unknown_field",
-        vb_yaml::YamlError::EmptySource => "empty_source",
-        vb_yaml::YamlError::MissingField { .. } => "missing_field",
-        vb_yaml::YamlError::FieldShape { .. } => "field_shape",
-        vb_yaml::YamlError::ParseError { .. } => "parse_error",
+        crate::YamlError::UnsupportedTrigger { .. }
+        | crate::YamlError::UnsupportedFeature { .. }
+        | crate::YamlError::AnchorAliasMerge
+        | crate::YamlError::CustomTag { .. }
+        | crate::YamlError::BinaryScalar
+        | crate::YamlError::AmbiguousScalar { .. }
+        | crate::YamlError::ForbiddenFeature { .. } => "forbidden_feature",
+        crate::YamlError::DuplicateKey { .. } => "duplicate_key",
+        crate::YamlError::MultipleDocuments { .. } => "document_count",
+        crate::YamlError::SourceTooLarge { .. }
+        | crate::YamlError::NestingTooDeep { .. }
+        | crate::YamlError::NodeLimitExceeded { .. }
+        | crate::YamlError::ScalarTooLong { .. }
+        | crate::YamlError::SequenceTooLong { .. }
+        | crate::YamlError::MappingTooLarge { .. } => "limit_exceeded",
+        crate::YamlError::UnknownField { .. } => "unknown_field",
+        crate::YamlError::EmptySource => "empty_source",
+        crate::YamlError::MissingField { .. } => "missing_field",
+        crate::YamlError::FieldShape { .. } => "field_shape",
+        crate::YamlError::ParseError { .. } => "parse_error",
         _ => "parse_error",
     }
 }
 
 pub(crate) fn validate_canonical_compile_scope(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::WorkflowSource,
 ) -> Result<(), CompileErrors> {
     let mut errors = Vec::new();
     if !source.inputs().is_empty() {

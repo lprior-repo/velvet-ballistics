@@ -159,7 +159,7 @@ mod tests {
 /// Marked no_inline to prevent LLVM from constant-folding the parse.
 #[inline(never)]
 fn parse_and_observe(input: &str) -> usize {
-    vb_yaml::parse_yaml_events(input)
+    vb_compile::parse_yaml_events(input)
         .map(|e| e.len())
         .unwrap_or(0)
 }
@@ -174,8 +174,8 @@ fn parse_yaml_benches(c: &mut Criterion) {
         |b, input| {
             checked_iter(b, "parse_yaml_small", || {
                 let result = match std::str::from_utf8(input) {
-                    Ok(text) => vb_yaml::parse_yaml_events(black_box(text)),
-                    Err(error) => Err(vb_yaml::YamlError::ParseError {
+                    Ok(text) => vb_compile::parse_yaml_events(black_box(text)),
+                    Err(error) => Err(vb_compile::YamlError::ParseError {
                         line: 0,
                         reason: error.to_string().into_boxed_str(),
                     }),

@@ -30,7 +30,7 @@ impl YamlCompiler {
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
         reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
-        let source = vb_yaml::parse_workflow_source(text)
+        let source = crate::parse_workflow_source(text)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
         crate::mod_compile_lowering::compile_source(&source)
     }

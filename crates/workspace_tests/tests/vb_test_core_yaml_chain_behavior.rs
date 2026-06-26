@@ -15,7 +15,7 @@ use vb_core::ids::ActionId;
 use vb_core::workflow::ResourceContract;
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
-use vb_yaml::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml_profile};
+use vb_compile::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml_profile};
 
 // ---------------------------------------------------------------------------
 // YAML parsing happy paths

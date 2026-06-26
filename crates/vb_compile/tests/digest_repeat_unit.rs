@@ -10,7 +10,7 @@
 //! All tests use the public `compile_workflow` and `compile_source` APIs.
 
 use vb_compile::{compile_source, compile_workflow};
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 const HEADER: &str =
     "version: velvet-ballastics/v1\nname: repeat-digest-unit\nwhen:\n  manual: {}\nsteps:\n";

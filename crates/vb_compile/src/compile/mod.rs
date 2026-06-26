@@ -23,7 +23,7 @@ pub fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors
 }
 
 pub fn compile_source(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     let mut builder = SlotCompiler::new();
@@ -50,7 +50,7 @@ pub fn compile_source(
             )
         };
         match &step.primitive {
-            vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            crate::ast::StepPrimitive::Set { output, value } => {
                 if outputs.contains_key(output.as_str()) {
                     return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
                         name: output.clone().into_boxed_str(),
@@ -70,7 +70,7 @@ pub fn compile_source(
                 outputs.insert(output.as_str(), slot);
                 builder.push_node(lower_set(id, slot, const_idx, next));
             }
-            vb_yaml::ast::StepPrimitive::Finish { result } => {
+            crate::ast::StepPrimitive::Finish { result } => {
                 if index != last {
                     return Err(CompileErrors(vec![CompileError::StepFieldShape {
                         step: index,
@@ -110,7 +110,7 @@ pub fn compile_source(
 }
 
 fn validate_canonical_compile_scope(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::ast::WorkflowSource,
 ) -> Result<(), CompileErrors> {
     let mut errors = Vec::new();
     if !source.inputs().is_empty() {
@@ -180,18 +180,18 @@ fn validate_canonical_compile_scope(
 }
 
 fn canonical_finish_slot(
-    result: &vb_yaml::ast::ScalarValue,
+    result: &crate::ast::ScalarValue,
     outputs: &HashMap<&str, SlotIdx>,
 ) -> Result<SlotIdx, CompileErrors> {
     match result {
-        vb_yaml::ast::ScalarValue::String(name) => {
+        crate::ast::ScalarValue::String(name) => {
             outputs.get(name.as_str()).copied().ok_or_else(|| {
                 CompileErrors(vec![CompileError::UnknownOutputName {
                     name: name.clone().into_boxed_str(),
                 }])
             })
         }
-        vb_yaml::ast::ScalarValue::Integer(value) => {
+        crate::ast::ScalarValue::Integer(value) => {
             let raw = u16::try_from(*value).map_err(|_| {
                 CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: *value }])
             })?;
@@ -200,38 +200,38 @@ fn canonical_finish_slot(
     }
 }
 
-fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+fn canonical_primitive_name(primitive: &crate::ast::StepPrimitive) -> &'static str {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. } => "set",
-        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
-        vb_yaml::ast::StepPrimitive::Do { .. } => "do",
-        vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
-        vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
-        vb_yaml::ast::StepPrimitive::Together { .. } => "parallel",
-        vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
-        vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
-        vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
-        vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
-        vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+        crate::ast::StepPrimitive::Set { .. } => "set",
+        crate::ast::StepPrimitive::Save { .. } => "save",
+        crate::ast::StepPrimitive::Do { .. } => "do",
+        crate::ast::StepPrimitive::Choose { .. } => "choose",
+        crate::ast::StepPrimitive::ForEach { .. } => "for_each",
+        crate::ast::StepPrimitive::Together { .. } => "parallel",
+        crate::ast::StepPrimitive::Collect { .. } => "collect",
+        crate::ast::StepPrimitive::Aggregate { .. } => "aggregate",
+        crate::ast::StepPrimitive::Repeat { .. } => "repeat",
+        crate::ast::StepPrimitive::Wait { .. } => "wait",
+        crate::ast::StepPrimitive::Ask { .. } => "ask",
+        crate::ast::StepPrimitive::Finish { .. } => "finish",
     }
 }
 
-fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+fn canonical_digest(source: &crate::ast::WorkflowSource) -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
     match source.trigger() {
-        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
-        vb_yaml::ast::TriggerAst::Schedule { cron } => {
+        crate::ast::TriggerAst::Manual => hasher.update(b"manual"),
+        crate::ast::TriggerAst::Schedule { cron } => {
             hasher.update(b"schedule");
             hasher.update(cron.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Event { event_type } => {
+        crate::ast::TriggerAst::Event { event_type } => {
             hasher.update(b"event");
             hasher.update(event_type.as_bytes())
         }
-        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+        crate::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
     };
     for step in source.steps() {
         hasher.update(step.id.as_bytes());
@@ -240,18 +240,18 @@ fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
-fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
+fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &crate::ast::StepPrimitive) {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+        crate::ast::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
             hasher.update(output.as_bytes());
             hasher.update(value.as_bytes());
         }
-        vb_yaml::ast::StepPrimitive::Finish { result } => {
+        crate::ast::StepPrimitive::Finish { result } => {
             hasher.update(b"finish");
             match result {
-                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
-                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+                crate::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+                crate::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
             };
         }
         other => {

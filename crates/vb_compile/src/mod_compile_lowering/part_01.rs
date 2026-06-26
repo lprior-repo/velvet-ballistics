@@ -14,7 +14,7 @@ use vb_core::{
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &crate::yaml_ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     validate_branch_counts(source)?;
@@ -66,7 +66,7 @@ pub(super) struct CanonicalStepLayout {
 }
 
 pub(super) fn canonical_layout(
-    steps: &[vb_yaml::ast::StepAst],
+    steps: &[crate::StepAst],
 ) -> Result<Vec<CanonicalStepLayout>, CompileError> {
     let mut layout = Vec::with_capacity(steps.len());
     let mut cursor = 0usize;
@@ -84,25 +84,25 @@ pub(super) fn canonical_layout(
 }
 
 pub(super) fn canonical_step_width(
-    primitive: &vb_yaml::ast::StepPrimitive,
+    primitive: &crate::StepPrimitive,
 ) -> Result<usize, CompileError> {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. }
-        | vb_yaml::ast::StepPrimitive::Finish { .. }
-        | vb_yaml::ast::StepPrimitive::Wait { .. } => Ok(1),
-        vb_yaml::ast::StepPrimitive::Ask { .. } => Ok(2),
-        vb_yaml::ast::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
-        vb_yaml::ast::StepPrimitive::Collect { body, .. }
-        | vb_yaml::ast::StepPrimitive::Aggregate { body, .. }
-        | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
-        vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
-        vb_yaml::ast::StepPrimitive::Choose { branches, .. } => choose_width(branches),
+        crate::StepPrimitive::Set { .. }
+        | crate::StepPrimitive::Finish { .. }
+        | crate::StepPrimitive::Wait { .. } => Ok(1),
+        crate::StepPrimitive::Ask { .. } => Ok(2),
+        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        crate::StepPrimitive::Collect { body, .. }
+        | crate::StepPrimitive::Aggregate { body, .. }
+        | crate::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Together { branches } => together_width(branches),
+        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),
     }
 }
 
 pub(super) fn body_width(
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     overhead: usize,
 ) -> Result<usize, CompileError> {
     let mut width = overhead;
@@ -114,7 +114,7 @@ pub(super) fn body_width(
     Ok(width)
 }
 
-pub(super) fn choose_width(branches: &[vb_yaml::ast::ChooseBranch]) -> Result<usize, CompileError> {
+pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
     // ChooseSlot node itself (1) + sum of body widths across all branches.
     // body_width uses canonical_body_step_width, so each step contributes 1
     // (Set or Do) and unsupported primitives produce Err.
@@ -128,7 +128,7 @@ pub(super) fn choose_width(branches: &[vb_yaml::ast::ChooseBranch]) -> Result<us
 }
 
 pub(super) fn together_width(
-    branches: &[vb_yaml::ast::TogetherBranch],
+    branches: &[crate::TogetherBranch],
 ) -> Result<usize, CompileError> {
     let mut width = 2usize;
     for branch in branches {
@@ -140,10 +140,10 @@ pub(super) fn together_width(
 }
 
 pub(super) fn canonical_body_step_width(
-    primitive: &vb_yaml::ast::StepPrimitive,
+    primitive: &crate::StepPrimitive,
 ) -> Result<usize, CompileError> {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. } | vb_yaml::ast::StepPrimitive::Do { .. } => Ok(1),
+        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => Ok(1),
         other => Err(CompileError::UnsupportedStepPrimitive {
             step: 0,
             primitive: canonical_primitive_name(other),
@@ -152,7 +152,7 @@ pub(super) fn canonical_body_step_width(
 }
 
 pub(super) fn canonical_step_names(
-    steps: &[vb_yaml::ast::StepAst],
+    steps: &[crate::StepAst],
     layout: &[CanonicalStepLayout],
 ) -> Result<Vec<Box<str>>, CompileError> {
     let total = layout

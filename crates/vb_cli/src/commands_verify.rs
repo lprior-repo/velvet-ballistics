@@ -48,7 +48,7 @@ pub(crate) fn run_verification(
     profile: VerifyProfile,
 ) -> Result<VerifyOk, VerifyError> {
     // Phase 1: strict YAML parse
-    if let Err(e) = vb_yaml::parse_workflow_source(text) {
+    if let Err(e) = vb_compile::parse_workflow_source(text) {
         return Err(VerifyError::YamlParse(format!("YAML parse error: {e}")));
     }
 

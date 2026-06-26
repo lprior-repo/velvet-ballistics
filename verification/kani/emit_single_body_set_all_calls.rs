@@ -24,7 +24,7 @@
 use vb_compile::mod_compile_lowering::part_04::emit_single_body_set;
 use vb_compile::compile::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use vb_compile::{StepAst, StepPrimitive};
 
 /// PO-019 H1: emit_single_body_set with valid Set body does not panic.
 #[kani::proof]

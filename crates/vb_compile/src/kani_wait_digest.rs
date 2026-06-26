@@ -59,7 +59,7 @@ fn wait_digest_step_primitive_no_panic() {
     // Exclude illegal (None, None) — validated upstream
     kani::assume(event.is_some() || timeout.is_some());
 
-    let wait = vb_yaml::ast::StepPrimitive::Wait { event, timeout };
+    let wait = crate::ast::StepPrimitive::Wait { event, timeout };
     let mut hasher = blake3::Hasher::new();
 
     // This must not panic
@@ -88,7 +88,7 @@ fn wait_until_vs_wait_event_no_collision() {
     let event_text = any_optional_bounded_string(8);
 
     // WaitUntil: event=None, timeout=Some
-    let wait_until = vb_yaml::ast::StepPrimitive::Wait {
+    let wait_until = crate::ast::StepPrimitive::Wait {
         event: None,
         timeout: timeout_text,
     };
@@ -96,7 +96,7 @@ fn wait_until_vs_wait_event_no_collision() {
     // WaitEvent: event=Some, timeout=None
     // (This covers the unbounded WaitEvent case; for fairness, we also
     // compare against WaitEvent with the same timeout text when timeout=Some)
-    let wait_event = vb_yaml::ast::StepPrimitive::Wait {
+    let wait_event = crate::ast::StepPrimitive::Wait {
         event: event_text,
         timeout: None,
     };
@@ -142,15 +142,15 @@ fn wait_configurations_pairwise_distinct() {
     let t2_text = any_optional_bounded_string(4);
     let e_text = any_optional_bounded_string(4);
 
-    let config_1 = vb_yaml::ast::StepPrimitive::Wait {
+    let config_1 = crate::ast::StepPrimitive::Wait {
         event: None,
         timeout: t1_text,
     };
-    let config_2 = vb_yaml::ast::StepPrimitive::Wait {
+    let config_2 = crate::ast::StepPrimitive::Wait {
         event: e_text.clone(),
         timeout: t2_text,
     };
-    let config_3 = vb_yaml::ast::StepPrimitive::Wait {
+    let config_3 = crate::ast::StepPrimitive::Wait {
         event: e_text,
         timeout: None,
     };
@@ -207,7 +207,7 @@ fn wait_digest_both_copies_no_panic() {
     ];
 
     for (ev, to) in shapes {
-        let wait = vb_yaml::ast::StepPrimitive::Wait {
+        let wait = crate::ast::StepPrimitive::Wait {
             event: ev.clone(),
             timeout: to.clone(),
         };

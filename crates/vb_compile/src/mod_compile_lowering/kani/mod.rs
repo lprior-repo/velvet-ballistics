@@ -15,12 +15,12 @@ mod kani_choose_lowering;
 mod kani_choose_slots;
 mod kani_choose_width;
 
-fn make_set_step(id: &str, output: &str, value: &str) -> vb_yaml::ast::StepAst {
-    vb_yaml::ast::StepAst {
+fn make_set_step(id: &str, output: &str, value: &str) -> crate::StepAst {
+    crate::StepAst {
         id: id.to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::Set {
+        primitive: crate::StepPrimitive::Set {
             output: output.to_string(),
             value: value.to_string(),
         },
@@ -31,8 +31,8 @@ fn make_set_step(id: &str, output: &str, value: &str) -> vb_yaml::ast::StepAst {
     }
 }
 
-fn make_choose_branch(when: &str, steps: Vec<vb_yaml::ast::StepAst>) -> vb_yaml::ast::ChooseBranch {
-    vb_yaml::ast::ChooseBranch {
+fn make_choose_branch(when: &str, steps: Vec<crate::StepAst>) -> crate::ChooseBranch {
+    crate::ChooseBranch {
         when: when.to_string(),
         steps,
     }

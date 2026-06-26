@@ -130,6 +130,5 @@ fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "gate_12_14_15/tests.rs"]
 mod tests;

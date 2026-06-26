@@ -181,7 +181,7 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_fin
     // Given: source with Set then Finish
     let source_a = set_finish_source();
     // And: source with Finish then Set (reversed order)
-    use vb_yaml::ast::{
+    use vb_compile::{
         ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
     };
     let source_b = WorkflowSource::new(WorkflowSourceParts {

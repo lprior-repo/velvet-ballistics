@@ -15,7 +15,7 @@
 //!   +    Edge cases: u32::MAX, empty variable, non-ASCII, Finish body
 
 use crate::{canonical_digest_part05, digest_step_primitive_part05};
-use vb_yaml::ast::{
+use crate::ast::{
     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
 };
 

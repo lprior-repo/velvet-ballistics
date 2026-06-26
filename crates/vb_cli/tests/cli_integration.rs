@@ -822,8 +822,8 @@ fn cli_action_inspect_unregistered_action_fails() {
 
 #[test]
 fn yaml_parse_empty_source_returns_error() {
-    let result = vb_yaml::parse_workflow_source("");
-    assert_eq!(result, Err(vb_yaml::YamlError::EmptySource));
+    let result = vb_compile::parse_workflow_source("");
+    assert_eq!(result, Err(vb_compile::YamlError::EmptySource));
 }
 
 #[test]
@@ -846,7 +846,7 @@ when:
   manual: {}
 steps: []
 ";
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
             assert!(forced_assertion_failure(), "missing version should fail");
@@ -868,7 +868,7 @@ when:
   manual: {}
 steps: []
 ";
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
             assert!(forced_assertion_failure(), "missing name should fail");
@@ -899,7 +899,7 @@ steps:
     finish:
       result: \"done\"
 ";
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
             assert_eq!(wf.name(), "test-workflow");
@@ -915,17 +915,17 @@ steps:
 #[test]
 fn yaml_parse_broken_yaml_returns_error() {
     let yaml = "{{{broken";
-    let result = vb_yaml::parse_workflow_source(yaml);
-    assert!(matches!(result, Err(vb_yaml::YamlError::ParseError { .. })));
+    let result = vb_compile::parse_workflow_source(yaml);
+    assert!(matches!(result, Err(vb_compile::YamlError::ParseError { .. })));
 }
 
 #[test]
 fn yaml_profile_rejects_anchors() {
     let yaml =
         "version: &velvet \"velvet-ballistics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
-    let result = vb_yaml::validate_yaml_profile(yaml);
+    let result = vb_compile::validate_yaml_profile(yaml);
     assert!(
-        matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)),
+        matches!(result, Err(vb_compile::YamlError::AnchorAliasMerge)),
         "anchors should be rejected"
     );
 }
@@ -942,7 +942,7 @@ steps:
     do:
       input: greeting
 ";
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
             assert!(forced_assertion_failure(), "missing do.action should fail");
@@ -968,7 +968,7 @@ steps:
     set:
       value: \"hello\"
 ";
-    let result = vb_yaml::parse_workflow_source(yaml);
+    let result = vb_compile::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
             assert!(forced_assertion_failure(), "missing set.output should fail");

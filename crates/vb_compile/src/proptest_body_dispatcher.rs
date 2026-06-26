@@ -25,7 +25,7 @@ use super::part_04::emit_single_body_set;
 use crate::CompileError;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 // ─────────────────────────────────────────────────────────────────
 // Strategies

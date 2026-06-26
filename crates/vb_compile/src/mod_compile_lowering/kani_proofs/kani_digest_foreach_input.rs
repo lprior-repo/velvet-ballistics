@@ -7,7 +7,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 /// PO-K-FE-01: Prove ForEach.input reaches hasher.
 /// Uses single-character strings to keep Kani state space minimal.

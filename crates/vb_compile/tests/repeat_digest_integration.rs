@@ -11,7 +11,7 @@
 //! configurations produce different WorkflowDigest values.
 
 use vb_compile::{compile_source, compile_workflow};
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 const HEADER: &str =
     "version: velvet-ballastics/v1\nname: repeat-digest-integration\nwhen:\n  manual: {}\nsteps:\n";

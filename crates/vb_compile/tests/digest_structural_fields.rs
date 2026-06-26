@@ -16,7 +16,7 @@ use common::{
     ask_source, empty_source, named_source, set_source, triggered_source, versioned_source,
 };
 use vb_compile::canonical_digest;
-use vb_yaml::ast::{ScalarValue, StepAst, StepPrimitive, TriggerAst};
+use vb_compile::{ScalarValue, StepAst, StepPrimitive, TriggerAst};
 
 // ── B16: Empty source (zero steps) ──
 
@@ -230,7 +230,7 @@ fn canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_event() 
 #[test]
 fn canonical_digest_produces_distinct_digests_when_step_id_differs() {
     // Given: two sources with different step IDs but same primitive content
-    use vb_yaml::ast::{WorkflowSource, WorkflowSourceParts};
+    use vb_compile::{WorkflowSource, WorkflowSourceParts};
     let steps_a = vec![StepAst {
         id: "step_alpha".to_string(),
         name: None,
@@ -294,7 +294,7 @@ fn canonical_digest_produces_distinct_digests_when_step_id_differs() {
 #[test]
 fn canonical_digest_produces_distinct_digests_when_step_order_differs_ask_set_vs_set_ask() {
     // Given: sources with [Ask, Set] and [Set, Ask] (same steps, different order)
-    use vb_yaml::ast::{WorkflowSource, WorkflowSourceParts};
+    use vb_compile::{WorkflowSource, WorkflowSourceParts};
     let ask_step = StepAst {
         id: "ask_1".to_string(),
         name: None,
@@ -356,7 +356,7 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_ask_set_vs
 #[test]
 fn canonical_digest_produces_distinct_digests_when_step_order_differs_within_same_type() {
     // Given: two Set steps with different IDs, swapped order
-    use vb_yaml::ast::{WorkflowSource, WorkflowSourceParts};
+    use vb_compile::{WorkflowSource, WorkflowSourceParts};
     let set_a = StepAst {
         id: "set_a".to_string(),
         name: None,
@@ -434,8 +434,8 @@ fn canonical_digest_produces_distinct_digests_when_step_is_added() {
 
 /// Build a source with Set + Finish steps (same as set_finish_source but different step IDs
 /// to avoid collision).
-fn set_finish_source_test() -> vb_yaml::ast::WorkflowSource {
-    use vb_yaml::ast::{WorkflowSource, WorkflowSourceParts};
+fn set_finish_source_test() -> vb_compile::WorkflowSource {
+    use vb_compile::{WorkflowSource, WorkflowSourceParts};
     WorkflowSource::new(WorkflowSourceParts {
         version: "velvet-ballistics/v1".to_string(),
         name: "test_set_workflow".to_string(),

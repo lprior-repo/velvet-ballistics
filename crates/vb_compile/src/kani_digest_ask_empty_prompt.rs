@@ -15,7 +15,7 @@
 #![forbid(unsafe_code)]
 
 use crate::lwr::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum non-empty prompt length for Kani bounded checking.
 const MAX_PROMPT_LEN: usize = 128;

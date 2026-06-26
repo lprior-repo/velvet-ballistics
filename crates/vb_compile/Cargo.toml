@@ -12,11 +12,9 @@ saphyr-parser.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
 vb_validate = { path = "../vb_validate" }
-vb_yaml = { path = "../vb_yaml" }
 
 [dev-dependencies]
 proptest.workspace = true
-vb_yaml = { path = "../vb_yaml", features = ["test-util"] }
 
 [features]
 default = []

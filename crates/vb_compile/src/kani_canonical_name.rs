@@ -41,8 +41,8 @@
 fn canonical_name_together_harness() {
     // Construct a Together variant with kani::any() for symbolic data
     // (GOD RULE 1: the constructor fields use kani::any() for symbolic data)
-    use vb_yaml::ast::StepPrimitive;
-    use vb_yaml::ast::TogetherBranch;
+    use crate::ast::StepPrimitive;
+    use crate::ast::TogetherBranch;
 
     let label_char: u8 = kani::any();
     kani::assume(label_char.is_ascii_alphanumeric());
@@ -84,7 +84,7 @@ fn canonical_name_together_harness() {
 #[kani::unwind(4)]
 fn canonical_name_aggregate_harness() {
     // Construct an Aggregate variant with kani::any() symbolic data
-    use vb_yaml::ast::StepPrimitive;
+    use crate::ast::StepPrimitive;
 
     let label_char: u8 = kani::any();
     kani::assume(label_char.is_ascii_alphanumeric());
@@ -137,7 +137,7 @@ fn canonical_name_aggregate_harness() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn canonical_name_all_harness() {
-    use vb_yaml::ast::{ScalarValue, StepPrimitive, TogetherBranch};
+    use crate::ast::{ScalarValue, StepPrimitive, TogetherBranch};
 
     // Symbolic discriminant for variant selection (GOD RULE 1 compliant)
     let discriminant: u8 = kani::any();

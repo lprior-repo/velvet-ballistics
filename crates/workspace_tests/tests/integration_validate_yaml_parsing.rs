@@ -11,7 +11,7 @@
 //! - Parse error line number tracking
 
 use vb_compile::compile_workflow;
-use vb_yaml::{
+use vb_compile::{
     YamlError, parse_workflow_source, parse_yaml_events, reject_duplicate_keys,
     validate_yaml_profile,
 };

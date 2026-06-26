@@ -15,7 +15,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::mod_compile_lowering::part_05::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
 
 /// Maximum non-empty prompt length for Kani bounded checking.
 const MAX_PROMPT_LEN: usize = 128;

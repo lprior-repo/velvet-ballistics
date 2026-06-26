@@ -18,7 +18,7 @@
 use vb_compile::mod_compile_lowering::part_04::emit_single_body_set;
 use vb_compile::compile::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use vb_compile::{StepAst, StepPrimitive};
 
 /// PO-031 H1: Error parity - empty body returns StepFieldShape (not panic).
 #[kani::proof]

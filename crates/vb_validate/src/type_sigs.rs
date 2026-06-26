@@ -228,6 +228,5 @@ pub enum TypedValue {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "type_sigs/tests.rs"]
 mod tests;

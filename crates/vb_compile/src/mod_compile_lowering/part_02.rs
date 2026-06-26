@@ -16,7 +16,7 @@ use vb_core::{
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn lower_canonical_step(
-    step: &vb_yaml::ast::StepAst,
+    step: &crate::StepAst,
     index: usize,
     last: usize,
     id: StepIdx,
@@ -26,23 +26,23 @@ pub(super) fn lower_canonical_step(
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     match &step.primitive {
-        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+        crate::StepPrimitive::Set { output, value } => {
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
             lower_canonical_set(id, slot, output, value, next, outputs, builder)
         }
-        vb_yaml::ast::StepPrimitive::Finish { result } => {
+        crate::StepPrimitive::Finish { result } => {
             lower_canonical_finish(index, last, id, result, outputs, builder)
         }
-        vb_yaml::ast::StepPrimitive::ForEach {
+        crate::StepPrimitive::ForEach {
             input,
             at_once,
             body,
             ..
         } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
-        vb_yaml::ast::StepPrimitive::Together { branches } => {
+        crate::StepPrimitive::Together { branches } => {
             lower_canonical_parallel(index, id, branches, next, builder)
         }
-        vb_yaml::ast::StepPrimitive::Collect {
+        crate::StepPrimitive::Collect {
             source,
             pages,
             items,
@@ -60,16 +60,16 @@ pub(super) fn lower_canonical_step(
             },
             builder,
         ),
-        vb_yaml::ast::StepPrimitive::Aggregate {
+        crate::StepPrimitive::Aggregate {
             input,
             initial,
             body,
             ..
         } => lower_canonical_aggregate(index, id, input, initial, body, next, builder),
-        vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
+        crate::StepPrimitive::Repeat { max_attempts, body } => {
             lower_canonical_repeat(index, id, *max_attempts, body, next, builder)
         }
-        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
+        crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,
             id,
             event.as_deref(),
@@ -77,10 +77,10 @@ pub(super) fn lower_canonical_step(
             next,
             builder,
         ),
-        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+        crate::StepPrimitive::Ask { prompt, timeout } => {
             lower_canonical_ask(index, id, prompt, timeout.as_deref(), next, builder)
         }
-        vb_yaml::ast::StepPrimitive::Choose {
+        crate::StepPrimitive::Choose {
             branches,
             otherwise,
         } => lower_canonical_choose(
@@ -142,7 +142,7 @@ pub(super) fn lower_canonical_finish(
     index: usize,
     last: usize,
     id: StepIdx,
-    result: &vb_yaml::ast::ScalarValue,
+    result: &crate::ScalarValue,
     outputs: &HashMap<String, SlotIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -164,7 +164,7 @@ pub(super) fn lower_canonical_for_each(
     id: StepIdx,
     input: &str,
     at_once: Option<u32>,
-    body: &[vb_yaml::ast::StepAst],
+    body: &[crate::StepAst],
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "for_each.input")?;

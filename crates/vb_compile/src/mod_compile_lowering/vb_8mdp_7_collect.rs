@@ -20,7 +20,7 @@
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::CompiledNodeKind;
-use vb_yaml::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitive};
 
 use super::part_03::CollectLowering;
 use super::part_03::lower_canonical_collect;

@@ -16,7 +16,7 @@
 #![forbid(unsafe_code)]
 
 use crate::lwr::canonical_digest;
-use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
     let steps = vec![StepAst {

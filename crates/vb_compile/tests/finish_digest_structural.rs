@@ -10,8 +10,8 @@
 #![forbid(unsafe_code)]
 
 use vb_core::ids::WorkflowDigest;
-use vb_yaml::ast::ScalarValue;
-use vb_yaml::parse_workflow_source;
+use vb_compile::ScalarValue;
+use vb_compile::parse_workflow_source;
 
 // ─────────────────────────────────────────────────────────────────
 // PO-STATIC-FINISH-001: ScalarValue exhaustiveness

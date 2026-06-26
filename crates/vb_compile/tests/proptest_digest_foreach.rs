@@ -25,7 +25,7 @@
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest_part05;
-use vb_yaml::ast::{
+use vb_compile::{
     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
 };
 

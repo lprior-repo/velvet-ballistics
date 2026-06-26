@@ -43,7 +43,7 @@ fn kani_choose_no_yaml_in_ir() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count >= 1 && branch_count <= 8);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let has_body: bool = kani::any();
         let steps = if has_body {
@@ -78,7 +78,7 @@ fn kani_choose_slot_unique() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count >= 1 && branch_count <= 4);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let has_body: bool = kani::any();
         let steps = if has_body {

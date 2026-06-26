@@ -18,7 +18,7 @@
 
 use vb_compile::compile_source;
 use vb_core::ids::WorkflowDigest;
-use vb_yaml::parse_workflow_source;
+use vb_compile::parse_workflow_source;
 
 /// Compile a YAML source string and return its compiled workflow digest.
 fn compile_and_digest(yaml: &str) -> WorkflowDigest {

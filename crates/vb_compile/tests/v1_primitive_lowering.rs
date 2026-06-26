@@ -1207,9 +1207,9 @@ fn make_legal_wait_shape(event: &str, timeout: &str) -> (Option<String>, Option<
 fn wait_workflow_source(
     event: &Option<String>,
     timeout: &Option<String>,
-) -> vb_yaml::ast::WorkflowSource {
+) -> vb_compile::WorkflowSource {
     let yaml = wait_workflow_yaml(event, timeout);
-    vb_yaml::parse_workflow_source(&yaml).expect("valid wait workflow YAML")
+    vb_compile::parse_workflow_source(&yaml).expect("valid wait workflow YAML")
 }
 
 /// Builds the YAML string for a single-Wait-step workflow.
@@ -1229,7 +1229,7 @@ fn wait_workflow_yaml(event: &Option<String>, timeout: &Option<String>) -> Strin
 /// Computes the canonical_digest from a parsed WorkflowSource.
 /// Uses compile_source (cold-path), which internally calls canonical_digest.
 fn canonical_digest_compat(
-    source: &vb_yaml::ast::WorkflowSource,
+    source: &vb_compile::WorkflowSource,
 ) -> Result<vb_core::WorkflowDigest, String> {
     compile_source(source)
         .map(|wf| wf.digest())
@@ -1659,8 +1659,8 @@ fn compile_yaml_error_with_api(
     }
 }
 
-fn parse_source(yaml: &str) -> Result<vb_yaml::ast::WorkflowSource, String> {
-    vb_yaml::parse_workflow_source(yaml).map_err(|error| error.to_string())
+fn parse_source(yaml: &str) -> Result<vb_compile::WorkflowSource, String> {
+    vb_compile::parse_workflow_source(yaml).map_err(|error| error.to_string())
 }
 
 fn compile_yaml(yaml: &str) -> Result<CompiledWorkflow, String> {

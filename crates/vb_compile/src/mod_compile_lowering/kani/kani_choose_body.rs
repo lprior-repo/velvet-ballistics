@@ -67,7 +67,7 @@ fn kani_choose_stepidx_overflow() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count >= 1 && branch_count <= 4);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let body_steps: u8 = kani::any();
         kani::assume(body_steps <= 3);
@@ -105,7 +105,7 @@ fn kani_choose_emission_parity() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count >= 1 && branch_count <= 4);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let body_steps: u8 = kani::any();
         kani::assume(body_steps <= 3);

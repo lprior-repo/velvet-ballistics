@@ -165,6 +165,5 @@ fn check_together_span(
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "gate_11_loop/tests.rs"]
 mod tests;

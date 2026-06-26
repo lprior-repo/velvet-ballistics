@@ -45,8 +45,8 @@ fuzz_target!(|data: &[u8]| {
     let yaml1 = build_workflow_from_opts(&e1, &t1);
     let yaml2 = build_workflow_from_opts(&e2, &t2);
 
-    let src1 = vb_yaml::parse_workflow_source(&yaml1);
-    let src2 = vb_yaml::parse_workflow_source(&yaml2);
+    let src1 = vb_compile::parse_workflow_source(&yaml1);
+    let src2 = vb_compile::parse_workflow_source(&yaml2);
     let (Ok(s1), Ok(s2)) = (src1, src2) else { return; };
 
     let c1 = vb_compile::compile_source(&s1);

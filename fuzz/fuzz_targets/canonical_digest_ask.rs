@@ -48,7 +48,7 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
         }
     });
 
-    use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+    use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
 
     let steps = vec![StepAst {
         id: "fuzz_ask".to_string(),

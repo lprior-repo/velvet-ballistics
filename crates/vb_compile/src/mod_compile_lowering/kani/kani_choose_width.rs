@@ -18,7 +18,7 @@ fn kani_choose_width_parity() {
     kani::assume(branch_count <= 16);
 
     let mut expected_width = 1usize;
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let body_steps: u8 = kani::any();
         kani::assume(body_steps <= 5);
@@ -52,7 +52,7 @@ fn kani_choose_width_overflow() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count <= 64);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         let body_steps: u8 = kani::any();
         kani::assume(body_steps <= 10);
@@ -75,7 +75,7 @@ fn kani_choose_fanout() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count <= 128);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     for i in 0..branch_count {
         branches.push(make_choose_branch(&format!("{i}"), vec![]));
     }
@@ -105,7 +105,7 @@ fn kani_choose_otherwise_span() {
     let branch_count: u8 = kani::any();
     kani::assume(branch_count >= 1 && branch_count <= 4);
 
-    let mut branches: Vec<vb_yaml::ast::ChooseBranch> = Vec::new();
+    let mut branches: Vec<crate::ChooseBranch> = Vec::new();
     let mut total_body_steps = 0usize;
     for i in 0..branch_count {
         let body_steps: u8 = kani::any();
