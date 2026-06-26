@@ -12,9 +12,7 @@ use crate::engine::drive::actions::compute_max_parallel_in_flight;
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::drive::transitions::{begin_drive_step, finish_drive_step};
 use crate::engine::execute::execute_node_full;
-use crate::engine::types::{
-    EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal,
-};
+use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
 
 /// Enhanced drive loop that handles all node kinds including

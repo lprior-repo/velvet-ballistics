@@ -8,16 +8,15 @@ use std::sync::Arc;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
     RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-};
-use vb_proof_kernels::vb_kyyf_normalization::{
-    DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
-    compare_cross_run, compare_generated_ir, compare_replay, normalize_observation,
+    proof_kernels::vb_kyyf_normalization::{
+        DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
+        compare_cross_run, compare_generated_ir, compare_replay, normalize_observation,
+    },
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, DigestVerificationRequest, RecoveryError,
-    RecoveryFrameSeedBuilder,
+    ActionReplayTracker, DigestVerificationRequest, RecoveryError, RecoveryFrameSeedBuilder,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 use velvet_ballistics_workspace_tests::acceptance_catalog::{Scenario, catalog};
@@ -1353,7 +1352,8 @@ fn collect_bdd_kyyf_003() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id: BDD_KYYF_003,
-            public_surface: "vb_storage::FjallJournal::events_for_run action fact after first replay",
+            public_surface:
+                "vb_storage::FjallJournal::events_for_run action fact after first replay",
         }
     })?;
     let mut repeat_tracker = ActionReplayTracker::new();
@@ -1365,7 +1365,8 @@ fn collect_bdd_kyyf_003() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id: BDD_KYYF_003,
-            public_surface: "vb_storage::FjallJournal::events_for_run action fact after second replay",
+            public_surface:
+                "vb_storage::FjallJournal::events_for_run action fact after second replay",
         }
     })?;
     let after_first_dispatch_count = count_scheduled_action_facts(&after_first_events);

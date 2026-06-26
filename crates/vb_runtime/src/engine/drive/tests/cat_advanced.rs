@@ -185,7 +185,7 @@ mod tests {
     fn bonus_together() -> Result<(), String> {
         let wf = mkwf(
             vec![
-                tog(0, Box::from([1u16, 2]), 3),
+                tog(0, 0, Box::from([1u16, 2]), 3),
                 fin(1, 1),
                 fin(2, 1),
                 fin(3, 1),

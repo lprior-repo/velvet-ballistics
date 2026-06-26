@@ -5,7 +5,7 @@ use crate::io::{errln, outln};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
-use vb_core::{WorkflowDigest, WorkflowParts};
+use vb_core::{CompiledWorkflow, WorkflowDigest, WorkflowParts};
 use vb_ipc::server::{IpcServer, WorkflowResolutionError, WorkflowResolver};
 use vb_runtime::journal::RuntimeJournalConfig;
 use vb_runtime::runtime::Runtime;
@@ -13,6 +13,9 @@ use vb_runtime::shard::ShardConfig;
 use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
 };
+
+mod events;
+pub use events::{event_name, print_event};
 
 pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
     let journal = match FjallJournal::open(db, None) {
@@ -98,20 +101,58 @@ impl WorkflowResolver for StorageWorkflowResolver {
     fn resolve_workflow(
         &mut self,
         digest: WorkflowDigest,
-    ) -> Result<vb_core::CompiledWorkflow, WorkflowResolutionError> {
-        let record = match self.journal.compiled_ir(digest) {
-            Ok(Some(record)) => record,
-            Ok(None) => return Err(WorkflowResolutionError::NotFound),
-            Err(_) => return Err(WorkflowResolutionError::InvalidArtifact),
-        };
-        if record.digest != digest {
-            return Err(WorkflowResolutionError::InvalidArtifact);
-        }
-        let parts = postcard::from_bytes::<WorkflowParts>(&record.ir)
-            .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
-        vb_core::CompiledWorkflow::try_from_parts(parts)
-            .map_err(|_| WorkflowResolutionError::InvalidArtifact)
+    ) -> Result<CompiledWorkflow, WorkflowResolutionError> {
+        let record = compiled_record_for_digest(&self.journal, digest)?;
+        decode_compiled_record(&record, digest)
     }
+}
+
+fn compiled_record_for_digest(
+    journal: &FjallJournal,
+    digest: WorkflowDigest,
+) -> Result<vb_storage::CompiledIrRecord, WorkflowResolutionError> {
+    match journal.compiled_ir(digest) {
+        Ok(Some(record)) => Ok(record),
+        Ok(None) => match journal.compiled_ir_for_source_digest(digest) {
+            Ok(Some(record)) => Ok(record),
+            Ok(None) => Err(WorkflowResolutionError::NotFound),
+            Err(_) => Err(WorkflowResolutionError::InvalidArtifact),
+        },
+        Err(_) => Err(WorkflowResolutionError::InvalidArtifact),
+    }
+}
+
+fn decode_compiled_record(
+    record: &vb_storage::CompiledIrRecord,
+    requested: WorkflowDigest,
+) -> Result<CompiledWorkflow, WorkflowResolutionError> {
+    if raw_payload_digest(record) == record.digest {
+        return decode_workflow_parts(record.ir.as_slice());
+    }
+
+    let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(record.ir.as_slice())
+        .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+    let artifact_digest = vb_storage::admission::accepted_artifact_digest(&artifact)
+        .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+    let digest_matches = artifact.digest == record.digest
+        && artifact.verification.digest == record.digest
+        && artifact_digest == record.digest;
+    let lookup_matches = record.digest == requested || artifact.source_digest == requested;
+    if !(digest_matches && lookup_matches) {
+        return Err(WorkflowResolutionError::InvalidArtifact);
+    }
+    decode_workflow_parts(artifact.ir.as_slice())
+}
+
+fn raw_payload_digest(record: &vb_storage::CompiledIrRecord) -> WorkflowDigest {
+    WorkflowDigest::from_bytes(blake3::hash(record.ir.as_slice()).into())
+}
+
+fn decode_workflow_parts(bytes: &[u8]) -> Result<CompiledWorkflow, WorkflowResolutionError> {
+    let parts = postcard::from_bytes::<WorkflowParts>(bytes)
+        .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+    vb_core::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|_| WorkflowResolutionError::InvalidArtifact)
 }
 
 pub fn cmd_inspect(run_id: &str, db: &Path) -> ExitCode {
@@ -184,111 +225,6 @@ pub fn cmd_events(run_id: &str, db: &Path) -> ExitCode {
     }
 
     ExitCode::SUCCESS
-}
-
-pub fn print_event(event: &JournalEvent) {
-    match event {
-        JournalEvent::RunAccepted { seq, .. } => {
-            outln!("  seq={}: RunAccepted", seq.get());
-        }
-        JournalEvent::StepStarted { seq, step, .. } => {
-            outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
-        }
-        JournalEvent::StepSucceeded { seq, step, output, .. } => {
-            outln!("  seq={}: StepSucceeded step={} output={}", seq.get(), step.get(), output.get());
-        }
-        JournalEvent::ActionScheduled { seq, step, action, .. } => {
-            outln!("  seq={}: ActionScheduled step={} action={}", seq.get(), step.get(), action.get());
-        }
-        JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
-            outln!("  seq={}: ActionCompleted step={} action={}", seq.get(), step.get(), action.get());
-        }
-        JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
-            outln!("  seq={}: ActionFailed step={} action={}", seq.get(), step.get(), action.get());
-        }
-        JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
-        }
-        JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: AskScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            outln!("  seq={}: AskAnswered step={}", seq.get(), step.get());
-        }
-        JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::RunCancelled { seq, .. } => {
-            outln!("  seq={}: RunCancelled", seq.get());
-        }
-        JournalEvent::RunFinished { seq, result, .. } => {
-            outln!("  seq={}: RunFinished result={}", seq.get(), result.get());
-        }
-        JournalEvent::RunFailedEvent { seq, .. } => {
-            outln!("  seq={}: RunFailed", seq.get());
-        }
-    }
-}
-
-pub fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
-        Ok(id) => id,
-        Err(code) => return code,
-    };
-
-    let journal = match FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
-            return ExitCode::FAILURE;
-        }
-    };
-
-    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
-    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
-        Ok(events) => {
-            outln!("recovered {} event(s) for run {run_id}", events.len());
-            for event in &events {
-                print_event(event);
-            }
-            match vb_storage::recovery::extract_terminal(&events) {
-                Some(terminal) => {
-                    outln!("terminal: {}", event_name(terminal));
-                }
-                None => {
-                    outln!("terminal: none");
-                }
-            }
-        }
-        Err(e) => {
-            errln!("error replaying run {run_id}: {e}");
-            return ExitCode::FAILURE;
-        }
-    }
-
-    ExitCode::SUCCESS
-}
-
-pub fn event_name(event: &JournalEvent) -> &'static str {
-    match event {
-        JournalEvent::RunAccepted { .. } => "RunAccepted",
-        JournalEvent::StepStarted { .. } => "StepStarted",
-        JournalEvent::StepSucceeded { .. } => "StepSucceeded",
-        JournalEvent::ActionScheduled { .. } => "ActionScheduled",
-        JournalEvent::ActionCompletedEvent { .. } => "ActionCompleted",
-        JournalEvent::ActionFailedEvent { .. } => "ActionFailed",
-        JournalEvent::SlotWrittenEvent { .. } => "SlotWritten",
-        JournalEvent::WaitScheduledEvent { .. } => "WaitScheduled",
-        JournalEvent::AskScheduledEvent { .. } => "AskScheduled",
-        JournalEvent::AskAnsweredEvent { .. } => "AskAnswered",
-        JournalEvent::RetryScheduledEvent { .. } => "RetryScheduled",
-        JournalEvent::RunCancelled { .. } => "RunCancelled",
-        JournalEvent::RunFinished { .. } => "RunFinished",
-        JournalEvent::RunFailedEvent { .. } => "RunFailed",
-    }
 }
 
 fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {

@@ -9,7 +9,7 @@ public_surface: vb_storage journal and recovery APIs
 evidence_artifact: .evidence/vb-kyyf/recovery-bdd-errors.md
 normalized_digest_or_mismatch: ReplayDigestMismatch
 raw_observation_summary:
-case=corrupt-snapshot,attempt1=CorruptSnapshot,attempt2=CorruptSnapshot,expected_typed_error=CorruptSnapshot
+case=corrupt-snapshot,attempt1=MissingSnapshot,attempt2=MissingSnapshot,expected_typed_error=MissingSnapshot
 case=sequence-gap,attempt1=ReplayDivergence,attempt2=ReplayDivergence,expected_typed_error=ReplayDivergence
 case=duplicate-sequence,attempt1=ReplayDivergence,attempt2=ReplayDivergence,expected_typed_error=ReplayDivergence
 case=out-of-order-sequence,attempt1=ReplayDivergence,attempt2=ReplayDivergence,expected_typed_error=ReplayDivergence

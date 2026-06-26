@@ -73,7 +73,7 @@ fn make_workflow_with_constants(
 }
 
 fn make_run(slot_count: u16, step_state_count: u16) -> RunFrame {
-    match RunFrame::new(RunId::new(1), StepIdx::new(0), slot_count, step_state_count) {
+    match RunFrame::new(RunId::new(1), StepIdx::new(0), step_state_count, slot_count) {
         Ok(f) => f,
         Err(e) => {
             let msg = format!("RunFrame::new failed: {e}");
@@ -204,8 +204,7 @@ fn execute_do_without_contract_rejects_without_ticket() {
     );
     match result {
         Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied {
-            action,
-            ..
+            action, ..
         })) => {
             assert_eq!(action, ActionId::new(5));
         }
@@ -341,9 +340,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         &CapabilitySet::empty(),
     );
     match result {
-        Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction {
-            action,
-        })) => {
+        Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction { action })) => {
             assert_eq!(action, ActionId::new(99));
         }
         other => {
@@ -728,20 +725,20 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized input, got {result:?}"
     );
 }
 
 // =====================================================================
-// ForEachJoin: errors on missing step state
+// ForEachJoin: errors on missing next step
 // =====================================================================
 
 #[test]
-fn execute_for_each_join_errors_on_missing_step_state() {
+fn execute_for_each_join_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
@@ -755,6 +752,17 @@ fn execute_for_each_join_errors_on_missing_step_state() {
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
+    let list_id = match store.insert_list(Vec::<SlotValue>::new().into_boxed_slice()) {
+        Ok(id) => id,
+        Err(e) => {
+            let msg = format!("insert_list failed: {e}");
+            panic!("{msg}");
+        }
+    };
+    if let Err(e) = run.write_slot(SlotIdx::new(0), SlotValue::List(list_id)) {
+        let msg = format!("write_slot failed: {e}");
+        panic!("{msg}");
+    }
     let mut cs = CollectStates::new();
     let n = match wf.node(StepIdx::ZERO) {
         Some(n) => n,
@@ -774,10 +782,10 @@ fn execute_for_each_join_errors_on_missing_step_state() {
         matches!(
             result,
             Err(RuntimeEngineError::Core(
-                vb_core::EngineError::StepStateOutOfBounds { .. }
+                vb_core::EngineError::MissingNextStep { .. }
             ))
         ),
-        "expected error for missing step state, got {result:?}"
+        "expected error for missing next step, got {result:?}"
     );
 }
 
@@ -822,9 +830,9 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized iterator, got {result:?}"
     );
@@ -878,11 +886,11 @@ fn execute_together_start_empty_branches_no_panic() {
 }
 
 // =====================================================================
-// TogetherJoin: errors on missing step state
+// TogetherJoin: errors on missing next step
 // =====================================================================
 
 #[test]
-fn execute_together_join_errors_on_missing_step_state() {
+fn execute_together_join_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
@@ -897,6 +905,25 @@ fn execute_together_join_errors_on_missing_step_state() {
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
+    let list_id = match store.insert_list(Vec::<SlotValue>::new().into_boxed_slice()) {
+        Ok(id) => id,
+        Err(e) => {
+            let msg = format!("insert_list failed: {e}");
+            panic!("{msg}");
+        }
+    };
+    if let Err(e) = run.write_slot(SlotIdx::new(1), SlotValue::List(list_id)) {
+        let msg = format!("write accumulator failed: {e}");
+        panic!("{msg}");
+    }
+    if let Err(e) = run.write_slot(SlotIdx::new(0), SlotValue::Null) {
+        let msg = format!("write output failed: {e}");
+        panic!("{msg}");
+    }
+    if let Err(e) = run.add_parallel_in_flight(2) {
+        let msg = format!("add_parallel_in_flight failed: {e}");
+        panic!("{msg}");
+    }
     let mut cs = CollectStates::new();
     let n = match wf.node(StepIdx::ZERO) {
         Some(n) => n,
@@ -916,10 +943,10 @@ fn execute_together_join_errors_on_missing_step_state() {
         matches!(
             result,
             Err(RuntimeEngineError::Core(
-                vb_core::EngineError::StepStateOutOfBounds { .. }
+                vb_core::EngineError::MissingNextStep { .. }
             ))
         ),
-        "expected error for missing step state, got {result:?}"
+        "expected error for missing next step, got {result:?}"
     );
 }
 
@@ -966,9 +993,9 @@ fn execute_collect_start_errors_on_uninitialized_source() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized source, got {result:?}"
     );
@@ -1015,9 +1042,9 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized collector, got {result:?}"
     );
@@ -1064,9 +1091,9 @@ fn execute_collect_next_errors_on_uninitialized_collector() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized collector, got {result:?}"
     );
@@ -1109,9 +1136,9 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized collector, got {result:?}"
     );
@@ -1133,14 +1160,15 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
             input: SlotIdx::new(5),
             accumulator: SlotIdx::new(6),
             initial: ConstIdx::new(0),
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         },
     };
     let node1 = finish_node(1, 0);
+    let node2 = finish_node(2, 0);
     let constants: Box<[vb_core::value::ConstValue]> =
         Box::from([vb_core::value::ConstValue::I64(0)]);
-    let wf = make_workflow_with_constants(vec![node0, node1], 8, constants);
+    let wf = make_workflow_with_constants(vec![node0, node1, node2], 8, constants);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -1161,9 +1189,9 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized input, got {result:?}"
     );
@@ -1210,20 +1238,20 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized iterator, got {result:?}"
     );
 }
 
 // =====================================================================
-// ReduceFinish: errors on missing step state
+// ReduceFinish: errors on missing next step
 // =====================================================================
 
 #[test]
-fn execute_reduce_finish_errors_on_missing_step_state() {
+fn execute_reduce_finish_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
@@ -1236,6 +1264,10 @@ fn execute_reduce_finish_errors_on_missing_step_state() {
     };
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
+    if let Err(e) = run.write_slot(SlotIdx::new(0), SlotValue::I64(42)) {
+        let msg = format!("write_slot failed: {e}");
+        panic!("{msg}");
+    }
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
     let n = match wf.node(StepIdx::ZERO) {
@@ -1256,10 +1288,10 @@ fn execute_reduce_finish_errors_on_missing_step_state() {
         matches!(
             result,
             Err(RuntimeEngineError::Core(
-                vb_core::EngineError::StepStateOutOfBounds { .. }
+                vb_core::EngineError::MissingNextStep { .. }
             ))
         ),
-        "expected error for missing step state, got {result:?}"
+        "expected error for missing next step, got {result:?}"
     );
 }
 
@@ -1271,18 +1303,19 @@ fn execute_reduce_finish_errors_on_missing_step_state() {
 fn execute_repeat_start_single_attempt_no_panic() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
         next: None,
         on_error: None,
         error_slot: None,
+        output: Some(SlotIdx::new(0)),
         kind: CompiledNodeKind::RepeatStart {
             max_attempts: 1,
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         },
     };
     let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let node2 = finish_node(2, 0);
+    let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
@@ -1350,9 +1383,9 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized attempt slot, got {result:?}"
     );
@@ -1395,9 +1428,9 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized result slot, got {result:?}"
     );
@@ -1440,9 +1473,9 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized deadline, got {result:?}"
     );
@@ -1486,9 +1519,9 @@ fn execute_wait_event_errors_on_uninitialized_event() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized event, got {result:?}"
     );
@@ -1532,9 +1565,9 @@ fn execute_ask_errors_on_uninitialized_prompt() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized prompt, got {result:?}"
     );
@@ -1577,9 +1610,9 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized answer, got {result:?}"
     );
@@ -1625,9 +1658,9 @@ fn execute_repeat_check_routes_forward_on_done() {
     assert!(
         matches!(
             result,
-            Err(RuntimeEngineError::Core(vb_core::EngineError::SlotUninitialized {
-                ..
-            }))
+            Err(RuntimeEngineError::Core(
+                vb_core::EngineError::SlotUninitialized { .. }
+            ))
         ),
         "expected error for uninitialized attempt slot, got {result:?}"
     );

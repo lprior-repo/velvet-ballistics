@@ -1,18 +1,2 @@
 [verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
-error: expected identifier
-  --> verification/verus/vb_jpq724_events_for_run_production.rs:59:43
-   |
-59 | pub assume_specification[<FjallJournal as ?>::events_for_run](
-   |                                           ^
-
-error[E0432]: unresolved import `vb_storage`
-  --> verification/verus/vb_jpq724_events_for_run_production.rs:28:5
-   |
-28 | use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
-   |     ^^^^^^^^^^ use of unresolved module or unlinked crate `vb_storage`
-   |
-   = help: you might be missing a crate named `vb_storage`
-
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0432`.
+verification results:: 5 verified, 0 errors

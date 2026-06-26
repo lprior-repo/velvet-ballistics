@@ -103,6 +103,9 @@ impl FjallJournal {
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let (start_seq, first_event) = match self.latest_durable_snapshot_seq(run)? {
             Some(seq) => {
+                if self.snapshot(run, seq)?.is_none() {
+                    return Err(JournalError::UnexpectedEof);
+                }
                 let tail_start = crate::codec::next_seq(seq)?;
                 (tail_start, tail_start)
             }

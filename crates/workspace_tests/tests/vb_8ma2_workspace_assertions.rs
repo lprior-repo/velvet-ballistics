@@ -6,17 +6,13 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 12] = [
-    ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
+const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),
     ("crates/vb_compile", "vb_compile"),
-    ("crates/vb_doc", "vb_doc"),
-    ("crates/vb_proof_kernels", "vb_proof_kernels"),
+    ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_cli", "velvet-ballistics"),
-    ("crates/vb_verification", "vb_verification"),
-    ("crates/vb_test_util", "vb_test_util"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
@@ -56,20 +52,16 @@ fn write_manifest(root: &Path, extra_member: Option<&str>) -> Result<(), std::io
         &format!(
             r#"[workspace]
 members = [
-    "crates/vb_boundary_inventory",
-    "crates/vb_core",
-    "crates/vb_yaml",
-    "crates/vb_validate",
-    "crates/vb_expr",
-    "crates/vb_compile",
-    "crates/vb_storage",
-    "crates/vb_runtime",
-    "crates/vb_doc",
-    "crates/vb_ipc",
-    "crates/vb_proof_kernels",
     "crates/vb_cli",
-    "crates/vb_verification",
-    "crates/vb_test_util",
+    "crates/vb_compile",
+    "crates/vb_core",
+    "crates/vb_expr",
+    "crates/vb_ipc",
+    "crates/vb_queue_semantics",
+    "crates/vb_runtime",
+    "crates/vb_storage",
+    "crates/vb_validate",
+    "crates/vb_yaml",
     "crates/workspace_tests",
 {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
@@ -107,6 +99,7 @@ edition = "2024"
 default = []
 bench = []
 kani-diagnostic-codes = []
+verus-kernels = []
 volatile = []
 test-util = []
 "#
@@ -117,7 +110,7 @@ test-util = []
 }
 
 fn write_extra_member_manifests(root: &Path) -> Result<(), std::io::Error> {
-    for (member, package_name) in EXTRA_MEMBER_MANIFESTS {
+    for &(member, package_name) in EXTRA_MEMBER_MANIFESTS {
         let mut manifest =
             format!("[package]\nname = \"{package_name}\"\nedition = \"2024\"\n\n[dependencies]\n");
         if member == "crates/vb_cli" {

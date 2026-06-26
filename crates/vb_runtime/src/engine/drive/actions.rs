@@ -9,9 +9,7 @@ use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::drive::recovery::DriveState;
-use crate::engine::types::{
-    EvidenceCollector, RuntimeEngineError, RuntimeEngineResult,
-};
+use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineResult};
 use crate::primitives::collect::CollectStates;
 
 /// Emits a `SlotWritten` evidence event for the just-finished step when

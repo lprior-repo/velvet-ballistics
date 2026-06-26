@@ -14,7 +14,7 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::admission::{admit_compiled_artifact, submit_artifact};
+    use crate::admission::{accepted_artifact_digest, admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
         CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
@@ -85,6 +85,12 @@ mod durability_gate_tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    fn compiled_record_digest(workflow: &CompiledWorkflow) -> Result<WorkflowDigest, String> {
+        let bytes = postcard::to_allocvec(&workflow.to_parts())
+            .map_err(|e| format!("serialize compiled workflow parts: {e}"))?;
+        Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
+    }
+
     // =========================================================================
     // SECTION 2.1: submit_artifact — Policy Tier Behavior (Unit Tests)
     // =========================================================================
@@ -110,9 +116,13 @@ mod durability_gate_tests {
             "Relaxed policy must have durable=false"
         );
         assert_eq!(
-            result.verification.digest,
+            result.verification.digest, result.digest,
+            "proof digest must match artifact digest"
+        );
+        assert_eq!(
+            result.source_digest,
             workflow.digest(),
-            "proof digest must match workflow digest"
+            "source digest must match workflow digest"
         );
         Ok(())
     }
@@ -168,13 +178,11 @@ mod durability_gate_tests {
     fn submit_artifact_relaxed_persists_record() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
-        let digest = workflow.digest();
-
-        submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+        let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
             .map_err(|e| format!("submit_artifact failed: {e}"))?;
 
         let loaded = journal
-            .compiled_ir(digest)
+            .compiled_ir(artifact.digest)
             .map_err(|e| format!("read: {e}"))?;
         assert!(
             loaded.is_some(),
@@ -183,9 +191,10 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// TEST: submit_artifact all policies set correct digest
+    /// TEST: submit_artifact all policies bind source and artifact digests
     ///
-    /// Contract §2.1 Postcondition (All): artifact.digest == workflow.digest().
+    /// Contract §2.1 Postcondition (All): source_digest == workflow.digest()
+    /// and artifact.digest binds the accepted-artifact envelope.
     #[test]
     fn submit_artifact_all_policies_set_correct_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -198,10 +207,16 @@ mod durability_gate_tests {
         ] {
             let result = submit_artifact(&journal, &workflow, policy)
                 .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+            let computed = accepted_artifact_digest(&result)
+                .map_err(|e| format!("accepted artifact digest failed: {e}"))?;
             assert_eq!(
-                result.digest,
+                result.source_digest,
                 workflow.digest(),
-                "artifact.digest must equal workflow.digest() for policy {policy:?}"
+                "source digest must equal workflow.digest() for policy {policy:?}"
+            );
+            assert_eq!(
+                result.digest, computed,
+                "artifact.digest must equal canonical envelope digest for policy {policy:?}"
             );
         }
         Ok(())
@@ -264,11 +279,11 @@ mod durability_gate_tests {
 
         let result = admit_compiled_artifact(&journal, &workflow)
             .map_err(|e| format!("admit_compiled_artifact failed: {e}"))?;
+        let expected = compiled_record_digest(&workflow)?;
 
         assert_eq!(
-            result,
-            workflow.digest(),
-            "admit_compiled_artifact must return workflow digest on success"
+            result, expected,
+            "admit_compiled_artifact must return compiled payload digest on success"
         );
         Ok(())
     }
@@ -300,7 +315,7 @@ mod durability_gate_tests {
     fn admit_compiled_artifact_puts_record_with_matching_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
-        let expected_digest = workflow.digest();
+        let expected_digest = compiled_record_digest(&workflow)?;
 
         admit_compiled_artifact(&journal, &workflow).map_err(|e| format!("admit failed: {e}"))?;
 
@@ -314,9 +329,9 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// TEST: admit_compiled_artifact returns workflow digest
+    /// TEST: admit_compiled_artifact returns compiled payload digest
     ///
-    /// Contract §2.2 Postcondition: Returns workflow.digest().
+    /// Contract §2.2 Postcondition: Returns BLAKE3 of persisted compiled payload.
     #[test]
     fn admit_compiled_artifact_returns_workflow_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -327,8 +342,8 @@ mod durability_gate_tests {
 
         assert_eq!(
             result,
-            workflow.digest(),
-            "returned digest must equal workflow.digest()"
+            compiled_record_digest(&workflow)?,
+            "returned digest must equal compiled payload digest"
         );
         Ok(())
     }
@@ -1016,9 +1031,10 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// TEST: artifact_digest_equals_workflow_digest
+    /// TEST: artifact_digest_binds_envelope_and_source_digest_binds_workflow
     ///
-    /// Contract §2.1 Postcondition (All): artifact.digest == workflow.digest().
+    /// Contract §2.1 Postcondition (All): artifact.digest binds the accepted
+    /// artifact envelope; source_digest binds the workflow structure digest.
     #[test]
     fn artifact_digest_equals_workflow_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -1031,11 +1047,17 @@ mod durability_gate_tests {
         ] {
             let artifact = submit_artifact(&journal, &workflow, policy)
                 .map_err(|e| format!("submit failed: {e}"))?;
+            let computed = accepted_artifact_digest(&artifact)
+                .map_err(|e| format!("accepted artifact digest failed: {e}"))?;
 
             assert_eq!(
-                artifact.digest.as_bytes(),
+                artifact.source_digest.as_bytes(),
                 workflow.digest().as_bytes(),
-                "artifact.digest must equal workflow.digest() for policy {policy:?}"
+                "source digest must equal workflow.digest() for policy {policy:?}"
+            );
+            assert_eq!(
+                artifact.digest, computed,
+                "artifact.digest must equal canonical envelope digest for policy {policy:?}"
             );
         }
         Ok(())
@@ -1385,13 +1407,12 @@ mod durability_gate_tests {
     fn bdd_relaxed_policy_accepts_without_gate_validation() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
-        let digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
             .map_err(|e| format!("submit failed: {e}"))?;
 
         let loaded = journal
-            .compiled_ir(digest)
+            .compiled_ir(result.digest)
             .map_err(|e| format!("read: {e}"))?;
         assert!(
             loaded.is_some(),
@@ -1400,6 +1421,7 @@ mod durability_gate_tests {
 
         assert_eq!(result.verification.gate_count, 0, "gate_count must be 0");
         assert!(!result.verification.durable, "durable must be false");
+        assert_eq!(result.source_digest, workflow.digest());
 
         Ok(())
     }
@@ -1469,9 +1491,8 @@ mod durability_gate_tests {
             "retrieved ir bytes must be non-empty"
         );
         assert_eq!(
-            record.digest,
-            workflow.digest(),
-            "retrieved digest must equal original workflow digest"
+            record.digest, artifact.digest,
+            "retrieved digest must equal accepted artifact digest"
         );
 
         Ok(())
@@ -1523,7 +1544,7 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// BDD Scenario: Artifact digest equals workflow digest
+    /// BDD Scenario: Artifact digest binds envelope and source digest binds workflow
     #[test]
     fn bdd_artifact_digest_equals_workflow_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -1531,12 +1552,15 @@ mod durability_gate_tests {
 
         let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("submit: {e}"))?;
+        let computed = accepted_artifact_digest(&artifact)
+            .map_err(|e| format!("accepted artifact digest failed: {e}"))?;
 
         assert_eq!(
-            artifact.digest.as_bytes(),
+            artifact.source_digest.as_bytes(),
             workflow.digest().as_bytes(),
-            "artifact.digest must equal workflow.digest()"
+            "source digest must equal workflow.digest()"
         );
+        assert_eq!(artifact.digest, computed);
 
         Ok(())
     }

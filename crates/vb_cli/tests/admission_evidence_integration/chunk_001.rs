@@ -280,16 +280,24 @@ fn restart_lookup_finds_persisted_header() {
     let artifact =
         vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match artifact {
-        Ok(record) => assert_eq!(record.digest, digest),
+        Ok(record) => {
+            assert_eq!(record.source_digest, digest);
+            assert_eq!(record.verification.digest, record.digest);
+            match journal.compiled_ir(record.digest) {
+                Ok(Some(stored)) => assert_eq!(stored.digest, record.digest),
+                Ok(None) => fail_assert!("persisted compiled IR should be found by artifact digest"),
+                Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
+            }
+            match journal.compiled_ir_for_source_digest(digest) {
+                Ok(Some(stored)) => assert_eq!(stored.digest, record.digest),
+                Ok(None) => fail_assert!("persisted compiled IR should be found by source digest"),
+                Err(err) => fail_assert!("source-digest compiled_ir lookup failed: {err}"),
+            }
+        }
         Err(err) => {
             fail_assert!("submit_artifact failed: {err}");
             return;
         }
-    }
-    match journal.compiled_ir(digest) {
-        Ok(Some(record)) => assert_eq!(record.digest, digest),
-        Ok(None) => fail_assert!("persisted compiled IR should be found by digest"),
-        Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
     }
 }
 
@@ -508,13 +516,21 @@ fn journal_persistence_survives_runtime_drop_and_reopen() {
         return;
     };
 
-    match vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed) {
-        Ok(record) => assert_eq!(record.digest, digest),
+    let artifact_digest = match vb_storage::submit_artifact(
+        &journal,
+        &workflow,
+        vb_core::RuntimePolicy::Relaxed,
+    ) {
+        Ok(record) => {
+            assert_eq!(record.source_digest, digest);
+            assert_eq!(record.verification.digest, record.digest);
+            record.digest
+        }
         Err(err) => {
             fail_assert!("submit_artifact failed: {err}");
             return;
         }
-    }
+    };
 
     drop(journal);
 
@@ -526,9 +542,14 @@ fn journal_persistence_survives_runtime_drop_and_reopen() {
         }
     };
 
-    match reopened.compiled_ir(digest) {
-        Ok(Some(record)) => assert_eq!(record.digest, digest),
+    match reopened.compiled_ir(artifact_digest) {
+        Ok(Some(record)) => assert_eq!(record.digest, artifact_digest),
         Ok(None) => fail_assert!("artifact should survive journal close/reopen"),
         Err(err) => fail_assert!("post-reopen compiled_ir lookup failed: {err}"),
+    }
+    match reopened.compiled_ir_for_source_digest(digest) {
+        Ok(Some(record)) => assert_eq!(record.digest, artifact_digest),
+        Ok(None) => fail_assert!("artifact should survive source-digest lookup after reopen"),
+        Err(err) => fail_assert!("post-reopen source-digest lookup failed: {err}"),
     }
 }

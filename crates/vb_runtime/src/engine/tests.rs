@@ -2150,9 +2150,10 @@ mod blackhat_engine {
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
-            Err(RuntimeEngineError::Core(
-                vb_core::EngineError::CapabilityDenied { action, .. },
-            )) if action == ActionId::new(0) => {}
+            Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied {
+                action,
+                ..
+            })) if action == ActionId::new(0) => {}
             other => {
                 assert!(
                     false,

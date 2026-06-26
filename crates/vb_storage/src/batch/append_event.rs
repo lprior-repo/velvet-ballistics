@@ -11,9 +11,9 @@ impl<'j> JournalWriteBatch<'j> {
     ///
     /// # Invariant I20
     /// Duplicate event detection is enforced at `append_event` time by
-    /// checking the journal's keyspace for already-committed events.
-    /// Same-batch idempotent inserts are allowed (duplicates within
-    /// the same batch are collapsed at commit time).
+    /// checking both the current batch's staged keys and the journal's
+    /// keyspace for already-committed events. Same-batch duplicate
+    /// keys are rejected before Fjall can collapse them silently.
     ///
     /// # Guard Precedence (C6)
     /// 1. Key construction
@@ -32,6 +32,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// # Postconditions (ensures)
     /// - On success: the event is staged in `inner`, `staged_bytes` is
     ///   incremented by the full encoded record length.
+    /// - On `DuplicateStagedKey`: no state mutated, batch remains open.
     /// - On `DuplicateEvent`: batch is aborted, no state mutated.
     /// - On `QueueFull`: no state mutated, batch remains open.
     /// - On `PayloadTooLarge`: no state mutated.

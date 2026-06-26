@@ -5,9 +5,9 @@
 //! work correctly together.
 
 use xtask::boundary_inventory::{
-    BoundaryClass, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts,
-    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner,
-    ReviewStatus, ThreatStatement, WorkspaceRoot,
+    BoundaryClass, BoundaryExposure, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts,
+    ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState,
+    FreshnessMarker, Owner, ReviewStatus, ThreatStatement, WorkspaceRoot,
 };
 use xtask::doc_reconcile::evidence::{EvidenceIndex, EvidenceSupport};
 use xtask::doc_reconcile::reconcile::{
@@ -424,10 +424,22 @@ fn plan_reconciliation_includes_all_edit_types() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::EvalExprJoin));
-    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::BuildObjectJoin));
-    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::BuildListJoin));
-    assert!(plan.edits.contains(&xtask::doc_reconcile::PatchEdit::FinishCarriesTaint));
+    assert!(
+        plan.edits
+            .contains(&xtask::doc_reconcile::PatchEdit::EvalExprJoin)
+    );
+    assert!(
+        plan.edits
+            .contains(&xtask::doc_reconcile::PatchEdit::BuildObjectJoin)
+    );
+    assert!(
+        plan.edits
+            .contains(&xtask::doc_reconcile::PatchEdit::BuildListJoin)
+    );
+    assert!(
+        plan.edits
+            .contains(&xtask::doc_reconcile::PatchEdit::FinishCarriesTaint)
+    );
 }
 
 #[test]
@@ -657,7 +669,11 @@ fn scan_nodes_returns_all_expected_nodes() {
             .scanned_nodes
             .contains(&xtask::doc_reconcile::ResolvedNode::BuildList)
     );
-    assert!(report.scanned_nodes.contains(&xtask::doc_reconcile::ResolvedNode::Finish));
+    assert!(
+        report
+            .scanned_nodes
+            .contains(&xtask::doc_reconcile::ResolvedNode::Finish)
+    );
 }
 
 #[test]

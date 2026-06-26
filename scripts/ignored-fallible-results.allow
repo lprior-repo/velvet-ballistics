@@ -1,15 +1,4 @@
 # Path-scoped exceptions for scripts/check-ignored-fallible-results.sh.
 # Format:
 # crates/<crate>/src/<file>.rs|DISCARD-001|owner=<name>|expiry=YYYY-MM-DD|follow_up=<bead>|reason=<why>
-<<<<<<< Updated upstream
-crates/vb_runtime/src/shard/transitions.rs|DISCARD-006|owner=velvet-ballistics|expiry=2026-09-30|follow_up=vb-rud5|reason=finish_run and fail_run_state intentionally allow the secondary RunStateStore::insert to fail: the original journal-append error is the surfaced one. Best-effort rollback semantics preserved (RE-010/RE-011 regression coverage remains in drive.rs).
-=======
-
-# The `let _ = self.run_state_insert(...)` rollback in finish_run and
-# fail_run_state is intentional: the primary error from the durable journal
-# append is the one surfaced, and the rollback is a best-effort cleanup. The
-# path-scoped `#[allow(clippy::let_underscore_must_use)]` documents the
-# choice; without it the lint would force a bare expression statement which
-# still triggers `unused Result that must be used`.
 crates/vb_runtime/src/shard/transitions.rs|DISCARD-006|owner=holzman-rust|expiry=2026-12-31|follow_up=vb-ttki3|reason=best-effort rollback must drop the secondary Result; the primary journal-append error is what gets surfaced to the caller
->>>>>>> Stashed changes

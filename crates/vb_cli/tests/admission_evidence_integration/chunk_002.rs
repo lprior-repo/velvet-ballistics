@@ -28,21 +28,23 @@ fn submit_artifact_then_run_succeeds() {
     // When: submitting the artifact under Relaxed policy
     let artifact_result =
         vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
-    match artifact_result {
+    let artifact_digest = match artifact_result {
         Ok(artifact) => {
             assert_eq!(
-                artifact.digest, digest,
-                "submit_artifact should return the workflow digest"
+                artifact.source_digest, digest,
+                "submit_artifact should bind the source/workflow digest"
             );
+            assert_eq!(artifact.verification.digest, artifact.digest);
+            artifact.digest
         }
         Err(err) => {
             fail_assert!("submit_artifact failed: {err}");
             return;
         }
-    }
+    };
 
     // Then: the artifact is stored and the workflow can be loaded and run
-    let stored = journal.compiled_ir(digest);
+    let stored = journal.compiled_ir(artifact_digest);
     match stored {
         Ok(Some(_record)) => {}
         Ok(None) => {
@@ -51,6 +53,17 @@ fn submit_artifact_then_run_succeeds() {
         }
         Err(err) => {
             fail_assert!("compiled_ir lookup failed: {err}");
+            return;
+        }
+    }
+    match journal.compiled_ir_for_source_digest(digest) {
+        Ok(Some(record)) => assert_eq!(record.digest, artifact_digest),
+        Ok(None) => {
+            fail_assert!("artifact should be findable by source/workflow digest");
+            return;
+        }
+        Err(err) => {
+            fail_assert!("source-digest compiled_ir lookup failed: {err}");
             return;
         }
     }
@@ -112,7 +125,8 @@ fn run_without_artifact_under_relaxed_policy() {
     let result = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match result {
         Ok(artifact) => {
-            assert_eq!(artifact.digest, digest);
+            assert_eq!(artifact.source_digest, digest);
+            assert_eq!(artifact.verification.digest, artifact.digest);
         }
         Err(err) => {
             fail_assert!("relaxed submit_artifact should succeed: {err}");

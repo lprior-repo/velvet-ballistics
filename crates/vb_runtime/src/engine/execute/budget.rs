@@ -11,9 +11,7 @@ use vb_core::value::SlotValue;
 
 use crate::engine::action::execute_retry_check;
 use crate::engine::execute::handlers::read_attempt_from_slot;
-use crate::engine::types::{
-    RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
-};
+use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
 /// Handles a `RetryCheck` node. RE-003: an uninitialized policy slot is
 /// the first-visit case (attempt = 0) — the counter is advanced via

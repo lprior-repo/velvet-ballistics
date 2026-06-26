@@ -478,6 +478,10 @@ impl StorageArtifactStore {
 impl ArtifactStore for StorageArtifactStore {
     fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
         matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
+            || matches!(
+                self.journal.compiled_ir_for_source_digest(digest),
+                Ok(Some(_))
+            )
     }
 }
 
@@ -486,22 +490,33 @@ impl AcceptedArtifactStore for StorageArtifactStore {
         &self,
         artifact_digest: WorkflowDigest,
     ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-        // Load the compiled IR record from the journal.
-        let record = self
-            .journal
-            .compiled_ir(artifact_digest)
-            .map_err(|_jb_err| ArtifactEnvelopeError::ArtifactNotFound {
-                digest: artifact_digest,
-            })?
-            .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
-                digest: artifact_digest,
-            })?;
+        // Load the compiled IR record from the journal. Accepted artifacts are
+        // stored by artifact digest, while runtime submissions commonly carry
+        // the workflow/source digest. Preserve the content-addressed key and
+        // fall back to a bounded source-digest lookup for that runtime path.
+        let record = match self.journal.compiled_ir(artifact_digest) {
+            Ok(Some(record)) => record,
+            Ok(None) => self
+                .journal
+                .compiled_ir_for_source_digest(artifact_digest)
+                .map_err(|_jb_err| ArtifactEnvelopeError::ArtifactNotFound {
+                    digest: artifact_digest,
+                })?
+                .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
+                    digest: artifact_digest,
+                })?,
+            Err(_) => {
+                return Err(ArtifactEnvelopeError::ArtifactNotFound {
+                    digest: artifact_digest,
+                });
+            }
+        };
 
         // Decode the postcard payload as AcceptedArtifact.
         let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
             .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
 
-        if artifact.digest != artifact_digest {
+        if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
             return Err(ArtifactEnvelopeError::ArtifactDigestMismatch {
                 requested: artifact_digest,
                 found: artifact.digest,
@@ -615,27 +630,28 @@ pub fn admit_run(
     run_id: RunId,
     caps: CapabilitySet,
 ) -> Result<RunAdmission, AdmissionError> {
-    match policy {
+    let admitted_digest = match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
             let artifact = store
                 .load_accepted_artifact(digest)
                 .map_err(map_artifact_envelope_error)?;
             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
-            if artifact.digest != digest {
+            if artifact.digest != digest && artifact.source_digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
                     found: artifact.digest,
                 });
             }
+            artifact.digest
         }
-        RuntimePolicy::Relaxed => {}
+        RuntimePolicy::Relaxed => digest,
         _ => {
             return Err(AdmissionError::ArtifactInvalidProofFlag {
                 flag: "runtime_policy",
             });
         }
-    }
-    Ok(RunAdmission::new(digest, run_id, caps, policy))
+    };
+    Ok(RunAdmission::new(admitted_digest, run_id, caps, policy))
 }
 
 /// Performs full admission gate check with artifact validation before run creation.
@@ -692,7 +708,7 @@ pub fn admit_artifact_run_with_certificate_floor(
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with
             // valid gates but wrong identity must not be admitted.
-            if artifact.digest != artifact_digest {
+            if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: artifact_digest,
                     found: artifact.digest,
@@ -749,8 +765,9 @@ pub fn admit_artifact_run_with_certificate_floor(
                 });
             }
 
+            let admitted_digest = artifact.digest;
             Ok(RunAdmission::with_idempotency_evidence(
-                artifact_digest,
+                admitted_digest,
                 run_id,
                 caps,
                 policy,

@@ -14,15 +14,18 @@
 //! in keyspace) from `RecoveryError::CorruptSnapshot` (present but
 //! undecodable).
 
+use std::path::Path;
+
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::replay::core::{
     load_snapshot, recover_full_journal, recover_snapshot_plus_tail,
 };
 use vb_storage::recovery::types::{ActionReplayTracker, RecoveryError, RunSnapshot};
 use vb_storage::{
-    EventSeq, FjallJournal, JournalEvent,
+    EventSeq, FjallJournal, JournalEvent, KeyspaceProfile,
     codec::encode_record,
-    constants::{DIGEST_BYTES, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
+    constants::{DIGEST_BYTES, KEYSPACE_RUN_SNAPSHOT, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
+    keyspace_options_for,
     records::RecordKind,
 };
 
@@ -70,6 +73,22 @@ fn make_snapshot(run: RunId, seq: u64) -> RunSnapshot {
         slots: vec![0, 1, 2],
         taint: vec![0, 0, 0],
     }
+}
+
+fn seed_corrupt_snapshot_record(
+    path: &Path,
+    run: RunId,
+    seq: EventSeq,
+    value: Vec<u8>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let database = fjall::Database::builder(path).open()?;
+    let snapshots = database.keyspace(KEYSPACE_RUN_SNAPSHOT, || {
+        keyspace_options_for(KeyspaceProfile::Cold)
+    })?;
+    let key = vb_storage::keys::run_snapshot_key(run, seq)?;
+    snapshots.insert(key.to_vec(), value)?;
+    database.persist(fjall::PersistMode::SyncAll)?;
+    Ok(())
 }
 
 /// Writes a contiguous event sequence for a run, starting at seq 0, by
@@ -212,7 +231,7 @@ fn load_snapshot_returns_missing_snapshot_for_unknown_run_seq()
 #[test]
 fn load_snapshot_returns_corrupt_snapshot_for_unreadable_payload()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (_temp, journal) = temp_journal();
+    let temp = tempfile::tempdir()?;
     let run = RunId::new(20_006);
     let snapshot_seq = EventSeq::new(7);
     let invalid_payload = vec![0xFF_u8; 4];
@@ -223,8 +242,8 @@ fn load_snapshot_returns_corrupt_snapshot_for_unreadable_payload()
         &invalid_payload,
         MAX_SNAPSHOT_BYTES,
     )?;
-    let key = vb_storage::keys::run_snapshot_key(run, snapshot_seq)?;
-    journal.run_snapshot.insert(key.to_vec(), value)?;
+    seed_corrupt_snapshot_record(temp.path(), run, snapshot_seq, value)?;
+    let journal = FjallJournal::open(temp.path(), None)?;
 
     let result = load_snapshot(&journal, run, snapshot_seq);
     match result {

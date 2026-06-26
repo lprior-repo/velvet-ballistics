@@ -3,7 +3,7 @@
 //! Covers:
 //! - Tail reconstruction from final durable run_event key (REQ-vb-om21-01)
 //! - Prefix-bound scan termination (REQ-vb-om21-07)
-//! - Big-endian max sequence selection (REQ-vb-om21-08)
+//! - Big-endian largest-valid sequence selection (REQ-vb-om21-08)
 //! - TailMismatch rejection (REQ-vb-om21-03)
 //! - MissingJournal detection (REQ-vb-om21-04)
 //! - Empty keyspace zero tail (REQ-vb-om21-05)
@@ -226,7 +226,7 @@ fn replay_prefix_scan_terminates_when_run_a_keys_sort_after_run_b() {
 }
 
 // ============================================================================
-// Test 2: Big-endian max sequence (REQ-vb-om21-08)
+// Test 2: Big-endian largest-valid sequence (REQ-vb-om21-08)
 // ============================================================================
 
 #[test]
@@ -235,7 +235,8 @@ fn run_event_key_ordering_matches_numeric_comparison() {
     let run = run_id(42);
     let key0 = run_event_key(run, event_seq(0)).expect("key at seq=0 must encode");
     let key255 = run_event_key(run, event_seq(255)).expect("key at seq=255 must encode");
-    let key_max = run_event_key(run, event_seq(u64::MAX)).expect("key at seq=u64::MAX must encode");
+    let key_max_valid =
+        run_event_key(run, event_seq(u64::MAX - 1)).expect("key at seq=u64::MAX - 1 must encode");
 
     // When: comparing lexicographically
     // Then: ordering matches numeric comparison
@@ -246,8 +247,8 @@ fn run_event_key_ordering_matches_numeric_comparison() {
         &key255[..]
     );
     assert!(
-        key255 < key_max,
-        "key(seq=255) must sort before key(seq=u64::MAX)"
+        key255 < key_max_valid,
+        "key(seq=255) must sort before key(seq=u64::MAX - 1)"
     );
 }
 
@@ -261,7 +262,6 @@ fn sequence_bytes_decoded_to_correct_u64_values() {
         (255, "seq=255"),
         (1u64 << 63, "seq=midpoint"),
         (u64::MAX - 1, "seq=MAX-1"),
-        (u64::MAX, "seq=MAX"),
     ];
 
     for &(seq_val, label) in &tests {
@@ -275,6 +275,12 @@ fn sequence_bytes_decoded_to_correct_u64_values() {
             label, decoded, seq_val
         );
     }
+
+    let max_result = run_event_key(run, event_seq(u64::MAX));
+    assert!(
+        matches!(max_result, Err(JournalError::SequenceOverflow)),
+        "seq=MAX is reserved and must return SequenceOverflow"
+    );
 }
 
 #[test]
@@ -691,20 +697,28 @@ fn single_event_at_max_minus_one_replays_correctly() {
 // ============================================================================
 
 #[test]
-fn max_sequence_key_encodes_without_panic() {
-    // Given: seq=u64::MAX
+fn max_sequence_key_is_rejected_without_panic() {
+    // Given: seq=u64::MAX is reserved as the overflow sentinel
     let run = run_id(1);
     let seq = event_seq(u64::MAX);
 
     // When: encoding key
-    let key = run_event_key(run, seq).expect("run_event_key at seq=u64::MAX must encode");
+    let result = run_event_key(run, seq);
 
-    // Then: bytes 9..17 are u64::MAX big-endian
+    // Then: the sentinel is rejected with a typed error, not a panic
+    assert!(
+        matches!(result, Err(JournalError::SequenceOverflow)),
+        "run_event_key at seq=u64::MAX must return SequenceOverflow"
+    );
+
+    // And: the largest valid sequence still roundtrips through key encoding
+    let key = run_event_key(run, event_seq(u64::MAX - 1))
+        .expect("run_event_key at seq=u64::MAX - 1 must encode");
     let seq_bytes = event_key_seq_bytes(&key);
     assert_eq!(
         seq_bytes,
-        u64::MAX.to_be_bytes(),
-        "seq bytes at u64::MAX must match u64::MAX.to_be_bytes()"
+        (u64::MAX - 1).to_be_bytes(),
+        "seq bytes at u64::MAX - 1 must match big-endian largest valid sequence"
     );
 }
 
@@ -803,7 +817,7 @@ fn run_event_key_construction_with_various_sequences_does_not_panic() {
 fn run_event_key_has_correct_byte_length_for_all_boundary_sequences() {
     // Given: boundary sequence values
     let run = run_id(0xABCD);
-    let boundaries = [(0u64, "zero"), (1, "one"), (u64::MAX, "max")];
+    let boundaries = [(0u64, "zero"), (1, "one"), (u64::MAX - 1, "max valid")];
 
     for &(seq_val, label) in &boundaries {
         let key = run_event_key(run, event_seq(seq_val))
@@ -822,6 +836,12 @@ fn run_event_key_has_correct_byte_length_for_all_boundary_sequences() {
             "first byte must be 0x11 (run_event prefix)"
         );
     }
+
+    let max_result = run_event_key(run, event_seq(u64::MAX));
+    assert!(
+        matches!(max_result, Err(JournalError::SequenceOverflow)),
+        "reserved max sequence must return SequenceOverflow"
+    );
 }
 
 #[test]

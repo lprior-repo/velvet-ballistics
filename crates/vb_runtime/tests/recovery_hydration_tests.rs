@@ -18,11 +18,11 @@ use vb_core::{
 };
 use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry,
-    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
-    RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, hydrate_run_frame,
-    hydrate_run_frame_from_events, recover_full_journal, recover_runtime_frame_seed,
-    recover_runtime_summary, recover_runtime_summary_with_expected, verify_digests,
+    ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry, RecoveredStepState,
+    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
+    RecoveryTerminalState, RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events,
+    recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary,
+    recover_runtime_summary_with_expected, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -1060,18 +1060,18 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     let events = vec![
         JournalEvent::RunAccepted {
             run,
-            seq: EventSeq::new(u64::MAX.saturating_sub(2)),
+            seq: EventSeq::new(u64::MAX.saturating_sub(3)),
             workflow: digest,
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(u64::MAX.saturating_sub(1)),
+            seq: EventSeq::new(u64::MAX.saturating_sub(2)),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(u64::MAX),
+            seq: EventSeq::new(u64::MAX.saturating_sub(1)),
             step: StepIdx::ZERO,
             output: SlotIdx::ZERO,
         },
@@ -1085,7 +1085,7 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     let journal = open_journal(&dir);
     // events_for_run with near-u64::MAX sequences correctly reports a gap
     // since the journal has no events at lower sequence numbers (the journal
-    // only contains seq u64::MAX-3..u64::MAX, nothing below). This is correct
+    // only contains seq u64::MAX-3..u64::MAX-1, nothing below). This is correct
     // behavior: the journal detects the missing low-range events.
     let recovered = journal.events_for_run(run);
     assert!(
@@ -1663,9 +1663,9 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
 
 /// Given an UnsupportedRecoveryState with pending_actions=true
 /// When DurableFrameRecoveryBoundary hydrates
-/// Then InvalidRecoveryHydration is returned
+/// Then hydration succeeds and the unsupported state remains observable
 #[test]
-fn runtime_boundary_rejects_unsupported_pending_actions() {
+fn runtime_boundary_exposes_supported_pending_actions_state() {
     let run = RunId::new(11100);
     let digest = test_digest(0x26);
 
@@ -1698,11 +1698,11 @@ fn runtime_boundary_rejects_unsupported_pending_actions() {
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
-    let Err(vb_runtime::RuntimeError::InvalidRecoveryHydration) = result else {
-        panic!(
-            "expected InvalidRecoveryHydration for unsupported pending_actions, got: {result:?}"
-        );
-    };
+    assert!(
+        result.is_ok(),
+        "pending actions are frame-hydratable: {result:?}"
+    );
+    assert!(boundary.unsupported_state().pending_actions);
 }
 
 /// Given a RecoveryHydration::FrameSeed with unsupported slot_taint

@@ -1,15 +1,17 @@
 use crate::{
-    codec::encode_record,
+    codec::{decode_record, encode_record},
     constants::{
         MAGIC_COMPILED_ARTIFACT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
         MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     journal::FjallJournal,
-    journal::admission::verify_content_digest,
+    journal::admission::{verify_compiled_ir_record_digest, verify_content_digest},
     keys::{compiled_ir_key, workflow_source_key},
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
 };
+
+const MAX_COMPILED_IR_SOURCE_DIGEST_SCAN_RECORDS: usize = 65_536;
 
 impl FjallJournal {
     /// Stores immutable workflow source bytes by digest.
@@ -49,7 +51,7 @@ impl FjallJournal {
     /// a forged `CompiledIrRecord { digest, ir }` cannot be persisted under
     /// the digest key (master §18 invariant 8: digest↔content binding).
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        verify_content_digest(&record.ir, &record.digest.as_bytes())?;
+        verify_compiled_ir_record_digest(record)?;
         let key = compiled_ir_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_COMPILED_ARTIFACT,
@@ -80,5 +82,44 @@ impl FjallJournal {
             MAGIC_COMPILED_ARTIFACT,
             MAX_COMPILED_IR_BYTES,
         )
+    }
+
+    /// Loads an accepted-artifact compiled IR record by the workflow/source digest.
+    ///
+    /// Compiled IR records are content-addressed by their artifact digest. Runtime
+    /// events and run headers carry the workflow digest, so operator/IPC cold paths
+    /// need a bounded fallback that resolves an accepted artifact whose
+    /// `source_digest` matches that workflow digest without weakening the primary
+    /// digest↔payload binding. Direct raw `WorkflowParts` records are ignored by
+    /// this method because they do not carry a source-digest envelope.
+    pub fn compiled_ir_for_source_digest(
+        &self,
+        source_digest: vb_core::WorkflowDigest,
+    ) -> Result<Option<CompiledIrRecord>, JournalError> {
+        let mut scanned = 0usize;
+        for guard in self.compiled_ir.iter() {
+            if scanned >= MAX_COMPILED_IR_SOURCE_DIGEST_SCAN_RECORDS {
+                return Ok(None);
+            }
+            scanned = scanned.saturating_add(1);
+
+            let (_key, value) = guard.into_inner()?;
+            let (_, record) = decode_record::<CompiledIrRecord>(
+                value.as_ref(),
+                MAGIC_COMPILED_ARTIFACT,
+                MAX_COMPILED_IR_BYTES,
+            )?;
+            verify_compiled_ir_record_digest(&record)?;
+            let artifact = match postcard::from_bytes::<crate::admission::AcceptedArtifact>(
+                record.ir.as_slice(),
+            ) {
+                Ok(artifact) => artifact,
+                Err(_) => continue,
+            };
+            if artifact.source_digest == source_digest {
+                return Ok(Some(record));
+            }
+        }
+        Ok(None)
     }
 }

@@ -35,7 +35,6 @@ postcard = { version = "1", features = ["alloc"] }
 blake3 = "1"
 bytes = { version = "1", features = ["serde"] }
 tempfile = "3"
-vb_boundary_inventory = { path = "../crates/vb_boundary_inventory" }
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }

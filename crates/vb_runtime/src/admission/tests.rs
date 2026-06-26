@@ -648,6 +648,7 @@ fn admission_admit_run_strict_rejects_loaded_digest_mismatch() {
             let found = WorkflowDigest::from_bytes([0x42; 32]);
             let mut artifact = accepted_artifact_with_caps(Box::new([]));
             artifact.digest = found;
+            artifact.source_digest = found;
             artifact.verification.digest = found;
             Ok(artifact)
         }
@@ -1037,6 +1038,7 @@ fn admit_artifact_run_returns_digest_mismatch() {
             let wrong_digest = WorkflowDigest::from_bytes([0x42; 32]);
             let mut artifact = accepted_artifact_with_caps(Box::new([]));
             artifact.digest = wrong_digest;
+            artifact.source_digest = wrong_digest;
             artifact.verification.digest = wrong_digest;
             Ok(artifact)
         }

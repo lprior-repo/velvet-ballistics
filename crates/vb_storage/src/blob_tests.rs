@@ -103,8 +103,8 @@ mod blob_tests {
         journal.put_blob(&record).expect("first put should succeed");
         let result = journal.put_blob(&record);
         assert!(
-            result.is_err(),
-            "second put_blob with same digest should fail or be rejected, got {:?}",
+            result.is_ok(),
+            "second put_blob with identical digest and payload should be idempotent, got {:?}",
             result
         );
     }

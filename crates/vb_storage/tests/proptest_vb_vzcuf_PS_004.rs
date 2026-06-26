@@ -1,12 +1,12 @@
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
-use vb_storage::EventSeq;
 use vb_storage::batch::JournalWriteBatch;
 use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::events::JournalEvent;
 use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
+use vb_storage::{EventSeq, JournalError};
 
 fn make_event(run: u64, seq: u64) -> JournalEvent {
     JournalEvent::RunAccepted {
@@ -43,8 +43,12 @@ proptest! {
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
-        let _ = b2.append_event(&event);
-        b2.commit().expect("commit");
+        let append_result = b2.append_event(&event);
+        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
+        prop_assert!(duplicate_event);
+        prop_assert!(b2.is_aborted());
+        let commit_result = b2.commit();
+        prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));
         let events = journal.events_for_run(RunId::new(run)).expect("replay");
         prop_assert_eq!(events.len(), 1);
     }
@@ -85,7 +89,11 @@ proptest! {
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
-        let _ = b2.append_event(&event);
-        b2.commit().expect("commit");
+        let append_result = b2.append_event(&event);
+        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
+        prop_assert!(duplicate_event);
+        prop_assert!(b2.is_aborted());
+        let commit_result = b2.commit();
+        prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));
     }
 }

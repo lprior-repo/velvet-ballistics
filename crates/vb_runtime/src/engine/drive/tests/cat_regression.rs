@@ -4,7 +4,7 @@
 //! overflow in the drive loop.
 
 use super::common::{collect_start, fin, mkr, mkwf, setc, ws};
-use crate::engine::drive::{drive_deterministic_full, emit_slot_evidence, DriveState};
+use crate::engine::drive::{DriveState, drive_deterministic_full, emit_slot_evidence};
 use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineError};
 use crate::primitives::collect::{CollectPaginationState, CollectStates};
 use vb_core::capability::CapabilitySet;

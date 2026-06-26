@@ -235,6 +235,16 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
 }
 
+fn compiled_record_digest(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<vb_core::WorkflowDigest, String> {
+    let bytes = postcard::to_allocvec(&workflow.to_parts())
+        .map_err(|e| format!("serialize compiled workflow parts: {e}"))?;
+    Ok(vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&bytes).into(),
+    ))
+}
+
 #[test]
 fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
@@ -242,11 +252,17 @@ fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String>
     let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
         .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
 
-    // The returned digest must match the workflow's digest.
+    // The returned artifact digest binds the accepted-artifact envelope;
+    // source_digest retains the workflow structural digest.
     assert_eq!(
-        result.digest,
+        result.source_digest,
         workflow.digest(),
-        "artifact digest must match workflow digest"
+        "source digest must match workflow digest"
+    );
+    assert_eq!(
+        accepted_artifact_digest(&result).map_err(|e| format!("artifact digest: {e}"))?,
+        result.digest,
+        "artifact digest must match the canonical envelope digest"
     );
 
     // The proof under Relaxed must have 0 gates and durable=false.
@@ -255,9 +271,8 @@ fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String>
 
     // The proof's digest must match.
     assert_eq!(
-        result.verification.digest,
-        workflow.digest(),
-        "proof digest must match workflow digest"
+        result.verification.digest, result.digest,
+        "proof digest must match artifact digest"
     );
 
     // The ir bytes must be non-empty (postcard serialization).
@@ -265,7 +280,7 @@ fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String>
 
     // Verify we can read the artifact back from storage.
     let loaded = journal
-        .compiled_ir(workflow.digest())
+        .compiled_ir(result.digest)
         .map_err(|e| format!("compiled_ir read failed: {e}"))?;
     assert!(loaded.is_some(), "artifact must be readable after submit");
     Ok(())
@@ -284,12 +299,13 @@ fn submit_artifact_relaxed_performs_immediate_live_readback() -> Result<(), Stri
     let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
         .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
 
-    // The returned AcceptedArtifact must carry the workflow digest.
+    // The returned AcceptedArtifact must carry the workflow digest as source evidence.
     assert_eq!(
-        artifact.digest,
+        artifact.source_digest,
         workflow.digest(),
-        "accepted artifact digest must match workflow digest"
+        "accepted artifact source digest must match workflow digest"
     );
+    assert_eq!(artifact.verification.digest, artifact.digest);
 
     // The Relaxed verification proof must report zero gates and not durable.
     assert_eq!(
@@ -305,16 +321,15 @@ fn submit_artifact_relaxed_performs_immediate_live_readback() -> Result<(), Stri
     // persisted record is present and structurally consistent with the
     // artifact just returned.
     let stored = journal
-        .compiled_ir(workflow.digest())
+        .compiled_ir(artifact.digest)
         .map_err(|e| format!("compiled_ir live readback failed: {e}"))?;
     let record = stored.ok_or_else(|| {
         String::from("live readback returned None — Relaxed must persist and read back")
     })?;
 
     assert_eq!(
-        record.digest,
-        workflow.digest(),
-        "stored CompiledIrRecord digest must match workflow digest"
+        record.digest, artifact.digest,
+        "stored CompiledIrRecord digest must match accepted artifact digest"
     );
     assert!(
         !record.ir.is_empty(),
@@ -327,9 +342,10 @@ fn submit_artifact_relaxed_performs_immediate_live_readback() -> Result<(), Stri
     let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
         .map_err(|e| format!("postcard decode of stored artifact failed: {e}"))?;
     assert_eq!(
-        decoded.digest, workflow.digest(),
-        "decoded artifact digest must match workflow digest"
+        decoded.digest, artifact.digest,
+        "decoded artifact digest must match accepted artifact digest"
     );
+    assert_eq!(decoded.source_digest, workflow.digest());
     assert_eq!(
         decoded.verification.gate_count, 0,
         "decoded artifact must reflect Relaxed gate count"
@@ -354,7 +370,8 @@ fn submit_artifact_journaled_runs_both_gates() -> Result<(), String> {
         !result.verification.durable,
         "journaled must not be durable"
     );
-    assert_eq!(result.digest, workflow.digest());
+    assert_eq!(result.source_digest, workflow.digest());
+    assert_eq!(result.verification.digest, result.digest);
     Ok(())
 }
 
@@ -369,7 +386,8 @@ fn submit_artifact_strict_is_durable() -> Result<(), String> {
     // Strict passes 15 gates AND is durable.
     assert_eq!(result.verification.gate_count, 15);
     assert!(result.verification.durable, "strict must be durable");
-    assert_eq!(result.digest, workflow.digest());
+    assert_eq!(result.source_digest, workflow.digest());
+    assert_eq!(result.verification.digest, result.digest);
     Ok(())
 }
 
@@ -405,11 +423,11 @@ fn admit_compiled_artifact_succeeds_for_valid_workflow() -> Result<(), String> {
 
     let digest = admit_compiled_artifact(&journal, &workflow)
         .map_err(|e| format!("admit_compiled_artifact failed: {e}"))?;
+    let expected = compiled_record_digest(&workflow)?;
 
     assert_eq!(
-        digest,
-        workflow.digest(),
-        "returned digest must match workflow digest"
+        digest, expected,
+        "returned digest must match compiled payload digest"
     );
 
     // Verify it's stored.
@@ -494,7 +512,7 @@ fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requir
     )
     .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
     let loaded = journal
-        .compiled_ir(workflow.digest())
+        .compiled_ir(artifact.digest)
         .map_err(|e| format!("compiled_ir read failed: {e}"))?
         .ok_or_else(|| String::from("persisted artifact not found"))?;
     let decoded: AcceptedArtifact = postcard::from_bytes(&loaded.ir)
@@ -847,10 +865,11 @@ fn sa009_relaxed_succeeds_after_failure_flag_consumed() -> Result<(), String> {
     let second = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
         .map_err(|e| format!("second submit_artifact(relaxed) failed: {e}"))?;
     assert_eq!(
-        second.digest,
+        second.source_digest,
         workflow.digest(),
-        "subsequent Relaxed submit must succeed once the failure flag is consumed"
+        "subsequent Relaxed submit must preserve workflow source digest once the failure flag is consumed"
     );
+    assert_eq!(second.verification.digest, second.digest);
     Ok(())
 }
 
@@ -1123,7 +1142,6 @@ fn compute_policy_digest_succeeds_and_yields_nonzero_digest() {
         "compute_policy_digest must not collide with the zero sentinel"
     );
 }
-
 
 // =========================================================================
 // SA-015 (vb-36fly): postcard-wrapping sites in submit_artifact_with_contracts

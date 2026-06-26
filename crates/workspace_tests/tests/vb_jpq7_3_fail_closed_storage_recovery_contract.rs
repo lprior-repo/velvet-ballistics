@@ -248,7 +248,9 @@ fn given_public_hydration_tail_slot_cannot_be_dimensioned_when_recovery_runs_the
     // And: the lower-level tail write helper keeps the fail-closed taint lattice wired.
     let defaults_failed_read_to_clean =
         HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
-    let uses_typed_read_taint_error = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot)")
+    let reads_slot_taint = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot)")
+        || HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(slot)");
+    let uses_typed_read_taint_error = reads_slot_taint
         && HYDRATE_SUPPORT_SOURCE.contains("resolve_slot_taint_read")
         && HYDRATE_SUPPORT_SOURCE.contains("SlotTaintResolution::FailClosed")
         && HYDRATE_SUPPORT_SOURCE.contains("RecoveryError::SlotTaintReadFailed");
@@ -295,7 +297,7 @@ fn given_full_journal_slot_taint_metadata_is_corrupt_when_hydrating_then_recover
 }
 
 #[test]
-fn given_legacy_collect_frame_extra_when_hydrating_full_journal_then_extra_is_not_corrupt_taint()
+fn given_legacy_collect_frame_extra_when_hydrating_full_journal_then_extra_is_not_corrupt_and_taint_fails_closed()
 -> Result<(), String> {
     // Given: legacy runtime records used SlotWrittenEvent.extra for collect pagination state.
     let run = RunId::new(73_010);
@@ -326,9 +328,10 @@ fn given_legacy_collect_frame_extra_when_hydrating_full_journal_then_extra_is_no
         frame.read_slot(slot).map_err(|err| format!("{err:?}"))?,
         &SlotValue::Bool(false)
     );
+    // And: missing legacy taint provenance fails closed to Secret rather than defaulting Clean.
     assert_eq!(
         frame.read_taint(slot).map_err(|err| format!("{err:?}"))?,
-        Taint::Clean
+        Taint::Secret
     );
     Ok(())
 }

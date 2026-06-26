@@ -317,7 +317,8 @@ proptest::proptest! {
     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-010: When same (action, run, step) is indexed twice, exactly 1 entry
-    /// survives after batch commit (Fjall last-write-wins semantics).
+    /// survives after batch commit (Fjall last-write-wins semantics). A duplicate
+    /// same-batch event key is rejected with a typed error and is not staged.
     #[test]
     fn test_duplicate_idempotency_key(
         action_val in 1u16..=100u16,
@@ -334,11 +335,21 @@ proptest::proptest! {
         let event_a = make_action_scheduled(run, seq_a, step, action);
         let event_b = make_action_scheduled(run, seq_b, step, action);
 
-        // Stage two ActionScheduled events for same (action, run, step) in same batch
+        // Stage one ActionScheduled event and intentionally try to stage the
+        // same event key again. Same-batch duplicate event keys are rejected
+        // before Fjall can collapse them silently.
         let mut batch = JournalWriteBatch::new(&journal);
         prop_assert!(batch.append_event(&event_a).is_ok(), "append_event A must succeed");
         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index A must succeed");
-        prop_assert!(batch.append_event(&event_b).is_ok(), "append_event B must succeed");
+        let duplicate_result = batch.append_event(&event_b);
+        prop_assert!(
+            matches!(
+                &duplicate_result,
+                Err(JournalError::DuplicateStagedKey { .. })
+            ),
+            "same-batch duplicate event key must be rejected, got {:?}",
+            duplicate_result,
+        );
         // Second put_action_index for same (action,run,step) — Fjall last-write-wins
         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index B must succeed");
 
@@ -355,11 +366,11 @@ proptest::proptest! {
         prop_assert!(has_entry, "exactly 1 index_action entry must survive (Fjall last-write-wins)");
 
         // Verify exactly one journal event (not two — duplicate event detection)
-        // Note: append_event checks for duplicate events in the journal keyspace
+        // Note: append_event checks for duplicate events in the staged keys and
+        // durable journal keyspace.
         let events = journal.events_for_run(run).expect("events_for_run must succeed");
-        // If the journal enforces duplicate event detection, only one event survives
-        // If not, both survive but that's Fjall behavior, not a batch atomicity issue
-        prop_assert!(events.len() >= 1, "at least 1 event must be durable");
+        prop_assert_eq!(events.len(), 1, "exactly 1 event must be durable");
+        prop_assert_eq!(&events[0], &event_a, "durable event must be the first event");
     }
 }
 
@@ -433,17 +444,17 @@ proptest::proptest! {
 }
 
 // ---------------------------------------------------------------------------
-// PO-013: Once aborted==true, subsequent staging ops return Ok without staging (proptest)
+// PO-013: Once aborted==true, commit reports BatchAborted (proptest)
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
-    /// PO-013: After first op triggers abort, subsequent ops return Ok(()),
-    /// do not stage, and commit() is a safe no-op.
+    /// PO-013: After first op triggers abort, subsequent ops may return Ok(()),
+    /// but commit() reports the abort and persists none of the aborted batch.
     ///
     /// The abort condition is triggered by a duplicate event (same run, same seq).
-    /// Once aborted, put_* operations return Ok but do not modify batch state.
+    /// Once aborted, len()/is_empty() expose no committable staged state.
     #[test]
     fn test_aborted_gate_blocks_subsequent_staging(
         action_val in 1u16..=100u16,
@@ -475,6 +486,7 @@ proptest::proptest! {
             matches!(dup_result, Err(JournalError::DuplicateEvent { .. })),
             "duplicate event must return DuplicateEvent error",
         );
+        prop_assert!(batch.is_aborted(), "duplicate event must mark batch aborted");
 
         // After abort: len must be 0 and batch must be empty
         prop_assert_eq!(batch.len(), 0, "len must be 0 after aborted duplicate event");
@@ -489,10 +501,11 @@ proptest::proptest! {
             let before_len = batch.len();
             let subsequent_result = batch.append_event(&subsequent_event);
 
-            // After abort: subsequent ops return Ok(()) without staging
+            // After abort: subsequent ops may return Ok(()), but there is no
+            // committable state and commit remains BatchAborted.
             prop_assert!(
                 subsequent_result.is_ok(),
-                "after abort, append_event must return Ok (not stage)",
+                "after abort, append_event may return Ok",
             );
             prop_assert_eq!(
                 batch.len(),
@@ -501,9 +514,13 @@ proptest::proptest! {
             );
         }
 
-        // commit() on aborted batch is a safe no-op
+        // commit() on aborted batch reports the abort and persists no staged data.
         let commit_result = batch.commit();
-        prop_assert!(commit_result.is_ok(), "commit on aborted batch must return Ok");
+        prop_assert!(
+            matches!(&commit_result, Err(JournalError::BatchAborted)),
+            "commit on aborted batch must return BatchAborted, got {:?}",
+            commit_result,
+        );
 
         // After aborted commit: journal must be unchanged (only original event exists)
         let events = journal.events_for_run(run).expect("events_for_run must succeed");

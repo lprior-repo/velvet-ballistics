@@ -416,8 +416,8 @@ fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
             .iter()
             .any(|entry| entry.slot == SlotIdx::new(0)
                 && entry.value == SlotValue::Bool(true)
-                && entry.taint == Taint::DerivedFromSecret),
-        "Expected slot 0 with Bool(true) and DerivedFromSecret taint"
+                && entry.taint == Taint::Secret),
+        "Expected slot 0 with Bool(true) and Secret taint"
     );
     assert!(
         recovered.unsupported.slot_values,

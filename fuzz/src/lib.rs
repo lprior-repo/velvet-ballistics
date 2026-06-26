@@ -3353,9 +3353,7 @@ pub fn fuzz_binary_payload_boundary(data: &[u8]) {
 /// - Missing required fields -> IncompleteDiscoveryInput
 /// - Valid inventory -> successful parse
 pub fn fuzz_external_input_adapter_boundary(data: &[u8]) {
-    use vb_boundary_inventory::boundary_inventory::{
-        parse_inventory, validate_evidence_reference_bytes,
-    };
+    use xtask::boundary_inventory::{parse_inventory, validate_evidence_reference_bytes};
 
     // R4.1: Empty input - must not panic
     if data.is_empty() {
@@ -3383,10 +3381,8 @@ pub fn fuzz_external_input_adapter_boundary(data: &[u8]) {
 }
 
 /// Asserts that a boundary inventory error is a known typed variant.
-fn assert_typed_boundary_error(
-    error: vb_boundary_inventory::boundary_inventory::BoundaryInventoryError,
-) {
-    use vb_boundary_inventory::boundary_inventory::BoundaryInventoryError;
+fn assert_typed_boundary_error(error: xtask::boundary_inventory::BoundaryInventoryError) {
+    use xtask::boundary_inventory::BoundaryInventoryError;
     match error {
         BoundaryInventoryError::WorkspaceNotDiscoverable
         | BoundaryInventoryError::IncompleteDiscoveryInput

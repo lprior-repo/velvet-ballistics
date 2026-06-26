@@ -154,6 +154,38 @@ impl VerificationProof {
     }
 }
 
+fn zero_workflow_digest() -> vb_core::WorkflowDigest {
+    vb_core::WorkflowDigest::from_bytes([0u8; 32])
+}
+
+/// Computes the content digest for an accepted artifact envelope.
+///
+/// The artifact carries its own digest and the proof repeats that digest, so
+/// hashing the final postcard bytes directly would create an unsolvable
+/// self-reference. This mirrors `CompiledWorkflow` digesting: the two
+/// self-digest fields are zeroed, the canonical envelope bytes are serialized,
+/// and BLAKE3 binds the remaining artifact payload, proof, policy, capability,
+/// and compiled IR bytes.
+pub fn accepted_artifact_digest(
+    artifact: &AcceptedArtifact,
+) -> Result<vb_core::WorkflowDigest, JournalError> {
+    let mut canonical = artifact.clone();
+    let zero = zero_workflow_digest();
+    canonical.digest = zero;
+    canonical.verification.digest = zero;
+    let bytes = postcard::to_allocvec(&canonical).map_err(JournalError::PostcardEncodeFailed)?;
+    Ok(vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&bytes).into(),
+    ))
+}
+
+fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
+    let digest = accepted_artifact_digest(artifact)?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    Ok(())
+}
+
 /// Accepted artifact record produced by the admission flow.
 ///
 /// GAP-002/GAP-003 FIX: Added `source_digest` and `policy_digest` fields to satisfy
@@ -332,11 +364,11 @@ pub fn submit_artifact_with_contracts(
             let parts = workflow.to_parts();
             let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-            let mut proof = VerificationProof::new(workflow.digest(), 0, false);
+            let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
             proof.idempotency_keyed = idempotency_evidence.keyed;
             proof.idempotency_attested = idempotency_evidence.attested;
-            let artifact = AcceptedArtifact {
-                digest: workflow.digest(),
+            let mut artifact = AcceptedArtifact {
+                digest: zero_workflow_digest(),
                 source_digest: workflow.digest(),
                 policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
@@ -344,15 +376,16 @@ pub fn submit_artifact_with_contracts(
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities,
             };
+            bind_artifact_digest(&mut artifact)?;
             let artifact_bytes =
                 postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
             let record = CompiledIrRecord {
-                digest: workflow.digest(),
+                digest: artifact.digest,
                 ir: artifact_bytes,
             };
             journal.put_compiled_ir(&record)?;
             let stored = journal
-                .compiled_ir(workflow.digest())
+                .compiled_ir(artifact.digest)
                 .map_err(|_| JournalError::ArtifactMalformed)?;
             if stored.is_none() {
                 return Err(JournalError::ArtifactMalformed);
@@ -377,15 +410,15 @@ pub fn submit_artifact_with_contracts(
             let durable = policy == vb_core::RuntimePolicy::Strict;
 
             let mut proof =
-                VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+                VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
             proof.idempotency_keyed = idempotency_evidence.keyed;
             proof.idempotency_attested = idempotency_evidence.attested;
 
             let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
 
-            let artifact = AcceptedArtifact {
-                digest: workflow.digest(),
+            let mut artifact = AcceptedArtifact {
+                digest: zero_workflow_digest(),
                 source_digest: workflow.digest(),
                 policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
@@ -393,11 +426,12 @@ pub fn submit_artifact_with_contracts(
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities,
             };
+            bind_artifact_digest(&mut artifact)?;
 
             let artifact_bytes =
                 postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
             let record = CompiledIrRecord {
-                digest: workflow.digest(),
+                digest: artifact.digest,
                 ir: artifact_bytes,
             };
             journal.put_compiled_ir(&record)?;
@@ -406,7 +440,7 @@ pub fn submit_artifact_with_contracts(
                 journal.persist_strict()?;
             }
 
-            verify_artifact_persisted(journal, workflow.digest())?;
+            verify_artifact_persisted(journal, artifact.digest)?;
 
             Ok(artifact)
         }
@@ -542,13 +576,11 @@ pub fn admit_compiled_artifact(
 
     // Persist accepted artifact with full serialization (includes digest).
     let bytes = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-    let record = CompiledIrRecord {
-        digest: workflow.digest(),
-        ir: bytes,
-    };
+    let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
+    let record = CompiledIrRecord { digest, ir: bytes };
     journal.put_compiled_ir(&record)?;
 
-    Ok(workflow.digest())
+    Ok(digest)
 }
 
 #[cfg(test)]

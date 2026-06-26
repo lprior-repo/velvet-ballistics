@@ -124,7 +124,12 @@ proptest! {
     /// Verifies encode_run_event(r1, s1) < encode_run_event(r2, s2)
     /// iff (r1 < r2) or (r1 == r2 and s1 < s2).
     #[test]
-    fn run_event_ordering(r1: u64, s1: u64, r2: u64, s2: u64) {
+    fn run_event_ordering(
+        r1 in any::<u64>(),
+        s1 in 0u64..u64::MAX,
+        r2 in any::<u64>(),
+        s2 in 0u64..u64::MAX,
+    ) {
         let key1 = run_event_key(RunId::new(r1), vb_storage::types::EventSeq::new(s1)).unwrap();
         let key2 = run_event_key(RunId::new(r2), vb_storage::types::EventSeq::new(s2)).unwrap();
 
@@ -147,18 +152,23 @@ proptest! {
 #[test]
 fn max_sequence_ordering() {
     let run = RunId::new(1);
-    let key_max = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX)).unwrap();
-    let key_max_minus_1 =
-        run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 1)).unwrap();
+    let key_max_minus_2 =
+        run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 2)).unwrap();
+    let key_max_valid = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 1)).unwrap();
+    let max_result = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX));
 
     assert!(
-        key_max_minus_1 < key_max,
-        "u64::MAX-1 key must sort before u64::MAX key"
+        key_max_minus_2 < key_max_valid,
+        "u64::MAX-2 key must sort before the largest valid sequence key"
+    );
+    assert!(
+        matches!(max_result, Err(vb_storage::JournalError::SequenceOverflow)),
+        "u64::MAX is reserved and must be rejected"
     );
     assert_eq!(
-        &key_max[9..17],
-        &u64::MAX.to_be_bytes(),
-        "seq portion of max key must be u64::MAX bytes"
+        &key_max_valid[9..17],
+        &(u64::MAX - 1).to_be_bytes(),
+        "seq portion of largest valid key must be u64::MAX-1 bytes"
     );
 }
 

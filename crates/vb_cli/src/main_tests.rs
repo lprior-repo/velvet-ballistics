@@ -19,7 +19,7 @@ use vb_core::value::ConstValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
+use vb_storage::{EventSeq, JournalEvent};
 
 fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {
     let root =
@@ -594,20 +594,12 @@ fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
         let Ok(journal) = journal else {
             return;
         };
-        let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts);
-        assert!(ir.is_ok(), "workflow parts should encode: {ir:?}");
-        let Ok(ir) = ir else {
-            return;
-        };
-        let record = CompiledIrRecord {
-            digest: compiled.digest(),
-            ir,
-        };
-        assert!(
-            journal.put_compiled_ir(&record).is_ok(),
-            "put_compiled_ir must succeed"
+        let artifact = vb_storage::submit_artifact(
+            &journal,
+            &compiled,
+            vb_core::RuntimePolicy::Journaled,
         );
+        assert!(artifact.is_ok(), "submit_artifact must succeed: {artifact:?}");
         let mut resolver = StorageWorkflowResolver {
             journal: Arc::new(journal),
         };

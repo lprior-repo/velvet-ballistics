@@ -21,13 +21,12 @@
 
 use crate::EventSeq;
 use crate::JournalEvent;
+use crate::event_to_lifecycle;
 use vb_core::value::{ConstValue, Taint};
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
-    ids::SeqNo,
-    workflow::LifecycleState,
+    ids::SeqNo, workflow::LifecycleState,
 };
-use crate::event_to_lifecycle;
 
 /// Minimal `ActionTicket` for any test that needs one.
 fn sample_ticket() -> ActionTicket {
@@ -196,10 +195,7 @@ fn wait_scheduled_event_maps_to_waiting_answer() {
         step: StepIdx::new(0),
         attempt: 1,
     };
-    assert_eq!(
-        event_to_lifecycle(&event),
-        LifecycleState::WaitingAnswer
-    );
+    assert_eq!(event_to_lifecycle(&event), LifecycleState::WaitingAnswer);
 }
 
 #[test]
@@ -210,10 +206,7 @@ fn ask_scheduled_event_maps_to_waiting_answer() {
         step: StepIdx::new(0),
         attempt: 1,
     };
-    assert_eq!(
-        event_to_lifecycle(&event),
-        LifecycleState::WaitingAnswer
-    );
+    assert_eq!(event_to_lifecycle(&event), LifecycleState::WaitingAnswer);
 }
 
 #[test]
@@ -224,10 +217,7 @@ fn ask_answered_event_maps_to_waiting_answer() {
         step: StepIdx::new(0),
         attempt: 1,
     };
-    assert_eq!(
-        event_to_lifecycle(&event),
-        LifecycleState::WaitingAnswer
-    );
+    assert_eq!(event_to_lifecycle(&event), LifecycleState::WaitingAnswer);
 }
 
 // ----- remaining active-mapped variants (extra coverage) ----------------

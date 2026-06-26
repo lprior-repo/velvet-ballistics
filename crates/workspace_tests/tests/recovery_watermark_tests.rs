@@ -9,7 +9,7 @@ use vb_storage::recovery::{
     ActionReplayTracker, RunSnapshot, recover_runtime_frame_seed_from_events,
     recover_runtime_summary, recover_snapshot_plus_tail, summarize_recovery_events,
 };
-use vb_storage::{EventSeq, FjallJournal, JournalEvent};
+use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 
 fn sample_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
@@ -438,18 +438,20 @@ fn watermark_journal_recovery_rejects_max_seq() -> Result<(), Box<dyn std::error
     let run = RunId::new(42);
 
     journal.append_journaled(&accepted_event(run, 0))?;
-    journal.append_journaled(&JournalEvent::StepStarted {
+    let append_result = journal.append_journaled(&JournalEvent::StepStarted {
         run,
         seq: EventSeq::MAX,
         step: StepIdx::new(0),
         attempt: 1,
-    })?;
+    });
 
-    let result = recover_runtime_summary(&journal, run);
     assert!(
-        result.is_err(),
-        "journal recovery must reject EventSeq::MAX"
+        matches!(append_result, Err(JournalError::SequenceOverflow)),
+        "journal append must reject EventSeq::MAX before persistence"
     );
+    let summary = recover_runtime_summary(&journal, run)?.summary();
+    assert_eq!(summary.first_seq, EventSeq::new(0));
+    assert_eq!(summary.last_seq, EventSeq::new(0));
     Ok(())
 }
 

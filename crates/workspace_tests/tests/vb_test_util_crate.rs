@@ -1,7 +1,8 @@
 use std::collections::HashSet;
-use crate::test_util::fixture::FixtureCapacity;
-use crate::test_util::seed::SeededBytes;
-use crate::test_util::temp_keyspace::TempKeyspace;
+
+use velvet_ballistics_workspace_tests::test_util::fixture::FixtureCapacity;
+use velvet_ballistics_workspace_tests::test_util::seed::SeededBytes;
+use velvet_ballistics_workspace_tests::test_util::temp_keyspace::TempKeyspace;
 
 #[test]
 fn seeded_bytes_determinism() {
@@ -71,7 +72,6 @@ fn empty_workflow_fixture() {
 #[test]
 fn no_external_test_util_dependency() {
     // The test_util module must not depend on vb_cli.
-    // This is verified by workspace_tests/Cargo.toml having no vb_cli
-    // in [dev-dependencies] (vb_cli is only in [dependencies] as the
-    // compiled binary). The test itself is a no-op that documents the contract.
+    // workspace_tests depends on vb_cli for CLI integration tests, but the
+    // helper module itself must remain CLI-free.
 }

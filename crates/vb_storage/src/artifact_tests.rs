@@ -19,14 +19,16 @@ mod artifact_tests {
         (temp, journal)
     }
 
-    fn put_test_artifact(journal: &FjallJournal, digest: WorkflowDigest) {
+    fn put_test_artifact(journal: &FjallJournal, ir: &[u8]) -> WorkflowDigest {
+        let digest = WorkflowDigest::from_bytes(blake3::hash(ir).into());
         let record = CompiledIrRecord {
             digest,
-            ir: b"test-artifact-ir-bytes".to_vec(),
+            ir: ir.to_vec(),
         };
         journal
             .put_compiled_ir(&record)
             .expect("put should succeed");
+        digest
     }
 
     #[test]
@@ -42,13 +44,9 @@ mod artifact_tests {
     #[test]
     fn list_artifacts_returns_all_stored_digests() {
         let (_temp, journal) = temp_journal();
-        let d1 = WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]);
-        let d2 = WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]);
-        let d3 = WorkflowDigest::from_bytes([0x33; DIGEST_BYTES]);
-
-        put_test_artifact(&journal, d1);
-        put_test_artifact(&journal, d2);
-        put_test_artifact(&journal, d3);
+        let d1 = put_test_artifact(&journal, b"test-artifact-ir-bytes-1");
+        let d2 = put_test_artifact(&journal, b"test-artifact-ir-bytes-2");
+        let d3 = put_test_artifact(&journal, b"test-artifact-ir-bytes-3");
 
         let artifacts = journal.list_artifacts().expect("list should succeed");
         assert_eq!(artifacts.len(), 3, "should list 3 artifacts");
@@ -60,8 +58,7 @@ mod artifact_tests {
     #[test]
     fn artifact_exists_returns_true_for_stored_digest() {
         let (_temp, journal) = temp_journal();
-        let digest = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
-        put_test_artifact(&journal, digest);
+        let digest = put_test_artifact(&journal, b"test-artifact-exists");
 
         let exists = journal
             .artifact_exists(digest)
@@ -82,8 +79,7 @@ mod artifact_tests {
     #[test]
     fn remove_artifact_deletes_existing_artifact() {
         let (_temp, journal) = temp_journal();
-        let digest = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
-        put_test_artifact(&journal, digest);
+        let digest = put_test_artifact(&journal, b"test-artifact-remove");
 
         assert!(
             journal
@@ -114,11 +110,8 @@ mod artifact_tests {
     #[test]
     fn list_artifacts_reflects_removal() {
         let (_temp, journal) = temp_journal();
-        let d1 = WorkflowDigest::from_bytes([0x66; DIGEST_BYTES]);
-        let d2 = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
-
-        put_test_artifact(&journal, d1);
-        put_test_artifact(&journal, d2);
+        let d1 = put_test_artifact(&journal, b"test-artifact-list-remove-1");
+        let d2 = put_test_artifact(&journal, b"test-artifact-list-remove-2");
 
         journal
             .remove_artifact(d1)
@@ -133,8 +126,7 @@ mod artifact_tests {
     #[test]
     fn artifact_exists_idempotent_after_removal() {
         let (_temp, journal) = temp_journal();
-        let digest = WorkflowDigest::from_bytes([0x88; DIGEST_BYTES]);
-        put_test_artifact(&journal, digest);
+        let digest = put_test_artifact(&journal, b"test-artifact-idempotent-remove");
         journal
             .remove_artifact(digest)
             .expect("first remove should succeed");

@@ -20,7 +20,10 @@ use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult};
 /// Reads the current attempt counter for a retry policy. RE-003:
 /// returns `Ok(None)` on an uninitialized slot rather than collapsing to
 /// a silent 0; the caller decides how to interpret the absence.
-pub(super) fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<Option<u16>> {
+pub(super) fn read_attempt_from_slot(
+    run: &RunFrame,
+    slot: SlotIdx,
+) -> RuntimeEngineResult<Option<u16>> {
     match run.read_slot(slot) {
         Ok(value) => match *value {
             SlotValue::I64(v) => u16::try_from(v).map(Some).map_err(|_| {

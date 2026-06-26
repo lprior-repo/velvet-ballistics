@@ -7,7 +7,9 @@ use vb_core::{
     WorkflowDigest,
 };
 use vb_storage::FjallJournal;
-use vb_storage::admission::{AcceptedArtifact, VerificationWarning, submit_artifact};
+use vb_storage::admission::{
+    AcceptedArtifact, VerificationWarning, accepted_artifact_digest, submit_artifact,
+};
 
 fn temp_journal() -> Result<FjallJournal, String> {
     let dir = tempfile::tempdir().map_err(|error| format!("tempdir failed: {error}"))?;
@@ -277,7 +279,12 @@ fn runtime_admission_requires_artifact_digest_not_raw_workflow() -> Result<(), S
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
     assert!(result.is_ok(), "Relaxed must be accepted");
     let artifact = result.unwrap();
-    assert_eq!(artifact.digest, workflow.digest());
+    assert_ne!(artifact.digest, workflow.digest());
+    assert_eq!(artifact.source_digest, workflow.digest());
+    assert_eq!(
+        accepted_artifact_digest(&artifact).map_err(|e| format!("artifact digest failed: {e}"))?,
+        artifact.digest
+    );
     Ok(())
 }
 
@@ -322,7 +329,11 @@ fn submit_artifact_returns_artifact_with_correct_digest() -> Result<(), String> 
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .map_err(|e| format!("submit failed: {e}"))?;
-    assert_eq!(artifact.digest, workflow.digest());
+    assert_eq!(artifact.source_digest, workflow.digest());
+    assert_eq!(
+        accepted_artifact_digest(&artifact).map_err(|e| format!("artifact digest failed: {e}"))?,
+        artifact.digest
+    );
     Ok(())
 }
 
@@ -358,12 +369,13 @@ fn submit_artifact_journaled_does_not_persist_strictly() -> Result<(), String> {
 }
 
 #[test]
-fn accepted_artifact_proof_contains_workflow_digest() -> Result<(), String> {
+fn accepted_artifact_proof_contains_artifact_digest() -> Result<(), String> {
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .map_err(|e| format!("submit failed: {e}"))?;
-    assert_eq!(artifact.verification.digest, workflow.digest());
+    assert_eq!(artifact.source_digest, workflow.digest());
+    assert_eq!(artifact.verification.digest, artifact.digest);
     Ok(())
 }
 

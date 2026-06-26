@@ -9,6 +9,10 @@
 //!
 //! All tests use sharp assertions on exact error variants and state transitions.
 
+use vb_core::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect, compute_action_idempotency_key,
+};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::errors::CoreError;
 use vb_core::frame::{RunFrame, StepState};
@@ -29,6 +33,70 @@ use vb_core::{
 
 fn digest(bytes: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([bytes; 32])
+}
+
+fn action_ticket(run: u64, step: u16, action: u16, capacity: u16) -> ActionTicket {
+    let run = RunId::new(run);
+    let seq = SeqNo::new(1);
+    let action = ActionId::new(action);
+    ActionTicket {
+        run,
+        step: StepIdx::new(step),
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        capacity,
+    }
+}
+
+fn action_contract(action: u16, max_output_bytes: u32) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(action),
+        name: ActionName::from_static_infallible("test-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 128,
+        max_output_bytes,
+        timeout_ms: 1_000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn payload_len(payload: &[u8]) -> Result<u32, String> {
+    u32::try_from(payload.len()).map_err(|_| String::from("payload length exceeds u32"))
+}
+
+fn ready_output(
+    output_slot: SlotIdx,
+    value: SlotValue,
+    taint: Taint,
+    payload: &[u8],
+) -> Result<ActionOutputReady, String> {
+    Ok(ActionOutputReady {
+        output_slot,
+        value,
+        taint,
+        encoded_len: payload_len(payload)?,
+    })
+}
+
+fn failure_payload(
+    code: ActionFailureCode,
+    retry_policy: RetryPolicy,
+    taint: Taint,
+    payload: &[u8],
+) -> Result<ActionFailure, String> {
+    Ok(ActionFailure {
+        code,
+        retry_policy,
+        taint,
+        detail: None,
+        encoded_len: payload_len(payload)?,
+    })
 }
 
 fn make_simple_workflow() -> Result<CompiledWorkflow, String> {
@@ -545,7 +613,7 @@ mod fail_closed_vs_fail_open {
     }
 
     #[test]
-    fn resume_action_failure_with_handler_routes_and_continues() -> Result<(), String> {
+    fn resume_action_failure_without_handler_marks_failed() -> Result<(), String> {
         let workflow = do_node_workflow()?;
         let mut run = make_frame(&workflow)?;
         let mut store = vb_core::value_store::ValueStore::new();
@@ -553,27 +621,28 @@ mod fail_closed_vs_fail_open {
         // Execute the Do node to get into suspended state
         step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-        let ticket = vb_core::action::ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(1),
-            action: ActionId::new(1),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = action_ticket(1, 0, 1, 1);
+        let encoded_payload = b"err";
+        let failure = failure_payload(
+            ActionFailureCode::Timeout,
+            RetryPolicy::NonRetryable,
+            Taint::Clean,
+            encoded_payload,
+        )?;
+        let contract = action_contract(1, 8);
 
         let (signal, _journal) = resume_action_failure(
             &workflow,
             &mut run,
             ticket,
-            vb_core::action::ActionFailureCode::Timeout,
-            vb_core::action::RetryPolicy::NonRetryable,
+            failure,
+            encoded_payload,
+            &contract,
         )
         .map_err(|e| e.to_string())?;
 
-        // No handler configured, so AwaitingAction is returned for external handling
-        assert_eq!(signal, EngineSignal::AwaitingAction);
+        // No handler is configured, so the failure is unhandled and the step is failed.
+        assert_eq!(signal, EngineSignal::ActionFailureUnhandled);
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Failed
@@ -1323,23 +1392,23 @@ mod action_resumption {
         // Suspend on Do node
         step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-        let ticket = vb_core::action::ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(1),
-            action: ActionId::new(1),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = action_ticket(1, 0, 1, 1);
+        let encoded_payload = b"out";
+        let output = ready_output(
+            SlotIdx::new(0),
+            SlotValue::I64(99),
+            Taint::Clean,
+            encoded_payload,
+        )?;
+        let contract = action_contract(1, 8);
 
         let (signal, _journal) = resume_action_completion(
             &workflow,
             &mut run,
             ticket,
-            SlotIdx::new(0),
-            SlotValue::I64(99),
-            Taint::Clean,
+            output,
+            encoded_payload,
+            &contract,
         )
         .map_err(|e| e.to_string())?;
 
@@ -1359,23 +1428,23 @@ mod action_resumption {
 
         step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-        let ticket = vb_core::action::ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(1),
-            action: ActionId::new(1),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = action_ticket(1, 0, 1, 1);
+        let encoded_payload = b"out";
+        let output = ready_output(
+            SlotIdx::new(0),
+            SlotValue::I64(99),
+            Taint::Clean,
+            encoded_payload,
+        )?;
+        let contract = action_contract(1, 8);
 
         resume_action_completion(
             &workflow,
             &mut run,
             ticket,
-            SlotIdx::new(0),
-            SlotValue::I64(99),
-            Taint::Clean,
+            output,
+            encoded_payload,
+            &contract,
         )
         .map_err(|e| e.to_string())?;
 

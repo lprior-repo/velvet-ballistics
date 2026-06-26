@@ -3,7 +3,7 @@
 
 pub(crate) mod admission;
 pub mod core;
-pub(crate) use self::admission::verify_content_digest;
+pub(crate) use self::admission::{verify_compiled_ir_record_digest, verify_content_digest};
 pub(crate) mod append;
 pub(crate) mod batch;
 pub mod incident;

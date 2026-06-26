@@ -207,7 +207,17 @@ fn ai_workflow_summary(
     };
     let record = match journal.compiled_ir(digest) {
         Ok(Some(record)) => record,
-        Ok(None) => return workflow_summary_from_source(journal, digest),
+        Ok(None) => match journal.compiled_ir_for_source_digest(digest) {
+            Ok(Some(record)) => record,
+            Ok(None) => return workflow_summary_from_source(journal, digest),
+            Err(e) => {
+                return serde_json::json!({
+                    "digest": digest_hex(digest),
+                    "compiled_ir": {"available": false, "reason": format!("compiled IR source-digest lookup error: {e}")},
+                    "source_included": false,
+                });
+            }
+        },
         Err(e) => {
             return serde_json::json!({
                 "digest": digest_hex(digest),

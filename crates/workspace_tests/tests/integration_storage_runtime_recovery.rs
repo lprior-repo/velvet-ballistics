@@ -10,6 +10,7 @@
 //! - Digest mismatch propagation through recovery boundaries
 
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
+use vb_runtime::RuntimeError;
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
     ActionReplayTracker, RecoveryFrameSeed, RecoveryRuntimeSummary, UnsupportedRecoveryState,

@@ -128,14 +128,6 @@ pub(crate) fn store_compiled_artifact(
     db: &std::path::Path,
     output: OutputFormat,
 ) -> Result<(), ExitCode> {
-    let parts = compiled.to_parts();
-    let ir_bytes = match postcard::to_allocvec(&parts) {
-        Ok(ir) => ir,
-        Err(e) => {
-            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
-            return Err(CliExitCode::StorageError.into());
-        }
-    };
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,
         Err(e) => {
@@ -146,43 +138,15 @@ pub(crate) fn store_compiled_artifact(
             return Err(CliExitCode::StorageError.into());
         }
     };
-    let artifact = vb_storage::admission::AcceptedArtifact {
-        digest: compiled.digest(),
-        source_digest: compiled.digest(),
-        policy_digest: match vb_storage::admission::compute_policy_digest(compiled) {
-            Ok(digest) => digest,
-            Err(error) => {
-                report_compiled_ir_store_error(
-                    format_args!("policy digest encode error: {error}"),
-                    output,
-                );
-                return Err(CliExitCode::StorageError.into());
-            }
-        },
-        ir: ir_bytes,
-        verification: vb_storage::admission::VerificationProof::new(
-            compiled.digest(),
-            vb_runtime::admission::REQUIRED_GATE_COUNT,
-            true,
-        ),
-        accepted_at_seq: vb_storage::EventSeq::new(0),
-        required_capabilities: Box::new([]),
-    };
-    let artifact_bytes = match postcard::to_allocvec(&artifact) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            report_compiled_ir_store_error(format_args!("artifact encode error: {e}"), output);
-            return Err(CliExitCode::StorageError.into());
-        }
-    };
-    let record = vb_storage::CompiledIrRecord {
-        digest: compiled.digest(),
-        ir: artifact_bytes,
-    };
-    journal.put_compiled_ir(&record).map_err(|e| {
-        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
-        CliExitCode::StorageError.into()
-    })
+    crate::run::submit_cli_compiled_artifact(&journal, compiled)
+        .map_err(|e| {
+            report_compiled_ir_store_error(
+                format_args!("compiled artifact admission error: {e}"),
+                output,
+            );
+            CliExitCode::StorageError.into()
+        })
+        .map(|_| ())
 }
 
 pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {

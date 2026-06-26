@@ -19,9 +19,9 @@ mod status;
 
 pub use benchmark_metadata::{
     BenchmarkMetadata, EvidenceError, IpcBenchmarkError, RecoveryBenchmarkError,
-    RuntimeBenchmarkError, StorageBenchmarkError, YamlBenchmarkError,
-    baseline_within_budget, budget_utilization_percent, capture_metadata,
-    check_evidence_gate, latency_within_budget, result_exceeds_threshold,
+    RuntimeBenchmarkError, StorageBenchmarkError, YamlBenchmarkError, baseline_within_budget,
+    budget_utilization_percent, capture_metadata, check_evidence_gate, latency_within_budget,
+    result_exceeds_threshold,
 };
 pub use command_family::CommandFamily;
 pub use dependency_boundary::{WorkspaceManifest, assert_runtime_dependency_boundary};

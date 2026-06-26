@@ -63,8 +63,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// and [`Self::put_blob`]: every fallible step sets
     /// `self.aborted = true` before propagating the typed error.
     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        if let Err(e) = crate::journal::verify_content_digest(&record.ir, &record.digest.as_bytes())
-        {
+        if let Err(e) = crate::journal::verify_compiled_ir_record_digest(record) {
             self.aborted = true;
             return Err(e);
         }

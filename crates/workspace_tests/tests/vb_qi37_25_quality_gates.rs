@@ -6,21 +6,17 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 16] = [
-    ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
-    ("crates/vb_core", "vb_core"),
-    ("crates/vb_yaml", "vb_yaml"),
-    ("crates/vb_validate", "vb_validate"),
-    ("crates/vb_expr", "vb_expr"),
-    ("crates/vb_compile", "vb_compile"),
-    ("crates/vb_storage", "vb_storage"),
-    ("crates/vb_runtime", "vb_runtime"),
-    ("crates/vb_doc", "vb_doc"),
-    ("crates/vb_ipc", "vb_ipc"),
-    ("crates/vb_proof_kernels", "vb_proof_kernels"),
+const MEMBERS: &[(&str, &str)] = &[
     ("crates/vb_cli", "velvet-ballistics"),
-    ("crates/vb_verification", "vb_verification"),
-    ("crates/vb_test_util", "vb_test_util"),
+    ("crates/vb_compile", "vb_compile"),
+    ("crates/vb_core", "vb_core"),
+    ("crates/vb_expr", "vb_expr"),
+    ("crates/vb_ipc", "vb_ipc"),
+    ("crates/vb_queue_semantics", "vb_queue_semantics"),
+    ("crates/vb_runtime", "vb_runtime"),
+    ("crates/vb_storage", "vb_storage"),
+    ("crates/vb_validate", "vb_validate"),
+    ("crates/vb_yaml", "vb_yaml"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
@@ -61,7 +57,7 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
             "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"fuzz\"]\n"
         ),
     )?;
-    for (member, package_name) in MEMBERS {
+    for &(member, package_name) in MEMBERS {
         write_manifest(root, member, package_name)?;
     }
     Ok(dir)
@@ -75,7 +71,7 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
     }
     if member == "crates/vb_core" {
         manifest.push_str(
-            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nvolatile = []\ntest-util = []\n",
+            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nverus-kernels = []\nvolatile = []\ntest-util = []\n",
         );
     }
     if member == "crates/vb_validate" {
@@ -133,7 +129,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
+        "crates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"test-util\", \"verus-kernels\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }

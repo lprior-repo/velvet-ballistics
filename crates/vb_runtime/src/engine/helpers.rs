@@ -22,9 +22,9 @@ pub fn mark_step_after_signal(
         RuntimeSignal::AwaitingWait => run.mark_waiting(step).map_err(RuntimeEngineError::Core),
         RuntimeSignal::AwaitingAsk => run.mark_asking(step).map_err(RuntimeEngineError::Core),
         RuntimeSignal::AwaitingAction(_) | RuntimeSignal::StepBudgetExhausted => Ok(()),
-        RuntimeSignal::Continue | RuntimeSignal::Finished(_) => run
-            .mark_succeeded(step)
-            .map_err(RuntimeEngineError::Core),
+        RuntimeSignal::Continue | RuntimeSignal::Finished(_) => {
+            run.mark_succeeded(step).map_err(RuntimeEngineError::Core)
+        }
         RuntimeSignal::UnknownEngineSignal { signal_debug } => {
             Err(RuntimeEngineError::UnknownEngineSignal {
                 signal_debug: signal_debug.clone(),

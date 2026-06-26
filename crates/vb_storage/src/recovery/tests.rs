@@ -1,14 +1,13 @@
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
 use crate::recovery::{
-    ActionAbiDigestComparison, ActionReplayTracker, DigestVerificationRequest,
-    FullDigestEvidence, PolicyDigestComparison, RecoveredStepState, RecoveryError,
-    RecoveryHydration, RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
-    check_compiled_ir_digest, check_workflow_source_digest, extract_terminal, is_terminal_event,
-    recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
-    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    recover_runtime_summary, recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
-    verify_digests,
+    ActionAbiDigestComparison, ActionReplayTracker, DigestVerificationRequest, FullDigestEvidence,
+    PolicyDigestComparison, RecoveredStepState, RecoveryError, RecoveryHydration,
+    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
+    check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
+    recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
+    recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
+    recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
 use crate::{
     DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RecordKind, RunHeaderRecord,
@@ -1800,7 +1799,12 @@ fn verify_digests_full_rejects_mismatched_action_abi_digest() {
     let result = verify_digests(
         &journal,
         run,
-        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::action_abi_only(&action_evidence)),
+        DigestVerificationRequest::full(
+            source,
+            ir,
+            ir,
+            FullDigestEvidence::action_abi_only(&action_evidence),
+        ),
     );
 
     assert!(
@@ -1842,7 +1846,12 @@ fn verify_digests_full_rejects_mismatched_policy_digest() {
     let result = verify_digests(
         &journal,
         run,
-        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::policy_only(&policy_evidence)),
+        DigestVerificationRequest::full(
+            source,
+            ir,
+            ir,
+            FullDigestEvidence::policy_only(&policy_evidence),
+        ),
     );
 
     assert!(
@@ -1891,7 +1900,12 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
     let result_action = verify_digests(
         &journal,
         run,
-        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::action_abi_only(&action_evidence)),
+        DigestVerificationRequest::full(
+            source,
+            ir,
+            ir,
+            FullDigestEvidence::action_abi_only(&action_evidence),
+        ),
     );
     assert!(
         matches!(result_action, Err(RecoveryError::ActionAbiMismatch { .. })),
@@ -1908,7 +1922,12 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
     let result_policy = verify_digests(
         &journal,
         run,
-        DigestVerificationRequest::full(source, ir, ir, FullDigestEvidence::policy_only(&policy_evidence)),
+        DigestVerificationRequest::full(
+            source,
+            ir,
+            ir,
+            FullDigestEvidence::policy_only(&policy_evidence),
+        ),
     );
     assert!(
         matches!(

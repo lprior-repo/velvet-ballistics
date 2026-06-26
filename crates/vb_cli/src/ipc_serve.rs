@@ -99,17 +99,57 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
         &mut self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
-        let record = match self.journal.compiled_ir(digest) {
-            Ok(Some(record)) => record,
-            Ok(None) => return Err(vb_ipc::server::WorkflowResolutionError::NotFound),
-            Err(_) => return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact),
-        };
-        if record.digest != digest {
-            return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact);
-        }
-        let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&record.ir)
-            .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
-        vb_core::CompiledWorkflow::try_from_parts(parts)
-            .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
+        let record = compiled_record_for_digest(&self.journal, digest)?;
+        decode_compiled_record(&record, digest)
     }
+}
+
+fn compiled_record_for_digest(
+    journal: &vb_storage::FjallJournal,
+    digest: vb_core::WorkflowDigest,
+) -> Result<vb_storage::CompiledIrRecord, vb_ipc::server::WorkflowResolutionError> {
+    match journal.compiled_ir(digest) {
+        Ok(Some(record)) => Ok(record),
+        Ok(None) => match journal.compiled_ir_for_source_digest(digest) {
+            Ok(Some(record)) => Ok(record),
+            Ok(None) => Err(vb_ipc::server::WorkflowResolutionError::NotFound),
+            Err(_) => Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact),
+        },
+        Err(_) => Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact),
+    }
+}
+
+fn decode_compiled_record(
+    record: &vb_storage::CompiledIrRecord,
+    requested: vb_core::WorkflowDigest,
+) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
+    if raw_payload_digest(record) == record.digest {
+        return decode_workflow_parts(record.ir.as_slice());
+    }
+
+    let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(record.ir.as_slice())
+        .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+    let artifact_digest = vb_storage::admission::accepted_artifact_digest(&artifact)
+        .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+    let digest_matches = artifact.digest == record.digest
+        && artifact.verification.digest == record.digest
+        && artifact_digest == record.digest;
+    let lookup_matches = record.digest == requested || artifact.source_digest == requested;
+    if !(digest_matches && lookup_matches) {
+        return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact);
+    }
+    decode_workflow_parts(artifact.ir.as_slice())
+}
+
+fn raw_payload_digest(record: &vb_storage::CompiledIrRecord) -> vb_core::WorkflowDigest {
+    vb_core::WorkflowDigest::from_bytes(blake3::hash(record.ir.as_slice()).into())
+}
+
+fn decode_workflow_parts(
+    bytes: &[u8],
+) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
+    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(bytes)
+        .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+    vb_core::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
 }

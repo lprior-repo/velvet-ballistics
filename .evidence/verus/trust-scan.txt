@@ -1,1 +1,1 @@
-VERUS_TRUST_SCAN_OK no assume/external/axiom matches in verification/verus contracts/verus
+verification/verus/vb-vzcuf-PS-009.rs:80:#[verifier::external]

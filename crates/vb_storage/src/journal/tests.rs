@@ -2206,7 +2206,11 @@ fn batch_append_event_rejects_intra_batch_duplicate() {
 
     // The rejection must not mutate the prior staged event: the
     // batch still contains exactly one event and commits cleanly.
-    assert_eq!(batch.len(), 1, "rejected append must not stage a second event");
+    assert_eq!(
+        batch.len(),
+        1,
+        "rejected append must not stage a second event"
+    );
     batch.commit().expect("commit should succeed");
 
     let replayed = journal.events_for_run(run).expect("replay");

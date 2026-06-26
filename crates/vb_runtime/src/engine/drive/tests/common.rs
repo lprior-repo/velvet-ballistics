@@ -148,11 +148,11 @@ pub(crate) fn errh(id: u16, body: u16, handler: u16, eslot: Option<u16>) -> Comp
     )
 }
 
-pub(crate) fn tog(id: u16, branches: Box<[u16]>, join: u16) -> CompiledNode {
+pub(crate) fn tog(id: u16, accumulator: u16, branches: Box<[u16]>, join: u16) -> CompiledNode {
     let br: Box<[StepIdx]> = branches.iter().map(|b| StepIdx::new(*b)).collect();
     cn(
         id,
-        None,
+        Some(accumulator),
         None,
         CompiledNodeKind::TogetherStart {
             branches: br,

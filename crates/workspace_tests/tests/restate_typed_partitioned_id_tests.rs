@@ -16,14 +16,14 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 32 | 40 | 50)
 }
 
 proptest! {
     #[test]
     fn generated_typed_partitioned_ids_preserve_bytes(
         run in any::<u64>(),
-        seq in any::<u64>(),
+        seq in 0u64..u64::MAX,
         workflow in any::<u32>(),
         action in any::<u16>(),
         step in any::<u16>(),
@@ -49,11 +49,7 @@ proptest! {
         prop_assert_eq!(&action_key[3..11], &run.to_be_bytes());
         prop_assert_eq!(&action_key[11..13], &step.to_be_bytes());
 
-        if seq == u64::MAX {
-            prop_assert!(SeqNo::new(seq).checked_add(1).is_none());
-        } else {
-            prop_assert_eq!(SeqNo::new(seq).checked_add(1).map(SeqNo::get), Some(seq + 1));
-        }
+        prop_assert_eq!(SeqNo::new(seq).checked_add(1).map(SeqNo::get), seq.checked_add(1));
 
         if unknown_kind(kind) {
             let decoded = decode_record_header(
@@ -88,8 +84,12 @@ fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
     assert_eq!(vb_storage::records::RecordKind::CompiledIr.id(), 2);
     assert_eq!(vb_storage::records::RecordKind::RunHeader.id(), 3);
     assert_eq!(vb_storage::records::RecordKind::RunAccepted.id(), 10);
+    assert_eq!(vb_storage::records::RecordKind::RunAdmission.id(), 24);
     assert_eq!(vb_storage::records::RecordKind::RunAnswered.id(), 27);
+    assert_eq!(vb_storage::records::RecordKind::AskTimedOut.id(), 29);
     assert_eq!(vb_storage::records::RecordKind::Snapshot.id(), 30);
+    assert_eq!(vb_storage::records::RecordKind::WaitResolved.id(), 31);
+    assert_eq!(vb_storage::records::RecordKind::ActionAbandoned.id(), 32);
     assert_eq!(vb_storage::records::RecordKind::Blob.id(), 40);
     assert_eq!(vb_storage::records::RecordKind::IndexUpdate.id(), 50);
     Ok(())

@@ -16,7 +16,6 @@
 //
 // GOD RULE 2: Verus specs bind to actual Rust implementation behavior.
 // GOD RULE 3: Model bounded hardware limits — u16 MAX for kind, u64 MAX for EventSeq.
-
 use vstd::prelude::*;
 
 verus! {
@@ -24,20 +23,40 @@ verus! {
 // ============================================================================
 // Kind-Family Model
 // ============================================================================
-
 /// The maximum value of u16 (used for RecordKind identifiers).
-pub open spec fn u16_max() -> int { 65535 }
+pub open spec fn u16_max() -> int {
+    65535
+}
 
 /// The overflow sentinel for u64 (used for EventSeq).
-pub open spec fn seq_overflow_sentinel() -> int { u64::MAX as int }
+pub open spec fn seq_overflow_sentinel() -> int {
+    u64::MAX as int
+}
 
 // Magic constants from production crates/vb_storage/src/constants.rs
-pub open spec fn MAGIC_JOURNAL_EVENT() -> u32 { 0x5642_4A45u32 }
-pub open spec fn MAGIC_SNAPSHOT() -> u32 { 0x5642_534Eu32 }
-pub open spec fn MAGIC_BLOB() -> u32 { 0x5642_424Cu32 }
-pub open spec fn MAGIC_WORKFLOW_SOURCE() -> u32 { 0x5642_5352u32 }
-pub open spec fn MAGIC_COMPILED_ARTIFACT() -> u32 { 0x5642_4952u32 }
-pub open spec fn MAGIC_INDEX_RECORD() -> u32 { 0x5642_4958u32 }
+pub open spec fn MAGIC_JOURNAL_EVENT() -> u32 {
+    0x5642_4A45u32
+}
+
+pub open spec fn MAGIC_SNAPSHOT() -> u32 {
+    0x5642_534Eu32
+}
+
+pub open spec fn MAGIC_BLOB() -> u32 {
+    0x5642_424Cu32
+}
+
+pub open spec fn MAGIC_WORKFLOW_SOURCE() -> u32 {
+    0x5642_5352u32
+}
+
+pub open spec fn MAGIC_COMPILED_ARTIFACT() -> u32 {
+    0x5642_4952u32
+}
+
+pub open spec fn MAGIC_INDEX_RECORD() -> u32 {
+    0x5642_4958u32
+}
 
 // Known record kind identifiers (matches RecordKind enum in records.rs)
 pub open spec fn KNOWN_JOURNAL_KINDS() -> Set<int> {
@@ -59,7 +78,6 @@ pub open spec fn ALL_KNOWN_KINDS() -> Set<int> {
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-004: is_known_record_kind spec
 // ─────────────────────────────────────────────────────────────────
-
 /// Spec model for is_known_record_kind(kind).
 /// Returns true iff kind is in the set of all known record kinds.
 pub open spec fn spec_is_known_record_kind(kind: int) -> bool {
@@ -81,7 +99,7 @@ pub proof fn lemma_kind_28_is_known()
 /// Proof: All base journal event kinds (10..=29) are known.
 pub proof fn lemma_all_journal_kinds_known()
     ensures
-        forall |k: int| 10 <= k <= 29 ==> spec_is_known_record_kind(k),
+        forall|k: int| 10 <= k <= 29 ==> spec_is_known_record_kind(k),
 {
     // KNOWN_JOURNAL_KINDS contains all values 10 through 29 by definition
     assert(KNOWN_JOURNAL_KINDS().contains(10));
@@ -128,7 +146,6 @@ pub proof fn lemma_kind_0_is_unknown()
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-004: validate_kind_family spec
 // ─────────────────────────────────────────────────────────────────
-
 pub enum SpecKindFamilyResult {
     Ok,
     Err,
@@ -138,9 +155,7 @@ pub enum SpecKindFamilyResult {
 /// Returns Ok when the (magic, kind) pair is a valid family combination.
 pub open spec fn spec_validate_kind_family(magic: u32, kind: int) -> SpecKindFamilyResult {
     let valid = match magic {
-        m if m == MAGIC_JOURNAL_EVENT() => {
-            (10 <= kind <= 29) || kind == 31 || kind == 32
-        },
+        m if m == MAGIC_JOURNAL_EVENT() => { (10 <= kind <= 29) || kind == 31 || kind == 32 },
         m if m == MAGIC_SNAPSHOT() => kind == 30,
         m if m == MAGIC_BLOB() => kind == 40,
         m if m == MAGIC_WORKFLOW_SOURCE() => kind == 1,
@@ -148,7 +163,11 @@ pub open spec fn spec_validate_kind_family(magic: u32, kind: int) -> SpecKindFam
         m if m == MAGIC_INDEX_RECORD() => kind == 3 || kind == 50,
         _ => false,
     };
-    if valid { SpecKindFamilyResult::Ok } else { SpecKindFamilyResult::Err }
+    if valid {
+        SpecKindFamilyResult::Ok
+    } else {
+        SpecKindFamilyResult::Err
+    }
 }
 
 /// Proof: validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok.
@@ -202,12 +221,12 @@ pub proof fn lemma_kind_28_blob_family_err()
 /// Proof: For any journal kind k in 10..=29, MAGIC_JOURNAL_EVENT family validates Ok.
 pub proof fn lemma_journal_family_range_valid()
     ensures
-        forall |k: int| 10 <= k <= 29 ==>
-            spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k) == SpecKindFamilyResult::Ok,
+        forall|k: int|
+            10 <= k <= 29 ==> spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k)
+                == SpecKindFamilyResult::Ok,
 {
-    assert forall |k: int| 10 <= k <= 29 implies
-        spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k) == SpecKindFamilyResult::Ok by {
-    };
+    assert forall|k: int| 10 <= k <= 29 implies spec_validate_kind_family(MAGIC_JOURNAL_EVENT(), k)
+        == SpecKindFamilyResult::Ok by {};
 }
 
 /// Proof: Kind 28 with wrong magic (e.g., MAGIC_INDEX_RECORD) returns Err.
@@ -221,7 +240,6 @@ pub proof fn lemma_kind_28_wrong_magic_err()
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-004: Production binding lemma
 // ─────────────────────────────────────────────────────────────────
-
 /// Proof function binding the Verus spec model to the production Rust
 /// is_known_record_kind() function in crates/vb_storage/src/codec/validation.rs:23.
 ///
@@ -249,7 +267,6 @@ pub proof fn lemma_production_binding_validate_kind_family_28()
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-004b: JournalEvent payload-kind parity model
 // ─────────────────────────────────────────────────────────────────
-
 /// Semantic payload variants from crates/vb_storage/src/events.rs.
 /// Variants that share a durable wire kind map to the same record kind below.
 pub enum SpecJournalEventKind {
@@ -310,7 +327,10 @@ pub open spec fn spec_event_record_kind(event: SpecJournalEventKind) -> int {
 }
 
 /// Model of codec::validate_journal_event_record_kind: exact equality only.
-pub open spec fn spec_payload_kind_matches(envelope_kind: int, event: SpecJournalEventKind) -> bool {
+pub open spec fn spec_payload_kind_matches(
+    envelope_kind: int,
+    event: SpecJournalEventKind,
+) -> bool {
     envelope_kind == spec_event_record_kind(event)
 }
 
@@ -377,13 +397,14 @@ pub proof fn lemma_production_binding_extension_payload_parity()
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-005: Replay ordinal contiguity
 // ─────────────────────────────────────────────────────────────────
-
 /// Spec model for event sequence contiguity.
 /// A sequence list is contiguous if for every index i where 0 <= i < len(seqs)-1,
 /// seqs[i] + 1 == seqs[i+1].
 pub open spec fn spec_is_contiguous(seqs: Seq<int>) -> bool {
-    forall |i: int| 0 <= i < seqs.len() as int - 1 ==>
-        #[trigger] seqs.index(i as int) + 1 == seqs.index((i + 1) as int)
+    forall|i: int|
+        0 <= i < seqs.len() as int - 1 ==> #[trigger] seqs.index(i as int) + 1 == seqs.index(
+            (i + 1) as int,
+        )
 }
 
 /// Proof: A single-element sequence is trivially contiguous.
@@ -422,7 +443,10 @@ pub proof fn lemma_011_has_duplicate()
 pub proof fn lemma_contiguous_bounded(seqs: Seq<int>)
     requires
         spec_is_contiguous(seqs),
-        forall |i: int| 0 <= i < seqs.len() as int ==> #[trigger] seqs.index(i as int) >= 0 && seqs.index(i as int) < seq_overflow_sentinel(),
+        forall|i: int|
+            0 <= i < seqs.len() as int ==> #[trigger] seqs.index(i as int) >= 0 && seqs.index(
+                i as int,
+            ) < seq_overflow_sentinel(),
     ensures
         true,
 {
@@ -442,6 +466,7 @@ pub proof fn lemma_replay_adjacent_ordered(seqs: Seq<int>, i: int)
     assert(seqs.index(i as int) + 1 == seqs.index((i + 1) as int));
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

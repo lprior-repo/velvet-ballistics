@@ -7,10 +7,10 @@
 
 #[cfg(kani)]
 mod kani_harnesses {
-    use vb_core::{RunId, StepIdx, WorkflowDigest};
     use crate::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
     use crate::recovery::types::RunSnapshot as VbRunSnapshot;
     use crate::{EventSeq, JournalEvent};
+    use vb_core::{RunId, StepIdx, WorkflowDigest};
 
     // Newtype wrapper to bypass orphan rule: we can impl Arbitrary for our own types
     #[derive(kani::Arbitrary)]

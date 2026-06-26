@@ -246,7 +246,7 @@ fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTai
     }
 }
 
-pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
+pub(crate) fn legacy_slot_taint(_value: SlotValue) -> Taint {
     // vb-i21a2 (SR-013): `Bool(false)` MUST NOT downgrade to `Taint::Clean`.
     // Master §47 declares `Clean < DerivedFromSecret < Secret` and forbids
     // any asymmetric downgrade from secret-provenance frames. Legacy
@@ -256,11 +256,7 @@ pub(crate) fn legacy_slot_taint(value: SlotValue) -> Taint {
     // while `Bool(true)` stays `DerivedFromSecret`. We collapse every
     // legacy `Bool` and `Null` to `Secret` so the recovered run never
     // under-taints a value whose source provenance is unprovable.
-    match value {
-        SlotValue::Bool(false) => Taint::Clean,
-        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
-        _ => Taint::Secret,
-    }
+    Taint::Secret
 }
 
 impl FrameSeedAccumulator {

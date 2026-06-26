@@ -619,7 +619,8 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         ..parts_zeroed
     };
     let workflow = CompiledWorkflow::try_from_parts(parts)?;
-    let digest = workflow.digest();
+    let ir_bytes = postcard::to_allocvec(&workflow.to_parts())?;
+    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir_bytes).into());
 
     let result = admit_compiled_artifact(&journal, &workflow)?;
     assert_eq!(result, digest);
@@ -753,7 +754,7 @@ fn submit_artifact_valid_workflow_succeeds() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
     let workflow = build_valid_workflow_for_submit();
-    let digest = workflow.digest();
+    let source_digest = workflow.digest();
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
     assert!(
@@ -761,13 +762,17 @@ fn submit_artifact_valid_workflow_succeeds() {
         "submit_artifact should succeed: {:?}",
         result
     );
-    assert_eq!(result.expect("ok").digest.as_bytes(), digest.as_bytes());
+    let artifact = result.expect("ok");
+    assert_eq!(artifact.source_digest.as_bytes(), source_digest.as_bytes());
+    assert_eq!(artifact.verification.digest, artifact.digest);
 
     // Verify it was stored.
-    let loaded = journal.compiled_ir(digest).expect("load compiled ir");
+    let loaded = journal
+        .compiled_ir(artifact.digest)
+        .expect("load compiled ir");
     assert!(loaded.is_some());
     let record = loaded.expect("some");
-    assert_eq!(record.digest, digest);
+    assert_eq!(record.digest, artifact.digest);
 }
 
 #[test]
@@ -848,7 +853,8 @@ fn submit_artifact_stale_digest_rejected() {
     // Submit the valid artifact first.
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .expect("original submit should succeed");
-    assert_eq!(artifact.digest, original_digest);
+    assert_eq!(artifact.source_digest, original_digest);
+    assert_eq!(artifact.verification.digest, artifact.digest);
 
     // Now try to submit a different workflow claiming the same digest.
     // Build a different workflow.
@@ -920,26 +926,29 @@ fn list_artifacts_returns_stored_digests() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let d1 = WorkflowDigest::from_bytes([0x10; 32]);
-    let d2 = WorkflowDigest::from_bytes([0x20; 32]);
-    let d3 = WorkflowDigest::from_bytes([0x30; 32]);
+    let ir1 = vec![1u8];
+    let ir2 = vec![2u8];
+    let ir3 = vec![3u8];
+    let d1 = WorkflowDigest::from_bytes(blake3::hash(&ir1).into());
+    let d2 = WorkflowDigest::from_bytes(blake3::hash(&ir2).into());
+    let d3 = WorkflowDigest::from_bytes(blake3::hash(&ir3).into());
 
     journal
         .put_compiled_ir(&CompiledIrRecord {
             digest: d1,
-            ir: vec![1u8],
+            ir: ir1,
         })
         .expect("put d1");
     journal
         .put_compiled_ir(&CompiledIrRecord {
             digest: d2,
-            ir: vec![2u8],
+            ir: ir2,
         })
         .expect("put d2");
     journal
         .put_compiled_ir(&CompiledIrRecord {
             digest: d3,
-            ir: vec![3u8],
+            ir: ir3,
         })
         .expect("put d3");
 
@@ -961,19 +970,21 @@ fn remove_artifact_removes_from_list() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let d1 = WorkflowDigest::from_bytes([0x40; 32]);
-    let d2 = WorkflowDigest::from_bytes([0x50; 32]);
+    let ir1 = vec![1u8];
+    let ir2 = vec![2u8];
+    let d1 = WorkflowDigest::from_bytes(blake3::hash(&ir1).into());
+    let d2 = WorkflowDigest::from_bytes(blake3::hash(&ir2).into());
 
     journal
         .put_compiled_ir(&CompiledIrRecord {
             digest: d1,
-            ir: vec![1u8],
+            ir: ir1,
         })
         .expect("put d1");
     journal
         .put_compiled_ir(&CompiledIrRecord {
             digest: d2,
-            ir: vec![2u8],
+            ir: ir2,
         })
         .expect("put d2");
 
@@ -1015,7 +1026,8 @@ fn artifact_exists_returns_true_for_stored() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let digest = WorkflowDigest::from_bytes([0xAA; 32]);
+    let ir = vec![42u8];
+    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
 
     let exists_before = journal
         .artifact_exists(digest)
@@ -1023,10 +1035,7 @@ fn artifact_exists_returns_true_for_stored() {
     assert!(!exists_before, "artifact should not exist before storage");
 
     journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest,
-            ir: vec![42u8],
-        })
+        .put_compiled_ir(&CompiledIrRecord { digest, ir })
         .expect("put should succeed");
 
     let exists_after = journal
