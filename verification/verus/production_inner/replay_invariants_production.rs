@@ -259,7 +259,8 @@ pub struct RecoveredPendingAction {
 // VERBATIM PRODUCTION: JournalEvent enum + attempt() method
 // ============================================================================
 //
-// Source: crates/vb_storage/src/events.rs:23-487
+// Source: crates/vb_storage/src/events.rs:23-316
+// Source: crates/vb_storage/src/events.rs:460-487
 // Drift policy: any change to the variant set, field names, or the
 // `attempt()` method body MUST be mirrored here.
 //
