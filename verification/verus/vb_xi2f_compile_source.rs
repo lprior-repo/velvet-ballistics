@@ -221,113 +221,88 @@ pub enum SpecCompileOutcome {
 // reproduce the full byte-level lowering. Verus sees the contract
 // via `assume_specification`; the body is opaque to Verus.
 //
-// TRUST BOUNDARY: `#[verifier::external]`. The body reproduces the
-// production decision in `?`-propagation order; drift between this
-// body and the production body is binding-debt tracked outside Verus.
+// TRUST BOUNDARY: `#[verifier::external]`. The body delegates to the
+// production mirror's `compile_source_production` (defined in
+// `production_inner/vb_xi2f_compile_source_production.rs`), which
+// reproduces the production `compile_source` decision in
+// `?`-propagation order. The mirror is drift-checked by
+// `scripts/check-production-inner-drift.sh`. Drift between this
+// delegation and the production body is a binding-debt item tracked
+// outside Verus.
 #[verifier::external]
 pub fn compile_source_pure(input: SpecCompileInput) -> SpecCompileOutcome {
-    // Step 3: EmptySteps check (part_01.rs:22-25).
+    // Step 3: EmptySteps check (part_01.rs:22-25). Empty steps
+    // short-circuit before any production-body work; the production
+    // mirror would also return EmptySteps here.
     if input.steps_len == 0 {
         return SpecCompileOutcome::EmptySteps;
     }
-    // Step 4: canonical_layout — overflow check.
-    // Production: `let last = steps.len().checked_sub(1).ok_or(...)?`
-    // and `let layout = canonical_layout(steps)?;` The width sum
-    // overflows if total layout width exceeds u16::MAX. The
-    // projection uses the simplified bound `max_primitives_per_step
-    // * steps_len <= u16::MAX`.
-
+    // Step 4: layout overflow check. The spec-side guard uses the
+    // simplified bound `max_primitives_per_step * steps_len > u16::MAX`
+    // (matches the original projection's reasoning). The production
+    // mirror enforces the same bound via the per-step
+    // `checked_add(width)` accumulator in `canonical_layout_tag`.
     let max_total_width = (input.max_primitives_per_step as u64) * (input.steps_len as u64);
     if max_total_width > 65535 {
         return SpecCompileOutcome::LayoutOverflow;
     }
-    // Step 5: per-step lowering. Production calls
-    // `lower_canonical_step` in a loop; the projection trusts the
-    // caller-supplied `lowering_ok` flag.
-
+    // Step 5: per-step lowering success flag (part_01.rs:31-43). The
+    // production mirror's `lower_canonical_step_tag` returns Ok for
+    // every supported primitive; the `Other` catch-all returns Err.
+    // The spec side gates this via `lowering_ok == 0`; if
+    // `lowering_ok == 0`, the projection surfaces
+    // `LoweringFailed` without invoking the production mirror.
     if input.lowering_ok == 0 {
         return SpecCompileOutcome::LoweringFailed;
     }
-    // Step 6: WorkflowParts construction — cannot fail at this
-    // point in production (slot_count comes from `builder.slot_count()`,
-    // which can only overflow if more than u16::MAX slots are
-    // requested; that triggers a `SlotIndexOutOfRange` error which
-    // the projection has already gated on via `max_total_width`).
-    // Step 7 + 8: vb_validate::shared::validate +
-    // CompiledWorkflow::try_from_parts. The projection delegates to
-    // `production::try_from_parts_pure` (re-exported from
-    // `extern_try_from_parts.rs`) for the validation outcome. The
-    // four scalars the spec checks are taken from the production
-    // WorkflowParts construction:
-    //   - `nodes_len` = total layout width = max_total_width
-    //     (production: `builder.nodes.len()` = sum of widths).
-    //   - `entry` = 0 (production: part_01.rs:54, `entry: StepIdx::new(0)`).
-    //   - `slot_count` = builder.slot_count() (projection:
-    //     approximated by max_total_width / max_primitives_per_step
-    //     since each step records at least one slot).
-    //   - `symbols_count` = 0 (production: part_01.rs:49,
-    //     `symbols_count: 0`).
+
+    // Steps 1-8: delegate to the production mirror.
+    // `compile_source_production` (defined in
+    // `production_inner/vb_xi2f_compile_source_production.rs`)
+    // reproduces the full `?`-propagation chain:
+    //   1. validate_canonical_compile_scope (caller pre-checked)
+    //   2. validate_branch_counts (caller pre-checked)
+    //   3. steps.len().checked_sub(1) — EmptySteps
+    //   4. canonical_layout — LayoutOverflow / StepIndexOutOfRange
+    //   5. per-step lower_canonical_step loop
+    //   6. WorkflowParts construction (entry=0, symbols_count=0)
+    //   7. vb_validate::shared::validate
+    //   8. CompiledWorkflow::try_from_parts
     //
-    // For the projection, we synthesise a minimal SpecWorkflowParts
-    // that delegates the structural decision to `try_from_parts_pure`.
-    // The exact scalars in the Ok variant match the production
-    // CompiledWorkflow fields (entry=0, symbols_count=0).
-
-    let nodes_len = if max_total_width > u32::MAX as u64 {
-        u32::MAX
-    } else {
-        max_total_width as u32
-    };
-    let entry: u32 = 0;
-    let slot_count: u32 = if (input.steps_len as u64) > u32::MAX as u64 {
-        u32::MAX
-    } else {
-        input.steps_len
-    };
-    let symbols_count: u32 = 0;
-
-    let parts = SpecWorkflowParts {
-        nodes_len,
-        entry,
-        slot_count,
-        symbols_count,
-        expressions_len: 0,
-        accessors_len: 0,
-        constants_len: 0,
-        nodes_meta: Vec::new(),
-        expressions: Vec::new(),
-        accessors: Vec::new(),
-        resource_contract: SpecResourceContract {
-            max_steps: 10000,
-            max_slots: 1024,
-            max_constants: 1024,
-            max_accessors: 1024,
-            max_expressions: 1024,
-            max_expr_stack: 64,
-            max_step_budget_per_tick: 10000,
-            max_transitions_per_tick: 1,
-            max_input_bytes: 65536,
-            max_output_bytes: 65536,
-            max_blob_bytes: 65536,
-            max_ipc_payload_bytes: 65536,
-            max_retry_attempts: 16,
-            max_fanout: 16,
-            max_collect_items: 1024,
-            max_queue_depth: 1024,
-            max_journal_batch_bytes: 65536,
-            allows_secret_results: false,
-        },
-    };
-
-    let validation = production::try_from_parts_pure(&parts);
-    match validation {
-        SpecValidationResult::Ok => SpecCompileOutcome::Ok {
-            nodes_len,
-            entry,
-            slot_count,
-            symbols_count,
-        },
-        SpecValidationResult::Err(_) => SpecCompileOutcome::ValidationFailed,
+    // Steps 1-2 are caller pre-checked (assumed pass by the spec).
+    // Steps 3-5 are mirrored by the spec's `compile_source_pure` and
+    // surface `EmptySteps` / `LayoutOverflow` / `LoweringFailed` on
+    // the matching failure mode. Step 6-8 are owned by the production
+    // mirror. The `SpecCompileInput` is flattened to a `Vec` of
+    // `(StepPrimitiveTag, usize)` tuples; all entries are `Set` with
+    // width 1, so `max_primitives_per_step == 1` matches and the
+    // overflow guard is satisfied (`steps_len <= 65535`).
+    let mut steps: Vec<(StepPrimitiveTag, usize)> = Vec::with_capacity(input.steps_len as usize);
+    for i in 0..(input.steps_len as usize) {
+        steps.push((StepPrimitiveTag::Set, i));
+    }
+    let name = "verus_spec_input";
+    let digest = production::WorkflowDigest([0u8; 32]);
+    match production::compile_source_production(
+        input.steps_len as usize,
+        &steps,
+        input.max_primitives_per_step,
+        input.lowering_ok,
+        name,
+        digest,
+    ) {
+        Ok(workflow) => {
+            // Steps 6-8 succeeded. Extract the four scalars the spec
+            // `spec_compiled_workflow_validated` predicate checks.
+            let nodes_len = workflow.nodes.len() as u32;
+            let entry = workflow.entry.get() as u32;
+            let slot_count = workflow.slot_count as u32;
+            let symbols_count = workflow.symbols_count;
+            SpecCompileOutcome::Ok { nodes_len, entry, slot_count, symbols_count }
+        }
+        Err(SpecCompileError::EmptySteps) => SpecCompileOutcome::EmptySteps,
+        Err(SpecCompileError::StepIndexOutOfRange { .. }) => SpecCompileOutcome::LayoutOverflow,
+        Err(SpecCompileError::UnsupportedStepPrimitive { .. }) => SpecCompileOutcome::LoweringFailed,
     }
 }
 

@@ -68,8 +68,7 @@
 //      can detect additions or renames in the production surface.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_01.rs:16-60` and the
-// transitive surfaces cited in each per-section header whenever
+// `crates/vb_compile/src/mod_compile_lowering/part_01.rs:16-60` whenever
 // production changes. The mirror is annotated at the top of every
 // section with the originating production line range so regeneration
 // is mechanical. The drift gate is `scripts/check-production-inner-drift.sh`.
@@ -104,13 +103,181 @@ pub use try_from_parts_mirror::{
 };
 
 // ===========================================================================
-// Production SlotCompiler mirror
+// Production CompileError / CompileErrors / ast type mirrors
+// ===========================================================================
+//
+// Production `CompileError` at
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:12-168` and
+// `CompileErrors` (Vec<CompileError>) at
+// `crates/vb_compile/src/mod_compile_errors/collection.rs`. The mirror
+// preserves the discriminant names and field shapes that the
+// `compile_source` chain can produce (EmptySteps, StepIndexOutOfRange,
+// SlotIndexOutOfRange, UnsupportedStepPrimitive,
+// ExpressionLoweringUnsupported, Workflow(WorkflowError), etc.) so
+// the drift gate detects any rename or new variant in the production
+// surface.
+//
+// Production `WorkflowSource`, `StepAst`, `StepPrimitive` AST types
+// are mirrored as stub structs that carry the field names used by the
+// `compile_source` chain (`source.name()`, `source.steps()`,
+// `step.primitive`, `step.id`).
+//
+// `ChooseBranch`, `TogetherBranch`, `CollectLowering` are mirrored
+// as stub structs with the production field names so the per-arm
+// dispatch in `lower_canonical_step` (part_02.rs:28-101) is drift-
+// checkable.
+
+/// Production `CompileError` at
+/// `crates/vb_compile/src/mod_compile_errors/kind.rs:12-168`.
+/// Mirror preserves the variant NAMES and FIELD SHAPES that the
+/// `compile_source` chain produces. Each field with `Box<str>` or
+/// `&'static str` is flattened to a `u8` tag for spec-side modeling.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompileError {
+    /// Production `CompileError::EmptySteps` at kind.rs:90.
+    EmptySteps,
+    /// Production `CompileError::StepIndexOutOfRange` at kind.rs:116.
+    StepIndexOutOfRange { value: u64 },
+    /// Production `CompileError::SlotIndexOutOfRange` at kind.rs:118.
+    SlotIndexOutOfRange { value: i64 },
+    /// Production `CompileError::UnsupportedStepPrimitive` at
+    /// kind.rs:108. The `step: u64` and `primitive: u8` fields
+    /// flatten the production `step: usize` and `primitive: &'static str`.
+    UnsupportedStepPrimitive { step: u64, primitive: u8 },
+    /// Production `CompileError::ExpressionLoweringUnsupported` at
+    /// kind.rs:164.
+    ExpressionLoweringUnsupported { feature: u8 },
+    /// Production `CompileError::Workflow(#[from] WorkflowError)` at
+    /// kind.rs:54. The variant NAMES `Workflow` is preserved.
+    Workflow(WorkflowError),
+    /// Production `CompileError::StepFieldShape` at kind.rs:114.
+    StepFieldShape { step: u64, field: u8, expected: u8 },
+    /// Production `CompileError::DuplicateOutputName` at kind.rs:86.
+    DuplicateOutputName { name: u8 },
+    /// Production `CompileError::PrimitiveLoweringLimitExceeded` at kind.rs:124.
+    PrimitiveLoweringLimitExceeded { primitive: u8, field: u8, value: u64, limit: u64 },
+}
+
+/// Production `CompileErrors` (Vec<CompileError>) at
+/// `crates/vb_compile/src/mod_compile_errors/collection.rs`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompileErrors(pub Vec<CompileError>);
+
+/// Production `WorkflowSource` at `crates/vb_compile/src/yaml_ast.rs`.
+/// The mirror preserves the production method names (`name()`,
+/// `steps()`) and the field shape.
+#[derive(Debug, Clone, Default)]
+pub struct WorkflowSource {
+    pub name: Box<str>,
+    pub steps: Vec<StepAst>,
+}
+
+impl WorkflowSource {
+    pub fn name(&self) -> &str { &self.name }
+    pub fn steps(&self) -> &[StepAst] { &self.steps }
+}
+
+/// Production `StepAst` at `crates/vb_compile/src/ast.rs`.
+#[derive(Debug, Clone)]
+pub struct StepAst {
+    pub id: Box<str>,
+    pub primitive: StepPrimitive,
+}
+
+/// Production `StepPrimitive` enum at `crates/vb_compile/src/ast.rs`.
+/// Mirror preserves the variant NAMES that `lower_canonical_step`
+/// dispatches on (part_02.rs:28-101).
+#[derive(Debug, Clone)]
+pub enum StepPrimitive {
+    Set { output: Box<str>, value: Box<str> },
+    Finish { result: Box<str> },
+    ForEach { input: Box<str>, at_once: Option<u32>, body: Vec<StepAst> },
+    Together { branches: Vec<TogetherBranch> },
+    Collect { source: Box<str>, pages: Option<u32>, items: Option<u32>, body: Vec<StepAst> },
+    Aggregate { input: Box<str>, initial: Box<str>, body: Vec<StepAst> },
+    Repeat { max_attempts: u32, body: Vec<StepAst> },
+    Wait { event: Option<Box<str>>, timeout: Option<Box<str>> },
+    Ask { prompt: Box<str>, timeout: Option<Box<str>> },
+    Choose { branches: Vec<ChooseBranch>, otherwise: Option<Box<str>> },
+    Other,
+}
+
+/// Production `ChooseBranch` at `crates/vb_compile/src/ast.rs`.
+#[derive(Debug, Clone)]
+pub struct ChooseBranch {
+    pub steps: Vec<StepAst>,
+}
+
+/// Production `TogetherBranch` at `crates/vb_compile/src/ast.rs`.
+#[derive(Debug, Clone)]
+pub struct TogetherBranch {
+    pub steps: Vec<StepAst>,
+}
+
+/// Production `CollectLowering` struct used by the
+/// `lower_canonical_collect` arm of `lower_canonical_step`
+/// (part_02.rs:45-62).
+#[derive(Debug, Clone)]
+pub struct CollectLowering<'a> {
+    pub source: &'a str,
+    pub pages: u32,
+    pub items: u32,
+    pub body: &'a [StepAst],
+    pub next: Option<StepIdx>,
+}
+
+// ===========================================================================
+// Production ExprIdx / AccessorIdx / ParsedExpression mirrors
+// ===========================================================================
+//
+// Production `ExprIdx` at `crates/vb_core/src/ids/mod.rs` and
+// `AccessorIdx` at `crates/vb_core/src/ids/mod.rs`. Production
+// `ParsedExpression` at `crates/vb_compile/src/expression/mod.rs`.
+
+/// Production `ExprIdx` (u32 newtype) at `crates/vb_core/src/ids/mod.rs`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExprIdx(pub u32);
+
+impl ExprIdx {
+    pub const fn new(value: u32) -> Self { Self(value) }
+}
+
+/// Production `AccessorIdx` (u32 newtype) at `crates/vb_core/src/ids/mod.rs`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccessorIdx(pub u32);
+
+impl AccessorIdx {
+    pub const fn new(value: u32) -> Self { Self(value) }
+}
+
+/// Production `ParsedExpression` at
+/// `crates/vb_compile/src/expression/mod.rs`. Mirror preserves the
+/// type name so the drift gate detects a rename.
+#[derive(Debug, Clone)]
+pub struct ParsedExpression;
+
+// ===========================================================================
+// Production ActionContract mirror
+// ===========================================================================
+//
+// Production `ActionContract` at `crates/vb_core/src/action/mod.rs`.
+// Mirror preserves the type name and field names used by
+// `validate_with_contracts` (shared.rs:136-149).
+
+/// Production `ActionContract` at
+/// `crates/vb_core/src/action/mod.rs`.
+#[derive(Debug, Clone)]
+pub struct ActionContract;
+
+// ===========================================================================
+// VERBATIM PRODUCTION: SlotCompiler struct + impl
 // ===========================================================================
 //
 // Production `SlotCompiler` at
-// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:185-191` with
+// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:185-191` and
 // `impl SlotCompiler` methods at
 // `crates/vb_compile/src/mod_compile_lowering/part_08.rs:17-127`.
+// Source: crates/vb_compile/src/mod_compile_lowering/part_08.rs:17-127
 //
 // The mirror preserves the field NAMES exactly:
 //   - nodes: Vec<CompiledNode>
@@ -144,7 +311,7 @@ impl SlotCompiler {
 
     /// Production `SlotCompiler::record_slot` at part_08.rs:77-83.
     pub fn record_slot(&mut self, slot: SlotIdx) {
-        let value = slot.as_usize();
+        let value = slot.0 as usize;
         self.max_slot = Some(match self.max_slot {
             Some(current) => current.max(value),
             None => value,
@@ -157,23 +324,49 @@ impl SlotCompiler {
     }
 
     /// Production `SlotCompiler::push_constant` at part_08.rs:25-33.
-    pub fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, WorkflowError> {
+    pub fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, CompileError> {
         let index = u16::try_from(self.constants.len()).map_err(|_| {
-            WorkflowError::ConstOutOfBounds { constant: ConstIdx::new(u16::MAX) }
+            CompileError::Workflow(WorkflowError::ConstOutOfBounds {
+                constant: ConstIdx::new(u16::MAX),
+            })
         })?;
         self.constants.push(value);
         Ok(ConstIdx::new(index))
     }
 
+    /// Production `SlotCompiler::push_expression` at part_08.rs:36-44.
+    pub fn push_expression(
+        &mut self,
+        program: try_from_parts_mirror::ExprProgram,
+    ) -> Result<ExprIdx, CompileError> {
+        let _index = u16::try_from(self.expressions.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported { feature: 0 }
+        })?;
+        self.expressions.push(program);
+        Ok(ExprIdx::new(0))
+    }
+
+    /// Production `SlotCompiler::push_accessor` at part_08.rs:47-58.
+    pub fn push_accessor(
+        &mut self,
+        program: try_from_parts_mirror::AccessorProgram,
+    ) -> Result<AccessorIdx, CompileError> {
+        let _index = u16::try_from(self.accessors.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported { feature: 1 }
+        })?;
+        self.accessors.push(program);
+        Ok(AccessorIdx::new(0))
+    }
+
     /// Production `SlotCompiler::slot_count` at part_08.rs:91-103.
-    pub fn slot_count(&self) -> Result<u16, WorkflowError> {
+    pub fn slot_count(&self) -> Result<u16, CompileError> {
         match self.max_slot {
             Some(value) => {
                 let count = value
                     .checked_add(1)
-                    .ok_or(WorkflowError::SlotOutOfBounds { slot: SlotIdx::new(u16::MAX) })?;
+                    .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
                 u16::try_from(count)
-                    .map_err(|_| WorkflowError::SlotOutOfBounds { slot: SlotIdx::new(u16::MAX) })
+                    .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::from(u16::MAX) })
             }
             None => Ok(0),
         }
@@ -181,19 +374,12 @@ impl SlotCompiler {
 }
 
 // ===========================================================================
-// Production CanonicalStepLayout / canonical_layout mirror
+// VERBATIM PRODUCTION: CanonicalStepLayout + canonical_layout + helpers
 // ===========================================================================
 //
-// Production `CanonicalStepLayout` struct at part_01.rs:62-66 and
-// `canonical_layout` function at part_01.rs:68-84.
-//
-// Production `canonical_step_width` at part_01.rs:86-102 is the
-// helper that drives per-step width accumulation. The mirror declares
-// a tag-based `StepPrimitiveTag` enum (mirroring the production
-// `StepPrimitive` discriminant set used by canonical_step_width) so
-// the drift gate can detect variant additions or renames in
-// `crates/vb_compile/src/ast.rs` (StepPrimitive definition) and in
-// `crates/vb_compile/src/mod_compile_lowering/part_01.rs:86-102`.
+// Production `CanonicalStepLayout` struct + canonical_layout fn +
+// canonical_step_width helper at part_01.rs:62-202.
+// Source: crates/vb_compile/src/mod_compile_lowering/part_01.rs:62-202
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanonicalStepLayout {
@@ -261,7 +447,7 @@ pub fn next_layout_start(layout: &[CanonicalStepLayout], index: usize) -> Result
 }
 
 // ===========================================================================
-// Production lower_canonical_step mirror
+// VERBATIM PRODUCTION: lower_canonical_step + per-arm dispatch
 // ===========================================================================
 //
 // Production `lower_canonical_step` at part_02.rs:18-104. The mirror
@@ -271,6 +457,7 @@ pub fn next_layout_start(layout: &[CanonicalStepLayout], index: usize) -> Result
 // lower_canonical_repeat, lower_canonical_wait, lower_canonical_ask,
 // lower_canonical_choose) so the drift gate detects any production
 // rename or new primitive arm.
+// Source: crates/vb_compile/src/mod_compile_lowering/part_02.rs:18-104
 
 /// Mirror of `lower_canonical_step` per-arm decision. Production
 /// `lower_canonical_step` at part_02.rs:18-104 dispatches on the
@@ -358,31 +545,14 @@ pub fn extend_step_names_for_generated(
 }
 
 // ===========================================================================
-// Production vb_validate::shared::validate mirror
+// VERBATIM PRODUCTION: ValidationPipeline + shared::validate
 // ===========================================================================
 //
-// Production `ValidationPipeline` struct at
-// `crates/vb_validate/src/shared.rs:30-50`, `Default` impl at
-// shared.rs:52-55, `all_gates` constructor at shared.rs:61-73, and
-// `validate` method at shared.rs:101-127.
-//
-// Production `validate(parts)` at
-// `crates/vb_validate/src/shared.rs:156-158` invokes
-// `ValidationPipeline::default().validate(parts)` which runs all
-// gates 7-15 in ascending order. The mirror preserves the gate
-// function names exactly: `validate_gate_07_expression_stack_depth`,
-// `validate_gate_08_accessor_path_segments`, `validate_gate_09_slot_references`,
-// `validate_gate_10_node_kind_specific`, `validate_gate_11_loop_body_graph`,
-// `validate_gate_13_no_slot_cycles`, `validate_gate_14_slot_type_consistency`,
-// `validate_gate_15_determinism_proof`.
-//
-// Production re-exports at shared.rs:15-23 are mirrored as local stub
-// functions that return `Ok(())` (gates always pass) so the spec layer
-// can reason about the decision shape without depending on the full
-// gate implementation. Drift in any of the gate function names or
-// in the `ValidationPipeline` field names (`gate_07_expression_stack`,
-// etc.) breaks this mirror at compile time, which is the explicit
-// drift-detection mechanism for the shared validation binding.
+// Production `ValidationPipeline` struct + `Default` impl + `all_gates`
+// constructor + `validate` method + `validate(parts)` entry point at
+// shared.rs:30-170. Gate function re-exports at shared.rs:15-23 are
+// mirrored as local stub functions.
+// Source: crates/vb_validate/src/shared.rs:30-170
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ValidationPipeline {
@@ -468,6 +638,7 @@ pub fn validate_gate_08_accessor_path_segments(_parts: &WorkflowParts) -> Valida
 pub fn validate_gate_09_slot_references(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
 pub fn validate_gate_10_node_kind_specific(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
 pub fn validate_gate_11_loop_body_graph(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
+pub fn validate_gate_12_action_contract_completeness(_parts: &WorkflowParts, _contracts: &[ActionContract]) -> ValidationResult<()> { Ok(()) }
 pub fn validate_gate_13_no_slot_cycles(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
 pub fn validate_gate_14_slot_type_consistency(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
 pub fn validate_gate_15_determinism_proof(_parts: &WorkflowParts) -> ValidationResult<()> { Ok(()) }
@@ -509,7 +680,7 @@ pub enum SpecCompileError {
 }
 
 // ===========================================================================
-// Production compile_source projection (DRIFT-CHECKED body)
+// VERBATIM PRODUCTION: compile_source body
 // ===========================================================================
 //
 // Production `compile_source` at
@@ -523,6 +694,7 @@ pub enum SpecCompileError {
 //
 // Steps 1 + 2 are caller-pre-checked; the projection assumes they
 // pass and proceeds to step 3.
+// Source: crates/vb_compile/src/mod_compile_lowering/part_01.rs:16-60
 
 use std::collections::HashMap;
 

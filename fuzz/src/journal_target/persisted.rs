@@ -121,7 +121,8 @@ pub fn fuzz_binary_payload_boundary(data: &[u8]) {
     }
     let small_max = 64u32;
     match decode_record::<vb_storage::JournalEvent>(data, MAGIC_JOURNAL_EVENT, small_max) {
-        Ok((_envelope, _event)) | Err(JournalError::PayloadTooLarge { .. }) => {}
+        Ok((_envelope, _event)) => {}
+        Err(JournalError::PayloadTooLarge { .. }) => {}
         Err(e) => assert_typed_journal_error(e),
     }
     let tiny_max = 1u32;

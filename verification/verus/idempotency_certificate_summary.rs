@@ -7,10 +7,10 @@
 // - SpecActionId is a finite witness domain for vb_core::ActionId identifiers used in
 //   storage/runtime certificate membership lists.
 // - accepted_contract mirrors vb_storage::admission::is_contract_idempotency_accepted
-//   at crates/vb_storage/src/admission.rs:399-413, whose decision table is bound by
+//   at crates/vb_storage/src/admission.rs:531-545, whose decision table is bound by
 //   verification/verus/idempotency_decision.rs.
 // - qualifies_keyed mirrors vb_storage::admission::requires_idempotency_key at
-//   crates/vb_storage/src/admission.rs:392-397.
+//   crates/vb_storage/src/admission.rs:524-529.
 // - certificate_keyed / certificate_attested mirror VerificationProof fields at
 //   crates/vb_storage/src/admission.rs:85-88 and assignments in
 //   submit_artifact_with_contracts at crates/vb_storage/src/admission.rs:251-300.
