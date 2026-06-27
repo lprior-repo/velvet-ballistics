@@ -2,7 +2,7 @@ use super::*;
 use vb_core::ids::SlotIdx;
 use vb_core::workflow::{ExprProgram, ResourceContract};
 
-use super::super::test_helpers::{make_parts, finish_node};
+use super::super::test_helpers::{finish_node, make_parts};
 
 // -- Pass cases --
 

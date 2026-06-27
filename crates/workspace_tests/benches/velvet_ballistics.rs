@@ -1138,7 +1138,8 @@ fn bench_expr(
                     let mut constants = Vec::new();
                     let program = vb_compile::bytecode::compile_expr_with_pool(ast, &mut constants);
                     if let Ok(program) = program.as_ref() {
-                        let _evaluated = vb_compile::eval::eval_expr_program(program, &[], &constants);
+                        let _evaluated =
+                            vb_compile::eval::eval_expr_program(program, &[], &constants);
                     }
                     program.map(|_| constants)
                 } else {

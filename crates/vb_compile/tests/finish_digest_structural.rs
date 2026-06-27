@@ -9,9 +9,9 @@
 
 #![forbid(unsafe_code)]
 
-use vb_core::ids::WorkflowDigest;
 use vb_compile::ScalarValue;
 use vb_compile::parse_workflow_source;
+use vb_core::ids::WorkflowDigest;
 
 // ─────────────────────────────────────────────────────────────────
 // PO-STATIC-FINISH-001: ScalarValue exhaustiveness

@@ -19,6 +19,17 @@
 //   - `RuntimePolicy` projected to `SpecRuntimePolicy`
 //   - `AdmissionError` projected to `SpecAdmitError`
 //   - `admit_artifact_run_with_certificate_floor` projected to a pure decision fn.
+//
+// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:200-785`
+// Production source coverage:
+//   - `Capability`            <- crates/vb_core/src/capability.rs:10-27
+//   - `RuntimePolicy`         <- crates/vb_core/src/policy.rs
+//   - `AdmissionError`        <- crates/vb_runtime/src/admission.rs:200-331
+//   - `admit_artifact_run_with_certificate_floor`
+//                                  <- crates/vb_runtime/src/admission.rs:692-785
+// Regenerate this file whenever production changes. Any rename of
+// `Capability`, `RuntimePolicy`, or `AdmissionError` variants breaks
+// the `extern_capability_artifact_model` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

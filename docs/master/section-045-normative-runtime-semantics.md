@@ -18,13 +18,13 @@ Pending    → Running, Succeeded, Failed, Cancelled, Skipped
 Running    → Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
 Waiting    → Running
 Asking     → Running
-Succeeded  → (terminal)
+Succeeded  → Pending (bounded loop body re-entry), Succeeded
 Failed     → (terminal)
 Cancelled  → (terminal)
 Skipped    → (terminal)
 ```
 
-Idempotent re-mark (`state == next`) is valid. All other transitions return `InternalInvariantViolation { reason: "invalid_state_transition" }`.
+Idempotent re-mark (`state == next`) is valid. `Succeeded → Pending` is valid only for interpreter-controlled bounded loop body re-entry through `jump_to_body`; it is not a general run-terminal reset. All other transitions return `InternalInvariantViolation { reason: "invalid_state_transition" }`.
 
 ### EngineSignal / RuntimeSignal
 

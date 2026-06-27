@@ -25,6 +25,19 @@
 // This stub mirrors the production `RecordKind` enum discriminant set
 // (the discriminant is the smallest drift-detection surface — any
 // change to the production variant set breaks this stub).
+//
+// DRIFT POLICY: `crates/vb_storage/src/records.rs:1-150`
+// Production source coverage:
+//   - `is_known_record_kind`     <- crates/vb_storage/src/codec/validation.rs:23
+//   - `validate_kind_family`     <- crates/vb_storage/src/codec/validation.rs:42
+//   - `validate_replay_sequence` <- crates/vb_storage/src/journal/replay.rs:164
+//   - `next_seq`                 <- crates/vb_storage/src/codec/mod.rs:142
+//   - `validate_replayed_event`  <- crates/vb_storage/src/codec/mod.rs:149
+//   - Magic constants            <- crates/vb_storage/src/constants.rs
+//   - `RecordKind` discriminant  <- crates/vb_storage/src/records.rs:139
+// Regenerate this stub whenever production changes. Any rename of a
+// `RecordKind` variant or change to its discriminant ID breaks the
+// `extern_storage_kind_family` Verus build at compile time.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

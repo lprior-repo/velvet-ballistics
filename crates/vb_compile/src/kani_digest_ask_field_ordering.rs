@@ -14,8 +14,8 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use crate::lwr::canonical_digest;
 use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::lwr::canonical_digest;
 
 /// Maximum prompt length for bounded checking.
 const MAX_PROMPT_LEN: usize = 128;

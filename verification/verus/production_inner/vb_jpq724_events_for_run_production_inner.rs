@@ -29,6 +29,23 @@
 //
 // This stub mirrors the production `EventSeq` and `EventReplayLimit`
 // types as the smallest drift-detection surface.
+//
+// DRIFT POLICY: `crates/vb_storage/src/journal/replay.rs:59-176`
+// Production source coverage:
+//   - `next_seq`                    <- crates/vb_storage/src/codec/mod.rs:142-147
+//   - `validate_replayed_event`     <- crates/vb_storage/src/codec/mod.rs:149-167
+//   - `validate_replay_sequence`    <- crates/vb_storage/src/journal/replay.rs:164-176
+//   - `events_for_run`              <- crates/vb_storage/src/journal/replay.rs:59-61
+//   - `events_for_run_full`         <- crates/vb_storage/src/journal/replay.rs:74-79
+//   - `events_for_run_bounded`      <- crates/vb_storage/src/journal/replay.rs:99-115
+//   - `events_for_run_from`         <- crates/vb_storage/src/journal/replay.rs:130-161
+//   - `latest_durable_snapshot_seq` <- crates/vb_storage/src/trimming/logic.rs:24-41
+//   - `classify_replay_push_len`    <- crates/vb_storage/src/journal/replay.rs:30-49
+//   - `EventSeq`                    <- crates/vb_storage/src/types.rs:73-93
+//   - `EventReplayLimit`            <- crates/vb_storage/src/journal/core.rs:25-27
+// Regenerate this file whenever production changes. Any rename of
+// `max_events` or body change in `events_for_run_from` breaks the
+// `extern_vb_jpq724_events_for_run_production` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

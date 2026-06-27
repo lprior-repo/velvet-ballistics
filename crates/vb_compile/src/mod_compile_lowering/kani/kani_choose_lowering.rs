@@ -13,12 +13,12 @@
 #![forbid(unsafe_code)]
 #![allow(unused_must_use)]
 
+use crate::ChooseBranch;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::{
     SlotCompiler, lower_canonical_choose, lower_choose, validate_branch_route,
 };
 use vb_core::{CompiledNodeKind, SlotBranch, SlotIdx, StepIdx, WorkflowError};
-use crate::ChooseBranch;
 
 // =========================================================================
 // Bounded input generators

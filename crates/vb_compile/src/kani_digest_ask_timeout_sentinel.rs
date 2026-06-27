@@ -15,8 +15,8 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use crate::lwr::canonical_digest;
 use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::lwr::canonical_digest;
 
 fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
     let steps = vec![StepAst {

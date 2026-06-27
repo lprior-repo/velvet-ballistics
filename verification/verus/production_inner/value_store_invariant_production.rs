@@ -25,6 +25,18 @@
 //
 // This stub mirrors the production `ValueStore::max_arena_entries`
 // field as the smallest drift-detection surface.
+//
+// DRIFT POLICY: `crates/vb_core/src/value_store.rs:27-329`
+// Production source coverage:
+//   - `ObjectField::clean`              <- crates/vb_core/src/value_store.rs:27-32
+//   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store.rs:36-39
+//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:77-89
+//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:300-308
+//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:311-314
+//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:316-329
+// Regenerate this file whenever production changes. Any rename of
+// `max_arena_entries` or change to `check_arena_cap` body breaks the
+// `extern_value_store_invariant` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

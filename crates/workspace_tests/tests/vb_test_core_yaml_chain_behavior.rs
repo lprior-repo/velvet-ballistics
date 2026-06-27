@@ -9,13 +9,13 @@
 //! - Contract parity between spec and implementation
 
 use vb_compile::compile_workflow;
+use vb_compile::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml_profile};
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::ActionId;
 use vb_core::workflow::ResourceContract;
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
-use vb_compile::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml_profile};
 
 // ---------------------------------------------------------------------------
 // YAML parsing happy paths

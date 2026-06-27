@@ -131,13 +131,24 @@
 // outside Verus.
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`
 // ============================================================================
-// This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297` and
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`
-// whenever production changes. Each section header cites the
-// originating production line range so regeneration is mechanical.
+// Production source coverage:
+//   - `canonical_primitive_name`     <- part_05_digest.rs:6-22 (verbatim body)
+//   - `lower_set`                    <- part_05_ir.rs:41-55
+//   - `body_constant_index`          <- part_04.rs:299+
+//   - `integer_error_value`          <- part_12.rs:152-157
+//   - `emit_single_body_set`         <- part_04.rs:213-297
+//   - `StepIdx`, `SlotIdx`           <- vb_core/src/ids/mod.rs
+//   - `StepAst`, `StepPrimitive`     <- vb_compile::yaml_ast::types
+//   - `CompileError`, `CompileErrors` <- vb_compile::mod_compile_errors
+//   - `CompiledNode`, `CompiledNodeKind`
+//                                       <- vb_core::workflow
+//   - `ActionId`                     <- vb_core::action
+//   - `SlotCompiler`                 <- vb_compile::SlotCompiler
+// Regenerate this mirror whenever production changes. Each section
+// header below cites the originating production line range so
+// regeneration is mechanical.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

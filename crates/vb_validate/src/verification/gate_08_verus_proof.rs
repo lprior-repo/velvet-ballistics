@@ -131,15 +131,19 @@
 
 #[cfg(test)]
 mod verus_unit_tests {
-    use crate::gate_08_accessor::validate_gate_08_accessor_path_segments;
     use crate::ValidationError;
+    use crate::gate_08_accessor::validate_gate_08_accessor_path_segments;
     use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
     use vb_core::workflow::{
         AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract,
         WorkflowDigest, WorkflowParts,
     };
 
-    fn make_parts(slot_count: u16, symbols_count: u32, accessors: Box<[AccessorProgram]>) -> WorkflowParts {
+    fn make_parts(
+        slot_count: u16,
+        symbols_count: u32,
+        accessors: Box<[AccessorProgram]>,
+    ) -> WorkflowParts {
         WorkflowParts {
             name: Box::from("verus_test"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -149,7 +153,9 @@ mod verus_unit_tests {
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::ZERO,
+                },
             }]),
             expressions: Box::new([]),
             accessors,
@@ -169,11 +175,14 @@ mod verus_unit_tests {
             4,
             8,
             Box::new([
-                AccessorProgram { root: SlotIdx::ZERO, path: Box::new([]) },
-                AccessorProgram { root: SlotIdx::new(3), path: Box::new([
-                    PathSegment::Field(SymbolId::new(7)),
-                    PathSegment::Index(42),
-                ]) },
+                AccessorProgram {
+                    root: SlotIdx::ZERO,
+                    path: Box::new([]),
+                },
+                AccessorProgram {
+                    root: SlotIdx::new(3),
+                    path: Box::new([PathSegment::Field(SymbolId::new(7)), PathSegment::Index(42)]),
+                },
             ]),
         );
         let result = validate_gate_08_accessor_path_segments(&parts);
@@ -194,7 +203,11 @@ mod verus_unit_tests {
         let result = validate_gate_08_accessor_path_segments(&parts);
         assert!(result.is_err(), "OOB symbol should produce error");
         match result {
-            Err(ValidationError::AccessorSymbolOutOfBounds { symbol, symbols_count, .. }) => {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
+                symbol,
+                symbols_count,
+                ..
+            }) => {
                 assert_eq!(symbol, 5);
                 assert_eq!(symbols_count, 3);
             }
@@ -224,22 +237,46 @@ mod verus_unit_tests {
     #[test]
     fn test_typed_error_preservation() {
         // Test all three error types
-        let parts_oob_slot = make_parts(1, 1, Box::new([AccessorProgram {
-            root: SlotIdx::new(10), path: Box::new([]),
-        }]));
+        let parts_oob_slot = make_parts(
+            1,
+            1,
+            Box::new([AccessorProgram {
+                root: SlotIdx::new(10),
+                path: Box::new([]),
+            }]),
+        );
         let r1 = validate_gate_08_accessor_path_segments(&parts_oob_slot);
-        assert!(matches!(r1, Err(ValidationError::AccessorSlotOutOfRange { .. })));
+        assert!(matches!(
+            r1,
+            Err(ValidationError::AccessorSlotOutOfRange { .. })
+        ));
 
-        let parts_oob_symbol = make_parts(1, 1, Box::new([AccessorProgram {
-            root: SlotIdx::ZERO, path: Box::new([PathSegment::Field(SymbolId::new(5))]),
-        }]));
+        let parts_oob_symbol = make_parts(
+            1,
+            1,
+            Box::new([AccessorProgram {
+                root: SlotIdx::ZERO,
+                path: Box::new([PathSegment::Field(SymbolId::new(5))]),
+            }]),
+        );
         let r2 = validate_gate_08_accessor_path_segments(&parts_oob_symbol);
-        assert!(matches!(r2, Err(ValidationError::AccessorSymbolOutOfBounds { .. })));
+        assert!(matches!(
+            r2,
+            Err(ValidationError::AccessorSymbolOutOfBounds { .. })
+        ));
 
-        let parts_sentinel = make_parts(1, 0, Box::new([AccessorProgram {
-            root: SlotIdx::ZERO, path: Box::new([PathSegment::Index(u32::MAX)]),
-        }]));
+        let parts_sentinel = make_parts(
+            1,
+            0,
+            Box::new([AccessorProgram {
+                root: SlotIdx::ZERO,
+                path: Box::new([PathSegment::Index(u32::MAX)]),
+            }]),
+        );
         let r3 = validate_gate_08_accessor_path_segments(&parts_sentinel);
-        assert!(matches!(r3, Err(ValidationError::AccessorPathInvalid { .. })));
+        assert!(matches!(
+            r3,
+            Err(ValidationError::AccessorPathInvalid { .. })
+        ));
     }
 }

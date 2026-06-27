@@ -31,9 +31,8 @@ fn check_doc_taint_consistency_rejects_build_object_always_clean_no_field_join()
 
 #[test]
 fn check_doc_taint_consistency_rejects_build_list_always_clean_no_item_join() {
-    let result = check_doc_taint_consistency(
-        "| BuildList | Always Clean \u{2014} no join of item taints |",
-    );
+    let result =
+        check_doc_taint_consistency("| BuildList | Always Clean \u{2014} no join of item taints |");
     assert_eq!(
         result,
         Err(DocReconcileError::StaleCleanOnlyTaintText {
@@ -45,9 +44,8 @@ fn check_doc_taint_consistency_rejects_build_list_always_clean_no_item_join() {
 
 #[test]
 fn check_doc_taint_consistency_rejects_eval_expr_write_slot_only_claim() {
-    let result = check_doc_taint_consistency(
-        "EvalExpr writes with write_slot (not write_slot_with_taint)",
-    );
+    let result =
+        check_doc_taint_consistency("EvalExpr writes with write_slot (not write_slot_with_taint)");
     assert_eq!(
         result,
         Err(DocReconcileError::StaleCleanOnlyTaintText {

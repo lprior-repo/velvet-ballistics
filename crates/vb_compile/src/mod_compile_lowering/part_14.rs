@@ -58,9 +58,7 @@ pub(crate) fn lower_canonical_choose(
     Ok(())
 }
 
-fn reject_excess_choose_branches(
-    branches: &[crate::ChooseBranch],
-) -> Result<(), CompileErrors> {
+fn reject_excess_choose_branches(branches: &[crate::ChooseBranch]) -> Result<(), CompileErrors> {
     if branches.len() <= 64 {
         return Ok(());
     }

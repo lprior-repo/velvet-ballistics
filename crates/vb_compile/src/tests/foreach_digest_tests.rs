@@ -14,10 +14,10 @@
 //!   B17: at_once=Some(0) distinct from None and Some(1)
 //!   +    Edge cases: u32::MAX, empty variable, non-ASCII, Finish body
 
-use crate::{canonical_digest_part05, digest_step_primitive_part05};
 use crate::ast::{
     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
 };
+use crate::{canonical_digest_part05, digest_step_primitive_part05};
 
 /// Build a minimal ForEach step for step-level testing with `digest_step_primitive`.
 fn foreach_step(

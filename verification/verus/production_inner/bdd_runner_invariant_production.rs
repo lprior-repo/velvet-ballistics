@@ -86,12 +86,21 @@
 // production type or field name breaks this file's type resolution.
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/workspace_tests/src/bdd_runner.rs:1-245`
 // ============================================================================
-// This mirror MUST be regenerated from
-// `crates/workspace_tests/src/bdd_runner.rs` whenever production
-// changes. Each section header cites the originating production line
-// range so regeneration is mechanical.
+// Production source coverage:
+//   - `BddScenarioStatus`            <- bdd_runner.rs:73-78
+//   - `BddScenarioResult`            <- bdd_runner.rs:84-96
+//   - `ExecutorContext`              <- bdd_runner.rs:122-130
+//   - `BddRunnerError`               <- bdd_runner.rs:29-41
+//   - `BddSuiteResult`               <- bdd_runner.rs:102-118
+//   - `count_passed_filter_mirror`   <- bdd_runner.rs:211-214
+//   - `count_failed_filter_mirror`   <- bdd_runner.rs:215-218
+//   - `count_not_run_filter_mirror`  <- bdd_runner.rs:219-222
+//   - `run_bdd_suite_mirror`         <- bdd_runner.rs:185-245
+// Regenerate this mirror whenever production changes. Each section
+// header below cites the originating production line range so
+// regeneration is mechanical.
 //
 // ============================================================================
 #![forbid(unsafe_code)]

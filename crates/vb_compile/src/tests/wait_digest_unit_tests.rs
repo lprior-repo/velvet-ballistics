@@ -7,10 +7,10 @@
 
 #![allow(unused_must_use)]
 
+use crate::ast::{ScalarValue, StepPrimitive};
 use crate::mod_compile_lowering::{canonical_primitive_name, digest_step_primitive};
 use blake3::Hasher;
 use proptest::prelude::*;
-use crate::ast::{ScalarValue, StepPrimitive};
 
 // ---------------------------------------------------------------------------
 // Section 9.1: Direct unit tests for `digest_step_primitive` Wait arm

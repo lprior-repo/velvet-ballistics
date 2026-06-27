@@ -12,9 +12,9 @@
 #![forbid(unsafe_code)]
 
 use super::*;
-use vb_core::WorkflowDigest;
 use crate::ast::{ScalarValue, StepPrimitive};
 use crate::parse_workflow_source;
+use vb_core::WorkflowDigest;
 
 // ── Helpers ────────────────────────────────────────────────────────
 

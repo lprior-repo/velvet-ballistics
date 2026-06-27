@@ -3,17 +3,16 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts,
+};
 
 // ---------------------------------------------------------------------------
 // Helper constructors
 // ---------------------------------------------------------------------------
 
-fn make_parts(
-    nodes: Vec<CompiledNode>,
-    slot_count: u16,
-    symbols_count: u32,
-) -> WorkflowParts {
+fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -69,8 +68,8 @@ fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
 // Gate 7 tests
 // ---------------------------------------------------------------------------
 
-use crate::gate_07_stack::validate_gate_07_expression_stack_depth;
 use crate::gate_07_stack::compute_stack_depth;
+use crate::gate_07_stack::validate_gate_07_expression_stack_depth;
 
 #[test]
 fn gate_07_accepts_empty_expressions() {
@@ -908,7 +907,7 @@ fn gate_13_rejects_three_slot_cycle_through_eval_expr() {
             validate_gate_13_no_slot_cycles(&parts),
             Err(ValidationError::SlotDependencyCycle { .. })
         ),
-         "gate 13 must detect 3-slot cycle through EvalExpr"
+        "gate 13 must detect 3-slot cycle through EvalExpr"
     );
 }
 

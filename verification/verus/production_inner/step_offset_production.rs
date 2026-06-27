@@ -49,12 +49,17 @@
 // Verus build at compile time.
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`
 // ============================================================================
-//
+// Production source coverage:
+//   - `StepIdx::checked_add`                <- crates/vb_core/src/ids/mod.rs:303-308
+//   - `checked_step_offset`                 <- crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212
+//   - `CompileError::PrimitiveLoweringLimitExceeded`
+//                                              <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
 // Any drift between this file and the production source MUST be mirrored
 // here. Drift in `StepIdx` field name, `checked_add` body, or
-// `checked_step_offset` body breaks the mirror at compile time.
+// `checked_step_offset` body breaks the `extern_step_offset` mirror at
+// compile time.
 //
 // ============================================================================
 // TRUST BOUNDARY (GOD RULE 2 transparency)

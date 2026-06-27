@@ -8,6 +8,9 @@ use super::parse::{
 use super::types::*;
 use crate::yaml_error::{YamlError, YamlResult};
 
+mod tail;
+use tail::{parse_ask, parse_error_handler, parse_finish, parse_retry, parse_wait};
+
 pub(super) fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     let Some(node) = lookup(node, "steps") else {
         return Err(YamlError::MissingField { field: "steps" });
@@ -264,91 +267,4 @@ fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
         steps.push(parse_step(item)?);
     }
     Ok(steps)
-}
-
-fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPolicy>> {
-    if lookup(node, "retry").is_some() {
-        return Err(YamlError::UnknownField {
-            field: "retry".into(),
-        });
-    }
-    let Some(sub) = lookup(node, "try_again") else {
-        return Ok(None);
-    };
-    reject_unknown_fields(sub, &["max_attempts", "delay"])?;
-    let max_attempts = require_u16(sub, "max_attempts")?;
-    let delay = match lookup(sub, "delay") {
-        Some(v) => Some(
-            v.as_str()
-                .ok_or(YamlError::FieldShape {
-                    field: "try_again.delay",
-                    expected: "string",
-                })?
-                .to_string(),
-        ),
-        None => None,
-    };
-    Ok(Some(RetryPolicy {
-        max_attempts,
-        delay,
-    }))
-}
-
-fn parse_error_handler(node: &saphyr::Yaml<'_>) -> YamlResult<Option<ErrorHandlerAst>> {
-    let Some(sub) = lookup(node, "on_error") else {
-        return Ok(None);
-    };
-    reject_unknown_fields(sub, &["handler"])?;
-    let handler = require_str_in(sub, "handler", "on_error.handler")?;
-    Ok(Some(ErrorHandlerAst { handler }))
-}
-
-fn parse_wait(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
-    reject_unknown_fields(sub, &["event", "timeout"])?;
-    let event = match lookup(sub, "event") {
-        Some(v) => Some(
-            v.as_str()
-                .ok_or(YamlError::FieldShape {
-                    field: "wait.event",
-                    expected: "string",
-                })?
-                .to_string(),
-        ),
-        None => None,
-    };
-    let timeout = match lookup(sub, "timeout") {
-        Some(v) => Some(
-            v.as_str()
-                .ok_or(YamlError::FieldShape {
-                    field: "wait.timeout",
-                    expected: "string",
-                })?
-                .to_string(),
-        ),
-        None => None,
-    };
-    Ok(StepPrimitive::Wait { event, timeout })
-}
-
-fn parse_ask(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
-    reject_unknown_fields(sub, &["prompt", "timeout"])?;
-    let prompt = require_str_in(sub, "prompt", "ask.prompt")?;
-    let timeout = match lookup(sub, "timeout") {
-        Some(v) => Some(
-            v.as_str()
-                .ok_or(YamlError::FieldShape {
-                    field: "ask.timeout",
-                    expected: "string",
-                })?
-                .to_string(),
-        ),
-        None => None,
-    };
-    Ok(StepPrimitive::Ask { prompt, timeout })
-}
-
-fn parse_finish(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
-    reject_unknown_fields(sub, &["result"])?;
-    let result = require_scalar_in(sub, "result", "finish.result")?;
-    Ok(StepPrimitive::Finish { result })
 }

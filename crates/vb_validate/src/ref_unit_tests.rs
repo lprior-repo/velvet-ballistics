@@ -6,8 +6,10 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::ref_validate::{RefTables, WorkflowRefs, string_set, validate_references, validate_single_reference};
     use crate::ValidationError;
+    use crate::ref_validate::{
+        RefTables, WorkflowRefs, string_set, validate_references, validate_single_reference,
+    };
 
     fn make_tables(
         inputs: &[&str],

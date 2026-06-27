@@ -14,29 +14,29 @@
 pub mod ast;
 
 // Expression modules (folded from vb_expr)
-pub mod expr_lexer;
-pub mod expr_parser;
 pub mod expr_bytecode;
 pub mod expr_eval;
-pub mod expr_typecheck;
+pub mod expr_lexer;
+pub mod expr_parser;
 pub mod expr_proofs;
+pub mod expr_typecheck;
 
 #[cfg(test)]
 mod expr_property_tests;
 
-pub mod expr_stack_ops;
-mod expr_slot_eval;
 mod expr_builtin_eval;
 #[cfg(test)]
 mod expr_eval_tests;
+mod expr_slot_eval;
+pub mod expr_stack_ops;
 
 // Re-exports for backward compatibility (vb_expr public API)
-pub use expr_lexer as lexer;
-pub use expr_parser as parser;
 pub use expr_bytecode as bytecode;
 pub use expr_eval as eval;
-pub use expr_typecheck as typecheck;
+pub use expr_lexer as lexer;
+pub use expr_parser as parser;
 pub use expr_stack_ops as stack_ops;
+pub use expr_typecheck as typecheck;
 
 // Expression error type (moved from vb_expr)
 use thiserror::Error;
@@ -79,7 +79,11 @@ pub enum ExprError {
     #[error("too many helper arguments: {len}, max {max}")]
     TooManyHelperArgs { len: usize, max: usize },
     #[error("helper arity mismatch: {helper} expects {expected}, got {actual}")]
-    HelperArityMismatch { helper: String, expected: usize, actual: usize },
+    HelperArityMismatch {
+        helper: String,
+        expected: usize,
+        actual: usize,
+    },
     #[error("bytecode too long: {len} ops, max {max}")]
     BytecodeTooLong { len: usize, max: usize },
     #[error("constant pool overflow")]
@@ -130,11 +134,11 @@ mod type_taint;
 
 // YAML parsing layer (moved from vb_yaml)
 pub mod yaml_ast;
+pub mod yaml_error;
 pub mod yaml_events;
+pub mod yaml_limits;
 pub mod yaml_profile;
 pub mod yaml_source_map;
-pub mod yaml_error;
-pub mod yaml_limits;
 
 #[cfg(kani)]
 pub mod yaml_kani;
@@ -234,19 +238,22 @@ pub use vb_validate::{ValidationError, ValidationResult};
 pub use yaml_error::YamlError;
 pub use yaml_error::YamlResult;
 
-pub use yaml_events::{collect_events, convert_event, EventSpan, ScalarStyle, YamlEvent};
-pub use yaml_profile::{
-    reject_anchors_aliases_merges, reject_duplicate_keys, reject_forbidden_features,
-    reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
-};
-pub use yaml_source_map::{build_semantic_source_map, build_source_map, span_for_node, SourceMap, SourceSpan, SemanticSourceMap};
+#[cfg(any(test, feature = "test-util"))]
+pub use yaml_ast::types::WorkflowSourceParts;
 pub use yaml_ast::types::{
     AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst, InputField, ResultMapping,
     RetryPolicy, ScalarValue, SecretField, StepAst, StepPrimitive, TogetherBranch, TriggerAst,
     VarField, WorkflowSource,
 };
-#[cfg(any(test, feature = "test-util"))]
-pub use yaml_ast::types::WorkflowSourceParts;
+pub use yaml_events::{EventSpan, ScalarStyle, YamlEvent, collect_events, convert_event};
+pub use yaml_profile::{
+    reject_anchors_aliases_merges, reject_duplicate_keys, reject_forbidden_features,
+    reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
+};
+pub use yaml_source_map::{
+    SemanticSourceMap, SourceMap, SourceSpan, build_semantic_source_map, build_source_map,
+    span_for_node,
+};
 
 pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
     yaml_profile::validate_yaml_profile(text)?;

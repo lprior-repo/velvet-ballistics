@@ -1531,8 +1531,8 @@ steps:
 /// the function directly on a programmatically constructed Together.
 #[test]
 fn canonical_primitive_name_together_returns_together_direct() {
-    use crate::mod_compile_lowering::canonical_primitive_name;
     use crate::ast::{StepPrimitive, TogetherBranch};
+    use crate::mod_compile_lowering::canonical_primitive_name;
 
     let together = StepPrimitive::Together {
         branches: vec![TogetherBranch {
@@ -1559,8 +1559,8 @@ fn canonical_primitive_name_together_returns_together_direct() {
 /// arms in part_05.rs lines 99-113.
 #[test]
 fn canonical_primitive_name_returns_correct_names_for_all_variants() {
-    use crate::mod_compile_lowering::canonical_primitive_name;
     use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive, TogetherBranch};
+    use crate::mod_compile_lowering::canonical_primitive_name;
 
     let cases: Vec<(StepPrimitive, &'static str)> = vec![
         (
@@ -1776,9 +1776,9 @@ fn test_many_branch_together_produces_deterministic_digest() {
 /// loop executes zero times.
 #[test]
 fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
+    use crate::ast::{StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use crate::ast::{StepPrimitive, TogetherBranch};
 
     let together = StepPrimitive::Together {
         branches: vec![TogetherBranch {
@@ -1819,9 +1819,9 @@ fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
 /// on the zero-branch edge case.
 #[test]
 fn test_zero_branch_together_produces_deterministic_digest() {
+    use crate::ast::StepPrimitive;
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use crate::ast::StepPrimitive;
 
     let together = StepPrimitive::Together {
         branches: vec![], // zero branches
@@ -1877,9 +1877,9 @@ fn test_zero_branch_together_produces_deterministic_digest() {
 /// accidentally Together-specific.
 #[test]
 fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_digest() {
+    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
 
     // Construct a Together with a branch containing a ForEach sub-step.
     // The compile-time restriction (emit_single_body_set) doesn't apply
@@ -1990,9 +1990,9 @@ fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_dige
 /// exhaustively by enumerating all 9 non-special-cased variants.
 #[test]
 fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
+    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive};
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive};
 
     let other_variants: Vec<(&str, StepPrimitive)> = vec![
         (
@@ -2123,9 +2123,9 @@ fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
 /// the digest (proving digest_sub_step hashes the ID field).
 #[test]
 fn test_digest_sub_step_produces_deterministic_nonzero_digest() {
+    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
-    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
 
     // Base sub-step — will be cloned to avoid move-after-move issues
     let base_sub_step = StepAst {

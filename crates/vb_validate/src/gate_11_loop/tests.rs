@@ -5,7 +5,7 @@ use crate::ValidationError;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 
-use super::super::test_helpers::{make_parts, finish_node, nop_node};
+use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
 // -- Pass cases --
 

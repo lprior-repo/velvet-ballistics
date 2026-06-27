@@ -112,13 +112,18 @@
 // extern_accepted_envelope.rs, extern_budget_bounded.rs).
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:25-51`
 // ============================================================================
-// This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:25-51`
-// and `crates/vb_compile/src/mod_compile_core.rs:114-116` whenever
-// production changes. Each section header cites the originating
-// production line range so regeneration is mechanical.
+// Production source coverage:
+//   - `canonical_digest`           <- crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:25-51
+//   - `compute_compiled_digest`    <- crates/vb_compile/src/mod_compile_core.rs:114-116
+//   - `WorkflowDigest`             <- crates/vb_core/src/ids/mod.rs:340-343
+//   - `DigestRole` separation      <- canonical_digest (typed AST) vs.
+//                                       compute_compiled_digest (raw bytes)
+// Regenerate this mirror whenever production changes. Any drift in the
+// role separation (Source = AST hash, Artifact = raw-bytes hash) or
+// the chain-error mapping breaks the `extern_yaml_e2e_digest_roles`
+// mirror and the spec proofs that depend on it.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

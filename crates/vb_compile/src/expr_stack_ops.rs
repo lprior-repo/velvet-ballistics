@@ -2,8 +2,8 @@
 //! Stack operation primitives for bounded stack-based expression evaluator.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
 use vb_core::SlotValue;
+use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
 
 use crate::{ExprError, ExprResult};
 

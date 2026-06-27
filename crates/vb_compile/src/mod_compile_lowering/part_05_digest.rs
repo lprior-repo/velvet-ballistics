@@ -22,9 +22,7 @@ pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'st
 }
 
 /// Computes a deterministic, content-addressable digest of the workflow source.
-pub fn canonical_digest(
-    source: &crate::WorkflowSource,
-) -> Result<WorkflowDigest, CompileErrors> {
+pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest, CompileErrors> {
     validate_branch_counts(source)?;
 
     let mut hasher = blake3::Hasher::new();
@@ -50,18 +48,14 @@ pub fn canonical_digest(
     Ok(WorkflowDigest::from_bytes(hasher.finalize().into()))
 }
 
-pub(crate) fn validate_branch_counts(
-    source: &crate::WorkflowSource,
-) -> Result<(), CompileErrors> {
+pub(crate) fn validate_branch_counts(source: &crate::WorkflowSource) -> Result<(), CompileErrors> {
     for step in source.steps() {
         validate_step_branch_counts(&step.primitive)?;
     }
     Ok(())
 }
 
-fn validate_step_branch_counts(
-    primitive: &crate::StepPrimitive,
-) -> Result<(), CompileErrors> {
+fn validate_step_branch_counts(primitive: &crate::StepPrimitive) -> Result<(), CompileErrors> {
     if let crate::StepPrimitive::Together { branches } = primitive {
         if branches.len() > usize::from(u16::MAX) {
             return Err(CompileErrors(vec![

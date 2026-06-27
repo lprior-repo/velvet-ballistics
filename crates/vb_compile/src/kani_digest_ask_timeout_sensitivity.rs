@@ -14,8 +14,8 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use crate::lwr::canonical_digest;
 use crate::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use crate::lwr::canonical_digest;
 
 /// Maximum timeout value length for Kani bounded checking.
 const MAX_TIMEOUT_LEN: usize = 256;

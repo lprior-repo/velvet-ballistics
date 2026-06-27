@@ -51,8 +51,22 @@
 //     stubs.
 //
 // ----------------------------------------------------------------------------
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_storage/src/recovery/replay/attempt.rs:1-60`
 // ============================================================================
+// Production source coverage:
+//   - `compute_max_attempt`, `replay_attempt_or_default`,
+//     `replay_attempt_is_current`, `replay_attempt_is_stale`,
+//     `replay_event_has_state_effect`,
+//     `replay_event_is_stale_state_effect`,
+//     `replay_step_order_diverges`
+//                                       <- crates/vb_storage/src/recovery/replay/attempt.rs:1-60
+//   - `recovery_dimension_count_from_index`,
+//     `recovery_seed_dimensions_positive`,
+//     `recovery_observed_dimension_is_positive`
+//                                       <- crates/vb_storage/src/recovery/replay/summary/derive.rs:249-276
+//   - `JournalEvent` enum (24 variants) <- crates/vb_storage/src/events.rs:23-316
+//   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:460-487
+//   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:628-649
 // This file MUST be regenerated whenever production attempt.rs,
 // summary/derive.rs, events.rs, or recovery/types.rs changes. The
 // mirror is annotated at the top of each section with the

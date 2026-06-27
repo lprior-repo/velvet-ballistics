@@ -916,7 +916,10 @@ steps:
 fn yaml_parse_broken_yaml_returns_error() {
     let yaml = "{{{broken";
     let result = vb_compile::parse_workflow_source(yaml);
-    assert!(matches!(result, Err(vb_compile::YamlError::ParseError { .. })));
+    assert!(matches!(
+        result,
+        Err(vb_compile::YamlError::ParseError { .. })
+    ));
 }
 
 #[test]

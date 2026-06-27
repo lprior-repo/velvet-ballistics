@@ -5,13 +5,13 @@
 //!   - Validation error → Diagnostic → symbolic code lookup
 //!   - Error → code → as_str → Display round-trip
 
+use vb_compile::YamlError;
 use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 use vb_core::errors::CoreError;
 use vb_core::ids::StepIdx;
 use vb_runtime::RuntimeError;
 use vb_storage::JournalError;
 use vb_validate::ValidationError;
-use vb_compile::YamlError;
 
 // ---------------------------------------------------------------------------
 // E2E: YamlError → code() → SymbolicCode → as_str → Display

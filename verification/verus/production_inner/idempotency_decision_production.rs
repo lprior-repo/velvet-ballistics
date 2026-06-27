@@ -16,6 +16,11 @@
 //                                            (crates/vb_storage/src/admission.rs:531-545)
 //   - `vb_validate::idempotency_contract::is_statically_idempotent_contract`
 //                                            (crates/vb_validate/src/idempotency_contract.rs:140-187)
+//
+// DRIFT POLICY: `crates/vb_core/src/action/contract.rs:10-105`
+// Regenerate this file whenever production changes. Any rename of
+// the contract enums or signature change in `is_statically_idempotent_contract`
+// breaks the `extern_idempotency_decision` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

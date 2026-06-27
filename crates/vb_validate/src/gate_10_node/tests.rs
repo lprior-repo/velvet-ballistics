@@ -7,7 +7,7 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, SlotBranch,
 };
 
-use super::super::test_helpers::{make_parts, finish_node};
+use super::super::test_helpers::{finish_node, make_parts};
 
 // -- Pass cases --
 

@@ -26,6 +26,18 @@
 //
 // This stub mirrors the production `EventSeq` newtype as the smallest
 // drift-detection surface.
+//
+// DRIFT POLICY: `crates/vb_storage/src/events.rs:499-535`
+// Production source coverage:
+//   - `JournalEvent::run_id`   <- crates/vb_storage/src/events.rs:321-348
+//   - `JournalEvent::seq`      <- crates/vb_storage/src/events.rs:355-382
+//   - `JournalEvent::is_valid` <- crates/vb_storage/src/events.rs:499-535
+//   - `EventSeq`               <- crates/vb_storage/src/types.rs:73-93
+//   - `RunId`                  <- crates/vb_core/src/ids/mod.rs:65
+//   - `ActionTicket`           <- crates/vb_core/src/action/ticket.rs:6-21
+// Regenerate this file whenever production changes. Any rename of
+// `EventSeq::ZERO`/`MAX` or body change in `is_valid` breaks the
+// `extern_vb_jnz9_journal_event_seq_valid` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

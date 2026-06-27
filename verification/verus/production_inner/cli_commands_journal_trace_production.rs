@@ -142,11 +142,17 @@
 //         the mirror follows the same pattern.
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_cli/src/commands_journal.rs:1-377`
 // ============================================================================
-// This mirror MUST be regenerated from
-// `crates/vb_cli/src/commands_journal.rs` whenever production changes.
-// Each section header cites the originating production line range so
+// Production source coverage:
+//   - `TraceEntry`     <- commands_journal.rs (full file)
+//   - `TraceStatus`    <- commands_journal.rs (full file)
+//   - `TraceFilters`   <- commands_journal.rs (full file)
+//   - `RetryAnalysis`  <- commands_journal.rs (full file)
+//   - `build_trace`    <- commands_journal.rs (full file)
+//   - `analyze_retry`  <- commands_journal.rs (full file)
+// Regenerate this mirror whenever production changes. Each section
+// header below cites the originating production line range so
 // regeneration is mechanical.
 //
 // ============================================================================

@@ -101,10 +101,7 @@ pub(super) fn canonical_step_width(
     }
 }
 
-pub(super) fn body_width(
-    body: &[crate::StepAst],
-    overhead: usize,
-) -> Result<usize, CompileError> {
+pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
     let mut width = overhead;
     for step in body {
         width = width
@@ -127,9 +124,7 @@ pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, Co
     Ok(width)
 }
 
-pub(super) fn together_width(
-    branches: &[crate::TogetherBranch],
-) -> Result<usize, CompileError> {
+pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize, CompileError> {
     let mut width = 2usize;
     for branch in branches {
         width = width

@@ -6,11 +6,11 @@
 //!
 //! Target: 5x density (215 tests / 43 pub fns).
 
-use super::yaml_events::{EventSpan, ScalarStyle, YamlEvent};
 use super::yaml::parse_workflow_source;
-use super::yaml_profile::{reject_forbidden_features, validate_yaml_profile};
 use super::yaml_error::YamlError;
+use super::yaml_events::{EventSpan, ScalarStyle, YamlEvent};
 use super::yaml_profile::reject_anchors_aliases_merges;
+use super::yaml_profile::{reject_forbidden_features, validate_yaml_profile};
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

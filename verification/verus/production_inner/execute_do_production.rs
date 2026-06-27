@@ -27,11 +27,19 @@
 // of determinism and outcome-kind classification.
 //
 // ============================================================================
-// DRIFT POLICY
+// DRIFT POLICY: `crates/vb_runtime/src/engine/action.rs:20-74`
 // ============================================================================
-// This mirror MUST be regenerated from
-// `crates/vb_runtime/src/engine/action.rs` whenever production changes.
-// Each section header cites the originating production line range so
+// Production source coverage:
+//   - `execute_do` decision branches  <- vb_runtime::engine::action::execute_do
+//                                          at crates/vb_runtime/src/engine/action.rs:20-74
+//   - `Taint` discriminant             <- vb_core::value::Taint
+//                                          at crates/vb_core/src/value.rs:14-25
+//   - `Idempotency` discriminant       <- vb_core::action::contract::Idempotency
+//                                          at crates/vb_core/src/action/contract.rs:7-17
+//   - `ActionOutcome` discriminant set <- vb_core::action::payload::ActionOutcome
+//                                          at crates/vb_core/src/action/payload.rs:163-172
+// Regenerate this mirror whenever production changes. Each section
+// header below cites the originating production line range so
 // regeneration is mechanical.
 
 #![forbid(unsafe_code)]

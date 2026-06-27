@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Profile module adversarial tests.
 
-use super::*;
 use super::super::yaml_error::YamlError;
 use super::super::yaml_limits::YamlLimits;
+use super::*;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

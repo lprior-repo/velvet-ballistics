@@ -12,7 +12,7 @@ use crate::gate_12_14_15::{
     validate_gate_15_determinism_proof,
 };
 
-use super::super::test_helpers::{make_parts, finish_node, nop_node};
+use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
 fn do_node(index: u16, action: u16, input: u16) -> CompiledNode {
     CompiledNode {

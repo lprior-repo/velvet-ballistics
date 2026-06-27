@@ -24,8 +24,8 @@
 //! PO-R1 through PO-R7: Variable, input, initial, body, empty/non-empty,
 //! idempotence, and determinism for `StepPrimitive::Aggregate` (reduce).
 
-use blake3::Hasher;
 use crate::ast::{StepAst, StepPrimitive};
+use blake3::Hasher;
 
 use crate::compute_compiled_digest;
 use crate::mod_compile_lowering::part_05::digest_step_primitive;

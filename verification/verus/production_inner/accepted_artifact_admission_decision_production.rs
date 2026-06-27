@@ -12,6 +12,11 @@
 //   - `vb_runtime::admission::map_artifact_envelope_error` (crates/vb_runtime/src/admission.rs:580-618)
 //   - `vb_runtime::admission::admit_artifact_run_with_certificate_floor` strict branch
 //     (crates/vb_runtime/src/admission.rs:700-784)
+//
+// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:26-784`
+// Regenerate this file whenever production changes. Any new variant
+// added to `ArtifactEnvelopeError` or any signature change in the
+// strict-branch decision surface breaks the `extern_*` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

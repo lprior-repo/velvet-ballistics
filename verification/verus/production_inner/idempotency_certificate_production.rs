@@ -6,6 +6,22 @@
 //
 // This file is a VERBATIM mirror of the production idempotency
 // certificate decision fns.
+//
+// DRIFT POLICY: `crates/vb_core/src/action/contract.rs:10-105`
+// Production source coverage:
+//   - `SideEffectClass`               <- mirror of `SideEffect`
+//                                          (crates/vb_core/src/action/contract.rs:23-34)
+//   - `RetrySafetyClass`              <- mirror of `RetrySafety`
+//                                          (crates/vb_core/src/action/contract.rs:40-47)
+//   - `IdempotencyClass`              <- mirror of `Idempotency`
+//                                          (crates/vb_core/src/action/contract.rs:10-17)
+//   - `requires_idempotency_key`      <- mirror of production decision fn
+//   - `is_contract_idempotency_accepted`
+//                                       <- mirror of
+//                                          crates/vb_storage/src/admission.rs:531-545
+// Regenerate this file whenever production changes. Any new variant
+// in `SideEffect`, `RetrySafety`, or `Idempotency` breaks the
+// `extern_idempotency_certificate` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

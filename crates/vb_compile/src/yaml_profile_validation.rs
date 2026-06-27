@@ -13,11 +13,14 @@
 //! - Duplicate mapping keys
 //! - Unbounded depth or node counts
 
-use crate::yaml_events::YamlEvent;
 use crate::yaml_error::{YamlError, YamlResult};
+use crate::yaml_events::YamlEvent;
 use crate::yaml_limits::YamlLimits;
 
 use super::profile_dupkeys::reject_duplicate_mapping_keys;
+
+mod event_collect;
+pub(crate) use event_collect::collect_and_validate_events;
 
 /// Validate that the given YAML text conforms to the strict profile.
 ///
@@ -51,189 +54,6 @@ pub(crate) fn check_source_size(text: &str, max_bytes: usize) -> YamlResult<()> 
         });
     }
     Ok(())
-}
-
-/// Collect events from the parser while tracking depth, node counts, and
-/// sequence/mapping entry counts for enforcing YamlLimits.
-pub(crate) fn collect_and_validate_events(
-    text: &str,
-    limits: &YamlLimits,
-) -> YamlResult<Vec<YamlEvent>> {
-    let mut parser = saphyr_parser::Parser::new_from_str(text);
-    let mut events = Vec::new();
-    let mut depth: u16 = 0;
-    let mut node_count: u32 = 0;
-    let mut document_count: usize = 0;
-    let mut found_content = false;
-
-    // Stacks for sequence and mapping entry count tracking.
-    // Each entry represents one level of nesting.
-    let mut seq_counters: Vec<usize> = Vec::new(); // sequence item count per depth
-    let mut map_counters: Vec<usize> = Vec::new(); // mapping entry count per depth
-    let mut in_mapping: Vec<bool> = Vec::new(); // true = mapping, false = sequence at each depth
-    let mut expecting_key: Vec<bool> = Vec::new(); // for mappings: next scalar is a key if true
-
-    while let Some(result) = parser.next_event() {
-        let (event, span) = result.map_err(|e| YamlError::ParseError {
-            line: e.marker().line(),
-            reason: e.info().into(),
-        })?;
-
-        match &event {
-            saphyr_parser::Event::StreamStart
-            | saphyr_parser::Event::StreamEnd
-            | saphyr_parser::Event::DocumentEnd
-            | saphyr_parser::Event::Alias(_)
-            | saphyr_parser::Event::Nothing => {}
-            saphyr_parser::Event::DocumentStart(_) => {
-                document_count = document_count
-                    .checked_add(1)
-                    .ok_or(YamlError::MultipleDocuments { count: usize::MAX })?;
-            }
-            saphyr_parser::Event::MappingStart(_, _) => {
-                depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
-                    depth,
-                    max: limits.max_depth,
-                })?;
-                if depth > limits.max_depth {
-                    return Err(YamlError::NestingTooDeep {
-                        depth,
-                        max: limits.max_depth,
-                    });
-                }
-                in_mapping.push(true);
-                expecting_key.push(true);
-                map_counters.push(0);
-                found_content = true;
-            }
-            saphyr_parser::Event::SequenceStart(_, _) => {
-                depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
-                    depth,
-                    max: limits.max_depth,
-                })?;
-                if depth > limits.max_depth {
-                    return Err(YamlError::NestingTooDeep {
-                        depth,
-                        max: limits.max_depth,
-                    });
-                }
-                in_mapping.push(false);
-                seq_counters.push(0);
-                found_content = true;
-            }
-            saphyr_parser::Event::Scalar(value, _, _, _) => {
-                check_scalar_length(value, limits.max_scalar_bytes)?;
-                check_null_bytes(value)?;
-
-                // Track sequence items and mapping entries.
-                // Only count at the deepest (innermost) collection level.
-                if let Some(&is_mapping) = in_mapping.last() {
-                    if is_mapping {
-                        // Inside a mapping: count each scalar as either a key or value.
-                        // Keys consume a mapping entry slot; values do not.
-                        if expecting_key.last() == Some(&true) {
-                            // This scalar is a key — consume one mapping entry slot.
-                            if let Some(counter) = map_counters.last_mut() {
-                                *counter =
-                                    counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
-                                        count: u32::MAX,
-                                        max: limits.max_nodes,
-                                    })?;
-                                if *counter > limits.max_mapping_entries {
-                                    return Err(YamlError::MappingTooLarge {
-                                        count: *counter,
-                                        max: limits.max_mapping_entries,
-                                    });
-                                }
-                            }
-                            // Next scalar will be the value.
-                            if let Some(expecting) = expecting_key.last_mut() {
-                                *expecting = false;
-                            }
-                        } else {
-                            // This scalar is a value — no entry count increment.
-                            // Next scalar will be a key.
-                            if let Some(expecting) = expecting_key.last_mut() {
-                                *expecting = true;
-                            }
-                        }
-                    } else {
-                        // Inside a sequence: each scalar is a sequence item.
-                        if let Some(counter) = seq_counters.last_mut() {
-                            *counter =
-                                counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
-                                    count: u32::MAX,
-                                    max: limits.max_nodes,
-                                })?;
-                            if *counter > limits.max_sequence_len {
-                                return Err(YamlError::SequenceTooLong {
-                                    len: *counter,
-                                    max: limits.max_sequence_len,
-                                });
-                            }
-                        }
-                    }
-                }
-                found_content = true;
-            }
-            saphyr_parser::Event::MappingEnd => {
-                // Pop the mapping counter and merge into parent if nested.
-                if let Some((count, parent_count)) = map_counters.pop().zip(map_counters.last_mut())
-                {
-                    *parent_count =
-                        parent_count
-                            .checked_add(count)
-                            .ok_or(YamlError::NodeLimitExceeded {
-                                count: u32::MAX,
-                                max: limits.max_nodes,
-                            })?;
-                }
-                in_mapping.pop();
-                expecting_key.pop();
-                depth = depth.saturating_sub(1);
-            }
-            saphyr_parser::Event::SequenceEnd => {
-                // Pop the sequence counter and merge into parent if nested.
-                if let Some((count, parent_count)) = seq_counters.pop().zip(seq_counters.last_mut())
-                {
-                    *parent_count =
-                        parent_count
-                            .checked_add(count)
-                            .ok_or(YamlError::NodeLimitExceeded {
-                                count: u32::MAX,
-                                max: limits.max_nodes,
-                            })?;
-                }
-                in_mapping.pop();
-                depth = depth.saturating_sub(1);
-            }
-        }
-
-        node_count = node_count
-            .checked_add(1)
-            .ok_or(YamlError::NodeLimitExceeded {
-                count: u32::MAX,
-                max: limits.max_nodes,
-            })?;
-        if node_count > limits.max_nodes {
-            return Err(YamlError::NodeLimitExceeded {
-                count: node_count,
-                max: limits.max_nodes,
-            });
-        }
-
-        events.push(crate::yaml_events::convert_event(event, span));
-    }
-
-    if !found_content {
-        return Err(YamlError::EmptySource);
-    }
-
-    if document_count == 0 {
-        return Err(YamlError::EmptySource);
-    }
-
-    Ok(events)
 }
 
 /// Check that a scalar value does not exceed the length limit.

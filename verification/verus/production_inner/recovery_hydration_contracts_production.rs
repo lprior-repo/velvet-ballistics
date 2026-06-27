@@ -28,6 +28,21 @@
 //
 // This stub mirrors the production error discriminant set as the
 // smallest drift-detection surface.
+//
+// DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:39-145`
+// Production source coverage:
+//   - `RecoveryError`           <- crates/vb_storage/src/recovery/types.rs:39-145
+//   - `RuntimeError`            <- crates/vb_runtime/src/error/mod.rs:71-73
+//   - `CoreError`               <- crates/vb_core/src/errors.rs:414-425
+//   - `recovery_decision_pure`  <- crates/vb_storage/src/recovery/recover.rs
+//                                   + crates/vb_storage/src/recovery/hydrate.rs
+//                                   + crates/vb_runtime/src/recovery.rs
+//                                   + crates/vb_runtime/src/taint.rs
+//   - ID newtypes (RunId, StepIdx, SlotIdx, ActionId, WorkflowDigest,
+//     EventSeq)                 <- crates/vb_core/src/ids/mod.rs
+// Regenerate this file whenever production changes. Any new variant
+// in `RecoveryError` breaks the `extern_recovery_hydration_contracts`
+// Verus build at compile time.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

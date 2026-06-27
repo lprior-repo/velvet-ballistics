@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Events module tests.
 
-use super::*;
 use super::super::yaml_error::YamlError;
+use super::*;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

@@ -15,8 +15,8 @@ use common::{
     ask_source, empty_source, finish_source_integer, finish_source_string, set_finish_source,
     set_source,
 };
-use vb_compile::canonical_digest;
 use vb_compile::StepPrimitive;
+use vb_compile::canonical_digest;
 
 // ── B8: Explicit Ask arm verification (runtime) ──
 

@@ -13,7 +13,14 @@
 //   - `vb_storage::admission::submit_artifact_with_contracts` strict
 //     branch (crates/vb_storage/src/admission.rs:327-422)
 //
-// DRIFT POLICY: regenerate this file when production changes.
+// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:20-422`
+// Production source coverage:
+//   - `REQUIRED_GATE_COUNT` (= 15)            <- crates/vb_runtime/src/admission.rs:20
+//   - `submit_artifact_with_contracts` strict branch
+//                                                <- crates/vb_storage/src/admission.rs:327-422
+// Regenerate this file whenever production changes. Any rename of
+// `PayloadTag::AcceptedArtifact` or body change in the strict branch
+// breaks the `extern_run_atomic_admission` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

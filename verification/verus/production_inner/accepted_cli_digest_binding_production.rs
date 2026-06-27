@@ -6,6 +6,20 @@
 //
 // This file is a VERBATIM mirror of the production runtime admission
 // digest-binding types and decision fns.
+//
+// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:82-725`
+// Production source coverage:
+//   - `WorkflowDigest`           <- crates/vb_core/src/ids/mod.rs:340-357
+//   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:203-228
+//   - `RunAdmission`             <- crates/vb_runtime/src/admission.rs:82-95
+//   - `RunAdmission::new`        <- crates/vb_runtime/src/admission.rs:110-124
+//   - `RunAdmission::artifact_digest`
+//                                   <- crates/vb_runtime/src/admission.rs:162-166
+//   - INV-002 strict-policy check <- crates/vb_runtime/src/admission.rs:711-716
+//   - INV-003 strict-policy check <- crates/vb_runtime/src/admission.rs:720-725
+// Regenerate this file whenever production changes. Any rename of
+// `digest`, `source_digest`, `verification.digest`, or `artifact_digest`
+// breaks the `extern_accepted_cli_digest_binding` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

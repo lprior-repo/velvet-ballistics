@@ -6,7 +6,7 @@ use vb_core::workflow::CompiledNode;
 
 use crate::ValidationError;
 
-use super::super::test_helpers::{make_parts, finish_node, copy_node};
+use super::super::test_helpers::{copy_node, finish_node, make_parts};
 
 // -- Pass cases --
 

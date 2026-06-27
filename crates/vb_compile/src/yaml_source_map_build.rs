@@ -210,9 +210,6 @@ fn line_col(text: &str, offset: usize) -> (usize, usize) {
 }
 
 /// Look up the span for a node by index in a pre-built source map.
-pub fn span_for_node(
-    map: &SourceMap,
-    node_index: u32,
-) -> Option<SourceSpan> {
+pub fn span_for_node(map: &SourceMap, node_index: u32) -> Option<SourceSpan> {
     map.span_for_node(node_index)
 }

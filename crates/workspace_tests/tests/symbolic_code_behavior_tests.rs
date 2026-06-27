@@ -4,13 +4,13 @@
 //! six error types: ValidationError, CompileError, YamlError, CoreError,
 //! RuntimeError, JournalError.
 
+use vb_compile::YamlError;
 use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 use vb_core::errors::CoreError;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_runtime::RuntimeError;
 use vb_storage::JournalError;
 use vb_validate::ValidationError;
-use vb_compile::YamlError;
 
 // ---------------------------------------------------------------------------
 // B-037, B-038: ValidationError symbolic code coverage

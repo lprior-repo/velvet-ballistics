@@ -6,6 +6,24 @@
 //
 // This file is a VERBATIM mirror of the production strict-admission
 // witness types and decision fns.
+//
+// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:200-785`
+// Production source coverage:
+//   - `SpecRuntimePolicy`  <- mirror of `vb_core::policy::RuntimePolicy`
+//                                (crates/vb_core/src/policy.rs)
+//   - `SpecWitnessKind`    <- mirror of strict-admission witness kinds
+//   - `SpecStrictWitnessResult`
+//                              <- mirror of strict-admission decision
+//                                 output variants at
+//                                 crates/vb_runtime/src/admission.rs:692-785
+//   - `production_strict_like`        <- production strict-policy gate
+//   - `production_storage_backed`     <- production storage-backed gate
+//   - `strict_admission_witness_decision`
+//                                       <- production composite decision fn
+// Regenerate this file whenever production changes. Any rename of
+// `SpecRuntimePolicy`, `SpecWitnessKind`, or `SpecStrictWitnessResult`
+// variants breaks the `extern_strict_admission_witness` Verus build
+// at compile time.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

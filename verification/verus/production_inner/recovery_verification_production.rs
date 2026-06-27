@@ -33,6 +33,25 @@
 //
 // This stub mirrors the production `UnsupportedRecoveryState` field
 // set as the smallest drift-detection surface.
+//
+// DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:553-563`
+// Production source coverage:
+//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types.rs:553-563
+//   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types.rs:508-521
+//   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types.rs:524-530
+//   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types.rs:533-541
+//   - `RecoveredPendingAction`           <- crates/vb_storage/src/recovery/types.rs:544-550
+//   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types.rs:431-443
+//   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:446-470
+//   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:487-494
+//   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:244-426
+//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:856-864
+//   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
+//                                            + crates/vb_storage/src/recovery/hydrate.rs:181-200
+//                                            + crates/vb_runtime/src/recovery.rs:63-82,146-154
+// Regenerate this file whenever production changes. Any rename of
+// `slot_values`, `slot_taint`, `action_payloads`, or `pending_actions`
+// breaks the `extern_recovery_verification` Verus build.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

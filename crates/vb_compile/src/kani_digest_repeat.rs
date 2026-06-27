@@ -26,8 +26,8 @@
 //! and proptest (PO-006-PO-007) provide property-based and end-to-end
 //! coverage of the same Repeat digest properties.
 
-use crate::mod_compile_lowering::digest_step_primitive;
 use crate::ast::{ScalarValue, StepAst, StepPrimitive};
+use crate::mod_compile_lowering::digest_step_primitive;
 
 // =========================================================================
 // Kani-friendly arbitrary string helpers
