@@ -1,2 +1,2 @@
 [verus] verus --crate-type=lib verification/verus/taint_lattice.rs
-verification results:: 13 verified, 0 errors
+verification results:: 25 verified, 0 errors

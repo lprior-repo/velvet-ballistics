@@ -1,1 +1,161 @@
-verification/verus/vb-vzcuf-PS-009.rs:80:#[verifier::external]
+verification/verus/step_state_machine.rs:10:// production bodies with `#[verifier::external]`. The spec proofs below
+verification/verus/step_state_machine.rs:75:// `extern_step_state_machine.rs` are `#[verifier::external]`, the
+verification/verus/step_state_machine.rs:125:// Verus (`#[verifier::external]`); the spec proofs below exercise the
+verification/verus/taint_lattice.rs:11://      source under `#[verifier::external]` (module-level). The
+verification/verus/taint_lattice.rs:62:// Production bodies are opaque to Verus (per `#[verifier::external]` on
+verification/verus/taint_lattice.rs:84:// module is `#[verifier::external]`, the type is nameable but not usable
+verification/verus/v1_primitive_lowering.rs:27:// the thin extern surface, which defines a `#[verifier::external]`
+verification/verus/v1_primitive_lowering.rs:76:// The exec wrappers carry `#[verifier::external_body]` because their
+verification/verus/v1_primitive_lowering.rs:348:// The bodies of the projections are `#[verifier::external]`; Verus
+verification/verus/try_from_parts.rs:40:// same field set and a `#[verifier::external]` projection of the
+verification/verus/try_from_parts.rs:452:/// projection's `#[verifier::external]` body enforces this on the
+verification/verus/signals_invariant.rs:119:// with `#[verifier::external]` bodies that delegate to the production
+verification/verus/signals_invariant.rs:136:    /// Verus (`#[verifier::external]`); contract attached via
+verification/verus/signals_invariant.rs:138:    #[verifier::external]
+verification/verus/signals_invariant.rs:153:    #[verifier::external]
+verification/verus/signals_invariant.rs:170:    #[verifier::external]
+verification/verus/signals_invariant.rs:178:    #[verifier::external]
+verification/verus/signals_invariant.rs:230:// of each mirror method is opaque to Verus (`#[verifier::external]`);
+verification/verus/idempotency_decision.rs:23:// production exec fn in a `#[verifier::external]` wrapper whose signature
+verification/verus/idempotency_decision.rs:74:// `#[verifier::external]`, the contracts are attached via
+verification/verus/idempotency_decision.rs:235:// to Verus (`#[verifier::external]`); the spec proofs below exercise
+verification/verus/run_frame_invariant.rs:17:// every production exec fn with `#[verifier::external]`. The spec
+verification/verus/run_frame_invariant.rs:73:// `extern_run_frame_invariant.rs` are `#[verifier::external]`, the
+verification/verus/run_frame_invariant.rs:318:// opaque to Verus (`#[verifier::external]`); the spec proofs below
+verification/verus/extern_idempotency_decision.rs:18:// types; each production exec fn has a `#[verifier::external]` wrapper
+verification/verus/extern_idempotency_decision.rs:91:// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
+verification/verus/extern_idempotency_decision.rs:242:// Extern fns — `#[verifier::external]` wrappers mirroring production
+verification/verus/extern_idempotency_decision.rs:256:#[verifier::external]
+verification/verus/extern_idempotency_decision.rs:277:#[verifier::external]
+verification/verus/extern_taint_lattice.rs:10:// `#[path]` plus module-level `#[verifier::external]`. The binding is
+verification/verus/extern_taint_lattice.rs:20://   * The production module is marked `#[verifier::external]`, which is
+verification/verus/extern_taint_lattice.rs:36:// WHY MODULE-LEVEL #[verifier::external] (not per-fn external_body)
+verification/verus/extern_taint_lattice.rs:40:// `#[verifier::external]` on every production fn would still leave
+verification/verus/extern_taint_lattice.rs:45:// production module `#[verifier::external]` is the precise mechanism
+verification/verus/extern_taint_lattice.rs:50:// "Use `#[verifier::external]` on bodies" intent at the granularity
+verification/verus/extern_taint_lattice.rs:83:// `#[verifier::external]` directive above). The mathematical contracts
+verification/verus/extern_taint_lattice.rs:94:#[verifier::external]
+verification/verus/extern_taint_lattice.rs:104:// the `#[verifier::external]` body from `prod_src`.
+verification/verus/recovery_verification.rs:14:// wraps the production-bound bodies in `#[verifier::external]`. The spec
+verification/verus/recovery_verification.rs:146:// are `#[verifier::external]`, the contracts are attached via
+verification/verus/recovery_verification.rs:312:// extern exec wrappers; bodies are `#[verifier::external]`)
+verification/verus/recovery_verification.rs:458:// (`#[verifier::external]`); the spec proofs below exercise the
+verification/verus/extern_v1_primitive_lowering.rs:12:// `#[verifier::external]` projection that mirrors the production
+verification/verus/extern_v1_primitive_lowering.rs:86:// The bodies of every `#[verifier::external]` fn below are NOT verified
+verification/verus/extern_v1_primitive_lowering.rs:241:// skips body verification via `#[verifier::external]`; the spec
+verification/verus/extern_v1_primitive_lowering.rs:257:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:282:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:314:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:357:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:385:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:418:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:445:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:473:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:507:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:537:#[verifier::external]
+verification/verus/extern_v1_primitive_lowering.rs:576:#[verifier::external]
+verification/verus/extern_capability_artifact_model.rs:28:// The body below is `#[verifier::external]`; the spec file attaches
+verification/verus/extern_capability_artifact_model.rs:157:/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_capability_artifact_model.rs:160:#[verifier::external]
+verification/verus/extern_vb_vzcuf_PS_009.rs:265:    /// The body is declared `#[verifier::external]` because Verus does
+verification/verus/extern_vb_vzcuf_PS_009.rs:271:    #[verifier::external]
+verification/verus/extern_step_state_machine.rs:24://   - Each production exec fn has a `#[verifier::external]` wrapper that
+verification/verus/extern_step_state_machine.rs:88:// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
+verification/verus/extern_step_state_machine.rs:200:// Production exec wrappers — `#[verifier::external]` so Verus skips bodies
+verification/verus/extern_step_state_machine.rs:208:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:216:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:227:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:234:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:250:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:287:// This decision fn is NOT marked `#[verifier::external]` because it is
+verification/verus/extern_step_state_machine.rs:299:/// Marked `#[verifier::external]` so Verus does not attempt to verify
+verification/verus/extern_step_state_machine.rs:305:#[verifier::external]
+verification/verus/extern_step_state_machine.rs:347:#[verifier::external]
+verification/verus/capability_artifact_model.rs:40:// `#[verifier::external]`; the contract is attached via
+verification/verus/capability_artifact_model.rs:208:// `#[verifier::external]`; the contract below is the post-fix
+verification/verus/extern_recovery_verification.rs:100:// `#[verifier::external]` so Verus does not try to verify Fjall I/O or
+verification/verus/extern_recovery_verification.rs:160:// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
+verification/verus/extern_recovery_verification.rs:625:// Pure decision fns — `#[verifier::external]` wrappers mirroring
+verification/verus/extern_recovery_verification.rs:646:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:647:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:659:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:660:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:675:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:676:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:689:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:690:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:700:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:701:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:728:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:729:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:759:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:760:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:785:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:786:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:818:/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_recovery_verification.rs:819:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:832:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:843:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:851:#[verifier::external]
+verification/verus/extern_recovery_verification.rs:862:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:13:// every production exec fn has a `#[verifier::external]` wrapper that
+verification/verus/extern_run_frame_invariant.rs:92:// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
+verification/verus/extern_run_frame_invariant.rs:282:// Production exec fn mirrors — `#[verifier::external]` so Verus skips
+verification/verus/extern_run_frame_invariant.rs:301:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:357:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:397:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:403:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:409:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:420:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:437:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:456:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:462:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:468:#[verifier::external]
+verification/verus/extern_run_frame_invariant.rs:475:/// Marked `#[verifier::external]` so Verus skips body verification —
+verification/verus/extern_run_frame_invariant.rs:483:#[verifier::external]
+verification/verus/extern_signals_invariant.rs:20:// `#[verifier::external]`) and attaches spec contracts via
+verification/verus/extern_try_from_parts.rs:13:// production exec validation has a `#[verifier::external]` wrapper that
+verification/verus/extern_try_from_parts.rs:532:/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+verification/verus/extern_try_from_parts.rs:535:#[verifier::external]
+verification/verus/extern_try_from_parts.rs:646:/// (`#[verifier::external]`). The spec-side mirror in
+verification/verus/extern_try_from_parts.rs:649:#[verifier::external]
+verification/verus/extern_vb_storage_keys.rs:18:// `#[verifier::external]` to tell Verus to skip body verification —
+verification/verus/extern_vb_storage_keys.rs:244:#[verifier::external]
+verification/verus/extern_vb_storage_keys.rs:251:#[verifier::external]
+verification/verus/extern_vb_storage_keys.rs:278:#[verifier::external]
+verification/verus/extern_vb_storage_keys.rs:284:#[verifier::external]
+verification/verus/extern_vb_storage_keys.rs:294:#[verifier::external]
+verification/verus/budget_bounded.rs:16:// wraps production bodies with `#[verifier::external]`. The spec proofs
+verification/verus/budget_bounded.rs:67:// are `#[verifier::external]`, the contracts are attached via
+verification/verus/budget_bounded.rs:111:// `#[verifier::external]` wrappers (which reference them as `crate::workflow`).
+verification/verus/budget_bounded.rs:170:// Verus (`#[verifier::external]`); the spec proofs below exercise the
+verification/verus/extern_budget_bounded.rs:13:// `#[verifier::external]` wrapper that mirrors the production signature
+verification/verus/extern_budget_bounded.rs:90:// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
+verification/verus/extern_budget_bounded.rs:245:/// is `#[verifier::external]` and accepts the production signature.
+verification/verus/extern_budget_bounded.rs:277:    #[verifier::external]
+verification/verus/extern_budget_bounded.rs:344:    #[verifier::external]
+verification/verus/extern_budget_bounded.rs:510:// Extern fns — `#[verifier::external]` wrappers mirroring production
+verification/verus/extern_budget_bounded.rs:521:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:532:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:542:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:555:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:567:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:581:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:594:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:605:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:616:#[verifier::external]
+verification/verus/extern_budget_bounded.rs:627:#[verifier::external]
+verification/verus/vb_storage_keys_spec.rs:24:// `#[verifier::external]` so Verus skips body verification and the
+verification/verus/vb_storage_keys_spec.rs:44:// `#[verifier::external]` is used ONLY for the function body
+verification/verus/vb_storage_keys_spec.rs:246:// `extern_vb_storage_keys.rs` and are declared `#[verifier::external]`.
+verification/verus/extern_vb_core_replay_step.rs:252:/// (`#[verifier::external]`). The contract is attached via
+verification/verus/extern_vb_core_replay_step.rs:254:#[verifier::external]
+verification/verus/extern_vb_core_replay_step.rs:317:#[verifier::external]
+verification/verus/extern_vb_core_replay_step.rs:340:#[verifier::external]
+verification/verus/extern_vb_core_replay_step.rs:389:#[verifier::external]
+verification/verus/extern_vb_core_replay_step.rs:408:#[verifier::external]
+verification/verus/extern_vb_core_replay_step.rs:418:#[verifier::external]
+verification/verus/extern_runtime_execute_do.rs:110:#[verifier::external]
+verification/verus/vb-vzcuf-PS-009.rs:15:// production mirror types and the `#[verifier::external]` exec body
+verification/verus/vb-vzcuf-PS-009.rs:42://     `#[verifier::external]` so Verus skips body verification.
+verification/verus/vb-vzcuf-PS-009.rs:370:// `#[verifier::external]` so Verus cannot see which `Result` variant
