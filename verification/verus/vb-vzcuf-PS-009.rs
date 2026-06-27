@@ -72,11 +72,11 @@ pub use production::{SpecJournalError, SpecJournalWriteBatch};
 // file lists the production source lines for each constant.
 pub const SPEC_JOURNAL_KEY_BYTES: usize = 17;
 
-pub const SPEC_MAX_BATCH_COUNT: usize = 1024;
+pub const SPEC_MAX_BATCH_COUNT: usize = 10_000;
 
 pub const SPEC_DEFAULT_JOURNAL_BATCH_BYTE_LIMIT: u64 = 1_048_576;
 
-pub const SPEC_MAX_JOURNAL_EVENT_PAYLOAD_BYTES: u32 = 65_536;
+pub const SPEC_MAX_JOURNAL_EVENT_PAYLOAD_BYTES: u32 = 1_048_576;
 
 // =============================================================================
 // Spec helper: state-unchanged predicate

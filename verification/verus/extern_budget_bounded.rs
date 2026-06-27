@@ -71,6 +71,140 @@ verus! {
 #[path = "production_inner/budget_bounded_production.rs"]
 pub mod production_inner;
 
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production_inner::*` type and method references force Rust to
+// resolve the production method names at compile time. A rename of
+// any of these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The drift check references every production method that the spec
+// file attaches an `assume_specification` bridge to:
+//
+//   - whole_workflow_budget_compute  (assumed via `WholeWorkflowBudget::compute`)
+//   - boundedness_policy_validate     (assumed via `BoundednessPolicy::validate`)
+//   - validate_aggregate_budget
+//   - validate_step_ceilings
+//   - aggregate_resource_usage_try_add_budget
+//   - aggregate_resource_usage_try_subtract_budget
+//   - aggregate_resource_usage_fits_within
+//   - aggregate_resource_usage_check_policy
+//   - add_dim
+//   - sub_dim
+//
+// Plus the underlying struct methods (`WholeWorkflowBudget::compute`,
+// `BoundednessPolicy::validate`) and the `BoundednessPolicy::DEFAULT`
+// constant, and every field of every reflected struct.
+#[verifier::external]
+fn prod_methods_drift_check(
+    entry: production_inner::StepIdx,
+    contract: production_inner::ResourceContract,
+) {
+    // Reference the BoundednessPolicy::DEFAULT constant (production
+    // constant at budget.rs:378-396).
+    let policy = production_inner::BoundednessPolicy::DEFAULT;
+
+    // Reference every field of WholeWorkflowBudget to surface any
+    // rename in budget.rs:11-59.
+    let budget = production_inner::WholeWorkflowBudget {
+        max_total_steps: 0,
+        max_total_slots: 0,
+        max_fanout: 0,
+        max_nesting_depth: 0,
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+    };
+
+    // Reference every field of AggregateResourceBudget to surface any
+    // rename in budget.rs:571-596.
+    let arb = production_inner::AggregateResourceBudget {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+    };
+
+    // AggregateResourceUsage derives Default; use it to surface the
+    // production field set (budget.rs:622-644).
+    let aru = production_inner::AggregateResourceUsage::default();
+
+    // Reference every field of AggregateResourceCapacity to surface
+    // any rename in budget.rs:598-620.
+    let cap = production_inner::AggregateResourceCapacity {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_active_runs: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+    };
+
+    // Force resolution of every production method by invoking it
+    // with phantom arguments. The body is opaque to Verus but the
+    // rustc compilation resolves the names.
+    let nodes: &[production_inner::workflow::CompiledNode] = &[];
+    let _ = production_inner::whole_workflow_budget_compute(nodes, entry, &contract);
+    let _ = production_inner::WholeWorkflowBudget::compute(nodes, entry, &contract);
+    let _ = production_inner::boundedness_policy_validate(&policy, &budget);
+    let _ = policy.validate(&budget);
+    let _ = production_inner::validate_aggregate_budget(&arb, &policy);
+    let _ = production_inner::validate_step_ceilings(&arb);
+    let _ = production_inner::aggregate_resource_usage_try_add_budget(&aru, &arb);
+    let _ = production_inner::aggregate_resource_usage_try_subtract_budget(&aru, &arb);
+    let _ = production_inner::aggregate_resource_usage_fits_within(&aru, &cap);
+    let _ = production_inner::aggregate_resource_usage_check_policy(&aru, &policy);
+    let _ = production_inner::add_dim(0u64, 0u64, "");
+    let _ = production_inner::sub_dim(0u64, 0u64, "");
+}
+
 } // verus!
 
 // Re-export the production types and exec wrappers so the spec file

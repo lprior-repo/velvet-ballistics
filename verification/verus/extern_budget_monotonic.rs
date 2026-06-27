@@ -68,6 +68,71 @@ verus! {
 #[path = "production_inner/budget_monotonic_production.rs"]
 pub mod production_inner;
 
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production_inner::*` type and method references force Rust to
+// resolve the production method names at compile time. A rename of
+// any of these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The spec attaches an `assume_specification` bridge to
+// `whole_workflow_budget_compute` (which delegates to
+// `WholeWorkflowBudget::compute`); the drift check exercises both.
+#[verifier::external]
+fn prod_methods_drift_check(
+    entry: production_inner::StepIdx,
+    contract: production_inner::ResourceContract,
+) {
+    // Reference every field of WholeWorkflowBudget (budget.rs:11-59)
+    // to surface any rename in production.
+    let _budget = production_inner::WholeWorkflowBudget {
+        max_total_steps: 0,
+        max_total_slots: 0,
+        max_fanout: 0,
+        max_nesting_depth: 0,
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+    };
+
+    // Reference BudgetTraversalError variants (budget.rs:170-191).
+    let step = production_inner::StepIdx::new(0);
+    let _err = production_inner::BudgetTraversalError::EntryOutOfBounds { entry };
+    let _err = production_inner::BudgetTraversalError::StepOutOfBounds { step };
+    let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
+    let _err = production_inner::BudgetTraversalError::DepthOverflow { depth: 0 };
+    let _err = production_inner::BudgetTraversalError::JumpCycle {
+        step,
+        target: step,
+    };
+
+    // Force resolution of the production method by invoking it with
+    // phantom arguments. The body is opaque to Verus but the rustc
+    // compilation resolves the names.
+    let nodes: &[production_inner::workflow::CompiledNode] = &[];
+    let _ = production_inner::whole_workflow_budget_compute(nodes, entry, &contract);
+    let _ = production_inner::WholeWorkflowBudget::compute(nodes, entry, &contract);
+}
+
 } // verus!
 
 // Re-export the production types and exec wrappers so the spec file

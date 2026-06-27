@@ -108,6 +108,196 @@ pub use production::{
 pub use production::workflow;
 pub use production::limits;
 
+// ============================================================================
+// PartialEqSpecImpl — discharge the vstd `cmp::eq` postcondition on the nine
+// production-mirror structs that derive `PartialEq`/`Eq`.
+// ============================================================================
+//
+// `vstd::std_specs::cmp::ExPartialEq::eq` carries the postcondition
+//   `Self::obeys_eq_spec() ==> r == self.eq_spec(other)`
+// For derived `PartialEq` structs, Verus auto-generates `assert_fields_are_eq`
+// and `eq` obligations but does NOT provide a `PartialEqSpecImpl` — so
+// `obeys_eq_spec()` is uninterpreted and the postcondition cannot be
+// discharged. Supplying an explicit `PartialEqSpecImpl` for each of the
+// nine derived mirrors (`RunId`, `StepIdx`, `SlotIdx`, `ResourceContract`,
+// `WholeWorkflowBudget`, `BoundednessPolicy`, `AggregateResourceBudget`,
+// `AggregateResourceCapacity`, `AggregateResourceUsage`) lets Verus know
+// the spec-side equality semantics (`obeys_eq_spec() == true` and a
+// field-by-field `eq_spec`) so the postconditions of the auto-generated
+// helpers verify. This is the same fix shape used elsewhere in the
+// verification tree (see e.g. `vb_awhr_fanout_spec.rs` for analogous
+// `PartialEqSpecImpl` impls on derived mirror structs).
+impl vstd::std_specs::cmp::PartialEqSpecImpl for RunId {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &RunId) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for StepIdx {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &StepIdx) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for SlotIdx {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &SlotIdx) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for ResourceContract {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &ResourceContract) -> bool {
+        self.max_steps == other.max_steps && self.max_slots == other.max_slots && self.max_constants
+            == other.max_constants && self.max_accessors == other.max_accessors
+            && self.max_expressions == other.max_expressions && self.max_expr_stack
+            == other.max_expr_stack && self.max_step_budget_per_tick
+            == other.max_step_budget_per_tick && self.max_transitions_per_tick
+            == other.max_transitions_per_tick && self.max_input_bytes == other.max_input_bytes
+            && self.max_output_bytes == other.max_output_bytes && self.max_blob_bytes
+            == other.max_blob_bytes && self.max_ipc_payload_bytes == other.max_ipc_payload_bytes
+            && self.max_retry_attempts == other.max_retry_attempts && self.max_fanout
+            == other.max_fanout && self.max_collect_items == other.max_collect_items
+            && self.max_queue_depth == other.max_queue_depth && self.max_journal_batch_bytes
+            == other.max_journal_batch_bytes && self.allows_secret_results
+            == other.allows_secret_results
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for WholeWorkflowBudget {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &WholeWorkflowBudget) -> bool {
+        self.max_total_steps == other.max_total_steps && self.max_total_slots
+            == other.max_total_slots && self.max_fanout == other.max_fanout
+            && self.max_nesting_depth == other.max_nesting_depth && self.max_steps_executable
+            == other.max_steps_executable && self.max_action_tickets == other.max_action_tickets
+            && self.max_parallel_in_flight == other.max_parallel_in_flight
+            && self.max_retries_per_action == other.max_retries_per_action && self.max_gather_pages
+            == other.max_gather_pages && self.max_gather_items == other.max_gather_items
+            && self.max_for_each_iterations == other.max_for_each_iterations
+            && self.max_together_branches == other.max_together_branches && self.max_repeat_attempts
+            == other.max_repeat_attempts && self.max_run_time_seconds == other.max_run_time_seconds
+            && self.max_result_bytes == other.max_result_bytes && self.max_total_slots_written
+            == other.max_total_slots_written && self.max_timer_entries == other.max_timer_entries
+            && self.max_trace_events == other.max_trace_events && self.max_journal_batch_bytes
+            == other.max_journal_batch_bytes && self.max_queue_depth == other.max_queue_depth
+            && self.max_ipc_payload_bytes == other.max_ipc_payload_bytes && self.max_blob_bytes
+            == other.max_blob_bytes && self.max_input_bytes == other.max_input_bytes
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for BoundednessPolicy {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &BoundednessPolicy) -> bool {
+        self.max_total_steps == other.max_total_steps && self.max_total_slots
+            == other.max_total_slots && self.max_fanout == other.max_fanout
+            && self.max_nesting_depth == other.max_nesting_depth && self.absolute_max_action_tickets
+            == other.absolute_max_action_tickets && self.absolute_max_parallel
+            == other.absolute_max_parallel && self.absolute_max_run_time_seconds
+            == other.absolute_max_run_time_seconds && self.absolute_max_result_bytes
+            == other.absolute_max_result_bytes && self.absolute_max_steps_executable
+            == other.absolute_max_steps_executable && self.absolute_max_timer_entries
+            == other.absolute_max_timer_entries && self.absolute_max_trace_events
+            == other.absolute_max_trace_events && self.absolute_max_journal_batch_bytes
+            == other.absolute_max_journal_batch_bytes && self.absolute_max_queue_depth
+            == other.absolute_max_queue_depth && self.absolute_max_ipc_payload_bytes
+            == other.absolute_max_ipc_payload_bytes && self.absolute_max_blob_bytes
+            == other.absolute_max_blob_bytes && self.absolute_max_input_bytes
+            == other.absolute_max_input_bytes
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceBudget {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &AggregateResourceBudget) -> bool {
+        self.max_steps_executable == other.max_steps_executable && self.max_action_tickets
+            == other.max_action_tickets && self.max_parallel_in_flight
+            == other.max_parallel_in_flight && self.max_retries_per_action
+            == other.max_retries_per_action && self.max_gather_pages == other.max_gather_pages
+            && self.max_gather_items == other.max_gather_items && self.max_for_each_iterations
+            == other.max_for_each_iterations && self.max_together_branches
+            == other.max_together_branches && self.max_repeat_attempts == other.max_repeat_attempts
+            && self.max_run_time_seconds == other.max_run_time_seconds && self.max_result_bytes
+            == other.max_result_bytes && self.max_total_slots_written
+            == other.max_total_slots_written && self.max_timer_entries == other.max_timer_entries
+            && self.max_trace_events == other.max_trace_events && self.max_queue_depth
+            == other.max_queue_depth && self.max_journal_batch_bytes
+            == other.max_journal_batch_bytes && self.max_ipc_payload_bytes
+            == other.max_ipc_payload_bytes && self.max_blob_bytes == other.max_blob_bytes
+            && self.max_input_bytes == other.max_input_bytes && self.max_step_budget_per_tick
+            == other.max_step_budget_per_tick && self.max_transitions_per_tick
+            == other.max_transitions_per_tick
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceCapacity {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &AggregateResourceCapacity) -> bool {
+        self.max_steps_executable == other.max_steps_executable && self.max_action_tickets
+            == other.max_action_tickets && self.max_parallel_in_flight
+            == other.max_parallel_in_flight && self.max_gather_pages == other.max_gather_pages
+            && self.max_gather_items == other.max_gather_items && self.max_result_bytes
+            == other.max_result_bytes && self.max_total_slots_written
+            == other.max_total_slots_written && self.max_timer_entries == other.max_timer_entries
+            && self.max_trace_events == other.max_trace_events && self.max_active_runs
+            == other.max_active_runs && self.max_queue_depth == other.max_queue_depth
+            && self.max_journal_batch_bytes == other.max_journal_batch_bytes
+            && self.max_ipc_payload_bytes == other.max_ipc_payload_bytes && self.max_blob_bytes
+            == other.max_blob_bytes && self.max_input_bytes == other.max_input_bytes
+            && self.max_step_budget_per_tick == other.max_step_budget_per_tick
+            && self.max_transitions_per_tick == other.max_transitions_per_tick
+    }
+}
+
+impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceUsage {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &AggregateResourceUsage) -> bool {
+        self.max_steps_executable == other.max_steps_executable && self.max_action_tickets
+            == other.max_action_tickets && self.max_parallel_in_flight
+            == other.max_parallel_in_flight && self.max_gather_pages == other.max_gather_pages
+            && self.max_gather_items == other.max_gather_items && self.max_result_bytes
+            == other.max_result_bytes && self.max_total_slots_written
+            == other.max_total_slots_written && self.max_timer_entries == other.max_timer_entries
+            && self.max_trace_events == other.max_trace_events && self.max_active_runs
+            == other.max_active_runs && self.max_queue_depth == other.max_queue_depth
+            && self.max_journal_batch_bytes == other.max_journal_batch_bytes
+            && self.max_ipc_payload_bytes == other.max_ipc_payload_bytes && self.max_blob_bytes
+            == other.max_blob_bytes && self.max_input_bytes == other.max_input_bytes
+            && self.max_step_budget_per_tick == other.max_step_budget_per_tick
+            && self.max_transitions_per_tick == other.max_transitions_per_tick
+    }
+}
+
 // The four `SPEC_MAX_*` constants are declared inside `verus!` (rather
 // than in `extern_budget_bounded.rs`) because declaring a `pub const`
 // in the extern file triggers a Verus internal error

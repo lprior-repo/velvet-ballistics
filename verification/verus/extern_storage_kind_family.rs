@@ -100,6 +100,24 @@ verus! {
 #[path = "production_inner/storage_kind_family_production.rs"]
 pub mod prod_src;
 
+// ============================================================================
+// Phantom drift-detection helper (production_inner slice)
+// ============================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `prod_src::*` type and method references force Rust to resolve the
+// production method names at compile time. A rename of any of these
+// production methods (or the production discriminant set referenced
+// below) breaks this fn's compilation.
+//
+// The drift check references the production_inner drift-detection
+// stubs (`record_kind_discriminant_check`, `is_known_record_kind_stub`).
+#[verifier::external]
+fn prod_methods_drift_check() {
+    let _ = prod_src::record_kind_discriminant_check(1u16);
+    let _ = prod_src::is_known_record_kind_stub(1u16);
+}
+
 } // verus!
 
 // ============================================================================
@@ -615,5 +633,63 @@ pub fn validate_replay_sequence(
     };
     mirror_validate_replayed_event(run, expected_seq, event)?;
     *expected = Some(mirror_next_seq(expected_seq)?);
+    Ok(())
+}
+
+// ============================================================================
+// Phantom drift-detection helper (mirror slice)
+// ============================================================================
+//
+// The body is regular Rust (NOT inside a `verus!` block) because the
+// mirror types `MirrorRunId`, `MirrorEventSeq`, `MirrorJournalEvent`,
+// `MirrorRecordKind`, etc. are declared at module level outside `verus!`
+// in this file. The `*::new` / `*::get` / `*::seq` / `*::run_id`
+// method references force Rust to resolve the production mirror method
+// names at compile time. A rename of any of these production methods
+// (or the production struct fields referenced below) breaks this fn's
+// compilation.
+//
+// The drift check references every mirror method the spec file
+// attaches an `assume_specification` bridge to:
+//
+//   - MirrorRunId::new             (production ids/mod.rs:65)
+//   - MirrorRunId::get             (production ids/mod.rs:65)
+//   - MirrorEventSeq::new          (production storage/types.rs:73)
+//   - MirrorEventSeq::get          (production storage/types.rs:73)
+//   - MirrorJournalEvent::seq      (production storage/events.rs:23)
+//   - MirrorJournalEvent::run_id   (production storage/events.rs:23)
+//   - is_known_record_kind         (production codec/validation.rs:23)
+//   - validate_kind_family         (production codec/validation.rs:42)
+//   - validate_replay_sequence     (production journal/replay.rs:164)
+//
+// Plus the production mirror helpers `mirror_next_seq` and
+// `mirror_validate_replayed_event` (codec/mod.rs:142,149) and a
+// representative `MirrorRecordKind` discriminant + `MirrorJournalEvent`
+// variant.
+#[allow(dead_code)]
+fn prod_methods_drift_check_mirror() -> Result<(), MirrorJournalError> {
+    let run = MirrorRunId::new(0);
+    let seq = MirrorEventSeq::new(0);
+    let mut expected: Option<MirrorEventSeq> = None;
+    let event = MirrorJournalEvent::RunAccepted { run, seq };
+
+    // Force resolution of every Mirror* new/get method.
+    let _ = MirrorRunId::get(run);
+    let _ = MirrorEventSeq::get(seq);
+
+    // Force resolution of every MirrorJournalEvent accessor.
+    let _ = event.seq();
+    let _ = event.run_id();
+    let _ = event.record_kind();
+
+    // Force resolution of the production mirror helpers.
+    let _ = mirror_next_seq(seq)?;
+    mirror_validate_replayed_event(run, seq, &event)?;
+    let _ = mirror_next_seq(seq)?;
+
+    // Force resolution of the three production decision fns.
+    let _ = is_known_record_kind(1);
+    validate_kind_family(MAGIC_JOURNAL_EVENT, 10)?;
+    validate_replay_sequence(run, &mut expected, &event)?;
     Ok(())
 }

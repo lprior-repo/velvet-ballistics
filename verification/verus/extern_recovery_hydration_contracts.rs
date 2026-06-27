@@ -217,6 +217,82 @@ verus! {
 #[path = "production_inner/recovery_hydration_contracts_production.rs"]
 pub mod prod_src;
 
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `prod_src::*` type and method references force Rust to resolve the
+// production method names at compile time. A rename of any of these
+// production methods (or the production discriminant fields
+// referenced below) breaks this fn's compilation.
+//
+// The drift check references the two production_inner drift-detection
+// stubs plus every production discriminant the spec attaches an
+// `assume_specification` bridge to via `recovery_decision_pure`.
+#[verifier::external]
+fn prod_methods_drift_check(input: SpecRecoveryInput) {
+    // Force resolution of every SpecRecoveryError discriminant the
+    // spec attaches to `recovery_decision_pure` (production recovery
+    // boundary decision lattice).
+    let _err = SpecRecoveryError::NoRecoveryData;
+    let _err = SpecRecoveryError::CorruptSnapshot;
+    let _err = SpecRecoveryError::ReplayDivergence;
+    let _err = SpecRecoveryError::WorkflowSourceDigestMismatch;
+    let _err = SpecRecoveryError::CompiledIrDigestMismatch;
+    let _err = SpecRecoveryError::NonIdempotentActionBlocked;
+    let _err = SpecRecoveryError::FrameDimensionOverflow;
+    let _err = SpecRecoveryError::InvalidRecoveryHydration;
+    let _err = SpecRecoveryError::CollectExtraHydrationFailed;
+
+    // Force resolution of every production RecoveryError / RuntimeError /
+    // CoreError variant the spec may route to.
+    let run = RunId(0);
+    let step = StepIdx(0);
+    let _err = RecoveryError::WorkflowSourceDigestMismatch {
+        expected: WorkflowDigest(0),
+        found: WorkflowDigest(0),
+    };
+    let _err = RecoveryError::CompiledIrDigestMismatch {
+        expected: WorkflowDigest(0),
+        found: WorkflowDigest(0),
+    };
+    let _err = RecoveryError::NonIdempotentActionBlocked {
+        action: ActionId(0),
+        step,
+    };
+    let _err = RecoveryError::ReplayDivergence { step, detail: () };
+    let _err = RecoveryError::NoRecoveryData { run };
+    let _err = RecoveryError::CorruptSnapshot {
+        run,
+        seq: EventSeq(0),
+    };
+    let _err = RecoveryError::MissingSnapshot {
+        run,
+        seq: EventSeq(0),
+    };
+    let _err = RecoveryError::TerminalStateMismatch { expected: (), found: () };
+    let _err = RecoveryError::FrameDimensionOverflow { run };
+
+    let _err = RuntimeError::InvalidRecoveryHydration;
+    let _err = RuntimeError::UnsupportedFullRecoveryHydration;
+
+    let _err = CoreError::CollectExtraHydrationFailed {
+        kind: CollectExtraHydrationFailureKind::EmptyExtra,
+        run_id: RunId(0),
+        collector_slot: SlotIdx(0),
+        event_seq: None,
+    };
+
+    // Force resolution of the prod_src drift-detection stubs.
+    let _ = prod_src::recovery_error_discriminant_check(0u8);
+    let _ = prod_src::recovery_decision_stub(false, false, false);
+
+    // Force resolution of the production-bound exec fn the spec
+    // attaches an `assume_specification` bridge to.
+    let _ = recovery_decision_pure(input);
+}
+
 } // verus!
 
 // ============================================================================

@@ -8,61 +8,45 @@
 //
 // This file is the production-binding surface for the
 // `signals_invariant.rs` Verus spec. It contains a direct `#[path]`
-// inclusion of the in-tree mirror at
-// `verification/verus/production_inner/signals_production.rs`, which
-// is a verbatim copy of `crates/vb_core/src/engine/signals.rs` with
-// two minimal substitutions:
+// inclusion of the production source file
+// `crates/vb_core/src/engine/signals.rs` so any drift in field names,
+// discriminant sets, or fn signatures breaks Rust resolution at
+// compile time.
 //
-//   1. The `StepBudget::remaining` field is declared `pub` (instead
-//      of private as in production). This relaxation is required so
-//      Verus's `#[verifier::external_type_specification]` bridge can
-//      read the field on the spec side. Field NAME and TYPE are
-//      preserved byte-for-byte so any drift in NAME breaks the
-//      verification build.
-//
-//   2. The `StepBudget::from_env` body is wrapped in
-//      `#[verifier::external_body]` because the closure pattern
-//      `|_| EngineError::BudgetParse { reason: ... }` in production
-//      (signals.rs:84) is rejected by Verus 0.2026.05.05 (Rust
-//      1.95.0) as "only variables are supported here, not general
-//      patterns". The signature and field name remain
-//      production-identical.
-//
-// The mirror is included via `#[path]` from inside `verus!` (WITHOUT
-// module-level `#[verifier::external]`) so the type declarations are
-// nameable in spec mode. The companion spec file
-// `signals_invariant.rs` attaches `assume_specification` contracts
-// to the production-bound exec methods.
+// The companion spec file `signals_invariant.rs` declares the stub
+// modules `errors`, `limits`, `value` at the crate root so the
+// production file's `use crate::*` statements resolve identically to
+// the production crate layout. The spec file also declares the
+// spec-side mirror types and exec method wrappers (with
+// `#[verifier::external]`) and attaches spec contracts via
+// `assume_specification`.
 //
 // =============================================================================
-// BINDING LEDGER (mirrors production_inner/signals_production.rs)
+// BINDING LEDGER
 // =============================================================================
 //   - `StepBudget`                          <- crates/vb_core/src/engine/signals.rs:13-16
-//   - `StepBudget::MAX`                     <- crates/vb_core/src/engine/signals.rs:19-22
-//   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:26-35
+//   - `StepBudget::MAX`                     <- crates/vb_core/src/engine/signals.rs:20-22
+//   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:27-35
 //   - `StepBudget::try_take`                <- crates/vb_core/src/engine/signals.rs:50-60
-//   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:62-65
-//   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:80-94
-//                                             (body wrapped in #[verifier::external_body]
-//                                              due to closure-pattern blocker; signature
-//                                              and field name unchanged)
-//   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:99-115
+//   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:64-66
+//   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:81-94
+//   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:241
+//   - `MAX_STEP_BUDGET = 10_000`            <- crates/vb_core/src/limits.rs:94
+//   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:100-115
 //                                             (7 variants, all production discriminants
 //                                              preserved verbatim)
 //
 // =============================================================================
 // TRUST BOUNDARY
 // =============================================================================
-// The production bodies of every fn in this file are NOT verified by
-// Verus. The mirror is included inside `verus!` (so the type
-// declarations are nameable in spec mode), but each production method
-// body is either verbatim Rust (which Verus does not attempt to
-// verify beyond syntax) or wrapped in `#[verifier::external_body]` for
-// the `from_env` closure pattern. The contracts attached via
-// `assume_specification` in `signals_invariant.rs` state the
-// production behavior the spec proofs discharge. Drift between the
-// mirror and the production source is reported as binding-debt
-// tracked outside Verus.
+// The production bodies of `StepBudget::new`, `try_take`, `remaining`,
+// `MAX`, `from_env`, and the `EngineSignal` enum are NOT verified by
+// Verus directly (the `#[path]`-included bodies are opaque). The
+// contracts attached via `assume_specification` in
+// `signals_invariant.rs` state the production behavior the spec
+// proofs discharge. Drift between the spec-side mirror methods and
+// the production source is reported as binding-debt tracked outside
+// Verus.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
@@ -70,25 +54,23 @@
 
 use vstd::prelude::*;
 
-verus! {
-
 // ---------------------------------------------------------------------------
-// PRODUCTION MIRROR INCLUSION via #[path]
+// PRODUCTION INCLUSION via #[path]
 // ---------------------------------------------------------------------------
 //
-// Direct `#[path]` inclusion of the in-tree mirror at
-// `production_inner/signals_production.rs` (NOT the actual
-// production source). The mirror is verbatim except for the
-// `pub remaining` field relaxation (required by Verus's
-// `external_type_specification`) and the `#[verifier::external_body]`
-// wrapper on `from_env` (required because of the closure-pattern
-// blocker in production). Any drift in field NAME or method
-// signature breaks the verification build.
-#[path = "production_inner/signals_production.rs"]
+// Direct `#[path]` inclusion of crates/vb_core/src/engine/signals.rs.
+// Declared at the crate root so Verus treats its bodies as opaque
+// (external by default — items declared outside `verus!` are external).
+//
+// The included production bodies are NOT verified by Verus. The
+// `#[path]` attribute ensures any drift in field names, discriminant
+// sets, or fn signatures will break this Rust resolution at compile
+// time. The stub modules `errors`, `limits`, `value` referenced by the
+// production file are declared at the crate root in
+// `signals_invariant.rs`.
+#[path = "../../crates/vb_core/src/engine/signals.rs"]
 pub mod production_signals;
-
-} // verus!
 
 // Re-export the production types so the spec file can reference them
 // via `crate::production::production_signals::StepBudget`.
-pub use production_signals::{EngineSignal, EngineError, StepBudget, MAX_STEP_BUDGET};
+pub use production_signals::{EngineSignal, StepBudget};

@@ -113,6 +113,31 @@ verus! {
 #[path = "production_inner/value_store_invariant_production.rs"]
 pub mod prod_src;
 
+// ============================================================================
+// Phantom drift-detection helper (production_inner slice)
+// ============================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `prod_src::*` type and method references force Rust to resolve the
+// production method names at compile time. A rename of any of these
+// production methods (or the production struct fields referenced
+// below) breaks this fn's compilation.
+//
+// The drift check references the production_inner drift-detection
+// stub (`ValueStoreStub` field shape + `check_arena_cap_stub`).
+#[verifier::external]
+fn prod_methods_drift_check() {
+    // Reference every field of ValueStoreStub (production value_store.rs:57).
+    let _stub = prod_src::ValueStoreStub {
+        max_arena_entries: 0,
+        total_arena_count_field: 0,
+    };
+
+    // Reference the production check_arena_cap decision fn
+    // (production value_store.rs:316-329).
+    let _ = _stub.check_arena_cap_stub();
+}
+
 } // verus!
 
 // ============================================================================
@@ -412,3 +437,42 @@ pub const MAX_OBJECT_FIELDS_PER_VALUE: usize = 65_535;
 /// `crates/vb_core/src/limits.rs:79`.
 #[allow(non_upper_case_globals)]
 pub const MAX_SYMBOL_BYTES_PER_VALUE: usize = 4_096;
+
+// ============================================================================
+// Phantom drift-detection helper (mirror slice)
+// ============================================================================
+//
+// The body is regular Rust (NOT inside a `verus!` block) because the
+// `MirrorValueStore` and `MirrorCoreError` types are declared at
+// module level outside `verus!` in this file. The `MirrorValueStore::*`
+// method references force Rust to resolve the production mirror
+// method names at compile time. A rename of any of these production
+// methods (or the production struct fields referenced below) breaks
+// this fn's compilation.
+//
+// The drift check references every `MirrorValueStore` method the spec
+// file attaches an `assume_specification` bridge to:
+//
+//   - MirrorValueStore::with_max_slots   (production value_store.rs:77-89)
+//   - MirrorValueStore::max_arena_entries (production value_store.rs:311-314)
+//   - MirrorValueStore::total_arena_count (production value_store.rs:300-308)
+//   - MirrorValueStore::check_arena_cap   (production value_store.rs:316-329)
+//
+// Plus the `max_arena_entries` and `total_arena_count_field` field
+// references on `MirrorValueStore` and the `MirrorCoreError::BudgetExceeded`
+// discriminant + payload fields.
+#[allow(dead_code)]
+fn prod_methods_drift_check_mirror() -> MirrorCoreResult<()> {
+    // Construct a MirrorValueStore referencing every field
+    // (production value_store.rs:43-58).
+    let store = MirrorValueStore {
+        max_arena_entries: 0,
+        total_arena_count_field: 0,
+    };
+
+    // Reference every MirrorValueStore method.
+    let _ = MirrorValueStore::with_max_slots(0);
+    let _ = store.max_arena_entries();
+    let _ = store.total_arena_count();
+    store.check_arena_cap()
+}

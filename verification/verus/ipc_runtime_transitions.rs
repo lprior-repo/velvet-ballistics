@@ -755,6 +755,150 @@ pub proof fn bridge_resume_rollback_is_resumable_event()
     assert(spec_is_resumable_event(MirrorRuntimeEvent::ResumeRollback));
 }
 
+// ============================================================================
+// Production-bound exec wrappers (call production::* via the extern mirror)
+// ============================================================================
+//
+// These exec wrappers exercise the production functions in the
+// `production_inner/ipc_runtime_transitions_production.rs` mirror (the
+// drift-detection surface for the `extern_ipc_runtime_transitions.rs`
+// binding). Each wrapper invokes a production exec fn with a concrete
+// value and asserts the result equals the spec-side predicate. Without
+// these wrappers, the `assume_specification` contracts attached to the
+// production functions would not be exercised in exec mode.
+//
+// Mirrors production code at:
+//   - `crates/vb_runtime/src/shard/types.rs:802-807`  (RuntimeEvent::is_terminal)
+//   - `crates/vb_runtime/src/shard/types.rs:811-816`  (RuntimeEvent::is_resumable)
+//   - `crates/vb_runtime/src/shard/types.rs:769-771`  (RuntimeState::is_resumable)
+
+/// Production-bound exec wrapper for `production::runtime_event_is_terminal`.
+///
+/// Calls the production mirror `runtime_event_is_terminal` (production at
+/// `crates/vb_runtime/src/shard/types.rs:802-807`) with the
+/// `MirrorRuntimeEvent::Fail` discriminant, which is the canonical
+/// terminal event in production. Asserts the production return matches
+/// the spec-side predicate.
+pub fn production_runtime_event_is_terminal_exec_fail() -> (r: bool)
+    ensures
+        r == true,
+{
+    // Construct the production-side `Fail` event (a terminal event in
+    // production). The production mirror at
+    // `production_inner/ipc_runtime_transitions_production.rs:142` is
+    // `#[verifier::external]`; the spec contract attached via
+    // `assume_specification` guarantees the body returns `true` for the
+    // `Fail` discriminant.
+    let r = production::runtime_event_is_terminal(production::RuntimeEvent::Fail);
+    r
+}
+
+/// Production-bound exec wrapper for `production::runtime_event_is_terminal`:
+/// non-terminal event.
+pub fn production_runtime_event_is_terminal_exec_resume() -> (r: bool)
+    ensures
+        r == false,
+{
+    let r = production::runtime_event_is_terminal(production::RuntimeEvent::Resume);
+    r
+}
+
+/// Production-bound exec wrapper for `production::runtime_event_is_resumable`:
+/// resumable event.
+pub fn production_runtime_event_is_resumable_exec_await_action() -> (r: bool)
+    ensures
+        r == true,
+{
+    let r = production::runtime_event_is_resumable(production::RuntimeEvent::AwaitAction);
+    r
+}
+
+/// Production-bound exec wrapper for `production::runtime_event_is_resumable`:
+/// non-resumable event.
+pub fn production_runtime_event_is_resumable_exec_fail() -> (r: bool)
+    ensures
+        r == false,
+{
+    let r = production::runtime_event_is_resumable(production::RuntimeEvent::Fail);
+    r
+}
+
+/// Production-bound exec wrapper for `production::runtime_state_is_resumable`:
+/// resumable state.
+pub fn production_runtime_state_is_resumable_exec_resumable() -> (r: bool)
+    ensures
+        r == true,
+{
+    let r = production::runtime_state_is_resumable(production::RuntimeState::Resumable);
+    r
+}
+
+/// Production-bound exec wrapper for `production::runtime_state_is_resumable`:
+/// non-resumable state.
+pub fn production_runtime_state_is_resumable_exec_failed() -> (r: bool)
+    ensures
+        r == false,
+{
+    let r = production::runtime_state_is_resumable(production::RuntimeState::Failed);
+    r
+}
+
+// ============================================================================
+// Additional assume_specification bridges for production-side functions
+// ============================================================================
+//
+// These bridges attach spec contracts to the production functions in
+// the `production_inner/ipc_runtime_transitions_production.rs` mirror.
+// Each contract is non-vacuous: the production-side `runtime_event_is_terminal`
+// etc. are `#[verifier::external]` in the mirror, so the contract is the
+// ONLY way Verus can reason about the production return value.
+
+/// Bridge: `production::runtime_event_is_terminal(event)` returns
+/// true iff `event` is `Fail | TerminalRemove | DriveFinished`.
+///
+/// Mirrors production `RuntimeEvent::is_terminal` at
+/// `crates/vb_runtime/src/shard/types.rs:802-807`.
+pub assume_specification[ production::runtime_event_is_terminal ](
+    event: production::RuntimeEvent,
+) -> (r: bool)
+    ensures
+        r == matches!(
+            event,
+            production::RuntimeEvent::Fail
+                | production::RuntimeEvent::TerminalRemove
+                | production::RuntimeEvent::DriveFinished
+        ),
+;
+
+/// Bridge: `production::runtime_event_is_resumable(event)` returns
+/// true iff `event` is `AwaitAction | AwaitTimer | ResumeRollback`.
+///
+/// Mirrors production `RuntimeEvent::is_resumable` at
+/// `crates/vb_runtime/src/shard/types.rs:811-816`.
+pub assume_specification[ production::runtime_event_is_resumable ](
+    event: production::RuntimeEvent,
+) -> (r: bool)
+    ensures
+        r == matches!(
+            event,
+            production::RuntimeEvent::AwaitAction
+                | production::RuntimeEvent::AwaitTimer
+                | production::RuntimeEvent::ResumeRollback
+        ),
+;
+
+/// Bridge: `production::runtime_state_is_resumable(state)` returns
+/// true iff `state == Resumable`.
+///
+/// Mirrors production `RuntimeState::is_resumable` at
+/// `crates/vb_runtime/src/shard/types.rs:769-771`.
+pub assume_specification[ production::runtime_state_is_resumable ](
+    state: production::RuntimeState,
+) -> (r: bool)
+    ensures
+        r == matches!(state, production::RuntimeState::Resumable),
+;
+
 fn main() {}
 
 } // verus!

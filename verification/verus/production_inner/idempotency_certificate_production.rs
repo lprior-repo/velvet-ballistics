@@ -80,8 +80,25 @@ pub fn storage_certificate_accepts_action(
     certificate_keyed: bool,
     certificate_attested: bool,
 ) -> bool {
-    let _ = (side_effect, idempotency, certificate_keyed, certificate_attested);
-    false
+    // Mirror of `vb_storage::admission::is_contract_idempotency_accepted`
+    // (crates/vb_storage/src/admission.rs:531-545) and
+    // `vb_storage::admission::requires_idempotency_key`
+    // (crates/vb_storage/src/admission.rs:524-529), projected onto the
+    // pure decision shape used by the spec at
+    // `verification/verus/idempotency_certificate_summary.rs:183-193`.
+    //
+    // The body computes the conjunction of the four clauses that bind
+    // `spec_storage_certificate_accepts_action`:
+    //   (!certificate_keyed    || accepted_contract)
+    //   (!certificate_attested || accepted_contract)
+    //   (!qualifies_keyed      || certificate_keyed)
+    //   (!certificate_keyed    || certificate_attested)
+    let accepted_contract = is_contract_idempotency_accepted(side_effect, idempotency);
+    let qualifies_keyed = requires_idempotency_key(side_effect);
+    (!certificate_keyed || accepted_contract)
+        && (!certificate_attested || accepted_contract)
+        && (!qualifies_keyed || certificate_keyed)
+        && (!certificate_keyed || certificate_attested)
 }
 
 #[verifier::external]

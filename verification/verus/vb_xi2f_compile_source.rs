@@ -31,16 +31,21 @@
 //        - slot_count fits u16 (workflow/mod.rs:26 — u16 field)
 //        - symbols_count fits u32 (workflow/mod.rs:27 — u32 field)
 //
-// Binding mechanism: this file directly includes the `try_from_parts`
-// extern surface (`#[path = "extern_try_from_parts.rs"] mod production`)
-// — no chained extern. The `compile_source_pure` projection is declared
-// in this file as a `#[verifier::external]` exec fn whose body
-// reproduces the production `?`-propagation chain above, including the
-// final delegation to `production::try_from_parts_pure` for step 8.
+// Binding mechanism: this file directly includes the
+// `extern_vb_xi2f_compile_source` extern surface
+// (`#[path = "extern_vb_xi2f_compile_source.rs"] mod production`),
+// which re-exports the production mirror at
+// `verification/verus/production_inner/vb_xi2f_compile_source_production.rs`.
+// The mirror in turn `#[path]`-includes the sibling
+// `try_from_parts_production.rs` for the `WorkflowParts` /
+// `CompiledWorkflow` types. The `compile_source_pure` projection
+// declared in this file is a `#[verifier::external]` exec fn whose
+// body delegates to the production mirror's `compile_source_production`
+// function — the production chain is no longer hand-written in-spec.
 // Spec contracts are attached to `compile_source_pure` via
-// `assume_specification` and every proof below the bridge exercises the
-// production projection through an exec wrapper. There are zero vacuous
-// proofs in this rewritten file.
+// `assume_specification` and every proof below the bridge exercises
+// the production projection through an exec wrapper. There are zero
+// vacuous proofs in this rewritten file.
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -51,13 +56,15 @@
 // `CompiledWorkflow::try_from_parts` validation. Verus cannot model
 // this end-to-end inside a single-file Verus unit. The
 // `#[verifier::external]` body of `compile_source_pure` declared below
-// captures every decision branch the production fn takes on the
-// relevant scalar inputs (empty steps, layout overflow, per-step
-// lowering success, validation result) and is recorded as a trusted
-// base in the binding ledger. Each proof below operates on the
-// projection through a production-bound exec wrapper; any divergence
-// between the projection and the production body is a binding-debt
-// item tracked outside Verus.
+// delegates to the production mirror's `compile_source_production`,
+// which carries the drift policy header at
+// `production_inner/vb_xi2f_compile_source_production.rs` and is
+// drift-checked by `scripts/check-production-inner-drift.sh`. The
+// `compile_source_pure` body is recorded as a trusted base in the
+// binding ledger. Each proof below operates on the projection
+// through a production-bound exec wrapper; any divergence between the
+// projection and the production body is a binding-debt item tracked
+// outside Verus.
 //
 // ============================================================================
 // SPEC MODEL
@@ -69,12 +76,18 @@
 // `compile_source_pure` returns Ok, then those four invariants hold on
 // the returned scalars. This is the spec-level mirror of the production
 // `Result<CompiledWorkflow, CompileErrors>` postcondition.
-#[path = "extern_try_from_parts.rs"]
+#[path = "extern_vb_xi2f_compile_source.rs"]
 mod production;
 
 pub use production::{
-    try_from_parts_pure, SpecNodeMeta, SpecResourceContract, SpecValidationResult,
-    SpecWorkflowError, SpecWorkflowParts,
+    canonical_layout_tag, canonical_step_width_tag, compile_source_production,
+    extend_step_names_for_generated, layout_start, lower_canonical_step_tag, next_layout_start,
+    shared_validate, validate_gate_07_expression_stack_depth,
+    validate_gate_08_accessor_path_segments, validate_gate_09_slot_references,
+    validate_gate_10_node_kind_specific, validate_gate_11_loop_body_graph,
+    validate_gate_13_no_slot_cycles, validate_gate_14_slot_type_consistency,
+    validate_gate_15_determinism_proof, CanonicalStepLayout, SlotCompiler, SpecCompileError,
+    StepPrimitiveTag, ValidationError, ValidationPipeline, ValidationResult,
 };
 
 use vstd::prelude::*;

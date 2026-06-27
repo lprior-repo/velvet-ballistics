@@ -105,10 +105,12 @@ use std::collections::HashSet;
 // thir-body processing. The literal values mirror the production
 // source byte-for-byte:
 //   * 17    = crates/vb_storage/src/constants.rs::JOURNAL_KEY_BYTES
-//   * 1024  = crates/vb_storage/src/batch/writer_queue.rs::MAX_BATCH_COUNT
+//   * 10_000 = crates/vb_storage/src/constants.rs:100
+//                  ::MAX_BATCH_COUNT
+//                  (re-exported at crates/vb_storage/src/batch/writer_queue.rs:2)
 //   * 1_048_576 = crates/vb_storage/src/batch/types.rs:10
 //                  ::DEFAULT_JOURNAL_BATCH_BYTE_LIMIT
-//   * 65_536 = crates/vb_storage/src/constants.rs
+//   * 1_048_576 = crates/vb_storage/src/constants.rs:88
 //                  ::MAX_JOURNAL_EVENT_PAYLOAD_BYTES
 // ---------------------------------------------------------------------------
 
@@ -320,15 +322,15 @@ impl SpecJournalWriteBatch {
             return Err(SpecJournalError::DuplicateEvent);
         }
         // Guard 4: count capacity.
-        if self.inner_len >= 1024usize {
+        if self.inner_len >= 10_000usize {
             return Err(SpecJournalError::QueueFull);
         }
         // Guard 5: encoding failure.
         if !encode_ok {
-            if encoded_len > u64::from(65_536u32) {
+            if encoded_len > u64::from(1_048_576u32) {
                 return Err(SpecJournalError::PayloadTooLarge {
-                    len: 65_536u32,
-                    max: 65_536u32,
+                    len: 1_048_576u32,
+                    max: 1_048_576u32,
                 });
             }
             return Err(SpecJournalError::Encode);

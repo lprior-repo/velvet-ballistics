@@ -107,6 +107,48 @@ pub fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
 pub fn is_statically_idempotent_contract(
     contract: &ActionContract,
 ) -> Result<(), IdempotencyContractViolation> {
-    let _ = contract;
-    Ok(())
+    match (
+        contract.side_effect,
+        contract.retry_safety,
+        contract.idempotency,
+    ) {
+        (SideEffect::None, _, _) => Ok(()),
+        (side_effect, RetrySafety::Unsafe, idempotency) => {
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                action: contract.id,
+                side_effect,
+                idempotency,
+                retry_safety: RetrySafety::Unsafe,
+            })
+        }
+        (side_effect, retry_safety, Idempotency::AtLeastOnceExternal) => Err(
+            IdempotencyContractViolation::SideEffectingAtLeastOnceExternal {
+                action: contract.id,
+                side_effect,
+                idempotency: Idempotency::AtLeastOnceExternal,
+                retry_safety,
+            },
+        ),
+        (side_effect, retry_safety, Idempotency::DeterministicPure) => Err(
+            IdempotencyContractViolation::SideEffectingDeterministicPure {
+                action: contract.id,
+                side_effect,
+                idempotency: Idempotency::DeterministicPure,
+                retry_safety,
+            },
+        ),
+        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
+            Ok(())
+        }
+        // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
+        // Any unrecognized combination is treated as an invalid contract.
+        (side_effect, retry_safety, idempotency) => {
+            Err(IdempotencyContractViolation::InvalidContract {
+                action: contract.id,
+                side_effect,
+                retry_safety,
+                idempotency,
+            })
+        }
+    }
 }

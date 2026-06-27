@@ -75,6 +75,90 @@ verus! {
 #[path = "production_inner/v1_primitive_lowering_production.rs"]
 pub mod production_inner;
 
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production_inner::*` type and method references force Rust to
+// resolve the production method names at compile time. A rename of
+// any of these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The spec attaches `assume_specification` bridges to all eleven
+// `lower_*_projection` exec fns; the drift check exercises each.
+#[verifier::external]
+fn prod_methods_drift_check(id: production_inner::StepIdx) {
+    let input_slot = production_inner::SlotIdx::new(0);
+    let item_slot = production_inner::SlotIdx::new(0);
+    let pre_slot_count: u16 = 0;
+
+    // Force resolution of every `lower_*_projection` exec fn by
+    // invoking it with phantom arguments. The body is opaque to
+    // Verus but the rustc compilation resolves the names.
+    let _ = production_inner::lower_set_projection(id, input_slot, production_inner::ConstIdx::new(0), false, 0, pre_slot_count);
+    let _ = production_inner::lower_do_projection(
+        id,
+        production_inner::ActionId::new(0),
+        input_slot,
+        false,
+        0,
+        false,
+        0,
+        pre_slot_count,
+    );
+    let _ = production_inner::lower_choose_projection(id, 0, false, 0, pre_slot_count);
+    let _ = production_inner::lower_for_each_projection(
+        id,
+        input_slot,
+        item_slot,
+        0u32,
+        id,
+        id,
+        pre_slot_count,
+    );
+    let _ = production_inner::lower_together_projection(id, 0, id, pre_slot_count);
+    let _ = production_inner::lower_collect_projection(
+        id,
+        input_slot,
+        0u32,
+        0u32,
+        id,
+        id,
+        pre_slot_count,
+    );
+    let _ = production_inner::lower_reduce_projection(
+        id,
+        input_slot,
+        item_slot,
+        production_inner::ConstIdx::new(0),
+        id,
+        id,
+        pre_slot_count,
+    );
+    let _ = production_inner::lower_repeat_projection(id, 0, id, id, pre_slot_count);
+    let _ = production_inner::lower_wait_projection(
+        id,
+        production_inner::WaitKind::Until { deadline: input_slot },
+        pre_slot_count,
+    );
+    let _ = production_inner::lower_ask_projection(id, input_slot, item_slot, false, pre_slot_count);
+    let _ = production_inner::lower_finish_projection(id, input_slot, pre_slot_count);
+
+    // Force resolution of the SpecLowerOutcome struct fields and the
+    // SPEC_ERR_* error discriminants.
+    let _out = production_inner::SpecLowerOutcome {
+        ok: false,
+        error_kind: production_inner::SPEC_ERR_LIMIT_EXCEEDED,
+        pre_slot_count,
+        post_slot_count: pre_slot_count,
+        emitted_node_count: 0,
+    };
+    let _ = production_inner::SPEC_ERR_NONE;
+    let _ = production_inner::SPEC_ERR_EMPTY_BRANCH_TABLE;
+    let _ = production_inner::SPEC_ERR_SLOT_OUT_OF_RANGE;
+}
+
 } // verus!
 
 // Re-export the production types and exec wrappers so the spec file

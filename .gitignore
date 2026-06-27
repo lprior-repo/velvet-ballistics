@@ -85,6 +85,8 @@ fuzz/artifacts/
 **/*.d
 verification/**/*.bin
 verification/verus/vb_*
+# rustc long-type-hint dumps emitted when a type cannot be formatted
+*.long-type-*.txt
 
 # Large test artifacts
 test_string

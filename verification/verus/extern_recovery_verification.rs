@@ -199,6 +199,39 @@ verus! {
 #[path = "production_inner/recovery_verification_production.rs"]
 pub mod prod_src;
 
+// ============================================================================
+// Phantom drift-detection helper
+// ============================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `prod_src::*` type and method references force Rust to resolve the
+// production method names at compile time. A rename of any of these
+// production methods (or the production struct fields referenced
+// below) breaks this fn's compilation.
+//
+// The drift check references every production decision fn stub
+// carried by the production_inner mirror (which carries the surface
+// drift-detection slice for recovery types) plus the
+// `UnsupportedRecoveryStateStub` field set.
+#[verifier::external]
+fn prod_methods_drift_check() {
+    // Reference every field of UnsupportedRecoveryStateStub
+    // (production types.rs:553-563).
+    let _stub = prod_src::UnsupportedRecoveryStateStub {
+        slot_values: false,
+        slot_taint: false,
+        action_payloads: false,
+        pending_actions: false,
+    };
+
+    // Reference the production stub fn (production runtime/recovery.rs:73-82).
+    let _ = prod_src::reject_unsupported_stub(_stub);
+
+    // Reference the UnsupportedRecoveryStateStub::is_fully_supported
+    // production method (types.rs:614-616).
+    let _ = _stub.is_fully_supported_stub();
+}
+
 } // verus!
 
 // ============================================================================

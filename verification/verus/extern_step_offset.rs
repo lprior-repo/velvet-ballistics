@@ -93,4 +93,43 @@ pub mod production;
 // `production::checked_step_offset`, etc.
 pub use production::{checked_step_offset, SpecCompileError, StepIdx};
 
+// ============================================================================
+// Phantom drift-detection helper
+// ============================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production::*` type and method references force Rust to resolve
+// the production method names at compile time. A rename of any of
+// these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The drift check references every production method the spec file
+// attaches an `assume_specification` bridge to:
+//
+//   - StepIdx::checked_add     (production ids/mod.rs:303-308)
+//   - checked_step_offset      (production mod_compile_lowering/part_12.rs:199-212)
+//
+// Plus the `SpecCompileError::PrimitiveLoweringLimitExceeded`
+// discriminant with all four payload fields.
+#[verifier::external]
+fn prod_methods_drift_check() {
+    // Reference every StepIdx method (production ids/mod.rs:21-308).
+    let id = StepIdx::new(0);
+    let _ = StepIdx::get(id);
+    let _ = id.checked_add(0u16);
+
+    // Reference the SpecCompileError discriminant with all four
+    // payload fields (production mod_compile_errors/kind.rs:124).
+    let _err = SpecCompileError::PrimitiveLoweringLimitExceeded {
+        primitive: "",
+        field: "",
+        value: 0,
+        limit: 0,
+    };
+
+    // Reference the production wrapper checked_step_offset
+    // (production mod_compile_lowering/part_12.rs:199-212).
+    let _ = checked_step_offset(id, 0u16, "", "");
+}
+
 } // verus!

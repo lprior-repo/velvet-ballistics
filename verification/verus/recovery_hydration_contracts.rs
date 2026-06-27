@@ -322,4 +322,17 @@ pub proof fn proof_typed_error_totality(input: SpecRecoveryInput)
 fn main() {
 }
 
+// ============================================================================
+// New exec wrapper — calls production::recovery_decision_pure and asserts
+// the result equals the spec predicate
+// ============================================================================
+exec fn exec_recovery_decision_pure(input: SpecRecoveryInput) -> (result: Result<SpecRecoverySuccess, SpecRecoveryError>)
+    requires
+        input.dimensions <= input.max_dimensions,
+    ensures
+        result == recovery_decision(input),
+{
+    production::recovery_decision_pure(input)
+}
+
 } // verus!

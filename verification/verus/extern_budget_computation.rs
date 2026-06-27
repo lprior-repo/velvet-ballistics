@@ -65,6 +65,101 @@ verus! {
 #[path = "production_inner/budget_computation_production.rs"]
 pub mod production_inner;
 
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production_inner::*` type and method references force Rust to
+// resolve the production method names at compile time. A rename of
+// any of these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The drift check references every production method that the spec
+// file attaches an `assume_specification` bridge to:
+//
+//   - count_and_push_loop_body      (budget.rs:1579-1605)
+//   - checked_step_add              (budget.rs:1569-1574)
+//   - collect_start_update_metrics  (budget.rs:2153-2160)
+//   - count_total_steps_step_increment (budget.rs:1422-1425)
+//   - body_region_step_increment    (budget.rs:1678-1683)
+//
+// Plus the production type discriminants referenced by the spec
+// (BudgetTraversalError::StepCountOverflow, BudgetError::TotalStepsExceeded,
+// CompiledNodeKind::ForEachStart, CompiledNodeKind::CollectStart, etc.)
+// and the underlying StepIdx / SlotIdx / ResourceContract / CompiledNode
+// mirror types.
+#[verifier::external]
+fn prod_methods_drift_check() {
+    // Reference every field of ResourceContract (workflow/mod.rs:190-228)
+    // to surface any rename.
+    let _contract = production_inner::ResourceContract {
+        max_steps: 0,
+        max_slots: 0,
+        max_constants: 0,
+        max_accessors: 0,
+        max_expressions: 0,
+        max_expr_stack: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        max_blob_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_retry_attempts: 0,
+        max_fanout: 0,
+        max_collect_items: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        allows_secret_results: false,
+    };
+
+    // Reference every variant of CompiledNodeKind used by the spec:
+    // ForEachStart, CollectStart, RepeatStart (production
+    // workflow/mod.rs:585-...).
+    let entry = production_inner::StepIdx::new(0);
+    let step = production_inner::StepIdx::new(0);
+    let _kind = production_inner::CompiledNodeKind::ForEachStart {
+        limit: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::CollectStart {
+        limit: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::RepeatStart {
+        max_attempts: 0,
+        body: step,
+        done: step,
+    };
+
+    // Reference every variant of BudgetTraversalError (budget.rs:170-191)
+    // and BudgetError (budget.rs:533-568) used by the spec.
+    let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
+    let _err = production_inner::BudgetError::TotalStepsExceeded { actual: 0, limit: 0 };
+
+    // Reference the workflow::CompiledNode and workflow::WorkflowError
+    // mirror types so a rename in workflow/mod.rs:321-... breaks the build.
+    let _node = production_inner::CompiledNode {
+        id: entry,
+        kind: production_inner::CompiledNodeKind::Nop,
+        next: None,
+        on_error: None,
+    };
+    let _err = production_inner::workflow::WorkflowError::Other;
+
+    // Force resolution of every production method by invoking it
+    // with phantom arguments. The body is opaque to Verus but the
+    // rustc compilation resolves the names.
+    let _ = production_inner::count_and_push_loop_body(0u64, 0u64, 0u64);
+    let _ = production_inner::checked_step_add(0u64, 0u64);
+    let _ = production_inner::collect_start_update_metrics(0u32, 0u32, 0u32);
+    let _ = production_inner::count_total_steps_step_increment(0u64);
+    let _ = production_inner::body_region_step_increment(0u64);
+}
+
 } // verus!
 
 // Re-export the production types and exec wrappers so the spec file
