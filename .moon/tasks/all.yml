@@ -829,6 +829,18 @@ tasks:
       cache: false
       runInCI: true
 
+  verify-production-inner-drift:
+    command: 'bash scripts/check-production-inner-drift.sh'
+    inputs:
+      - 'verification/verus/production_inner/**/*.rs'
+      - 'scripts/check-production-inner-drift.sh'
+      - '.moon/tasks/all.yml'
+    outputs:
+      - 'target/verus-drift/drift.log'
+    options:
+      cache: false
+      runInCI: true
+
   verify-proof:
     command: 'bash scripts/rust-verification-gauntlet.sh proof'
     toolchains:

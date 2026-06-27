@@ -97,11 +97,17 @@ pub struct ExTaint(production::Taint);
 // production exec fn returns exactly what the corresponding spec fn
 // predicts. Proof fns reason about spec fns; exec fn wrappers invoke
 // production exec fns and assert the spec contract.
+//
+// The rank ordering mirrors production `crates/vb_core/src/value.rs:14-25`:
+//   Clean=0 < DerivedFromSecret=1 < Secret=2 < Random=3 < TimeDependent=4.
+// `TimeDependent` is the lattice top.
 pub open spec fn spec_rank(t: production::Taint) -> nat {
     match t {
         production::Taint::Clean => 0,
         production::Taint::DerivedFromSecret => 1,
         production::Taint::Secret => 2,
+        production::Taint::Random => 3,
+        production::Taint::TimeDependent => 4,
     }
 }
 
@@ -405,15 +411,21 @@ pub exec fn wrapper_all_lattice_laws(
 // The mathematical facts are proved once via `by(compute)` or by direct
 // spec equality, and the bridge ensures that the same facts hold for
 // the production exec fns.
-/// Clean < DerivedFromSecret < Secret in spec_rank.
+/// Clean < DerivedFromSecret < Secret < Random < TimeDependent in spec_rank.
 pub proof fn lemma_rank_ordering()
     ensures
         spec_rank(production::Taint::Clean) < spec_rank(production::Taint::DerivedFromSecret),
         spec_rank(production::Taint::DerivedFromSecret) < spec_rank(production::Taint::Secret),
+        spec_rank(production::Taint::Secret) < spec_rank(production::Taint::Random),
+        spec_rank(production::Taint::Random) < spec_rank(production::Taint::TimeDependent),
 {
     assert(spec_rank(production::Taint::Clean) < spec_rank(production::Taint::DerivedFromSecret))
         by (compute);
     assert(spec_rank(production::Taint::DerivedFromSecret) < spec_rank(production::Taint::Secret))
+        by (compute);
+    assert(spec_rank(production::Taint::Secret) < spec_rank(production::Taint::Random))
+        by (compute);
+    assert(spec_rank(production::Taint::Random) < spec_rank(production::Taint::TimeDependent))
         by (compute);
 }
 
@@ -474,14 +486,18 @@ pub proof fn lemma_join_identity(a: production::Taint)
     assert(spec_join_taint(production::Taint::Clean, a) == a) by (compute);
 }
 
-/// Secret is the lattice top.
-pub proof fn lemma_secret_top(a: production::Taint)
+/// TimeDependent is the lattice top (rank 4 in production's 5-variant Taint).
+/// `Secret` (rank 2) is no longer the top because `Random` (rank 3) and
+/// `TimeDependent` (rank 4) sit above it.
+pub proof fn lemma_time_dependent_top(a: production::Taint)
     ensures
-        spec_join_taint(a, production::Taint::Secret) == production::Taint::Secret,
-        spec_join_taint(production::Taint::Secret, a) == production::Taint::Secret,
+        spec_join_taint(a, production::Taint::TimeDependent) == production::Taint::TimeDependent,
+        spec_join_taint(production::Taint::TimeDependent, a) == production::Taint::TimeDependent,
 {
-    assert(spec_join_taint(a, production::Taint::Secret) == production::Taint::Secret) by (compute);
-    assert(spec_join_taint(production::Taint::Secret, a) == production::Taint::Secret) by (compute);
+    assert(spec_join_taint(a, production::Taint::TimeDependent)
+        == production::Taint::TimeDependent) by (compute);
+    assert(spec_join_taint(production::Taint::TimeDependent, a)
+        == production::Taint::TimeDependent) by (compute);
 }
 
 /// Joining anything at-or-above DerivedFromSecret with DerivedFromSecret
@@ -571,6 +587,12 @@ pub proof fn lemma_all_lattice_laws(
 /// are the `wrapper_*` exec fns above; each wrapper's verification
 /// discharge proves that the production call satisfies the spec
 /// contract.
+///
+/// Note: the lattice top is `TimeDependent` (rank 4) in production's
+/// 5-variant `Taint`. The two spot-check equalities below confirm that
+/// `Secret` (rank 2) and `DerivedFromSecret` (rank 1) still dominate
+/// `Clean`; the general top property is captured by
+/// `lemma_time_dependent_top`.
 pub proof fn lemma_production_satisfies_all_lattice_laws(
     a: production::Taint,
     b: production::Taint,
@@ -591,6 +613,10 @@ pub proof fn lemma_production_satisfies_all_lattice_laws(
             == production::Taint::Secret,
         spec_join_taint(production::Taint::Clean, production::Taint::DerivedFromSecret)
             == production::Taint::DerivedFromSecret,
+        spec_join_taint(a, production::Taint::TimeDependent)
+            == production::Taint::TimeDependent,
+        spec_join_taint(production::Taint::TimeDependent, a)
+            == production::Taint::TimeDependent,
 {
     // Spec-level proofs discharge the mathematical facts for spec fns.
     // Because each production exec fn is bound to the corresponding
@@ -598,6 +624,7 @@ pub proof fn lemma_production_satisfies_all_lattice_laws(
     // above verify that the bound contract holds when production is
     // actually invoked), the same facts hold for the production code.
     lemma_all_lattice_laws(a, b, c);
+    lemma_time_dependent_top(a);
 }
 
 fn main() {

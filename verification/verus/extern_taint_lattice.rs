@@ -53,28 +53,36 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `Taint` enum (Clean=0, DerivedFromSecret=1, Secret=2)
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:6-12
-//   - `Taint::rank(&self) -> u8`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:14-22
+// The mirror in `crates/vb_core/src/proof_kernels/taint.rs` is a
+// deterministic, dependency-free extract of the production `Taint` enum
+// in `crates/vb_core/src/value.rs:14-25`. The two MUST stay in lockstep
+// on variant set and rank ordering; drift here breaks the Verus binding.
+//   - Production `Taint` enum (Clean=0, DerivedFromSecret=1, Secret=2,
+//     Random=3, TimeDependent=4)
+//                              <- crates/vb_core/src/value.rs:14-25
+//   - Mirror `Taint` enum (Clean, DerivedFromSecret, Secret, Random,
+//     TimeDependent)
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:6-22
+//   - `Taint::rank(&self) -> u8` (5-variant match)
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:24-36
 //   - `join_taint(a, b) -> Taint`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:24-26
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:38-40
 //   - `join_many(taints: &[Taint]) -> Taint`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:28-34
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:42-48
 //   - `is_commutative(a, b) -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:36-38
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:50-52
 //   - `is_associative(a, b, c) -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:40-42
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:54-56
 //   - `is_idempotent(a) -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:44-46
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:58-60
 //   - `has_identity(a) -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:48-50
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:62-64
 //   - `secret_never_downgrades() -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:52-54
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:66-68
 //   - `derived_never_downgrades() -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:56-58
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:70-72
 //   - `all_lattice_laws(a, b, c) -> bool`
-//                              <- crates/vb_core/src/proof_kernels/taint.rs:60-67
+//                              <- crates/vb_core/src/proof_kernels/taint.rs:74-81
 //
 // ============================================================================
 // TRUST BOUNDARY

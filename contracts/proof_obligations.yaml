@@ -278,6 +278,22 @@ obligations:
   # ============================================================
   # RESOURCE BUDGET ARITHMETIC (Section 64)
   # ============================================================
+  # NOTE: VB-CORE-RESOURCE-001/002/003 previously referenced
+  # `verification/verus/resource_budget.rs`, which bound to the
+  # 12-field proof-kernel shadow in
+  # `crates/vb_core/src/proof_kernels/resource_budget.rs` rather
+  # than to the actual production `WholeWorkflowBudget` (24 fields)
+  # in `crates/vb_core/src/budget.rs`. The proof-kernel `Budget`
+  # was a separate verification-only abstraction (Verus/Aeneas
+  # Lean extraction target) and is NOT production. The canonical
+  # production binding for `WholeWorkflowBudget` lives in
+  # `verification/verus/extern_budget_bounded.rs` /
+  # `verification/verus/budget_bounded.rs`. The 12-field shadow
+  # spec was rejected by proof-review.md (4 empty bodies,
+  # vacuous proofs, structurally disconnected from production).
+  # These obligations are redirected to the canonical production-
+  # bound files.
+
   - id: VB-CORE-RESOURCE-001
     section: [64]
     statement: |
@@ -285,39 +301,39 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/resource.rs
+      - crates/vb_core/src/budget.rs
     required:
-      verus: verification/verus/resource_budget.rs
-      tests: [resource_budget_sequential_sum_safe]
+      verus: verification/verus/budget_bounded.rs
+      tests: [whole_workflow_budget_within_policy, budget_bounded_default]
     commands:
-      - verus verification/verus/resource_budget.rs
-      - cargo nextest run -p vb_core resource_budget
+      - verus --crate-type=lib verification/verus/budget_bounded.rs
 
   - id: VB-CORE-RESOURCE-002
     section: [64]
     statement: |
-      Branch composition takes max safely
+      Branch composition takes max safely (BoundednessPolicy::validate max checks)
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/resource.rs
+      - crates/vb_core/src/budget.rs
     required:
-      verus: verification/verus/resource_budget.rs
+      verus: verification/verus/budget_bounded.rs
     commands:
-      - verus verification/verus/resource_budget.rs
+      - verus --crate-type=lib verification/verus/budget_bounded.rs
 
   - id: VB-CORE-RESOURCE-003
     section: [64]
     statement: |
       Loop composition multiplies safely without overflow
+      (CollectStart/ForEachStart body multiplication via checked_mul)
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/resource.rs
+      - crates/vb_core/src/budget.rs
     required:
-      verus: verification/verus/resource_budget.rs
+      verus: verification/verus/budget_computation.rs
     commands:
-      - verus verification/verus/resource_budget.rs
+      - verus --crate-type=lib verification/verus/budget_computation.rs
 
   - id: VB-CORE-RESOURCE-004
     section: [64]
@@ -326,13 +342,13 @@ obligations:
     proof_level: L3
     crate: vb_core
     files:
-      - crates/vb_core/src/resource.rs
+      - crates/vb_core/src/budget.rs
+      - crates/vb_core/src/kani_resource_budget_bounded.rs
     required:
-      kani: kani_resource_budget.rs
-      property_tests: [computed_budget_within_policy]
+      kani: kani_resource_budget_bounded.rs
+      property_tests: [whole_workflow_budget_within_policy]
     commands:
       - cargo kani --harness kani_resource_budget_bounded
-      - cargo nextest run -p vb_core resource_policy
 
   # ============================================================
   # IPC DECODER (Section 18, 21, 50)

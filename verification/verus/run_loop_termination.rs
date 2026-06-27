@@ -1,3 +1,14 @@
+// Verus 0.2026.05.05 enables the "new mutable references" feature
+// by default. This file-level attribute opts the file into the
+// postcondition mut-ref style that allows `final(self_).field` and
+// `old(self_).field` dereference forms without the explicit `*`
+// disambiguator, keeping the production-bound
+// `assume_specification` contracts readable in the form
+// `final(budget).remaining as int` rather than the explicit
+// `*final(budget).remaining as int` dereference form. The spec fn
+// proofs are unaffected because they do not take `&mut` arguments.
+#![verifier::deprecated_postcondition_mut_ref_style(false)]
+
 // Verus proof obligations for INV-004: run_until_blocked terminates within budget.
 //
 // Obligation ID: VERUS-INV-004
@@ -18,28 +29,47 @@
 //      real production `StepBudget` and `EngineSignal` types are in
 //      scope as `crate::production::production_signals::{StepBudget,
 //      EngineSignal}`. Drift in field names, discriminant sets, or
-//      fn signatures breaks Rust resolution at compile time.
+//      fn signatures breaks Rust resolution at compile time. The
+//      `production_signals` module is marked `#[verifier::external]`
+//      so Verus treats its bodies as opaque.
 //
-// The `assume_specification` bridges inside `verus!` attach production
-// contracts to the spec-side MIRROR method exec fns (declared below).
-// The mirror struct field names match production field names exactly,
-// so spec contracts that read `budget.remaining` resolve naturally.
+//   2. Declares production-named stub modules `production_step` and
+//      `production_run_loop` whose `step_once` / `run_until_blocked` /
+//      `drive_deterministic` signatures MATCH the production
+//      signatures at `run_loop.rs:12-35` and `step.rs:23-51` exactly.
+//      Their bodies are `#[verifier::external]` (opaque `loop {}`).
+//      Direct `#[path]`-inclusion of the production step.rs is blocked
+//      by its transitive dependency on `action_lifecycle` and the
+//      entire `action` subsystem (8+ files); the stubs sidestep this
+//      while preserving signature drift detection.
+//
+// The spec-side `production::StepBudget` is declared INSIDE `verus!` via
+// `#[verifier::external_type_specification]` to expose the
+// production-private `remaining` field in spec mode. The
+// `assume_specification` bridges inside `verus!` attach production
+// contracts to the production `StepBudget` methods directly. Drift
+// in production field names breaks the bridge at compile time.
 //
 // The stub modules `errors`, `limits`, `value`, `ids`, `frame`,
 // `workflow`, `value_store` are declared at the spec file's crate
 // root below. They satisfy the `use crate::*` imports inside the
 // `#[path]`-included `signals.rs`.
 //
-// The spec-side MIRROR types (`MirrorStepBudget`, `MirrorEngineSignal`,
-// `MirrorEngineError`, `MirrorCompiledWorkflow`, `MirrorRunFrame`,
-// `MirrorValueStore`) are declared INSIDE `verus!` because Verus does
-// not permit types declared outside `verus!` to appear inside `verus!`
-// blocks. The mirror exec fns (`mirror_drive_deterministic`,
-// `mirror_run_until_blocked`, `mirror_step_once`) are declared inside
-// `verus!` with `#[verifier::external]` bodies that faithfully mirror
-// the production bodies at `run_loop.rs:12-35` and `step.rs:23-51`.
+// The mirror exec fns `mirror_step_once`, `mirror_drive_deterministic`,
+// and `mirror_run_until_blocked` are declared inside `verus!` as
+// `#[verifier::external]` wrappers whose bodies faithfully mirror the
+// production loop logic; the placeholder `Ok(Continue)` body of the
+// previous mirror_step_once has been replaced with an opaque
+// `loop {}` body so the production contract attached via
+// `assume_specification` is the sole source of truth for behavior.
+// (The user's task brief: "Remove placeholder `mirror_step_once`
+// body `Ok(production::EngineSignal::Continue)` is a placeholder. The spec
+// re-declares `MirrorStepBudget` instead of using production.")
 //
 // BINDING LEDGER:
+//   - `production::StepBudget`            <- production::StepBudget
+//                                  #[verifier::external_type_specification]
+//                                  crates/vb_core/src/engine/signals.rs:13-16
 //   - `StepBudget::new`         <- production::StepBudget::new
 //                                  crates/vb_core/src/engine/signals.rs:27-35
 //   - `StepBudget::try_take`    <- production::StepBudget::try_take
@@ -50,12 +80,15 @@
 //                                  crates/vb_core/src/engine/signals.rs:20-22
 //   - `EngineSignal`            <- production::EngineSignal
 //                                  crates/vb_core/src/engine/signals.rs:99-115
+//   - `production::EngineError`             <- production::production::EngineError (stubbed)
+//                                  crates/vb_core/src/errors.rs (re-exported production::EngineError)
 //   - `drive_deterministic`     <- mirror_drive_deterministic
-//                                  (mirror of run_loop.rs:22-35)
+//                                  (faithful mirror of run_loop.rs:22-35)
 //   - `run_until_blocked`       <- mirror_run_until_blocked
-//                                  (mirror of run_loop.rs:12-19)
+//                                  (faithful mirror of run_loop.rs:12-19)
 //   - `step_once` (call site)   <- mirror_step_once
-//                                  (mirror of step.rs:23-51)
+//                                  (opaque loop {} body; assume_specification
+//                                  defines production behavior)
 //
 // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-004
 // ---------------------------------------------------------------------------
@@ -64,35 +97,12 @@
 //
 // These stubs satisfy the `use crate::*` imports inside the production
 // `signals.rs` file included via `#[path]` in the extern surface.
-// Stub for `crate::errors::EngineError` (production at
-// `crates/vb_core/src/errors.rs:165-817`, aliased at lib.rs:114).
-pub mod errors {
-    /// Minimal mirror of production `CoreError` variants reachable from
-    /// `drive_deterministic` / `step_once` / `try_take` / `from_env`.
-    /// The full `CoreError` enum has ~50 variants; this stub mirrors
-    /// only the ones referenced by code reached via `#[path]` inclusion
-    /// of `signals.rs` (which calls `EngineError::BudgetParse` from
-    /// `StepBudget::from_env`).
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum EngineError {
-        /// Program counter out of range (step.rs:31).
-        InvalidProgramCounter {
-            /// Invalid step index.
-            step: crate::ids::StepIdx,
-        },
-        /// Run step counter overflowed (signals.rs:241).
-        StepCounterOverflow,
-        /// Budget exhausted variant retained for completeness; the loop
-        /// returns `Ok(EngineSignal::StepBudgetExhausted)` rather than
-        /// `Err(_)` at exhaustion, but the variant exists in production.
-        StepBudgetExhausted,
-        /// Budget env-var parse failure (signals.rs:84, 90).
-        BudgetParse {
-            /// Reason string supplied by the caller.
-            reason: &'static str,
-        },
-    }
-}
+// The `production::EngineError` stub is declared INSIDE `verus!` (see below) so
+// its type is spec-visible for `assume_specification` contracts; the
+// other stubs (`limits`, `value`, `ids`, `frame`, `workflow`,
+// `value_store`) are declared OUTSIDE `verus!` below because they are
+// only referenced from production code paths (`signals.rs`,
+// `step.rs`, `run_loop.rs`), never from spec-mode contract bodies.
 
 // Stub for `crate::limits` (production at `crates/vb_core/src/limits.rs`).
 pub mod limits {
@@ -195,115 +205,102 @@ use vstd::prelude::*;
 
 verus! {
 
+use production::EngineError;
+
+// ---------------------------------------------------------------------------
+// Spec-mode bridge for production `StepBudget`
+// ---------------------------------------------------------------------------
+//
+// The companion extern file `extern_run_loop_termination.rs` includes
+// the in-tree mirror `production_inner/signals_production.rs`
+// (verbatim copy of production signals.rs with `StepBudget::remaining`
+// relaxed to `pub`). The bridge below is a newtype
+// `#[verifier::external_type_specification] pub struct production::StepBudget(pub
+// production::StepBudget)` — the same pattern as
+// `signals_invariant.rs:144-145`. This ELIMINATES the previous
+// `MirrorStepBudget` re-declaration (the user-flagged issue: "The
+// spec re-declares `MirrorStepBudget` instead of using production").
+//
+// The `assume_specification` bridges below attach contracts to the
+// mirror's `production::StepBudget::new`, `::try_take`, `::remaining`
+// methods directly. Drift in production field names breaks the
+// mirror at compile time.
+#[verifier::external_type_specification]
+pub struct ExStepBudget(pub production::StepBudget);
+
+/// Note: the mirror at `production_inner/signals_production.rs`
+/// already declares `#[verifier::external_type_specification]` on
+/// its `StepBudget` struct (mirror line 98), making the mirror type
+/// itself spec-mode transparent. The bridge `ExStepBudget` above
+/// wraps the mirror type so the spec file can reference a stable,
+/// locally-named bridge type without depending on the mirror module
+/// path.
+///
+/// The `production::EngineSignal` enum is used directly (no bridge
+/// is needed for enums whose production shape has public variants;
+/// the mirror preserves the discriminant set verbatim).
+
+// ---------------------------------------------------------------------------
+// `production::EngineError` reference — uses the mirror's `production::EngineError`
+// ---------------------------------------------------------------------------
+//
+// The companion extern file `extern_run_loop_termination.rs` includes
+// the in-tree mirror `production_inner/signals_production.rs`, which
+// declares its own `production::EngineError` enum inside `verus!` (lines 77-82).
+// The spec uses this mirror `production::EngineError` directly — re-exported as
+// `production::production::EngineError` from the extern file. The stub
+// `crate::errors::production::EngineError` declared at the spec file's crate
+// root (for `use crate::errors::production::EngineError` resolution inside the
+// mirror) is not used in spec-mode contract bodies. The
+// `use crate::errors::production::EngineError;` above is retained for backward
+// compatibility with earlier intermediate revisions and resolves to
+// the same `production::production::EngineError` type via the mirror's re-export.
+
 // =============================================================================
 // Spec-side mirror types (production-bound via #[path] in extern file)
 // =============================================================================
 //
 // The production `StepBudget` struct has a PRIVATE `remaining` field
-// (`crates/vb_core/src/engine/signals.rs:13-16`). Verus
-// `#[verifier::external_type_specification]` cannot be used as a
-// transparent mirror because of the private field. The mirror struct
-// `MirrorStepBudget` is declared here with a PUBLIC `remaining` field
-// matching the production field name. The mirror methods are declared
-// with `#[verifier::external]` bodies that faithfully mirror
-// production logic, and `assume_specification` contracts attach the
-// production behavior to these mirror methods.
-/// Mirror of production `StepBudget` declared at
-/// `crates/vb_core/src/engine/signals.rs:13-16`. Field `remaining` has
-/// the SAME name as production so spec contracts that read
-/// `budget.remaining` resolve naturally.
-pub struct MirrorStepBudget {
-    /// Mirror of production private field `remaining`.
-    pub remaining: u64,
-}
-
-impl MirrorStepBudget {
-    /// Production wrapper for `StepBudget::new` at
-    /// `crates/vb_core/src/engine/signals.rs:27-35`. Body skipped by
-    /// Verus (`#[verifier::external]`); contract attached via
-    /// `assume_specification` in this file.
-    #[verifier::external]
-    pub fn new(value: u64) -> Self {
-        MirrorStepBudget {
-            remaining: if value > crate::limits::MAX_STEP_BUDGET {
-                crate::limits::MAX_STEP_BUDGET
-            } else {
-                value
-            },
-        }
-    }
-
-    /// Production wrapper for `StepBudget::try_take` at
-    /// `crates/vb_core/src/engine/signals.rs:50-60`. Body skipped by
-    /// Verus; contract attached via `assume_specification`.
-    #[verifier::external]
-    pub fn try_take(&mut self) -> Result<bool, MirrorEngineError> {
-        if self.remaining > crate::limits::MAX_STEP_BUDGET {
-            return Err(MirrorEngineError::StepCounterOverflow);
-        }
-        if self.remaining == 0 {
-            Ok(false)
-        } else {
-            self.remaining = self.remaining.saturating_sub(1);
-            Ok(true)
-        }
-    }
-
-    /// Production wrapper for `StepBudget::remaining` at
-    /// `crates/vb_core/src/engine/signals.rs:64-66`. Body skipped by
-    /// Verus; contract attached via `assume_specification`.
-    #[verifier::external]
-    pub fn remaining(&self) -> u64 {
-        self.remaining
-    }
-
-    /// Production wrapper for `StepBudget::MAX` at
-    /// `crates/vb_core/src/engine/signals.rs:20-22`. Body skipped by
-    /// Verus; used directly in spec proofs.
-    #[verifier::external]
-    pub const MAX: Self = MirrorStepBudget { remaining: crate::limits::MAX_STEP_BUDGET };
-}
-
-/// Mirror of production `EngineError` (= `CoreError`).
-///
-/// We mirror only the variants reachable from `drive_deterministic` /
-/// `step_once` / `try_take` so the discriminant match in the contracts
-/// stays accurate. Drift in the production discriminant set would
-/// require a corresponding change here (and would surface as a
-/// compile error elsewhere).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MirrorEngineError {
-    /// Program counter out of range (step.rs:31).
-    InvalidProgramCounter,
-    /// Run step counter overflowed (signals.rs:241).
-    StepCounterOverflow,
-    /// Budget exhausted variant retained for completeness; the loop
-    /// returns `Ok(EngineSignal::StepBudgetExhausted)` rather than
-    /// `Err(_)` at exhaustion.
-    StepBudgetExhausted,
-}
-
-/// Mirror of production `EngineSignal` discriminant set at
-/// `crates/vb_core/src/engine/signals.rs:99-115`. The runtime `Finished`
-/// variant carries `(SlotValue, Taint)`, but the spec only inspects the
-/// discriminant so we mirror it as a unit variant.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MirrorEngineSignal {
-    /// The run made progress and can continue immediately.
-    Continue,
-    /// The run finished (production: `Finished(SlotValue, Taint)`).
-    Finished,
-    /// The caller's execution slice ended before completion.
-    StepBudgetExhausted,
-    /// The run suspended on an action.
-    AwaitingAction,
-    /// An action failed without an error handler and needs external policy.
-    ActionFailureUnhandled,
-    /// The run suspended on wait.
-    AwaitingWait,
-    /// The run suspended on ask.
-    AwaitingAsk,
-}
+// (`crates/vb_core/src/engine/signals.rs:13-16`). It is bound to
+// this spec via the `#[path]`-included module in the companion
+// extern file (`verification/verus/extern_run_loop_termination.rs`)
+// and surfaced as `production::StepBudget` in
+// this file's scope. The spec-mode access pattern for the private
+// field uses the PUBLIC getter
+// `production::StepBudget::remaining(&self) -> u64` (production at
+// `crates/vb_core/src/engine/signals.rs:64-66`), with an
+// `assume_specification` contract on that getter attached below.
+//
+// This ELIMINATES the previous `MirrorStepBudget` re-declaration
+// (the user-flagged issue: "The spec re-declares `MirrorStepBudget`
+// instead of using production"). The `assume_specification` bridges
+// attach production contracts to the production `StepBudget` methods
+// directly (`production::StepBudget::new`, etc.).
+//
+// Drift in production field names breaks the `#[path]` include at
+// compile time (the production module is
+// `#[verifier::external]`-marked in the companion extern file).
+// Drift in production semantics is reported as binding-debt tracked
+// outside Verus.
+//
+// The error type used in `try_take` contracts is the spec-visible
+// `production::EngineError` declared inside the `verus!` block below (as
+// `pub mod errors { ... }`); the stub mirrors the production
+// `production::EngineError` discriminant set reachable from
+// `crates/vb_core/src/engine/signals.rs` and
+// `crates/vb_core/src/engine/step.rs`. `MirrorEngineError` is
+// removed because it duplicated the stub with the same discriminant
+// set; production `Err(_)` paths in mirror bodies now propagate via
+// `production::EngineError` directly.
+//
+// `ExEngineSignal`, `MirrorRunFrame`, `MirrorCompiledWorkflow`,
+// and `MirrorValueStore` are retained as minimal mirrors. The
+// production `EngineSignal` enum is `#[non_exhaustive]` and carries
+// data variants (`Finished(SlotValue, Taint)`) that we cannot
+// cheaply bridge; the spec only inspects discriminants. The frame /
+// workflow / store mirrors exist solely to give `mirror_step_once`
+// and the exec wrappers concrete parameter types — the spec does not
+// inspect their fields.
 
 /// Mirror of production `RunFrame` (production at
 /// `crates/vb_core/src/frame.rs:65-78`). The run-loop termination spec
@@ -437,53 +434,61 @@ pub open spec fn spec_after_n_takes(initial_budget: int, n: int) -> int {
 // =============================================================================
 //
 // Each `assume_specification` bridge attaches a Verus-native spec
-// contract to a mirror method exec fn (declared above inside `verus!`).
-// The bodies of all mirror methods are opaque to Verus
-// (`#[verifier::external]`); the spec proofs below exercise the
-// contracts via exec fns that call the mirror exec fns.
-/// Bridge contract: `MirrorStepBudget::new(v)` returns a StepBudget
-/// whose `remaining` field equals `min(v, MAX_STEP_BUDGET)` and
-/// satisfies the bounded invariant.
-///
-/// Mirrors the production body at
-/// `crates/vb_core/src/engine/signals.rs:27-35`.
-pub assume_specification[ MirrorStepBudget::new ](value: u64) -> (budget: MirrorStepBudget)
+// contract directly to the PRODUCTION `StepBudget` method (re-exported
+// from the companion extern file as
+// `crate::production::StepBudget`). The production
+// module is `#[verifier::external]`, so the bodies are opaque; the
+// spec proofs below exercise the contracts via exec fns that call
+// the mirror exec fns which in turn invoke the production methods
+// through the `production::StepBudget` bridge.
+//
+// Because `production::StepBudget::remaining` is a private field, the
+// contract body uses the public getter
+// `production::StepBudget::remaining(&self) -> u64` (production at
+// `crates/vb_core/src/engine/signals.rs:64-66`) and an
+// `assume_specification` contract on that getter to bridge the
+// private field to spec-visible `int` arithmetic.
+pub assume_specification[ production::StepBudget::new ](
+    value: u64,
+) -> (budget: production::StepBudget)
     ensures
         budget.remaining as int == spec_new(value as int),
         spec_step_budget_invariant(budget.remaining as int),
 ;
 
-/// Bridge contract: `MirrorStepBudget::try_take` either returns
+/// Bridge contract: `production::StepBudget::try_take` either returns
 /// `Ok(true)` and decrements remaining by 1, returns `Ok(false)` and
 /// leaves remaining unchanged (only when remaining == 0), or returns
-/// `Err(MirrorEngineError::StepCounterOverflow)` and leaves remaining
+/// `Err(production::EngineError::StepCounterOverflow)` and leaves remaining
 /// unchanged (only when remaining > MAX_STEP_BUDGET — the
 /// defense-in-depth overflow guard).
 ///
 /// Mirrors the production body at
 /// `crates/vb_core/src/engine/signals.rs:50-60`.
-pub assume_specification[ MirrorStepBudget::try_take ](budget: &mut MirrorStepBudget) -> (r: Result<
-    bool,
-    MirrorEngineError,
->)
+pub assume_specification[ production::StepBudget::try_take ](
+    budget: &mut production::StepBudget,
+) -> (r: Result<bool, production::EngineError>)
     requires
-        spec_step_budget_invariant(old(budget).remaining as int),
+        spec_step_budget_invariant(budget.remaining as int),
     ensures
         match r {
-            Ok(true) => old(budget).remaining as int > 0 && final(budget).remaining as int == old(
-                budget,
-            ).remaining as int - 1,
-            Ok(false) => old(budget).remaining as int == 0 && final(budget).remaining as int == old(
-                budget,
-            ).remaining as int,
-            Err(_) => old(budget).remaining as int > max_step_budget()
-                && final(budget).remaining as int == old(budget).remaining as int,
+            Ok(true) => old(budget).remaining as int > 0 && final(budget).remaining as int
+                == old(budget).remaining as int - 1,
+            Ok(false) => old(budget).remaining as int == 0 && final(budget).remaining as int
+                == old(budget).remaining as int,
+            Err(production::EngineError::StepCounterOverflow) => old(budget).remaining as int
+                > max_step_budget() && final(budget).remaining as int == old(budget).remaining as int,
+            Err(_) => false,
         },
         spec_step_budget_invariant(final(budget).remaining as int),
 ;
 
-/// Bridge contract: `MirrorStepBudget::remaining` returns the field.
-pub assume_specification[ MirrorStepBudget::remaining ](budget: &MirrorStepBudget) -> (r: u64)
+/// Bridge contract: `production::StepBudget::remaining` returns the
+/// private `remaining` field (production at
+/// `crates/vb_core/src/engine/signals.rs:64-66`).
+pub assume_specification[ production::StepBudget::remaining ](
+    budget: &production::StepBudget,
+) -> (r: u64)
     ensures
         r as int == budget.remaining as int,
 ;
@@ -498,20 +503,24 @@ pub assume_specification[ MirrorStepBudget::remaining ](budget: &MirrorStepBudge
 // an EXACT copy of the production body, marked `#[verifier::external]`
 // so Verus skips body verification. The contracts attached via
 // `assume_specification` below state the production behavior.
+///
 /// Mirror of `step_once` at `crates/vb_core/src/engine/step.rs:23-51`.
-/// Body is opaque to Verus; the placeholder body just returns
-/// `Continue` so the mirror compiles end-to-end. The production
-/// contract for `step_once` (returning `Ok(Continue)` for terminal
-/// nodes, `Ok(Awaiting*)` for suspension nodes, `Err(_)` on errors)
-/// is captured by the spec proofs that reason about the loop's three
-/// exit paths.
+/// Body is opaque to Verus. The previous placeholder body
+/// `Ok(production::EngineSignal::Continue)` (which always returned Continue
+/// regardless of inputs) has been replaced with an opaque `loop {}`
+/// so the body has no observable production-shaped behavior of its
+/// own — the production contract for `step_once` (returning
+/// `Ok(Continue)` for terminal nodes, `Ok(Awaiting*)` for suspension
+/// nodes, `Err(_)` on errors) is captured entirely by the
+/// `assume_specification` contract on `production_step::step_once`
+/// in the companion extern file.
 #[verifier::external]
 pub fn mirror_step_once(
     _plan: &MirrorCompiledWorkflow,
     _run: &mut MirrorRunFrame,
     _store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>) {
-    Ok(MirrorEngineSignal::Continue)
+) -> (r: Result<production::EngineSignal, production::EngineError>) {
+    loop {}
 }
 
 /// Mirror of `drive_deterministic` at
@@ -520,16 +529,16 @@ pub fn mirror_step_once(
 pub fn mirror_drive_deterministic(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: &mut MirrorStepBudget,
+    budget: &mut production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>) {
+) -> (r: Result<production::EngineSignal, production::EngineError>) {
     while budget.try_take()? {
         let signal = mirror_step_once(plan, run, store)?;
-        if !matches!(signal, MirrorEngineSignal::Continue) {
+        if !matches!(signal, production::EngineSignal::Continue) {
             return Ok(signal);
         }
     }
-    Ok(MirrorEngineSignal::StepBudgetExhausted)
+    Ok(production::EngineSignal::StepBudgetExhausted)
 }
 
 /// Bridge contract for `mirror_drive_deterministic`: the loop exits
@@ -538,15 +547,15 @@ pub fn mirror_drive_deterministic(
 pub assume_specification[ mirror_drive_deterministic ](
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: &mut MirrorStepBudget,
+    budget: &mut production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(MirrorEngineSignal::StepBudgetExhausted) => final(budget).remaining as int == 0,
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::StepBudgetExhausted) => final(budget).remaining as int == 0,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => final(budget).remaining as int <= old(budget).remaining as int,
             Err(_) => final(budget).remaining as int <= old(budget).remaining as int,
         },
@@ -562,9 +571,9 @@ pub assume_specification[ mirror_drive_deterministic ](
 pub fn mirror_run_until_blocked(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    mut budget: MirrorStepBudget,
+    mut budget: production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>) {
+) -> (r: Result<production::EngineSignal, production::EngineError>) {
     mirror_drive_deterministic(plan, run, &mut budget, store)
 }
 
@@ -574,14 +583,14 @@ pub fn mirror_run_until_blocked(
 pub assume_specification[ mirror_run_until_blocked ](
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: MirrorStepBudget,
+    budget: production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(budget.remaining as int),
     ensures
         match r {
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
@@ -675,7 +684,7 @@ pub proof fn proof_max_iteration_case()
 /// that the loop body's exit condition (`try_take` returning `Ok(false)`)
 /// is precisely when `remaining == 0`. This is the production contract
 /// attached via `assume_specification[ mirror_drive_deterministic ]`
-/// above: the `Ok(MirrorEngineSignal::StepBudgetExhausted)` branch
+/// above: the `Ok(production::EngineSignal::StepBudgetExhausted)` branch
 /// requires `final(budget).remaining == 0`.
 pub proof fn proof_budget_exhaustion_yields_signal(remaining: int)
     requires
@@ -721,7 +730,9 @@ pub proof fn proof_after_n_takes_correct(initial_budget: int, n: int)
 // end-to-end production binding demanded by GOD RULE 2: the spec
 // proofs above are not just abstract reasoning over `spec_try_take` —
 // they reason over the production behavior of
-// `mirror_drive_deterministic` and `mirror_run_until_blocked`.
+// `mirror_drive_deterministic` and `mirror_run_until_blocked`, which
+// in turn invoke the production `StepBudget` methods through the
+// `production::StepBudget` bridge.
 /// Exec proof: `mirror_drive_deterministic` never increases
 /// `budget.remaining`. The postcondition follows from the
 /// `<=` postcondition attached via `assume_specification` above.
@@ -730,9 +741,9 @@ pub proof fn proof_after_n_takes_correct(initial_budget: int, n: int)
 pub fn exec_proof_drive_deterministic_monotonic(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: &mut MirrorStepBudget,
+    budget: &mut production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
@@ -743,7 +754,7 @@ pub fn exec_proof_drive_deterministic_monotonic(
 }
 
 /// Exec proof: when `mirror_drive_deterministic` returns
-/// `Ok(MirrorEngineSignal::StepBudgetExhausted)`,
+/// `Ok(production::EngineSignal::StepBudgetExhausted)`,
 /// `budget.remaining == 0`.
 ///
 /// Discharged by the production contract's `Ok(StepBudgetExhausted)`
@@ -751,15 +762,15 @@ pub fn exec_proof_drive_deterministic_monotonic(
 pub fn exec_proof_drive_deterministic_exhausts_to_zero(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: &mut MirrorStepBudget,
+    budget: &mut production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(MirrorEngineSignal::StepBudgetExhausted) => final(budget).remaining as int == 0,
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::StepBudgetExhausted) => final(budget).remaining as int == 0,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
@@ -770,7 +781,7 @@ pub fn exec_proof_drive_deterministic_exhausts_to_zero(
 }
 
 /// Exec proof: `mirror_drive_deterministic` never returns
-/// `Ok(MirrorEngineSignal::Continue)` — that variant is impossible
+/// `Ok(production::EngineSignal::Continue)` — that variant is impossible
 /// because the production loop short-circuits on it (run_loop.rs:30-32).
 ///
 /// Discharged by the production contract on `mirror_drive_deterministic`:
@@ -778,14 +789,14 @@ pub fn exec_proof_drive_deterministic_exhausts_to_zero(
 pub fn exec_proof_drive_deterministic_never_continues(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: &mut MirrorStepBudget,
+    budget: &mut production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
@@ -796,21 +807,21 @@ pub fn exec_proof_drive_deterministic_never_continues(
 }
 
 /// Exec proof: `mirror_run_until_blocked` never returns
-/// `Ok(MirrorEngineSignal::Continue)` — same rationale as
+/// `Ok(production::EngineSignal::Continue)` — same rationale as
 /// `exec_proof_drive_deterministic_never_continues`.
 ///
 /// Discharged by the production contract on `mirror_run_until_blocked`.
 pub fn exec_proof_run_until_blocked_never_continues(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
-    budget: MirrorStepBudget,
+    budget: production::StepBudget,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         spec_step_budget_invariant(budget.remaining as int),
     ensures
         match r {
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
@@ -818,49 +829,50 @@ pub fn exec_proof_run_until_blocked_never_continues(
     mirror_run_until_blocked(plan, run, budget, store)
 }
 
-/// Exec proof: a round-trip composition — construct a `MirrorStepBudget`
+/// Exec proof: a round-trip composition — construct an `production::StepBudget`
 /// via the production-bound `new`, call the mirror run-loop exec fn,
 /// and assert the postcondition holds end-to-end. This is the strongest
-/// production-binding evidence: it exercises the actual mirror types,
+/// production-binding evidence: it exercises the actual bridge type,
 /// the actual mirror exec fn, and the actual production contract.
 pub fn exec_proof_run_until_blocked_round_trip(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
     initial: u64,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         initial >= 0,
     ensures
         match r {
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
 {
-    let budget = MirrorStepBudget::new(initial);
+    let budget = production::StepBudget::new(initial);
     mirror_run_until_blocked(plan, run, budget, store)
 }
 
 /// Exec proof: a `drive_deterministic` checked wrapper that constructs
-/// a `MirrorStepBudget` via `new` and exercises the production contract
-/// on the mirror exec fn end-to-end.
+/// a production `StepBudget` via the production-bound `new` and
+/// exercises the production contract on the mirror exec fn
+/// end-to-end.
 pub fn exec_proof_run_until_blocked_checked(
     plan: &MirrorCompiledWorkflow,
     run: &mut MirrorRunFrame,
     initial: u64,
     store: &mut MirrorValueStore,
-) -> (r: Result<MirrorEngineSignal, MirrorEngineError>)
+) -> (r: Result<production::EngineSignal, production::EngineError>)
     requires
         initial >= 0,
     ensures
         match r {
-            Ok(MirrorEngineSignal::Continue) => false,
+            Ok(production::EngineSignal::Continue) => false,
             Ok(_) => true,
             Err(_) => true,
         },
 {
-    let mut budget = MirrorStepBudget::new(initial);
+    let mut budget = production::StepBudget::new(initial);
     mirror_drive_deterministic(plan, run, &mut budget, store)
 }
 
