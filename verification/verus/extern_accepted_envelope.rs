@@ -25,6 +25,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 // Inlined canonical production constant. Kept in lockstep with
 // crates/vb_runtime/src/admission.rs:20.
 pub const REQUIRED_GATE_COUNT: u8 = 15;

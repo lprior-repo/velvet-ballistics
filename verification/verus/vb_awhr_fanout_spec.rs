@@ -15,12 +15,12 @@ use vstd::prelude::*;
 verus! {
 
 /// Spec predicate: a branch count is within the supported fanout limit.
-pub spec fn fanout_within_limit(branch_count: nat) -> bool {
+pub open spec fn fanout_within_limit(branch_count: nat) -> bool {
     branch_count <= 64
 }
 
 /// Spec predicate: a branch count exceeds the supported fanout limit.
-pub spec fn fanout_exceeds_limit(branch_count: nat) -> bool {
+pub open spec fn fanout_exceeds_limit(branch_count: nat) -> bool {
     branch_count > 64
 }
 
@@ -57,7 +57,7 @@ proof fn fanout_limit_violation(branch_count: nat)
 
 /// Spec-level model of lower_choose fanout decision.
 /// Returns true iff the branch table is accepted.
-pub spec fn lower_choose_fanout_decision(branch_count: nat) -> bool {
+pub open spec fn lower_choose_fanout_decision(branch_count: nat) -> bool {
     fanout_within_limit(branch_count)
 }
 

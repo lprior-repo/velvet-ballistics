@@ -93,6 +93,8 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use vstd::prelude::*;
+
 // ============================================================================
 // Constants — inlined as LITERAL VALUES inside `spec_kind_family_valid`
 // and the mirror bodies below to avoid a Verus `--crate-type=lib`

@@ -19,6 +19,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 /// Mirror of vb_storage::admission::ActionContract (subset of fields exercised
 /// by the certificate summary contract).
 pub enum SideEffectClass {

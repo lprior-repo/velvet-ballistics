@@ -29,6 +29,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 /// Mirrors the discriminated output set of
 /// `vb_runtime::engine::action::execute_do`.
 ///

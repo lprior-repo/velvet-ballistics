@@ -80,6 +80,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 use std::collections::HashSet;
 
 // ---------------------------------------------------------------------------

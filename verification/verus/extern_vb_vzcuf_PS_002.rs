@@ -119,6 +119,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 // ---------------------------------------------------------------------------
 // Mirror of `JournalError` (subset reachable from the byte-admission block)
 // ---------------------------------------------------------------------------

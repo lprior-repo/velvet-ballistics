@@ -96,6 +96,8 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use vstd::prelude::*;
+
 // ============================================================================
 // Opaque payload types — mirrors of `crates/vb_core/src/value.rs`
 // ============================================================================

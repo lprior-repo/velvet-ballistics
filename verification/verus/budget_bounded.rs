@@ -90,10 +90,6 @@ pub use production::{
     SlotIdx,
     StepIdx,
     WholeWorkflowBudget,
-    SPEC_MAX_ACTION_TICKETS,
-    SPEC_MAX_PARALLEL_IN_FLIGHT,
-    SPEC_MAX_STEP_BUDGET,
-    SPEC_MAX_STEPS_PER_WORKFLOW,
     add_dim,
     aggregate_resource_usage_check_policy,
     aggregate_resource_usage_fits_within,
@@ -112,11 +108,47 @@ pub use production::{
 pub use production::workflow;
 pub use production::limits;
 
+// The four `SPEC_MAX_*` constants are declared inside `verus!` (rather
+// than in `extern_budget_bounded.rs`) because declaring a `pub const`
+// in the extern file triggers a Verus internal error
+// (`VerusErasureCtxt has not been initialized`) on the
+// `--crate-type=lib` invocation that does NOT pass `--no-lifetime`.
+// The values mirror the production limits.rs constants for the
+// first two (`MAX_STEPS_PER_WORKFLOW` at `crates/vb_core/src/limits.rs:11`
+// and `MAX_STEP_BUDGET` at `crates/vb_core/src/limits.rs:94`) and the
+// spec policy bounds for the last two. The binding ledger in
+// `extern_budget_bounded.rs` documents the prior location of these
+// constants and the move. This matches the established workaround
+// used in `signals_try_take.rs`, `signals_invariant.rs`,
+// `vb-vzcuf-PS-006.rs`, and `step_state_machine.rs`.
+/// `MAX_STEPS_PER_WORKFLOW` mirror (production at
+/// `crates/vb_core/src/limits.rs:11 = 65_535`).
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_STEPS_PER_WORKFLOW: u64 = 65_535;
+
+/// `MAX_STEP_BUDGET` mirror (production at
+/// `crates/vb_core/src/limits.rs:94 = 10_000`).
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;
+
+/// Spec-invented upper bound for parallel in-flight actions. NOT a
+/// production constant — declared here as the spec source of truth.
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_PARALLEL_IN_FLIGHT: u64 = 1024;
+
+/// Spec-invented upper bound for action tickets. Production's
+/// `BoundednessPolicy::absolute_max_action_tickets` defaults to 100_000
+/// (not 1_000_000). The spec value 1_000_000 is a more permissive
+/// upper bound used in arithmetic lemmas; drift is reported as a
+/// spec-vs-policy reconciliation item.
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
+
 // ============================================================================
 // Spec invariants — derive production constants from the extern source
 // ============================================================================
 //
-// `production::SPEC_MAX_*` mirror the production limits.rs constants
+// `SPEC_MAX_*` (declared above) mirror the production limits.rs constants
 // for the first two and the spec policy bounds for the last two.
 pub open spec fn max_steps_per_workflow() -> int {
     SPEC_MAX_STEPS_PER_WORKFLOW as int

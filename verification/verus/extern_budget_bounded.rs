@@ -695,30 +695,14 @@ pub mod limits {
 // Spec-side mirror of the budget limit constants referenced by spec
 // ============================================================================
 //
-// These are spec-invented policy limits the spec proofs reason about.
-// They are NOT production constants but are declared here as the
-// authoritative spec source-of-truth so the spec file does not need
-// to redeclare them.
-
-/// `MAX_STEPS_PER_WORKFLOW` mirror (production at
-/// `crates/vb_core/src/limits.rs:11 = 65_535`).
-#[allow(non_upper_case_globals)]
-pub const SPEC_MAX_STEPS_PER_WORKFLOW: u64 = 65_535;
-
-/// `MAX_STEP_BUDGET` mirror (production at
-/// `crates/vb_core/src/limits.rs:94 = 10_000`).
-#[allow(non_upper_case_globals)]
-pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;
-
-/// Spec-invented upper bound for parallel in-flight actions. NOT a
-/// production constant — declared here as the spec source of truth.
-#[allow(non_upper_case_globals)]
-pub const SPEC_MAX_PARALLEL_IN_FLIGHT: u64 = 1024;
-
-/// Spec-invented upper bound for action tickets. Production's
-/// `BoundednessPolicy::absolute_max_action_tickets` defaults to 100_000
-/// (not 1_000_000). The spec value 1_000_000 is a more permissive
-/// upper bound used in arithmetic lemmas; drift is reported as a
-/// spec-vs-policy reconciliation item.
-#[allow(non_upper_case_globals)]
-pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
+// The four `SPEC_MAX_*` constants (SPEC_MAX_STEPS_PER_WORKFLOW,
+// SPEC_MAX_STEP_BUDGET, SPEC_MAX_PARALLEL_IN_FLIGHT,
+// SPEC_MAX_ACTION_TICKETS) are declared inside the spec file's
+// `verus!` block, NOT here. Declaring a `pub const` in this extern
+// file triggers a Verus internal error (`VerusErasureCtxt has not
+// been initialized`) on the `--crate-type=lib` invocation that does
+// NOT pass `--no-lifetime`; the spec file mirrors each constant
+// with the same value and a binding-ledger comment that cites the
+// production source line. This matches the established workaround
+// used in `extern_signals_try_take.rs`, `extern_signals_invariant.rs`,
+// `extern_vb_vzcuf_PS_006.rs`, and `extern_step_state_machine.rs`.

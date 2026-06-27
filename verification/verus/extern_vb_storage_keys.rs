@@ -30,6 +30,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 // ---------------------------------------------------------------------------
 // Keyspace length constants (mirror crates/vb_storage/src/constants.rs:74-79).
 // ---------------------------------------------------------------------------

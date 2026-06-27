@@ -96,6 +96,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 // ---------------------------------------------------------------------------
 // Constants are inlined as literals in this file to avoid a Verus
 // `--crate-type=lib` panic where pub const items declared inside an extern

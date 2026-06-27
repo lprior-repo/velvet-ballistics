@@ -96,6 +96,8 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use vstd::prelude::*;
+
 // ============================================================================
 // Companion namespace `crate::errors` — mirror of production CoreError
 // ============================================================================

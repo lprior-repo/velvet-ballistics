@@ -94,6 +94,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 // ---------------------------------------------------------------------------
 // Mirror: vb_core ResourceContract (byte-policy subset)
 // ---------------------------------------------------------------------------

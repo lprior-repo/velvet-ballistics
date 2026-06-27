@@ -157,6 +157,8 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use vstd::prelude::*;
+
 // ============================================================================
 // ID newtype mirrors — vb_storage / vb_core production newtypes
 // ============================================================================

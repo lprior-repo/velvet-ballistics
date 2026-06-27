@@ -134,6 +134,8 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
+use vstd::prelude::*;
+
 // vstd is imported transitively via the parent spec file's
 // `use vstd::prelude::*` in `error_parity.rs`.
 

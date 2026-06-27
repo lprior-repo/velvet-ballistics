@@ -98,6 +98,8 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
+use vstd::prelude::*;
+
 // ============================================================================
 // SideEffect — mirror of `crates/vb_core/src/action/contract.rs:23-34`
 // ============================================================================

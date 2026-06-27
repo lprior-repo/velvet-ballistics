@@ -10,6 +10,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use vstd::prelude::*;
+
 /// Production-bound mirror of vb_core::ids::RunId.
 /// The production RunId wraps a u64 newtype; the spec mirror uses i64 for SMT.
 pub enum RunId {
