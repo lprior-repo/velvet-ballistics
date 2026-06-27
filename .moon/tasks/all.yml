@@ -507,6 +507,7 @@ tasks:
   fuzz-smoke:
     script: |
       set -euo pipefail
+      export PATH="/cache/cargo-shared/bin:${PATH}"
       mkdir -p target/moon-locks
       mkdir -p target/fuzz-smoke
       if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then
@@ -514,7 +515,24 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      for fuzz_target in yaml_events ipc_frame journal_event compiled_ir expression; do
+      mapfile -t fuzz_targets < <(cargo fuzz list)
+      if [ "${#fuzz_targets[@]}" -eq 0 ]; then
+        echo "cargo fuzz list returned no targets" >&2
+        exit 1
+      fi
+      bin_dir="fuzz/target/x86_64-unknown-linux-gnu/release"
+      for fuzz_target in "${fuzz_targets[@]}"; do
+        bin="${bin_dir}/${fuzz_target}"
+        {
+          echo "=== compile evidence: ${fuzz_target} ==="
+          if [ -x "${bin}" ]; then
+            ls -la "${bin}"
+            echo "OK: binary present"
+          else
+            echo "MISSING: ${bin}"
+            exit 1
+          fi
+        } >"target/fuzz-smoke/${fuzz_target}.compile.log" 2>&1
         corpus="target/fuzz-smoke/corpus/${fuzz_target}"
         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"
         rm -rf "${corpus}" "${artifacts}"
@@ -522,7 +540,7 @@ tasks:
         if [ -d "fuzz/corpus/${fuzz_target}" ]; then
           cp -R "fuzz/corpus/${fuzz_target}/." "${corpus}/"
         fi
-        flock --shared target/moon-locks/source-mutation.lock timeout 30s "fuzz/target/x86_64-unknown-linux-gnu/release/${fuzz_target}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+        flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
       done
     toolchains:
       - rust
@@ -543,6 +561,79 @@ tasks:
       runInCI: true
     outputs:
       - 'target/fuzz-smoke/**'
+
+  fuzz-tsan:
+    script: |
+      set -euo pipefail
+      export PATH="/cache/cargo-shared/bin:${PATH}"
+      mkdir -p target/moon-locks target/fuzz-tsan
+      flock --shared target/moon-locks/source-mutation.lock \
+        cargo fuzz build --target x86_64-unknown-linux-gnu \
+          --sanitizer thread \
+          >target/fuzz-tsan/build.log 2>target/fuzz-tsan/build.err \
+        || { cat target/fuzz-tsan/build.{log,err}; exit 1; }
+      for tgt in $(cargo fuzz list --target x86_64-unknown-linux-gnu); do
+        bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
+        if [ -x "$bin" ]; then
+          echo "TSAN-OK: $tgt"
+        else
+          echo "TSAN-MISSING: $tgt"
+          exit 1
+        fi
+      done
+    options:
+      runInCI: true
+    inputs:
+      - 'fuzz/Cargo.toml'
+      - 'fuzz/Cargo.lock'
+      - 'fuzz/src/**/*'
+      - 'fuzz/fuzz_targets/**/*'
+
+  fuzz-regress:
+    script: |
+      set -euo pipefail
+      export PATH="/cache/cargo-shared/bin:${PATH}"
+      mkdir -p target/fuzz-regress
+      rc=0
+      while IFS= read -r artifact; do
+        tgt=$(basename "$(dirname "$artifact")")
+        bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
+        [ -x "$bin" ] || { echo "SKIP: $tgt (no binary)"; continue; }
+        echo "REPLAY: $artifact via $tgt"
+        if timeout 5s "$bin" "$artifact" >"target/fuzz-regress/${tgt}.log" 2>&1; then
+          echo "PASS: $artifact"
+        else
+          echo "REGRESSION: $artifact"
+          cat "target/fuzz-regress/${tgt}.log"
+          rc=1
+        fi
+      done < <(find fuzz/artifacts -type f \( -name 'crash-*' -o -name 'oom-*' -o -name 'leak-*' -o -name 'timeout-*' \) 2>/dev/null || true)
+      exit "$rc"
+    options:
+      runInCI: true
+    inputs:
+      - 'fuzz/artifacts/**/*'
+      - 'fuzz/Cargo.toml'
+      - 'fuzz/Cargo.lock'
+      - 'fuzz/src/**/*'
+      - 'fuzz/fuzz_targets/**/*'
+
+  fuzz-proptest:
+    script: |
+      set -euo pipefail
+      export PATH="/cache/cargo-shared/bin:${PATH}"
+      flock --shared target/moon-locks/source-mutation.lock \
+        cargo test -p velvet-ballistics-fuzz --test proptest_digest_coherence \
+          --test proptest_ipc_error_exhaustiveness \
+          --test proptest_journal_error_exhaustiveness \
+          --test proptest_roundtrip_determinism
+    options:
+      runInCI: true
+    inputs:
+      - 'fuzz/Cargo.toml'
+      - 'fuzz/Cargo.lock'
+      - 'fuzz/tests/**/*'
+      - 'fuzz/src/**/*'
 
   sanitizer-address-check:
     script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-features --no-run'

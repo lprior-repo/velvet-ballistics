@@ -4,8 +4,22 @@ use libfuzzer_sys::fuzz_target;
 
 fn fuzz_duplicate_accounting(data: &[u8]) {
     if data.len() < 16 { return; }
-    let current = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let encoded_len = u64::from_le_bytes(data[8..16].try_into().unwrap());
+    let current_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let current = u64::from_le_bytes(current_bytes);
+    let encoded_len_bytes: [u8; 8] = match data.get(8..16) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let encoded_len = u64::from_le_bytes(encoded_len_bytes);
     if current > u64::MAX / 2 { return; }
     if encoded_len > 1_000_000 { return; }
     let conservative = current + encoded_len;
@@ -26,7 +40,14 @@ fn fuzz_encode_record_duplicate(data: &[u8]) {
     use vb_storage::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
     if data.len() < 8 { return; }
-    let run = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let run_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let run = u64::from_le_bytes(run_bytes);
     if run == 0 { return; }
     let event = JournalEvent::RunAccepted { run: RunId::new(run), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
     let r1 = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
@@ -40,9 +61,30 @@ fn fuzz_encode_record_duplicate(data: &[u8]) {
 
 fn fuzz_staged_invariant(data: &[u8]) {
     if data.len() < 24 { return; }
-    let staged = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let encoded_len = u64::from_le_bytes(data[8..16].try_into().unwrap());
-    let limit = u64::from_le_bytes(data[16..24].try_into().unwrap());
+    let staged_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let staged = u64::from_le_bytes(staged_bytes);
+    let encoded_len_bytes: [u8; 8] = match data.get(8..16) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let encoded_len = u64::from_le_bytes(encoded_len_bytes);
+    let limit_bytes: [u8; 8] = match data.get(16..24) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let limit = u64::from_le_bytes(limit_bytes);
     if limit == 0 || staged > limit { return; }
     let is_duplicate = data.len() >= 25 && data[24] & 1 == 1;
     let new_staged = if is_duplicate { staged }

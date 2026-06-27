@@ -32,9 +32,30 @@ fn admit_bytes(current: u64, candidate: u64, limit: u64) -> Result<u64, ()> {
 /// Sub-target 0: Fuzz admission boundary with arbitrary u64 triplets.
 fn fuzz_admission_boundary(data: &[u8]) {
     if data.len() < 24 { return; }
-    let current = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let candidate = u64::from_le_bytes(data[8..16].try_into().unwrap());
-    let limit = u64::from_le_bytes(data[16..24].try_into().unwrap());
+    let current_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let current = u64::from_le_bytes(current_bytes);
+    let candidate_bytes: [u8; 8] = match data.get(8..16) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let candidate = u64::from_le_bytes(candidate_bytes);
+    let limit_bytes: [u8; 8] = match data.get(16..24) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let limit = u64::from_le_bytes(limit_bytes);
 
     if limit == 0 { return; }
     if current > limit { return; }
@@ -57,7 +78,14 @@ fn fuzz_admission_boundary(data: &[u8]) {
 /// Sub-target 1: Fuzz encode_record with arbitrary payload sizes.
 fn fuzz_encode_record(data: &[u8]) {
     if data.len() < 8 { return; }
-    let run = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let run_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let run = u64::from_le_bytes(run_bytes);
     if run == 0 { return; }
 
     let event = JournalEvent::RunAccepted {

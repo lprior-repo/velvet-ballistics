@@ -4,8 +4,22 @@ use libfuzzer_sys::fuzz_target;
 
 fn fuzz_checked_add(data: &[u8]) {
     if data.len() < 16 { return; }
-    let a = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let b = u64::from_le_bytes(data[8..16].try_into().unwrap());
+    let a_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let a = u64::from_le_bytes(a_bytes);
+    let b_bytes: [u8; 8] = match data.get(8..16) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let b = u64::from_le_bytes(b_bytes);
     match a.checked_add(b) {
         Some(total) => { assert_eq!(total, a.wrapping_add(b)); }
         None => { assert!(a as u128 + b as u128 > u64::MAX as u128); }
@@ -14,7 +28,14 @@ fn fuzz_checked_add(data: &[u8]) {
 
 fn fuzz_u32_widen(data: &[u8]) {
     if data.len() < 4 { return; }
-    let n = u32::from_le_bytes(data[0..4].try_into().unwrap());
+    let n_bytes: [u8; 4] = match data.get(0..4) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let n = u32::from_le_bytes(n_bytes);
     let wide: u64 = n as u64;
     assert_eq!(wide as u32, n);
     assert!(wide <= u32::MAX as u64);
@@ -28,8 +49,22 @@ fn fuzz_encode_record(data: &[u8]) {
     use vb_storage::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
     if data.len() < 16 { return; }
-    let run = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let seq = u64::from_le_bytes(data[8..16].try_into().unwrap());
+    let run_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let run = u64::from_le_bytes(run_bytes);
+    let seq_bytes: [u8; 8] = match data.get(8..16) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let seq = u64::from_le_bytes(seq_bytes);
     if run == 0 { return; }
     let event = JournalEvent::RunAccepted {
         run: RunId::new(run),

@@ -15,6 +15,10 @@
 // through the public compile_source() API by constructing valid YAML
 // with Finish steps containing the fuzz input as result values.
 //
+// INVARIANT Oracle (replaces crash-only):
+// - compile_source Ok ⇒ workflow.node_count() > 0.
+// - compile_source Err ⇒ errors.is_empty() == false.
+//
 // GOD RULE 4: No loop oscillations. Pure fuzz harness.
 #![no_main]
 
@@ -47,9 +51,22 @@ fuzz_target!(|data: &[u8]| {
         "version: velvet-ballistics/v1\nname: fuzz_int\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: {int_val}\n"
     );
 
-    // Parse and compile — must not panic.
     if let Ok(source) = parse_workflow_source(&yaml_int) {
-        let _ = compile_source(&source);
+        // Parse Ok ⇒ ≥1 step (validator enforces EmptySteps rejection).
+        assert!(
+            !source.steps().is_empty(),
+            "parse_workflow_source Ok returned 0 steps (int path)"
+        );
+        match compile_source(&source) {
+            Ok(workflow) => assert!(
+                workflow.node_count() > 0,
+                "compile_source Ok returned 0 nodes (int path)"
+            ),
+            Err(errors) => assert!(
+                !errors.is_empty(),
+                "compile_source Err with empty errors vec (int path)"
+            ),
+        }
     }
 
     // ── String path: Finish { result: String(string_val) } ─────────────
@@ -64,9 +81,21 @@ fuzz_target!(|data: &[u8]| {
         "version: velvet-ballistics/v1\nname: fuzz_str\nwhen:\n  manual: {{}}\nsteps:\n  - id: set_step\n    set:\n      output: {clean_name}\n      value: \"10\"\n  - id: done\n    finish:\n      result: \"{clean_name}\"\n"
     );
 
-    // Parse and compile — must not panic.
     if let Ok(source) = parse_workflow_source(&yaml_str) {
-        let _ = compile_source(&source);
+        assert!(
+            !source.steps().is_empty(),
+            "parse_workflow_source Ok returned 0 steps (str path)"
+        );
+        match compile_source(&source) {
+            Ok(workflow) => assert!(
+                workflow.node_count() > 0,
+                "compile_source Ok returned 0 nodes (str path)"
+            ),
+            Err(errors) => assert!(
+                !errors.is_empty(),
+                "compile_source Err with empty errors vec (str path)"
+            ),
+        }
     }
 });
 

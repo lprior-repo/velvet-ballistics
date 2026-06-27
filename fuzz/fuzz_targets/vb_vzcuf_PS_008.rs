@@ -39,7 +39,14 @@ fn fuzz_encode_record_guard(data: &[u8]) {
     use vb_storage::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
     if data.len() < 4 { return; }
-    let max_len = u32::from_le_bytes(data[0..4].try_into().unwrap());
+    let max_len_bytes: [u8; 4] = match data.get(0..4) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let max_len = u32::from_le_bytes(max_len_bytes);
     let event = JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
     let result = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, max_len);
     match result {

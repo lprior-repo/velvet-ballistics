@@ -10,7 +10,14 @@ fn fuzz_encoded_length_min(data: &[u8]) {
     use vb_storage::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
     if data.len() < 8 { return; }
-    let run = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let run_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let run = u64::from_le_bytes(run_bytes);
     if run == 0 { return; }
     let event = JournalEvent::RunAccepted { run: RunId::new(run), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
     match encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
@@ -27,7 +34,14 @@ fn fuzz_payload_vs_encoded(data: &[u8]) {
     use vb_storage::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
     if data.len() < 8 { return; }
-    let run = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let run_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let run = u64::from_le_bytes(run_bytes);
     if run == 0 { return; }
     let event = JournalEvent::RunAccepted { run: RunId::new(run), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
     match encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {

@@ -4,6 +4,14 @@
 // Command: cargo fuzz run fuzz_choose_when_parse -- -max_len=256 -runs=100000
 //
 // GOD RULE 2: Binds to production compile_workflow and the choose lowering path.
+//
+// ## INVARIANT Oracle
+//
+// Replaces crash-only fuzzing with structural assertions on `compile_workflow`:
+// - Ok path: the compiled workflow must have `node_count() > 0`.
+// - Err path: `CompileErrors::is_empty()` must be `false` — every Err carries
+//   at least one typed diagnostic; an empty errors vec would mean the compiler
+//   rejected input silently.
 
 #![no_main]
 #![forbid(unsafe_code)]
@@ -33,8 +41,21 @@ fn fuzz_choose_when(when_strings: &[String]) {
     yaml.push_str("      otherwise: done\n");
     yaml.push_str("  - id: done\n    finish:\n      result: \"ok\"\n");
 
-    // compile_workflow must never panic
-    let _ = vb_compile::compile_workflow(yaml.as_bytes());
+    let result = vb_compile::compile_workflow(yaml.as_bytes());
+    match result {
+        Ok(workflow) => {
+            assert!(
+                workflow.node_count() > 0,
+                "compile_workflow Ok returned 0 nodes (validator bypassed)"
+            );
+        }
+        Err(errors) => {
+            assert!(
+                !errors.is_empty(),
+                "compile_workflow Err with empty errors vec"
+            );
+        }
+    }
 }
 
 fuzz_target!(|data: &[u8]| {

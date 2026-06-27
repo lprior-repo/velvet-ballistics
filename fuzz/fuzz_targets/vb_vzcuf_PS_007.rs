@@ -4,7 +4,14 @@ use libfuzzer_sys::fuzz_target;
 
 fn fuzz_bridge_value(data: &[u8]) {
     if data.len() < 8 { return; }
-    let policy = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let policy_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let policy = u64::from_le_bytes(policy_bytes);
     if policy == 0 || policy > 100_000_000 { return; }
     let storage_limit = policy;
     assert!(storage_limit > 0);
@@ -23,7 +30,14 @@ fn fuzz_bridge_defaults(_data: &[u8]) {
 
 fn fuzz_multiple_events(data: &[u8]) {
     if data.len() < 8 { return; }
-    let encoded_len = u64::from_le_bytes(data[0..8].try_into().unwrap());
+    let encoded_len_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let encoded_len = u64::from_le_bytes(encoded_len_bytes);
     if encoded_len == 0 || encoded_len > 10_000 { return; }
     let limit: u64 = 1_048_576;
     let max_count = limit.checked_div(encoded_len).unwrap_or(0);

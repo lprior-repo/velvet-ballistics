@@ -33,6 +33,7 @@ panic = "deny"
 [dependencies]
 libfuzzer-sys = "0.4"
 postcard = { version = "1", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
 blake3 = "1"
 bytes = { version = "1", features = ["serde"] }
 tempfile = "3"
@@ -42,11 +43,12 @@ vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
 vb_ipc = { path = "../crates/vb_ipc" }
-# vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
-# vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }  # MISSING
+
 xtask = { path = "../xtask" }
 crc32c = "0.6"
-anyhow = "1"
+
+[dev-dependencies]
+proptest = "1"
 
 [lib]
 name = "fuzz_lib"
@@ -64,6 +66,9 @@ overflow-checks = true
 lto = "off"
 opt-level = 2
 codegen-units = 1
+incremental = false
+strip = "symbols"
+panic = "abort"
 
 [[bin]]
 name = "vb_qi37_12_persisted_payload_decode"
@@ -289,13 +294,6 @@ test = false
 doc = false
 bench = false
 
-# [[bin]]
-# name = "vb_ui_model_postcard_decode"
-# path = "src/bin/vb_ui_model_postcard_decode.rs"
-# test = false
-# doc = false
-# bench = false
-
 [[bin]]
 name = "verifier_gates"
 path = "src/bin/verifier_gates.rs"
@@ -338,6 +336,41 @@ bench = false
 [[bin]]
 name = "choose_lowering_fuzzer"
 path = "fuzz_targets/choose_lowering_fuzzer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_for_each_lowering"
+path = "fuzz_targets/fuzz_for_each_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_collect_lowering"
+path = "fuzz_targets/fuzz_collect_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_wait_lowering"
+path = "fuzz_targets/fuzz_wait_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_set_lowering"
+path = "fuzz_targets/fuzz_set_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_finish_lowering"
+path = "fuzz_targets/fuzz_finish_lowering.rs"
 test = false
 doc = false
 bench = false
@@ -427,8 +460,29 @@ doc = false
 bench = false
 
 [[bin]]
-name = "fuzz_retry_codec"
-path = "fuzz_targets/fuzz_retry_codec.rs"
+name = "fuzz_retry_postcard_codec"
+path = "fuzz_targets/fuzz_retry_postcard_codec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_normalize_ticket"
+path = "fuzz_targets/fuzz_retry_normalize_ticket.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_record_attempt"
+path = "fuzz_targets/fuzz_retry_record_attempt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_validate_completion"
+path = "fuzz_targets/fuzz_retry_validate_completion.rs"
 test = false
 doc = false
 bench = false
@@ -539,8 +593,43 @@ doc = false
 bench = false
 
 [[bin]]
-name = "vb_storage_codec"
-path = "fuzz_targets/vb_storage_codec.rs"
+name = "fuzz_storage_codec_roundtrip"
+path = "fuzz_targets/fuzz_storage_codec_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_header"
+path = "fuzz_targets/fuzz_storage_codec_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_payload_corruption"
+path = "fuzz_targets/fuzz_storage_codec_payload_corruption.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_kind_family"
+path = "fuzz_targets/fuzz_storage_codec_kind_family.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_schema_version"
+path = "fuzz_targets/fuzz_storage_codec_schema_version.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_digest"
+path = "fuzz_targets/fuzz_storage_codec_digest.rs"
 test = false
 doc = false
 bench = false

@@ -275,6 +275,10 @@ path = "tests/vb_8mdp_7_resource_admission_props.rs"
 name = "vb_ko29_5_public_idempotency"
 path = "tests/vb_ko29_5_public_idempotency.rs"
 
+[[test]]
+name = "vb_doc_taint_regression"
+path = "tests/vb_doc_taint_regression.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
