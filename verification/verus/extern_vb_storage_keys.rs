@@ -10,6 +10,8 @@
 //   - `try_key_prefix`     mirrors `crates/vb_storage/src/keys.rs:281-295`.
 //   - `journal_key`        mirrors `crates/vb_storage/src/keys.rs:436-438`.
 //   - `run_event_key`      mirrors `crates/vb_storage/src/keys.rs:81-83`.
+//   - `encode_key`         mirrors `crates/vb_storage/src/keys.rs:205-209`
+//                          (delegates to `encode_key_into` at keys.rs:162-198).
 //   - `decode_storage_key` mirrors `crates/vb_storage/src/keys.rs:346-434`.
 //
 // This file is plain Rust. It is brought into the spec file via
@@ -52,6 +54,11 @@ pub const PREFIX_BLOB: u8 = 0x20;
 pub const PREFIX_INDEX_STATUS: u8 = 0x30;
 pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+
+/// Mirror of `MIN_OTHER_STATUS_BYTE` at
+/// `crates/vb_storage/src/constants.rs:53`. Bytes `0..MIN_OTHER_STATUS_BYTE`
+/// collide with the named `IndexStatusState` variants.
+pub const MIN_OTHER_STATUS_BYTE: u8 = 3;
 
 // ---------------------------------------------------------------------------
 // IndexStatusState mirror (mirror crates/vb_storage/src/types.rs:226-309).
@@ -280,17 +287,222 @@ pub fn run_event_key(run: u64, seq: u64) -> Result<[u8; 17], SpecKeyEncodeError>
     journal_key(run, seq)
 }
 
-/// Mirror of `encode_key` at crates/vb_storage/src/keys.rs:205-209.
+/// Mirror of `encode_key` at `crates/vb_storage/src/keys.rs:205-209`.
+/// Delegates to `encode_key_into` semantics: clears the output buffer and
+/// writes the typed encoder bytes for the discriminant. Each arm mirrors
+/// the typed encoder called by the production `encode_key_into`:
+///   - digest variants -> `digest_key`            (keys.rs:462-472)
+///   - run-header      -> `run_only_key`           (keys.rs:474-481)
+///   - run-event       -> `journal_key`            (keys.rs:436-438)
+///   - run-snapshot    -> `sequenced_run_key`      (keys.rs:440-456)
+///   - index-status    -> `index_status_key`       (keys.rs:101-122)
+///   - index-workflow  -> `index_workflow_key`     (keys.rs:125-137)
+///   - index-action    -> `index_action_key`       (keys.rs:140-155)
 #[verifier::external]
 pub fn encode_key(key: SpecStorageKey) -> Result<Vec<u8>, SpecKeyEncodeError> {
-    let bytes: [u8; 17] = match key {
-        SpecStorageKey::RunEvent { run, seq } => journal_key(run, seq)?,
-        _ => [0u8; 17],
-    };
-    Ok(bytes.to_vec())
+    // The body is opaque to Verus (`#[verifier::external]`); the
+    // `assume_specification` contract in `vb_storage_keys_spec.rs` is
+    // the verified surface. This body is the trusted-base projection
+    // recorded in the binding ledger.
+    match key {
+        SpecStorageKey::WorkflowSource { digest } => Ok(digest_prefixed(PREFIX_WORKFLOW_SOURCE, &digest).to_vec()),
+        SpecStorageKey::CompiledIr { digest } => Ok(digest_prefixed(PREFIX_COMPILED_IR, &digest).to_vec()),
+        SpecStorageKey::RunHeader { run } => Ok(run_prefixed(PREFIX_RUN_HEADER, run).to_vec()),
+        SpecStorageKey::RunEvent { run, seq } => Ok(journal_key(run, seq)?.to_vec()),
+        SpecStorageKey::RunSnapshot { run, seq } => sequenced_run_prefixed(PREFIX_RUN_SNAPSHOT, run, seq),
+        SpecStorageKey::Blob { digest } => Ok(digest_prefixed(PREFIX_BLOB, &digest).to_vec()),
+        SpecStorageKey::IndexStatus { state, timestamp, run } => {
+            let state_byte = state.to_u8_checked()?;
+            Ok(index_status_layout(state_byte, timestamp, run).to_vec())
+        },
+        SpecStorageKey::IndexWorkflow { workflow, run } => {
+            Ok(index_workflow_layout(workflow, run).to_vec())
+        },
+        SpecStorageKey::IndexAction { action, run, step } => {
+            Ok(index_action_layout(action, run, step).to_vec())
+        },
+    }
 }
 
-/// Mirror of `decode_storage_key` at crates/vb_storage/src/keys.rs:346-434.
+// Local helpers used only by `encode_key` / `decode_storage_key`. These
+// are not part of the public surface; they are pure projections that
+// build the byte layout per the production typed encoders.
+//
+// Verus does not support IndexMut on fixed-size arrays with Range /
+// RangeFrom operands, nor the `to_be_bytes` intrinsic on u16/u32/u64.
+// The helpers below write each byte position explicitly via shift
+// arithmetic. The bodies are `#[verifier::external]`-adjacent (still
+// opaque to Verus; the assume_specification contracts pin the layout).
+//
+// `#[verifier::exec_allows_no_decreases_clause]` permits the simple
+// counting loops below; the helpers are only reachable from the
+// `#[verifier::external]` `encode_key` body, so Verus never has to
+// reason about termination of these helpers.
+
+#[verifier::external]
+fn write_u64_be(out: &mut [u8; 8], offset: usize, value: u64) {
+    out[offset + 0] = (value >> 56) as u8;
+    out[offset + 1] = (value >> 48) as u8;
+    out[offset + 2] = (value >> 40) as u8;
+    out[offset + 3] = (value >> 32) as u8;
+    out[offset + 4] = (value >> 24) as u8;
+    out[offset + 5] = (value >> 16) as u8;
+    out[offset + 6] = (value >> 8) as u8;
+    out[offset + 7] = value as u8;
+}
+
+#[verifier::external]
+fn write_u32_be(out: &mut [u8; 4], offset: usize, value: u32) {
+    out[offset + 0] = (value >> 24) as u8;
+    out[offset + 1] = (value >> 16) as u8;
+    out[offset + 2] = (value >> 8) as u8;
+    out[offset + 3] = value as u8;
+}
+
+#[verifier::external]
+fn write_u16_be(out: &mut [u8; 2], offset: usize, value: u16) {
+    out[offset + 0] = (value >> 8) as u8;
+    out[offset + 1] = value as u8;
+}
+
+#[verifier::external]
+fn digest_prefixed(prefix: u8, digest: &[u8; DIGEST_BYTES]) -> [u8; DIGEST_KEY_BYTES] {
+    let mut out = [0u8; DIGEST_KEY_BYTES];
+    out[0] = prefix;
+    let mut i = 0;
+    while i < DIGEST_BYTES {
+        out[1 + i] = digest[i];
+        i += 1;
+    }
+    out
+}
+
+#[verifier::external]
+fn run_prefixed(prefix: u8, run: u64) -> [u8; RUN_ONLY_KEY_BYTES] {
+    let mut out = [0u8; RUN_ONLY_KEY_BYTES];
+    out[0] = prefix;
+    let mut be = [0u8; 8];
+    write_u64_be(&mut be, 0, run);
+    let mut i = 0;
+    while i < 8 {
+        out[1 + i] = be[i];
+        i += 1;
+    }
+    out
+}
+
+#[verifier::external]
+fn sequenced_run_prefixed(
+    prefix: u8,
+    run: u64,
+    seq: u64,
+) -> Result<Vec<u8>, SpecKeyEncodeError> {
+    if seq == u64::MAX {
+        return Err(SpecKeyEncodeError::SequenceOverflow);
+    }
+    let mut out = [0u8; JOURNAL_KEY_BYTES];
+    out[0] = prefix;
+    let mut run_be = [0u8; 8];
+    let mut seq_be = [0u8; 8];
+    write_u64_be(&mut run_be, 0, run);
+    write_u64_be(&mut seq_be, 0, seq);
+    let mut i = 0;
+    while i < 8 {
+        out[1 + i] = run_be[i];
+        out[9 + i] = seq_be[i];
+        i += 1;
+    }
+    Ok(array_to_vec(&out))
+}
+
+#[verifier::external]
+fn array_to_vec(arr: &[u8; JOURNAL_KEY_BYTES]) -> Vec<u8> {
+    let mut v: Vec<u8> = Vec::with_capacity(JOURNAL_KEY_BYTES);
+    let mut i = 0;
+    while i < JOURNAL_KEY_BYTES {
+        v.push(arr[i]);
+        i += 1;
+    }
+    v
+}
+
+#[verifier::external]
+fn index_status_layout(state_byte: u8, timestamp: u64, run: u64) -> [u8; INDEX_STATUS_KEY_BYTES] {
+    let mut out = [0u8; INDEX_STATUS_KEY_BYTES];
+    out[0] = PREFIX_INDEX_STATUS;
+    out[1] = state_byte;
+    let mut ts_be = [0u8; 8];
+    let mut run_be = [0u8; 8];
+    write_u64_be(&mut ts_be, 0, timestamp);
+    write_u64_be(&mut run_be, 0, run);
+    let mut i = 0;
+    while i < 8 {
+        out[2 + i] = ts_be[i];
+        out[10 + i] = run_be[i];
+        i += 1;
+    }
+    out
+}
+
+#[verifier::external]
+fn index_workflow_layout(workflow: u32, run: u64) -> [u8; INDEX_WORKFLOW_KEY_BYTES] {
+    let mut out = [0u8; INDEX_WORKFLOW_KEY_BYTES];
+    out[0] = PREFIX_INDEX_WORKFLOW;
+    let mut wf_be = [0u8; 4];
+    let mut run_be = [0u8; 8];
+    write_u32_be(&mut wf_be, 0, workflow);
+    write_u64_be(&mut run_be, 0, run);
+    let mut i = 0;
+    while i < 4 {
+        out[1 + i] = wf_be[i];
+        i += 1;
+    }
+    let mut j = 0;
+    while j < 8 {
+        out[5 + j] = run_be[j];
+        j += 1;
+    }
+    out
+}
+
+#[verifier::external]
+fn index_action_layout(action: u16, run: u64, step: u16) -> [u8; INDEX_ACTION_KEY_BYTES] {
+    let mut out = [0u8; INDEX_ACTION_KEY_BYTES];
+    out[0] = PREFIX_INDEX_ACTION;
+    let mut act_be = [0u8; 2];
+    let mut run_be = [0u8; 8];
+    let mut step_be = [0u8; 2];
+    write_u16_be(&mut act_be, 0, action);
+    write_u64_be(&mut run_be, 0, run);
+    write_u16_be(&mut step_be, 0, step);
+    let mut i = 0;
+    while i < 2 {
+        out[1 + i] = act_be[i];
+        i += 1;
+    }
+    let mut j = 0;
+    while j < 8 {
+        out[3 + j] = run_be[j];
+        j += 1;
+    }
+    let mut k = 0;
+    while k < 2 {
+        out[11 + k] = step_be[k];
+        k += 1;
+    }
+    out
+}
+
+/// Mirror of `decode_storage_key` at `crates/vb_storage/src/keys.rs:346-434`.
+/// Decodes all nine `StorageKey` variants; each arm mirrors the
+/// production decoder branch:
+///   - digest variants  -> 32-byte digest at offset 1
+///   - run-header       -> big-endian u64 run at offset 1, rejects run == 0
+///   - run-event        -> big-endian u64 run/seq, rejects run == 0 / seq == MAX
+///   - run-snapshot     -> big-endian u64 run/seq, rejects run == 0 / seq == MAX
+///   - index-status     -> state byte + big-endian timestamp + big-endian run
+///   - index-workflow   -> big-endian u32 workflow + big-endian u64 run
+///   - index-action     -> big-endian u16 action + big-endian u64 run + u16 step
 #[verifier::external]
 pub fn decode_storage_key(bytes: &[u8]) -> Result<SpecStorageKey, SpecKeyDecodeError> {
     let prefix = try_key_prefix(bytes)?;
@@ -303,18 +515,59 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<SpecStorageKey, SpecKeyDecodeE
         });
     }
 
+    let read_u8 = |idx: usize| -> Result<u8, SpecKeyDecodeError> {
+        bytes.get(idx).copied().ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+            prefix: prefix.to_u8(),
+            expected: expected_len,
+            actual: bytes.len(),
+        })
+    };
+
+    let read_u64 = |start: usize| -> Result<u64, SpecKeyDecodeError> {
+        let mut buf = [0u8; 8];
+        buf.copy_from_slice(
+            bytes
+                .get(start..start + 8)
+                .ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+                    prefix: prefix.to_u8(),
+                    expected: expected_len,
+                    actual: bytes.len(),
+                })?,
+        );
+        Ok(u64::from_be_bytes(buf))
+    };
+
     match prefix {
-        SpecKeyPrefix::RunEvent | SpecKeyPrefix::RunSnapshot => {
-            let run_val = u64::from_be_bytes([
-                bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
-            ]);
+        SpecKeyPrefix::WorkflowSource | SpecKeyPrefix::CompiledIr | SpecKeyPrefix::Blob => {
+            let mut digest = [0u8; DIGEST_BYTES];
+            digest.copy_from_slice(
+                bytes
+                    .get(1..DIGEST_KEY_BYTES)
+                    .ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+                        prefix: prefix.to_u8(),
+                        expected: expected_len,
+                        actual: bytes.len(),
+                    })?,
+            );
+            match prefix {
+                SpecKeyPrefix::WorkflowSource => Ok(SpecStorageKey::WorkflowSource { digest }),
+                SpecKeyPrefix::CompiledIr => Ok(SpecStorageKey::CompiledIr { digest }),
+                _ => Ok(SpecStorageKey::Blob { digest }),
+            }
+        },
+        SpecKeyPrefix::RunHeader => {
+            let run_val = read_u64(1)?;
             if run_val == 0 {
                 return Err(SpecKeyDecodeError::InvalidRunId);
             }
-            let seq_val = u64::from_be_bytes([
-                bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
-                bytes[16],
-            ]);
+            Ok(SpecStorageKey::RunHeader { run: run_val })
+        },
+        SpecKeyPrefix::RunEvent | SpecKeyPrefix::RunSnapshot => {
+            let run_val = read_u64(1)?;
+            if run_val == 0 {
+                return Err(SpecKeyDecodeError::InvalidRunId);
+            }
+            let seq_val = read_u64(9)?;
             if seq_val == u64::MAX {
                 return Err(SpecKeyDecodeError::ReservedSeqSentinel);
             }
@@ -325,10 +578,62 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<SpecStorageKey, SpecKeyDecodeE
                 _ => Ok(SpecStorageKey::RunSnapshot { run: run_val, seq: seq_val }),
             }
         },
-        _ => Err(SpecKeyDecodeError::KeyLengthMismatch {
-            prefix: prefix.to_u8(),
-            expected: expected_len,
-            actual: bytes.len(),
-        }),
+        SpecKeyPrefix::IndexStatus => {
+            let state_byte = read_u8(1)?;
+            let state = SpecIndexStatusState::from_u8(state_byte);
+            let timestamp = read_u64(2)?;
+            let run_val = read_u64(10)?;
+            if run_val == 0 {
+                return Err(SpecKeyDecodeError::InvalidRunId);
+            }
+            Ok(SpecStorageKey::IndexStatus { state, timestamp, run: run_val })
+        },
+        SpecKeyPrefix::IndexWorkflow => {
+            let mut wf_buf = [0u8; 4];
+            wf_buf.copy_from_slice(
+                bytes
+                    .get(1..5)
+                    .ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+                        prefix: prefix.to_u8(),
+                        expected: expected_len,
+                        actual: bytes.len(),
+                    })?,
+            );
+            let workflow_val = u32::from_be_bytes(wf_buf);
+            let run_val = read_u64(5)?;
+            if run_val == 0 {
+                return Err(SpecKeyDecodeError::InvalidRunId);
+            }
+            Ok(SpecStorageKey::IndexWorkflow { workflow: workflow_val, run: run_val })
+        },
+        SpecKeyPrefix::IndexAction => {
+            let mut act_buf = [0u8; 2];
+            act_buf.copy_from_slice(
+                bytes
+                    .get(1..3)
+                    .ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+                        prefix: prefix.to_u8(),
+                        expected: expected_len,
+                        actual: bytes.len(),
+                    })?,
+            );
+            let action_val = u16::from_be_bytes(act_buf);
+            let run_val = read_u64(3)?;
+            if run_val == 0 {
+                return Err(SpecKeyDecodeError::InvalidRunId);
+            }
+            let mut step_buf = [0u8; 2];
+            step_buf.copy_from_slice(
+                bytes
+                    .get(11..13)
+                    .ok_or(SpecKeyDecodeError::KeyLengthMismatch {
+                        prefix: prefix.to_u8(),
+                        expected: expected_len,
+                        actual: bytes.len(),
+                    })?,
+            );
+            let step_val = u16::from_be_bytes(step_buf);
+            Ok(SpecStorageKey::IndexAction { action: action_val, run: run_val, step: step_val })
+        },
     }
 }

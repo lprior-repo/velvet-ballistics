@@ -191,3 +191,192 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
             | SpecActionOutcomeKind::Failed
     )
 }
+
+// ============================================================================
+// Pure decision projections for the remaining 6 production exec wrappers in
+// crates/vb_runtime/src/engine/action.rs:
+//
+//   - execute_do_without_contract  (lines 76-106)
+//   - execute_retry_check          (lines 109-120)
+//   - execute_error_handler        (lines 123-131)
+//   - resume_action_outcome        (lines 138-200)
+//   - compute_idempotency_key      (lines 206-208)
+//   - resolve_contract             (lines 211-221)
+//
+// Each projection reduces the production body to the smallest set of scalars
+// that drive the decision branches. The body is the trusted base; the spec
+// file attaches `assume_specification` bridges and exercises each through an
+// exec wrapper.
+// ============================================================================
+
+/// Mirrors the discriminated output set of
+/// `vb_runtime::engine::action::execute_do_without_contract`
+/// at crates/vb_runtime/src/engine/action.rs:76-106.
+///
+/// The production body unconditionally fails: a non-Clean input taint
+/// short-circuits to `RuntimeEngineError::TaintViolation`, and the
+/// subsequent synthetic `__contract_required__` capability check always
+/// fails because no real contract is provided. So the reachable output
+/// set is `{ErrTaintViolation, ErrCapabilityDenied}`. Both are already
+/// covered by `SpecOutcomeKind`, so we reuse that enum.
+#[verifier::external]
+pub fn execute_do_without_contract_pure_decision(
+    input_taint_disc: u8,
+) -> SpecOutcomeKind {
+    if input_taint_disc != 0 {
+        SpecOutcomeKind::ErrTaintViolation
+    } else {
+        SpecOutcomeKind::ErrCapabilityDenied
+    }
+}
+
+/// Mirrors `vb_runtime::engine::action::execute_retry_check`
+/// at crates/vb_runtime/src/engine/action.rs:109-120.
+///
+/// The production body returns `body` iff `current_attempt < policy.max_attempts`,
+/// else `exhausted`. We project to scalars: `current_attempt`, `max_attempts`,
+/// `body`, `exhausted`. The decision is a pure comparison.
+#[verifier::external]
+pub const fn execute_retry_check_pure_decision(
+    current_attempt: u16,
+    max_attempts: u16,
+    body: u32,
+    exhausted: u32,
+) -> u32 {
+    if current_attempt < max_attempts {
+        body
+    } else {
+        exhausted
+    }
+}
+
+/// Mirrors `vb_runtime::engine::action::execute_error_handler`
+/// at crates/vb_runtime/src/engine/action.rs:123-131.
+///
+/// The production body returns `handler` iff
+/// `failure.retry_policy == RetryPolicy::Retryable || failure.code != ActionFailureCode::Unknown`,
+/// else `body`. Discriminants: Retryable=0, NonRetryable=1, Unknown=255.
+#[verifier::external]
+pub const fn execute_error_handler_pure_decision(
+    failure_retry_policy_disc: u8,
+    failure_code_disc: u8,
+    handler: u32,
+    body: u32,
+) -> u32 {
+    if failure_retry_policy_disc == 0 || failure_code_disc != 255 {
+        handler
+    } else {
+        body
+    }
+}
+
+/// Mirrors the discriminated output set of
+/// `vb_runtime::engine::action::resume_action_outcome`
+/// at crates/vb_runtime/src/engine/action.rs:138-200.
+///
+/// The production body matches on `ActionOutcome` and produces one of:
+///
+///   - `ActionOutcome::Ready(_)`         -> Ok(Continue)
+///   - `ActionOutcome::Suspended(_)`     -> Ok(AwaitingAction)
+///   - `ActionOutcome::Failed(_)` with retryable + capacity > attempt
+///                                       -> Ok(AwaitingAction(retry_ticket))
+///   - `ActionOutcome::Failed(_)` with retryable + capacity <= attempt
+///                                       -> Err(RetryExhausted)
+///   - `ActionOutcome::Failed(_)` non-retryable
+///                                       -> Err(Core(UnsupportedPrimitive))
+///   - any other future variant           -> Err(Core(InternalInvariantViolation))
+///
+/// This enum enumerates every reachable (Ok, Err) kind so the spec-level
+/// discriminant bound closes.
+pub enum SpecResumeKind {
+    /// Production: `RuntimeSignal::Continue`.
+    Continue,
+    /// Production: `RuntimeSignal::AwaitingAction(retry_ticket)`.
+    AwaitingAction,
+    /// Production: `RuntimeEngineError::RetryExhausted`.
+    ErrRetryExhausted,
+    /// Production: `RuntimeEngineError::Core(EngineError::UnsupportedPrimitive)`.
+    ErrUnsupportedPrimitive,
+    /// Production: `RuntimeEngineError::Core(EngineError::InternalInvariantViolation)`.
+    ErrInternalInvariantViolation,
+}
+
+/// Pure decision projection of `resume_action_outcome`.
+///
+/// Scalars (all bounded as documented in production):
+///   - `outcome_disc`             : 0=Ready, 1=Suspended, 2=Failed
+///   - `attempt`                  : u16 (current attempt count)
+///   - `capacity`                 : u16 (max attempts allowed)
+///   - `retry_policy_disc`        : 0=Retryable, 1=NonRetryable
+///   - `seq_would_overflow`       : true iff `seq.checked_add(1).is_none()`
+///   - `attempt_would_overflow`   : true iff `attempt.checked_add(1).is_none()`
+///
+/// The projection is total: every documented input maps to one of the
+/// five `SpecResumeKind` variants. The post-resume view collapses the
+/// retry-ticket reconstruction to a single AwaitingAction variant.
+#[verifier::external]
+pub const fn resume_action_outcome_pure_decision(
+    outcome_disc: u8,
+    attempt: u16,
+    capacity: u16,
+    retry_policy_disc: u8,
+    seq_would_overflow: bool,
+    attempt_would_overflow: bool,
+) -> SpecResumeKind {
+    match outcome_disc {
+        // ActionOutcome::Ready(_) -> Ok(Continue)
+        0 => SpecResumeKind::Continue,
+        // ActionOutcome::Suspended(_) -> Ok(AwaitingAction)
+        1 => SpecResumeKind::AwaitingAction,
+        // ActionOutcome::Failed(_) -> retry/exhausted/unsupported
+        2 => {
+            if retry_policy_disc == 0 {
+                // Retryable: build a retry ticket iff attempt < capacity
+                // and neither seq nor attempt would overflow.
+                if attempt < capacity && !seq_would_overflow && !attempt_would_overflow {
+                    SpecResumeKind::AwaitingAction
+                } else {
+                    SpecResumeKind::ErrRetryExhausted
+                }
+            } else {
+                SpecResumeKind::ErrUnsupportedPrimitive
+            }
+        }
+        // Future variant catch-all mirrors production's `_ =>` arm.
+        _ => SpecResumeKind::ErrInternalInvariantViolation,
+    }
+}
+
+/// Pure decision projection of `compute_idempotency_key`
+/// at crates/vb_runtime/src/engine/action.rs:206-208.
+///
+/// The production body delegates to
+/// `vb_core::action::compute_action_idempotency_key` at
+/// crates/vb_core/src/action/ticket.rs:25-35, which uses a wrapping
+/// multiply-add hash (FNV-1a-inspired). Mirroring the same arithmetic
+/// keeps the spec deterministic and equivalent to the production result.
+#[verifier::external]
+pub fn compute_idempotency_key_pure(run: u64, seq: u64, action: u32) -> u128 {
+    let run_part = u128::from(run);
+    let seq_part = u128::from(seq);
+    let action_part = u128::from(action);
+    run_part
+        .wrapping_mul(0x6c62272e07bb0143_u128)
+        .wrapping_add(seq_part)
+        .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
+        .wrapping_add(action_part)
+        .wrapping_mul(0x5bd1e9956c7b4d3a_u128)
+}
+
+/// Pure decision projection of `resolve_contract`
+/// at crates/vb_runtime/src/engine/action.rs:211-221.
+///
+/// The production body returns `Ok(&ActionContract)` iff
+/// `action_index < contracts.len()` AND `contracts[action_index].id == action`.
+/// Otherwise it returns `Err(ActionError::UnknownAction)`.
+/// We project both conditions into a single boolean: `id_at_index_match`.
+/// Returns `true` iff the contract was resolved.
+#[verifier::external]
+pub const fn resolve_contract_pure_decision(id_at_index_match: bool) -> bool {
+    id_at_index_match
+}

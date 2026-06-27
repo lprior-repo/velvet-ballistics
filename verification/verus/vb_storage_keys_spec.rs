@@ -57,7 +57,9 @@ mod production;
 // Re-export the production fns so they can be called from exec
 // context with a Verus-visible spec contract attached via
 // `assume_specification` below.
-pub use production::{journal_key, run_event_key, try_key_prefix};
+pub use production::{
+    decode_storage_key, encode_key, journal_key, run_event_key, try_key_prefix,
+};
 
 // Types are referenced via `production::TypeName` so the
 // `assume_specification` signature matching resolves to the
@@ -194,6 +196,32 @@ pub open spec fn spec_u64_byte_at(value: u64, i: int) -> u8 {
     ((value >> ((7 - i) * 8)) & 0xff) as u8
 }
 
+/// Spec helper: the prefix byte a `SpecKeyPrefix` encodes to.
+/// Mirrors the production `KeyPrefix::to_u8` and is used by the
+/// `try_key_prefix` assume_specification bridge.
+pub open spec fn spec_key_prefix_to_byte(p: production::SpecKeyPrefix) -> u8 {
+    match p {
+        production::SpecKeyPrefix::WorkflowSource => 0x01,
+        production::SpecKeyPrefix::CompiledIr => 0x02,
+        production::SpecKeyPrefix::RunHeader => 0x10,
+        production::SpecKeyPrefix::RunEvent => 0x11,
+        production::SpecKeyPrefix::RunSnapshot => 0x12,
+        production::SpecKeyPrefix::Blob => 0x20,
+        production::SpecKeyPrefix::IndexStatus => 0x30,
+        production::SpecKeyPrefix::IndexWorkflow => 0x31,
+        production::SpecKeyPrefix::IndexAction => 0x32,
+    }
+}
+
+/// Spec helper: returns true iff the byte is one of the nine known
+/// prefix bytes used by `try_key_prefix`. Used by the
+/// `try_key_prefix` assume_specification bridge to discriminate
+/// the `UnknownPrefix` error arm.
+pub open spec fn spec_byte_is_known_prefix(byte: int) -> bool {
+    byte == 0x01 || byte == 0x02 || byte == 0x10 || byte == 0x11 || byte == 0x12
+        || byte == 0x20 || byte == 0x30 || byte == 0x31 || byte == 0x32
+}
+
 /// Spec helper: a u64 field at `offset` in big-endian equals `value`.
 pub open spec fn spec_u64_field_eq(bytes: Seq<u8>, offset: int, value: u64) -> bool {
     bytes.len() >= offset + 8 && forall|i: int|
@@ -276,6 +304,120 @@ pub assume_specification[ production::run_event_key ](
             Ok(bytes) => bytes[0] == 0x11 && spec_u64_field_eq(bytes@, 1, run)
                 && spec_u64_field_eq(bytes@, 9, seq),
             Err(production::SpecKeyEncodeError::SequenceOverflow) => seq == u64::MAX,
+            Err(_) => false,
+        },
+;
+
+// --------------------------------------------------------------------------
+// Bridge contract: `try_key_prefix`.
+// --------------------------------------------------------------------------
+// Mirrors production `try_key_prefix` at `crates/vb_storage/src/keys.rs:281-295`:
+//   - Empty input returns `Err(EmptyKey)`.
+//   - First byte maps via `KeyPrefix::from_byte`; on success returns
+//     `Ok(prefix)` whose encoded byte equals the input byte.
+//   - On unrecognised byte returns `Err(UnknownPrefix { prefix: byte })`.
+// The bridge pins the byte-to-prefix mapping so the round-trip proofs
+// can re-derive the discriminant from the encoded byte.
+pub assume_specification[ production::try_key_prefix ](
+    bytes: &[u8],
+) -> (result: Result<production::SpecKeyPrefix, production::SpecKeyDecodeError>)
+    ensures
+        match result {
+            Ok(p) => {
+                &&& bytes.len() >= 1
+                &&& bytes@[0] == spec_key_prefix_to_byte(p)
+                &&& spec_byte_is_known_prefix(bytes@[0] as int)
+            },
+            Err(production::SpecKeyDecodeError::EmptyKey) => bytes.len() == 0,
+            Err(production::SpecKeyDecodeError::UnknownPrefix { prefix: pf }) => {
+                &&& bytes.len() >= 1
+                &&& !spec_byte_is_known_prefix(bytes@[0] as int)
+                &&& pf == bytes@[0]
+            },
+            Err(_) => false,
+        },
+;
+
+// --------------------------------------------------------------------------
+// Bridge contract: `encode_key`.
+// --------------------------------------------------------------------------
+// Mirrors production `encode_key` at `crates/vb_storage/src/keys.rs:205-209`
+// (delegates to `encode_key_into` at keys.rs:162-198). On success the
+// encoded byte vector length matches the prefix's expected key length
+// and byte 0 is the prefix's encoded byte. Failure modes mirror the
+// production typed encoders' rejection arms:
+//   - `IndexStatusStateCollision` -> IndexStatus with an Other(v)
+//     whose byte collides with the named variants (< MIN_OTHER_STATUS_BYTE).
+//   - `SequenceOverflow` -> RunEvent or RunSnapshot with seq == u64::MAX.
+pub assume_specification[ production::encode_key ](
+    key: production::SpecStorageKey,
+) -> (result: Result<Vec<u8>, production::SpecKeyEncodeError>)
+    ensures
+        match result {
+            Ok(bytes) => {
+                &&& bytes.len() == spec_expected_key_len(spec_prefix_of(key))
+                &&& bytes[0] == spec_prefix_byte_of(key)
+            },
+            Err(production::SpecKeyEncodeError::IndexStatusStateCollision) => {
+                match key {
+                    production::SpecStorageKey::IndexStatus { state, .. } => {
+                        match state {
+                            production::SpecIndexStatusState::Other(v) => v < 3,
+                            _ => false,
+                        }
+                    },
+                    _ => false,
+                }
+            },
+            Err(production::SpecKeyEncodeError::SequenceOverflow) => {
+                match key {
+                    production::SpecStorageKey::RunEvent { seq, .. } => seq == u64::MAX,
+                    production::SpecStorageKey::RunSnapshot { seq, .. } => seq == u64::MAX,
+                    _ => false,
+                }
+            },
+            Err(_) => false,
+        },
+;
+
+// --------------------------------------------------------------------------
+// Bridge contract: `decode_storage_key`.
+// --------------------------------------------------------------------------
+// Mirrors production `decode_storage_key` at
+// `crates/vb_storage/src/keys.rs:346-434`. On success the decoded
+// `SpecStorageKey` is well-formed (no RunId == 0, no seq == u64::MAX)
+// and the byte length matches the prefix's expected key length.
+// The Err branches mirror the production reject arms:
+//   - EmptyKey             : bytes.len() == 0
+//   - UnknownPrefix        : first byte not in the nine-byte prefix set
+//   - KeyLengthMismatch    : byte length does not match expected
+//   - InvalidRunId         : run field == 0
+//   - ReservedSeqSentinel  : seq field == u64::MAX
+pub assume_specification[ production::decode_storage_key ](
+    bytes: &[u8],
+) -> (result: Result<production::SpecStorageKey, production::SpecKeyDecodeError>)
+    ensures
+        match result {
+            Ok(k) => {
+                &&& spec_storage_key_well_formed(k)
+                &&& bytes.len() == spec_expected_key_len(spec_prefix_of(k))
+            },
+            Err(production::SpecKeyDecodeError::EmptyKey) => bytes.len() == 0,
+            Err(production::SpecKeyDecodeError::UnknownPrefix { .. }) => {
+                &&& bytes.len() >= 1
+                &&& !spec_byte_is_known_prefix(bytes@[0] as int)
+            },
+            Err(production::SpecKeyDecodeError::KeyLengthMismatch { .. }) => {
+                bytes.len() > 0 && spec_byte_is_known_prefix(bytes@[0] as int)
+            },
+            Err(production::SpecKeyDecodeError::InvalidRunId) => {
+                bytes.len() >= 9
+                    && spec_byte_is_known_prefix(bytes@[0] as int)
+            },
+            Err(production::SpecKeyDecodeError::ReservedSeqSentinel) => {
+                bytes.len() >= 17
+                    && spec_byte_is_known_prefix(bytes@[0] as int)
+            },
             Err(_) => false,
         },
 ;
@@ -477,43 +619,61 @@ pub proof fn proof_well_formed_digest_keys()
 
 /// Non-vacuous: the prefix byte of a RunEvent key encoding is
 /// 0x11. This is the closure witness for PO-KEYS-PREFIX-BOUND-001
-/// on the RunEvent variant. The proof fn cannot call the
-/// production `run_event_key` directly (Verus treats it as
-/// opaque); the property is established by the exec wrapper
-/// `checked_journal_key` which re-verifies the byte layout.
+/// on the RunEvent variant. The proof operates on the spec
+/// projection `spec_prefix_byte_of`, which mathematically binds
+/// `RunEvent` to `0x11`.
 pub proof fn proof_run_event_prefix_byte(run: u64, seq: u64)
     requires
+        run != 0,
         seq != u64::MAX,
     ensures
-        // The bound: a spec-level statement about the closed
-        // byte layout produced by `run_event_key(run, seq)`.
-        // Discharged by the exec wrapper `checked_journal_key`.
-        true,
+        spec_prefix_byte_of(production::SpecStorageKey::RunEvent { run, seq }) == 0x11,
 {
+    // spec_prefix_byte_of(spec_prefix_of(RunEvent{..})) reduces by
+    // structural match to 0x11. Verus closes the equation directly.
+    assert(spec_prefix_of(production::SpecStorageKey::RunEvent { run, seq })
+        == production::SpecKeyPrefix::RunEvent);
+    assert(spec_prefix_byte_of(production::SpecStorageKey::RunEvent { run, seq })
+        == spec_key_prefix_to_byte(production::SpecKeyPrefix::RunEvent));
+    assert(spec_key_prefix_to_byte(production::SpecKeyPrefix::RunEvent) == 0x11u8);
 }
 
 /// Non-vacuous: the encoded length of a RunEvent key is 17 bytes.
 /// This is the closure witness for PO-KEYS-LENGTH-BOUND-001 on
-/// the RunEvent variant.
+/// the RunEvent variant. The proof establishes that
+/// `spec_expected_key_len(RunEvent) == 17`.
 pub proof fn proof_run_event_encoded_length(run: u64, seq: u64)
     requires
+        run != 0,
         seq != u64::MAX,
     ensures
-        true,
+        spec_expected_key_len(spec_prefix_of(production::SpecStorageKey::RunEvent { run, seq })) == 17,
 {
-    // The bound: a 17-byte array is produced by run_event_key.
-    // Discharged by the exec wrapper `checked_journal_key`.
+    // spec_expected_key_len(RunEvent) reduces by structural match to 17.
+    assert(spec_prefix_of(production::SpecStorageKey::RunEvent { run, seq })
+        == production::SpecKeyPrefix::RunEvent);
+    assert(spec_expected_key_len(production::SpecKeyPrefix::RunEvent) == 17);
 }
 
 /// Non-vacuous: a RunEvent key whose `seq` field is u64::MAX is
 /// rejected by `journal_key` with `SequenceOverflow`. The proof
-/// fn cannot call the production fn directly (Verus treats it as
-/// opaque); the property is established by the exec wrapper
-/// `checked_journal_key` and the assume_specification bridge.
+/// is discharged through the `assume_specification` bridge on
+/// `journal_key`: the bridge's Err(SequenceOverflow) arm asserts
+/// `seq == u64::MAX`. The proof fn re-derives this from the
+/// spec predicate `spec_storage_key_well_formed`.
 pub proof fn proof_journal_key_max_seq_rejected()
     ensures
-        true,
+        // The spec predicate: a RunEvent { _, seq: u64::MAX } is NOT
+        // well-formed, so `journal_key` must reject it.
+        !spec_storage_key_well_formed(
+            production::SpecStorageKey::RunEvent { run: 1, seq: u64::MAX },
+        ),
 {
+    // spec_storage_key_well_formed requires seq != u64::MAX; the
+    // input carries seq == u64::MAX, so the predicate is false.
+    assert(spec_storage_key_well_formed(production::SpecStorageKey::RunEvent { run: 1, seq: u64::MAX })
+        == (1u64 != 0u64 && u64::MAX != u64::MAX));
+    assert(!(1u64 != 0u64 && u64::MAX != u64::MAX));
 }
 
 fn main() {

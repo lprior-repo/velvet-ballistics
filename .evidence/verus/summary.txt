@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=5
+VERUS_TARGET_COUNT=6
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -11,3 +11,4 @@ PASS verus verification/verus/step_state_machine.rs
 PASS verus verification/verus/step_budget.rs
 PASS verus verification/verus/resource_budget.rs
 PASS verus verification/verus/vb_jpq724_events_for_run_production.rs
+PASS verus verification/verus/vb_runtime_execute_do_spec.rs

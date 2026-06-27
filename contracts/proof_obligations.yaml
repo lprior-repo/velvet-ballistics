@@ -518,6 +518,44 @@ obligations:
       - cargo nextest run -p vb_runtime journal_before
       - cargo xtask crash-lab --workflow minimal --crash-at action_dispatch
 
+  # ============================================================
+  # ACTION DISPATCHER DETERMINISM (Section 49) - production-bound
+  # Verus contracts for vb_runtime::engine::action::execute_do and the
+  # six sibling exec wrappers. Pure projections of every public fn in
+  # crates/vb_runtime/src/engine/action.rs are bound via
+  # assume_specification; outcome-kind validity and discriminant-set
+  # closure are proved non-vacuously.
+  # ============================================================
+  - id: VB-RUNTIME-EXEC-DO-001
+    section: [49]
+    statement: |
+      vb_runtime::engine::action::execute_do is deterministic and
+      outcome-kind valid. All seven public exec wrappers in
+      crates/vb_runtime/src/engine/action.rs (execute_do,
+      execute_do_without_contract, execute_retry_check,
+      execute_error_handler, resume_action_outcome,
+      compute_idempotency_key, resolve_contract) are production-bound
+      via assume_specification bridges to pure projections.
+    proof_level: L4
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/engine/action.rs
+    required:
+      verus: verification/verus/vb_runtime_execute_do_spec.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_runtime_execute_do_spec.rs
+    verified:
+      execute_do_decision_deterministic: deductively_verified
+      outcome_kind_validity: deductively_verified
+      action_outcome_discriminant_closed: deductively_verified
+      execute_do_without_contract_deterministic: deductively_verified
+      execute_retry_check_branch: deductively_verified
+      execute_error_handler_branch: deductively_verified
+      resume_action_outcome_deterministic: deductively_verified
+      compute_idempotency_key_deterministic: deductively_verified
+      resolve_contract_deterministic: deductively_verified
+    note: "Production-bound Verus contracts for vb_runtime action dispatcher; pure projections bound via assume_specification"
+
   - id: VB-REPLAY-002
     section: [49, 68]
     statement: |

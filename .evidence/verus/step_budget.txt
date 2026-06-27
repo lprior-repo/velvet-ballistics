@@ -1,2 +1,16 @@
 [verus] verus --crate-type=lib verification/verus/step_budget.rs
-verification results:: 7 verified, 0 errors
+warning: verus-related attribute has no effect because item is already marked external
+   --> verification/verus/step_budget.rs:185:5
+    |
+185 |     pub const MAX: Self = MirrorStepBudget { remaining: crate::limits::MAX_STEP_BUDGET };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/step_budget.rs:191:17
+    |
+191 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+verification results:: 14 verified, 0 errors
+warning: 2 warnings emitted
+

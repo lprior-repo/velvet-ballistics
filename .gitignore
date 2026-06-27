@@ -78,6 +78,14 @@ verification/verus/vb_jpq724_events_for_run_production
 fuzz/corpus/
 fuzz/artifacts/
 
+# Verus / rustc stray build artifacts (recursively anywhere in tree)
+# Verus emits .rlib/.rmeta/.d alongside source when invoked from non-target dirs.
+**/*.rlib
+**/*.rmeta
+**/*.d
+verification/**/*.bin
+verification/verus/vb_*
+
 # Large test artifacts
 test_string
 agent-invocation-ledger.jsonl

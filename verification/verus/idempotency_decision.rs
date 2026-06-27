@@ -53,6 +53,9 @@
 //   - `ActionContract` struct             <- extern_idempotency_decision.rs
 //                                              (mirror of
 //                                              crates/vb_core/src/action/contract.rs:83-105)
+//   - `ActionId` newtype                  <- extern_idempotency_decision.rs
+//                                              (mirror of
+//                                              crates/vb_core/src/ids/mod.rs:58)
 //   - `IdempotencyContractViolation`      <- extern_idempotency_decision.rs
 //                                              (mirror of
 //                                              crates/vb_validate/src/idempotency_contract.rs:42-94)
