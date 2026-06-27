@@ -934,6 +934,180 @@ obligations:
       - cargo xtask loom --model bounded_queue
 
 # ============================================================
+# VERUS SPEC REGISTRY (STRONG PRODUCTION BINDING)
+# ============================================================
+# Compact registration index of every STRONG-bound Verus spec file
+# under verification/verus/ that establishes an auditable production
+# binding via the extern_*.rs mirror + #[path] mechanism (GOD RULE 2).
+# Each entry maps a spec file to its primary production source. The
+# detailed obligation entries above (VB-*) cite these files where
+# relevant; this section is the canonical lookup for which production
+# source each Verus spec file is bound to.
+#
+# Trust boundary: every extern mirror wraps production exec bodies in
+# #[verifier::external] so Verus verifies only structural resolution,
+# discriminant-set closure, and contract well-formedness — not the
+# production body semantics. Drift between the mirror and the
+# production source is the explicit drift-detection mechanism.
+# ============================================================
+verus_registry:
+
+  # --- vb_core safety kernels ------------------------------------------
+  - id: PO-VERUS-001
+    description: "WholeWorkflowBudget boundedness: sequential, nested, branch, aggregate, diagnostic totals stay within BoundednessPolicy limits (no u64 overflow on composition)."
+    verus: verification/verus/budget_bounded.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-002
+    description: "WholeWorkflowBudget::compute arithmetic: max_total_steps/slots/fanout/depth computed from IR traversal; CollectStart budget arithmetic bound to production (PO-024)."
+    verus: verification/verus/budget_computation.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-003
+    description: "WholeWorkflowBudget monotonicity: identical (nodes, entry, contract) inputs produce identical computed dimensions across recomputation (INV-005)."
+    verus: verification/verus/budget_monotonic.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-004
+    description: "RunFrame construction and reinitialization invariants: PRE-001, POST-001, INV-007 (VB-CORE-RUNFRAME-001..003)."
+    verus: verification/verus/run_frame_invariant.rs
+    production: crates/vb_core/src/frame.rs
+
+  - id: PO-VERUS-005
+    description: "ValueStore arena cap enforcement: spec_value_store_cap + proof_arena_cap_enforced (INV-002)."
+    verus: verification/verus/value_store_invariant.rs
+    production: crates/vb_core/src/value_store.rs
+
+  - id: PO-VERUS-006
+    description: "StepBudget remaining <= MAX_STEP_BUDGET invariant (INV-001)."
+    verus: verification/verus/signals_invariant.rs
+    production: crates/vb_core/src/engine/signals.rs
+
+  - id: PO-VERUS-007
+    description: "StepBudget::try_take monotonicity: remaining is monotonically non-increasing; never underflows (INV-006)."
+    verus: verification/verus/signals_try_take.rs
+    production: crates/vb_core/src/engine/signals.rs
+
+  - id: PO-VERUS-008
+    description: "StepIdx::checked_add arithmetic bound to production; checked_step_offset bounds checking (PO-015, PO-027)."
+    verus: verification/verus/step_offset.rs
+    production: crates/vb_core/src/ids/mod.rs
+
+  - id: PO-VERUS-009
+    description: "CompiledWorkflow::try_from_parts validation: validate_parts and validate_budget bound to production decision surface (PO-021)."
+    verus: verification/verus/try_from_parts.rs
+    production: crates/vb_core/src/workflow/mod.rs
+
+  # --- vb_runtime / vb_storage admission gates -------------------------
+  - id: PO-VERUS-010
+    description: "Accepted-artifact admission: WorkflowDigest, VerificationProof, AcceptedArtifact, ADMISSION_GATE_COUNT = 15, is_strict_admission_valid (vb-qi37.4)."
+    verus: verification/verus/admission_artifact_model.rs
+    production: crates/vb_storage/src/admission.rs
+
+  - id: PO-VERUS-011
+    description: "Accepted-artifact capability proof: exact capability name/action matching, runtime cardinality, certificate profile count (VERUS-CAP-001, VERUS-CARD-003, VERUS-CERT-007)."
+    verus: verification/verus/capability_artifact_model.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-012
+    description: "Accepted-artifact admission decision lattice: ArtifactCase/AdmissionError mapped to Rust ArtifactEnvelopeError variants (PO-004)."
+    verus: verification/verus/accepted_artifact_admission_decision.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-013
+    description: "Atomic accepted-run admission: required families, coherent inputs, accepted_at_seq non-sentinel, strict compiled payloads, required index preconditions (VERUS-PRE-001..006)."
+    verus: verification/verus/accepted_run_atomic_admission.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-014
+    description: "Accepted-envelope v1 admission: canonical gate count, durable non-stale evidence, accepted proof flags, supported schema/status (VERUS-ENV-006 / PO-006)."
+    verus: verification/verus/accepted_envelope_model.rs
+    production: crates/vb_storage/src/admission.rs
+
+  - id: PO-VERUS-015
+    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production admission.rs:711-725 (VERUS-CLI-DIGEST-002 / PO-002)."
+    verus: verification/verus/accepted_cli_digest_binding.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-016
+    description: "Strict admission witness: REQUIRED_GATE_COUNT = 15 invariant; model-level strict admission failure classification (PO-003)."
+    verus: verification/verus/strict_admission_witness.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-017
+    description: "Idempotency decision table: 5 idempotency decision fns (vb-ko29.2) bound to production admission.rs:531-545 and vb_validate/src/idempotency_contract.rs:140-187 (VERUS-DECISION-001..005, VERUS-PARITY-003)."
+    verus: verification/verus/idempotency_decision.rs
+    production: crates/vb_storage/src/admission.rs
+
+  # --- Recovery kernels -------------------------------------------------
+  - id: PO-VERUS-018
+    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029)."
+    verus: verification/verus/recovery_verification.rs
+    production: crates/vb_storage/src/recovery/types.rs
+
+  - id: PO-VERUS-019
+    description: "Recovery hydration contracts: SpecRecoveryInput/Success/Error mapped to production RecoveryError variants and RunFrame hydration decision surface (VERUS-REC-001 / PO-002; PRE-004, PRE-006, POST-001, POST-008, INV-001, INV-004..006)."
+    verus: verification/verus/recovery_hydration_contracts.rs
+    production: crates/vb_storage/src/recovery/types.rs
+
+  - id: PO-VERUS-020
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production types.rs:666-852 verbatim (VERUS-REPLAY-004)."
+    verus: verification/verus/idempotency_replay_tracker.rs
+    production: crates/vb_storage/src/recovery/types.rs
+
+  # --- IPC kernels ------------------------------------------------------
+  - id: PO-VERUS-021
+    description: "IPC capacity bounds: QueueCapacity::new, MaxPayloadBytes arithmetic bound to production bounded.rs (REFINE-IPC-002 / PO-002)."
+    verus: verification/verus/ipc_capacity_bounds.rs
+    production: crates/vb_ipc/src/bounded.rs
+
+  - id: PO-VERUS-022
+    description: "IPC runtime state-machine transitions: RuntimeState, RuntimeEvent transitions bound to production ipc_refinement.rs (REFINE-IPC-003..005; VERUS-IPC-003..005)."
+    verus: verification/verus/ipc_runtime_transitions.rs
+    production: crates/vb_runtime/src/ipc_refinement.rs
+
+  - id: PO-VERUS-023
+    description: "IPC strict-admission gate: 3-boolean production surface collapsed to 2-boolean spec surface at ipc_refinement.rs:21-37,123-134 (REFINE-IPC-001 / VERUS-IPC-001)."
+    verus: verification/verus/ipc_strict_admission.rs
+    production: crates/vb_runtime/src/ipc_refinement.rs
+
+  # --- Compile kernels --------------------------------------------------
+  - id: PO-VERUS-024
+    description: "lower_canonical_collect emission invariants: SpecCompileError::StepFieldShape match; StepIdx/SlotIdx checked bounds (PO-011)."
+    verus: verification/verus/collect_lowering.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
+
+  - id: PO-VERUS-025
+    description: "lower_canonical_collect IR struct field refinement: CompiledCollect IR field shapes match production surface (PO-012)."
+    verus: verification/verus/collect_ir_structure.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
+
+  - id: PO-VERUS-026
+    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production part_04.rs:213-297 (PO-006, PO-009, PO-018)."
+    verus: verification/verus/emit_single_body_set.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+
+  - id: PO-VERUS-027
+    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production part_04.rs:213-297 + part_05_digest.rs:6-22 (PO-030)."
+    verus: verification/verus/error_parity.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+
+  - id: PO-VERUS-028
+    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005)."
+    verus: verification/verus/v1_primitive_lowering.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
+
+  - id: PO-VERUS-029
+    description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=8; schema version invariant (INV-001, INV-005)."
+    verus: verification/verus/diagnostic_envelope_verus.rs
+    production: crates/vb_cli/src/exit_code.rs
+
+  - id: PO-VERUS-030
+    description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at chunk_002.rs:127-174 (PO-VERUS-001..003)."
+    verus: verification/verus/cancel_kill_lattice.rs
+    production: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+
+# ============================================================
 # EVIDENCE FORMAT
 # ============================================================
 evidence_schema:
