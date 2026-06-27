@@ -28,9 +28,15 @@ The runtime uses numeric state machines, numeric slots, numeric actions, shard-o
 
 Publicly, `velvet-ballistics` must not be described as a generic DAG runner, low-code graph editor, YAML-as-programming framework, Airflow replacement, or Temporal clone. Those frames hide the actual wedge and invite false comparisons.
 
-The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, and enforces resource and taint bounds. Generated Rust execution is not a current product path.
+The product identity is: an AI-native workflow compiler targeting an AI-safe, local-first, single-server durable execution runtime. The compiler verifies AI-authored automation before admission; the runtime executes only accepted numeric artifacts, persists an inspectable journal, protects side effects with idempotency evidence, and enforces resource, policy, capability, and taint bounds. Generated Rust execution is not a current product path.
 
 The unit of trust is the accepted artifact, not the YAML source. YAML is a cold authoring surface. Verification certificates, compiled IR digests, resource budgets, action contracts, capability grants, journals, snapshots, and replay reports are the operational truth.
+
+Strategic source-language rule: strict YAML remains the current v1 cold authoring surface until an explicit master-contract migration replaces it. The long-term authoring target is source-language neutral: a Rust SDK, macro DSL, visual builder, AI generator, or Swamp-like source layer may exist only as a cold front-end that emits canonical source-spec data. Authoring Rust must never execute as workflow logic and must never be called during runtime execution, replay, recovery, incident generation, or runtime verification. No source language is trusted by the runtime.
+
+Adaptive software rule: `velvet-ballistics` may adapt only through evidence. Runtime behavior may observe journaled facts, apply precompiled policy decisions, gate, suspend, select preverified variants, or emit incidents. The runtime must never synthesize new workflow logic, mutate accepted IR, run an LLM, or evaluate source text in the execution path. Any new behavior must leave the runtime, pass through verify -> compile -> accept, and return as a new accepted artifact.
+
+First product wedge: AI-authored internal-platform deploy/runbook automation with durable approval, rollback/retry evidence, policy-bound capability grants, and replayable incident reports. The broader internal development platform vision is the destination; this wedge is the first release target.
 
 Competitive comparison is allowed only with scope discipline:
 
@@ -2781,11 +2787,11 @@ v1 supported target: `x86_64-unknown-linux-gnu`. Unix domain sockets required. O
 
 ### Trusted Components
 
-Compiled IR, Fjall database, runtime engine.
+The trusted computing base is intentionally narrow: runtime artifact verifier, IR decoder/interpreter after verifier acceptance, journal envelope decoder, replay core, capability-token dispatch, and policy decision recorder. Compiled IR bytes are not trusted until the runtime artifact verifier accepts their envelope, provenance/profile requirements, structure, compatibility, and resource contract. Fjall records are not trusted until record envelopes, checksums, digests, schema versions, and typed payloads validate.
 
 ### Untrusted Inputs
 
-Workflow YAML source, IPC client payloads, action outputs, persisted bytes during recovery.
+Workflow source, source specs, Rust authoring programs, future macro DSL input, IPC client payloads, action outputs, operator comments, AI-produced summaries, incident evidence, persisted bytes during recovery, action registry input, policy bundles, and raw artifact bytes are untrusted until their specific verifier accepts them.
 
 ### Threat Model
 
@@ -2800,6 +2806,8 @@ Workflow YAML source, IPC client payloads, action outputs, persisted bytes durin
 | Local privilege escalation | Unix socket permissions. No authentication in v1 |
 | DoS via resource exhaustion | Bounded queues, bounded retries, bounded expression stacks, bounded trace rings |
 | Storage corruption | Fjall WAL replay, snapshot recovery, typed storage errors |
+
+This table is the minimum current-scope threat list. Section 77.14 is the expanded adaptive-platform threat model and is authoritative for provenance, compiler compromise, executor compromise, prompt injection, policy rollback, grant theft, artifact replay, cross-tenant leakage, and debug-metadata side-channel risks.
 
 ---
 
@@ -3615,7 +3623,6 @@ The following phases extend Section 35 for operator-facing features:
 | 58 | Codegen residue removal | Delete or quarantine codegen stubs, tests, proof residue, and generated-mode references. |
 | 59 | Behavioral property tests | Current-scope properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, and taint safety. |
 | 60 | Canonical CLI binary | Cargo.toml exposes only the canonical `velvet-ballistics` binary. Short aliases such as `vb` are rejected to preserve the naming contract. |
-| 61-74 | UI residue removal | Delete or quarantine UI/Makepad/Figma/snapshot/perf-gate residue. |
 
 ---
 
@@ -4328,260 +4335,8 @@ Then hand the output to an AI and ask: *What failed, is it safe to retry, and wh
 
 ---
 
-## 76. Workflow Command-Center Front-End
 
-> **Removed.** The command-center front-end is not part of the current Backend / IR Interpreter Complete milestone. The remaining section content is historical residue only and not an implementation contract.
-
-### Vision
-
-The `velvet-ballistics` front-end is a premium native command center for workflow execution observability, verification, replay, and incident response. It is not a generic SaaS dashboard, not a low-code canvas, and not a decorative graph editor.
-
-The UI product identity is:
-
-> Step Functions observability, but cleaner, sharper, calmer, and more cinematic — a workflow black-box recorder inside an Apple-quality native desktop app.
-
-The UI visualizes operational truth already produced by the backend: `VerificationReport`, `WorkflowGraph`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, storage health, journal evidence, action tickets, resource budgets, and taint paths. The UI does not invent state and does not become a second source of truth.
-
-### Design Direction
-
-The v1 UI uses a crisp Apple Pro-style light shell:
-
-- Ultra-clean off-white surfaces.
-- Matte white cards.
-- Faint translucent glass panels only where useful.
-- Hairline dividers instead of heavy borders.
-- Soft, realistic shadows.
-- Rounded 14–20px cards.
-- Precise 8px spacing rhythm.
-- Minimal, high-signal color use.
-- Crisp sans-serif typography for labels.
-- Monospace only for run IDs, action IDs, digests, slot IDs, timestamps, sequence numbers, and binary/record metadata.
-- No cyberpunk treatment, no overuse of neon, no overuse of glass, no thick borders, no 3D effects, and no generic web-dashboard chrome.
-
-The UI may borrow broad observability structure from AWS Step Functions-style execution pages — execution summary, graph/table/event views, selected-step details, event history, recovery controls — but it must reinterpret these into the `velvet-ballistics` product model: accepted artifacts, verification certificates, typed journals, replay safety, idempotency evidence, and taint/resource contracts.
-
-### Presentation Board and Figma Contract
-
-The current canonical intake bundle is the 2026-05-08 23:51 zip at `/home/lewis/Downloads/velvet_ballistics_makepad_ui_master_plan_with_images.zip`. Its extracted repository copy is:
-
-```text
-velvet_ballistics_makepad_ui_master_plan_with_images/
-  velvet-ballistics-MASTER-makepad-ui-update.md
-  design_assets/canonical/
-    figma_makepad_notes.md
-    velvet_ballistics_figma_ready_tightened_board.png
-  design_assets/velvet_ballistics_figma_ready_tightened/png/
-  design_assets/velvet_ballistics_figma_ready_tightened/svg/
-```
-
-The design review artifact is an 8-screen desktop board:
-
-```text
-1. Execution Observatory Overview
-2. Workflow Graph Authoring
-3. Execution Details Graph View
-4. Verification Certificate View
-5. Replay Theater
-6. Incident Failure Console
-7. Action Registry / Contract Inspector
-8. Storage / Journal Doctor + AI Context
-```
-
-Reference design assets live under:
-
-```text
-design/figma/
-design/reference/
-design/tokens/
-```
-
-Figma files, SVGs, and PNG boards are design reference only. The implementation source of truth is Makepad Splash (`script_mod!`) plus Rust widget code. Any design token divergence between Figma and Makepad is a release blocker.
-
-### Shared App Chrome
-
-Every screen uses one shared shell:
-
-- Left sidebar with `velvet-ballistics` branding.
-- Minimal icon navigation: Overview, Workflow Graph, Executions, Verification, Replay, Incidents, Actions, Storage, AI Context, Settings.
-- Top action bar with compact capsule buttons: Verify, Simulate, Submit.
-- Status chips: Strict durability, Running, Verified, Replay safe, Needs operator.
-- Top right utility controls: profile/environment selector, local server status, notification indicator, optional command palette trigger.
-
-Shared app chrome must be implemented once as `AppShell`, not copied per screen.
-
-### Color System
-
-Use color only for state and meaning:
-
-| Meaning | Color role |
-|--------|------------|
-| Verified / succeeded / healthy | Green |
-| Running / active / selected | Blue or cyan |
-| Retry / warning / queue pressure | Amber |
-| Failed / critical incident | Red |
-| Taint / secret-sensitive path | Purple |
-| Durable / replay-safe | Teal |
-| Disabled / pending / muted | Gray |
-
-The default UI is calm white, gray, and black. Accent color should appear as small chips, thin outlines, dots, timeline marks, node glows, graph packet markers, and status text. Large colored surfaces are reserved for rare success/failure banners and must stay visually restrained.
-
-### Screen 1 — Execution Observatory Overview
-
-Purpose: answer what is running, where pressure is building, and whether the local system is healthy.
-
-Required elements:
-
-- KPI row: Active runs, Healthy actions, Verification pass rate, Queue depth, Open incidents.
-- Simplified executions table: run id, workflow, status, started, duration, shard, result.
-- Shard flow map: shard lanes, tiny packet dots moving through active executions, queue pressure marks, action completion lane, timer lane.
-- Event ticker: last N events, `RunAccepted`, `StepStarted`, `ActionScheduled`, `ActionCompleted`, `RunFinished`, `RunFailed`.
-- System health cards: local server online, Fjall store healthy, writer queue health, IPC socket status.
-
-Style: calm, spacious, operational, less dense than the Step Functions console or the previous dark reference board.
-
-### Screen 2 — Workflow Graph Authoring
-
-Purpose: show the compiled workflow graph as a structured projection of YAML/IR, not as a freeform whiteboard.
-
-Required elements:
-
-- State palette on the left: Start, Action, Branch, Parallel, Wait, Subflow, Finish.
-- Center graph canvas: `Start`, `classify`, `route_issue`, `create_issue`, `notify_slack`, `build_result`, `Finish`.
-- Node cards: matte white card, status dot, primitive/action label, small badges for strict-safe, idempotency, taint, retry, timeout.
-- Edges: thin curved lines, tiny packet markers, branch labels, selected path emphasis.
-- Right step inspector: step name, primitive, action id, resource impact, input slots, output slot, retry policy, idempotency key, taint state.
-- Selected node: crisp blue outline, subtle glow, no large blue fill.
-
-YAML source remains authoritative. The canvas may support structured editing only if edits round-trip through the parser/compiler/validator.
-
-### Screen 3 — Execution Details Graph View
-
-Purpose: inspect one active or past run in graph mode.
-
-Required elements:
-
-- Run summary: run id, workflow name, status, started timestamp, shard id, durability profile.
-- Runtime graph: succeeded nodes in green, selected/running node in blue, pending nodes muted gray, failed node red outline, secret/taint overlay purple only when active.
-- Event table below graph: seq, time, step, event, shard, evidence id.
-- Right step details panel: step name, action id, action type, attempt, started time, elapsed, idempotency key hash, input tab, output tab, details tab.
-
-This screen is the closest structural analog to Step Functions execution details, but it must show velvet-native concepts: journal evidence, action tickets, taint, slots, replay safety, and artifact digests.
-
-### Screen 4 — Verification Certificate View
-
-Purpose: pre-flight safety certificate for accepted artifacts.
-
-Required elements:
-
-- Green restrained banner: `Verification passed` or equivalent failure banner.
-- Certificate cards: Structure, Boundedness, Resources, Taint / Secrets, Action policy, Durability, Idempotency, Capability.
-- Horizontal verification gate pipeline: Parse, Graph check, Policy, Resources, Taint, Durability, Idempotency, Capability, Result.
-- Accepted artifact side panel: artifact version, workflow version, workflow digest, IR digest, action ABI digest, policy digest, verified timestamp, warnings.
-- Proof summary: bounded, taint safe, retry safe, durable, replayable.
-
-This screen must feel like a safety certificate, not an analytics dashboard.
-
-### Screen 5 — Replay Theater
-
-Purpose: the hero screen. A premium black-box recorder for deterministic workflow replay.
-
-Required elements:
-
-- Runtime graph on the left or center.
-- Journal timeline: event dots by sequence number, selected event highlight, scrubber position, jump to failure, jump to action, jump to divergence.
-- Playback controls: back, play/pause, step forward, replay speed, live/frozen mode.
-- Selected event panel: seq, timestamp, shard, step, event kind, evidence id, digest summary.
-- Slot diff table: slot id, before, after, taint before, taint after.
-- Recovery decision panel: strategy, max attempts, idempotency requirement, apply/replay action.
-
-This screen should feel like a video editor or flight recorder: calm, precise, replayable, and cinematic. Motion is implied by packet dots, scrubber state, event pulses, and graph overlays.
-
-### Screen 6 — Incident Failure Console
-
-Purpose: incident diagnosis and safe recovery.
-
-Required elements:
-
-- Red restrained banner: `ACTION_TIMEOUT at create_issue`, run id, action id, attempt, timestamp.
-- Compact chips: `Safe to retry: YES`, `Same idempotency key required`, `Strict durability`, `Replay safe`.
-- Failure path graph: failure node red outline, failure path focus, muted non-failure nodes.
-- Evidence chain: scheduled durable, completion durable, side-effect certainty, journal tail.
-- Recovery controls: retry same key, schedule retry, cancel run, open replay.
-- Action ticket panel: ticket id, action id, attempt, owner, rollback/retry metadata.
-- Slot and taint diff panels.
-- Repair hints: check API status, verify token scope, increase timeout, retry with backoff.
-
-Do not flood the screen with red. Red is reserved for the failure node, banner accent, and critical text.
-
-### Screen 7 — Action Registry / Contract Inspector
-
-Purpose: inspect registered native actions, numeric `ActionId` mappings, contracts, capabilities, idempotency, retry safety, and schema/digest metadata.
-
-Required elements:
-
-- Action list: name, action id, side effect class, idempotency, retry safety, strict safe, required capability.
-- Selected action inspector: `ActionContract`, input slot count, output slot count, max input bytes, max output bytes, timeout ms, idempotency classification, side effect classification, retry safety, action ABI digest.
-- Capability panel: required permissions, granted permissions, missing permissions.
-- Failure code panel: `RateLimited`, `Timeout`, `PermissionDenied`, `InvalidInput`, `ExternalUnavailable`.
-- Example call view: no JSON, no HTTP core routing, typed binary/postcard schema summary.
-
-### Screen 8 — Storage / Journal Doctor + AI Context
-
-Purpose: storage health, journal evidence, replay readiness, and AI-safe operational context.
-
-Required elements:
-
-- Storage health: Fjall keyspaces, writer queue, journal batch health, snapshot status, blob store status, index health.
-- Journal doctor: run event count, snapshot seq, tail seq, corrupt record status, trim recommendation, digest checks.
-- AI context packet: safe for model, secrets redacted, blobs summarized, suggested next commands, failure summary, replay safety.
-- Evidence card: last cert check, last replay check, last crash lab fixture, incomplete evidence warnings.
-
-### AI Companion Panel
-
-The AI panel is not a generic chat sidebar. It receives structured artifacts only:
-
-- `WorkflowGraph`
-- `VerificationReport`
-- `RunInspection`
-- `RunEvents`
-- `ReplayReport`
-- `IncidentReport`
-- `SystemStatus`
-- `ActionDescription`
-- `AiContextPacket`
-
-Prompts are action buttons, not open-ended chat by default:
-
-- Explain this failure.
-- Is this safe to retry?
-- Show secret-sensitive paths.
-- Explain strict-durability failure.
-- Generate minimal repro.
-- Suggest bounded retry policy.
-- Summarize what changed since last good run.
-
-AI output must cite graph nodes, journal events, slot diffs, action tickets, certificates, or diagnostics. AI output must never rely on hidden UI state.
-
-### UI Build Order
-
-| UI Phase | Deliverable | Why first |
-|----------|-------------|-----------|
-| UI-1 | `vb_ui_model` typed artifacts | Shared truth for CLI and UI. |
-| UI-2 | Makepad app shell and design tokens | Common chrome, spacing, color, typography. |
-| UI-3 | Replay Theater | Exercises hardest event/timeline/graph mapping first. |
-| UI-4 | Verification Certificate View | Product differentiation and accepted-artifact proof surface. |
-| UI-5 | Execution Details Graph View | Step Functions-style observability with velvet-native evidence. |
-| UI-6 | Incident Failure Console | Operational recovery path. |
-| UI-7 | Execution Observatory Overview | Macro health after per-run views work. |
-| UI-8 | Workflow Graph Authoring | Structured graph projection and editing. |
-| UI-9 | Action Registry / Storage Doctor / AI Context | Operator completeness. |
-| UI-10 | Motion/perf/snapshot gates | Release readiness. |
-
-The backend and CLI remain higher priority than decorative UI polish. UI concepts cannot introduce product states not emitted by backend artifacts.
-
----
-
-## 77. AI-Safe Quality Infrastructure
+## 76. AI-Safe Quality Infrastructure
 
 AI changes must be small, checkable, replayable, benchmarked, and hard to merge when wrong. The closed loop is:
 
@@ -4591,7 +4346,7 @@ spec -> task -> patch -> mechanical checks -> evidence -> benchmark -> certifica
 
 AI agents must not guess which checks to run. Every quality gate is exposed as a first-party `xtask` command that returns structured machine-readable output. No evidence bundle means no merge.
 
-### 77.1 xtask Command Center
+### 76.1 xtask Command Center
 
 A first-party `xtask` crate provides the AI-safe command interface for development. AI agents invoke `cargo xtask <command>` and receive structured YAML/JSON output; they never guess which checks apply.
 
@@ -4650,7 +4405,7 @@ recommended_next_action:
   file: crates/vb_core/src/frame.rs
 ```
 
-### 77.2 Three Check Levels
+### 76.2 Three Check Levels
 
 AI needs fast feedback first, then deep proof later. Three levels provide a ladder instead of one impossible command.
 
@@ -4686,7 +4441,7 @@ Supply-chain/advisory reports are non-blocking under the 2026-05-23 owner waiver
 
 The maxperf lane is removed and is not part of current release closure.
 
-### 77.3 Evidence Bundles
+### 76.3 Evidence Bundles
 
 Every AI-authored change produces an evidence bundle at `.evidence/<bead-id>/evidence.yaml`. No evidence bundle means no merge. This extends section 60 (Evidence Artifact Format) with AI-specific fields.
 
@@ -4721,7 +4476,7 @@ remaining_risk:
   - "Copy primitive not implemented in this bead."
 ```
 
-### 77.4 Machine-Readable Invariants
+### 76.4 Machine-Readable Invariants
 
 Invariants live in `contracts/invariants.yaml` as executable rules. `cargo xtask invariants` outputs exactly which invariant failed.
 
@@ -4758,7 +4513,7 @@ invariants:
       - slicing
 ```
 
-### 77.5 Semantic Banned Scans
+### 76.5 Semantic Banned Scans
 
 Token-level grep is necessary but insufficient. The quality infrastructure uses multiple scan layers:
 
@@ -4773,7 +4528,7 @@ Token-level grep is necessary but insufficient. The quality infrastructure uses 
 
 AI often satisfies the literal rule while violating the intent. Multi-layer scanning catches this.
 
-### 77.6 AI Context Packets
+### 76.6 AI Context Packets
 
 AI must not read the whole repo. `cargo xtask ai-context --crate vb_core --topic engine` emits a precise working set:
 
@@ -4798,7 +4553,7 @@ commands:
     - cargo +nightly nextest run -p vb_core engine::
 ```
 
-### 77.7 Spec-to-Test Mapping
+### 76.7 Spec-to-Test Mapping
 
 Required tests live in `contracts/tests.yaml` as executable metadata. This makes the master document's mandatory test coverage (section 36) queryable.
 
@@ -4823,7 +4578,7 @@ Commands:
 - `cargo xtask test-plan --phase 13` — list required tests for a phase
 - `cargo xtask test-plan --missing` — list required tests not yet implemented
 
-### 77.8 Property Tests, Fuzz Harnesses, and Proof Targets
+### 76.8 Property Tests, Fuzz Harnesses, and Proof Targets
 
 AI is good at writing examples but misses edge cases. Harnesses are generated from contracts.
 
@@ -4869,7 +4624,7 @@ Loom is not used everywhere. Only where shared mutable state exists.
 
 **Prusti** is research/optional only in `verification/prusti/`. Not in the critical path until proven stable.
 
-### 77.9 Global Verifier Tooling Stabilization
+### 76.9 Global Verifier Tooling Stabilization
 
 Formal verification work must not be parallelized across many beads until the shared verifier substrate is stable. If multiple beads fail on the same Kani, Flux, Verus, TLA+, proptest, or fuzz tooling issue, the global tooling defect is fixed once before more bead agents are launched.
 
@@ -4906,7 +4661,7 @@ Recommended proof waves for the current blocked verifier campaign:
 
 If all five agents in a wave report the same tooling failure, stop bead-local repair and fix the global verifier substrate first. More agents are not a substitute for a stable proof harness.
 
-### 77.10 Mutation Testing as AI Correctness Check
+### 76.10 Mutation Testing as AI Correctness Check
 
 AI writes tests that pass but often do not pin behavior. Mutation testing catches this.
 
@@ -4925,7 +4680,7 @@ survived:
 
 This tells the agent exactly what its tests failed to prove.
 
-### 77.11 Differential Testing
+### 76.11 Differential Testing
 
 The system has many pairs that must produce identical results. Differential tests assert equivalence.
 
@@ -4943,7 +4698,7 @@ Command: `cargo xtask diff-test --suite <name>`
 
 This is the most important correctness pattern for AI-generated code.
 
-### 77.12 Crash/Recovery Lab
+### 76.12 Crash/Recovery Lab
 
 Deterministic fault-injection harness. Every crash point asserts:
 
@@ -4960,7 +4715,7 @@ cargo xtask crash-lab --workflow issue_triage --all-crash-points
 
 AI must add crash points when it modifies journal, action, or replay behavior.
 
-### 77.13 Performance Regression Gates
+### 76.13 Performance Regression Gates
 
 AI will make "clean" Rust slower. Performance gates are first-class.
 
@@ -4982,7 +4737,7 @@ benchmarks:
 
 If AI changes code and `transition_set` regresses by 12%, the harness rejects it. Speed claims are impossible without stored benchmark evidence.
 
-### 77.14 Allocation Tracing Gates
+### 76.14 Allocation Tracing Gates
 
 For hot paths, performance is not just time — it is allocations. Tests run hot transitions with an allocation counter.
 
@@ -4994,7 +4749,7 @@ Rules:
 
 Command: `cargo xtask alloc-check --suite hotpath`
 
-### 77.15 Public API Diff Gate
+### 76.15 Public API Diff Gate
 
 `cargo xtask api-diff` uses `cargo-public-api` to detect accidental public contract changes.
 
@@ -5010,7 +4765,7 @@ risk: "stable error model changed"
 
 AI must not casually alter stable errors, action ABI structs, IPC commands, certificate schemas, or public function signatures.
 
-### 77.16 Supply-Chain Policy
+### 76.16 Supply-Chain Policy
 
 AI may not add a dependency without a dependency-scope bead that includes:
 
@@ -5024,7 +4779,7 @@ AI may not add a dependency without a dependency-scope bead that includes:
 
 This stops "AI added 14 crates because convenient." Existing tools `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, and `cargo machete` enforce this.
 
-### 77.17 Structured Patch Review
+### 76.17 Structured Patch Review
 
 Every patch gets a structured review report:
 
@@ -5049,7 +4804,7 @@ blocking_questions:
 
 `cargo xtask review --changed --emit yaml` classifies the patch and determines which deep checks apply.
 
-### 77.18 Rustdoc Examples as Executable Contracts
+### 76.18 Rustdoc Examples as Executable Contracts
 
 Every public API includes a `/// # Examples` doc block that compiles and runs:
 
@@ -5065,11 +4820,11 @@ Every public API includes a `/// # Examples` doc block that compiles and runs:
 
 Verified by `cargo +nightly test --doc --workspace --all-features`. Doc examples are runnable contracts.
 
-### 77.19 Trybuild Compile-Fail Suites
+### 76.19 Trybuild Compile-Fail Suites
 
 For active public macro/schema contracts, compile-fail tests pin policy. Generated-code trybuild suites are removed with `vb_codegen` and are not current-scope tests.
 
-### 77.20 Minimal Repro Generator
+### 76.20 Minimal Repro Generator
 
 When fuzz, property test, or crash lab fails, generate a tiny repro:
 
@@ -5083,7 +4838,7 @@ Then: `cargo xtask repro run repros/workflow_replay_divergence_001.yaml`
 
 Effective for AI repair loops — the agent gets the smallest possible failing case.
 
-### 77.21 Contracts as Data
+### 76.21 Contracts as Data
 
 Every stable contract emitted as data in `contracts/`:
 
@@ -5102,7 +4857,7 @@ Every stable contract emitted as data in `contracts/`:
 
 Current-scope generators may produce Rust enums, docs, CLI schemas, AI context, and tests from these sources. UI schemas and generated workflow code are removed from current scope. Contracts-as-data reduce drift because AI reasons from the same source that generates active code and documentation.
 
-### 77.22 Failure Explanation
+### 76.22 Failure Explanation
 
 `cargo xtask why-failed logs/ai-check.yaml` explains failures:
 
@@ -5117,7 +4872,7 @@ fix:
 
 Better harness explanations produce better AI behavior.
 
-### 77.23 AI Patch Protocol
+### 76.23 AI Patch Protocol
 
 Binding protocol for every code change, enforced by convention and `xtask`:
 
@@ -5140,7 +4895,7 @@ Evidence:
 - perf compare: not required, no hot path touched
 ```
 
-### 77.24 AI-Safe Code Zones
+### 76.24 AI-Safe Code Zones
 
 Code is marked by zone. Scanning rules vary by zone.
 
@@ -5154,7 +4909,7 @@ Code is marked by zone. Scanning rules vary by zone.
 
 This prevents blanket rules from blocking useful code in cold paths.
 
-### 77.25 Golden Internal Models
+### 76.25 Golden Internal Models
 
 Executable reference models live in `reference/`:
 
@@ -5169,7 +4924,7 @@ Differential tests assert: optimized runtime == reference model.
 
 AI modifies optimized code while the reference model keeps semantics pinned.
 
-### 77.26 Perf Annotations for Hot Functions
+### 76.26 Perf Annotations for Hot Functions
 
 Hot functions carry local rules that `xtask hotpath-scan` enforces:
 
@@ -5182,7 +4937,7 @@ fn step_once(...) -> CoreResult<EngineSignal> {
 
 Scanner checks: line count, allocation absence, formatting absence, bounded resource use. AI knows the local rules before editing.
 
-### 77.27 AI Context for Spec-to-Implementation
+### 76.27 AI Context for Spec-to-Implementation
 
 `cargo xtask ai-context` consumes contracts data to produce context packets. The AI agent flow for a bead is:
 
@@ -5202,678 +4957,343 @@ This turns AI from "creative coder" into "mechanical implementer."
 
 ---
 
-## 78. Makepad UI Implementation Contract
 
-> **Removed.** Makepad UI implementation is not part of the current core feature set. Remaining details in Sections 78-83 are historical residue only; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
+---
 
-### Makepad Scope
+## 77. Formal Trust Semantics and Adaptive Platform Contract
 
-Makepad is used only for the native UI crate `vb_ui_makepad`. It is forbidden in:
+This section converts the adaptive platform vision into enforceable architecture. It deliberately separates current v1 requirements from strict-profile and future targets so the first deploy/runbook wedge can ship without pretending every long-term assurance mechanism is already built.
+
+### 77.0 Requirement Tiers `[NORMATIVE-V1]`
+
+| Tag | Meaning | Release impact |
+|-----|---------|----------------|
+| `[NORMATIVE-V1]` | Required for the current compiler/artifact/runtime trust model. | Blocks claims that current v1 behavior is accepted-artifact safe. |
+| `[V1-MIN]` | Minimal implementation required for the first deploy/runbook wedge. | Blocks first wedge release. |
+| `[STRICT-PROFILE]` | Required only when a strict/team/regulated profile opts in. | Blocks strict-profile claims, not local development. |
+| `[TARGET]` | Architecture direction that must shape APIs and schemas now. | Does not block v1-min unless explicitly referenced. |
+| `[DEFERRED]` | Not in v1 implementation scope. | Must not block current backend or first wedge release. |
+| `[NON-NORMATIVE]` | Explanatory rationale only. | Never a delivery gate. |
+
+When a subsection lacks a tag, treat it as `[TARGET]` until refined by a bead. Tier promotion is allowed. Tier demotion requires owner approval, evidence, and a written risk note.
+
+### 77.1 North Star `[NORMATIVE-V1]`
+
+`velvet-ballistics` is the machine that builds the automation for building the internal development platform. It accepts AI-authored proposals only after admission checks, executable evidence, provenance/profile validation where required, and runtime verifier validation.
+
+The runtime is not self-modifying. It executes accepted numeric artifacts only. Adaptive behavior is legal only when it is already encoded in the accepted artifact or when it exits the runtime as an incident bundle and returns through a new verify -> compile -> accept cycle.
+
+Until Adaptive Evidence Loop v0 evidence exists, the product may claim compiler-enforced durable orchestration, not implemented adaptive automation.
+
+### 77.2 Semantic Object Taxonomy `[NORMATIVE-V1]`
+
+| Object | Meaning | Trusted by runtime? | Notes |
+|--------|---------|---------------------|-------|
+| Authoring program | Rust, YAML, generated text, or any future source-producing tool used by a human or AI. | No | May be non-hermetic unless separately sandboxed. Never executes as workflow logic. |
+| Source spec | Canonical workflow source data emitted by an authoring surface. | No | Review object for humans/AI; hashed and compiled. YAML and Rust SDK are authoring surfaces, not trust units. |
+| Compiler output | Candidate IR and verification reports. | No | Useful diagnostics, not admission authority by itself. |
+| Accepted artifact | Bundle containing validated IR, digests, policies, proofs, and resource contracts. | Only after runtime verifier acceptance. | Artifact bytes are hostile until the verifier accepts envelope, schema, structure, compatibility, profiles, and resource envelopes. |
+| Runtime verifier result | Runtime-side validation of artifact structure, policy compatibility, profiles, and resource envelopes. | Yes | Part of the trusted computing base. Smaller and more boring than the compiler. |
+| Journal/replay log | Durable state-transition evidence. | Yes, after record validation. | Source of recovery truth, subject to integrity/privacy rules below. |
+| Incident bundle | Minimized, redacted evidence packet for humans/AI. | No | Feedback material only; every field is untrusted input to AI. |
+
+### 77.3 Formal Execution and Dispatch Model `[NORMATIVE-V1]`
+
+Deterministic state transition and live-effect dispatch are separate worlds.
 
 ```text
-vb_core
-vb_runtime
-vb_storage
-vb_ipc
+transition(A, S, E, B, D) -> (S', J, O, R)
+
+A = runtime-verified accepted artifact
+S = replay-derived run state
+E = typed inbox event or internal deterministic tick
+B = remaining replay/resource budget
+D = pinned deterministic runtime configuration digest
+S' = next run state
+J = bounded journal records
+O = bounded outbox intents, not live effects
+R = engine signal: continue, suspend, finish, fail, incident
 ```
 
-Makepad dependencies must not change runtime semantics, binary IPC semantics, or persistence semantics.
+`transition` must not read wall clock, environment variables, filesystem paths, network state, source text, YAML/JSON objects, action names, policy names, or ambient process state. Time, external observations, operator answers, and action completions enter only as typed inbox events that are journaled before affecting replayable state.
 
-### Makepad Rationale
+Live dispatch is separate:
 
-Makepad is selected for the UI because the design requires a native, GPU-driven desktop application with highly interactive graph, timeline, animation, and custom-rendered visual states. The UI uses Makepad 2.0 Splash (`script_mod!`) for layout/style iteration and Rust widgets for deterministic state handling.
+```text
+dispatch(O, L) -> effect attempt | denial | suspension
 
-### Crate Roles
+L = current live-effect context:
+    live policy digest
+    grant status
+    executor identity
+    revocation epoch
+    emergency deny overlays
+```
 
-| Crate | Role | Runtime-core dependency? |
-|------|------|--------------------------|
-| `vb_ui_model` | Typed UI artifacts shared by CLI/UI. No Makepad. | Cold path only |
-| `vb_ui_makepad` | Native Makepad desktop app. | UI only |
-| `velvet_ballistics` | CLI command dispatch, including `ui`. | Cold path command |
+Replay theorem required for accepted-artifact safety:
 
-### `vb_ui_model` Required Types
+```text
+Given accepted artifact A, initial input I, pinned deterministic runtime
+configuration D, and inbox history H, replay(A, I, H, D) produces the same
+sequence of semantic state transitions, semantic journal fields, outbox
+intent identities, and terminal state as original execution.
+```
+
+Semantic fields include artifact digest, input digest, run/step/action IDs, slot values and taint, journal event kind, outbox ticket identity, policy decision code, terminal state, failure code, and any replay-relevant timestamp that entered as a typed inbox fact.
+
+Non-semantic metadata includes wall-clock recording timestamp, host process ID, storage latency, human-rendered message text, trace sampling metadata, diagnostic formatting version, and UI layout metadata. A field may be marked non-semantic only by a versioned schema rule; it cannot be reclassified ad hoc to make replay pass.
+
+Replay never re-performs external side effects. Replay reconstructs outbox intents and receipts. New live effects require current live-effect policy and grants.
+
+### 77.4 Verification Obligation Ledger `[V1-MIN]`
+
+Boolean proof flags are insufficient. Every accepted artifact must carry or reference a ledger that says what was proved, what was validated, what was evidenced, what was attested, and what remains an external assumption.
 
 ```rust
-pub enum UiScreenKind {
-    ExecutionOverview,
-    WorkflowGraphAuthoring,
-    ExecutionDetailsGraph,
-    VerificationCertificate,
-    ReplayTheater,
-    IncidentFailureConsole,
-    ActionRegistry,
-    StorageDoctorAiContext,
+pub enum ObligationClosure {
+    StaticProof { proof_digest: Digest },
+    RuntimeValidated { verifier_digest: Digest },
+    RuntimeEvidenced { journal_schema_digest: Digest },
+    OperatorAttested { approval_policy_digest: Digest },
+    ExternalAssumption { assumption_id: AssumptionId, evidence_digest: Digest },
 }
 
-pub struct UiAppSnapshot {
-    pub status: SystemStatusView,
-    pub active_runs: Box<[RunSummaryView]>,
-    pub selected_run: Option<RunInspectionView>,
-    pub selected_workflow: Option<WorkflowGraphView>,
-    pub verification: Option<VerificationReportView>,
-    pub replay: Option<ReplayReportView>,
-    pub incident: Option<IncidentReportView>,
-    pub actions: Box<[ActionDescriptionView]>,
-    pub storage: Option<StorageDoctorView>,
-    pub ai_context: Option<AiContextView>,
+pub struct VerificationLedgerEntry {
+    pub obligation: ObligationKind,
+    pub closure: ObligationClosure,
+    pub policy_digest: PolicyDigest,
+    pub diagnostic_span: Option<SourceSpanId>,
 }
 ```
 
-All UI model structs must use bounded collections. Any list returned to the UI must carry a limit/cursor or a fixed bound. Unbounded UI lists are forbidden.
+Minimum ledger obligations: determinism, effect safety, capability non-minting, boundedness, replay/effect separation, artifact validity, idempotency classification, recovery classification, taint handling, and policy binding.
 
-### Data Flow
+### 77.5 IR Semantics and Runtime Verifier Spec `[NORMATIVE-V1]`
 
-```text
-Compiler / verifier
-  -> WorkflowGraph, VerificationReport, AcceptedArtifact
-  -> vb_ui_model
-  -> Makepad UI
+Numeric IR is not sufficient by itself. The IR must have written semantics and a small runtime-side verifier. The verifier is more security-critical than the compiler.
 
-Runtime / storage / replay
-  -> RunInspection, RunEvents, ReplayReport, IncidentReport, SystemStatus
-  -> vb_ui_model
-  -> Makepad UI
-```
+The IR semantics spec must define instruction set, type system, state transition semantics, effect scheduling semantics, failure semantics, resource accounting, canonical serialization, deterministic decoding, maximum artifact/CFG/table sizes, forbidden instruction patterns, debug-map semantics, and version negotiation.
 
-The UI consumes typed artifacts. It does not parse YAML, does not execute workflows, does not resolve references, and does not dispatch actions by string.
+Runtime artifact verifier requirements:
 
-### UI Connection Modes
+1. Treat artifact bytes as hostile input.
+2. Validate fixed envelope fields before payload allocation.
+3. Validate the bounded provenance/signature section before trusting metadata or admitting executable IR.
+4. Validate schema and compatibility algebra before full IR decode.
+5. Validate every table range, edge target, action reference, policy reference, capability reference, signal reference, and schema digest reference.
+6. Validate reachability, terminal states, loop pairing, fanout/fanin pairing, and resource budgets.
+7. Reject unknown opcodes unless an explicit compatibility rule says replay-only.
+8. Expose verifier evidence independent of compiler diagnostics.
 
-| Mode | Command | Data source | Purpose |
-|------|---------|-------------|---------|
-| Embedded | `velvet-ballistics ui --db <path>` | Direct storage/runtime readers | Local desktop app with DB access |
-| Attached | `velvet-ballistics ui --socket <path>` | Binary IPC | Operator app connected to running server |
-| Demo | `velvet-ballistics ui --demo-fixture <fixture>` | Deterministic fixtures | Design review, screenshot tests, demos |
+Compiler and runtime verifier may share data types, but verifier tests must include adversarial corpora not produced by the compiler.
 
-HTTP and JSON are not required for the UI. If a future streaming adapter is needed, it must be a separate cold-path adapter crate.
+### 77.6 Idempotency and Recovery Classes `[V1-MIN]`
 
-### Makepad Structure
-
-Required module structure:
-
-```text
-crates/vb_ui_makepad/src/
-  app.rs
-  shell.rs
-  theme.rs
-  tokens.rs
-  data.rs
-  screens/
-    execution_overview.rs
-    workflow_graph_authoring.rs
-    execution_details.rs
-    verification_certificate.rs
-    replay_theater.rs
-    incident_failure.rs
-    action_registry.rs
-    storage_doctor_ai_context.rs
-  widgets/
-    app_shell.rs
-    status_chip.rs
-    metric_card.rs
-    graph_canvas.rs
-    graph_node.rs
-    graph_edge.rs
-    packet_dot.rs
-    timeline_scrubber.rs
-    event_table.rs
-    slot_diff_table.rs
-    certificate_card.rs
-    evidence_card.rs
-    action_ticket_card.rs
-    taint_overlay.rs
-    shard_flow_map.rs
-    ai_context_panel.rs
-  motion/
-    timeline.rs
-    easing.rs
-    bounded_animation.rs
-```
-
-### Makepad 2.0 Splash Rules
-
-Makepad Splash (`script_mod!`) must be used for layout, static style, theme tokens, and component composition. Rust code handles typed state, event routing, selection, filtering, and artifact binding.
-
-Required pattern:
+Idempotency and recovery are separate axes. Compensation is not idempotency.
 
 ```rust
-use makepad_widgets::*;
-
-app_main!(App);
-
-script_mod! {
-    use mod.prelude.widgets.*
-
-    startup() do #(App::script_component(vm)) {
-        ui: Root {
-            main_window := Window {
-                window.inner_size: vec2(1920, 1080)
-                body +: {
-                    app_shell := AppShell {
-                        // Sidebar, top action bar, and routed screen content.
-                    }
-                }
-            }
-        }
-    }
+pub enum IdempotencyClass {
+    PureDeterministic,
+    KeyRequiredDeclared,
+    KeyEnforcedByExecutor,
+    ProviderEnforced,
+    ObservedIdempotent,
+    Unknown,
 }
 
-impl App {
-    fn run(vm: &mut ScriptVm) -> Self {
-        crate::makepad_widgets::script_mod(vm);
-        App::from_script_mod(vm, self::script_mod)
-    }
-}
-
-#[derive(Script, ScriptHook)]
-pub struct App {
-    #[source]
-    source: ScriptObjectRef,
-    #[live]
-    ui: WidgetRef,
-    #[rust]
-    state: UiRuntimeState,
+pub enum RecoveryClass {
+    NoRecoveryNeeded,
+    RetrySameKey,
+    ReconcileReceipt,
+    Compensate,
+    ManualGate,
+    Blocked,
 }
 ```
 
-Business state is Rust-owned and typed. Splash values may not become implicit workflow state. Old Makepad 1.x macro-based examples are not the implementation contract for this repository.
+The compiler can verify key presence, key determinism, and ingredient restrictions. It cannot prove external idempotency. External idempotency must be represented as manifest claims, executor enforcement, provider contracts, duplicate-ticket tests, or operator risk acceptance. Non-compensatable actions default to `RecoveryClass::Blocked` unless a stricter policy adds single-flight lease and manual gate semantics.
 
-### Custom Widgets
+### 77.7 Action Manifest and Executor Conformance Profiles `[V1-MIN] [STRICT-PROFILE] [TARGET]`
 
-The following custom widgets are required:
+Action manifests are not self-authenticating truth. Executors move metal; manifests describe intent. Conformance is profile-based.
 
-| Widget | Purpose |
-|--------|---------|
-| `GraphCanvas` | Pan/zoom workflow and runtime graphs. |
-| `GraphNode` | Draw node cards with status, badges, selection, taint state. |
-| `GraphEdge` | Draw curved edges, branch labels, packet markers. |
-| `PacketDot` | Animated progress packets along edges. |
-| `TimelineScrubber` | Replay timeline with event dots and selected seq. |
-| `CertificateCard` | Verification proof card. |
-| `StatusChip` | Compact semantic status display. |
-| `EvidenceCard` | Digest, journal, artifact, policy evidence. |
-| `SlotDiffTable` | Before/after slot and taint changes. |
-| `ShardFlowMap` | Overview shard lanes and queue pressure. |
-| `ActionTicketCard` | Action id, attempt, idempotency key, replay safety. |
-| `AiContextPanel` | AI-safe context packet and suggested commands. |
-
-### Rendering Rules
-
-- Graph edges, packet dots, timeline dots, glows, and selection halos should be shader-rendered or custom draw widgets, not composed from hundreds of nested generic boxes.
-- Text is drawn only where meaningful; animation must not relayout text every frame.
-- The graph canvas stores precomputed node positions and edge paths. Per-frame layout recomputation is forbidden.
-- Animation loops must be bounded and stop when the view is hidden or the app is idle.
-- The UI may allocate during screen load, fixture load, and model update. Continuous per-frame animation should avoid heap allocation.
-
-### Figma-to-Makepad Workflow
-
-1. Figma board defines visual target, spacing, screen taxonomy, and interaction notes.
-2. `design/tokens/velvet_ui_tokens.toml` defines implementation tokens.
-3. `xtask ui-tokens` generates Makepad Splash token snippets, Figma token import metadata if supported, and Rust constants for layout metrics.
-4. Makepad Splash implements app shell and reusable components.
-5. `xtask ui-snapshot` captures deterministic screenshots from demo fixtures.
-6. Screenshot diff gates catch overlap, alignment, density, and regression issues.
-
-Figma is not the source of runtime data. Makepad is not allowed to scrape Figma assets at runtime.
-
-### Layout and Alignment Rules
-
-Every screen uses a 1920x1080 baseline layout with scalable constraints.
-
-Required frame metrics from the 11:51 design bundle:
+`v1-min` action pack fields:
 
 ```text
-Window baseline:       1920 x 1080
-Outer margin:          32
-Sidebar width:         246
-Top bar height:        78
-Content gutter:        16
-Card radius:           14-22
-Small radius:          10
-Inspector width:       360-420
-Bottom timeline min:   220
-Graph canvas min:      720 x 520
+ActionManifest
+ExecutorIdentity
+ExecutorVersionDigest
+CapabilityScopeSpec
+ReceiptSchemaDigest
+TimeoutPolicy
+DuplicateTicketTestDigest for retry-safe external writes
 ```
 
-All component positions use an 8px spacing rhythm. One-off pixel nudges are rejected unless documented in a design-token bead.
-
-### UI Snapshot Gate
-
-Every screen must have a deterministic demo fixture and snapshot:
+`strict-profile` adds:
 
 ```text
-tests/ui_snapshots/execution_overview.png
-tests/ui_snapshots/workflow_graph_authoring.png
-tests/ui_snapshots/execution_details.png
-tests/ui_snapshots/verification_certificate.png
-tests/ui_snapshots/replay_theater.png
-tests/ui_snapshots/incident_failure.png
-tests/ui_snapshots/action_registry.png
-tests/ui_snapshots/storage_doctor_ai_context.png
+ManifestSignature
+ConformanceTestReportDigest
+FailureInjectionReportDigest
+NetworkEgressPolicyDigest
+BlastRadiusLimit
 ```
 
-Snapshot diff acceptance:
+`v2-assured` target adds sandboxed executor attestation, transparency-log inclusion, provider contract evidence, and fresh observed-idempotency evidence.
 
-- No overlapping panels.
-- No clipped primary labels.
-- No unreadable chips.
-- No controls outside safe bounds.
-- No hidden selected state.
-- No accidental color-system drift.
-- No canonical spelling violations.
+If v1-min executor conformance evidence is missing, strict accepted artifact production must fail for side-effecting actions. Missing strict-profile evidence blocks strict-profile claims only.
 
----
+### 77.8 Artifact Provenance Profiles `[TARGET] [STRICT-PROFILE]`
 
-## 79. UI Design System Tokens
+Digests identify bytes. They do not prove who built the artifact or whether it came from reviewed source. The schema must support SLSA/in-toto-shaped provenance, but enforcement is profile-based.
 
-### Design Token Source
+Provenance profiles:
 
-The design token source is:
+| Profile | Requirements |
+|---------|--------------|
+| `local_dev` | Record source spec digest, compiler digest, SDK/action/policy digests, dependency lock digest when available. Signatures and online revocation optional. |
+| `team_strict` | Signature required, approved compiler identity required, source repo/revision required, policy bundle approved, action registry digest approved. |
+| `regulated` | Review attestation, transparency-log inclusion, builder identity, build environment digest, dependency lock digest, revocation check, and provenance signature required. |
+
+The artifact envelope must have fields for artifact digest, source spec digest, source repo/revision, compiler identity/digest/version, builder identity, build environment digest, dependency lock digest, SDK ABI digest, action registry digest, policy bundle digest, verification ledger digest, signature, transparency-log entry, and revocation status. A profile decides which fields are mandatory.
+
+### 77.9 Hermetic Authoring and Source Spec Generation `[NORMATIVE-V1 for future SDK work]`
+
+The canonical source spec is the review object. YAML, Rust SDK, macro DSL, UI builder, or AI generator are authoring surfaces.
+
+Strict source-spec generation rules:
+
+1. Authoring Rust must never be called during runtime execution, replay, recovery, incident generation, or runtime verification.
+2. `build.rs` must not influence accepted workflow semantics unless allowed by profile and recorded in provenance.
+3. Proc macros must not read files, environment, network, time, or random sources to decide workflow semantics under strict mode.
+4. Helper crates may construct specs only through sealed SDK constructors that emit inspectable source-spec nodes.
+5. Feature flags affecting source spec must be listed in provenance.
+6. Live cluster/file/network/environment reads during source-spec generation are forbidden in strict mode unless declared as generator inputs and recorded by digest.
+
+### 77.10 Capability Grant Lifecycle `[V1-MIN]`
+
+Requirements are declared by artifacts. Grants are issued by authority. Executors receive narrowed, short-lived tokens.
+
+Required grant fields: grant id, issuer identity, subject identity, artifact digest, run id, action id, capability scope, resource scope, issue/expiry time, delegability, revocation epoch, break-glass flag, approval receipt digest, and signature where profile requires.
+
+Grant admission modes:
+
+| Mode | Rule |
+|------|------|
+| `strict_exact` | Normalized granted set must equal required set. Missing grant or overgrant rejects. |
+| `strict_narrow` | Granted set may be narrower only if the workflow can suspend at explicit missing-grant gates; otherwise reject. |
+| `prod_default` | Operator authority may be broader, but runtime dispatch passes only declared narrowed tokens to executors. |
+
+The first wedge uses `strict_exact` or `strict_narrow`. Human approval can authorize a gate decision, but it does not silently broaden a capability grant.
+
+### 77.11 Policy Versioning, Replay, and Emergency Override `[V1-MIN]`
+
+Replay reconstructs what happened under old policy. New external effects require current live-effect permission.
+
+| Policy layer | Binding | Replay rule | Live effect rule |
+|--------------|---------|-------------|------------------|
+| Admission policy | Pinned at run admission by digest. | Reconstructs admission decision. | Not re-evaluated except explicit migration. |
+| Replay policy | Pinned for reconstruction by digest. | Used to interpret historical decisions. | Does not authorize new effects. |
+| Live-effect policy | Evaluated at effect dispatch. | Historical value journaled. | Current policy and monotonic deny overlays apply. |
+| Emergency deny overlay | Monotonic policy layer. | Does not alter old journal. | Can suspend future effects immediately. |
+
+Every policy decision journal event must include policy digest, input digest, decision code, policy layer, and whether emergency deny or compatibility logic affected the result.
+
+### 77.12 Journal Integrity, Privacy, and Evidence Products `[V1-MIN] [TARGET]`
+
+The journal is split into evidence products:
+
+| Evidence product | Purpose | Audience |
+|------------------|---------|----------|
+| Replay log | Deterministic recovery and replay. | Runtime/verifier. |
+| Audit log | Who/what/when/why for governance. | Operators/compliance. |
+| Incident bundle | Minimized, redacted feedback packet. | AI agents and responders. |
+| Human explanation | Rendered evidence with raw-fact links. | Humans. |
+| Forensic export | Privileged complete redaction-controlled export. | Deep investigation only; never AI context by default. |
+
+V1-min requires replay log, incident bundle, and human explanation. Audit log hardening and forensic export are target/strict-profile unless a bead opts them in.
+
+Journal records require append-only sequence, envelope validation before allocation, explicit retention policy, secret exclusion/redaction rules, tenant scoping, and compatibility-algebra schema evolution.
+
+### 77.13 Adaptive Evidence Loop Semantics `[V1-MIN for AEL-v0] [DEFERRED for AEL-v1+]`
+
+| Version | Allowed adaptation | Tier |
+|---------|--------------------|------|
+| AEL-v0 | Runtime emits evidence and incidents only. No variant selection. | `[V1-MIN]` |
+| AEL-v1 | Runtime may evaluate precompiled numeric policy guards over journaled observations. | `[DEFERRED]` |
+| AEL-v2 | Runtime may select among preverified variants already present in the artifact. | `[DEFERRED]` |
+| AEL-v3+ | More advanced adaptation only if replay determinism and artifact-bound semantics survive. | `[DEFERRED]` |
+
+Goodhart controls are mandatory before AEL-v1: do not reduce incidents by suppressing incidents, do not improve deploy speed by weakening gates, do not improve retry success by hiding partial failure, and do not optimize operator acceptance by producing misleading summaries. Prior incidents become regression fixtures.
+
+### 77.14 Threat Model `[NORMATIVE-V1]`
+
+Required threat coverage includes malicious workflow author, well-intentioned unsafe AI, prompt injection through evidence, compromised compiler, compromised executor, malicious/stale action registry, stolen grant token, malicious operator approval, tampered journal, policy rollback attack, artifact replay attack, dependency confusion, cross-tenant leak, debug metadata side channel, and AI overfitting to compiler diagnostics while changing intent.
+
+The AI-overfitting threat requires semantic diff, repair confidence, human-review-required flags, simulation fixtures, intent assertions, and regression examples for high-risk repair hints.
+
+Every future security feature must identify the threats it mitigates. Controls without threat mapping are decorative and are not acceptance evidence.
+
+### 77.15 Manual Gate Semantics `[V1-MIN for deploy/runbook wedge]`
+
+Manual gates are safety controls only when they carry authority, evidence, and accountability. Rubber-stamp prompts are rejected.
+
+Required gate fields: gate id, risk class, required approver role, separation-of-duties rule, evidence bundle digest, prompt digest, structured decision options, timeout, escalation policy digest, break-glass allowed, approval reason required, approval receipt digest, and replay semantics.
+
+Structured decision options are: approve, deny, request_more_evidence, delegate, and break_glass. High-risk non-compensatable actions require evidence display before approval. Approval cannot broaden artifact capabilities unless a separate grant is issued and journaled.
+
+### 77.16 Composition Semantics `[DEFERRED]`
+
+Workflow composition is deferred. Future composition must define workflow-calls-workflow artifact binding, parent/child cancellation, fanout/fanin, shared resource leases, deduplication across workflows, global concurrency caps, cross-workflow signals, deadlock detection, priority/fairness, and tenant/service isolation.
+
+Until these are specified, v1 workflows are safe only within their own run boundary. Cross-workflow automation belongs in the supervisory loop or explicit external adapters.
+
+### 77.17 Version Compatibility Algebra `[V1-MIN]`
+
+Compatibility classes are `Identical`, `BackwardCompatible`, `ForwardCompatible`, `MigrationRequired`, `ReplayOnly`, and `Rejected`.
+
+Apply this algebra to IR versions, action ABI, input/output schemas, policy input schemas, signal schemas, journal event versions, snapshot versions, debug map versions, resource contracts, incident bundles, SDK ABI, and artifact envelopes.
+
+Any compatibility decision that affects admission, replay, or live-effect dispatch must be journaled with compatibility class, deciding rule digest, old/new schema digests, and decision code.
+
+### 77.18 Resource Budget Model `[V1-MIN]`
+
+Minimum budget dimensions: max actions per run, retries per action, wall-clock lifetime, journal bytes, payload bytes, blob bytes, fanout, concurrent tickets, open gates, signal subscriptions, incident emissions, cost units, value-store entries, transition count, tenant quota, and global quota.
+
+The verifier computes conservative upper bounds. Runtime counters enforce remaining budget. Budget exhaustion returns typed suspension/failure according to policy; silent truncation and unbounded spillover are forbidden.
+
+### 77.19 Assurance Tiers `[NORMATIVE-V1]`
+
+NASA/JPL discipline is applied by risk tier, not as vague branding.
+
+| Tier | Components | Discipline |
+|------|------------|------------|
+| Tier 0 | Runtime artifact verifier, IR decoder/interpreter, replay core | Extreme: no unsafe, no panic, bounded loops, minimal allocation, small functions, adversarial fuzz/proof. |
+| Tier 1 | Outbox/inbox, journal envelope, capability token dispatch, policy decision recorder | Extreme: Tier 0 plus crash matrix evidence. |
+| Tier 2 | Compiler, validators, source-spec builders, provenance verifier | High: no unsafe/panic; richer cold data structures allowed; typed diagnostics. |
+| Tier 3 | CLI/control-plane APIs, operator reports, incident rendering | Production Rust: typed errors, bounded output, redaction, no runtime-core leakage. |
+| Tier 4 | SDK ergonomics, docs, examples, diagnostics UX | Developer-product discipline: compile-fail tests, stable diagnostics, no semantic trust. |
+
+Tier promotion is allowed. Tier demotion requires evidence and owner approval. Relaxing Tier 0/1 rigor is forbidden without explicit waiver and proof evidence.
+
+### 77.20 AI Evidence Taint Policy `[V1-MIN]`
+
+AI is a proposal engine, not an authority. Every input to AI is tainted. Every AI output is untrusted. Human-facing AI summaries must link back to replayable evidence digests. AI must not receive raw secrets in context packets. AI-generated changes must pass the same compiler/verifier/provenance gates as human changes. Prompt-injection attempts in evidence become incident annotations, not instructions.
+
+### 77.21 First Wedge Definition `[V1-MIN]`
+
+The first product wedge is:
 
 ```text
-design/tokens/velvet_ui_tokens.toml
+AI-authored internal-platform deploy/runbook automation
+with compiler acceptance, durable approval, policy-bound capability grants,
+idempotent action tickets, replay, rollback/retry evidence, and incident bundles.
 ```
 
-Generated outputs:
+Initial workflows are deploy, rollback, smoke test, database migration approval, deploy freeze/unfreeze, incident evidence collection, retry failed rollout step, and generate incident bundle. Payment-like, destructive multi-tenant, distributed control-plane, general remote-worker, and arbitrary composition workflows are out of v1 wedge scope unless a later master amendment adds their semantics.
 
-```text
-crates/vb_ui_makepad/src/generated/tokens.rs
-crates/vb_ui_makepad/src/generated/tokens.splash
-contracts/ui_tokens.yaml
-```
+### 77.22 Required Spec Artifacts Before Broad Adaptive Claims `[TARGET]`
 
-Manual edits to generated token files are rejected.
+Before claiming broad adaptive internal-platform automation, the project needs these specs or master sections with evidence: IR semantics/runtime verifier, threat model, action manifest/executor conformance, capability grant lifecycle, artifact provenance/signing/revocation, journal integrity/privacy/replay, policy versioning/emergency override, deploy/runbook wedge spec, resource budget model, and compatibility algebra.
 
-### Color Tokens
-
-```toml
-[color]
-background_board = "#F4F6F8"
-shell = "#F8FAFC"
-surface = "#FFFFFF"
-surface_glass = "#FFFFFFCC"
-surface_muted = "#F2F5F8"
-line_hair = "#DDE3EA"
-line_soft = "#E8EDF2"
-text_primary = "#101828"
-text_secondary = "#475467"
-text_tertiary = "#7A8796"
-
-success = "#16A66A"
-running = "#1F7AF5"
-active_cyan = "#19A7CE"
-warning = "#F59E0B"
-failure = "#E5484D"
-taint = "#8B5CF6"
-durable = "#14B8A6"
-pending = "#98A2B3"
-```
-
-### Typography Tokens
-
-```toml
-[type]
-family_sans = "Inter, SF Pro, system-ui"
-family_mono = "JetBrains Mono, SF Mono, ui-monospace"
-size_11 = 11
-size_12 = 12
-size_13 = 13
-size_14 = 14
-size_16 = 16
-size_20 = 20
-size_24 = 24
-weight_regular = 400
-weight_medium = 500
-weight_semibold = 600
-```
-
-Monospace may be used only for:
-
-```text
-RunId
-ActionId
-WorkflowDigest
-SeqNo
-SlotIdx
-StepIdx
-timestamps
-record kind IDs
-IPC frame fields
-artifact digests
-```
-
-### Spacing Tokens
-
-```toml
-[space]
-px_4 = 4
-px_8 = 8
-px_12 = 12
-px_16 = 16
-px_20 = 20
-px_24 = 24
-px_32 = 32
-px_40 = 40
-```
-
-### Radius Tokens
-
-```toml
-[radius]
-chip = 10
-control = 12
-card_min = 14
-card = 16
-card_max = 22
-panel = 20
-window = 24
-```
-
-### Shadow Tokens
-
-```toml
-[shadow]
-card = "0 8 24 rgba(16,24,40,0.08)"
-window = "0 20 60 rgba(16,24,40,0.14)"
-focus = "0 0 0 4 rgba(31,122,245,0.14)"
-failure = "0 0 0 4 rgba(229,72,77,0.12)"
-taint = "0 0 0 4 rgba(139,92,246,0.12)"
-```
-
-### Density Rule
-
-The UI must be spacious. Data tables are allowed, but screen density must not exceed these baseline limits:
-
-| Screen | Max primary panels | Max table rows visible by default |
-|--------|--------------------|-----------------------------------|
-| Execution overview | 6 | 7 |
-| Workflow authoring | 4 | 0 |
-| Execution details | 5 | 7 |
-| Verification | 6 | 0 |
-| Replay theater | 6 | 6 |
-| Incident console | 7 | 5 |
-| Action registry | 6 | 8 |
-| Storage doctor / AI context | 7 | 8 |
-
-If more data is available, use scroll, filters, disclosure, pagination, or drill-in.
-
----
-
-## 80. UI Motion and Interaction Contract
-
-### Principle
-
-Animation must communicate state, causality, and replay timing. Decorative animation is rejected. Motion must be calm, bounded, and GPU-friendly.
-
-### Required Motion Primitives
-
-| Motion | Purpose | Screens |
-|--------|---------|---------|
-| Packet dots on edges | Show work moving through workflow graph. | Overview, graph, execution, replay |
-| Active node glow | Show selected/running step. | Graph, execution, replay |
-| Timeline scrubber | Show replay position. | Replay theater, execution details |
-| Selected event pulse | Show current journal event. | Replay theater |
-| Failure path focus | Guide attention to failed node and evidence chain. | Incident console |
-| Taint overlay | Show secret-sensitive path. | Verification, replay, incident |
-| Queue pressure shimmer | Indicate rising queue pressure without noise. | Overview |
-| Certificate check cascade | Show verification gate pass sequence. | Verification |
-
-### Motion Budget
-
-```text
-Target frame rate:          60fps minimum, 120fps when available
-Max animated graph nodes:   256 visible
-Max animated packet dots:   512 visible
-Max timeline event dots:    2,000 visible before clustering
-Max per-frame allocations:  0 in animation loops after warm-up
-Max animation tick when hidden: 0
-```
-
-### Animation State Rules
-
-- Animation state is UI state only; it never mutates runtime state.
-- Animation tickers pause when the screen is not visible.
-- Demo/snapshot mode must support deterministic time control.
-- Replay scrubber state must bind to `SeqNo`, not wall-clock time.
-- Packet animation may interpolate over precomputed edge paths but must not change graph topology.
-- Failure pulse and taint overlay must be accessible through static visual indicators as well.
-
-### Interaction Rules
-
-Required interactions:
-
-- Pan and zoom graph canvas.
-- Click node to open step inspector.
-- Hover node to show compact digest/resource/taint tooltip.
-- Click event row to sync graph and timeline.
-- Drag replay scrubber to any journal event.
-- Filter events by step, event kind, taint, and action id.
-- Toggle taint overlay.
-- Toggle evidence overlay.
-- Open action ticket from event or failed node.
-- Copy digest/run/action IDs from monospace fields.
-- Open AI context packet from run/incident.
-
-Forbidden interactions:
-
-- Hidden destructive actions without explicit confirmation or `--force` equivalent.
-- UI-only retry behavior not represented by CLI lifecycle command.
-- Freeform graph edits that bypass validation.
-- Unbounded event list rendering.
-
----
-
-## 81. UI Artifact and Schema Contract
-
-### Shared Artifact Rule
-
-The UI and CLI render the same typed artifacts. A screen cannot display data unless the corresponding CLI command can emit it in structured form.
-
-| UI screen | Required artifact | CLI parity command |
-|-----------|-------------------|--------------------|
-| Execution Overview | `SystemStatus`, `RunSummaries`, `RunEvents` | `system status --emit yaml`, `events` |
-| Workflow Graph Authoring | `WorkflowGraph` | `graph --emit yaml` |
-| Execution Details | `RunInspection`, `RunEvents` | `inspect --emit yaml`, `events --emit yaml` |
-| Verification Certificate | `VerificationReport`, `AcceptedArtifact` | `verify --emit yaml` |
-| Replay Theater | `ReplayReport`, `RunEvents`, `SlotDiffs` | `replay --explain --emit yaml` |
-| Incident Console | `IncidentReport` | `incident --emit yaml` |
-| Action Registry | `ActionDescription`, `ActionList` | `action list`, `action inspect` |
-| Storage Doctor / AI Context | `DoctorReport`, `AiContextPacket` | `doctor --emit yaml`, `ai context --emit yaml` |
-
-### Required UI Model Fields
-
-Every UI artifact must include:
-
-```text
-schema_version
-kind
-generated_at
-source
-redaction_status
-```
-
-Every graph node must include:
-
-```text
-step_idx
-step_id
-kind
-status
-output_slot
-taint
-badges
-position
-```
-
-Every graph edge must include:
-
-```text
-from_step_idx
-to_step_idx
-edge_kind
-condition_summary
-is_failure_path
-is_taint_path
-packet_state
-```
-
-Every event row must include:
-
-```text
-seq
-timestamp
-run_id
-step_idx
-event_kind
-status
-evidence_digest
-attempt
-```
-
-Every action ticket view must include:
-
-```text
-ticket_digest
-run_id
-step_idx
-action_id
-attempt
-idempotency_key_hash
-scheduled_durable
-completion_durable
-replay_safe
-side_effect_certainty
-```
-
-### Redaction Rule
-
-The UI must never render raw secret values. Secret-sensitive values are represented by:
-
-```text
-redacted: true
-taint: Secret | DerivedFromSecret
-digest: blake3:<prefix>
-summary: <bounded static summary>
-```
-
-Any UI path that displays full blobs or raw action details must require an explicit unsafe operator action and must be disabled in AI context mode.
-
----
-
-## 82. UI Implementation Phases
-
-The UI phase rows in Section 70 define the required delivery sequence after Phase 60:
-
-| Phase | Name | Required delivery |
-|-------|------|-------------------|
-| 61 | UI model artifacts | `vb_ui_model` crate with typed `WorkflowGraph`, `VerificationReport`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, `DoctorReport`, and `AiContextPacket` views. CLI/UI schema parity tests. |
-| 62 | Makepad shell | `vb_ui_makepad` crate, shared app chrome, sidebar, topbar, command buttons, status chips, profile selector, demo fixture loading. |
-| 63 | Design tokens and Figma bridge | Token source in `design/tokens`; generated Makepad token files; Figma-ready SVG/PNG references; token drift checker. |
-| 64 | Graph canvas | Pan/zoom canvas, nodes, curved edges, packet dots, selection, status color rules, taint overlay, layout fixtures. |
-| 65 | Execution observatory | Overview KPIs, shard flow map, active runs table, event ticker, queue pressure indicators, storage/IPC health summary. |
-| 66 | Execution details view | Single-run graph view, event table, step details panel, input/output/details tabs, runtime state coloring. |
-| 67 | Verification certificate view | Verification banner, certificate cards, gate pipeline, accepted artifact panel, warnings, proof summary. |
-| 68 | Replay theater | Journal timeline, playback controls, scrubber, selected event details, slot diffs, recovery decision panel, deterministic replay fixture. |
-| 69 | Incident failure console | Failure banner, failure path graph, evidence chain, action ticket, recovery controls, slot/taint diffs, repair hints. |
-| 70 | Action registry / contract inspector | Action list, selected `ActionContract`, idempotency/side-effect/retry safety, capability requirements, failure codes. |
-| 71 | Storage doctor / AI context | Fjall keyspace health, journal doctor, snapshot/tail status, AI-safe context packet, suggested commands. |
-| 72 | UI motion/performance | Shader-based packet dots, active-node glow, timeline pulse, bounded animation loops, no per-frame allocations after warm-up, UI perf benchmark. |
-| 73 | UI snapshot and overlap gates | Deterministic screenshots for all eight screens, image diff gate, overlap/clipping scanner, canonical spelling scan. |
-| 74 | UI release hardening | Keyboard navigation, accessibility labels, redaction tests, CLI/UI parity tests, demo fixtures, documentation, Makepad dependency audit. |
-
----
-
-## 83. UI Testing, Benchmarking, and Acceptance Gates
-
-### UI Tests
-
-Required tests:
-
-- `ui_model_schema_versions_are_stable`
-- `ui_artifacts_match_cli_output_kinds`
-- `workflow_graph_view_has_no_missing_nodes`
-- `workflow_graph_edges_reference_valid_nodes`
-- `event_rows_are_bounded`
-- `ai_context_redacts_secrets`
-- `incident_report_has_replay_safety`
-- `verification_certificate_maps_all_gates`
-- `action_ticket_hides_raw_idempotency_key`
-- `ui_tokens_generate_makepad_and_contract_outputs`
-- `all_screens_have_demo_fixtures`
-
-### UI Snapshot Tests
-
-Required deterministic snapshot fixtures:
-
-```text
-fixtures/ui/execution_overview.fixture
-fixtures/ui/workflow_graph_authoring.fixture
-fixtures/ui/execution_details.fixture
-fixtures/ui/verification_certificate.fixture
-fixtures/ui/replay_theater.fixture
-fixtures/ui/incident_failure.fixture
-fixtures/ui/action_registry.fixture
-fixtures/ui/storage_doctor_ai_context.fixture
-```
-
-Snapshot command:
-
-```bash
-cargo xtask ui-snapshot --all --emit yaml
-```
-
-Snapshot report:
-
-```yaml
-kind: UiSnapshotReport
-status: pass
-screens:
-  - screen: execution_overview
-    png: tests/ui_snapshots/execution_overview.png
-    overlap_check: pass
-    clipping_check: pass
-    spelling_check: pass
-    token_check: pass
-```
-
-### UI Performance Benchmarks
-
-Required UI benchmarks:
-
-| Benchmark | Requirement |
-|----------|-------------|
-| `ui_graph_pan_zoom_256_nodes` | Smooth interaction, no unbounded allocation. |
-| `ui_graph_packet_animation_512_packets` | Animation remains within frame budget. |
-| `ui_timeline_2000_events_clustered` | Timeline remains responsive. |
-| `ui_event_table_scroll_10000_bounded` | Virtualized/bounded rendering only. |
-| `ui_replay_scrub_1000_events` | Scrub updates selected graph/event without full relayout. |
-| `ui_fixture_load_all_screens` | Demo fixtures load under bounded memory. |
-
-### UI Acceptance Commands
-
-```bash
-cargo +nightly fmt --all -- --check
-cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --all-targets --all-features -- -D warnings
-cargo +nightly nextest run -p vb_ui_model -p vb_ui_makepad
-cargo xtask ui-tokens --check
-cargo xtask ui-snapshot --all
-cargo xtask ui-overlap-check --all
-cargo xtask ui-perf-smoke
-cargo xtask forbidden-scan --changed
-cargo xtask hotpath-scan --changed
-```
-
-### UI Definition of Done
-
-The Makepad UI is accepted only when:
-
-1. All eight required screens exist and are reachable from shared app chrome.
-2. Every screen consumes typed `vb_ui_model` artifacts.
-3. CLI/UI parity exists for all displayed artifact kinds.
-4. Figma token source and Makepad token output are synchronized.
-5. No UI panel overlap, clipping, or unreadable primary label exists in 1920x1080 baseline screenshots.
-6. All secret-sensitive values are redacted or summarized.
-7. Graph, replay, incident, and verification views expose journal/digest/evidence concepts accurately.
-8. Motion is bounded, meaningful, and can be disabled or frozen for deterministic snapshots.
-9. UI code does not introduce Makepad, HTTP, JSON, async runtimes, or web dependencies into runtime core crates.
-10. UI snapshot, token, model, parity, redaction, performance-smoke, lint, and test gates pass with evidence.
+These are not all blockers for the first compile/run demo. They are blockers for broad adaptive-platform claims and for any profile that names them as mandatory.
