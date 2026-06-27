@@ -676,7 +676,7 @@ mod tests {
     }
 
     #[test]
-    fn parallel_in_flight_updates_max_on_new_peak() -> CoreResult<()> {
+    fn parallel_in_flight_tracks_current_after_join_and_respawn() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
         frame.set_max_parallel_in_flight(10);
 
@@ -694,6 +694,24 @@ mod tests {
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_rejects_configured_limit_without_mutation() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
+        frame.set_max_parallel_in_flight(4);
+
+        frame.add_parallel_in_flight(3)?;
+        assert_eq!(frame.parallel_in_flight(), 3);
+
+        assert_eq!(
+            frame.add_parallel_in_flight(2),
+            Err(CoreError::ParallelLimitExceeded { limit: 4 })
+        );
+        assert_eq!(frame.parallel_in_flight(), 3);
+        assert_eq!(frame.max_parallel_in_flight(), 4);
 
         Ok(())
     }
@@ -723,7 +741,7 @@ mod tests {
     #[test]
     fn parallel_in_flight_overflow_returns_error() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
-        frame.set_max_parallel_in_flight(u16::MAX - 1);
+        frame.set_max_parallel_in_flight(u16::MAX);
 
         frame.add_parallel_in_flight(u16::MAX)?;
         assert_eq!(

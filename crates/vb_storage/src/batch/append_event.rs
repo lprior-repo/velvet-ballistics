@@ -17,12 +17,13 @@ impl<'j> JournalWriteBatch<'j> {
     ///
     /// # Guard Precedence (C6)
     /// 1. Key construction
-    /// 2. Same-batch duplicate check (HashSet guard)
-    /// 3. Durable duplicate check → aborts batch
-    /// 4. Count capacity check (QueueFull)
-    /// 5. Per-record encoding / payload size check (PayloadTooLarge)
-    /// 6. Accumulated byte admission check (JournalBatchBytesExceeded)
-    /// 7. Insert into inner OwnedWriteBatch
+    /// 2. Semantic event validation
+    /// 3. Same-batch duplicate check (HashSet guard)
+    /// 4. Durable duplicate check → aborts batch
+    /// 5. Count capacity check (QueueFull)
+    /// 6. Per-record encoding / payload size check (PayloadTooLarge)
+    /// 7. Accumulated byte admission check (JournalBatchBytesExceeded)
+    /// 8. Insert into inner OwnedWriteBatch
     ///
     /// # Preconditions (requires)
     /// - The batch is not already aborted.
@@ -40,6 +41,9 @@ impl<'j> JournalWriteBatch<'j> {
     ///   `staged_bytes` unchanged, batch remains open.
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
+        if !event.is_valid() {
+            return Err(JournalError::InvalidEvent);
+        }
         // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
         //
         // `journal.events.contains_key` only inspects the durable

@@ -196,17 +196,19 @@ impl RunFrame {
         self.parallel_in_flight
     }
 
-    /// Adds to the parallel in-flight counter and updates max_parallel_in_flight
-    /// if the new total exceeds the previous maximum.
+    /// Adds to the parallel in-flight counter without exceeding the configured limit.
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
-        self.parallel_in_flight = self.parallel_in_flight.checked_add(count).ok_or(
+        let requested = self.parallel_in_flight.checked_add(count).ok_or(
             CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight overflow",
             },
         )?;
-        if self.parallel_in_flight > self.max_parallel_in_flight {
-            self.max_parallel_in_flight = self.parallel_in_flight;
+        if requested > self.max_parallel_in_flight {
+            return Err(CoreError::ParallelLimitExceeded {
+                limit: self.max_parallel_in_flight,
+            });
         }
+        self.parallel_in_flight = requested;
         Ok(())
     }
 

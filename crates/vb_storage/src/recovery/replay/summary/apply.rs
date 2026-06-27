@@ -14,10 +14,22 @@ use crate::recovery::types::{
     RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState,
 };
 use crate::{EventSeq, JournalEvent};
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
+use vb_core::{ActionId, ActionTicket, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
 use super::accumulator::FrameSeedAccumulator;
 use super::hydrate::max_slot;
+
+#[derive(Clone, Copy)]
+pub(super) struct ActionCompletionEnvelopeApply<'a> {
+    pub(super) run: RunId,
+    pub(super) ticket: ActionTicket,
+    pub(super) output: SlotIdx,
+    pub(super) outcome: crate::DurableActionOutcome,
+    pub(super) value: &'a [u8],
+    pub(super) encoded_len: u32,
+    pub(super) taint: Taint,
+    pub(super) value_digest: [u8; 32],
+}
 
 /// Applies an event's effects to a runtime summary.
 pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEvent) {
@@ -222,30 +234,23 @@ impl FrameSeedAccumulator {
     /// promoting the underlying step to `Succeeded`.
     pub(super) fn record_action_completion_envelope(
         mut self,
-        run: RunId,
-        ticket: vb_core::ActionTicket,
-        output: SlotIdx,
-        outcome: crate::DurableActionOutcome,
-        value: &[u8],
-        encoded_len: u32,
-        taint: Taint,
-        value_digest: [u8; 32],
+        envelope: ActionCompletionEnvelopeApply<'_>,
     ) -> RecoveryResult<Self> {
         let verified_digest = verify_action_envelope_digest_for_apply(
-            run,
-            ticket,
-            outcome,
-            value,
-            encoded_len,
-            value_digest,
+            envelope.run,
+            envelope.ticket,
+            envelope.outcome,
+            envelope.value,
+            envelope.encoded_len,
+            envelope.value_digest,
         )?;
         self.action_tracker
-            .require_scheduled_ticket(ticket, output)?;
+            .require_scheduled_ticket(envelope.ticket, envelope.output)?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
-            ticket,
-            output,
-            encoded_len,
-            taint,
+            envelope.ticket,
+            envelope.output,
+            envelope.encoded_len,
+            envelope.taint,
             verified_digest,
         )?;
         if effect == ActionReplayEffect::Duplicate {
@@ -254,10 +259,11 @@ impl FrameSeedAccumulator {
         self.summary.actions_resolved = self.summary.actions_resolved.saturating_add(1);
         self.summary.steps_succeeded = self.summary.steps_succeeded.saturating_add(1);
         self.summary.slots_written = self.summary.slots_written.saturating_add(1);
-        self.pending_actions.remove(&(ticket.action, ticket.step));
-        self.record_step(ticket.step, RecoveredStepState::Succeeded)
-            .record_last_succeeded(ticket.step)
-            .record_envelope_slot(output, value, taint)
+        self.pending_actions
+            .remove(&(envelope.ticket.action, envelope.ticket.step));
+        self.record_step(envelope.ticket.step, RecoveredStepState::Succeeded)
+            .record_last_succeeded(envelope.ticket.step)
+            .record_envelope_slot(envelope.output, envelope.value, envelope.taint)
     }
 
     fn record_envelope_slot(

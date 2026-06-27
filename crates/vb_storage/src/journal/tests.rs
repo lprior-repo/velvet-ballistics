@@ -437,6 +437,67 @@ fn append_journaled_succeeds_and_is_readable() {
 }
 
 #[test]
+fn append_journaled_rejects_invalid_event_without_persisting() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(601);
+    let event = JournalEvent::StepStarted {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(1),
+        attempt: 0,
+    };
+
+    let result = journal.append_journaled(&event);
+
+    assert!(
+        matches!(result, Err(JournalError::InvalidEvent)),
+        "invalid event must be rejected before storage, got {:?}",
+        result
+    );
+    assert_eq!(
+        journal
+            .get_event_bytes(run, EventSeq::new(0))
+            .expect("query"),
+        None
+    );
+}
+
+#[test]
+fn append_strict_batch_rejects_invalid_event_without_partial_commit() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(602);
+    let events = [
+        make_event(run, 0),
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            attempt: 0,
+        },
+    ];
+
+    let result = journal.append_strict_batch(&events);
+
+    assert!(
+        matches!(result, Err(JournalError::InvalidEvent)),
+        "invalid batch event must fail closed, got {:?}",
+        result
+    );
+    assert_eq!(
+        journal
+            .get_event_bytes(run, EventSeq::new(0))
+            .expect("query seq0"),
+        None
+    );
+    assert_eq!(
+        journal
+            .get_event_bytes(run, EventSeq::new(1))
+            .expect("query seq1"),
+        None
+    );
+}
+
+#[test]
 fn append_strict_batch_writes_all_events() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(700);

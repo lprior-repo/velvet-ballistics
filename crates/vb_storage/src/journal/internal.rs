@@ -43,6 +43,9 @@ impl FjallJournal {
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         let key = run_event_key(event.run_id(), event.seq())?;
+        if !event.is_valid() {
+            return Err(JournalError::InvalidEvent);
+        }
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),

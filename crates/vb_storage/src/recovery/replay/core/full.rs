@@ -39,17 +39,16 @@ pub fn recover_full_journal(
         });
     }
 
-    if !expected_action_abi_digests.is_empty() {
-        let has_action_scheduled = events
+    let missing_required_action_schedule = !expected_action_abi_digests.is_empty()
+        && !events
             .iter()
             .any(|e| matches!(e, JournalEvent::ActionScheduled { .. }));
-        if !has_action_scheduled {
-            if let Some((action_id, _)) = expected_action_abi_digests.first() {
-                return Err(RecoveryError::ActionAbiMismatch {
-                    action_id: *action_id,
-                });
-            }
-        }
+    if missing_required_action_schedule
+        && let Some((action_id, _)) = expected_action_abi_digests.first()
+    {
+        return Err(RecoveryError::ActionAbiMismatch {
+            action_id: *action_id,
+        });
     }
 
     replay_events(&events, tracker, expected_action_abi_digests)

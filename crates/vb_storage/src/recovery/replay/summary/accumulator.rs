@@ -20,7 +20,7 @@ use crate::recovery::types::{
 };
 use crate::{EventSeq, JournalEvent};
 
-use super::apply::apply_summary_event;
+use super::apply::{ActionCompletionEnvelopeApply, apply_summary_event};
 use super::hydrate::{max_slot, max_step, min_step, record_slot_write};
 
 /// Walks journal events, accumulating per-run state needed to rebuild a
@@ -144,16 +144,16 @@ impl FrameSeedAccumulator {
                 taint,
                 value_digest,
                 ..
-            } => self.record_action_completion_envelope(
-                *run,
-                *ticket,
-                *output,
-                *outcome,
+            } => self.record_action_completion_envelope(ActionCompletionEnvelopeApply {
+                run: *run,
+                ticket: *ticket,
+                output: *output,
+                outcome: *outcome,
                 value,
-                *encoded_len,
-                *taint,
-                *value_digest,
-            ),
+                encoded_len: *encoded_len,
+                taint: *taint,
+                value_digest: *value_digest,
+            }),
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))
             }

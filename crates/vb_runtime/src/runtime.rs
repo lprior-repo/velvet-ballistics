@@ -340,7 +340,7 @@ impl Runtime {
         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
         // if the ticket doesn't match the current run state.
         if let Some(state) = shard.run_state_get(ticket.run) {
-            crate::shard::lifecycle::preflight_action_completion(state, ticket, output.clone())?;
+            crate::shard::lifecycle::preflight_action_completion(state, ticket, output)?;
         }
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
     }

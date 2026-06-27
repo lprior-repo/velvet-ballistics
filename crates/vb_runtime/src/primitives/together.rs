@@ -7,7 +7,7 @@ use vb_core::ids::{BranchCount, BranchIdx, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, join_taint};
 use vb_core::value_store::ValueStore;
 
-use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
+use super::helpers::{expect_list, jump_to, require_next_step, require_output};
 
 /// Executes TogetherStart: forks into the first branch.
 ///
@@ -88,8 +88,14 @@ pub fn together_join(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let branch_count = branch_count.into();
-    run.sub_parallel_in_flight(branch_count.get())?;
     let out = require_output(output, step)?;
+    let target = require_next_step(run, next, step)?;
+    let count = branch_count.get();
+    if run.parallel_in_flight() < count {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "parallel_in_flight underflow",
+        });
+    }
     // Read the accumulator list built by together_branch invocations.
     let acc_value = *run.read_slot(accumulator)?;
     let final_list = match acc_value {
@@ -113,7 +119,8 @@ pub fn together_join(
     let out_taint = run.read_taint(out)?;
     let combined_taint = join_taint(acc_taint, out_taint);
     run.write_slot_with_taint(out, final_list, combined_taint)?;
-    jump_to_next(run, next, step)
+    run.sub_parallel_in_flight(count)?;
+    jump_to(run, target)
 }
 
 /// Reads the current accumulator list from the accumulator slot,

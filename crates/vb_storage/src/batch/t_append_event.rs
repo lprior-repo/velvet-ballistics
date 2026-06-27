@@ -43,6 +43,29 @@ fn batch_append_event_rejects_duplicate_event() {
 }
 
 #[test]
+fn batch_append_event_rejects_invalid_event_without_staging() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(201);
+    let event = JournalEvent::StepStarted {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(1),
+        attempt: 0,
+    };
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    let result = batch.append_event(&event);
+
+    assert!(
+        matches!(result, Err(JournalError::InvalidEvent)),
+        "invalid event must be rejected before staging, got {:?}",
+        result
+    );
+    assert_eq!(batch.len(), 0);
+    assert!(!batch.is_aborted());
+}
+
+#[test]
 fn len_equals_staged_count_after_random_operations() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(400);

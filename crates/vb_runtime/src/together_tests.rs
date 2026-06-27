@@ -134,6 +134,7 @@ fn together_start_returns_error_when_output_missing() {
             assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
         }
     }
+    assert_eq!(run.parallel_in_flight(), 1);
 }
 
 #[test]
@@ -304,6 +305,40 @@ fn together_join_returns_error_when_next_missing() {
             assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
         }
     }
+    assert_eq!(run.parallel_in_flight(), 1);
+    assert_eq!(run.read_slot(output).copied(), Ok(SlotValue::I64(10)));
+}
+
+#[test]
+fn together_join_invalid_next_does_not_mutate_output_or_parallel_count() {
+    let mut run = fresh_frame_with(2, 2);
+    let mut store = ValueStore::new();
+    let accumulator = SlotIdx::new(0);
+    let output = SlotIdx::new(1);
+    list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(7)]);
+    run.write_slot(output, SlotValue::I64(8))
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
+    assert!(run.add_parallel_in_flight(1).is_ok());
+
+    let result = together_join(
+        &mut run,
+        &mut store,
+        1,
+        accumulator,
+        Some(output),
+        Some(StepIdx::new(3)),
+        StepIdx::ZERO,
+    );
+
+    assert_eq!(
+        result,
+        Err(EngineError::InvalidProgramCounter {
+            step: StepIdx::new(3)
+        })
+    );
+    assert_eq!(run.parallel_in_flight(), 1);
+    assert_eq!(run.read_slot(output).copied(), Ok(SlotValue::I64(8)));
 }
 
 #[test]

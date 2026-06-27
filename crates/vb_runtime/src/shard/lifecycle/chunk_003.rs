@@ -1,6 +1,6 @@
 use vb_core::ValueStore;
 use vb_core::action::{
-    ActionContract, ActionError, ActionFailure, ActionOutputReady, ActionOutcome, ActionTicket,
+    ActionContract, ActionError, ActionFailure, ActionOutcome, ActionOutputReady, ActionTicket,
     RetryPolicy as VbCoreRetryPolicy,
 };
 use vb_core::capability::CapabilitySet;
@@ -59,12 +59,16 @@ pub(crate) fn preflight_action_completion(
         return Err(RuntimeError::InvalidActionCompletion);
     }
     reject_taint_downgrade(state, input, contract, output.taint)?;
-    let encoded_value = postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
+    let encoded_value =
+        postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
     let encoded_len = encoded_len_u32(encoded_value.len(), contract.max_output_bytes)?;
     reject_encoded_len_mismatch(output.encoded_len, encoded_len)?;
     reject_contract_output_size(encoded_len, contract.max_output_bytes)?;
-    reject_resource_output_size(encoded_len, state.workflow.resource_contract().max_blob_bytes)?;
-    vb_core::action::validate_action_outcome(contract, &ActionOutcome::Ready(output.clone()))
+    reject_resource_output_size(
+        encoded_len,
+        state.workflow.resource_contract().max_blob_bytes,
+    )?;
+    vb_core::action::validate_action_outcome(contract, &ActionOutcome::Ready(output))
         .map_err(runtime_error_from_action_error)?;
     Ok(ActionCompletionPreflight {
         ticket,
@@ -78,11 +82,8 @@ pub(crate) fn preflight_action_completion(
 }
 
 fn reject_invalid_ticket_key(ticket: ActionTicket) -> RuntimeResult<()> {
-    let expected = crate::engine::action::compute_idempotency_key(
-        ticket.run,
-        ticket.seq,
-        ticket.action,
-    );
+    let expected =
+        crate::engine::action::compute_idempotency_key(ticket.run, ticket.seq, ticket.action);
     if ticket.idempotency_key == expected {
         Ok(())
     } else {

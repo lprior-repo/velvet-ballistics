@@ -106,8 +106,20 @@ pub(crate) fn jump_to_next(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let target = next.ok_or(EngineError::MissingNextStep { step })?;
+    let target = require_next_step(run, next, step)?;
     jump_to(run, target)
+}
+
+pub(crate) fn require_next_step(
+    run: &RunFrame,
+    next: Option<StepIdx>,
+    step: StepIdx,
+) -> Result<StepIdx, EngineError> {
+    let target = next.ok_or(EngineError::MissingNextStep { step })?;
+    if target.as_usize() >= usize::from(run.step_count()) {
+        return Err(EngineError::InvalidProgramCounter { step: target });
+    }
+    Ok(target)
 }
 
 pub(crate) fn require_output(
