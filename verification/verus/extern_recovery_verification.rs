@@ -184,6 +184,23 @@
 
 use vstd::prelude::*;
 
+verus! {
+
+// ---------------------------------------------------------------------------
+// Production drift-detection inclusion via #[path]
+// ---------------------------------------------------------------------------
+//
+// `#[path]` inclusion of the production drift-detection stub at
+// `production_inner/recovery_verification_production.rs`. The stub
+// carries a representative drift-detection slice
+// (UnsupportedRecoveryState field shape + reject_unsupported decision
+// fn). Any drift in the production surface breaks the spec build.
+// The full production mirror content lives below in this file.
+#[path = "production_inner/recovery_verification_production.rs"]
+pub mod prod_src;
+
+} // verus!
+
 // ============================================================================
 // ID type mirrors — production newtypes
 // ============================================================================

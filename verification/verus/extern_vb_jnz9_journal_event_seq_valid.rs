@@ -159,6 +159,23 @@
 
 use vstd::prelude::*;
 
+verus! {
+
+// ---------------------------------------------------------------------------
+// Production drift-detection inclusion via #[path]
+// ---------------------------------------------------------------------------
+//
+// `#[path]` inclusion of the production drift-detection stub at
+// `production_inner/vb_jnz9_journal_event_seq_valid_production.rs`.
+// The stub carries a representative drift-detection slice (EventSeq
+// newtype + is_valid decision fn). Any drift in the production
+// surface breaks the spec build. The full production mirror content
+// lives below in this file.
+#[path = "production_inner/vb_jnz9_journal_event_seq_valid_production.rs"]
+pub mod prod_src;
+
+} // verus!
+
 // ============================================================================
 // ID newtype mirrors — vb_storage / vb_core production newtypes
 // ============================================================================

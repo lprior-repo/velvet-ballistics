@@ -42,14 +42,6 @@ pub open spec fn SPEC_REQUIRED_GATE_COUNT() -> int { 15 }
 // Production-bound exec fns (mirror production exec fns)
 // ============================================================
 
-// Production constant: REQUIRED_GATE_COUNT mirrors
-// vb_runtime::admission::REQUIRED_GATE_COUNT = 15.
-//
-// extern_spec binds this spec to the production constant. The body of the
-// spec fn must equal the production constant for Verus to accept the
-// binding.
-pub const REQUIRED_GATE_COUNT: u8 = production::REQUIRED_GATE_COUNT;
-
 // Production decision fn: is_strict_accepted mirrors the strict-policy
 // branch of vb_storage::admission::submit_artifact_with_contracts
 // (crates/vb_storage/src/admission.rs:327-422).
@@ -58,6 +50,12 @@ pub const REQUIRED_GATE_COUNT: u8 = production::REQUIRED_GATE_COUNT;
 // gate_count is canonical (15), all required proof flags are claimed, the
 // artifact digest matches the verification digest, and required
 // idempotency attestation is present. Any missing field is a typed error.
+//
+// This exec fn is a forwarder to `production::is_strict_accepted`
+// (defined in `extern_accepted_envelope.rs`, the production mirror).
+// The body is opaque to Verus at the extern level
+// (`#[verifier::external]`); the spec contract is attached via
+// `assume_specification` in the next section.
 pub fn is_strict_accepted(
     gate_count: u8,
     bounded_claimed: bool,
@@ -68,7 +66,7 @@ pub fn is_strict_accepted(
     idempotency_verified_claimed: bool,
     artifact_digest_matches: bool,
     idempotency_attestation_present: bool,
-) -> Result<(), production::ArtifactEnvelopeErrorKind> {
+) -> Result<(), production::SpecArtifactEnvelopeError> {
     production::is_strict_accepted(
         gate_count,
         bounded_claimed,
@@ -81,6 +79,45 @@ pub fn is_strict_accepted(
         idempotency_attestation_present,
     )
 }
+
+// ---------------------------------------------------------------------------
+// assume_specification bridges — production contract surface
+// ---------------------------------------------------------------------------
+//
+// These bridges attach spec contracts to the production-bound exec fns
+// in `production_inner/accepted_envelope_production.rs` via the extern
+// surface. The body of each extern fn is opaque to Verus; the spec
+// proofs below exercise the contracts via the exec wrappers above.
+
+// Bridge: production `is_strict_accepted` returns Ok(()) iff all 9
+// inputs satisfy the spec-side predicate. Mirrors the strict-policy
+// gate validation in
+// `vb_storage::admission::submit_artifact_with_contracts` at
+// `crates/vb_storage/src/admission.rs:412-415`.
+pub assume_specification[ production::is_strict_accepted ](
+    gate_count: u8,
+    bounded_claimed: bool,
+    taint_safe_claimed: bool,
+    retry_safe_claimed: bool,
+    durable: bool,
+    replayable_claimed: bool,
+    idempotency_verified_claimed: bool,
+    artifact_digest_matches: bool,
+    idempotency_attestation_present: bool,
+) -> (r: Result<(), production::SpecArtifactEnvelopeError>)
+    ensures
+        r.is_ok() == spec_is_strict_accepted(
+            gate_count as int,
+            bounded_claimed,
+            taint_safe_claimed,
+            retry_safe_claimed,
+            durable,
+            replayable_claimed,
+            idempotency_verified_claimed,
+            artifact_digest_matches,
+            idempotency_attestation_present,
+        ),
+;
 
 // Spec-side mirror of the production decision, used by the proofs.
 pub open spec fn spec_is_strict_accepted(

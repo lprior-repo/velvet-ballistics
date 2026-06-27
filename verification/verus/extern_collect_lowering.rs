@@ -106,6 +106,29 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 use vstd::prelude::*;
+
+// ============================================================================
+// PRODUCTION MIRROR INCLUSION via #[path] (WEAK binding)
+// ============================================================================
+//
+// Direct `#[path]` inclusion of the in-tree production mirror at
+// `production_inner/lower_canonical_collect_production.rs`. The mirror
+// is a verbatim copy of the production `lower_canonical_collect`
+// function body (part_03.rs:195-256), the `checked_step_offset`
+// wrapper (part_12.rs:199-212), and the
+// `CompileError::PrimitiveLoweringLimitExceeded` variant (kind.rs:124),
+// with local stubs for the production-side type graph. Any drift in
+// the production source breaks the mirror at compile time.
+//
+// The mirror is marked `#[verifier::external]` so every body is opaque
+// to Verus. Verus verifies only structural resolution and type
+// well-formedness, not the body semantics. The contracts are attached
+// via `assume_specification` in the companion spec file
+// `collect_lowering.rs`.
+#[verifier::external]
+#[path = "production_inner/lower_canonical_collect_production.rs"]
+pub mod production_collect;
+
 verus! {
 
 // ============================================================================

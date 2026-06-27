@@ -31,10 +31,6 @@ mod production;
 // Production-bound exec fns (mirror production decision fns)
 // ============================================================
 
-// Production constant: REQUIRED_GATE_COUNT mirrors
-// vb_runtime::admission::REQUIRED_GATE_COUNT = 15.
-pub const REQUIRED_GATE_COUNT: u8 = production::REQUIRED_GATE_COUNT;
-
 // Production decision fn: is_strict_accepted_artifact_tag mirrors the
 // strict admission tag check at
 // vb_storage::admission::submit_artifact_with_contracts strict branch.
@@ -100,6 +96,109 @@ pub fn required_index_preconditions(
 ) -> bool {
     production::required_index_preconditions(committed, status_points_to_run, workflow_points_to_run, action_points_to_run)
 }
+
+// ---------------------------------------------------------------------------
+// assume_specification bridges — production contract surface
+// ---------------------------------------------------------------------------
+//
+// These bridges attach spec contracts to the production-bound exec fns
+// in `production_inner/accepted_run_atomic_admission_production.rs`.
+// The body of each extern fn is opaque to Verus; the spec proofs
+// below exercise the contracts via the exec wrappers above.
+
+pub assume_specification[ production::is_strict_accepted_artifact_tag ](
+    tag: production::PayloadTag,
+) -> (r: bool)
+    ensures
+        r == spec_strict_payload_is_accepted_artifact(match tag {
+            production::PayloadTag::AcceptedArtifact => SpecPayloadTag::AcceptedArtifact,
+            production::PayloadTag::RawWorkflowParts => SpecPayloadTag::RawWorkflowParts,
+            production::PayloadTag::LegacyCompiledIr => SpecPayloadTag::LegacyCompiledIr,
+            production::PayloadTag::Malformed => SpecPayloadTag::Malformed,
+        }),
+;
+
+pub assume_specification[ production::all_required_gates_accepted ](
+    gate_count: u8,
+    all_required_gate_proofs_accepted: bool,
+) -> (r: bool)
+    ensures
+        r == (gate_count == 15 && all_required_gate_proofs_accepted),
+;
+
+pub assume_specification[ production::artifact_matches_header_and_source ](
+    artifact_digest_matches: bool,
+    workflow_digest_matches: bool,
+    proof_matches: bool,
+    capability_set_matches: bool,
+) -> (r: bool)
+    ensures
+        r == spec_artifact_matches_header_and_source(
+            artifact_digest_matches,
+            workflow_digest_matches,
+            proof_matches,
+            capability_set_matches,
+        ),
+;
+
+pub assume_specification[ production::valid_commit_input ](
+    same_run: bool,
+    same_workflow: bool,
+    artifact_digest_matches: bool,
+    workflow_digest_matches: bool,
+    proof_matches: bool,
+    capability_set_matches: bool,
+    has_source: bool,
+    has_artifact: bool,
+    has_header: bool,
+    has_runtime_policy: bool,
+    has_capabilities: bool,
+) -> (r: bool)
+    ensures
+        r == spec_valid_commit_input(
+            same_run,
+            same_workflow,
+            artifact_digest_matches,
+            workflow_digest_matches,
+            proof_matches,
+            capability_set_matches,
+            has_source,
+            has_artifact,
+            has_header,
+            has_runtime_policy,
+            has_capabilities,
+        ),
+;
+
+pub assume_specification[ production::bind_accepted_at_seq ](
+    artifact_run: i64,
+    event_run: i64,
+    accepted_at_seq: i64,
+    run_accepted_seq: i64,
+) -> (r: bool)
+    ensures
+        r == spec_bind_accepted_at_seq(
+            artifact_run as int,
+            event_run as int,
+            accepted_at_seq as int,
+            run_accepted_seq as int,
+        ),
+;
+
+pub assume_specification[ production::required_index_preconditions ](
+    committed: bool,
+    status_points_to_run: bool,
+    workflow_points_to_run: bool,
+    action_points_to_run: bool,
+) -> (r: bool)
+    ensures
+        r == spec_required_index_preconditions(
+            committed,
+            status_points_to_run,
+            workflow_points_to_run,
+            action_points_to_run,
+        ),
+;
 
 // ============================================================
 // Spec mirrors

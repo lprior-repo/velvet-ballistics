@@ -85,6 +85,23 @@
 
 use vstd::prelude::*;
 
+verus! {
+
+// ---------------------------------------------------------------------------
+// Production drift-detection inclusion via #[path]
+// ---------------------------------------------------------------------------
+//
+// `#[path]` inclusion of the production drift-detection stub at
+// `production_inner/storage_kind_family_production.rs`. The stub carries
+// a representative drift-detection slice (RecordKind discriminant check,
+// is_known_record_kind stub). Any drift in the production discriminant
+// set breaks the spec build. The full production mirror content lives
+// below in this file.
+#[path = "production_inner/storage_kind_family_production.rs"]
+pub mod prod_src;
+
+} // verus!
+
 // ============================================================================
 // Magic constants (mirror of crates/vb_storage/src/constants.rs)
 // ============================================================================

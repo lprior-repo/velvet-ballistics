@@ -103,7 +103,7 @@ mod production;
 
 pub use production::{
     MirrorBoundedPayload, MirrorIpcError, MirrorMaxPayloadBytes, MirrorMemoryIngress,
-    MirrorQueueCapacity, SPEC_MAX_PAYLOAD_BYTES, SPEC_MAX_PAYLOAD_BYTES_DEFAULT,
+    MirrorQueueCapacity,
 };
 
 use vstd::prelude::*;
@@ -122,10 +122,25 @@ verus! {
 // ============================================================================
 // Spec constants and helpers (production-anchored)
 // ============================================================================
+/// Mirror of production `MaxPayloadBytes::DEFAULT` at
+/// `crates/vb_ipc/src/bounded.rs:32-35` (= `1_048_576`). Declared
+/// in the spec file (not the production mirror) because declaring a
+/// `pub const` in the production mirror triggers a Verus internal
+/// error (`VerusErasureCtxt has not been initialized`) when included
+/// via `#[path]` inside `verus!` (the `budget_bounded.rs` spec file
+/// uses the same workaround).
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_PAYLOAD_BYTES_DEFAULT: usize = 1_048_576;
+
+/// Mirror of `MaxPayloadBytes::DEFAULT` as a `MirrorMaxPayloadBytes`
+/// value.
+#[allow(non_upper_case_globals)]
+pub const SPEC_MAX_PAYLOAD_BYTES: MirrorMaxPayloadBytes = MirrorMaxPayloadBytes {
+    value: SPEC_MAX_PAYLOAD_BYTES_DEFAULT,
+};
+
 /// Spec projection of the production `MaxPayloadBytes::DEFAULT`
 /// constant at `crates/vb_ipc/src/bounded.rs:32-35` (= `1_048_576`).
-/// Re-exported from the production mirror; the spec uses this
-/// constant as the canonical 1 MiB single-frame payload ceiling.
 #[allow(non_upper_case_globals)]
 pub const spec_default_max_payload_bytes: usize = SPEC_MAX_PAYLOAD_BYTES_DEFAULT;
 

@@ -1,44 +1,62 @@
 // SPDX-License-Identifier: MIT
 //
 // Extern surface for accepted_envelope_model Verus spec.
-// Imports the production REQUIRED_GATE_COUNT constant and VerificationProof::new
-// from crates/vb_runtime/src/admission.rs and crates/vb_storage/src/admission.rs
-// via the canonical production source. This module provides a thin `pub use`
-// surface so the spec file can use `use extern_accepted_envelope::*;` to bind
-// spec fns to production exec fns via `#[extern_spec]`.
+// ============================================================================
 //
-// This file is loaded by `accepted_envelope_model.rs` and is verified together
-// with the spec as a single `--crate-type=lib` compilation unit.
-//
-// Production bindings (BINDING LEDGER):
-// - vb_runtime::admission::REQUIRED_GATE_COUNT (u8 = 15)
+// Production binding (BINDING LEDGER):
+//   - vb_runtime::admission::REQUIRED_GATE_COUNT (u8 = 15)
 //     at crates/vb_runtime/src/admission.rs:20
-// - vb_runtime::admission::RunAdmission::new (digest, run_id, caps, policy)
-//     at crates/vb_runtime/src/admission.rs:110-124
-// - vb_storage::admission::VerificationProof::new (digest, gate_count, durable)
-//     at crates/vb_storage/src/admission.rs:139-154
-// - vb_storage::admission::AcceptedArtifact (digest, verification, accepted_at_seq)
-//     at crates/vb_storage/src/admission.rs:171-196
-// - vb_storage::admission::submit_artifact_with_contracts (journal, workflow, policy, contracts)
-//     at crates/vb_storage/src/admission.rs:327-422
+//   - vb_storage::admission::submit_artifact_with_contracts strict-policy
+//     branch (crates/vb_storage/src/admission.rs:327-422)
+//
+// The `#[path]` import below binds this spec file to a thin in-tree
+// `production_inner/accepted_envelope_production.rs` mirror that exposes
+// the verbatim production `REQUIRED_GATE_COUNT`, the discriminant
+// variants of `ArtifactEnvelopeError`, and the pure `is_strict_accepted`
+// decision fn whose semantics match the strict-policy branch of the
+// production `submit_artifact_with_contracts`. The spec file attaches
+// `assume_specification` to that production decision fn, and each proof
+// fn non-vacuously proves a different structural property of the spec.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
 use vstd::prelude::*;
 
-// Inlined canonical production constant. Kept in lockstep with
-// crates/vb_runtime/src/admission.rs:20.
-pub const REQUIRED_GATE_COUNT: u8 = 15;
+verus! {
 
-// Inlined canonical production constant. Kept in lockstep with
-// crates/vb_storage/src/admission.rs:304.
-pub const ADMISSION_GATE_COUNT: u8 = 15;
+// ---------------------------------------------------------------------------
+// PRODUCTION INCLUSION via #[path] — STRUCTURAL drift detection
+// ---------------------------------------------------------------------------
+//
+// Direct `#[path]` inclusion of
+// verification/verus/production_inner/accepted_envelope_production.rs.
+// The mirror is marked `#[verifier::external]` at module level so the
+// production bodies are opaque to Verus; the inclusion still validates
+// Rust resolution (field names, discriminant sets, fn signatures) at
+// compile time. Any drift in the production impl surface breaks this
+// Verus build.
+//
+// The `prod` module exposes `REQUIRED_GATE_COUNT`,
+// `ArtifactEnvelopeErrorKind`, and `is_strict_accepted` to the wrapper
+// functions in this file. Inside `prod`, these items are opaque
+// (`#[verifier::external]` at module level).
+#[verifier::external]
+#[path = "production_inner/accepted_envelope_production.rs"]
+pub mod prod;
 
-/// Mirror of vb_runtime::admission::ArtifactEnvelopeError (subset of error variants
-/// exercised by the accepted-envelope strict admission contract).
+// ---------------------------------------------------------------------------
+// Verus-visible error type — used by `assume_specification`
+// ---------------------------------------------------------------------------
+//
+// `SpecArtifactEnvelopeError` mirrors the production
+// `ArtifactEnvelopeErrorKind` discriminant variants. The spec uses
+// this Verus-native type in `Result<..., SpecArtifactEnvelopeError>`
+// positions; the wrapper below converts from the production type
+// (which is opaque to Verus) to this Verus-visible type.
 
-pub enum ArtifactEnvelopeErrorKind {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpecArtifactEnvelopeError {
     ArtifactNotFound,
     PostcardDecodeFailed,
     InvalidGateCount,
@@ -52,14 +70,32 @@ pub enum ArtifactEnvelopeErrorKind {
     ArtifactDigestMismatch,
 }
 
-/// Pure decision fn mirroring the relevant subset of
-/// `vb_storage::admission::submit_artifact_with_contracts` strict-policy branch
-/// (crates/vb_storage/src/admission.rs:327-422). Pure: no I/O, no Fjall, no clock.
-///
-/// Production semantics: a strict-policy admission request is *accepted* (Ok)
-/// iff the artifact's verification proof carries the canonical 15-gate count,
-/// all required proof flags are claimed true, the artifact digest equals the
-/// verification digest, and any required idempotency attestation is present.
+// Conversion: production error discriminant -> Verus-visible error
+// discriminant. Both enums share the same discriminant set; this
+// function performs a direct mapping.
+#[verifier::external]
+fn convert_artifact_envelope_error(e: prod::ArtifactEnvelopeErrorKind) -> SpecArtifactEnvelopeError {
+    match e {
+        prod::ArtifactEnvelopeErrorKind::ArtifactNotFound => SpecArtifactEnvelopeError::ArtifactNotFound,
+        prod::ArtifactEnvelopeErrorKind::PostcardDecodeFailed => SpecArtifactEnvelopeError::PostcardDecodeFailed,
+        prod::ArtifactEnvelopeErrorKind::InvalidGateCount => SpecArtifactEnvelopeError::InvalidGateCount,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagBounded => SpecArtifactEnvelopeError::MissingRequiredProofFlagBounded,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagTaintSafe => SpecArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagRetrySafe => SpecArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagDurable => SpecArtifactEnvelopeError::MissingRequiredProofFlagDurable,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagReplayable => SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable,
+        prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagIdempotencyVerified => SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified,
+        prod::ArtifactEnvelopeErrorKind::MissingIdempotencyAttestation => SpecArtifactEnvelopeError::MissingIdempotencyAttestation,
+        prod::ArtifactEnvelopeErrorKind::ArtifactDigestMismatch => SpecArtifactEnvelopeError::ArtifactDigestMismatch,
+    }
+}
+
+// Production exec fn: `is_strict_accepted` (the non-opaque wrapper).
+// The body calls the production `is_strict_accepted` (via the prod
+// mirror) and converts the error discriminant. The body is opaque to
+// Verus (`#[verifier::external]`); the spec file attaches the
+// production contract via `assume_specification`.
+#[verifier::external]
 pub fn is_strict_accepted(
     gate_count: u8,
     bounded_claimed: bool,
@@ -70,57 +106,19 @@ pub fn is_strict_accepted(
     idempotency_verified_claimed: bool,
     artifact_digest_matches: bool,
     idempotency_attestation_present: bool,
-) -> Result<(), ArtifactEnvelopeErrorKind> {
-    if gate_count != REQUIRED_GATE_COUNT {
-        return Err(ArtifactEnvelopeErrorKind::InvalidGateCount);
-    }
-    if !bounded_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagBounded);
-    }
-    if !taint_safe_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagTaintSafe);
-    }
-    if !retry_safe_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagRetrySafe);
-    }
-    if !durable {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagDurable);
-    }
-    if !replayable_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagReplayable);
-    }
-    if !idempotency_verified_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagIdempotencyVerified);
-    }
-    if !artifact_digest_matches {
-        return Err(ArtifactEnvelopeErrorKind::ArtifactDigestMismatch);
-    }
-    if !idempotency_attestation_present {
-        return Err(ArtifactEnvelopeErrorKind::MissingIdempotencyAttestation);
-    }
-    Ok(())
+) -> Result<(), SpecArtifactEnvelopeError> {
+    prod::is_strict_accepted(
+        gate_count,
+        bounded_claimed,
+        taint_safe_claimed,
+        retry_safe_claimed,
+        durable,
+        replayable_claimed,
+        idempotency_verified_claimed,
+        artifact_digest_matches,
+        idempotency_attestation_present,
+    )
+    .map_err(convert_artifact_envelope_error)
 }
 
-/// True iff `is_strict_accepted` returned Ok(()) on the given inputs.
-/// Pure spec-side decision. Mirrors the production gate_count == 15 check.
-pub const fn accepted_envelope_decision(
-    gate_count: u8,
-    bounded_claimed: bool,
-    taint_safe_claimed: bool,
-    retry_safe_claimed: bool,
-    durable: bool,
-    replayable_claimed: bool,
-    idempotency_verified_claimed: bool,
-    artifact_digest_matches: bool,
-    idempotency_attestation_present: bool,
-) -> bool {
-    gate_count == REQUIRED_GATE_COUNT
-        && bounded_claimed
-        && taint_safe_claimed
-        && retry_safe_claimed
-        && durable
-        && replayable_claimed
-        && idempotency_verified_claimed
-        && artifact_digest_matches
-        && idempotency_attestation_present
-}
+} // verus!

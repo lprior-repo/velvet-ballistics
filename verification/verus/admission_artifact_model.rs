@@ -118,7 +118,6 @@ pub use production::{
     AcceptedArtifact,
     VerificationProof,
     WorkflowDigest,
-    ADMISSION_GATE_COUNT,
     artifact_digest_bound,
     digest_eq,
     is_strict_admission_valid,
@@ -486,7 +485,7 @@ pub fn exec_witness_strict_admission_valid() -> (result: bool)
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(0),
-        gate_count: production::ADMISSION_GATE_COUNT,
+        gate_count: 15,
         durable: true,
         bounded_claimed: true,
         taint_safe_claimed: true,

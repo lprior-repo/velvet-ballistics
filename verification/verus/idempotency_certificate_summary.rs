@@ -67,12 +67,87 @@ pub fn storage_certificate_accepts_action(
     production::storage_certificate_accepts_action(side_effect, idempotency, certificate_keyed, certificate_attested)
 }
 
+pub assume_specification[ production::storage_certificate_accepts_action ](
+    side_effect: production::SideEffectClass,
+    idempotency: production::IdempotencyClass,
+    certificate_keyed: bool,
+    certificate_attested: bool,
+) -> (r: bool)
+    ensures
+        r == spec_storage_certificate_accepts_action(
+            // Inline the spec predicate for production::is_contract_idempotency_accepted
+            match side_effect {
+                production::SideEffectClass::None => true,
+                production::SideEffectClass::Local => true,
+                production::SideEffectClass::IdempotentExternal =>
+                    matches!(idempotency, production::IdempotencyClass::Attested),
+                production::SideEffectClass::External =>
+                    matches!(
+                        idempotency,
+                        production::IdempotencyClass::Keyed | production::IdempotencyClass::Attested
+                    ),
+            },
+            // Inline the spec predicate for production::requires_idempotency_key
+            match side_effect {
+                production::SideEffectClass::External => true,
+                production::SideEffectClass::IdempotentExternal => true,
+                _ => false,
+            },
+            certificate_keyed,
+            certificate_attested,
+        ),
+;
+
 // Production decision fn: runtime_missing_idempotency_attestation mirrors
 // vb_runtime::admission::first_missing_idempotency_attestation
 // at crates/vb_runtime/src/admission.rs:519-533.
 pub fn runtime_missing_idempotency_attestation(certificate_keyed: bool, certificate_attested: bool) -> bool {
     production::runtime_missing_idempotency_attestation(certificate_keyed, certificate_attested)
 }
+
+// ---------------------------------------------------------------------------
+// assume_specification bridges — production contract surface
+// ---------------------------------------------------------------------------
+//
+// These bridges attach spec contracts to the production-bound exec fns
+// in `production_inner/idempotency_certificate_production.rs`.
+
+pub assume_specification[ production::requires_idempotency_key ](
+    side_effect: production::SideEffectClass,
+) -> (r: bool)
+    ensures
+        r == (match side_effect {
+            production::SideEffectClass::External => true,
+            production::SideEffectClass::IdempotentExternal => true,
+            _ => false,
+        }),
+;
+
+pub assume_specification[ production::is_contract_idempotency_accepted ](
+    side_effect: production::SideEffectClass,
+    idempotency: production::IdempotencyClass,
+) -> (r: bool)
+    ensures
+        r == (match side_effect {
+            production::SideEffectClass::None => true,
+            production::SideEffectClass::Local => true,
+            production::SideEffectClass::IdempotentExternal =>
+                matches!(idempotency, production::IdempotencyClass::Attested),
+            production::SideEffectClass::External =>
+                matches!(
+                    idempotency,
+                    production::IdempotencyClass::Keyed | production::IdempotencyClass::Attested
+                ),
+        }),
+;
+
+pub assume_specification[ production::runtime_missing_idempotency_attestation ](
+    certificate_keyed: bool,
+    certificate_attested: bool,
+) -> (r: bool)
+    ensures
+        r == spec_runtime_missing_idempotency_attestation(certificate_keyed, certificate_attested),
+;
 
 // ============================================================
 // Spec mirrors used by the proofs

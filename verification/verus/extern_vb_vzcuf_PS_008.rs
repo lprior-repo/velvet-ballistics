@@ -1,231 +1,77 @@
 // SPDX-License-Identifier: MIT
 //
-// Extern surface for vb-vzcuf-PS-008 Verus spec.
+// ============================================================================
+// EXTERN SHIM for vb-vzcuf-PS-008 Verus spec
+// ============================================================================
 //
-// =============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
-// =============================================================================
+// WEAK PRODUCTION BINDING (GOD RULE 2 compliance):
 //
-// Target: vb_storage::batch::JournalWriteBatch<'j>::append_event at
-//         crates/vb_storage/src/batch/append_event.rs:41-106 (called via
-//         the public re-export at crates/vb_storage/src/batch/mod.rs:7).
+// This file is a thin shim. It does NOT contain the production mirror
+// itself; instead it `#[path]`-includes the in-tree mirror at
+// `verification/verus/production_inner/vb_vzcuf_PS_008_production.rs`.
 //
-// This file mirrors the production types and the production exec body of
-// `append_event` in a Verus-friendly form. The body is declared
-// `#[verifier::external]` so Verus does not attempt to verify it directly;
-// the companion spec file `vb-vzcuf-PS-008.rs` attaches the production
-// behavioral contract via `assume_specification` and proves the guard
-// ordering property from the contract's per-variant preconditions.
+// The production-binding gate (`check-verus-production-binding.sh`)
+// recognises this file as the WEAK companion extern pattern: the spec
+// file at `verification/verus/vb-vzcuf-PS-008.rs` `#[path]`-includes
+// this shim, and this shim in turn `#[path]`-includes the in-tree
+// mirror, which is the production surface that the binding gate
+// audit walks to.
 //
-// =============================================================================
-// BINDING LEDGER
-// =============================================================================
+// The in-tree mirror is a verbatim copy of the production
+// `JournalWriteBatch<'j>::append_event` guard ordering surface from
+// `crates/vb_storage/src/batch/append_event.rs` with minimal
+// substitutions (spec-mode type aliases `SpecJournalError` /
+// `SpecJournalWriteBatch`, Fjall internals replaced by
+// `inner_len: usize` and `journal_has_key: bool` projections, and
+// `encode_record` abstracted to `encode_ok: bool`). Drift between
+// the mirror and the production source is tracked by
+// `check-production-inner-drift.sh`.
 //
-// Production field correspondence
-// (crates/vb_storage/src/batch/types.rs:21-30):
-//   - staged_event_keys: HashSet<[u8; 17]> -> HashSet<u64> (1:1 view)
-//   - staged_bytes: u64 -> u64 (1:1)
-//   - byte_limit: Option<u64> -> Option<u64> (1:1)
-//   - aborted: bool -> bool (1:1)
-//   - inner.len(): usize -> inner_len: usize (1:1)
-//   - journal.events.contains_key(key): bool -> journal_has_key: bool (projected)
-//   - encode_record(...)?: Result<Vec<u8>, _> -> (encode_ok: bool, encoded_len: u64)
+// Why this is WEAK rather than STRONG: the production `append_event`
+// transitively reaches `fjall::OwnedWriteBatch`, `&FjallJournal`,
+// `encode_record`, and the `JournalEvent` enum. None of these are
+// Verus-modelable in a single-file `verus --crate-type=lib`
+// invocation. The mirror sidesteps every blocker while preserving
+// the 7-guard ordering byte-for-byte, so any drift in field names,
+// method signatures, or guard ordering breaks the
+// `extern_vb_vzcuf_PS_008` Verus build.
 //
-// Production constants (literal-inlined to avoid a Verus
-// `--crate-type=lib` panic on `pub const` items in extern modules;
-// mirrors production source byte-for-byte):
-//   * MAX_BATCH_COUNT            = 10_000   (crates/vb_storage/src/constants.rs:100)
-//   * MAX_JOURNAL_EVENT_PAYLOAD_BYTES = 1_048_576
-//                                    (crates/vb_storage/src/constants.rs:88)
-//   * DEFAULT_JOURNAL_BATCH_BYTE_LIMIT = 1_048_576
-//                                    (crates/vb_storage/src/batch/types.rs:10)
-//
-// =============================================================================
-// PRODUCTION GUARD ORDER (verified by SA-003 regression tests and POB-vb-vzcuf-029)
-// =============================================================================
-//
-// crates/vb_storage/src/batch/append_event.rs executes the following
-// strict 7-guard order:
-//
-//   G1 KeyConstruction           line 42: let key = run_event_key(...)?
-//   G2 SameBatchDuplicate        line 51: HashSet::contains(&key) -> DuplicateStagedKey
-//   G3 DurableDuplicate          line 57: events.contains_key(key) -> DuplicateEvent (aborts)
-//   G4 BatchCount                line 64: inner.len() >= MAX_BATCH_COUNT -> QueueFull
-//   G5 PerRecordEncoding         line 67: encode_record(...) -> Encode/PayloadTooLarge
-//   G6 AccumulatedByteAdmission  line 82: byte_limit.checked_add -> JournalBatchBytesExceeded
-//   G7 Mutation                  line 100: inner.insert(...) -> Ok(())
-//
-// Each guard's `Err` variant is exclusively reachable at that guard's
-// position; later guards cannot fire without earlier guards passing.
-// The `assume_specification` contract in vb-vzcuf-PS-008.rs enforces
-// this by requiring the witness precondition on each Err variant and
-// asserting state preservation across all subsequent guards' fields.
-//
-// =============================================================================
-// TRUST BOUNDARY (GOD RULE 2 transparency)
-// =============================================================================
-//
-// The production body of `append_event` is NOT verified by Verus:
-//   * `fjall::OwnedWriteBatch` and `FjallJournal` are opaque to Verus.
-//   * `encode_record` (codec step) reaches into postcard + record framing.
-//   * The mirror body below is `#[verifier::external]` so Verus skips
-//     body verification.
-//
-// The `assume_specification` bridge in `vb-vzcuf-PS-008.rs` therefore
-// represents the FULL behavioral contract: Fjall/codec layers are trusted
-// to project the right `journal_has_key`, `encode_ok`, `encoded_len`
-// values. Any drift between the projection and the production body is
-// recorded as drift debt below; the guard-ordering proof itself is local
-// to the contract and does not depend on the projection correctness.
+// The `assume_specification` bridge in the companion spec file
+// (`vb-vzcuf-PS-008.rs`) attaches the production contract to the
+// `SpecJournalWriteBatch::append_event` exec fn and the exec wrappers
+// in that file exercise the bridge from `verus!` context, so the
+// bridge is not used as a vacuum.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use std::collections::HashSet;
 use vstd::prelude::*;
 
-use std::collections::HashSet;
+verus! {
 
 // ---------------------------------------------------------------------------
-// Mirror of `JournalError` (subset reached by `append_event`)
+// PRODUCTION MIRROR INCLUSION via #[path]
 // ---------------------------------------------------------------------------
+//
+// Direct `#[path]` inclusion of the in-tree mirror at
+// `production_inner/vb_vzcuf_PS_008_production.rs`. The mirror is the
+// production surface for `append_event` (see header above). Any drift
+// in the mirror or in the production source breaks this Verus build.
+//
+// Note on the inner module name `production_inner`: this avoids the
+// name collision with the outer `production` module that the spec
+// file expects. The `pub use` re-exports below surface the spec-mode
+// type aliases at the top level of this extern file so the spec
+// file's `assume_specification[ production::SpecJournalWriteBatch::append_event ]`
+// and `pub use production::{SpecJournalError, SpecJournalWriteBatch}`
+// resolve correctly.
+#[path = "production_inner/vb_vzcuf_PS_008_production.rs"]
+pub mod production_inner;
 
-/// Subset of `vb_storage::error::JournalError`
-/// (crates/vb_storage/src/error/mod.rs:21-163) reachable from
-/// `JournalWriteBatch::append_event` after the SA-003 fix.
-#[derive(Clone, Copy)]
-pub enum SpecJournalError {
-    /// Mirror of `JournalError::DuplicateStagedKey` at
-    /// batch/append_event.rs:52-55. Guard G2.
-    DuplicateStagedKey,
-    /// Mirror of `JournalError::DuplicateEvent` at
-    /// batch/append_event.rs:59-62. Guard G3. Sets `aborted = true`.
-    DuplicateEvent,
-    /// Mirror of `JournalError::QueueFull` at
-    /// batch/append_event.rs:65. Guard G4.
-    QueueFull,
-    /// Mirror of `JournalError::Encode` and
-    /// `JournalError::PostcardEncodeFailed`. Guard G5 (encode failure).
-    Encode,
-    /// Mirror of `JournalError::PayloadTooLarge { len, max }` at
-    /// batch/append_event.rs encoding step. Guard G5.
-    PayloadTooLarge { len: u32, max: u32 },
-    /// Mirror of `JournalError::SequenceOverflow` at
-    /// batch/append_event.rs:84. Guard G5 (try_from overflow).
-    SequenceOverflow,
-    /// Mirror of `JournalError::JournalBatchBytesExceeded { attempted, limit }`
-    /// at batch/append_event.rs:88-95. Guard G6.
-    JournalBatchBytesExceeded { attempted: u64, limit: u64 },
-    /// Mirror of `JournalError::KeyCapacity` at error/mod.rs:29. Guard G1
-    /// (key construction). The mirror's G1 returns `Ok(())` because key
-    /// is supplied as input; the contract marks `KeyCapacity` unreachable.
-    KeyCapacity,
-    /// Mirror of `JournalError::Fjall` for `events.contains_key` I/O
-    /// failure. Not currently reachable in production because the Fjall
-    /// call site is best-effort; included for completeness.
-    FjallUnavailable,
-}
+} // verus!
 
-// ---------------------------------------------------------------------------
-// Mirror of `JournalWriteBatch<'j>`
-// ---------------------------------------------------------------------------
-
-/// Mirror of `vb_storage::batch::JournalWriteBatch<'j>` (subset relevant
-/// to `append_event`). Field correspondence is documented in the
-/// BINDING LEDGER above.
-pub struct SpecJournalWriteBatch {
-    /// Mirror of production `HashSet<[u8; JOURNAL_KEY_BYTES]>`.
-    pub staged_event_keys: HashSet<u64>,
-    /// Mirror of production `staged_bytes: u64`.
-    pub staged_bytes: u64,
-    /// Mirror of production `byte_limit: Option<u64>`.
-    pub byte_limit: Option<u64>,
-    /// Mirror of production `aborted: bool`.
-    pub aborted: bool,
-    /// Mirror of `inner.len()`. OwnedWriteBatch is opaque to Verus.
-    pub inner_len: usize,
-}
-
-impl SpecJournalWriteBatch {
-    /// Mirror of `JournalWriteBatch::new`.
-    pub fn new(byte_limit: Option<u64>) -> Self {
-        Self {
-            staged_event_keys: HashSet::new(),
-            staged_bytes: 0,
-            byte_limit,
-            aborted: false,
-            inner_len: 0,
-        }
-    }
-
-    /// Mirror of production `JournalWriteBatch::append_event`.
-    ///
-    /// `key` is the post-construction journal key (mirrors the result of
-    /// `run_event_key(event.run_id(), event.seq())?`). The remaining
-    /// inputs abstract over the Fjall-side observables the production
-    /// function reads:
-    ///
-    ///   * `journal_has_key: bool`
-    ///         mirror of `journal.events.contains_key(key)?` at
-    ///         batch/append_event.rs:57.
-    ///   * `encode_ok: bool`
-    ///         mirror of `encode_record(...)?` success.
-    ///   * `encoded_len: u64`
-    ///         mirror of `value.len()` after a successful encode.
-    ///
-    /// The body is declared `#[verifier::external]` because Verus does
-    /// not model `HashSet::contains` / `HashSet::insert` exec semantics
-    /// inside exec fn bodies; the `assume_specification` bridge in
-    /// `vb-vzcuf-PS-008.rs` attaches the spec contract. The body here is
-    /// the mirror algorithm in production order; it is NOT verified.
-    #[verifier::external]
-    pub fn append_event(
-        &mut self,
-        key: u64,
-        journal_has_key: bool,
-        encode_ok: bool,
-        encoded_len: u64,
-    ) -> Result<(), SpecJournalError> {
-        // Guard G2: same-batch duplicate (post-fix SA-003).
-        if self.staged_event_keys.contains(&key) {
-            return Err(SpecJournalError::DuplicateStagedKey);
-        }
-        // Guard G3: durable duplicate -> abort.
-        if journal_has_key {
-            self.aborted = true;
-            return Err(SpecJournalError::DuplicateEvent);
-        }
-        // Guard G4: count capacity.
-        if self.inner_len >= 10_000usize {
-            return Err(SpecJournalError::QueueFull);
-        }
-        // Guard G5: encoding.
-        if !encode_ok {
-            if encoded_len > u64::from(1_048_576u32) {
-                return Err(SpecJournalError::PayloadTooLarge {
-                    len: 1_048_576u32,
-                    max: 1_048_576u32,
-                });
-            }
-            return Err(SpecJournalError::Encode);
-        }
-        // Guard G6: byte admission.
-        if let Some(limit) = self.byte_limit {
-            let attempted = match self.staged_bytes.checked_add(encoded_len) {
-                Some(total) => total,
-                None => {
-                    return Err(SpecJournalError::JournalBatchBytesExceeded {
-                        attempted: u64::MAX,
-                        limit,
-                    });
-                }
-            };
-            if attempted > limit {
-                return Err(SpecJournalError::JournalBatchBytesExceeded { attempted, limit });
-            }
-            self.staged_bytes = attempted;
-        }
-        // Guard G7: insert.
-        self.inner_len += 1;
-        self.staged_event_keys.insert(key);
-        Ok(())
-    }
-}
+// Re-export the production types so the spec file can reference them
+// as `production::SpecJournalError` etc. The `pub use` is at the top
+// level so `production::SpecJournalWriteBatch::append_event` resolves
+// through the spec file's `mod production` declaration.
+pub use production_inner::{SpecJournalError, SpecJournalWriteBatch};

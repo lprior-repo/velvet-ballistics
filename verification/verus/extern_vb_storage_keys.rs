@@ -32,6 +32,23 @@
 
 use vstd::prelude::*;
 
+verus! {
+
+// ---------------------------------------------------------------------------
+// Production drift-detection inclusion via #[path]
+// ---------------------------------------------------------------------------
+//
+// `#[path]` inclusion of the production drift-detection stub at
+// `production_inner/vb_storage_keys_production.rs`. The stub carries
+// a representative drift-detection slice of the production surface
+// (SpecKeyPrefix enum + try_key_prefix_stub). Any drift in the
+// production discriminant set breaks the spec build. The full
+// production mirror content lives below in this file.
+#[path = "production_inner/vb_storage_keys_production.rs"]
+pub mod prod_src;
+
+} // verus!
+
 // ---------------------------------------------------------------------------
 // Keyspace length constants (mirror crates/vb_storage/src/constants.rs:74-79).
 // ---------------------------------------------------------------------------

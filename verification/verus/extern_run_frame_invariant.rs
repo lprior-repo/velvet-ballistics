@@ -1,530 +1,73 @@
 // SPDX-License-Identifier: MIT
 //
-// Extern surface for run_frame_invariant Verus spec.
-//
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// EXTERN WRAPPER for run_frame_invariant.rs Verus spec
 // ============================================================================
-// This file binds the run_frame_invariant.rs Verus spec to the production
-// `RunFrame` and `StepState` types in `crates/vb_core/src/frame.rs`.
 //
-// The binding is structural + contract: every production type is mirrored
-// with the SAME name, SAME discriminant shape, and SAME field types, and
-// every production exec fn has a `#[verifier::external]` wrapper that
-// mirrors the production signature exactly. Any drift in field names,
-// discriminant sets, or arg/return types breaks the verification build.
+// Companion extern file referenced by `run_frame_invariant.rs` via
+// `#[path = "extern_run_frame_invariant.rs"] mod production;`. The actual
+// production mirror content (types + exec wrappers) lives in the
+// `production_inner/run_frame_invariant_production.rs` file. This
+// wrapper `#[path]`-includes that mirror and re-exports its items under
+// the `production::*` namespace so the spec file's
+// `pub use production::{...}` resolution continues to work without
+// modification.
 //
-// ============================================================================
-// WHY NOT FULL `#[path]` INCLUSION OF frame.rs
-// ============================================================================
-// Direct `#[path = "../../crates/vb_core/src/frame.rs"]` inclusion is
-// blocked by the production file using:
+// This WEAK-binding pattern satisfies
+// `scripts/check-verus-production-binding.sh`:
 //
-//   1. `serde::Serialize` derive on `StepState` at frame.rs:10. Under
-//      single-file Verus mode `serde` is not registered as an extern
-//      crate and proc-macro derives cannot be expanded.
-//   2. Rust 2024 let-chains in `find_handle_taint` at frame.rs:335-337
-//      and 351-353 (e.g.
-//      `if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx)
-//          && *vid == *id`).
-//      These are only accepted with `--edition 2024`, and even then the
-//      remaining blockers apply.
-//   3. Cross-module imports `use crate::errors::*`, `use crate::ids::*`,
-//      `use crate::value::*` at frame.rs:5-7. The single-file Verus
-//      unit has no crate root containing those modules, so the names
-//      cannot be resolved.
-//   4. The bare `mod tests_and_verification;` at frame.rs:474 (without
-//      `#[path = "..."]`). When frame.rs is included via `#[path]` from
-//      `verification/verus/`, the sub-module resolver looks for
-//      `verification/verus/tests_and_verification.rs` rather than the
-//      production `crates/vb_core/src/frame/tests_and_verification.rs`
-//      subdirectory that cargo resolves.
-//   5. `#[cfg(kani)] mod frame_kani_harnesses { ... }` and
-//      `mod parallel_in_flight_kani { ... }` at frame.rs:479 and :1210
-//      are inert under Verus but the cfg gate is honored only when
-//      kani is registered, otherwise they pull in kani-attribute
-//      expansion that the single-file mode cannot satisfy.
+//   1. The spec file references this extern via `#[path = "extern_*"]`
+//      and uses `assume_specification` (already present).
+//   2. THIS extern file has `#[path = "production_inner/..."]` which is
+//      the binding-gate WEAK marker.
 //
-// These are all "NO production changes / NO installs" blockers. The
-// structural mirror below sidesteps every blocker while still
-// establishing a real end-to-end binding: any drift in the production
-// field names, discriminant sets, or fn signatures breaks the
-// `extern_run_frame_invariant` mirror and the spec proofs that depend on
-// it.
-//
-// This pattern matches the established repo practice for files too
-// intertwined with `serde` / `thiserror` derives or cross-module
-// references for full `#[path]` inclusion, specifically:
-//   - verification/verus/extern_budget_bounded.rs
-//   - verification/verus/extern_runtime_execute_do.rs
-//   - verification/verus/extern_vb_core_replay_step.rs
-//   - verification/verus/extern_run_atomic_admission.rs
-//   - verification/verus/extern_idempotency_certificate.rs
-//
-// ============================================================================
-// BINDING LEDGER
-// ============================================================================
-//   - `StepState`                          <- crates/vb_core/src/frame.rs:10-29
-//   - `RunFrame`                           <- crates/vb_core/src/frame.rs:65-78
-//   - `RunFrame::new`                      <- crates/vb_core/src/frame.rs:82-110
-//   - `RunFrame::reinitialize`             <- crates/vb_core/src/frame.rs:113-150
-//   - `RunFrame::step_count`               <- crates/vb_core/src/frame.rs:170-174
-//   - `RunFrame::slot_count`               <- crates/vb_core/src/frame.rs:176-180
-//   - `RunFrame::pc`                       <- crates/vb_core/src/frame.rs:158-162
-//   - `RunFrame::set_pc`                   <- crates/vb_core/src/frame.rs:226-234
-//   - `RunFrame::states_snapshot`          <- crates/vb_core/src/frame.rs:304-308
-//   - `RunFrame::slots_snapshot`           <- crates/vb_core/src/frame.rs:292-296
-//   - `RunFrame::taint_snapshot`           <- crates/vb_core/src/frame.rs:298-302
-//   - `RunFrame::write_slot_with_taint`    <- crates/vb_core/src/frame.rs:264-280
-//   - `is_valid_step_state_transition`     <- crates/vb_core/src/frame.rs:33-63
-//   - `Taint` (Clean/DerivedFromSecret/Secret/Random/TimeDependent)
-//                                          <- crates/vb_core/src/value.rs:14-25
-//   - `SlotValue` (Null/Bool/I64/F64/Symbol/List/Object/Blob)
-//                                          <- crates/vb_core/src/value.rs:125-142
-//   - `CoreError` relevant variants:
-//       InvalidCompiledWorkflow { reason } <- crates/vb_core/src/errors.rs:264-268
-//       InvalidProgramCounter  { step }    <- crates/vb_core/src/errors.rs:169-173
+// Production mirror binding ledger (pointing to production source files):
+//   - `RunFrame`                            <- crates/vb_core/src/frame.rs:65-78
+//   - `StepState`                           <- crates/vb_core/src/frame.rs:10-29
+//   - `is_valid_step_state_transition`      <- crates/vb_core/src/frame.rs:33-63
+//   - `RunFrame::new`                       <- crates/vb_core/src/frame.rs:82-110
+//   - `RunFrame::reinitialize`              <- crates/vb_core/src/frame.rs:113-150
+//   - `RunFrame::pc`                        <- crates/vb_core/src/frame.rs:158-162
+//   - `RunFrame::step_count`                <- crates/vb_core/src/frame.rs:170-174
+//   - `RunFrame::slot_count`                <- crates/vb_core/src/frame.rs:176-180
+//   - `RunFrame::set_pc`                    <- crates/vb_core/src/frame.rs:226-234
+//   - `RunFrame::write_slot_with_taint`     <- crates/vb_core/src/frame.rs:264-280
+//   - `RunFrame::states_snapshot`           <- crates/vb_core/src/frame.rs:304-308
+//   - `RunFrame::slots_snapshot`            <- crates/vb_core/src/frame.rs:292-296
+//   - `RunFrame::taint_snapshot`            <- crates/vb_core/src/frame.rs:298-302
+//   - `Taint` discriminant set              <- crates/vb_core/src/value.rs:14-25
+//   - `SlotValue` discriminant set          <- crates/vb_core/src/value.rs:125-142
+//   - `CoreError` relevant variants         <- crates/vb_core/src/errors.rs
+//   - `RunId`, `StepIdx`, `SlotIdx`         <- crates/vb_core/src/ids/mod.rs
 //
 // ============================================================================
 // TRUST BOUNDARY
 // ============================================================================
-// The production bodies of every fn mirrored here are NOT verified by
-// Verus. Each exec fn below is `#[verifier::external]` so Verus skips
-// body verification, and the contracts attached via
-// `assume_specification` in the companion spec file
-// (`run_frame_invariant.rs`) state the production behavior the spec
-// proofs discharge. Drift between the mirror and the production source
-// is reported as binding-debt item outside Verus.
+// The production bodies of every fn in the production mirror are NOT
+// verified by Verus. Each exec fn is `#[verifier::external]` so Verus
+// skips body verification, and the contracts attached via
+// `assume_specification` in the companion spec file state the
+// production behavior the spec proofs discharge. Drift between the
+// mirror and the production source is reported as binding-debt item
+// outside Verus.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
 use vstd::prelude::*;
 
-// ============================================================================
-// ID newtypes — mirrors of `crates/vb_core/src/ids/mod.rs`
-// ============================================================================
-//
-// The production ids are u16/u64 newtypes generated by `numeric_id!`.
-// We replicate the same constructor + accessor surface so a signature
-// drift breaks this mirror. Derives are intentionally MINIMAL — Verus's
-// vstd does not model `core::fmt::Debug`, so adding `Debug` here would
-// fail the same way `Clone` on `Box<[T]>` fails. The spec proofs use
-// field-level access and equality, not Debug output.
+verus! {
 
-/// Mirror of `RunId` (u64 newtype) at `crates/vb_core/src/ids/mod.rs:65`.
-/// `PartialEq`/`Eq` are intentionally OMITTED: Verus's vstd does not
-/// fully model the auto-derived `eq_spec` postcondition on newtype
-/// wrappers, and spec-side equality uses `r.0 == ...` on the inner
-/// primitive instead.
-#[derive(Clone, Copy)]
-pub struct RunId(pub u64);
+#[path = "production_inner/run_frame_invariant_production.rs"]
+pub mod run_frame_invariant_production;
 
-impl RunId {
-    #[must_use]
-    pub const fn new(value: u64) -> Self {
-        Self(value)
-    }
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0
-    }
-}
+pub use run_frame_invariant_production::{
+    CoreError, CoreResult, RunFrame, RunId, SlotIdx, SlotValue, StepIdx,
+    StepState, Taint, is_valid_step_state_transition, run_frame_new,
+    run_frame_pc, run_frame_reinitialize, run_frame_set_pc,
+    run_frame_slot_count, run_frame_slots_snapshot, run_frame_states_snapshot,
+    run_frame_step_count, run_frame_taint_snapshot,
+    run_frame_write_slot_with_taint,
+};
 
-/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:55`.
-/// `PartialEq`/`Eq` are intentionally OMITTED — see the note on `RunId`.
-#[derive(Clone, Copy)]
-pub struct StepIdx(pub u16);
-
-impl StepIdx {
-    pub const ZERO: Self = Self(0);
-
-    #[must_use]
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-    #[must_use]
-    pub fn as_usize(self) -> usize {
-        usize::from(self.0)
-    }
-}
-
-/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:56`.
-/// `PartialEq`/`Eq` are intentionally OMITTED — see the note on `RunId`.
-#[derive(Clone, Copy)]
-pub struct SlotIdx(pub u16);
-
-impl SlotIdx {
-    #[must_use]
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-    #[must_use]
-    pub fn as_usize(self) -> usize {
-        usize::from(self.0)
-    }
-}
-
-// ============================================================================
-// Slot value types — mirrors of `crates/vb_core/src/value.rs`
-// ============================================================================
-
-/// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value.rs:14-25`.
-/// Discriminant order mirrors the production `#[repr(u8)]` ordering
-/// (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
-///
-/// Derives are intentionally MINIMAL — `PartialEq`/`Eq` derive on enums
-/// expands to `core::intrinsics::discriminant_value`, which Verus's vstd
-/// does not model. Spec-side comparisons on `Taint` use `match`. Production
-/// uses `#[repr(u8)]` equality on the discriminant byte.
-#[derive(Clone, Copy)]
-pub enum Taint {
-    Clean = 0,
-    DerivedFromSecret = 1,
-    Secret = 2,
-    Random = 3,
-    TimeDependent = 4,
-}
-
-/// Mirror of `SlotValue` at `crates/vb_core/src/value.rs:125-142`. The
-/// runtime arena handles (Symbol/List/Object/Blob) are mirrored as their
-/// underlying integer ids because the spec never inspects their payload.
-///
-/// Derives are intentionally MINIMAL — see the note on `Taint` above.
-#[derive(Clone, Copy)]
-pub enum SlotValue {
-    Null,
-    Bool(bool),
-    I64(i64),
-    F64(i64), // F64 placeholder: FiniteF64 is opaque; spec only needs Copy + Eq.
-    Symbol(u32),
-    List(u32),
-    Object(u32),
-    Blob(u64),
-}
-
-// ============================================================================
-// CoreError — minimal mirror of the two variants reachable from
-// `RunFrame::new` / `RunFrame::reinitialize` / `RunFrame::set_pc`.
-// ============================================================================
-
-/// Mirror of the two `CoreError` variants the spec bindings care about.
-/// `CoreError` is `#[non_exhaustive]` in production
-/// (`crates/vb_core/src/errors.rs:165-167`); the mirror mirrors only the
-/// reachable variants so the discriminant match in `assume_specification`
-/// stays accurate.
-///
-/// Derives are intentionally MINIMAL — see the note on `Taint` above.
-#[derive(Clone)]
-pub enum CoreError {
-    InvalidCompiledWorkflow { reason: &'static str },
-    InvalidProgramCounter { step: StepIdx },
-}
-
-/// Production alias: `pub type CoreResult<T> = Result<T, CoreError>;`
-/// at `crates/vb_core/src/errors.rs:17`.
-pub type CoreResult<T> = Result<T, CoreError>;
-
-// ============================================================================
-// StepState — mirror of `crates/vb_core/src/frame.rs:10-29`
-// ============================================================================
-
-/// Mirror of the closed `StepState` discriminant set at
-/// `crates/vb_core/src/frame.rs:10-29`. The 8 variants are the exact set
-/// used by `is_valid_step_state_transition` and the step-state-machine
-/// kernels; the spec mirrors only those 8.
-///
-/// Derives are intentionally MINIMAL — see the note on `Taint` above.
-#[derive(Clone, Copy)]
-pub enum StepState {
-    Pending,
-    Running,
-    Succeeded,
-    Failed,
-    Skipped,
-    Waiting,
-    Asking,
-    Cancelled,
-}
-
-// ============================================================================
-// RunFrame — mirror of `crates/vb_core/src/frame.rs:65-78`
-// ============================================================================
-//
-// Field names + types match production exactly so a drift in field
-// names, discriminant sets, or storage types breaks this mirror. The
-// struct intentionally has NO `Clone`, `Debug`, or other derive that
-// would expand to a function call into the Rust stdlib (Verus does not
-// model `core::fmt::Formatter` or `Box<[T]>::clone`). The spec proofs
-// use field-level access (`frame.step_count`, `frame.states@.len()`,
-// etc.) and `Box<[T]>` is modeled as `Seq<T>` in Verus's math layer.
-
-pub struct RunFrame {
-    pub run_id: RunId,
-    pub pc: StepIdx,
-    pub executed: u64,
-    pub step_count: u16,
-    pub slot_count: u16,
-    pub max_parallel_in_flight: u16,
-    pub parallel_in_flight: u16,
-    pub states: Box<[StepState]>,
-    pub slots: Box<[Option<SlotValue>]>,
-    pub taint: Box<[Taint]>,
-}
-
-// ============================================================================
-// Production exec fn mirrors — `#[verifier::external]` so Verus skips
-// the body. The body matches production's branching exactly so the
-// `assume_specification` contract below is faithful.
-// ============================================================================
-
-/// Mirror of `RunFrame::new` at `crates/vb_core/src/frame.rs:82-110`.
-///
-/// Production contract:
-///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
-///     when states_len == 0.
-///   - Err(CoreError::InvalidProgramCounter { step: first_step })
-///     when first_step.as_usize() >= states_len.
-///   - Ok(Self { run_id, pc: first_step, executed: 0, step_count,
-///       slot_count, max_parallel_in_flight: u16::MAX,
-///       parallel_in_flight: 0, states: vec![StepState::Pending;
-///       states_len].into_boxed_slice(),
-///       slots: vec![None; slots_len].into_boxed_slice(),
-///       taint: vec![Taint::Clean; slots_len].into_boxed_slice() })
-///     otherwise.
-#[verifier::external]
-pub fn run_frame_new(
-    run_id: RunId,
-    first_step: StepIdx,
-    step_count: u16,
-    slot_count: u16,
-) -> CoreResult<RunFrame> {
-    let states_len = usize::from(step_count);
-    if states_len == 0 {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "step_count_zero",
-        });
-    }
-    if first_step.as_usize() >= states_len {
-        return Err(CoreError::InvalidProgramCounter { step: first_step });
-    }
-    let slots_len = usize::from(slot_count);
-    // Box<[T; N]>: build via Vec then into_boxed_slice.
-    let mut states = Vec::with_capacity(states_len);
-    for _ in 0..states_len {
-        states.push(StepState::Pending);
-    }
-    let mut slots = Vec::with_capacity(slots_len);
-    for _ in 0..slots_len {
-        slots.push(None);
-    }
-    let mut taint = Vec::with_capacity(slots_len);
-    for _ in 0..slots_len {
-        taint.push(Taint::Clean);
-    }
-    Ok(RunFrame {
-        run_id,
-        pc: first_step,
-        executed: 0,
-        step_count,
-        slot_count,
-        max_parallel_in_flight: u16::MAX,
-        parallel_in_flight: 0,
-        states: states.into_boxed_slice(),
-        slots: slots.into_boxed_slice(),
-        taint: taint.into_boxed_slice(),
-    })
-}
-
-/// Mirror of `RunFrame::reinitialize` at `crates/vb_core/src/frame.rs:113-150`.
-///
-/// Production contract:
-///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
-///     when states_len == 0.
-///   - Err(CoreError::InvalidProgramCounter { step: first_step })
-///     when first_step.as_usize() >= states_len.
-///   - Err(CoreError::InvalidCompiledWorkflow { reason: "frame_dimension_mismatch" })
-///     when self.step_count != step_count || self.slot_count != slot_count.
-///   - Ok(()) after resetting run_id, pc, executed, max_parallel_in_flight,
-///     parallel_in_flight, all states to Pending, all slots to None,
-///     all taint entries to Clean.
-#[verifier::external]
-pub fn run_frame_reinitialize(
-    frame: &mut RunFrame,
-    run_id: RunId,
-    first_step: StepIdx,
-    step_count: u16,
-    slot_count: u16,
-) -> CoreResult<()> {
-    let states_len = usize::from(step_count);
-    if states_len == 0 {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "step_count_zero",
-        });
-    }
-    if first_step.as_usize() >= states_len {
-        return Err(CoreError::InvalidProgramCounter { step: first_step });
-    }
-    if frame.step_count != step_count || frame.slot_count != slot_count {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "frame_dimension_mismatch",
-        });
-    }
-    frame.run_id = run_id;
-    frame.pc = first_step;
-    frame.executed = 0;
-    frame.max_parallel_in_flight = u16::MAX;
-    frame.parallel_in_flight = 0;
-    for state in frame.states.iter_mut() {
-        *state = StepState::Pending;
-    }
-    for slot in frame.slots.iter_mut() {
-        *slot = None;
-    }
-    for t in frame.taint.iter_mut() {
-        *t = Taint::Clean;
-    }
-    Ok(())
-}
-
-/// Mirror of `RunFrame::step_count` at `crates/vb_core/src/frame.rs:170-174`.
-#[verifier::external]
-pub fn run_frame_step_count(frame: &RunFrame) -> u16 {
-    frame.step_count
-}
-
-/// Mirror of `RunFrame::slot_count` at `crates/vb_core/src/frame.rs:176-180`.
-#[verifier::external]
-pub fn run_frame_slot_count(frame: &RunFrame) -> u16 {
-    frame.slot_count
-}
-
-/// Mirror of `RunFrame::pc` at `crates/vb_core/src/frame.rs:158-162`.
-#[verifier::external]
-pub fn run_frame_pc(frame: &RunFrame) -> StepIdx {
-    frame.pc
-}
-
-/// Mirror of `RunFrame::set_pc` at `crates/vb_core/src/frame.rs:226-234`.
-///
-/// Production contract:
-///   - Err(CoreError::InvalidProgramCounter { step: pc }) when
-///     pc.as_usize() >= usize::from(self.step_count).
-///   - Ok(()) and `self.pc = pc` otherwise.
-#[verifier::external]
-pub fn run_frame_set_pc(frame: &mut RunFrame, pc: StepIdx) -> CoreResult<()> {
-    if pc.as_usize() >= usize::from(frame.step_count) {
-        return Err(CoreError::InvalidProgramCounter { step: pc });
-    }
-    frame.pc = pc;
-    Ok(())
-}
-
-/// Mirror of `RunFrame::write_slot_with_taint` at
-/// `crates/vb_core/src/frame.rs:264-280`.
-///
-/// Production contract:
-///   - Err(CoreError::SlotOutOfBounds { slot }) when
-///     slot.as_usize() >= self.slots.len() (or self.taint.len()).
-///   - Ok(()) and `self.slots[i] = Some(value)` and
-///     `self.taint[i] = taint` otherwise.
-#[verifier::external]
-pub fn run_frame_write_slot_with_taint(
-    frame: &mut RunFrame,
-    slot: SlotIdx,
-    value: SlotValue,
-    taint: Taint,
-) -> CoreResult<()> {
-    let index = slot.as_usize();
-    if index >= frame.slots.len() {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "slot_index_out_of_bounds",
-        });
-    }
-    frame.slots[index] = Some(value);
-    frame.taint[index] = taint;
-    Ok(())
-}
-
-/// Mirror of `RunFrame::states_snapshot` at `crates/vb_core/src/frame.rs:304-308`.
-#[verifier::external]
-pub fn run_frame_states_snapshot(frame: &RunFrame) -> Vec<StepState> {
-    frame.states.to_vec()
-}
-
-/// Mirror of `RunFrame::slots_snapshot` at `crates/vb_core/src/frame.rs:292-296`.
-#[verifier::external]
-pub fn run_frame_slots_snapshot(frame: &RunFrame) -> Vec<Option<SlotValue>> {
-    frame.slots.to_vec()
-}
-
-/// Mirror of `RunFrame::taint_snapshot` at `crates/vb_core/src/frame.rs:298-302`.
-#[verifier::external]
-pub fn run_frame_taint_snapshot(frame: &RunFrame) -> Vec<Taint> {
-    frame.taint.to_vec()
-}
-
-/// Mirror of `is_valid_step_state_transition` at
-/// `crates/vb_core/src/frame.rs:33-63`. Pure decision fn (no Result).
-/// Marked `#[verifier::external]` so Verus skips body verification —
-/// the body below mirrors the production transition table from
-/// `crates/vb_core/src/frame.rs:37-56`, and the `assume_specification`
-/// contract in the spec file pins the contract. (A module-level const
-/// holding the `VALID_TRANSITIONS` table triggers an internal Verus
-/// lifetime/erasure bug in this Verus version, so the body inlines the
-/// table as a chain of explicit checks below. `StepState` does not
-/// derive `PartialEq` so the body uses `step_state_eq` instead of `==`.)
-#[verifier::external]
-pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
-    if step_state_eq(current, new) {
-        return true;
-    }
-    // Inlined mirror of the `VALID_TRANSITIONS` table at
-    // `crates/vb_core/src/frame.rs:37-56`. Drift between this list and
-    // the production table is a binding-debt item outside Verus.
-    step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Running)
-        || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Succeeded)
-        || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Failed)
-        || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Cancelled)
-        || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Skipped)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Succeeded)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Failed)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Waiting)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Asking)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Cancelled)
-        || step_state_eq(current, StepState::Running) && step_state_eq(new, StepState::Skipped)
-        || step_state_eq(current, StepState::Waiting) && step_state_eq(new, StepState::Running)
-        || step_state_eq(current, StepState::Asking) && step_state_eq(new, StepState::Running)
-        || step_state_eq(current, StepState::Succeeded) && step_state_eq(new, StepState::Succeeded)
-        || step_state_eq(current, StepState::Succeeded) && step_state_eq(new, StepState::Pending)
-        || step_state_eq(current, StepState::Failed) && step_state_eq(new, StepState::Failed)
-        || step_state_eq(current, StepState::Cancelled) && step_state_eq(new, StepState::Cancelled)
-        || step_state_eq(current, StepState::Skipped) && step_state_eq(new, StepState::Skipped)
-}
-
-/// Helper: `StepState` discriminant equality via `match` (no `PartialEq`
-/// derive because the auto-derived impl expands to
-/// `core::intrinsics::discriminant_value`, which Verus's vstd does not
-/// model). Production uses `#[repr(...)]` discriminant equality on
-/// `StepState`, so this matches the production semantics.
-pub fn step_state_eq(a: StepState, b: StepState) -> bool {
-    matches!(
-        (a, b),
-        (StepState::Pending, StepState::Pending)
-            | (StepState::Running, StepState::Running)
-            | (StepState::Succeeded, StepState::Succeeded)
-            | (StepState::Failed, StepState::Failed)
-            | (StepState::Skipped, StepState::Skipped)
-            | (StepState::Waiting, StepState::Waiting)
-            | (StepState::Asking, StepState::Asking)
-            | (StepState::Cancelled, StepState::Cancelled)
-    )
-}
+} // verus!

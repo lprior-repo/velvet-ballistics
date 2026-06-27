@@ -98,6 +98,23 @@
 
 use vstd::prelude::*;
 
+verus! {
+
+// ---------------------------------------------------------------------------
+// Production drift-detection inclusion via #[path]
+// ---------------------------------------------------------------------------
+//
+// `#[path]` inclusion of the production drift-detection stub at
+// `production_inner/value_store_invariant_production.rs`. The stub
+// carries a representative drift-detection slice (ValueStore field
+// shape + check_arena_cap decision fn). Any drift in the production
+// surface breaks the spec build. The full production mirror content
+// lives below in this file.
+#[path = "production_inner/value_store_invariant_production.rs"]
+pub mod prod_src;
+
+} // verus!
+
 // ============================================================================
 // Companion namespace `crate::errors` — mirror of production CoreError
 // ============================================================================

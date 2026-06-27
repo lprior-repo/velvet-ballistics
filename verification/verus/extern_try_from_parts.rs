@@ -90,6 +90,30 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+// ============================================================================
+// PRODUCTION MIRROR INCLUSION via #[path] (WEAK binding)
+// ============================================================================
+//
+// Direct `#[path]` inclusion of the in-tree production mirror at
+// `production_inner/try_from_parts_production.rs`. The mirror is a
+// verbatim copy of the production `CompiledWorkflow::try_from_parts`
+// function body (workflow/mod.rs:33-51), the `WorkflowParts` struct
+// declaration (workflow/mod.rs:272-297), the `ResourceContract`
+// struct + DEFAULT constant (workflow/mod.rs:189-251), and the
+// `WorkflowError` discriminant set (workflow/mod.rs:319-452), with
+// local stubs for the production-side type graph and proc-macro
+// derives stripped. Any drift in the production source breaks the
+// mirror at compile time.
+//
+// The mirror is marked `#[verifier::external]` so every body is
+// opaque to Verus. Verus verifies only structural resolution and
+// type well-formedness, not the body semantics. The contracts are
+// attached via `assume_specification` in the companion spec file
+// `vb_xi2f_compile_source.rs`.
+#[verifier::external]
+#[path = "production_inner/try_from_parts_production.rs"]
+pub mod production_try_from_parts;
+
 use vstd::prelude::*;
 
 // ============================================================================

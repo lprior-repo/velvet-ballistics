@@ -25,6 +25,93 @@ use vstd::prelude::*;
 
 verus! {
 
+// ---------------------------------------------------------------------------
+// PRODUCTION BINDING (GOD RULE 2 compliance)
+// ---------------------------------------------------------------------------
+//
+// This file is bound to production via the companion extern surface
+// `verification/verus/extern_vb_rpch_replay_refinement.rs`, which
+// itself `#[path]`-includes the verbatim production mirror at
+// `verification/verus/production_inner/action_replay_tracker_production.rs`
+// (a verbatim copy of `crates/vb_storage/src/recovery/types.rs:666-852`).
+//
+// The `assume_specification` bridges below attach the production
+// contracts for `ActionReplayTracker::is_resolved` and
+// `ActionReplayTracker::mark_completed` to the spec-side mirror
+// methods. The exec wrappers invoke the mirror methods to discharge
+// the contracts; they are the non-vacuum witnesses that the bridges
+// are actually used.
+//
+// BINDING LEDGER:
+//   - `production::SpecActionReplayTracker::is_resolved`     <- types.rs:843-845
+//   - `production::SpecActionReplayTracker::mark_completed`  <- types.rs:761-763
+#[path = "extern_vb_rpch_replay_refinement.rs"]
+mod production;
+
+// Re-export the spec-side mirror struct and its methods so the
+// assume_specification bridges and exec wrappers below can reference
+// them. Note: the spec-side proofs at the bottom of this file use
+// `pub type ActionId = u16;` etc., which is a spec-side int alias
+// for Set-algebra reasoning. The production-bound
+// `SpecActionReplayTracker` has `HashSet<(u16, u16)>` fields
+// bridged via `@` View.
+pub use production::SpecActionReplayTracker;
+
+// ---------------------------------------------------------------------------
+// assume_specification BRIDGES — production contract surface
+// ---------------------------------------------------------------------------
+//
+// Each bridge attaches the spec fn contract to the spec-side mirror
+// exec method. The mirror body is opaque to Verus
+// (`#[verifier::external]`); the spec proofs below exercise the
+// contracts via the exec wrappers further down.
+pub assume_specification[ production::SpecActionReplayTracker::is_resolved ](
+    tracker: &production::SpecActionReplayTracker,
+    action: u16,
+    step: u16,
+) -> (result: bool)
+    ensures
+        result == (tracker.completed@.contains((action, step)) || tracker.failed@.contains((action, step))),
+;
+
+pub assume_specification[ production::SpecActionReplayTracker::mark_completed ](
+    tracker: &mut production::SpecActionReplayTracker,
+    action: u16,
+    step: u16,
+)
+    ensures
+        final(tracker).completed@.contains((action, step)),
+;
+
+// ---------------------------------------------------------------------------
+// Production-bound exec wrappers — discharge witnesses for the bridges
+// ---------------------------------------------------------------------------
+//
+// These exec wrappers invoke the spec-side mirror methods. Verus
+// verifies each wrapper body via the `assume_specification` contract
+// attached to the corresponding mirror method.
+pub exec fn production_is_resolved_witness(
+    tracker: &production::SpecActionReplayTracker,
+    action: u16,
+    step: u16,
+) -> (r: bool)
+    ensures
+        r == (tracker.completed@.contains((action, step)) || tracker.failed@.contains((action, step))),
+{
+    tracker.is_resolved(action, step)
+}
+
+pub exec fn production_mark_completed_witness(
+    tracker: &mut production::SpecActionReplayTracker,
+    action: u16,
+    step: u16,
+)
+    ensures
+        final(tracker).completed@.contains((action, step)),
+{
+    tracker.mark_completed(action, step);
+}
+
 pub type ActionId = u16;
 pub type StepIdx = u16;
 pub type RunId = u64;
