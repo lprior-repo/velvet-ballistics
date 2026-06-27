@@ -635,6 +635,17 @@ tasks:
       - 'fuzz/tests/**/*'
       - 'fuzz/src/**/*'
 
+  verify-verus-production-binding:
+    script: |
+      set -euo pipefail
+      bash scripts/check-verus-production-binding.sh
+    options:
+      runInCI: true
+    inputs:
+      - 'verification/verus/**/*.rs'
+      - 'verification/verus/**/*.vr'
+      - 'scripts/check-verus-production-binding.sh'
+
   sanitizer-address-check:
     script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-features --no-run'
     deps:
