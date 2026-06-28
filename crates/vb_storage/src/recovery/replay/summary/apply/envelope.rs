@@ -10,7 +10,7 @@ use super::super::accumulator::FrameSeedAccumulator;
 use super::super::hydrate::max_slot;
 
 #[derive(Clone, Copy)]
-pub struct ActionCompletionEnvelopeApply<'a> {
+pub(crate) struct ActionCompletionEnvelopeApply<'a> {
     pub(crate) run: RunId,
     pub(crate) ticket: ActionTicket,
     pub(crate) output: SlotIdx,
