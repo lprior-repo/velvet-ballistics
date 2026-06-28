@@ -102,11 +102,15 @@ pub use production::{
     whole_workflow_budget_compute,
 };
 
-// Re-export the `workflow` and `limits` sub-modules from the extern file so
+// Re-export the `workflow` sub-module from the extern file so
 // paths like `crate::workflow::CompiledNode` resolve inside the extern
 // `#[verifier::external]` wrappers (which reference them as `crate::workflow`).
+//
+// Note: `pub use production::limits;` was removed when
+// `MAX_LIST_ITEMS_PER_VALUE` was moved out of the production_inner
+// mirror and into this spec file's `verus!` block. The `pub mod limits`
+// namespace no longer exists in the production_inner mirror.
 pub use production::workflow;
-pub use production::limits;
 
 // ============================================================================
 // PartialEqSpecImpl — discharge the vstd `cmp::eq` postcondition on the nine
@@ -333,6 +337,37 @@ pub const SPEC_MAX_PARALLEL_IN_FLIGHT: u64 = 1024;
 /// spec-vs-policy reconciliation item.
 #[allow(non_upper_case_globals)]
 pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
+
+// ----------------------------------------------------------------------------
+// MAX_LIST_ITEMS_PER_VALUE — moved here from the production_inner mirror
+// ----------------------------------------------------------------------------
+//
+// `MAX_LIST_ITEMS_PER_VALUE` was previously declared inside the
+// production_inner mirror at
+// `verification/verus/production_inner/budget_bounded_production.rs:683`
+// (inside `pub mod limits { ... }`). Declaring it in that mirror
+// triggered the same Verus internal error
+// (`VerusErasureCtxt has not been initialized`) on the
+// `--crate-type=lib` invocation that does NOT pass `--no-lifetime`,
+// because the thir_body query runs against the constant's owner item
+// during the SPEC_MAX_* type-erasure path. Moving the `pub const`
+// into the spec file's `verus!` block (alongside `SPEC_MAX_*`)
+// avoids the bug while preserving the production-mirror binding.
+//
+// `MAX_LIST_ITEMS_PER_VALUE` mirrors the production constant at
+// `crates/vb_core/src/limits.rs:71 = 65_535`. The value is referenced
+// by the production budget iteration accounting at
+// `crates/vb_core/src/budget.rs:1459, 1719` but is currently unused
+// in any spec proof or exec fn in this scope; it is kept here as a
+// binding-ledger artifact so the production constant name stays
+// resolvable from spec mode.
+//
+// This matches the established workaround used in
+// `step_state_machine.rs` (the `SPEC_MAX_STEP_BUDGET` constant is
+// also declared inside `verus!`) and the four `SPEC_MAX_*`
+// constants above.
+#[allow(non_upper_case_globals)]
+pub const MAX_LIST_ITEMS_PER_VALUE: usize = 65_535;
 
 // ============================================================================
 // Spec invariants — derive production constants from the extern source

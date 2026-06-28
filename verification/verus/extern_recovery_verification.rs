@@ -123,7 +123,7 @@
 //        <- crates/vb_storage/src/recovery/recover.rs:78-88
 //        (production body: equality check; pure projection: success
 //        iff matches.)
-//   - `verify_digests_pure_decision`
+//   - `verify_digests`
 //        <- crates/vb_storage/src/recovery/recover.rs:96-125
 //        (production body: dispatch on DigestVerificationRequest
 //        variant, calling the underlying pure checks. The mirror is a
@@ -135,7 +135,7 @@
 //        (production body: read events; reject if empty; delegate to
 //        summarize_recovery_events. Pure projection: success iff
 //        has_events && summary_ok.)
-//   - `hydrate_run_frame_preconditions_pure`
+//   - `hydrate_run_frame`
 //        <- crates/vb_storage/src/recovery/hydrate.rs:181-200 +
 //           crates/vb_runtime/src/recovery.rs:63-71
 //        (production body: validate_snapshot_recovery_inputs, then
@@ -148,7 +148,7 @@
 //        step_count_positive, slot_count_positive,
 //        steps_apply_ok, slots_apply_ok, pc_in_bounds,
 //        unsupported_passes_through_reject).)
-//   - `summary_recovery_boundary_hydrate_pure`
+//   - `SummaryRecoveryBoundary::hydrate_run_frame`
 //        <- crates/vb_runtime/src/recovery.rs:146-154
 //        (production body: returns Err(UnsupportedFullRecoveryHydration).
 //        Pure projection: never succeeds.)

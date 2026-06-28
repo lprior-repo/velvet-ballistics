@@ -27,7 +27,7 @@
 //   - `StepBudget::try_take`   <- crates/vb_core/src/engine/signals.rs:50-60
 //   - `StepBudget::remaining`  <- crates/vb_core/src/engine/signals.rs:62-65
 //   - `StepBudget::from_env`   <- crates/vb_core/src/engine/signals.rs:80-94
-//   - `step_budget_max`        <- crates/vb_core/src/engine/signals.rs:19-22
+//   - `StepBudget::MAX`        <- crates/vb_core/src/engine/signals.rs:19-22
 //   - `mark_step_after_signal` <- crates/vb_core/src/engine/step.rs:109-121
 //
 // ============================================================================

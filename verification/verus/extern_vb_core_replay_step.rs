@@ -36,13 +36,13 @@
 // BINDING LEDGER (mirrors production_inner/vb_core_replay_step_production.rs)
 // ============================================================================
 //   - `SpecReplayAction` (7-variant enum)              <- crates/vb_core/src/replay/step.rs:50-57
-//   - `SpecNodeKind` (18-variant enum)                <- crates/vb_core/src/workflow/node.rs
+//   - `CompiledNodeKind` (18-variant enum)            <- crates/vb_core/src/workflow/mod.rs:585
 //   - `SpecSuspensionKind` (4-variant enum)           <- crates/vb_core/src/replay/step.rs:18-27
 //   - `SpecOpStackDelta` (5-variant enum)             <- projection of crates/vb_core/src/replay/ops.rs:13-44
-//   - `replay_step_pure_decision`                     <- crates/vb_core/src/replay/step.rs:128-192
-//   - `replay_choose_slot_pure_decision`              <- crates/vb_core/src/replay/choose/mod.rs:12-58
-//   - `replay_choose_expr_pure_decision`              <- crates/vb_core/src/replay/choose/mod.rs:61-104
-//   - `eval_replay_op_stack_delta`                    <- crates/vb_core/src/replay/ops.rs:13-44
+//   - `replay_step_with_collect`                      <- crates/vb_core/src/replay/step.rs:128-192
+//   - `replay_choose_slot`                            <- crates/vb_core/src/replay/choose/mod.rs:12-58
+//   - `replay_choose_expr`                            <- crates/vb_core/src/replay/choose/mod.rs:61-104
+//   - `eval_replay_op`                                <- crates/vb_core/src/replay/ops.rs:13-44
 //   - `pop_pair_pure`                                 <- crates/vb_core/src/replay/ops.rs:244-248
 //   - `pop_i64_pair_pure`                             <- crates/vb_core/src/replay/ops.rs:250-254
 //

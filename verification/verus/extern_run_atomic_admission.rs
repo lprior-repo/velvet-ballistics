@@ -3,7 +3,7 @@
 // Extern surface for accepted_run_atomic_admission Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 //
 // PRODUCTION INCLUSION via #[path]:

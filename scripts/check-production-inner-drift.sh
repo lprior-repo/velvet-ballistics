@@ -457,16 +457,268 @@ for mirror in "$MIRROR_DIR"/*.rs; do
 done
 
 # ---------------------------------------------------------------------------
+# Extern file drift check (second pass)
+# ---------------------------------------------------------------------------
+# Scans verification/verus/extern_*.rs files for BINDING LEDGER entries
+# pointing to crates/ paths and verifies each named identifier is still
+# present in the production source within a small context window of
+# the claimed line range. This catches drift in:
+#   - STRONG bindings: extern_*.rs files whose `#[path]` attribute
+#     directly includes a production source under crates/.
+#   - WEAK bindings: extern_*.rs files whose `#[path]` attribute
+#     includes an in-tree production_inner/ mirror, but whose BINDING
+#     LEDGER documents the upstream crates/ ranges the mirror was
+#     derived from.
+#
+# BINDING LEDGER entry forms this pass recognises:
+#   //   - `Identifier`                  <- crates/path:start-end
+#   //   - `Identifier::Variant`         <- crates/path:line
+#   //   - `Identifier` (description)    <- crates/path:start-end
+#   //   - Production `Identifier` (...)
+#   //                            <- crates/path:start-end
+# Entries whose path does NOT start with `crates/` (e.g. mirrors
+# under production_inner/, bare paths requiring master-path
+# resolution, or summary lines using "Production source:" / "mirrors"
+# phrasing) are silently skipped here — they are either covered by
+# the production_inner/ scan above or are out of scope for the
+# source-level identifier diff this pass performs.
+
+EXTERN_DIR="verification/verus"
+extern_scan_count=0
+extern_drift_count=0
+
+# Permissive identifier extractor for the extern drift pass. Keeps
+# short SCREAMING_SNAKE_CASE constants (MAX, MIN, OK, ...) that the
+# production_inner/ mirror extractor filters out, AND keeps 2+ char
+# all-lowercase tokens (e.g. `pc`, `id`, `seq`) which are legitimate
+# Rust method / field names that the production_inner/ extractor
+# drops as "module / crate names".
+extract_id_extern() {
+  strip_noise \
+    | perl -ne '
+        while (/[A-Za-z_][A-Za-z0-9_]*/g) {
+          my $id = $&;
+          # Drop 1-char tokens only.
+          next if length($id) < 2;
+          # Drop common Rust keywords / primitive type names. Note:
+          # `MAX`, `MIN`, `From`, `Self` etc. are intentionally NOT in
+          # this list because named ledger identifiers can resolve to
+          # them.
+          next if $id =~ /^(?:pub|fn|impl|struct|enum|match|use|mod|self|Self|return|let|const|static|where|for|in|if|else|while|loop|break|continue|true|false|None|Some|Ok|Err|u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|bool|str|String|Vec|Box|Option|Result|HashSet|HashMap|BTreeSet|BTreeMap|PhantomData|Default|copy|clone|debug)$/;
+          print "$id\n";
+        }
+      ' \
+    | sort -u
+}
+
+# Generate candidate LAST-segment tokens to try when checking a
+# BINDING LEDGER entry. The full token is always tried first; known
+# spec-side naming conventions (Mirror / Spec prefix, _pure /
+# _decision suffix, production_ / spec_ prefix) are stripped to
+# produce additional candidates. The intent is: production source
+# has the original name; the spec-side mirror renames it via one of
+# these conventions. The check succeeds if ANY candidate is present
+# in production.
+candidate_tokens() {
+  local name="$1"
+  printf '%s\n' "$name"
+  case "$name" in
+    Mirror*) printf '%s\n' "${name#Mirror}" ;;
+  esac
+  case "$name" in
+    Spec*) printf '%s\n' "${name#Spec}" ;;
+  esac
+  case "$name" in
+    *_pure) printf '%s\n' "${name%_pure}" ;;
+  esac
+  case "$name" in
+    *_decision) printf '%s\n' "${name%_decision}" ;;
+  esac
+  case "$name" in
+    production_*) printf '%s\n' "${name#production_}" ;;
+  esac
+  case "$name" in
+    spec_*) printf '%s\n' "${name#spec_}" ;;
+  esac
+}
+
+# Parse BINDING LEDGER entries from an extern file. Emits one line per
+# entry whose path starts with `crates/`, formatted as:
+#   NAMED_ID LINE_NO PATH START END
+# NAMED_ID is the backtick-wrapped identifier from the entry's
+# `//   - \`...\`` line (e.g. `StepBudget::MAX`). LINE_NO is the
+# 1-indexed line of the path declaration (`<- crates/...`). START/END
+# are the parsed line range; END is `0` if no range was specified
+# (resolved by check_extern_entry to the whole file).
+#
+# Identifier / path pairing: the parser captures the most recent
+# `//   - \`...\`` identifier as a pending value, then pairs it with
+# the next `<- path` line within a small window (5 lines). The window
+# accommodates multi-line description continuations but rejects
+# stale pending identifiers from a previous BINDING LEDGER section
+# or header preamble. Same-line identifier + path declarations are
+# also supported (no `next` after identifier match).
+parse_extern_ledger() {
+  local extern_file="$1"
+  perl -ne '
+    my $max_gap = 5;
+    # Track the most recent `//   - ` identifier (with optional
+    # preceding word like `Production` or `Mirror`).
+    if (/^\h*\/\/\h*\-\h+(?:[A-Za-z_][A-Za-z0-9_]*\h+)?\x60([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)/) {
+      $pending_id = $1;
+      $pending_line = $.;
+    }
+    # Path declaration: a `<-` followed by a path with optional range.
+    # The path may be on the same line as the identifier or on a
+    # continuation line within the BINDING LEDGER entry.
+    if (/\s*\<-\s+([A-Za-z0-9_.\/-]+)(?::(\d+)(?:-(\d+))?)?/) {
+      my $path = $1;
+      my $start = defined $2 ? $2 : 1;
+      my $end = defined $3 ? $3 : (defined $2 ? $2 : 0);
+      my $gap = defined $pending_line ? ($. - $pending_line) : 999;
+      if ($path =~ m{^crates/} && defined $pending_id && $gap <= $max_gap) {
+        printf("%s %d %s %d %d\n", $pending_id, $., $path, $start, $end);
+      }
+      # Clear pending state regardless — any path line ends the
+      # current entry, and a stale pending_id from a previous
+      # section must not pair with this path.
+      $pending_id = undef;
+      $pending_line = undef;
+    }
+  ' "$extern_file"
+}
+
+# Check a single BINDING LEDGER entry. Reports drift (return 1) if:
+#   - The claimed production source file is missing.
+#   - The claimed line range is empty after clamping to file bounds.
+#   - The LAST segment of the named identifier is not present in the
+#     production source within a +/- 5 line context window of the
+#     claimed range. The window accommodates ledger entries that
+#     document the body of a function/method while the signature sits
+#     one line above the claimed body range.
+check_extern_entry() {
+  local named_id="$1"
+  local abs_path="$2"
+  local start="$3"
+  local end="$4"
+  local extern_rel="$5"
+  local line_no="$6"
+
+  if [ ! -f "$abs_path" ]; then
+    {
+      printf '\n=== %s (BINDING LEDGER @ line %s) ===\n' "$extern_rel" "$line_no"
+      printf 'DRIFT: claimed production source missing: %s\n' \
+        "${abs_path#"$REPO_ROOT/"}"
+    } | tee -a "$LOG"
+    return 1
+  fi
+
+  local file_lines
+  file_lines=$(wc -l < "$abs_path")
+
+  if [ "$end" -eq 0 ]; then
+    end="$file_lines"
+  fi
+  if [ "$start" -lt 1 ]; then start=1; fi
+  if [ "$end" -gt "$file_lines" ]; then end="$file_lines"; fi
+  if [ "$start" -gt "$end" ]; then
+    {
+      printf '\n=== %s (BINDING LEDGER @ line %s) ===\n' "$extern_rel" "$line_no"
+      printf 'DRIFT: claimed range is empty after clamping: %s:%s-%s (file has %s lines)\n' \
+        "${abs_path#"$REPO_ROOT/"}" "$start" "$end" "$file_lines"
+    } | tee -a "$LOG"
+    return 1
+  fi
+
+  # Expand the window: include 5 lines above and below the claimed
+  # range. This handles ledger entries that document the body of a
+  # function / method where the signature sits one line above the
+  # claimed body range.
+  local ctx_start ctx_end
+  ctx_start=$(( start > 5 ? start - 5 : 1 ))
+  ctx_end=$(( end + 5 < file_lines ? end + 5 : file_lines ))
+
+  local prod_ids
+  prod_ids=$(sed -n "${ctx_start},${ctx_end}p" "$abs_path" | extract_id_extern)
+
+  # The LAST segment of the named identifier is the actual member
+  # name (variant, method, field, constant). For multi-segment paths
+  # like `EngineError::StepCounterOverflow`, this is the variant; for
+  # `StepBudget::MAX`, this is the constant; for single-segment paths
+  # like `StepBudget`, this is the struct.
+  local key_token
+  key_token=$(printf '%s' "$named_id" | awk -F'::' '{print $NF}')
+
+  # Try the full token first, then known spec-side naming conventions
+  # (Mirror prefix, _pure suffix, production_ prefix). The spec-side
+  # mirror often renames the production identifier via one of these
+  # conventions; the check succeeds if ANY candidate is present in
+  # production.
+  local found=0
+  local candidate
+  while IFS= read -r candidate; do
+    [ -z "$candidate" ] && continue
+    if printf '%s\n' "$prod_ids" | grep -qxF "$candidate"; then
+      found=1
+      break
+    fi
+  done < <(candidate_tokens "$key_token")
+
+  if [ "$found" -eq 1 ]; then
+    return 0
+  fi
+
+  {
+    printf '\n=== %s (BINDING LEDGER @ line %s) ===\n' "$extern_rel" "$line_no"
+    printf 'DRIFT: production identifier `%s` (last segment `%s`) not found in %s:%s-%s (window %s-%s)\n' \
+      "$named_id" "$key_token" "${abs_path#"$REPO_ROOT/"}" \
+      "$start" "$end" "$ctx_start" "$ctx_end"
+  } | tee -a "$LOG"
+  return 1
+}
+
+# Main extern loop. Each extern_*.rs file is scanned for BINDING
+# LEDGER entries that point to crates/ paths; each such entry is
+# verified against the production source.
+for extern_file in "$EXTERN_DIR"/extern_*.rs; do
+  [ -e "$extern_file" ] || continue
+  extern_scan_count=$((extern_scan_count + 1))
+  extern_rel="${extern_file#"$REPO_ROOT/"}"
+
+  entries=$(parse_extern_ledger "$extern_file")
+  [ -z "$entries" ] && continue
+
+  extern_drift=0
+  while IFS= read -r entry; do
+    [ -z "$entry" ] && continue
+    named_id=$(printf '%s' "$entry" | awk '{print $1}')
+    line_no=$(printf '%s' "$entry" | awk '{print $2}')
+    rel_path=$(printf '%s' "$entry" | awk '{print $3}')
+    start=$(printf '%s' "$entry" | awk '{print $4}')
+    end=$(printf '%s' "$entry" | awk '{print $5}')
+
+    abs_path="$REPO_ROOT/$rel_path"
+    if ! check_extern_entry "$named_id" "$abs_path" "$start" "$end" "$extern_rel" "$line_no"; then
+      extern_drift=1
+    fi
+  done <<< "$entries"
+
+  extern_drift_count=$((extern_drift_count + extern_drift))
+done
+
+# ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
+total_drift=$((drift_count + extern_drift_count))
 {
   printf '\n=== Summary ===\n'
-  printf 'Mirror files checked: %d\n' "$mirror_count"
-  printf 'Drift findings:       %d\n' "$drift_count"
-  printf 'Log:                  %s\n' "$LOG"
+  printf 'Mirror files checked:  %d\n' "$mirror_count"
+  printf 'Extern files scanned:  %d\n' "$extern_scan_count"
+  printf 'Drift findings:        %d\n' "$total_drift"
+  printf 'Log:                   %s\n' "$LOG"
 } | tee -a "$LOG"
 
-if [ "$drift_count" -gt 0 ]; then
+if [ "$total_drift" -gt 0 ]; then
   printf '\nPRODUCTION-INNER DRIFT DETECTED. See %s\n' "$LOG" >&2
   exit 1
 fi

@@ -68,7 +68,7 @@
 //   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types.rs:830-832
 //   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types.rs:836-838
 //   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types.rs:843-845
-//   - `ActionReplayTracker::Default`                 <- crates/vb_storage/src/recovery/types.rs:848-852
+//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types.rs:848-852
 //   - Private `mark_scheduled_ticket_effect`, `require_scheduled_ticket`,
 //     `mark_completed_envelope_effect`, `mark_completed_envelope` are
 //     present in the included module but not bound by the spec; they

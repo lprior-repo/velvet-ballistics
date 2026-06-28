@@ -3,7 +3,7 @@
 // Extern surface for collect_lowering Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 //
 // This file binds the collect_lowering.rs Verus spec to the production exec
@@ -74,12 +74,13 @@
 // ============================================================================
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:55
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:21
-//   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:27
+//   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:55
 //   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/mod.rs:303-308
 //                                                  (used at part_03.rs:203-208
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
-//   - `SpecCompileError`                        <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
+//   - `CompileError::PrimitiveLoweringLimitExceeded`
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
 //                                                  (mirror of
 //                                                  `CompileError::PrimitiveLoweringLimitExceeded`;
 //                                                  the exact variant produced by

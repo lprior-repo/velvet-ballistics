@@ -108,7 +108,7 @@
 // so Verus skips body verification; the production contract is
 // attached via `assume_specification` in the companion spec file:
 //
-//   - `production_codec_next_seq`        <- crates/vb_storage/src/codec/mod.rs:142-147
+//   - `next_seq`                         <- crates/vb_storage/src/codec/mod.rs:142-147
 //        (production: `seq.get().checked_add(1).map(EventSeq::new)
 //                      .ok_or(JournalError::SequenceOverflow)`)
 //   - `production_validate_replayed_event`

@@ -12,24 +12,20 @@
 // =============================================================================
 //
 // This file is bound to `crates/vb_core/src/engine/signals.rs` through the
-// companion extern surface `verification/verus/extern_step_budget.rs`,
-// which contains a direct `#[path = "../../crates/vb_core/src/engine/signals.rs"]`
-// inclusion of the production source file. Any drift in production field
-// names, discriminant sets, or fn signatures breaks Rust resolution at
-// compile time.
+// companion extern surface `verification/verus/extern_signals_invariant.rs`,
+// which includes the drift-gated mirror
+// `verification/verus/production_inner/signals_production.rs`. The mirror is a
+// verbatim production surface with one verifier-only visibility relaxation:
+// `StepBudget::remaining` is `pub` so Verus can attach a transparent
+// `external_type_specification` without exposing the private production field in
+// the Rust API. `scripts/check-production-inner-drift.sh` catches drift between
+// the mirror and the production source.
 //
-// To satisfy the production file's `use crate::errors::EngineError`,
-// `use crate::limits::MAX_STEP_BUDGET`, and
-// `use crate::value::{SlotValue, Taint}` statements, minimal stub
-// modules are declared at the crate root below.
-//
-// The `assume_specification` bridges inside `verus!` attach production
-// contracts DIRECTLY to the production exec methods surfaced via the
-// `#[path]` inclusion (`production::StepBudget::new`, `::try_take`,
-// `::remaining`). The production field remains private; the proof
-// contracts reason through the public `StepBudget::remaining()`
-// accessor so encapsulation drift is caught by Rust resolution instead
-// of bypassed by a shadow field model.
+// The `assume_specification` bridges inside `verus!` attach contracts to the
+// mirror exec methods surfaced via the `#[path]` inclusion
+// (`production::StepBudget::new`, `::try_take`, `::remaining`). The proof uses
+// field access only on the verifier mirror and production encapsulation remains
+// unchanged.
 //
 // Domain claims (preserved from the original step_budget.rs):
 //   PS-001: try_take remaining is monotonically non-increasing.
@@ -45,78 +41,10 @@
 //   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:21-23
 //   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
 
-// =============================================================================
-// Stub modules for production `crate::*` imports
-// =============================================================================
-//
-// These stubs exist ONLY to satisfy the `use crate::errors::EngineError`,
-// `use crate::limits::MAX_STEP_BUDGET`, and
-// `use crate::value::{SlotValue, Taint}` statements inside the production
-// `signals.rs` file included via `#[path]` from the companion extern file.
-// They are NOT used in the spec proofs (spec proofs reason over the
-// re-exported production types, which themselves use these stubs
-// transparently). Variant sets are minimal: only the variants referenced
-// by `StepBudget::try_take` and `from_env` are needed for the proof.
-
-/// Stub for `crate::errors::EngineError` declared OUTSIDE `verus!`
-/// so the production file's `use crate::errors::EngineError;`
-/// resolves identically to production. The spec code references this
-/// type via the `ExEngineError` bridge inside `verus!`.
-pub mod errors {
-    /// Mirror of production `crates/vb_core/src/errors.rs:241`.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum EngineError {
-        /// Production variant `CoreError::StepCounterOverflow`.
-        StepCounterOverflow,
-        /// Production variant `CoreError::BudgetParse`.
-        BudgetParse {
-            /// Reason string supplied by the caller.
-            reason: &'static str,
-        },
-    }
-}
-
-/// Stub for `crate::limits` (production at
-/// `crates/vb_core/src/limits.rs`).
-pub mod limits {
-    /// Stub for production `MAX_STEP_BUDGET`
-    /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
-    pub const MAX_STEP_BUDGET: u64 = 10_000;
-}
-
-/// Stub for `crate::value` (production at
-/// `crates/vb_core/src/value.rs`).
-pub mod value {
-    /// Stub for production `SlotValue`.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum SlotValue {
-        /// i64 slot value.
-        I64(i64),
-        /// bool slot value.
-        Bool(bool),
-        /// null slot value.
-        Null,
-    }
-    /// Stub for production `Taint`.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum Taint {
-        /// Clean taint.
-        Clean,
-        /// Secret taint.
-        Secret,
-        /// Taint derived from secret input.
-        DerivedFromSecret,
-    }
-}
-
-#[path = "extern_step_budget.rs"]
+#[path = "extern_signals_invariant.rs"]
 mod production;
 
-pub use production::{EngineSignal, StepBudget};
-// `EngineError` is referenced via `crate::errors::EngineError` (the
-// stub declared at the crate root above). It is the same type the
-// production impl block uses internally (resolved through the
-// `use crate::errors::EngineError;` private import in signals.rs).
+pub use production::{EngineError, EngineSignal, StepBudget};
 
 use vstd::prelude::*;
 
@@ -133,28 +61,12 @@ verus! {
 // private, so this proof treats the type as opaque and reasons only
 // through public production methods named in `assume_specification`.
 //
-// The `ExEngineError` bridge below is also declared for completeness
-// (the stub `crate::errors::EngineError` is declared outside `verus!`
-// for the production file's `use crate::errors::EngineError;`
-// import to resolve). The `assume_specification` contracts below
-// reference the stub type directly via `crate::errors::EngineError`,
-// which Verus accepts because the production method's return type
-// fixes the type identity at the Rust resolution boundary.
-
-/// Spec-mode alias for the stub `EngineError` enum declared at
-/// `crate::errors::EngineError` (mirror of production
-/// `crates/vb_core/src/errors.rs:241`). Declared outside `verus!` so
-/// this bridge is required to name it in spec mode.
-///
-/// NOTE: this bridge is declared for completeness. The
-/// `assume_specification` contracts below use `crate::errors::EngineError`
-/// directly because Verus can name the external type when it appears
-/// as a return-type / argument-type position in an `assume_specification`
-/// signature (the production method signature fixes the type identity).
-/// The bridge would be required only if spec-mode proof fns needed to
-/// name the error type independently.
+/// Opaque spec-mode bridge for the production `StepBudget` type surfaced
+/// through the drift-gated `signals_production` mirror. The mirror relaxes only
+/// `StepBudget::remaining` field visibility for Verus while preserving field
+/// name and type, and drift is caught by `check-production-inner-drift.sh`.
 #[verifier::external_type_specification]
-pub struct ExEngineError(crate::errors::EngineError);
+pub struct ExStepBudget(production::StepBudget);
 
 // =============================================================================
 // Spec constants
@@ -233,8 +145,8 @@ pub assume_specification[ production::StepBudget::new ](
     value: u64,
 ) -> (budget: production::StepBudget)
     ensures
-        budget.remaining() as int == spec_new(value as int),
-        spec_step_budget_invariant(budget.remaining() as int),
+        budget.remaining as int == spec_new(value as int),
+        spec_step_budget_invariant(budget.remaining as int),
 ;
 
 /// Bridge contract: `production::StepBudget::try_take` either returns
@@ -251,22 +163,22 @@ pub assume_specification[ production::StepBudget::new ](
 ///   3. remaining > 0 returns Ok(true), remaining -= 1
 pub assume_specification[ production::StepBudget::try_take ](
     budget: &mut production::StepBudget,
-) -> (r: Result<bool, crate::errors::EngineError>)
+) -> (r: Result<bool, production::EngineError>)
     requires
-        spec_step_budget_invariant(old(budget).remaining() as int),
+        spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
             Ok(true) =>
-                old(budget).remaining() as int > 0
-                && final(budget).remaining() as int == old(budget).remaining() as int - 1,
+                old(budget).remaining as int > 0
+                && final(budget).remaining as int == old(budget).remaining as int - 1,
             Ok(false) =>
-                old(budget).remaining() as int == 0
-                && final(budget).remaining() as int == old(budget).remaining() as int,
+                old(budget).remaining as int == 0
+                && final(budget).remaining as int == old(budget).remaining as int,
             Err(_) =>
-                old(budget).remaining() as int > max_step_budget()
-                && final(budget).remaining() as int == old(budget).remaining() as int,
+                old(budget).remaining as int > max_step_budget()
+                && final(budget).remaining as int == old(budget).remaining as int,
         },
-        spec_step_budget_invariant(final(budget).remaining() as int),
+        spec_step_budget_invariant(final(budget).remaining as int),
 ;
 
 /// Bridge contract: `production::StepBudget::remaining` returns the
@@ -278,7 +190,7 @@ pub assume_specification[ production::StepBudget::remaining ](
     budget: &production::StepBudget,
 ) -> (r: u64)
     ensures
-        r as int == budget.remaining() as int,
+        r as int == budget.remaining as int,
 ;
 
 // =============================================================================
@@ -407,8 +319,8 @@ pub fn exec_proof_try_take_monotonic(initial: u64) -> (budget: production::StepB
     requires
         spec_step_budget_invariant(initial as int),
     ensures
-        budget.remaining() as int <= initial as int,
-        spec_step_budget_invariant(budget.remaining() as int),
+        budget.remaining as int <= initial as int,
+        spec_step_budget_invariant(budget.remaining as int),
 {
     let mut b = production::StepBudget::new(initial);
     let _ = b.try_take();
@@ -422,8 +334,8 @@ pub fn exec_proof_try_take_never_negative(initial: u64) -> (budget: production::
     requires
         spec_step_budget_invariant(initial as int),
     ensures
-        budget.remaining() as int >= 0,
-        spec_step_budget_invariant(budget.remaining() as int),
+        budget.remaining as int >= 0,
+        spec_step_budget_invariant(budget.remaining as int),
 {
     let mut b = production::StepBudget::new(initial);
     let _ = b.try_take();
@@ -440,9 +352,9 @@ pub fn exec_proof_try_take_exact_decrement(initial: u64) -> (result: (bool, prod
         initial > 0,
         spec_step_budget_invariant(initial as int),
     ensures
-        result.0 ==> (result.1.remaining() as int == initial as int - 1),
-        !result.0 ==> (result.1.remaining() as int == initial as int),
-        spec_step_budget_invariant(result.1.remaining() as int),
+        result.0 ==> (result.1.remaining as int == initial as int - 1),
+        !result.0 ==> (result.1.remaining as int == initial as int),
+        spec_step_budget_invariant(result.1.remaining as int),
 {
     let mut b = production::StepBudget::new(initial);
     let r = b.try_take();
@@ -459,7 +371,7 @@ pub fn exec_proof_try_take_exact_decrement(initial: u64) -> (result: (bool, prod
 pub fn exec_proof_try_take_zero_returns_false() -> (result: (bool, production::StepBudget))
     ensures
         result.0 == false,
-        spec_step_budget_invariant(result.1.remaining() as int),
+        spec_step_budget_invariant(result.1.remaining as int),
 {
     let mut b = production::StepBudget::new(0);
     let r = b.try_take();
@@ -486,8 +398,8 @@ pub fn exec_proof_try_take_zero_returns_false() -> (result: (bool, production::S
 /// `production::StepBudget::new`.
 pub fn exec_proof_new_clamps(value: u64) -> (budget: production::StepBudget)
     ensures
-        budget.remaining() as int == spec_new(value as int),
-        spec_step_budget_invariant(budget.remaining() as int),
+        budget.remaining as int == spec_new(value as int),
+        spec_step_budget_invariant(budget.remaining as int),
 {
     let budget = production::StepBudget::new(value);
     budget

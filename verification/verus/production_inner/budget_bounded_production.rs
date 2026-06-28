@@ -626,13 +626,23 @@ pub fn aggregate_resource_usage_check_policy(
 }
 
 // ============================================================================
-// Companion namespace `crate::workflow` and `crate::limits` shims
+// Companion namespace `crate::workflow` shim
 // ============================================================================
 //
-// These provide the namespace for the budget.rs use sites
-// (`use crate::workflow::CompiledNode` etc.) and the constant
-// `MAX_LIST_ITEMS_PER_VALUE`. Each is a marker type — production bodies
-// are not re-verified inside Verus.
+// This provides the namespace for the budget.rs use sites
+// (`use crate::workflow::CompiledNode` etc.). It is a marker type —
+// production bodies are not re-verified inside Verus.
+//
+// `pub mod limits { ... }` was previously declared here to mirror the
+// production constant `MAX_LIST_ITEMS_PER_VALUE = 65_535` at
+// `crates/vb_core/src/limits.rs:71`. It has been removed because
+// declaring a `pub const` in this mirror triggers a Verus internal
+// error (`VerusErasureCtxt has not been initialized`) on the
+// `--crate-type=lib` invocation that does NOT pass `--no-lifetime`.
+// The constant now lives in the spec file's `verus!` block at
+// `verification/verus/budget_bounded.rs` alongside the four
+// `SPEC_MAX_*` constants. See the binding-ledger comment there for
+// the production source line and the drift detection rationale.
 
 pub mod workflow {
     use super::StepIdx;
@@ -676,25 +686,19 @@ pub mod workflow {
     }
 }
 
-pub mod limits {
-    /// Production constant `MAX_LIST_ITEMS_PER_VALUE = 65_535` at
-    /// `crates/vb_core/src/limits.rs:71`. Mirrored here so the spec
-    /// can reference it from the boundedness contract.
-    pub const MAX_LIST_ITEMS_PER_VALUE: usize = 65_535;
-}
-
 // ============================================================================
 // Spec-side mirror of the budget limit constants referenced by spec
 // ============================================================================
 //
 // The four `SPEC_MAX_*` constants (SPEC_MAX_STEPS_PER_WORKFLOW,
 // SPEC_MAX_STEP_BUDGET, SPEC_MAX_PARALLEL_IN_FLIGHT,
-// SPEC_MAX_ACTION_TICKETS) are declared inside the spec file's
-// `verus!` block, NOT here. Declaring a `pub const` in this extern
-// file triggers a Verus internal error (`VerusErasureCtxt has not
-// been initialized`) on the `--crate-type=lib` invocation that does
-// NOT pass `--no-lifetime`; the spec file mirrors each constant
-// with the same value and a binding-ledger comment that cites the
-// production source line. This matches the established workaround
-// used in `extern_signals_try_take.rs`, `extern_signals_invariant.rs`,
+// SPEC_MAX_ACTION_TICKETS) AND the `MAX_LIST_ITEMS_PER_VALUE`
+// constant are declared inside the spec file's `verus!` block, NOT
+// here. Declaring a `pub const` in this extern file triggers a Verus
+// internal error (`VerusErasureCtxt has not been initialized`) on
+// the `--crate-type=lib` invocation that does NOT pass `--no-lifetime`;
+// the spec file mirrors each constant with the same value and a
+// binding-ledger comment that cites the production source line. This
+// matches the established workaround used in
+// `extern_signals_try_take.rs`, `extern_signals_invariant.rs`,
 // `extern_vb_vzcuf_PS_006.rs`, and `extern_step_state_machine.rs`.

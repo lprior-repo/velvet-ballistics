@@ -3,7 +3,7 @@
 // Extern surface for signals_try_take Verus spec.
 //
 // =============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
 // =============================================================================
 //
 // This file is the production-binding surface for the

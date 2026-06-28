@@ -37,6 +37,27 @@ vacuum_files=()
 weak_files=()
 strong_files=()
 
+# Extract the FIRST `#[path = "..."]` target string from a file.
+# Returns empty string if no `#[path = "..."]` attribute is present.
+extract_path_target() {
+    # sed `s` substitutes ONLY the matched portion; trailing line content
+    # leaks through unless we consume it with `.*`. The trailing `"`
+    # inside the capture is part of the attribute syntax and is excluded
+    # by `[^"]+`.
+    sed -nE 's|^\s*#\[path[[:space:]]*=[[:space:]]*"([^"]+)".*|\1|p' "$1" | head -1
+}
+
+# Returns 0 (true) iff the given file's `#[path = "..."]` target points into
+# `proof_kernels/`. `proof_kernels/` is a verification-only abstraction layer
+# (proof-kernel substitutes that do not mirror production semantics), so a
+# Verus spec that binds to a `proof_kernels/` target is WEAK regardless of
+# whether the regex shape looks like a direct crates/ bind.
+path_target_is_proof_kernels() {
+    local target
+    target="$(extract_path_target "$1")"
+    [[ "${target}" == *proof_kernels/* ]]
+}
+
 while IFS= read -r -d '' file; do
     rel="${file#${REPO_ROOT}/}"
 
@@ -56,9 +77,16 @@ while IFS= read -r -d '' file; do
     fi
 
     # STRONG: has direct #[path] to crates/ + assume_specification bridge
+    # EXCEPT: if the path target is inside `proof_kernels/` (a verification-only
+    # abstraction layer), downgrade to WEAK — the binding reaches a substitute,
+    # not production source.
     if grep -qE '^\s*#\[path\s*=\s*"[^"]*crates/' "${file}" \
        && grep -qE '^\s*(pub[[:space:]]+)?assume_specification\[' "${file}"; then
-        strong_files+=("${rel}")
+        if path_target_is_proof_kernels "${file}"; then
+            weak_files+=("${rel}")
+        else
+            strong_files+=("${rel}")
+        fi
         continue
     fi
 
@@ -76,7 +104,11 @@ while IFS= read -r -d '' file; do
             if grep -qE '^\s*(pub[[:space:]]+)?assume_specification\[' "${file}"; then
                 if grep -qE '^\s*#\[path\s*=\s*"[^"]*crates/' "${VERIFICATION_DIR}/${extern_file}" \
                    || grep -qE '^\s*#\[path\s*=\s*"[^"]*production_inner/' "${VERIFICATION_DIR}/${extern_file}"; then
-                    if grep -qE '^\s*#\[path\s*=\s*"[^"]*crates/' "${VERIFICATION_DIR}/${extern_file}"; then
+                    # `proof_kernels/` inside the extern file's target is still WEAK:
+                    # the extern file itself is a substitute, not production source.
+                    if path_target_is_proof_kernels "${VERIFICATION_DIR}/${extern_file}"; then
+                        weak_files+=("${rel}")
+                    elif grep -qE '^\s*#\[path\s*=\s*"[^"]*crates/' "${VERIFICATION_DIR}/${extern_file}"; then
                         strong_files+=("${rel}")
                     else
                         weak_files+=("${rel}")

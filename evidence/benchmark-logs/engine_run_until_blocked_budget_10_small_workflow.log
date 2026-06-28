@@ -1,25 +1,25 @@
 metric: engine_run_until_blocked_budget_10_small_workflow
-claim_scope: current-head IR interpreter baseline snapshot; no speedup claim
-commit: 326c7d0f646e437f9adf18378afee0b21c38d522
-criterion_command: target/release/deps/velvet_ballistics-640e715153366df1 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+claim_scope: current-head IR interpreter small-workflow baseline snapshot; no speedup claim
+commit: c27df8533ed0138f02fe8a669ea7ffc8cbf203a5
+criterion_command: target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 criterion_output_excerpt:
   runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
-                          time:   [16.394 ns 16.483 ns 16.648 ns]
-                          change: [−1.8603% −1.1350% −0.3400%] (p = 0.01 < 0.05)
-                          Change within noise threshold.
+                          time:   [16.508 ns 16.587 ns 16.647 ns]
+                          change: [−0.4420% +0.3548% +1.1467%] (p = 0.42 > 0.05)
+                          No change in performance detected.
 criterion_sample_percentiles_from_target_criterion_sample_json:
-  p50_latency: 16.544272 ns
-  p95_latency: 16.846308 ns
-  p99_latency: 16.909911 ns
-perf_command: perf stat -x, -e instructions,cycles -- target/release/deps/velvet_ballistics-640e715153366df1 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  p50_latency: 16.622032 ns
+  p95_latency: 16.815292 ns
+  p99_latency: 16.913155 ns
+perf_command: perf stat -x, -e instructions,cycles -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 perf_summary:
-  instructions: 54407756414
-  cycles: 36761020197
-heaptrack_command: heaptrack --record-only -o target/bench-current/heaptrack-engine_run_until_blocked_budget_10_small_workflow target/release/deps/velvet_ballistics-640e715153366df1 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  instructions: 54480689212
+  cycles: 36766582427
+heaptrack_command: heaptrack --record-only -o target/bench-current/heaptrack-engine_run_until_blocked_budget_10_small_workflow target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 heaptrack_summary:
-  allocation_count_process_level: 866196
+  allocation_count_process_level: 888757
   peak_heap_memory: 7.68M
-  total_memory_leaked: 263.20K
+  total_memory_leaked: 258.21K
 metadata:
   rustc_version: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
   cpu_model: AMD Ryzen 9 9950X3D 16-Core Processor

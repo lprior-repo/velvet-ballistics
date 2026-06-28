@@ -3,7 +3,7 @@
 // Extern surface for step_budget Verus spec.
 //
 // =============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
 // =============================================================================
 //
 // This file is the production-binding surface for the `step_budget.rs`

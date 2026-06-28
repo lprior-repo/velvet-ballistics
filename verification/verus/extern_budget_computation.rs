@@ -28,9 +28,9 @@
 // ============================================================================
 //   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:1579-1605
 //   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:1569-1574
-//   - `collect_start_update_metrics`        <- crates/vb_core/src/budget.rs:2154-2159
-//   - `count_total_steps_step_increment`    <- crates/vb_core/src/budget.rs:1422-1425
-//   - `body_region_step_increment`          <- crates/vb_core/src/budget.rs:1678-1683
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:2154-2159
+//   - `total`                               <- crates/vb_core/src/budget.rs:1422-1425
+//   - `count`                               <- crates/vb_core/src/budget.rs:1678-1683
 //
 // ============================================================================
 // TRUST BOUNDARY
