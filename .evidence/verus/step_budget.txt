@@ -1,0 +1,137 @@
+[verus] verus --crate-type=lib verification/verus/step_budget.rs
+error: cannot use type `step_budget::production::production_signals::StepBudget` which is ignored because it is either declared outside the verus! macro or it is marked as `external`.
+   --> verification/verus/step_budget.rs:234:15
+    |
+234 |   ) -> (budget: production::StepBudget)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^
+235 |       ensures
+236 |           budget.remaining() as int == spec_new(value as int),
+    |           ------
+237 |           spec_step_budget_invariant(budget.remaining() as int),
+    |                                      ------
+...
+253 |       budget: &mut production::StepBudget,
+    |       -----------------------------------
+...
+256 |           spec_step_budget_invariant(old(budget).remaining() as int),
+    |                                      -----------
+...
+260 |                   old(budget).remaining() as int > 0
+    |                   -----------
+261 |                   && final(budget).remaining() as int == old(budget).remaining() as int - 1,
+    |                      -------------                       -----------
+262 |               Ok(false) =>
+263 |                   old(budget).remaining() as int == 0
+    |                   -----------
+264 |                   && final(budget).remaining() as int == old(budget).remaining() as int,
+    |                      -------------                       -----------
+265 |               Err(_) =>
+266 |                   old(budget).remaining() as int > max_step_budget()
+    |                   -----------
+267 |                   && final(budget).remaining() as int == old(budget).remaining() as int,
+    |                      -------------                       -----------
+268 |           },
+269 |           spec_step_budget_invariant(final(budget).remaining() as int),
+    |                                      -------------
+...
+278 |       budget: &production::StepBudget,
+    |       -------------------------------
+...
+281 |           r as int == budget.remaining() as int,
+    |                       ------
+...
+406 |   pub fn exec_proof_try_take_monotonic(initial: u64) -> (budget: production::StepBudget)
+    |                                                                  ----------------------
+...
+410 |           budget.remaining() as int <= initial as int,
+    |           ------
+411 |           spec_step_budget_invariant(budget.remaining() as int),
+    |                                      ------
+412 | / {
+413 | |     let mut b = production::StepBudget::new(initial);
+    | |         -----   ------------------------------------
+414 | |     let _ = b.try_take();
+    | |             -
+415 | |     b
+    | |     -
+416 | | }
+    | |_-
+...
+421 |   pub fn exec_proof_try_take_never_negative(initial: u64) -> (budget: production::StepBudget)
+    |                                                                       ----------------------
+...
+425 |           budget.remaining() as int >= 0,
+    |           ------
+426 |           spec_step_budget_invariant(budget.remaining() as int),
+    |                                      ------
+427 | / {
+428 | |     let mut b = production::StepBudget::new(initial);
+    | |         -----   ------------------------------------
+429 | |     let _ = b.try_take();
+    | |             -
+430 | |     b
+    | |     -
+431 | | }
+    | |_-
+...
+438 |   pub fn exec_proof_try_take_exact_decrement(initial: u64) -> (result: (bool, production::StepBudget))
+    |                                                                        ------------------------------
+...
+443 |           result.0 ==> (result.1.remaining() as int == initial as int - 1),
+    |           ------        --------
+444 |           !result.0 ==> (result.1.remaining() as int == initial as int),
+    |            ------        --------
+445 |           spec_step_budget_invariant(result.1.remaining() as int),
+    |                                      --------
+446 | / {
+447 | |     let mut b = production::StepBudget::new(initial);
+    | |         -----   ------------------------------------
+448 | |     let r = b.try_take();
+    | |             -
+449 | |     let took = match r {
+...   |
+453 | |     (took, b)
+    | |     ---------
+454 | | }
+    | |_-
+...
+459 |   pub fn exec_proof_try_take_zero_returns_false() -> (result: (bool, production::StepBudget))
+    |                                                               ------------------------------
+460 |       ensures
+461 |           result.0 == false,
+    |           ------
+462 |           spec_step_budget_invariant(result.1.remaining() as int),
+    |                                      --------
+463 | / {
+464 | |     let mut b = production::StepBudget::new(0);
+    | |         -----   ------------------------------
+465 | |     let r = b.try_take();
+    | |             -
+466 | |     match r {
+...   |
+481 | |     (took, b)
+    | |     ---------
+482 | | }
+    | |_-
+...
+487 |   pub fn exec_proof_new_clamps(value: u64) -> (budget: production::StepBudget)
+    |                                                        ----------------------
+488 |       ensures
+489 |           budget.remaining() as int == spec_new(value as int),
+    |           ------
+490 |           spec_step_budget_invariant(budget.remaining() as int),
+    |                                      ------
+491 | / {
+492 | |     let budget = production::StepBudget::new(value);
+    | |         ------   ----------------------------------
+493 | |     budget
+    | |     ------
+494 | | }
+    | |_-
+    |
+    = help: The following declaration may resolve this error:
+            #[verifier::external_type_specification]
+            pub struct ExStepBudget(crate::production::production_signals::StepBudget);
+
+error: aborting due to 1 previous error
+

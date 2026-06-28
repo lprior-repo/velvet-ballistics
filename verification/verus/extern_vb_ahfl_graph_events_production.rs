@@ -3,7 +3,7 @@
 // ============================================================================
 // Extern surface for `vb_ahfl_graph_events_production` Verus spec.
 //
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance) — Kind envelope scope
+// WEAK PRODUCTION BINDING (production_inner mirror) — Kind envelope scope
 // ============================================================================
 //
 // This file is the production-binding surface for the

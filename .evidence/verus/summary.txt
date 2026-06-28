@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=35
+VERUS_TARGET_COUNT=34
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -7,3 +7,4 @@ VERUS_VERSION=Verus
 
 VERUSFMT=available
 PASS verus verification/verus/taint_lattice.rs
+PASS verus verification/verus/step_state_machine.rs

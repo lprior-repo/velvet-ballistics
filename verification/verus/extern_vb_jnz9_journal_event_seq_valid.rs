@@ -3,7 +3,7 @@
 // ============================================================================
 // Extern surface for `vb_jnz9_journal_event_seq_valid` Verus spec.
 //
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // This file binds `verification/verus/vb_jnz9_journal_event_seq_valid.rs`

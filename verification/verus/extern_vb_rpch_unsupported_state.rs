@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // This file binds `vb_rpch_unsupported_state.rs` Verus spec to the production

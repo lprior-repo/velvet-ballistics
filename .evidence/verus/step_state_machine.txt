@@ -23,3 +23,6 @@ warning: Verus does not (yet) support autoderive Clone impl when the clone is no
 144 | #[derive(Clone)]
     |          ^^^^^
 
+verification results:: 32 verified, 0 errors
+warning: 4 warnings emitted
+

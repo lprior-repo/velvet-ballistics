@@ -3,7 +3,7 @@
 // Extern surface for recovery_verification Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 // This file binds the recovery_verification.rs Verus spec to the production
 // recovery decision surfaces in:

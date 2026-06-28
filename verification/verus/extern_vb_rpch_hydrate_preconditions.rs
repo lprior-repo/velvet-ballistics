@@ -4,7 +4,7 @@
 // Extern surface for `vb_rpch_hydrate_preconditions` Verus spec.
 // ============================================================================
 //
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // This file binds `verification/verus/vb_rpch_hydrate_preconditions.rs`

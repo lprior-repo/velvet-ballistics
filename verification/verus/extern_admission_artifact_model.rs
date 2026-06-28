@@ -3,7 +3,7 @@
 // Extern surface for admission_artifact_model Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 // This file binds the admission_artifact_model.rs Verus spec to the
 // canonical artifact admission types and decision logic in

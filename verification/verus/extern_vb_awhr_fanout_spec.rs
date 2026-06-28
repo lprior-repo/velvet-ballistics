@@ -3,7 +3,7 @@
 // Extern surface for `vb_awhr_fanout_spec` Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // This file is the production-binding surface for the

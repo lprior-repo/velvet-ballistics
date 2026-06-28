@@ -3,7 +3,7 @@
 // Extern surface for try_from_parts Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 // This file binds the try_from_parts.rs Verus spec to the production
 // `CompiledWorkflow::try_from_parts` validation entry point in

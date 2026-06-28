@@ -4,7 +4,7 @@
 // Extern surface for step_offset Verus spec.
 // ============================================================================
 //
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 //
 // This file is the production-binding surface for the
 // `step_offset.rs` Verus spec. It binds the spec to the production

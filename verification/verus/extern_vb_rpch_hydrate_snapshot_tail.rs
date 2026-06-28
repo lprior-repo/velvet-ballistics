@@ -4,7 +4,7 @@
 // Extern surface for `vb_rpch_hydrate_snapshot_tail` Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // This file is the production-binding surface for the

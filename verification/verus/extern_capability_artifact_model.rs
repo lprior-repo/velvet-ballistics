@@ -3,7 +3,7 @@
 // Extern surface for capability_artifact_model Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK PRODUCTION BINDING (production_inner mirror)
 // ============================================================================
 //
 // PRODUCTION INCLUSION via #[path]:
