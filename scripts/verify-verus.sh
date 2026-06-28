@@ -63,15 +63,20 @@ for target in "${targets[@]}"; do
   fi
 
   evidence_file="$EVIDENCE_DIR/$(basename "${target%.rs}").txt"
-  verus_args=(--crate-type=lib)
-  case "$target" in
-    verification/verus/budget_bounded.rs)
-      # Verus currently hits an internal lifetime-erasure error on this
-      # production-bound mirror; --no-lifetime is the tool-suggested workaround
-      # and does not change the spec contracts checked by this target.
-      verus_args=(--no-lifetime --crate-type=lib)
-      ;;
-  esac
+  declare -A VERUS_FILE_FLAGS=(
+    # Verus currently hits an internal lifetime-erasure error on this
+    # production-bound mirror; --no-lifetime is the tool-suggested workaround
+    # and does not change the spec contracts checked by this target.
+    [budget_bounded]="--no-lifetime"
+  )
+  stem="$(basename "${target%.rs}")"
+  extra_flags="${VERUS_FILE_FLAGS[$stem]:-}"
+  if [ -n "$extra_flags" ]; then
+    # shellcheck disable=SC2206
+    verus_args=($extra_flags --crate-type=lib)
+  else
+    verus_args=(--crate-type=lib)
+  fi
   printf '[verus] verus %s %s\n' "${verus_args[*]}" "$target" | tee "$evidence_file"
   set +e
   verus "${verus_args[@]}" "$target" 2>&1 | tee -a "$evidence_file"
