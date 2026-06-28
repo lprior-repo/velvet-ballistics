@@ -24,10 +24,10 @@ pub mod expr_typecheck;
 #[cfg(test)]
 mod expr_property_tests;
 
+#[cfg(test)]
 mod expr_builtin_eval;
 #[cfg(test)]
 mod expr_eval_tests;
-mod expr_slot_eval;
 pub mod expr_stack_ops;
 
 // Re-exports for backward compatibility (vb_expr public API)

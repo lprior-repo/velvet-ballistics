@@ -79,8 +79,5 @@ pub(in crate::mod_compile_lowering) fn canonical_finish_slot(
             })?;
             Ok(SlotIdx::new(raw))
         }
-        _ => Err(CompileErrors(vec![
-            CompileError::UnsupportedConstantValue { step: 0 },
-        ])),
     }
 }

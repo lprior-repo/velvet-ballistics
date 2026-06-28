@@ -12,6 +12,7 @@ use vb_core::{
 ///
 /// String literals and source references require the later symbol/accessor tables,
 /// so Phase 10 rejects them instead of smuggling runtime string lookup into IR.
+#[cfg(test)]
 fn compile_expr_to_bytecode(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
@@ -25,6 +26,7 @@ fn compile_expr_to_bytecode(
 /// Object field segments require a compiler-owned symbol table. Until that
 /// table exists in `vb_compile`, they are rejected instead of guessing
 /// `SymbolId`s.
+#[cfg(test)]
 fn compile_expr_to_bytecode_with_accessors(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
@@ -83,8 +85,10 @@ pub(crate) trait ExpressionReferenceResolver {
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError>;
 }
 
+#[cfg(test)]
 struct RejectingReferenceResolver;
 
+#[cfg(test)]
 impl ExpressionReferenceResolver for RejectingReferenceResolver {
     fn resolve_reference(&mut self, _reference: &str) -> Result<ExprOp, CompileError> {
         Err(CompileError::ExpressionLoweringUnsupported {
@@ -93,10 +97,12 @@ impl ExpressionReferenceResolver for RejectingReferenceResolver {
     }
 }
 
+#[cfg(test)]
 struct SlotAccessorReferenceResolver<'a> {
     accessors: &'a mut Vec<AccessorProgram>,
 }
 
+#[cfg(test)]
 impl ExpressionReferenceResolver for SlotAccessorReferenceResolver<'_> {
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
         let lowered = lower_slot_reference(reference, self.accessors)?;
@@ -121,6 +127,7 @@ impl ExpressionReferenceResolver for StepSlotReferenceResolver<'_> {
     }
 }
 
+#[cfg(test)]
 fn lower_slot_reference(
     reference: &str,
     accessors: &mut Vec<AccessorProgram>,
@@ -134,6 +141,7 @@ fn lower_slot_reference(
     }
 }
 
+#[cfg(test)]
 fn parse_slot_reference_parts(reference: &str) -> Result<(&str, &str), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Err(CompileError::UnknownReferenceRoot {
@@ -279,6 +287,7 @@ fn split_reference_tail(tail: &str) -> (&str, Option<&str>) {
     }
 }
 
+#[cfg(test)]
 fn parse_slot_reference_index(reference: &str, slot: &str) -> Result<SlotIdx, CompileError> {
     let parsed = slot
         .parse::<u16>()
@@ -290,6 +299,7 @@ fn parse_slot_reference_index(reference: &str, slot: &str) -> Result<SlotIdx, Co
     Ok(SlotIdx::new(parsed))
 }
 
+#[cfg(test)]
 fn lower_accessor_reference(
     reference: &str,
     root: &str,
@@ -311,6 +321,7 @@ fn lower_accessor_reference(
     Ok(ExprOp::LoadAccessor(AccessorIdx::new(index)))
 }
 
+#[cfg(test)]
 fn numeric_path_segments(
     reference: &str,
     root: &str,
@@ -325,6 +336,7 @@ fn numeric_path_segments(
     Ok(segments)
 }
 
+#[cfg(test)]
 fn parse_list_index_segment(
     reference: &str,
     root: &str,
@@ -337,6 +349,7 @@ fn parse_list_index_segment(
         .map_err(|_| unsupported_accessor_reference(reference, root, slot, path))
 }
 
+#[cfg(test)]
 fn unsupported_accessor_reference(
     reference: &str,
     root: &str,

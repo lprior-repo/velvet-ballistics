@@ -86,9 +86,11 @@ pub(super) fn eval_helper_count_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let count = i64::try_from(items.len()).map_err(|_| ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(count))
 }
@@ -98,9 +100,11 @@ pub(super) fn eval_helper_unique_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut seen: Vec<SlotValue> = Vec::new();
     for &item in items {
         if !seen.contains(&item) {
@@ -146,9 +150,11 @@ pub(super) fn eval_helper_starts_with_with_store(
 ) -> ExprResult<SlotValue> {
     let text_id = expect_symbol(*text)?;
     let prefix_id = expect_symbol(*prefix)?;
-    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("symbol:{text_id:?}"),
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{text_id:?}"),
+        })?;
     let prefix_str = store
         .symbol(prefix_id)
         .map_err(|_| ExprError::InvalidReference {
@@ -164,9 +170,11 @@ pub(super) fn eval_helper_ends_with_with_store(
 ) -> ExprResult<SlotValue> {
     let text_id = expect_symbol(*text)?;
     let suffix_id = expect_symbol(*suffix)?;
-    let text_str = store.symbol(text_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("symbol:{text_id:?}"),
-    })?;
+    let text_str = store
+        .symbol(text_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{text_id:?}"),
+        })?;
     let suffix_str = store
         .symbol(suffix_id)
         .map_err(|_| ExprError::InvalidReference {
@@ -182,9 +190,11 @@ pub(super) fn eval_helper_has_with_store(
 ) -> ExprResult<SlotValue> {
     let obj_id = expect_object(*obj)?;
     let key_id = expect_symbol(*key)?;
-    let fields = store.object(obj_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("object:{obj_id:?}"),
-    })?;
+    let fields = store
+        .object(obj_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("object:{obj_id:?}"),
+        })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))
 }
@@ -195,9 +205,11 @@ pub(super) fn eval_helper_append_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*list)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     new_items.push(*item);
     let new_list = store
@@ -214,9 +226,11 @@ pub(super) fn eval_helper_append_if_with_store(
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*list)?;
     let cond = expect_bool(*condition)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut new_items: Vec<SlotValue> = items.to_vec();
     if cond {
         new_items.push(*item);
@@ -265,9 +279,11 @@ pub(super) fn eval_helper_sum_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
-    let items = store.list(list_id).map_err(|_| ExprError::InvalidReference {
-        reference: format!("list:{list_id:?}"),
-    })?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{list_id:?}"),
+        })?;
     let mut sum: i64 = 0;
     for &item in items {
         let n = expect_i64(item)?;

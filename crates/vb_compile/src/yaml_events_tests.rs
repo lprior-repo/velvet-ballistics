@@ -3,6 +3,7 @@
 
 use super::super::yaml_error::YamlError;
 use super::*;
+use crate::yaml_profile;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false
@@ -404,7 +405,7 @@ fn adversarial_events_null_byte_accepted_by_parser_but_rejected_by_profile() {
                 _ => None,
             });
             assert!(!events.is_empty(), "events should not be empty");
-            let profile_result = super::yaml_profile::validate_yaml_profile(yaml);
+            let profile_result = yaml_profile::validate_yaml_profile(yaml);
             assert!(
                 matches!(
                     profile_result,

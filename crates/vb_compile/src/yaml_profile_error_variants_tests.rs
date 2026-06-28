@@ -6,11 +6,11 @@
 //!
 //! Target: 5x density (215 tests / 43 pub fns).
 
-use super::yaml::parse_workflow_source;
-use super::yaml_error::YamlError;
-use super::yaml_events::{EventSpan, ScalarStyle, YamlEvent};
-use super::yaml_profile::reject_anchors_aliases_merges;
-use super::yaml_profile::{reject_forbidden_features, validate_yaml_profile};
+use crate::parse_workflow_source;
+use crate::yaml_error::YamlError;
+use crate::yaml_events::{EventSpan, ScalarStyle, YamlEvent};
+use crate::yaml_profile::reject_anchors_aliases_merges;
+use crate::yaml_profile::{reject_forbidden_features, validate_yaml_profile};
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false
@@ -86,14 +86,13 @@ fn forbidden_feature_null_byte_in_source_rejected() {
 /// when a key in the inputs mapping is not a string (e.g., integer).
 #[test]
 fn field_shape_inputs_key_not_string() {
-    let yaml = indoc::indoc! {"
-        version: velvet-ballistics/v1
-        name: test
-        when: { manual: {} }
-        inputs:
-          123: string
-        steps: []
-    "};
+    let yaml = r#"version: velvet-ballistics/v1
+name: test
+when: { manual: {} }
+inputs:
+  123: string
+steps: []
+"#;
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
@@ -108,14 +107,13 @@ fn field_shape_inputs_key_not_string() {
 /// when a key in the vars mapping is not a string.
 #[test]
 fn field_shape_vars_key_not_string() {
-    let yaml = indoc::indoc! {"
-        version: velvet-ballistics/v1
-        name: test
-        when: { manual: {} }
-        vars:
-          456: \"value\"
-        steps: []
-    "};
+    let yaml = r#"version: velvet-ballistics/v1
+name: test
+when: { manual: {} }
+vars:
+  456: "value"
+steps: []
+"#;
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
@@ -130,14 +128,13 @@ fn field_shape_vars_key_not_string() {
 /// when a key in the result mapping is not a string.
 #[test]
 fn field_shape_result_key_not_string() {
-    let yaml = indoc::indoc! {"
-        version: velvet-ballistics/v1
-        name: test
-        when: { manual: {} }
-        steps: []
-        result:
-          789: \"some value\"
-    "};
+    let yaml = r#"version: velvet-ballistics/v1
+name: test
+when: { manual: {} }
+steps: []
+result:
+  789: "some value"
+"#;
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,

@@ -7,8 +7,8 @@
 
 #![allow(unused_must_use)]
 
-use crate::ast::{ScalarValue, StepPrimitive};
 use crate::mod_compile_lowering::{canonical_primitive_name, digest_step_primitive};
+use crate::{ScalarValue, StepPrimitive};
 use blake3::Hasher;
 use proptest::prelude::*;
 

@@ -23,9 +23,7 @@ pub(super) fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPol
     }))
 }
 
-pub(super) fn parse_error_handler(
-    node: &saphyr::Yaml<'_>,
-) -> YamlResult<Option<ErrorHandlerAst>> {
+pub(super) fn parse_error_handler(node: &saphyr::Yaml<'_>) -> YamlResult<Option<ErrorHandlerAst>> {
     let Some(sub) = lookup(node, "on_error") else {
         return Ok(None);
     };

@@ -89,7 +89,7 @@ fn blackhat_be_008_type_confusion() {
 /// BH-BE-009: End-to-end bytecode program with i64::MIN / -1.
 #[test]
 fn blackhat_be_009_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
-    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotValue};
+    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram};
 
     let program = ExprProgram {
         ops: vec![

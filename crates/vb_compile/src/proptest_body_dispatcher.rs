@@ -23,7 +23,7 @@
 use super::SlotCompiler;
 use super::part_04::emit_single_body_set;
 use crate::CompileError;
-use crate::ast::{StepAst, StepPrimitive};
+use crate::{StepAst, StepPrimitive};
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 

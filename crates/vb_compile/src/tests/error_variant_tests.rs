@@ -1489,10 +1489,7 @@ steps:
     let steps = source.steps();
     assert_eq!(steps.len(), 2, "workflow should have 2 steps");
     assert!(
-        matches!(
-            steps[0].primitive,
-            crate::ast::StepPrimitive::Together { .. }
-        ),
+        matches!(steps[0].primitive, crate::StepPrimitive::Together { .. }),
         "first step should be Together (parsed from 'together' key)"
     );
 
@@ -1531,8 +1528,8 @@ steps:
 /// the function directly on a programmatically constructed Together.
 #[test]
 fn canonical_primitive_name_together_returns_together_direct() {
-    use crate::ast::{StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::canonical_primitive_name;
+    use crate::{StepPrimitive, TogetherBranch};
 
     let together = StepPrimitive::Together {
         branches: vec![TogetherBranch {
@@ -1559,8 +1556,8 @@ fn canonical_primitive_name_together_returns_together_direct() {
 /// arms in part_05.rs lines 99-113.
 #[test]
 fn canonical_primitive_name_returns_correct_names_for_all_variants() {
-    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::canonical_primitive_name;
+    use crate::{ChooseBranch, ScalarValue, StepPrimitive, TogetherBranch};
 
     let cases: Vec<(StepPrimitive, &'static str)> = vec![
         (
@@ -1776,8 +1773,8 @@ fn test_many_branch_together_produces_deterministic_digest() {
 /// loop executes zero times.
 #[test]
 fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
-    use crate::ast::{StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
+    use crate::{StepPrimitive, TogetherBranch};
     use vb_core::WorkflowDigest;
 
     let together = StepPrimitive::Together {
@@ -1819,7 +1816,7 @@ fn test_empty_sub_steps_within_together_branch_produces_deterministic_digest() {
 /// on the zero-branch edge case.
 #[test]
 fn test_zero_branch_together_produces_deterministic_digest() {
-    use crate::ast::StepPrimitive;
+    use crate::StepPrimitive;
     use crate::mod_compile_lowering::digest_step_primitive;
     use vb_core::WorkflowDigest;
 
@@ -1844,7 +1841,7 @@ fn test_zero_branch_together_produces_deterministic_digest() {
 
     // Zero-branch and single-branch should differ (branch count changed)
     let single = StepPrimitive::Together {
-        branches: vec![crate::ast::TogetherBranch {
+        branches: vec![crate::TogetherBranch {
             label: "solo".into(),
             steps: vec![],
         }],
@@ -1877,8 +1874,8 @@ fn test_zero_branch_together_produces_deterministic_digest() {
 /// accidentally Together-specific.
 #[test]
 fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_digest() {
-    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
+    use crate::{StepAst, StepPrimitive, TogetherBranch};
     use vb_core::WorkflowDigest;
 
     // Construct a Together with a branch containing a ForEach sub-step.
@@ -1990,8 +1987,8 @@ fn test_digest_step_primitive_with_for_each_sub_step_produces_deterministic_dige
 /// exhaustively by enumerating all 9 non-special-cased variants.
 #[test]
 fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
-    use crate::ast::{ChooseBranch, ScalarValue, StepPrimitive};
     use crate::mod_compile_lowering::digest_step_primitive;
+    use crate::{ChooseBranch, ScalarValue, StepPrimitive};
     use vb_core::WorkflowDigest;
 
     let other_variants: Vec<(&str, StepPrimitive)> = vec![
@@ -2123,8 +2120,8 @@ fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
 /// the digest (proving digest_sub_step hashes the ID field).
 #[test]
 fn test_digest_sub_step_produces_deterministic_nonzero_digest() {
-    use crate::ast::{StepAst, StepPrimitive, TogetherBranch};
     use crate::mod_compile_lowering::digest_step_primitive;
+    use crate::{StepAst, StepPrimitive, TogetherBranch};
     use vb_core::WorkflowDigest;
 
     // Base sub-step — will be cloned to avoid move-after-move issues

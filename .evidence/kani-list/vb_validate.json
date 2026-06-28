@@ -36,12 +36,18 @@
       "verification::kani_idempotency_contract::decision_table_ok_branch",
       "verification::kani_idempotency_contract::decision_table_unsafe_rejected",
       "verification::kani_idempotency_contract::kani_decision_001_all_combinations"
+    ],
+    "crates/vb_validate/src/verification/kani_step_primitives.rs": [
+      "verification::kani_step_primitives::step_primitives_contains_reduce_harness",
+      "verification::kani_step_primitives::step_primitives_contains_together_harness",
+      "verification::kani_step_primitives::step_primitives_no_aggregate_harness",
+      "verification::kani_step_primitives::step_primitives_no_parallel_harness"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 27,
+    "standard-harnesses": 31,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

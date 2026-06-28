@@ -1,55 +1,71 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-//! Kani harnesses for STEP_PRIMITIVES constant verification (vb-xi2f.16).
+//! Kani harnesses for STEP_PRIMITIVES membership verification.
 //!
-//! These harnesses verify that:
-//! 1. `STEP_PRIMITIVES` constant does NOT contain "parallel"
-//! 2. `STEP_PRIMITIVES` constant does NOT contain "aggregate"
+//! These harnesses discharge `.beads/vb-xi2f.36/` PO-07 by binding to the
+//! production `validate_single_primitive` implementation. `STEP_PRIMITIVES` is
+//! crate-private inside `schema.rs`; using the public single-field validator is
+//! the implementation-bound witness for membership without editing production
+//! visibility or copying the constant into proof code.
 //!
-//! ## Production Bugs (Current State)
+//! ## Checked behavior
 //!
-//! `crates/vb_validate/src/schema.rs:38-50`:
-//! - STEP_PRIMITIVES includes "parallel" and "aggregate"
-//!
-//! `crates/vb_validate/src/schema_fields.rs:34-46`:
-//! - STEP_PRIMITIVES includes "parallel" and "aggregate"
+//! 1. A step whose only field is `parallel` is rejected as missing a primitive.
+//! 2. A step whose only field is `aggregate` is rejected as missing a primitive.
+//! 3. A step whose only field is `together` is accepted.
+//! 4. A step whose only field is `reduce` is accepted.
 //!
 //! ## GOD RULES COMPLIANCE
 //!
-//! - GOD RULE 1: Uses Kani for constant propagation analysis
-//! - GOD RULE 2: Binds to actual Rust constants in vb_validate crate
+//! - GOD RULE 1: No hardcoded structural workflow shape; each harness uses the
+//!   minimal public `StepDoc` witness for one primitive-membership question.
+//! - GOD RULE 2: Binds to actual Rust behavior in `vb_validate::schema`.
 //! - GOD RULE 3: No hardcoded structural inputs
-//! - GOD RULE 4: Fixed unwind bounds documented in trusted-base-ledger.jsonl
+//! - GOD RULE 4: Fixed unwind bounds are explicit on every harness.
+
+use crate::ValidationError;
+use crate::schema::{FieldValue, StepDoc, validate_single_primitive};
+
+fn single_field_step(field: &str) -> StepDoc {
+    StepDoc::from_pairs(vec![(field.to_owned(), FieldValue::Empty)])
+}
+
+fn primitive_is_accepted(field: &str) -> bool {
+    validate_single_primitive(&single_field_step(field)).is_ok()
+}
+
+fn primitive_is_rejected_as_missing(field: &str) -> bool {
+    matches!(
+        validate_single_primitive(&single_field_step(field)),
+        Err(ValidationError::MissingStepPrimitive)
+    )
+}
 
 // =========================================================================
-// PO-014: STEP_PRIMITIVES MUST NOT contain "parallel" or "aggregate"
+// vb-xi2f.36 PO-07: STEP_PRIMITIVES membership includes canonical primitives
 // =========================================================================
 
 /// KANI-XI2F-16-009: Prove STEP_PRIMITIVES does not contain "parallel".
 ///
 /// ## Scope
-/// Verifies at compile-time that the STEP_PRIMITIVES constant in schema.rs
-/// does not include the legacy name "parallel".
+/// Verifies through `validate_single_primitive` that the private
+/// STEP_PRIMITIVES constant in schema.rs does not include the legacy name
+/// "parallel".
 ///
-/// ## Current Bug
-/// schema.rs:43 includes "parallel" in STEP_PRIMITIVES.
+/// ## PO linkage
+/// Supports `.beads/vb-xi2f.36/proof-obligations.planned.jsonl` PO-07 by
+/// checking the same private primitive-membership table through production
+/// behavior rather than a proof-only shadow table.
 ///
 /// ## Expected Result
 /// - BEFORE FIX: Kani reports FAILURE (STEP_PRIMITIVES contains "parallel")
 /// - AFTER FIX: Kani reports SUCCESS (STEP_PRIMITIVES excludes "parallel")
 #[kani::proof]
-#[kani::unwind(3)]
-#[kani::no_unwinding_checks]
+#[kani::unwind(16)]
 fn step_primitives_no_parallel_harness() {
-    // Import the STEP_PRIMITIVES constant
-    use crate::schema::STEP_PRIMITIVES;
-
-    // Check that "parallel" is NOT in the STEP_PRIMITIVES list
-    let contains_parallel = STEP_PRIMITIVES.iter().any(|&s| s == "parallel");
-
     kani::assert(
-        !contains_parallel,
+        primitive_is_rejected_as_missing("parallel"),
         "STEP_PRIMITIVES must NOT contain \"parallel\" (use \"together\" instead)",
     );
 }
@@ -57,27 +73,23 @@ fn step_primitives_no_parallel_harness() {
 /// KANI-XI2F-16-010: Prove STEP_PRIMITIVES does not contain "aggregate".
 ///
 /// ## Scope
-/// Verifies at compile-time that the STEP_PRIMITIVES constant in schema.rs
-/// does not include the legacy name "aggregate".
+/// Verifies through `validate_single_primitive` that the private
+/// STEP_PRIMITIVES constant in schema.rs does not include the legacy name
+/// "aggregate".
 ///
-/// ## Current Bug
-/// schema.rs:45 includes "aggregate" in STEP_PRIMITIVES.
+/// ## PO linkage
+/// Supports `.beads/vb-xi2f.36/proof-obligations.planned.jsonl` PO-07 by
+/// checking the same private primitive-membership table through production
+/// behavior rather than a proof-only shadow table.
 ///
 /// ## Expected Result
 /// - BEFORE FIX: Kani reports FAILURE (STEP_PRIMITIVES contains "aggregate")
 /// - AFTER FIX: Kani reports SUCCESS (STEP_PRIMITIVES excludes "aggregate")
 #[kani::proof]
-#[kani::unwind(3)]
-#[kani::no_unwinding_checks]
+#[kani::unwind(16)]
 fn step_primitives_no_aggregate_harness() {
-    // Import the STEP_PRIMITIVES constant
-    use crate::schema::STEP_PRIMITIVES;
-
-    // Check that "aggregate" is NOT in the STEP_PRIMITIVES list
-    let contains_aggregate = STEP_PRIMITIVES.iter().any(|&s| s == "aggregate");
-
     kani::assert(
-        !contains_aggregate,
+        primitive_is_rejected_as_missing("aggregate"),
         "STEP_PRIMITIVES must NOT contain \"aggregate\" (use \"reduce\" instead)",
     );
 }
@@ -85,20 +97,20 @@ fn step_primitives_no_aggregate_harness() {
 /// KANI-XI2F-16-011: Prove STEP_PRIMITIVES contains canonical "together".
 ///
 /// ## Scope
-/// Verifies that "together" is present in STEP_PRIMITIVES (the canonical replacement).
+/// Verifies through `validate_single_primitive` that "together" is present in
+/// STEP_PRIMITIVES (the canonical replacement).
+///
+/// ## PO linkage
+/// Directly discharges `.beads/vb-xi2f.36/proof-obligations.planned.jsonl`
+/// PO-07 for the Kani lane.
 ///
 /// ## Expected Result
 /// - AFTER FIX: Kani reports SUCCESS (STEP_PRIMITIVES contains "together")
 #[kani::proof]
-#[kani::unwind(3)]
-#[kani::no_unwinding_checks]
+#[kani::unwind(16)]
 fn step_primitives_contains_together_harness() {
-    use crate::schema::STEP_PRIMITIVES;
-
-    let contains_together = STEP_PRIMITIVES.iter().any(|&s| s == "together");
-
     kani::assert(
-        contains_together,
+        primitive_is_accepted("together"),
         "STEP_PRIMITIVES must contain \"together\" (canonical name)",
     );
 }
@@ -106,20 +118,21 @@ fn step_primitives_contains_together_harness() {
 /// KANI-XI2F-16-012: Prove STEP_PRIMITIVES contains canonical "reduce".
 ///
 /// ## Scope
-/// Verifies that "reduce" is present in STEP_PRIMITIVES (the canonical replacement).
+/// Verifies through `validate_single_primitive` that "reduce" is present in
+/// STEP_PRIMITIVES (the canonical replacement for aggregate).
+///
+/// ## PO linkage
+/// Supports `.beads/vb-xi2f.36/proof-obligations.planned.jsonl` PO-07 by
+/// checking the same private primitive-membership table through production
+/// behavior rather than a proof-only shadow table.
 ///
 /// ## Expected Result
 /// - AFTER FIX: Kani reports SUCCESS (STEP_PRIMITIVES contains "reduce")
 #[kani::proof]
-#[kani::unwind(3)]
-#[kani::no_unwinding_checks]
+#[kani::unwind(16)]
 fn step_primitives_contains_reduce_harness() {
-    use crate::schema::STEP_PRIMITIVES;
-
-    let contains_reduce = STEP_PRIMITIVES.iter().any(|&s| s == "reduce");
-
     kani::assert(
-        contains_reduce,
+        primitive_is_accepted("reduce"),
         "STEP_PRIMITIVES must contain \"reduce\" (canonical name)",
     );
 }
@@ -128,20 +141,20 @@ fn step_primitives_contains_reduce_harness() {
 // Evidence Commands (for documentation)
 // =========================================================================
 
-/// ## Kani Evidence Commands
-///
-/// ```bash
-/// # Legacy exclusion checks (should FAIL before fix, PASS after fix)
-/// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_no_parallel_harness --no-unwind
-/// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_no_aggregate_harness --no-unwind
-///
-/// # Canonical inclusion checks (should PASS after fix)
-/// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_contains_together_harness --no-unwind
-/// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_contains_reduce_harness --no-unwind
-/// ```
-///
-/// ## Prerequisites
-/// - Production code changes must be made first:
-///   - schema.rs: Remove "parallel" and "aggregate" from STEP_PRIMITIVES
-///   - schema.rs: Add "together" and "reduce" to STEP_PRIMITIVES
-/// - vb_validate crate must be compiled with `cargo build -p vb_validate`
+// ## Kani Evidence Commands
+//
+// ```bash
+// # Legacy exclusion checks (should FAIL before fix, PASS after fix)
+// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_no_parallel_harness
+// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_no_aggregate_harness
+//
+// # Canonical inclusion checks (should PASS after fix)
+// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_contains_together_harness
+// TMPDIR=target/tmp cargo kani -p vb_validate --harness step_primitives_contains_reduce_harness
+// ```
+//
+// ## Proof context
+// - Obligation: .beads/vb-xi2f.36/proof-obligations.planned.jsonl PO-07
+// - Bounds: each harness uses #[kani::unwind(16)] to cover the one-field
+//   StepDoc traversal plus the private STEP_PRIMITIVES slice membership scan.
+// - Assumptions/stubs/contracts: none.

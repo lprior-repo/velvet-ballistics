@@ -8,7 +8,7 @@
 
 #![cfg(test)]
 
-use crate::ast::ChooseBranch;
+use crate::ChooseBranch;
 use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use proptest::prelude::*;
 use vb_core::StepIdx;

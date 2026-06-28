@@ -55,7 +55,7 @@ impl EventCollectionState {
 
     fn apply_event(
         &mut self,
-        event: &saphyr_parser::Event,
+        event: &saphyr_parser::Event<'_>,
         limits: &YamlLimits,
     ) -> YamlResult<()> {
         match event {
@@ -164,14 +164,16 @@ impl EventCollectionState {
     }
 
     fn end_mapping(&mut self, limits: &YamlLimits) -> YamlResult<()> {
-        if let Some((count, parent_count)) = self.map_counters.pop().zip(self.map_counters.last_mut())
+        if let Some((count, parent_count)) =
+            self.map_counters.pop().zip(self.map_counters.last_mut())
         {
-            *parent_count = parent_count
-                .checked_add(count)
-                .ok_or(YamlError::NodeLimitExceeded {
-                    count: u32::MAX,
-                    max: limits.max_nodes,
-                })?;
+            *parent_count =
+                parent_count
+                    .checked_add(count)
+                    .ok_or(YamlError::NodeLimitExceeded {
+                        count: u32::MAX,
+                        max: limits.max_nodes,
+                    })?;
         }
         self.in_mapping.pop();
         self.expecting_key.pop();
@@ -180,14 +182,16 @@ impl EventCollectionState {
     }
 
     fn end_sequence(&mut self, limits: &YamlLimits) -> YamlResult<()> {
-        if let Some((count, parent_count)) = self.seq_counters.pop().zip(self.seq_counters.last_mut())
+        if let Some((count, parent_count)) =
+            self.seq_counters.pop().zip(self.seq_counters.last_mut())
         {
-            *parent_count = parent_count
-                .checked_add(count)
-                .ok_or(YamlError::NodeLimitExceeded {
-                    count: u32::MAX,
-                    max: limits.max_nodes,
-                })?;
+            *parent_count =
+                parent_count
+                    .checked_add(count)
+                    .ok_or(YamlError::NodeLimitExceeded {
+                        count: u32::MAX,
+                        max: limits.max_nodes,
+                    })?;
         }
         self.in_mapping.pop();
         self.depth = self.depth.saturating_sub(1);

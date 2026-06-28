@@ -2,13 +2,12 @@
 //! Evaluation environment: stack operations and type expectations.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::SlotValue;
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 
-pub use crate::lexer::{BinaryOp, UnaryOp};
-pub use crate::parser::ExprHelper;
-pub use crate::{ExprError, ExprResult};
-pub use vb_core::limits::MAX_EXPRESSION_STACK;
+use crate::parser::ExprHelper;
+use crate::{ExprError, ExprResult};
+use vb_core::limits::MAX_EXPRESSION_STACK;
 
 pub(crate) fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
@@ -42,7 +41,7 @@ pub(crate) fn pop_triple(
     Ok((first, second, third))
 }
 
-pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
+pub(super) fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     match value {
         SlotValue::Bool(b) => Ok(b),
         other => Err(ExprError::TypeMismatch {
@@ -52,7 +51,7 @@ pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     }
 }
 
-pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
+pub(super) fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     match value {
         SlotValue::I64(n) => Ok(n),
         other => Err(ExprError::TypeMismatch {
@@ -62,7 +61,7 @@ pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     }
 }
 
-pub fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
+pub(super) fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
     match value {
         SlotValue::Symbol(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {
@@ -72,7 +71,7 @@ pub fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
     }
 }
 
-pub fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
+pub(super) fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
     match value {
         SlotValue::List(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {
@@ -82,7 +81,7 @@ pub fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
     }
 }
 
-pub fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
+pub(super) fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
     match value {
         SlotValue::Object(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {

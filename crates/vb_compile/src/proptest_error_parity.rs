@@ -16,7 +16,7 @@
 use super::SlotCompiler;
 use super::part_04::emit_single_body_set;
 use crate::CompileError;
-use crate::ast::{StepAst, StepPrimitive};
+use crate::{ScalarValue, StepAst, StepPrimitive};
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 
@@ -68,7 +68,7 @@ fn unsupported_primitive_strategy() -> impl Strategy<Value = StepPrimitive> {
             .prop_map(|(prompt, timeout)| { StepPrimitive::Ask { prompt, timeout } }),
         // Finish
         Just(StepPrimitive::Finish {
-            result: crate::ast::ScalarValue::Integer(0),
+            result: ScalarValue::Integer(0),
         }),
     ]
 }
