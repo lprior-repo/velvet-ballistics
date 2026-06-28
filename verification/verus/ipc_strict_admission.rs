@@ -254,8 +254,11 @@ pub assume_specification[ production::strict_admission_refinement ](
 //
 // Each wrapper takes a `&StrictAdmissionRefinement` so the postcondition
 // can refer directly to the spec predicate over `*r` (matching the
-// established pattern in `recovery_hydration_contracts.rs` and
-// `strict_admission_witness.rs`).
+// established pattern in `strict_admission_witness.rs` and
+// `recovery_verification.rs`; the previously-cited
+// `recovery_hydration_contracts.rs` was deleted as a vacuum proof
+// — no single production decision fn maps to its 16-field
+// `SpecRecoveryInput` decision lattice).
 
 /// Exec wrapper for the strict-admission `is_refined` decision.
 /// Exercises the production bridge so the `assume_specification` for

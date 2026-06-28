@@ -17,11 +17,12 @@ miri
 coverage
 mutants-smoke
 bench-build
+benchmark-regression-policy
 source-length
 fuzz-smoke
 ```
 
-CI must gate on `moon ci`, whose pipeline must include `check`, `test`, `fuzz-smoke`, `miri`, `coverage`, `mutants-smoke`, `bench-build`, `source-length`, and `feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` task must fail any hot runtime function over 25 logical lines. Advisory supply-chain reporting may exist as a Moon task, but supply-chain/advisory report warnings are non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
+CI must gate on `moon ci`, whose pipeline must include `check`, `test`, `fuzz-smoke`, `miri`, `coverage`, `mutants-smoke`, `bench-build`, `benchmark-regression-policy`, `source-length`, and `feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` task must fail any hot runtime function over 25 logical lines. Advisory supply-chain reporting may exist as a Moon task, but supply-chain/advisory report warnings are non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
 
 Mandatory CI commands:
 

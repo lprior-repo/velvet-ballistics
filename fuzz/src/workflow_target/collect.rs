@@ -28,7 +28,7 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
         vb_core::SlotValue::List(list_id),
         vb_core::Taint::Clean,
     );
-    use vb_runtime::primitives::collect::{CollectStates, collect_page, collect_start};
+    use vb_runtime::primitives::collect::{CollectStates, collect_page};
     let mut states = CollectStates::new();
     let result = collect_page(
         &mut run,

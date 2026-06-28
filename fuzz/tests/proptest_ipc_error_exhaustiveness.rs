@@ -12,25 +12,20 @@ proptest! {
     /// IpcError variant. Unknown variants must cause the test to fail.
     #[test]
     fn proptest_ipc_frame_errors_are_typed(
-        header in prop::collection::vec(any::<u8>(), IPC_HEADER_LEN..IPC_HEADER_LEN),
-        _payload in prop::collection::vec(any::<u8>(), 0..65536),
+        header in prop::collection::vec(any::<u8>(), IPC_HEADER_LEN..=IPC_HEADER_LEN),
+        payload in prop::collection::vec(any::<u8>(), 0..65536),
     ) {
         let mut header_bytes = [0u8; IPC_HEADER_LEN];
         header_bytes.copy_from_slice(&header);
 
-        let max_nz = match std::num::NonZeroUsize::new(65536) {
-            Some(nz) => nz,
-            None => {
-                // Unreachable: 65536 > 0, so new() always succeeds.
-                // Proptest closures require all branches to have same type.
-                unreachable!("NonZeroUsize::new(65536) always succeeds (65536 > 0)");
-            }
-        };
-        let max_payload = MaxPayloadBytes::new(max_nz);
+        let max_payload = MaxPayloadBytes::DEFAULT;
 
         // Test header decode
         match vb_ipc::IpcFrameHeader::decode(&header_bytes, max_payload) {
-            Ok(_header) => {}
+            Ok(header) => match vb_ipc::frame::decode_frame_payload(&header, &payload) {
+                Ok(_payload) => {}
+                Err(error) => assert_known_ipc_error(error),
+            },
             Err(error) => assert_known_ipc_error(error),
         }
 

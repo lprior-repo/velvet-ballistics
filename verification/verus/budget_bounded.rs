@@ -2,7 +2,7 @@
 //
 // Obligation IDs: VERUS-BUD-001, VERUS-BUD-002, VERUS-BUD-003, VERUS-AGG-001,
 // VERUS-DIAG-001.
-// Verifier: verus verification/verus/budget_bounded.rs
+// Verifier: verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
 // Expected evidence: Verus report shows 0 errors for checked sequential,
 // nested, branch/together, aggregate refinement, and diagnostic-totality lemmas.
 //

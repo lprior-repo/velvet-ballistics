@@ -4,15 +4,15 @@ A formally bounded workflow runtime for AI agent orchestration.
 
 **TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-velvet-ballistics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
+velvet-ballistics is a nightly-Rust, single-binary orchestration engine that verifies YAML-authored workflows into compact numeric IR, executes accepted IR through a bounded interpreter, dispatches native actions, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
 ## Why This Exists
 
-Existing workflow engines (Temporal, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
+Existing workflow engines (Temporal, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and often keep source-like workflow structure in the runtime. This works for traditional workflows but fails for AI agent orchestration where:
 
 - **Agent loops can explode** — unbounded retry, fan-out, and list processing need hard resource limits, not soft timeouts
 - **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
-- **Interpretation overhead compounds** — agent workflows run tight loops with expression evaluation at every step
+- **Runtime ambiguity compounds** — agent workflows need accepted artifacts, replayable evidence, and explicit resource budgets before execution
 
 velvet-ballistics addresses all four dimensions:
 
@@ -20,8 +20,8 @@ velvet-ballistics addresses all four dimensions:
 |---|---|---|---|
 | Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | No |
 | Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
-| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted |
-| Native code generation | maxperf profile generates Rust, zero interpreter | No | No |
+| IR compilation | `CompiledWorkflow` numeric artifact with exact semantics | Interpreted history/worker model | Interpreted graph model |
+| Runtime boundary | IR interpreter only; no runtime YAML/JSON/HTTP | Service/runtime boundary | Python object graph/runtime |
 
 ## Architecture
 
@@ -32,7 +32,7 @@ YAML source
   -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
   -> numeric slot compiler
   -> compact IR (34 node kinds, u16 step indices, u16 slot indices)
-  -> generated Rust maxperf mode
+  -> bounded IR interpreter
   -> shard-owned in-memory runtime (no async, no allocation in hot path)
   -> native ActionId dispatch with taint enforcement
   -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
@@ -51,8 +51,8 @@ crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
 crates/vb_storage      Fjall journal, envelope, recovery, snapshots
 crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
 crates/vb_ipc          Unix domain socket server/client, binary protocol
-velvet-optional        Optional generated Rust code track
-benches/               Benchmark evidence for speed claims
+crates/workspace_tests Cross-crate integration tests and benchmark harnesses
+fuzz/                  Parser, decoder, and IR fuzz targets
 ```
 
 ## Safety Guarantees
@@ -67,17 +67,20 @@ benches/               Benchmark evidence for speed claims
 ## Getting Started
 
 ```bash
-# Build
-cargo +nightly build
+# Build/type-check
+moon run :check
 
 # Test
-cargo +nightly nextest run
+moon run :test
 
 # Lint (zero tolerance)
-cargo +nightly clippy --tests -- -D warnings
+moon run :lint-src
 
-# Benchmark
-cargo +nightly bench
+# Canonical gate
+moon ci
+
+# Benchmark harness build only; performance claims require recorded evidence
+moon run :bench-build
 ```
 
 ## Documentation

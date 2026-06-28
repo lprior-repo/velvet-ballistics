@@ -568,12 +568,18 @@ tasks:
       export PATH="/cache/cargo-shared/bin:${PATH}"
       mkdir -p target/moon-locks target/fuzz-tsan
       flock --shared target/moon-locks/source-mutation.lock \
-        cargo fuzz build --target x86_64-unknown-linux-gnu \
+        rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu \
           --sanitizer thread \
+          --build-std \
           >target/fuzz-tsan/build.log 2>target/fuzz-tsan/build.err \
         || { cat target/fuzz-tsan/build.{log,err}; exit 1; }
-      for tgt in $(cargo fuzz list --target x86_64-unknown-linux-gnu); do
-        bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
+      mapfile -t fuzz_targets < <(cargo fuzz list)
+      if [ "${#fuzz_targets[@]}" -eq 0 ]; then
+        echo "cargo fuzz list returned no targets" >&2
+        exit 1
+      fi
+      for tgt in "${fuzz_targets[@]}"; do
+        bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
         if [ -x "$bin" ]; then
           echo "TSAN-OK: $tgt"
         else
@@ -582,23 +588,38 @@ tasks:
         fi
       done
     options:
+      cache: false
       runInCI: true
     inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - 'fuzz/Cargo.toml'
       - 'fuzz/Cargo.lock'
       - 'fuzz/src/**/*'
       - 'fuzz/fuzz_targets/**/*'
+      - 'crates/**/*'
+      - '.moon/tasks/all.yml'
 
   fuzz-regress:
     script: |
       set -euo pipefail
       export PATH="/cache/cargo-shared/bin:${PATH}"
-      mkdir -p target/fuzz-regress
+      mkdir -p target/moon-locks target/fuzz-regress
+      if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu >target/fuzz-regress/build.log 2>target/fuzz-regress/build.err; then
+        cat target/fuzz-regress/build.log
+        cat target/fuzz-regress/build.err
+        exit 1
+      fi
       rc=0
       while IFS= read -r artifact; do
         tgt=$(basename "$(dirname "$artifact")")
         bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
-        [ -x "$bin" ] || { echo "SKIP: $tgt (no binary)"; continue; }
+        if [ ! -x "$bin" ]; then
+          echo "MISSING: $tgt (binary required for $artifact)"
+          rc=1
+          continue
+        fi
         echo "REPLAY: $artifact via $tgt"
         if timeout 5s "$bin" "$artifact" >"target/fuzz-regress/${tgt}.log" 2>&1; then
           echo "PASS: $artifact"
@@ -610,30 +631,45 @@ tasks:
       done < <(find fuzz/artifacts -type f \( -name 'crash-*' -o -name 'oom-*' -o -name 'leak-*' -o -name 'timeout-*' \) 2>/dev/null || true)
       exit "$rc"
     options:
+      cache: false
       runInCI: true
     inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - 'fuzz/artifacts/**/*'
       - 'fuzz/Cargo.toml'
       - 'fuzz/Cargo.lock'
       - 'fuzz/src/**/*'
       - 'fuzz/fuzz_targets/**/*'
+      - 'crates/**/*'
+      - '.moon/tasks/all.yml'
 
   fuzz-proptest:
     script: |
       set -euo pipefail
       export PATH="/cache/cargo-shared/bin:${PATH}"
+      mkdir -p target/moon-locks
       flock --shared target/moon-locks/source-mutation.lock \
-        cargo test -p velvet-ballistics-fuzz --test proptest_digest_coherence \
+        rustup run nightly-2026-04-28 cargo test --manifest-path fuzz/Cargo.toml --all-features \
+          --test proptest_digest_coherence \
           --test proptest_ipc_error_exhaustiveness \
           --test proptest_journal_error_exhaustiveness \
           --test proptest_roundtrip_determinism
     options:
+      cache: false
       runInCI: true
     inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - 'fuzz/Cargo.toml'
       - 'fuzz/Cargo.lock'
       - 'fuzz/tests/**/*'
       - 'fuzz/src/**/*'
+      - 'fuzz/fuzz_targets/**/*'
+      - 'crates/**/*'
+      - '.moon/tasks/all.yml'
 
   verify-verus-production-binding:
     script: |
@@ -681,24 +717,26 @@ tasks:
       runInCI: true
 
   benchmark-regression-policy:
-    command: 'rustup run nightly-2026-04-28 cargo run --quiet -p xtask -- benchmark-regression-policy --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl'
+    command: 'rustup run nightly-2026-04-28 cargo run --quiet --manifest-path xtask/Cargo.toml -- benchmark-regression-policy --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl'
     deps:
       - 'bench-build'
     toolchains:
       - rust
     inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - 'contracts/perf-budget.yaml'
       - 'evidence/benchmark-evidence.jsonl'
       - 'evidence/benchmark-logs/**/*'
+      - 'xtask/Cargo.toml'
       - 'xtask/src/benchmark_policy.rs'
       - 'xtask/src/cli.rs'
       - 'xtask/src/main.rs'
       - '.moon/tasks/all.yml'
     options:
-      # The xtask crate is presently outside the active Cargo workspace; keep
-      # this policy check explicit until the tooling crate is reactivated and
-      # source-linted under workspace CI.
-      runInCI: false
+      cache: false
+      runInCI: true
 
   benchmark-proof:
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features -- --save-baseline vb-current'
@@ -903,13 +941,23 @@ tasks:
       runInCI: false
 
   ci:
-    script: |
-      set -euo pipefail
-      moon run :fmt
-      moon run :banned-token-gates
-      moon run :source-length
-      moon run :check
-      moon run :lint-src
-      moon run :test
+    deps:
+      - 'fmt'
+      - 'banned-token-gates'
+      - 'source-length'
+      - 'check'
+      - 'lint-src'
+      - 'test'
+      - 'doc-test'
+      - 'doc'
+      - 'feature-powerset'
+      - 'miri'
+      - 'coverage'
+      - 'mutants-smoke'
+      - 'bench-build'
+      - 'benchmark-regression-policy'
+      - 'fuzz-smoke'
     options:
+      cache: false
+      runDepsInParallel: false
       runInCI: true

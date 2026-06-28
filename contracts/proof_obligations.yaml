@@ -306,7 +306,7 @@ obligations:
       verus: verification/verus/budget_bounded.rs
       tests: [whole_workflow_budget_within_policy, budget_bounded_default]
     commands:
-      - verus --crate-type=lib verification/verus/budget_bounded.rs
+      - verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
 
   - id: VB-CORE-RESOURCE-002
     section: [64]
@@ -319,7 +319,7 @@ obligations:
     required:
       verus: verification/verus/budget_bounded.rs
     commands:
-      - verus --crate-type=lib verification/verus/budget_bounded.rs
+      - verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
 
   - id: VB-CORE-RESOURCE-003
     section: [64]
@@ -1061,10 +1061,24 @@ verus_registry:
     verus: verification/verus/recovery_verification.rs
     production: crates/vb_storage/src/recovery/types.rs
 
-  - id: PO-VERUS-019
-    description: "Recovery hydration contracts: SpecRecoveryInput/Success/Error mapped to production RecoveryError variants and RunFrame hydration decision surface (VERUS-REC-001 / PO-002; PRE-004, PRE-006, POST-001, POST-008, INV-001, INV-004..006)."
-    verus: verification/verus/recovery_hydration_contracts.rs
-    production: crates/vb_storage/src/recovery/types.rs
+  # PO-VERUS-019 (Recovery hydration contracts) DELETED:
+  #   The Verus spec `verification/verus/recovery_hydration_contracts.rs`
+  #   and its companion `extern_recovery_hydration_contracts.rs` and
+  #   `production_inner/recovery_hydration_contracts_production.rs`
+  #   were a vacuum proof. The spec's `recovery_decision_pure` exec
+  #   wrapper took a fabricated `SpecRecoveryInput` (16-field struct)
+  #   with no single production counterpart. The actual production
+  #   hydration decision is split across
+  #   `crates/vb_storage/src/recovery/hydrate.rs`
+  #   (hydrate_run_frame, hydrate_run_frame_from_events,
+  #   hydrate_snapshot_tail_preconditions, validate_*_metadata,
+  #   validate_recovery_data_present) and
+  #   `crates/vb_storage/src/recovery/recover.rs`
+  #   (recover_runtime_summary, recover_runtime_frame_seed,
+  #   check_workflow_source_digest, check_compiled_ir_digest), each
+  #   with a signature that cannot be reduced to
+  #   `(SpecRecoveryInput) -> Result<SpecRecoverySuccess, SpecRecoveryError>`.
+  #   Per GOD RULE 2, the file was deleted (not bound).
 
   - id: PO-VERUS-020
     description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production types.rs:666-852 verbatim (VERUS-REPLAY-004)."

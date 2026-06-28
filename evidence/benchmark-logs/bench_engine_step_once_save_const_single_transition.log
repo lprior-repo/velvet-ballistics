@@ -1,16 +1,29 @@
-baseline_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballistics-workspace-tests --bench velvet_ballistics bench_engine_step_once_save_const_single_transition --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
-baseline_output_excerpt:
-  Finished `bench` profile [optimized + debuginfo] target(s) in 0.06s
-  Running benches/velvet_ballistics.rs (target/release/deps/velvet_ballistics-44a32d74bb375e1b)
+metric: bench_engine_step_once_save_const_single_transition
+claim_scope: current-head IR interpreter baseline snapshot; no speedup claim
+commit: 326c7d0f646e437f9adf18378afee0b21c38d522
+criterion_command: target/release/deps/velvet_ballistics-640e715153366df1 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+criterion_output_excerpt:
   runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
-                          time:   [15.880 ns 15.931 ns 15.991 ns]
-  Found 2 outliers among 10 measurements (20.00%)
-    2 (20.00%) high mild
-result_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballistics-workspace-tests --bench velvet_ballistics bench_engine_step_once_save_const_single_transition --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
-result_output_excerpt:
-  Finished `bench` profile [optimized + debuginfo] target(s) in 0.05s
-  Running benches/velvet_ballistics.rs (target/release/deps/velvet_ballistics-44a32d74bb375e1b)
-  runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
-                          time:   [15.911 ns 15.977 ns 16.088 ns]
-                          change: [−0.2685% +0.3603% +0.9191%] (p = 0.29 > 0.05)
+                          time:   [16.505 ns 16.563 ns 16.658 ns]
+                          change: [−1.0058% −0.0727% +0.7451%] (p = 0.88 > 0.05)
                           No change in performance detected.
+criterion_sample_percentiles_from_target_criterion_sample_json:
+  p50_latency: 16.518251 ns
+  p95_latency: 16.686742 ns
+  p99_latency: 16.752745 ns
+perf_command: perf stat -x, -e instructions,cycles -- target/release/deps/velvet_ballistics-640e715153366df1 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+perf_summary:
+  instructions: 54464225898
+  cycles: 36759571782
+heaptrack_command: heaptrack --record-only -o target/bench-current/heaptrack-bench_engine_step_once_save_const_single_transition target/release/deps/velvet_ballistics-640e715153366df1 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+heaptrack_summary:
+  allocation_count_process_level: 909788
+  peak_heap_memory: 7.67M
+  total_memory_leaked: 258.24K
+metadata:
+  rustc_version: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+  cpu_model: AMD Ryzen 9 9950X3D 16-Core Processor
+  cpu_governor: performance
+  kernel_version: Linux 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 GNU/Linux
+  benchmark_tool_version: criterion 0.8.2
+  fixture_digest: sha256:43a599ec8f5195977aae4eb6ec30496a64a80518c25101d50178554b1ba88793

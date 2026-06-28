@@ -3,8 +3,9 @@
 //
 // Obligation ID: VB-CORE-BUDGET-003
 // Verifier: verus --crate-type=lib verification/verus/step_budget.rs
-// Expected evidence: Verus report shows 0 errors; spec_try_take, mirror
-//                   contracts, all 6 spec proofs, and exec proofs verified.
+// Expected evidence: Verus report shows 0 errors; spec_try_take,
+//                   production contracts, all 6 spec proofs, and exec
+//                   proofs verified.
 //
 // =============================================================================
 // PRODUCTION BINDING (GOD RULE 2 compliance)
@@ -12,35 +13,25 @@
 //
 // This file is bound to `crates/vb_core/src/engine/signals.rs` through the
 // companion extern surface `verification/verus/extern_step_budget.rs`,
-// which contains a `#[path]` inclusion of the in-tree mirror
-// `verification/verus/production_inner/signals_production.rs`. That
-// mirror is a verbatim copy of production with one minimal substitution:
-// `StepBudget::remaining` is `pub` (relaxed from production's private
-// visibility) so Verus's `#[verifier::external_type_specification]`
-// bridge can establish a transparent binding for spec-mode field
-// access. Field NAMES and method SIGNATURES are preserved byte-for-byte;
-// any drift breaks the verification build.
+// which contains a direct `#[path = "../../crates/vb_core/src/engine/signals.rs"]`
+// inclusion of the production source file. Any drift in production field
+// names, discriminant sets, or fn signatures breaks Rust resolution at
+// compile time.
 //
-// The mirror's impl methods are wrapped with `#[verifier::external]`
-// so Verus treats their bodies as opaque; the spec contracts attached
-// via `assume_specification` in this file state the production
-// behavior the spec proofs discharge.
+// To satisfy the production file's `use crate::errors::EngineError`,
+// `use crate::limits::MAX_STEP_BUDGET`, and
+// `use crate::value::{SlotValue, Taint}` statements, minimal stub
+// modules are declared at the crate root below.
 //
 // The `assume_specification` bridges inside `verus!` attach production
-// contracts DIRECTLY to the mirror's exec methods surfaced via the
+// contracts DIRECTLY to the production exec methods surfaced via the
 // `#[path]` inclusion (`production::StepBudget::new`, `::try_take`,
-// `::remaining`). The `#[verifier::external_type_specification]`
-// bridge names the mirror type in spec mode (the bridge is required
-// because the mirror module is inside `verus!` and `#[path]`-included
-// with `#[verifier::external]`, so the type is nameable but not
-// directly usable in spec signatures without a bridge).
-//
-// BINDING LEDGER:
-//   - production::StepBudget::new       <- crates/vb_core/src/engine/signals.rs:27-35
-//   - production::StepBudget::try_take  <- crates/vb_core/src/engine/signals.rs:50-60
-//   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:64-66
-//   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:20-22
-//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
+// `::remaining`). The `pub` visibility on `StepBudget::remaining` (a
+// single production-side change) is what makes this direct binding
+// possible — Verus's `external_type_specification` requires `pub`
+// fields for transparent-datatype bridging, and the bridge is what
+// allows spec-mode `assume_specification` signatures to reference the
+// production type.
 //
 // Domain claims (preserved from the original step_budget.rs):
 //   PS-001: try_take remaining is monotonically non-increasing.
@@ -48,11 +39,86 @@
 //   PS-003: remaining is always bounded within [0, MAX_STEP_BUDGET].
 //   PS-004: try_take returns Ok(false) iff remaining == 0.
 //   PS-005: construction clamps to MAX_STEP_BUDGET.
+//
+// BINDING LEDGER:
+//   - production::StepBudget::new       <- crates/vb_core/src/engine/signals.rs:28-36
+//   - production::StepBudget::try_take  <- crates/vb_core/src/engine/signals.rs:51-61
+//   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:65-67
+//   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:21-23
+//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
+
+// =============================================================================
+// Stub modules for production `crate::*` imports
+// =============================================================================
+//
+// These stubs exist ONLY to satisfy the `use crate::errors::EngineError`,
+// `use crate::limits::MAX_STEP_BUDGET`, and
+// `use crate::value::{SlotValue, Taint}` statements inside the production
+// `signals.rs` file included via `#[path]` from the companion extern file.
+// They are NOT used in the spec proofs (spec proofs reason over the
+// re-exported production types, which themselves use these stubs
+// transparently). Variant sets are minimal: only the variants referenced
+// by `StepBudget::try_take` and `from_env` are needed for the proof.
+
+/// Stub for `crate::errors::EngineError` declared OUTSIDE `verus!`
+/// so the production file's `use crate::errors::EngineError;`
+/// resolves identically to production. The spec code references this
+/// type via the `ExEngineError` bridge inside `verus!`.
+pub mod errors {
+    /// Mirror of production `crates/vb_core/src/errors.rs:241`.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum EngineError {
+        /// Production variant `CoreError::StepCounterOverflow`.
+        StepCounterOverflow,
+        /// Production variant `CoreError::BudgetParse`.
+        BudgetParse {
+            /// Reason string supplied by the caller.
+            reason: &'static str,
+        },
+    }
+}
+
+/// Stub for `crate::limits` (production at
+/// `crates/vb_core/src/limits.rs`).
+pub mod limits {
+    /// Stub for production `MAX_STEP_BUDGET`
+    /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
+    pub const MAX_STEP_BUDGET: u64 = 10_000;
+}
+
+/// Stub for `crate::value` (production at
+/// `crates/vb_core/src/value.rs`).
+pub mod value {
+    /// Stub for production `SlotValue`.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum SlotValue {
+        /// i64 slot value.
+        I64(i64),
+        /// bool slot value.
+        Bool(bool),
+        /// null slot value.
+        Null,
+    }
+    /// Stub for production `Taint`.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Taint {
+        /// Clean taint.
+        Clean,
+        /// Secret taint.
+        Secret,
+        /// Taint derived from secret input.
+        DerivedFromSecret,
+    }
+}
 
 #[path = "extern_step_budget.rs"]
 mod production;
 
-pub use production::{EngineError, EngineSignal, StepBudget};
+pub use production::{EngineSignal, StepBudget};
+// `EngineError` is referenced via `crate::errors::EngineError` (the
+// stub declared at the crate root above). It is the same type the
+// production impl block uses internally (resolved through the
+// `use crate::errors::EngineError;` private import in signals.rs).
 
 use vstd::prelude::*;
 
@@ -62,46 +128,53 @@ verus! {
 // Production type bridge (GOD RULE 2 compliance)
 // =============================================================================
 //
-// The mirror `StepBudget` struct in
-// `production_inner/signals_production.rs` is a verbatim mirror of
-// production `StepBudget` (signals.rs:13-16) with one minimal
-// substitution:
+// The production `StepBudget` struct at
+// `crates/vb_core/src/engine/signals.rs:13-17` is declared OUTSIDE
+// the `verus!` block (via the companion extern file's `#[path]`
+// inclusion of the production source). Verus treats such external
+// types as opaque/ignored in spec mode unless bridged. This
+// `#[verifier::external_type_specification]` bridge exposes the
+// production `StepBudget` as `ExStepBudget` so spec-mode code can
+// name it in `assume_specification` signatures and exec-fn return
+// types.
 //
-//   1. `remaining` is declared `pub` (relaxed from production's
-//      `private`). This relaxation is required so the
-//      `#[verifier::external_type_specification]` bridge below can
-//      establish a transparent binding for spec-mode field access.
-//      Field NAME and TYPE are unchanged.
+// The `pub` visibility on `StepBudget::remaining` (a single
+// production-side change) is what makes this direct binding possible:
+// Verus's `external_type_specification` requires fields in the
+// underlying exec type to be `pub` (not `pub(crate)`) for
+// transparent-datatype bridging. Field NAME and TYPE are preserved
+// from production byte-for-byte; any drift breaks the build.
 //
-//   2. The mirror's impl methods are marked `#[verifier::external]`
-//      so Verus does not attempt to verify their bodies; the spec
-//      contracts below (`assume_specification` bridges) attach the
-//      production contracts to those methods.
-//
-// The `ExStepBudget` bridge below names the mirror type in spec
-// mode. Verus treats `ExStepBudget` and `production::StepBudget` as
-// the same type when the bridge is present, so spec contracts can
-// use either name; this spec uses `production::StepBudget` directly
-// throughout.
-//
-// This replaces the previous hand-written `MirrorStepBudget` /
-// `MirrorEngineError` mirror types that re-declared the production
-// struct/enum shape inside `verus!` with hand-written logic that
-// replicated the production bodies. With this fix, the spec
-// contracts are attached to the actual mirror methods
-// (`production::StepBudget::new`, `::try_take`, `::remaining`) so any
-// drift between contract and mirror behavior surfaces as a Verus
-// contract-discharge failure rather than as silent
-// contract-vs-mirror divergence.
+// The `ExEngineError` bridge below is also declared for completeness
+// (the stub `crate::errors::EngineError` is declared outside `verus!`
+// for the production file's `use crate::errors::EngineError;`
+// import to resolve). The `assume_specification` contracts below
+// reference the stub type directly via `crate::errors::EngineError`,
+// which Verus accepts because the production method's return type
+// fixes the type identity at the Rust resolution boundary.
 
-/// Spec-mode alias for the mirror `StepBudget` struct at
-/// `production_inner/signals_production.rs` (verbatim mirror of
-/// production `StepBudget` at signals.rs:13-16). The mirror struct
-/// is marked `#[verifier::external]` in the mirror file, so this
-/// `#[verifier::external_type_specification]` bridge is required to
-/// name the type in spec mode.
+/// Spec-mode alias for the production `StepBudget` struct at
+/// `crates/vb_core/src/engine/signals.rs:13-17`. The production type
+/// is declared outside `verus!` (via `#[path]` inclusion in the
+/// companion extern file), so this bridge is required to name the
+/// type in spec mode.
 #[verifier::external_type_specification]
 pub struct ExStepBudget(production::StepBudget);
+
+/// Spec-mode alias for the stub `EngineError` enum declared at
+/// `crate::errors::EngineError` (mirror of production
+/// `crates/vb_core/src/errors.rs:241`). Declared outside `verus!` so
+/// this bridge is required to name it in spec mode.
+///
+/// NOTE: this bridge is declared for completeness. The
+/// `assume_specification` contracts below use `crate::errors::EngineError`
+/// directly because Verus can name the external type when it appears
+/// as a return-type / argument-type position in an `assume_specification`
+/// signature (the production method signature fixes the type identity).
+/// The bridge would be required only if spec-mode proof fns needed to
+/// name the error type independently.
+#[verifier::external_type_specification]
+pub struct ExEngineError(crate::errors::EngineError);
 
 // =============================================================================
 // Spec constants
@@ -163,19 +236,19 @@ pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
 // =============================================================================
 //
 // Each `assume_specification` bridge attaches a Verus-native spec
-// contract to the MIRROR exec method. The mirror module is
-// `#[path]`-included from `production_inner/signals_production.rs`,
-// so the method paths `production::StepBudget::*` resolve to the
-// verbatim mirror impls (with `#[verifier::external]` bodies). The
-// spec proofs below exercise the contracts via exec fns that call
-// the mirror methods directly.
+// contract to the PRODUCTION exec method surfaced via the
+// `#[path]`-included extern file
+// (`verification/verus/extern_step_budget.rs`). The production method
+// bodies are opaque to Verus (declared OUTSIDE `verus!`); the spec
+// contracts below state the production behavior the spec proofs
+// discharge.
 
 /// Bridge contract: `production::StepBudget::new(v)` returns a
 /// StepBudget whose `remaining` field equals `min(v,
 /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/engine/signals.rs:27-35`.
+/// `crates/vb_core/src/engine/signals.rs:28-36`.
 pub assume_specification[ production::StepBudget::new ](
     value: u64,
 ) -> (budget: production::StepBudget)
@@ -192,13 +265,13 @@ pub assume_specification[ production::StepBudget::new ](
 /// defense-in-depth overflow guard).
 ///
 /// The postcondition encodes the production logic of
-/// `crates/vb_core/src/engine/signals.rs:50-60`:
+/// `crates/vb_core/src/engine/signals.rs:51-61`:
 ///   1. overflow guard returns Err iff `remaining > MAX_STEP_BUDGET`
 ///   2. remaining == 0 returns Ok(false), remaining unchanged
 ///   3. remaining > 0 returns Ok(true), remaining -= 1
 pub assume_specification[ production::StepBudget::try_take ](
     budget: &mut production::StepBudget,
-) -> (r: Result<bool, production::EngineError>)
+) -> (r: Result<bool, crate::errors::EngineError>)
     requires
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
@@ -220,7 +293,7 @@ pub assume_specification[ production::StepBudget::try_take ](
 /// field.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/engine/signals.rs:64-66`.
+/// `crates/vb_core/src/engine/signals.rs:65-67`.
 pub assume_specification[ production::StepBudget::remaining ](
     budget: &production::StepBudget,
 ) -> (r: u64)
@@ -338,7 +411,7 @@ pub proof fn proof_new_clamps(value: int)
 // Production-bound exec proofs (exec fns that exercise StepBudget contracts)
 // =============================================================================
 //
-// These exec fns call the MIRROR exec fns
+// These exec fns call the PRODUCTION exec fns
 // (`production::StepBudget::new`, `::try_take`) directly and verify
 // that their actual return values satisfy the production-bound
 // contracts attached via `assume_specification` above. They provide

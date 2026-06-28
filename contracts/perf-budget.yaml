@@ -13,7 +13,27 @@ required_evidence_fields:
   - raw_log
   - command
   - commit
+  - rustc_version
+  - nightly_date
+  - cpu_model
+  - cpu_governor
+  - kernel_version
+  - build_profile
+  - rustflags
+  - benchmark_tool_version
+  - sample_count_or_instruction_count
+  - input_fixture_digest
+  - durability_profile
   - mode
+  - p50_latency
+  - p95_latency
+  - p99_latency
+  - instruction_count
+  - allocation_count
+  - bytes_allocated
+  - fjall_write_latency
+  - direct_api_latency
+  - ipc_latency
 benchmarks:
   bench_engine_step_once_save_const_single_transition:
     max_regression_percent: 3
