@@ -68,11 +68,7 @@ impl kani::Arbitrary for ExprProgram {
         let ops_len: u8 = kani::any();
         kani::assume(ops_len <= 16);
         let mut ops: Vec<ExprOp> = Vec::with_capacity(usize::from(ops_len));
-        let mut i = 0u8;
-        while i < ops_len {
-            ops.push(kani::any::<ExprOp>());
-            i += 1;
-        }
+        ops.extend((0..ops_len).map(|_| kani::any::<ExprOp>()));
         let max_stack: u8 = kani::any();
         Self {
             ops: ops.into_boxed_slice(),
@@ -357,35 +353,19 @@ impl kani::Arbitrary for WorkflowParts {
         let node_count: u8 = kani::any();
         kani::assume(node_count <= 8);
         let mut nodes: Vec<CompiledNode> = Vec::with_capacity(usize::from(node_count));
-        let mut i = 0u8;
-        while i < node_count {
-            nodes.push(kani::any::<CompiledNode>());
-            i += 1;
-        }
+        nodes.extend((0..node_count).map(|_| kani::any::<CompiledNode>()));
         let expr_count: u8 = kani::any();
         kani::assume(expr_count <= 4);
         let mut expressions: Vec<ExprProgram> = Vec::with_capacity(usize::from(expr_count));
-        i = 0;
-        while i < expr_count {
-            expressions.push(kani::any::<ExprProgram>());
-            i += 1;
-        }
+        expressions.extend((0..expr_count).map(|_| kani::any::<ExprProgram>()));
         let const_count: u8 = kani::any();
         kani::assume(const_count <= 4);
         let mut constants: Vec<ConstValue> = Vec::with_capacity(usize::from(const_count));
-        i = 0;
-        while i < const_count {
-            constants.push(kani::any::<ConstValue>());
-            i += 1;
-        }
+        constants.extend((0..const_count).map(|_| kani::any::<ConstValue>()));
         let step_name_count: u8 = kani::any();
         kani::assume(step_name_count <= 4);
         let mut step_names: Vec<Box<str>> = Vec::with_capacity(usize::from(step_name_count));
-        i = 0;
-        while i < step_name_count {
-            step_names.push(kani_step_name(i));
-            i += 1;
-        }
+        step_names.extend((0..step_name_count).map(kani_step_name));
         Self {
             name: Box::from("kani_workflow"),
             digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),

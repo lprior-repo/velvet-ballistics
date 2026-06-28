@@ -5,7 +5,7 @@ EXTENDS Naturals, Sequences, FiniteSets
   Obligation: TLA-KYYF-001 / PO-008.
   Cross-run replay determinism and reproducibility state machine.
 
-  Bounded model: MaxSeq=4, MaxReplay=3, MaxJournalEntries=4.
+  Bounded model: MaxSeq=3, MaxReplay=2, MaxJournalEntries=3.
   Fjall I/O, byte decoding, hashing, and OS crash mechanics are trusted
   shell boundaries. CLI execution, wall-clock time, and filesystem paths
   are excluded from this model.
