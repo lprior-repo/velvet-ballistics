@@ -5,6 +5,7 @@ fuzz/target/
 # Local agent/search state
 .memsearch/
 .claude/worktrees/
+.jj/
 
 # Local workspace snapshots and duplicated export bundles
 /refactor/
