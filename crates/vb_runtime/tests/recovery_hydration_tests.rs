@@ -1814,26 +1814,18 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 // ============================================================================
 //
 // TERMINOLOGY NOTE (FINDING-005 from vb-wy33p.11 review):
-// This section exercises the TYPED-REJECTION contract surface via the
-// persisted-journal reopen path; it is NOT a crash-survival test.
-// Rounds 1-4 of this bead inflated the test name with "crash" while
-// the body used `drop(journal)` after per-event `PersistMode::SyncAll`,
-// which is functionally a clean shutdown (each event has already been
-// fsynced before `drop` runs). Reviewers across rounds 2-3 correctly
-// flagged this mismatch between name and behavior.
-//
-// vb-wy33p.11 round 5 takes the HONEST DOWNGRADE path the original
-// brief allowed: rename to reflect what the test actually is, and add
-// a TODO tracking the real crash-survival test as out-of-scope.
-//
-// TODO(vb-wy33p.11-followup): True crash-survival test pending: requires
-// a multi-process harness (spawn `std::process::Command::new(...)` on
-// a child test binary that calls `append_journaled` (non-fsync) on
-// the Fjall partition and `std::process::exit(0)` before graceful
-// close). Parent reopens the WAL, replays, asserts typed rejection.
-// Tracked as a follow-up bead; this test remains the
-// typed-rejection contract surface (FINDING-001 + FINDING-005
-// contract witness).
+// Round 5 took the HONEST DOWNGRADE path: renamed the clean-restart
+// test from "crash" to "persisted_restart_via_appends_with_syncall"
+// and added a TODO tracking the real crash-survival test as
+// out-of-scope. Round 6 closes the TODO by adding the genuine
+// multi-process crash-survival test
+// `pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume`
+// (with helper `crash_child_marker`) which spawns the test binary
+// itself via `std::process::Command::new(current_exe)`, writes via
+// `append_journaled` (no `SyncAll`), and exits via
+// `std::process::exit(0)` without graceful drop. The parent reopens
+// the WAL and asserts the same typed `CannotResume` contract
+// witnessed by the clean-restart test.
 
 /// Given a real `FjallJournal` with events including a
 /// `JournalEvent::ActionScheduled` for an action that never finishes
@@ -1951,6 +1943,224 @@ fn pending_action_persisted_restart_via_appends_with_syncall() {
         reason, "pending_actions",
         "UnsupportedFrameSeed reason must be the exact `pending_actions` token"
     );
+}
+
+/// Real crash-replay test (FINDING-005 satisfied end-to-end).
+///
+/// Spawns a child test binary via `std::process::Command::new(current_exe)`
+/// that opens the Fjall journal, writes events via the NON-strict
+/// `append_journaled` path (no `PersistMode::SyncAll` per event), and
+/// exits via `std::process::exit(0)` WITHOUT calling `drop` on the
+/// journal. This simulates an in-flight crash where the Fjall WAL
+/// has buffered writes that have been flushed to the OS page cache
+/// (`PersistMode::Buffer` in Fjall V3 default config) but not
+/// fsynced to disk. The parent reopens the journal, recovers the
+/// frame seed via `recover_runtime_frame_seed`, and asserts the
+/// typed `CannotResume { pending_actions: true, ... }` rejection
+/// plus the storage-layer `UnsupportedFrameSeed` surface.
+///
+/// This is the test that satisfies FINDING-005's "deterministic
+/// crash/restart" requirement. It complements the existing
+/// `pending_action_persisted_restart_via_appends_with_syncall`
+/// test which exercises the clean-restart path (per-event
+/// `SyncAll` + graceful `drop`). Together they prove the
+/// typed-rejection contract holds across both crash-survival
+/// scenarios.
+///
+/// HARNESS DESIGN:
+/// 1. Parent opens `TempDir` and the journal once to materialize
+///    the Fjall partition layout, then drops the journal so the
+///    Fjall `Database` lock and our `ProcessLock` are released.
+/// 2. Parent spawns `current_exe` with env vars
+///    `VB_CRASH_CHILD=1`, `VB_CRASH_JOURNAL_DIR=<path>`,
+///    `VB_CRASH_RUN_ID=<run>` and CLI args
+///    `--ignored --exact crash_child_marker`. The `#[ignore]`
+///    attribute on `crash_child_marker` keeps it out of normal
+///    `cargo test` runs; `--ignored` plus `--exact` makes cargo
+///    run only the marker test in the child process.
+/// 3. Child detects `VB_CRASH_CHILD=1` and writes the three
+///    events (RunAccepted, StepStarted, ActionScheduled) via
+///    `append_journaled`. Then `std::process::exit(0)` without
+///    dropping the journal — this is the crash simulation.
+/// 4. Parent waits for the child, reopens the journal on the same
+///    `TempDir`, recovers the frame seed, and asserts the typed
+///    cannot-resume contract.
+#[test]
+fn pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume() {
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(11400);
+    let action = ActionId::new(0xDD);
+
+    // Touch the journal so the Fjall partition layout exists before
+    // the child opens it. Drop immediately so the Fjall Database
+    // lock and our ProcessLock are released.
+    {
+        let _primer = open_journal(&dir);
+    }
+
+    // Spawn self as child in crash mode. The child runs ONLY the
+    // `crash_child_marker` test (via `--ignored --exact`). That
+    // marker detects `VB_CRASH_CHILD=1`, performs the
+    // append_journaled + std::process::exit(0) work, and exits.
+    let exe = std::env::current_exe().expect("current exe should resolve");
+    let mut cmd = std::process::Command::new(exe);
+    cmd.env("VB_CRASH_CHILD", "1");
+    cmd.env("VB_CRASH_JOURNAL_DIR", dir.path());
+    cmd.env("VB_CRASH_RUN_ID", run.get().to_string());
+    cmd.arg("--ignored");
+    cmd.arg("--exact");
+    cmd.arg("crash_child_marker");
+
+    let status = cmd
+        .status()
+        .expect("child process should spawn and complete");
+    assert!(
+        status.success(),
+        "child must exit successfully even though it exited without dropping the journal: {status:?}"
+    );
+
+    // Reopen the journal on the same path. The pending action must
+    // survive Fjall WAL replay because the child's writes were
+    // committed via `append_journaled` (writes go to WAL +
+    // memtable, flushed to OS via PersistMode::Buffer, but not
+    // fsynced — exactly the scenario the test is meant to cover).
+    let journal = open_journal(&dir);
+    let seed = recover_runtime_frame_seed(&journal, run)
+        .expect("frame seed recovery should succeed after child crash");
+
+    let pending = seed
+        .pending_actions
+        .iter()
+        .find(|entry| entry.action == action)
+        .expect("pending action must survive crash WAL replay");
+    assert_eq!(pending.step, StepIdx::new(2));
+    assert_eq!(seed.pending_actions.len(), 1);
+
+    // Typed rejection contract — same shape as the clean-restart
+    // test, because the durable evidence is identical.
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_actions: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+    );
+
+    // Storage-layer `UnsupportedFrameSeed` surface must match too —
+    // the durable evidence is identical regardless of crash path.
+    let events: Vec<JournalEvent> = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed after crash reopen");
+    let storage_result = hydrate_run_frame_from_events(&events, run);
+    let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = storage_result else {
+        panic!(
+            "expected UnsupportedFrameSeed from storage layer after crash, got: {storage_result:?}"
+        );
+    };
+    assert_eq!(found, run);
+    assert_eq!(
+        reason, "pending_actions",
+        "UnsupportedFrameSeed reason must be the exact `pending_actions` token after crash replay"
+    );
+}
+
+/// Marker test invoked by the crash-replay parent via
+/// `std::process::Command::new(current_exe)` with
+/// `VB_CRASH_CHILD=1` and `--ignored --exact crash_child_marker`.
+///
+/// When `VB_CRASH_CHILD=1` is set, this test performs the crash
+/// simulation: opens the journal at `VB_CRASH_JOURNAL_DIR`, writes
+/// three events via `append_journaled` (NO `PersistMode::SyncAll`),
+/// and exits via `std::process::exit(0)` WITHOUT dropping the
+/// journal. The OS closes the Fjall file descriptors during
+/// `_exit()`, the Fjall WAL replay recovers the writes on parent
+/// reopen.
+///
+/// When `VB_CRASH_CHILD` is NOT set (i.e. someone invokes this
+/// test directly), the body is a no-op so the test passes
+/// trivially. This keeps the marker harmless if it ever runs
+/// without the parent harness (e.g. during
+/// `cargo test --ignored --list` enumeration).
+///
+/// The `#[ignore]` attribute keeps this test out of normal
+/// `cargo test` runs. The parent passes `--ignored` to surface
+/// this marker specifically when it spawns the child process.
+#[test]
+#[ignore = "marker for crash-replay parent's Command::new invocation; not run directly"]
+fn crash_child_marker() {
+    // Defensive: if this test runs WITHOUT VB_CRASH_CHILD set,
+    // treat it as a no-op marker. The parent harness sets the env
+    // var and observes the exit status.
+    if std::env::var("VB_CRASH_CHILD").as_deref() != Ok("1") {
+        return;
+    }
+
+    // Child-mode: perform the crash-survival work.
+    let dir_path =
+        std::env::var("VB_CRASH_JOURNAL_DIR").expect("VB_CRASH_JOURNAL_DIR must be set for child");
+    let path = std::path::PathBuf::from(dir_path);
+
+    let run_id: u64 = std::env::var("VB_CRASH_RUN_ID")
+        .expect("VB_CRASH_RUN_ID must be set for child")
+        .parse()
+        .expect("VB_CRASH_RUN_ID must parse as u64");
+    let run = RunId::new(run_id);
+    let digest = WorkflowDigest::from_bytes([0xCC; 32]);
+    let action = ActionId::new(0xDD);
+
+    let journal = FjallJournal::open(&path, Some(FjallConfig::default()))
+        .expect("child: journal open should succeed");
+
+    // CRITICAL: use `append_journaled` (no SyncAll), not
+    // `append_strict`. This is what makes this a real crash
+    // simulation: the writes go to Fjall's WAL + memtable but
+    // are NOT fsynced before exit.
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("child: append_run_accepted should succeed");
+    journal
+        .append_journaled(&JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(2),
+            attempt: 1,
+        })
+        .expect("child: append_step_started should succeed");
+    journal
+        .append_journaled(&JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action,
+            attempt: 1,
+        })
+        .expect("child: append_action_scheduled should succeed");
+
+    // Simulate in-flight crash: exit without dropping the journal,
+    // without SyncAll. The Fjall WAL + memtable hold the writes;
+    // the OS will close the file descriptors during _exit().
+    // The parent's reopen triggers Fjall WAL replay which surfaces
+    // the pending action to recovery.
+    std::process::exit(0);
 }
 
 // ============================================================================
