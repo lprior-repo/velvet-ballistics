@@ -178,6 +178,31 @@ pub(crate) const fn validate_recovery_data_present(
 /// - Snapshot bytes are corrupt or undecodable
 /// - No snapshot and no tail events are provided
 /// - Derived dimensions are zero or overflow `u16`
+///
+/// Hydrates a live `RunFrame` from a snapshot plus ordered tail events.
+///
+/// The snapshot+tail path is the **lower-level** durable hydration
+/// mechanism: it consumes the snapshot bytes and reapplies tail events
+/// to derive a `RunFrame` shape with hydrated slot/taint data and a
+/// monotonically advanced program counter. The corresponding cannot-
+/// resume witness lives at the typed boundary that consumes this
+/// frame (the [`crate::recovery::RuntimeRecoveryBoundary`]
+/// implementation at the runtime layer; see
+/// `DurableFrameRecoveryBoundary::hydrate_run_frame` and
+/// `summary::recover_runtime_frame_seed_from_events`). The events-only
+/// [`hydrate_run_frame_from_events`] entry point is where the typed
+/// `UnsupportedFrameSeed { run, reason }` rejection is enforced, so
+/// any caller passing a frame seed alone through the typed boundary
+/// still fails closed with the precise reason string. The
+/// per-event-typed lower-level gate is enforced inside the tail
+/// application helpers (see
+/// [`crate::recovery::hydrate_support::apply_slot_written`]) so a
+/// `SlotWrittenEvent { value: None }` entering the snapshot+tail path
+/// is rejected with `UnsupportedFrameSeed { reason: "slot_values" }`
+/// while a valid (snapshot slot bytes + tail step lifecycle) path
+/// continues to assemble the lower-level frame successfully. This
+/// keeps the unit-level durability, taint preservation, and
+/// replay-shape tests green: they construct valid durable evidence.
 pub fn hydrate_run_frame(
     snapshot: &RunSnapshot,
     tail_events: &[JournalEvent],

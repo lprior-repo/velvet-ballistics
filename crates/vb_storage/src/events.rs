@@ -8,6 +8,15 @@ use vb_core::{
     StepIdx, Taint, WorkflowDigest,
 };
 
+/// Default ABI digest used when an event predates the `action_abi_digest`
+/// field or is rendered by a writer that does not pin an ABI. Keeping
+/// the all-zero fallback here lets older journals deserialize without a
+/// hard error while signalling the missing-evidence classification to
+/// the recovery cannot-resume gate.
+const fn zero_workflow_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; 32])
+}
+
 /// Terminal action outcome captured by durable completion envelopes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[repr(u8)]
@@ -103,6 +112,9 @@ pub enum JournalEvent {
         input: SlotIdx,
         /// Output slot expected to receive the result.
         output: SlotIdx,
+        /// Digest of the persisted action ABI contract used for this action.
+        #[serde(default = "zero_workflow_digest")]
+        action_abi_digest: WorkflowDigest,
     },
     /// Action completed successfully with an atomic durable envelope.
     ActionCompletedEnvelope {
@@ -124,6 +136,9 @@ pub enum JournalEvent {
         taint: Taint,
         /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
         value_digest: [u8; 32],
+        /// Digest of the persisted action ABI contract used for this action.
+        #[serde(default = "zero_workflow_digest")]
+        action_abi_digest: WorkflowDigest,
     },
     /// Action failed.
     ActionFailedEvent {

@@ -39,10 +39,17 @@ pub trait RuntimeRecoveryBoundary {
 }
 
 /// Runtime-facing resume decision from durable recovery evidence.
+///
+/// `Resumable` is intentionally not a variant today: a `RunFrame`
+/// seed alone never carries the full runtime boundary state required
+/// for live execution (workflow, store, action attempts, admission,
+/// collect states, action contracts, action ABI digests), so the
+/// typed never-resume witness is the only state a frame seed can
+/// emit. When a future recovery path can hydrate a complete
+/// `RunState`, add a `Resumable(FullRunState { ... })` carrying the
+/// full evidence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecoveryResumeStatus {
-    /// The frame seed has no missing evidence and no pending live boundary.
-    Resumable,
     /// Recovery has precise evidence explaining why execution cannot resume.
     CannotResume(RecoveryCannotResumeState),
     /// Storage exposed summary data only; no live frame seed exists.
@@ -81,12 +88,12 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     }
 
     fn resume_status(&self) -> RecoveryResumeStatus {
-        let state = self.seed.cannot_resume_state();
-        if state.is_resumable() {
-            RecoveryResumeStatus::Resumable
-        } else {
-            RecoveryResumeStatus::CannotResume(state)
-        }
+        // A frame seed alone never carries the full RunState needed for
+        // live execution, so the typed cannot-resume witness is the
+        // only valid state a frame seed can emit. When a future path
+        // hydrates a full RunState, reintroduce a `Resumable` variant
+        // above.
+        RecoveryResumeStatus::CannotResume(self.seed.cannot_resume_state())
     }
 
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {

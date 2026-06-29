@@ -8,6 +8,14 @@ use vb_core::{
     Taint, WorkflowDigest,
 };
 
+/// Deterministic 32-byte digest used as a sample action ABI digest in
+/// the action-ticket envelope fixtures. All-zero fallback is fine for
+/// these summary classification tests because the ABI digest is only
+/// used as a distinguisher among events.
+fn sample_digest(byte: u8) -> WorkflowDigest {
+    WorkflowDigest::from_bytes([byte; 32])
+}
+
 fn fresh_summary() -> RecoveryRuntimeSummary {
     RecoveryRuntimeSummary {
         run: RunId::new(1),
@@ -631,6 +639,7 @@ fn action_scheduled_ticket_advances_max_slot_and_step_dimensions() {
         ticket,
         input: SlotIdx::new(7),
         output: SlotIdx::new(9),
+        action_abi_digest: sample_digest(0xA1),
     }];
 
     let seed = recover_runtime_frame_seed_from_events(&events)
@@ -685,6 +694,7 @@ fn action_abandoned_event_drops_pending_action_and_increments_resolved() {
             ticket,
             input: SlotIdx::new(2),
             output: SlotIdx::new(4),
+            action_abi_digest: sample_digest(0xA1),
         },
         JournalEvent::ActionAbandoned {
             run,
@@ -767,6 +777,7 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
             ticket,
             input: SlotIdx::new(3),
             output: SlotIdx::new(8),
+            action_abi_digest: sample_digest(0xA1),
         },
     ];
 

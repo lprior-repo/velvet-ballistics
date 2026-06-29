@@ -126,12 +126,14 @@ impl StorageRuntimeJournal {
                 ticket,
                 input,
                 output,
+                action_abi_digest,
             } => Some(JournalEvent::ActionScheduledTicket {
                 run: ticket.run,
                 seq,
                 ticket,
                 input,
                 output,
+                action_abi_digest,
             }),
             RuntimeJournalEvent::ActionCompletedEnvelope {
                 ticket,
@@ -140,6 +142,7 @@ impl StorageRuntimeJournal {
                 encoded_len,
                 taint,
                 value_digest,
+                action_abi_digest,
             } => Some(JournalEvent::ActionCompletedEnvelope {
                 run: ticket.run,
                 seq,
@@ -150,6 +153,7 @@ impl StorageRuntimeJournal {
                 encoded_len,
                 taint,
                 value_digest,
+                action_abi_digest,
             }),
             RuntimeJournalEvent::ActionFailed {
                 run,

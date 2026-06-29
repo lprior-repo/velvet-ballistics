@@ -140,6 +140,7 @@ impl Shard {
             ticket,
             input,
             output,
+            action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         })?;
         if let Err(error) = self.pending_action_insert(run, ticket) {
             match self.run_state_insert(run, state) {

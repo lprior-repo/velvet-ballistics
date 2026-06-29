@@ -1917,9 +1917,9 @@ fn pending_action_crash_restart_fails_closed_with_typed_rejection() {
         panic!("expected UnsupportedFrameSeed from storage layer, got: {storage_result:?}");
     };
     assert_eq!(found, run);
-    assert!(
-        !reason.is_empty(),
-        "UnsupportedFrameSeed reason must be non-empty"
+    assert_eq!(
+        reason, "pending_actions",
+        "UnsupportedFrameSeed reason must be the exact `pending_actions` token"
     );
 }
 

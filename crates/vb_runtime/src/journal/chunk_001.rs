@@ -75,6 +75,8 @@ pub enum RuntimeJournalEvent {
         input: SlotIdx,
         /// Output slot expected to receive the result.
         output: SlotIdx,
+        /// Digest of the persisted action ABI contract used for this action.
+        action_abi_digest: WorkflowDigest,
     },
     /// Action completed successfully with an atomic durable envelope.
     ActionCompletedEnvelope {
@@ -90,6 +92,8 @@ pub enum RuntimeJournalEvent {
         taint: Taint,
         /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
         value_digest: [u8; 32],
+        /// Digest of the persisted action ABI contract used for this action.
+        action_abi_digest: WorkflowDigest,
     },
     /// Action failed at the external action boundary.
     ActionFailed {

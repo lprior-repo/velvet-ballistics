@@ -40,8 +40,8 @@ pub use types::{
     ActionAbiDigestComparison, ActionReplayTracker, DigestCheck, DigestPair,
     DigestVerificationRequest, FullDigestEvidence, PolicyDigestComparison, RecoveredPendingAction,
     RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
-    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
+    RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult,
+    RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
 };
 
 // ============================================================================

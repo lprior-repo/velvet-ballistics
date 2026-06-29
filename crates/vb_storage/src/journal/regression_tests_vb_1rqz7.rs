@@ -55,6 +55,7 @@ fn action_scheduled_ticket_maps_to_active() {
         ticket: sample_ticket(),
         input: SlotIdx::new(0),
         output: SlotIdx::new(1),
+        action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
     };
     assert_eq!(event_to_lifecycle(&event), LifecycleState::Active);
 }
@@ -71,6 +72,7 @@ fn action_completed_envelope_maps_to_active() {
         encoded_len: 1,
         taint: Taint::Clean,
         value_digest: [0u8; 32],
+        action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
     };
     assert_eq!(event_to_lifecycle(&event), LifecycleState::Active);
 }
@@ -430,6 +432,7 @@ fn every_known_variant_has_an_event_to_lifecycle_mapping() {
             ticket: sample_ticket(),
             input: SlotIdx::new(0),
             output: SlotIdx::new(1),
+            action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
         },
         JournalEvent::ActionCompletedEvent {
             run: run(),
@@ -448,6 +451,7 @@ fn every_known_variant_has_an_event_to_lifecycle_mapping() {
             encoded_len: 1,
             taint: Taint::Clean,
             value_digest: [0u8; 32],
+            action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
         },
         JournalEvent::ActionFailedEvent {
             run: run(),

@@ -401,6 +401,7 @@ impl Shard {
             encoded_len: preflight.encoded_len,
             taint: preflight.taint,
             value_digest: preflight.value_digest,
+            action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         })?;
         let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state

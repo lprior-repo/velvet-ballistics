@@ -799,6 +799,8 @@ impl RecoveryCannotResumeState {
     }
 
     /// Canonical reason string for a typed `UnsupportedFrameSeed` error.
+    ///
+    /// The first true flag in classification-priority order wins.
     #[must_use]
     pub const fn unsupported_reason(self) -> &'static str {
         if self.slot_values {

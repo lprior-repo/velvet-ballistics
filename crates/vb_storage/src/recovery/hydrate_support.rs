@@ -488,23 +488,34 @@ fn apply_slot_written(
     frame: &mut vb_core::RunFrame,
     event: &JournalEvent,
 ) -> RecoveryResult<ApplyOutcome> {
-    let JournalEvent::SlotWrittenEvent { slot, value, .. } = event else {
+    let JournalEvent::SlotWrittenEvent {
+        run, slot, value, ..
+    } = event
+    else {
         return Ok(ApplyOutcome::NotApplicable);
     };
-    if let Some(bytes) = value {
-        let slot_value =
-            postcard::from_bytes(bytes).map_err(|_| RecoveryError::ReplayDivergence {
-                step: vb_core::StepIdx::ZERO,
-                detail: format!("slot value decode failed for slot {:?}", slot),
-            })?;
-        let taint = resolve_slot_taint_or_fail(frame, *slot)?;
-        frame
-            .write_slot_with_taint(*slot, slot_value, taint)
-            .map_err(|_| RecoveryError::ReplayDivergence {
-                step: vb_core::StepIdx::ZERO,
-                detail: "slot write out of bounds".to_owned(),
-            })?;
-    }
+    let Some(bytes) = value else {
+        // A `SlotWrittenEvent { value: None, .. }` is missing the
+        // persisted payload: the runtime hydration boundary cannot
+        // rebuild the slot's live value, so the typed witness fires
+        // here rather than later in the typed boundary gate. This is
+        // the lower-level enforcement for BLOCKER 6.
+        return Err(RecoveryError::UnsupportedFrameSeed {
+            run: *run,
+            reason: String::from("slot_values"),
+        });
+    };
+    let slot_value = postcard::from_bytes(bytes).map_err(|_| RecoveryError::ReplayDivergence {
+        step: vb_core::StepIdx::ZERO,
+        detail: format!("slot value decode failed for slot {:?}", slot),
+    })?;
+    let taint = resolve_slot_taint_or_fail(frame, *slot)?;
+    frame
+        .write_slot_with_taint(*slot, slot_value, taint)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: "slot write out of bounds".to_owned(),
+        })?;
     Ok(ApplyOutcome::Executed)
 }
 

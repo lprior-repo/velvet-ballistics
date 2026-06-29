@@ -32,34 +32,36 @@
 // ============================================================================
 //   - `UnsupportedRecoveryState`        <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            types.rs:553-563)
+//                                            types.rs:577-649)
+//   - `RecoveryCannotResumeState`        <- extern_recovery_verification.rs
+//                                            (mirror of types.rs:680-834)
 //   - `RecoveredStepState`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:508-521)
+//                                            (mirror of types.rs:533-544)
 //   - `RecoveredStepEntry`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:524-530)
+//                                            (mirror of types.rs:548-553)
 //   - `RecoveredSlotEntry`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:533-541)
+//                                            (mirror of types.rs:557-564)
 //   - `RecoveredPendingAction`          <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:544-550)
+//                                            (mirror of types.rs:568-573)
 //   - `RecoveryTerminalState`           <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:429-443)
+//                                            (mirror of types.rs:454-466)
 //   - `RecoveryRuntimeSummary`          <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:446-470)
+//                                            (mirror of types.rs:470-493)
 //   - `RecoveryFrameSeed`               <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:629-649)
+//                                            (mirror of types.rs:653-672)
 //   - `RecoveryHydration`               <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:487-494)
+//                                            (mirror of types.rs:512-528)
 //   - `DigestCheck`                     <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:856-864)
+//                                            (mirror of types.rs:1058-1065)
 //   - `DigestVerificationRequest`       <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:359-426)
+//                                            (mirror of types.rs:383-449)
 //   - `FullDigestEvidence`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:302-356)
+//                                            (mirror of types.rs:326-379)
 //   - `DigestPair` / `ActionAbiDigestComparison`
 //                                       <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:246-288)
+//                                            (mirror of types.rs:269-322)
 //   - `RecoveryError` (spec subset)     <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:39-145,
+//                                            (mirror of types.rs:39-158,
 //                                             4 variants exercised)
 //   - `RuntimeError` (spec subset)      <- extern_recovery_verification.rs
 //                                            (mirror of error/mod.rs:7-203,
@@ -68,11 +70,10 @@
 //   - `reject_unsupported_live_frame_state_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_runtime/src/recovery.rs:73-82
+//                                            crates/vb_runtime/src/recovery.rs:109-115
 //                                            `reject_unsupported_live_frame_state`;
-//                                            production checks 3 of 4 flags;
-//                                            pending_actions is NOT a
-//                                            rejection criterion — see D1)
+//                                            production checks the 13-flag
+//                                            cannot-resume witness)
 //   - `check_compiled_ir_digest_pure`   <- extern_recovery_verification.rs
 //                                            (mirror of
 //                                            crates/vb_storage/src/recovery/recover.rs:53-62
@@ -101,15 +102,15 @@
 //   - `hydrate_run_frame_preconditions_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_storage/src/recovery/hydrate.rs:181-200
+//                                            crates/vb_storage/src/recovery/hydrate.rs:206-225
 //                                            `hydrate_run_frame`
 //                                            AND
-//                                            crates/vb_runtime/src/recovery.rs:63-71
+//                                            crates/vb_runtime/src/recovery.rs:99-105
 //                                            `DurableFrameRecoveryBoundary::hydrate_run_frame`)
 //   - `summary_recovery_boundary_hydrate_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_runtime/src/recovery.rs:146-154
+//                                            crates/vb_runtime/src/recovery.rs:188-190
 //                                            `SummaryRecoveryBoundary::hydrate_run_frame`;
 //                                            always returns
 //                                            `UnsupportedFullRecoveryHydration`)
@@ -117,14 +118,10 @@
 // ============================================================================
 // DRIFT ITEMS ACCEPTED BY THE BINDING
 // ============================================================================
-//   - D1: production `reject_unsupported_live_frame_state` does NOT
-//         check `pending_actions`. The original vacuum spec checked
-//         all 4 flags. The corrected production-bound spec checks
-//         only the 3 production-checked flags. Confirmed by the
-//         production test
-//         `crates/vb_runtime/src/recovery/tests.rs:395-453`
-//         `pending_actions_hydration_round_trip` which asserts
-//         that hydration succeeds with `pending_actions = true`.
+//   - D1 (closed): production `reject_unsupported_live_frame_state`
+//         now checks the 13-flag `RecoveryCannotResumeState` witness.
+//         `pending_actions`, pending timers/asks, and every
+//         full-RunState-missing flag block live frame hydration.
 //
 //   - D2: production `RuntimeError` has no `FrameDimensionOverflow`
 //         variant. The runtime layer collapses all hydration
@@ -159,6 +156,7 @@ mod production;
 pub use production::{
     ActionAbiDigestComparison,
     ActionId,
+    CANNOT_RESUME_REASONS,
     DigestCheck,
     DigestPair,
     DigestVerificationRequest,
@@ -169,6 +167,7 @@ pub use production::{
     RecoveredSlotEntry,
     RecoveredStepEntry,
     RecoveredStepState,
+    RecoveryCannotResumeState,
     RecoveryError,
     RecoveryFrameSeed,
     RecoveryHydration,
@@ -207,15 +206,17 @@ pub use production::{
 // decision fn via `assume_specification`.
 /// Spec-side decision fn mirroring the production
 /// `reject_unsupported_live_frame_state` decision. Returns true iff
-/// the production body returns Ok(()).
-pub open spec fn spec_reject_unsupported_passes(state: UnsupportedRecoveryState) -> bool {
-    !state.slot_values && !state.slot_taint && !state.action_payloads
+/// the production body returns Ok(()) after evaluating the typed
+/// 13-flag cannot-resume witness.
+pub open spec fn spec_reject_unsupported_passes(state: RecoveryCannotResumeState) -> bool {
+    spec_cannot_resume_is_resumable(state)
 }
 
-/// Spec-side "fully supported" predicate (production-mirror). Returns
-/// true iff NONE of the four unsupported flags are set. This is
-/// strictly weaker than `spec_reject_unsupported_passes` (D1: the
-/// runtime layer does not reject on `pending_actions`).
+/// Spec-side storage-only "fully supported" predicate. Returns true
+/// iff none of the four storage-level unsupported flags are set. This
+/// is narrower than live runtime resumability: a storage-supported
+/// frame seed still fails closed when full `RunState` evidence is
+/// absent.
 pub open spec fn spec_is_fully_supported(state: UnsupportedRecoveryState) -> bool {
     !state.slot_values && !state.slot_taint && !state.action_payloads && !state.pending_actions
 }
@@ -307,14 +308,103 @@ pub open spec fn spec_summary_boundary_never_hydrates() -> bool {
     false
 }
 
+/// Spec-side predicate mirroring
+/// [`RecoveryCannotResumeState::is_resumable`] at
+/// `crates/vb_storage/src/recovery/types.rs:785-799`. Returns true iff
+/// every cannot-resume flag is false.
+pub open spec fn spec_cannot_resume_is_resumable(state: RecoveryCannotResumeState) -> bool {
+    !state.slot_values
+        && !state.slot_taint
+        && !state.action_payloads
+        && !state.pending_actions
+        && !state.pending_timers
+        && !state.pending_asks
+        && !state.workflow_missing
+        && !state.store_missing
+        && !state.action_attempts_missing
+        && !state.admission_missing
+        && !state.collect_states_missing
+        && !state.action_contracts_missing
+        && !state.action_abi_digests_missing
+}
+
+/// Spec-side decision fn mirroring `RecoveryCannotResumeState::from_seed`
+/// at `crates/vb_storage/src/recovery/types.rs:748-757`. Returns the
+/// priority-ordered lower-level reason for a non-resumable seed (the
+/// first true non-`RESUMABLE` flag wins, matching the priority order
+/// of [`CANNOT_RESUME_REASONS`]).
+///
+/// `Resumable` is intentionally not a [`RecoveryResumeStatus`] variant
+/// (see the production runtime's
+/// `RecoveryResumeStatus::CannotResume`); this fn returns
+/// `"resumable"` only when every flag is false.
+pub open spec fn spec_unsupported_reason(state: RecoveryCannotResumeState) -> &'static str {
+    if state.slot_values {
+        "slot_values"
+    } else if state.slot_taint {
+        "slot_taint"
+    } else if state.action_payloads {
+        "action_payloads"
+    } else if state.pending_actions {
+        "pending_actions"
+    } else if state.pending_timers {
+        "pending_timers"
+    } else if state.pending_asks {
+        "pending_asks"
+    } else if state.workflow_missing {
+        "workflow_missing"
+    } else if state.store_missing {
+        "store_missing"
+    } else if state.action_attempts_missing {
+        "action_attempts_missing"
+    } else if state.admission_missing {
+        "admission_missing"
+    } else if state.collect_states_missing {
+        "collect_states_missing"
+    } else if state.action_contracts_missing {
+        "action_contracts_missing"
+    } else if state.action_abi_digests_missing {
+        "action_abi_digests_missing"
+    } else {
+        "resumable"
+    }
+}
+
+/// Spec-side decision fn mirroring the production `from_seed`
+/// classification. Production
+/// `RecoveryCannotResumeState::from_seed` always invokes
+/// `mark_full_run_state_missing` which sets the 7 `*_missing`
+/// flags to true (FINDING-001: a frame seed alone never carries the
+/// full RunState). The spec projection captures this invariant by
+/// returning a state where every `*_missing` flag is true.
+pub open spec fn spec_classify_seed_cannot_resume(
+    seed_supported_flags: RecoveryCannotResumeState,
+) -> RecoveryCannotResumeState {
+    RecoveryCannotResumeState {
+        slot_values: seed_supported_flags.slot_values,
+        slot_taint: seed_supported_flags.slot_taint,
+        action_payloads: seed_supported_flags.action_payloads,
+        pending_actions: seed_supported_flags.pending_actions,
+        pending_timers: seed_supported_flags.pending_timers,
+        pending_asks: seed_supported_flags.pending_asks,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+    }
+}
+
 // ============================================================================
 // Production-bound exec fns (mirror production exec fns via the
 // extern exec wrappers; bodies are `#[verifier::external]`)
 // ============================================================================
 /// Production-bound exec fn: `reject_unsupported_live_frame_state`
 /// decision projection. Returns true iff the production body returns
-/// Ok. Mirrors `crates/vb_runtime/src/recovery.rs:73-82`.
-pub fn reject_unsupported_live_frame_state(state: UnsupportedRecoveryState) -> bool {
+/// Ok. Mirrors `crates/vb_runtime/src/recovery.rs:109-115`.
+pub fn reject_unsupported_live_frame_state(state: RecoveryCannotResumeState) -> bool {
     production::reject_unsupported_live_frame_state_pure(state)
 }
 
@@ -374,8 +464,8 @@ pub fn recover_runtime_summary(has_events: bool, summary_ok: bool) -> bool {
 
 /// Production-bound exec fn: `hydrate_run_frame` precondition
 /// projection. Mirrors
-/// `crates/vb_storage/src/recovery/hydrate.rs:181-200` AND
-/// `crates/vb_runtime/src/recovery.rs:63-71`.
+/// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
+/// `crates/vb_runtime/src/recovery.rs:99-105`.
 pub fn hydrate_run_frame_preconditions(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -404,9 +494,36 @@ pub fn hydrate_run_frame_preconditions(
 
 /// Production-bound exec fn: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// decision projection. Mirrors
-/// `crates/vb_runtime/src/recovery.rs:146-154`.
+/// `crates/vb_runtime/src/recovery.rs:188-190`.
 pub fn summary_boundary_hydrate() -> bool {
     production::summary_recovery_boundary_hydrate_pure()
+}
+
+/// Production-bound exec fn: `RecoveryFrameSeed::cannot_resume_state`
+/// decision projection. Returns the production
+/// `RecoveryCannotResumeState` for the supplied seed. Mirrors
+/// `crates/vb_storage/src/recovery/types.rs:836-848`.
+pub fn cannot_resume_state(seed: RecoveryFrameSeed) -> RecoveryCannotResumeState {
+    // The mirror exposes `RecoveryCannotResumeState::from_seed` as a
+    // free helper (not a method) so the spec-side proof surface can
+    // attach a contract via `assume_specification`. Mirrors the
+    // production `from_seed(&RecoveryFrameSeed) -> Self` at
+    // types.rs:748-757.
+    RecoveryCannotResumeState::from_seed_pure(seed)
+}
+
+/// Production-bound exec fn: `RecoveryCannotResumeState::is_resumable`
+/// decision projection. Returns true iff every cannot-resume flag
+/// is false. Mirrors `crates/vb_storage/src/recovery/types.rs:783-799`.
+pub fn cannot_resume_is_resumable(state: RecoveryCannotResumeState) -> bool {
+    state.is_resumable()
+}
+
+/// Production-bound exec fn: `RecoveryCannotResumeState::unsupported_reason`
+/// decision projection. Returns the priority-ordered canonical reason
+/// string. Mirrors `crates/vb_storage/src/recovery/types.rs:801-832`.
+pub fn unsupported_reason(state: RecoveryCannotResumeState) -> &'static str {
+    state.unsupported_reason_pure()
 }
 
 // ============================================================================
@@ -458,10 +575,10 @@ pub fn hydrate_dimensions_positive(step_count_positive: bool, slot_count_positiv
 // (`#[verifier::external]`); the spec proofs below exercise the
 // contracts via the exec wrappers above.
 /// Bridge contract: `reject_unsupported_live_frame_state` succeeds
-/// iff the production body returns Ok(()). Mirrors production body
-/// at `crates/vb_runtime/src/recovery.rs:73-82`.
+/// iff the typed cannot-resume witness is fully resumable. Mirrors
+/// production body at `crates/vb_runtime/src/recovery.rs:109-115`.
 pub assume_specification[ production::reject_unsupported_live_frame_state_pure ](
-    state: UnsupportedRecoveryState,
+    state: RecoveryCannotResumeState,
 ) -> (result: bool)
     ensures
         result == spec_reject_unsupported_passes(state),
@@ -538,8 +655,8 @@ pub assume_specification[ production::recover_runtime_summary_pure ](
 
 /// Bridge contract: `hydrate_run_frame` precondition decision.
 /// Mirrors production body at
-/// `crates/vb_storage/src/recovery/hydrate.rs:181-200` AND
-/// `crates/vb_runtime/src/recovery.rs:63-71`.
+/// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
+/// `crates/vb_runtime/src/recovery.rs:99-115`.
 pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -570,7 +687,7 @@ pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
 /// Bridge contract: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// always returns false (production always returns
 /// `UnsupportedFullRecoveryHydration`). Mirrors production body at
-/// `crates/vb_runtime/src/recovery.rs:146-154`.
+/// `crates/vb_runtime/src/recovery.rs:188-190`.
 pub assume_specification[ production::summary_recovery_boundary_hydrate_pure ]() -> (result: bool)
     ensures
         result == spec_summary_boundary_never_hydrates(),
@@ -621,6 +738,35 @@ pub assume_specification[ production::hydrate_dimensions_positive_pure ](
         result == (step_count_positive && slot_count_positive),
 ;
 
+/// Bridge contract: `RecoveryCannotResumeState::unsupported_reason`
+/// returns the priority-ordered canonical reason string. Mirrors
+/// production body at
+/// `crates/vb_storage/src/recovery/types.rs:801-832`.
+pub assume_specification[ <RecoveryCannotResumeState>::unsupported_reason_pure ](
+    state: RecoveryCannotResumeState,
+) -> (result: &'static str)
+    ensures
+        result == spec_unsupported_reason(state),
+;
+
+/// Bridge contract: `RecoveryCannotResumeState::from_seed` always
+/// produces a state where the seven `*_missing` full-RunState flags
+/// are true. Mirrors production body at
+/// `crates/vb_storage/src/recovery/types.rs:748-757`.
+pub assume_specification[ <RecoveryCannotResumeState>::from_seed_pure ](
+    seed: RecoveryFrameSeed,
+) -> (result: RecoveryCannotResumeState)
+    ensures
+        result == spec_classify_seed_cannot_resume(RecoveryCannotResumeState::RESUMABLE),
+        result.workflow_missing,
+        result.store_missing,
+        result.action_attempts_missing,
+        result.admission_missing,
+        result.collect_states_missing,
+        result.action_contracts_missing,
+        result.action_abi_digests_missing,
+;
+
 // ============================================================================
 // Proof fns — discharge contracts on production-bound exec fns
 // ============================================================================
@@ -632,9 +778,8 @@ pub assume_specification[ production::hydrate_dimensions_positive_pure ](
 // bridge is established by the `assume_specification` claims above;
 // the proofs discharge the corresponding spec-fn consequences.
 /// Proof: `reject_unsupported_live_frame_state` rejects when
-/// `slot_taint` is unsupported (production line
-/// `crates/vb_runtime/src/recovery.rs:75`).
-pub proof fn proof_reject_unsupported_slot_taint_alone(state: UnsupportedRecoveryState)
+/// `slot_taint` is unsupported in the 13-flag cannot-resume witness.
+pub proof fn proof_reject_unsupported_slot_taint_alone(state: RecoveryCannotResumeState)
     requires
         state.slot_taint,
     ensures
@@ -643,9 +788,8 @@ pub proof fn proof_reject_unsupported_slot_taint_alone(state: UnsupportedRecover
 }
 
 /// Proof: `reject_unsupported_live_frame_state` rejects when
-/// `slot_values` is unsupported (production line
-/// `crates/vb_runtime/src/recovery.rs:74`).
-pub proof fn proof_reject_unsupported_slot_values_alone(state: UnsupportedRecoveryState)
+/// `slot_values` is unsupported in the 13-flag cannot-resume witness.
+pub proof fn proof_reject_unsupported_slot_values_alone(state: RecoveryCannotResumeState)
     requires
         state.slot_values,
     ensures
@@ -654,9 +798,8 @@ pub proof fn proof_reject_unsupported_slot_values_alone(state: UnsupportedRecove
 }
 
 /// Proof: `reject_unsupported_live_frame_state` rejects when
-/// `action_payloads` is unsupported (production line
-/// `crates/vb_runtime/src/recovery.rs:76`).
-pub proof fn proof_reject_unsupported_action_payloads_alone(state: UnsupportedRecoveryState)
+/// `action_payloads` is unsupported in the 13-flag cannot-resume witness.
+pub proof fn proof_reject_unsupported_action_payloads_alone(state: RecoveryCannotResumeState)
     requires
         state.action_payloads,
     ensures
@@ -664,32 +807,35 @@ pub proof fn proof_reject_unsupported_action_payloads_alone(state: UnsupportedRe
 {
 }
 
-/// Proof: `reject_unsupported_live_frame_state` PASSES when only
-/// `pending_actions` is unsupported (D1: production does not check
-/// this flag; the runtime layer does not reject on pending_actions
-/// alone). Mirrors the production test
-/// `crates/vb_runtime/src/recovery/tests.rs:395-453`
-/// `pending_actions_hydration_round_trip`.
-pub proof fn proof_pending_actions_unsupported_does_not_block_hydration(
-    state: UnsupportedRecoveryState,
+/// Proof: `reject_unsupported_live_frame_state` rejects when
+/// `pending_actions` is true in the 13-flag cannot-resume witness.
+pub proof fn proof_pending_actions_unsupported_blocks_hydration(
+    state: RecoveryCannotResumeState,
 )
     requires
         state.pending_actions,
-        !state.slot_values,
-        !state.slot_taint,
-        !state.action_payloads,
     ensures
-        spec_reject_unsupported_passes(state),
+        !spec_reject_unsupported_passes(state),
 {
 }
 
-/// Proof: `reject_unsupported_live_frame_state` passes when all
-/// three rejection flags are false (regardless of `pending_actions`).
-pub proof fn proof_no_rejection_when_supported(state: UnsupportedRecoveryState)
+/// Proof: `reject_unsupported_live_frame_state` passes when all 13
+/// cannot-resume flags are false.
+pub proof fn proof_no_rejection_when_supported(state: RecoveryCannotResumeState)
     requires
         !state.slot_values,
         !state.slot_taint,
         !state.action_payloads,
+        !state.pending_actions,
+        !state.pending_timers,
+        !state.pending_asks,
+        !state.workflow_missing,
+        !state.store_missing,
+        !state.action_attempts_missing,
+        !state.admission_missing,
+        !state.collect_states_missing,
+        !state.action_contracts_missing,
+        !state.action_abi_digests_missing,
     ensures
         spec_reject_unsupported_passes(state),
 {
@@ -917,6 +1063,69 @@ pub proof fn proof_summary_only_never_hydrates_empty_frame()
 {
 }
 
+/// Proof: the production `RecoveryCannotResumeState::from_seed`
+/// always produces a state where every `*_missing` full-RunState
+/// flag is true. This is the type-system invariant that makes
+/// `RecoveryResumeStatus::Resumable` structurally unreachable from a
+/// frame seed (FINDING-001, BLOCKER 3). Mirrors production body at
+/// `crates/vb_storage/src/recovery/types.rs:748-757`
+/// (`mark_full_run_state_missing` at types.rs:759-767).
+pub proof fn proof_classify_seed_marks_all_full_state_missing()
+    ensures
+        ({
+            let result = spec_classify_seed_cannot_resume(RecoveryCannotResumeState::RESUMABLE);
+            &&& result.workflow_missing
+            &&& result.store_missing
+            &&& result.action_attempts_missing
+            &&& result.admission_missing
+            &&& result.collect_states_missing
+            &&& result.action_contracts_missing
+            &&& result.action_abi_digests_missing
+        }),
+{
+}
+
+/// Proof: priority-ordering invariant of `unsupported_reason`. When
+/// `slot_values` is true on the input state, the returned reason is
+/// `"slot_values"` (the highest-priority token in
+/// [`CANNOT_RESUME_REASONS`]).
+pub proof fn proof_unsupported_reason_priority_slot_values(state: RecoveryCannotResumeState)
+    requires
+        state.slot_values,
+    ensures
+        spec_unsupported_reason(state) == "slot_values",
+{
+}
+
+/// Proof: priority-ordering invariant of `unsupported_reason`. When
+/// only `workflow_missing` is true (the case every frame seed lands
+/// in after FINDING-001), the returned reason is `"workflow_missing"`.
+pub proof fn proof_unsupported_reason_workflow_only(state: RecoveryCannotResumeState)
+    requires
+        !state.slot_values,
+        !state.slot_taint,
+        !state.action_payloads,
+        !state.pending_actions,
+        !state.pending_timers,
+        !state.pending_asks,
+        state.workflow_missing,
+    ensures
+        spec_unsupported_reason(state) == "workflow_missing",
+{
+}
+
+/// Proof: `is_resumable` returns false for the post-`from_seed`
+/// classification. This is the canonical frame-seed invariant that
+/// excludes `RecoveryResumeStatus::Resumable` from the typed
+/// boundary.
+pub proof fn proof_classify_seed_is_never_resumable()
+    ensures
+        !spec_cannot_resume_is_resumable(
+            spec_classify_seed_cannot_resume(RecoveryCannotResumeState::RESUMABLE),
+        ),
+{
+}
+
 /// Proof: `hydrate_run_frame` precondition fails when snapshot.run
 /// does not match the requested run id (production line
 /// `crates/vb_storage/src/recovery/hydrate.rs:116-123`).
@@ -1018,9 +1227,10 @@ pub proof fn proof_hydrate_run_frame_pc_out_of_bounds_detected(
 }
 
 /// Proof: `hydrate_run_frame` precondition fails when the
-/// `reject_unsupported_live_frame_state` driver would reject (D1:
-/// production rejects on slot_values, slot_taint, or action_payloads
-/// being true). Mirrors `crates/vb_runtime/src/recovery.rs:73-82`.
+/// `reject_unsupported_live_frame_state` driver would reject. The
+/// runtime driver now rejects whenever the 13-flag cannot-resume
+/// witness is not fully resumable. Mirrors
+/// `crates/vb_runtime/src/recovery.rs:109-115`.
 pub proof fn proof_hydrate_run_frame_unsupported_rejection_propagates(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,

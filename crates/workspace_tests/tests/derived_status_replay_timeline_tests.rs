@@ -163,6 +163,7 @@ fn derive_status_waiting_action_from_ticket_action() {
             ticket: make_action_ticket(run, make_step_idx(1), make_action_id(7)),
             input: make_slot_idx(0),
             output: make_slot_idx(1),
+            action_abi_digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
         },
     ];
 

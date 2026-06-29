@@ -656,6 +656,7 @@ fn exact_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::NoRecoveryData { .. } => "NoRecoveryData",
         RecoveryError::TerminalStateMismatch { .. } => "TerminalStateMismatch",
         RecoveryError::FrameDimensionOverflow { .. } => "FrameDimensionOverflow",
+        RecoveryError::UnsupportedFrameSeed { .. } => "UnsupportedFrameSeed",
         _ => "RecoveryError",
     }
 }
