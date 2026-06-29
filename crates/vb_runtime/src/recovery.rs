@@ -3,8 +3,8 @@
 
 use vb_core::frame::{RunFrame, StepState};
 use vb_storage::recovery::{
-    RecoveredStepState, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
-    UnsupportedRecoveryState,
+    RecoveredStepState, RecoveryCannotResumeState, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
 
 use crate::{RuntimeError, RuntimeResult};
@@ -31,8 +31,22 @@ pub trait RuntimeRecoveryBoundary {
     /// Returns summary data that can be safely recovered from durable events.
     fn summary(&self) -> RecoveryRuntimeSummary;
 
+    /// Reports whether durable recovery evidence is sufficient to resume.
+    fn resume_status(&self) -> RecoveryResumeStatus;
+
     /// Attempts to hydrate a live run frame.
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame>;
+}
+
+/// Runtime-facing resume decision from durable recovery evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecoveryResumeStatus {
+    /// The frame seed has no missing evidence and no pending live boundary.
+    Resumable,
+    /// Recovery has precise evidence explaining why execution cannot resume.
+    CannotResume(RecoveryCannotResumeState),
+    /// Storage exposed summary data only; no live frame seed exists.
+    SummaryOnly,
 }
 
 /// Runtime recovery boundary backed by a durable live-frame seed.
@@ -53,11 +67,26 @@ impl DurableFrameRecoveryBoundary {
     pub const fn unsupported_state(&self) -> UnsupportedRecoveryState {
         self.seed.unsupported
     }
+
+    /// Returns the typed cannot-resume classification for this frame seed.
+    #[must_use]
+    pub fn cannot_resume_state(&self) -> RecoveryCannotResumeState {
+        self.seed.cannot_resume_state()
+    }
 }
 
 impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     fn summary(&self) -> RecoveryRuntimeSummary {
         self.seed.summary
+    }
+
+    fn resume_status(&self) -> RecoveryResumeStatus {
+        let state = self.seed.cannot_resume_state();
+        if state.is_resumable() {
+            RecoveryResumeStatus::Resumable
+        } else {
+            RecoveryResumeStatus::CannotResume(state)
+        }
     }
 
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
@@ -71,13 +100,10 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
 }
 
 fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
-    if seed.unsupported.slot_values
-        || seed.unsupported.slot_taint
-        || seed.unsupported.action_payloads
-    {
-        Err(RuntimeError::InvalidRecoveryHydration)
-    } else {
+    if seed.cannot_resume_state().is_resumable() {
         Ok(())
+    } else {
+        Err(RuntimeError::InvalidRecoveryHydration)
     }
 }
 
@@ -146,6 +172,10 @@ impl SummaryRecoveryBoundary {
 impl RuntimeRecoveryBoundary for SummaryRecoveryBoundary {
     fn summary(&self) -> RecoveryRuntimeSummary {
         self.summary
+    }
+
+    fn resume_status(&self) -> RecoveryResumeStatus {
+        RecoveryResumeStatus::SummaryOnly
     }
 
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {

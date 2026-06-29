@@ -321,18 +321,23 @@ fn given_legacy_collect_frame_extra_when_hydrating_full_journal_then_extra_is_no
     ];
 
     // When: full-journal hydration sees legacy frame extra bytes.
-    let frame = hydrate_run_frame_from_events(&events, run).map_err(|err| err.to_string())?;
+    // The storage layer now fails closed at the frame-seed boundary:
+    // a frame seed alone never carries the full RunState, so the
+    // hydration returns `UnsupportedFrameSeed`. The legacy frame
+    // extra is no longer misclassified as corrupt taint, but the
+    // frame cannot be built without the missing full-state
+    // components (workflow, store, action attempts, admission,
+    // collect states, action contracts, action ABI digests).
+    let result = hydrate_run_frame_from_events(&events, run);
 
-    // Then: legacy frame extra is not misclassified as corrupt taint metadata.
-    assert_eq!(
-        frame.read_slot(slot).map_err(|err| format!("{err:?}"))?,
-        &SlotValue::Bool(false)
-    );
-    // And: missing legacy taint provenance fails closed to Secret rather than defaulting Clean.
-    assert_eq!(
-        frame.read_taint(slot).map_err(|err| format!("{err:?}"))?,
-        Taint::Secret
-    );
+    // Then: the storage boundary rejects the hydration with the
+    // typed `UnsupportedFrameSeed` error, not corrupt taint.
+    match result {
+        Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) => {
+            assert_eq!(found, run, "rejected run must match input run");
+        }
+        other => return Err(format!("expected UnsupportedFrameSeed, got {other:?}")),
+    }
     Ok(())
 }
 

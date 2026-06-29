@@ -1,12 +1,15 @@
-use super::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary, SummaryRecoveryBoundary};
+use super::{
+    DurableFrameRecoveryBoundary, RecoveryResumeStatus, RuntimeRecoveryBoundary,
+    SummaryRecoveryBoundary,
+};
 use crate::RuntimeError;
 use crate::recovery::recovery_boundary_from_hydration;
-use vb_core::frame::StepState;
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::recovery::{
-    RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
-    RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState, RecoveryCannotResumeState,
+    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
+    UnsupportedRecoveryState,
 };
 
 #[test]
@@ -55,7 +58,7 @@ fn summary_recovery_boundary_rejects_full_frame_hydration() {
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
+fn durable_frame_recovery_boundary_rejects_frame_only_minimal_state() {
     let run = RunId::new(17);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -97,19 +100,26 @@ fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
     };
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
 
-    let frame = match boundary.hydrate_run_frame() {
-        Ok(frame) => frame,
-        Err(error) => {
-            panic!("frame hydration should succeed: {error}");
-        }
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_timers: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
     };
-
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.pc(), StepIdx::new(3));
-    assert_eq!(frame.step_count(), 4);
-    assert_eq!(frame.slot_count(), 0);
-    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Waiting));
-    assert_eq!(frame.step_state(StepIdx::new(3)), Ok(StepState::Succeeded));
+    assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
     assert_eq!(
         boundary.unsupported_state(),
         UnsupportedRecoveryState {
@@ -206,7 +216,7 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> {
+fn durable_frame_recovery_boundary_rejects_frame_only_slot_value_and_taint() {
     let run = RunId::new(22);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -244,13 +254,22 @@ fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Resu
             pending_actions: false,
         },
     };
-    let frame = DurableFrameRecoveryBoundary::from_seed(seed)
-        .hydrate_run_frame()
-        .map_err(|error| format!("slot hydration failed: {error:?}"))?;
-
-    assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(86)));
-    assert_eq!(frame.read_taint(SlotIdx::new(1)), Ok(Taint::Secret));
-    Ok(())
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+    let cannot_resume = RecoveryCannotResumeState {
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+    assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
 }
 
 #[test]
@@ -323,16 +342,24 @@ fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
     let boundary = recovery_boundary_from_hydration(hydration);
 
     assert_eq!(boundary.summary(), summary);
-    let frame = match boundary.hydrate_run_frame() {
-        Ok(f) => f,
-        Err(e) => panic!("hydration should succeed: {e}"),
+    let cannot_resume = RecoveryCannotResumeState {
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
     };
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.pc(), StepIdx::new(1));
-    assert_eq!(frame.step_count(), 2);
-    assert_eq!(frame.slot_count(), 4);
-    assert_eq!(frame.step_state(StepIdx::ZERO), Ok(StepState::Succeeded));
-    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Running));
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
 }
 
 #[test]
@@ -392,7 +419,7 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
 }
 
 #[test]
-fn pending_actions_hydration_round_trip() -> Result<(), String> {
+fn pending_actions_fail_closed_with_typed_cannot_resume_state() {
     let run = RunId::new(24);
     let pending_action = RecoveredPendingAction {
         step: StepIdx::new(2),
@@ -442,13 +469,26 @@ fn pending_actions_hydration_round_trip() -> Result<(), String> {
     };
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
 
-    let frame = boundary
-        .hydrate_run_frame()
-        .map_err(|error| format!("pending-action hydration must succeed: {error:?}"))?;
-
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.pc(), StepIdx::new(2));
-    assert_eq!(frame.step_state(StepIdx::new(2)), Ok(StepState::Asking));
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_actions: true,
+        pending_asks: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+    assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
     assert!(boundary.unsupported_state().pending_actions);
-    Ok(())
 }

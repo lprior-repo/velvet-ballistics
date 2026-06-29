@@ -16,13 +16,13 @@ use tempfile::TempDir;
 use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
-use vb_runtime::recovery::RuntimeRecoveryBoundary;
+use vb_runtime::recovery::{RecoveryResumeStatus, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
     ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
-    RecoveryTerminalState, RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events,
-    recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary,
-    recover_runtime_summary_with_expected, verify_digests,
+    RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, hydrate_run_frame,
+    hydrate_run_frame_from_events, recover_full_journal, recover_runtime_frame_seed,
+    recover_runtime_summary, recover_runtime_summary_with_expected, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -41,6 +41,18 @@ fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) {
             .append_strict(event)
             .expect("strict append should succeed");
     }
+}
+
+fn assert_unsupported_frame_seed<T: core::fmt::Debug>(
+    result: Result<T, RecoveryError>,
+    expected_run: RunId,
+    expected_reason: &str,
+) {
+    let Err(RecoveryError::UnsupportedFrameSeed { run, reason }) = result else {
+        panic!("expected UnsupportedFrameSeed, got: {result:?}");
+    };
+    assert_eq!(run, expected_run);
+    assert_eq!(reason, expected_reason);
 }
 
 fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
@@ -363,11 +375,11 @@ fn crash_recovery_run_accepted_only_returns_minimal_summary() {
 // SECTION 3: Hydration of workflow state from journal
 // ============================================================================
 
-/// Given a full journal with two completed steps
+/// Given a full journal with frame-only evidence and a missing slot payload
 /// When hydrate_run_frame_from_events is called
-/// Then the frame reconstructs exact PC, step count, and slot count
+/// Then recovery fails closed with exact slot_values reason
 #[test]
-fn hydration_from_events_reconstructs_exact_pc_and_dimensions() {
+fn hydration_from_events_rejects_frame_only_missing_slot_payload() {
     let run = RunId::new(10300);
     let digest = test_digest(0x07);
     let events = vec![
@@ -399,18 +411,12 @@ fn hydration_from_events_reconstructs_exact_pc_and_dimensions() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "hydration should succeed: {result:?}");
-
-    let frame = result.unwrap();
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.pc(), StepIdx::new(3));
-    assert_eq!(frame.step_count(), 4);
-    assert_eq!(frame.slot_count(), 6);
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 /// Given a journal with slot writes containing values
 /// When frame seed is recovered and hydrated through runtime boundary
-/// Then slot values and taint are preserved exactly
+/// Then slot evidence is preserved but frame-only resume is rejected
 #[test]
 fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
     let dir = TempDir::new().expect("temp dir should be created");
@@ -458,15 +464,34 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
     assert_eq!(slot.value, SlotValue::I64(77));
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    let frame = boundary
-        .hydrate_run_frame()
-        .expect("boundary hydration should succeed");
-    assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(77)));
+    // A frame seed alone is never resumable: the slot bytes
+    // survive (the recovery summary preserves them) but the full
+    // RunState cannot be rebuilt from journal events only. The
+    // runtime boundary must report CannotResume and refuse
+    // hydration.
+    let cannot_resume = RecoveryCannotResumeState {
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+    );
 }
 
 /// Given a journal with WaitScheduled and AskScheduled events
 /// When frame seed is recovered and hydrated
-/// Then steps are marked Waiting and Asking respectively
+/// Then step evidence is preserved but frame-only resume is rejected
 #[test]
 fn hydration_reconstructs_waiting_and_asking_step_states() {
     let dir = TempDir::new().expect("temp dir should be created");
@@ -529,22 +554,35 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
     assert_eq!(step1.state, RecoveredStepState::Asking);
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    let frame = boundary
-        .hydrate_run_frame()
-        .expect("boundary hydration should succeed");
+    // The frame seed alone is never resumable: it carries
+    // pending_actions, pending_timers, pending_asks, plus the
+    // seven full-RunState-missing flags. The runtime boundary
+    // must report CannotResume and refuse hydration.
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_timers: true,
+        pending_asks: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
     assert_eq!(
-        frame.step_state(StepIdx::ZERO),
-        Ok(vb_core::frame::StepState::Waiting)
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
     );
     assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(vb_core::frame::StepState::Asking)
+        boundary.hydrate_run_frame(),
+        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
     );
 }
 
 /// Given a journal with a RunFailed event
 /// When hydrate_run_frame_from_events is called
-/// Then the terminal state is Failed
+/// Then frame-only recovery is rejected as missing full RunState
 #[test]
 fn hydration_reconstructs_failed_terminal_state() {
     let run = RunId::new(10303);
@@ -569,10 +607,7 @@ fn hydration_reconstructs_failed_terminal_state() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration should succeed for failed run: {result:?}"
-    );
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 // ============================================================================
@@ -611,11 +646,10 @@ fn hydration_rejects_sequence_gap_in_events() {
     // Note: hydrate_run_frame_from_events processes available events without
     // strictly enforcing continuity. Sequence gap detection is the caller's
     // responsibility. With events at seq 0, 1, 3, the function hydrates from
-    // what it has (seq 0, 1) and ignores the gap.
-    assert!(
-        result.is_ok(),
-        "hydration should succeed with gapped-but-present events, got: {result:?}"
-    );
+    // what it has (seq 0, 1) and ignores the gap. The frame seed alone
+    // is still rejected because the full RunState cannot be rebuilt
+    // from journal events only.
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 /// Given an empty event list
@@ -857,9 +891,9 @@ fn checkpoint_snapshot_plus_tail_hydrates_using_snapshot_watermark() {
 // SECTION 7: Incremental recovery
 // ============================================================================
 
-/// Given snapshot at seq 3 and tail events at seq 4-5
+/// Given snapshot at seq 3 and a tail slot write with no payload
 /// When hydrate_run_frame is called
-/// Then only tail events after the watermark are applied
+/// Then the missing slot payload is rejected exactly
 #[test]
 fn incremental_recovery_snapshot_plus_tail_applies_only_events_after_watermark() {
     let run = RunId::new(10700);
@@ -891,14 +925,7 @@ fn incremental_recovery_snapshot_plus_tail_applies_only_events_after_watermark()
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_ok(),
-        "incremental recovery should succeed: {result:?}"
-    );
-
-    let frame = result.unwrap();
-    assert_eq!(frame.pc(), StepIdx::new(2));
-    assert_eq!(frame.step_count(), 3);
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 /// Given snapshot at seq 2 and tail containing an event at seq 1 (before watermark)
@@ -1205,10 +1232,7 @@ fn multiple_noncontiguous_slot_writes_derive_correct_slot_count() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "noncontiguous slots should succeed");
-
-    let frame = result.unwrap();
-    assert_eq!(frame.slot_count(), 8);
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 /// Given events with actions scheduled and then completed
@@ -1663,7 +1687,7 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
 
 /// Given an UnsupportedRecoveryState with pending_actions=true
 /// When DurableFrameRecoveryBoundary hydrates
-/// Then hydration succeeds and the unsupported state remains observable
+/// Then hydration fails closed and the unsupported state remains observable
 #[test]
 fn runtime_boundary_exposes_supported_pending_actions_state() {
     let run = RunId::new(11100);
@@ -1698,9 +1722,15 @@ fn runtime_boundary_exposes_supported_pending_actions_state() {
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
+    // A frame seed alone never carries the full RunState, so the
+    // boundary must report CannotResume and refuse hydration even
+    // when the storage-level unsupported state is configured.
     assert!(
-        result.is_ok(),
-        "pending actions are frame-hydratable: {result:?}"
+        matches!(
+            result,
+            Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+        ),
+        "frame seed alone must be rejected: {result:?}"
     );
     assert!(boundary.unsupported_state().pending_actions);
 }
@@ -1780,14 +1810,130 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 }
 
 // ============================================================================
-// SECTION 12: Advanced hydration scenarios
+// SECTION 12: Pending action journal crash/restart integration
+// ============================================================================
+
+/// Given a real `FjallJournal` with events including a
+/// `JournalEvent::ActionScheduled` for an action that never finishes
+/// When the journal handle is dropped (simulating a crash) and the
+/// journal is reopened on the same path
+/// Then `recover_runtime_frame_seed` reconstructs the seed with the
+/// pending action recorded, `DurableFrameRecoveryBoundary::resume_status`
+/// reports `CannotResume` with `pending_actions: true` (plus the
+/// full-RunState-missing flags), and `boundary.hydrate_run_frame()`
+/// returns `Err(RuntimeError::InvalidRecoveryHydration)`. The
+/// storage-level `hydrate_run_frame_from_events` also returns
+/// `Err(RecoveryError::UnsupportedFrameSeed)` so the fail-closed
+/// surface is uniform across the runtime and storage layers.
+///
+/// This is the deterministic crash/restart test called out by
+/// FINDING-005 in `vb-wy33p.11`. The journal is opened twice on the
+/// same `TempDir` so the test exercises the actual durable boundary
+/// (no in-memory mocking). The events are written strictly so the
+/// sequences are well-defined and the assertion is reproducible
+/// without timing variance.
+#[test]
+fn pending_action_crash_restart_fails_closed_with_typed_rejection() {
+    let dir = TempDir::new().expect("temp dir should be created");
+    let run = RunId::new(11300);
+    let digest = test_digest(0x2B);
+    let action = ActionId::new(0x5A);
+
+    // First lifecycle: write events for a run whose ActionScheduled
+    // never resolves, then drop the journal to simulate a crash.
+    {
+        let journal = open_journal(&dir);
+        write_events_strict(
+            &journal,
+            &[
+                JournalEvent::RunAccepted {
+                    run,
+                    seq: EventSeq::new(0),
+                    workflow: digest,
+                },
+                JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(1),
+                    step: StepIdx::new(2),
+                    attempt: 1,
+                },
+                JournalEvent::ActionScheduled {
+                    run,
+                    seq: EventSeq::new(2),
+                    step: StepIdx::new(2),
+                    action,
+                    attempt: 1,
+                },
+            ],
+        );
+    }
+
+    // Second lifecycle: reopen the journal on the same path. The
+    // pending action MUST still be observable.
+    let journal = open_journal(&dir);
+    let seed =
+        recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+
+    let pending = seed
+        .pending_actions
+        .iter()
+        .find(|entry| entry.action == action)
+        .expect("pending action must survive journal reopen");
+    assert_eq!(pending.step, StepIdx::new(2));
+    assert_eq!(seed.pending_actions.len(), 1);
+
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_actions: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+    );
+
+    // The storage-layer entry point must use the same typed
+    // rejection. Re-run the assertion against a fresh
+    // `hydrate_run_frame_from_events` call so the typed
+    // `UnsupportedFrameSeed` surface is verified end-to-end.
+    let events: Vec<JournalEvent> = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed after reopen");
+    let storage_result = hydrate_run_frame_from_events(&events, run);
+    let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = storage_result else {
+        panic!("expected UnsupportedFrameSeed from storage layer, got: {storage_result:?}");
+    };
+    assert_eq!(found, run);
+    assert!(
+        !reason.is_empty(),
+        "UnsupportedFrameSeed reason must be non-empty"
+    );
+}
+
+// ============================================================================
+// SECTION 13: Advanced hydration scenarios
 // ============================================================================
 
 /// Given events with a SlotWrittenEvent having None value (no payload)
 /// When hydrate_run_frame_from_events is called
-/// Then hydration succeeds and slot is reconstructible
+/// Then the storage layer rejects with `UnsupportedFrameSeed` (a
+/// `None` slot value is unsupported by the runtime hydration boundary
+/// and a frame seed alone never carries the full RunState).
 #[test]
-fn slot_written_with_none_value_hydrates_successfully() {
+fn slot_written_with_none_value_is_rejected_typed() {
     let run = RunId::new(11200);
     let digest = test_digest(0x28);
 
@@ -1820,10 +1966,7 @@ fn slot_written_with_none_value_hydrates_successfully() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration with None slot value should succeed: {result:?}"
-    );
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 /// Given a full run with SlotWrittenEvent having None values
@@ -1913,10 +2056,7 @@ fn retry_scheduled_event_reconstructed_in_hydration() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration with retry should succeed: {result:?}"
-    );
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 // ============================================================================

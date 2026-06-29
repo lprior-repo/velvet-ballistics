@@ -8,8 +8,9 @@ mod tests {
         recover_runtime_frame_seed_from_events, summarize_recovery_events,
     };
     use crate::recovery::types::{
-        ActionReplayTracker, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState,
-        UnsupportedRecoveryState,
+        ActionReplayTracker, RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState,
+        RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryRuntimeSummary,
+        RecoveryTerminalState, UnsupportedRecoveryState,
     };
     use crate::{EventSeq, JournalEvent};
     use vb_core::value::ConstValue;
@@ -295,6 +296,58 @@ mod tests {
         assert!(!union.slot_taint);
         assert!(!union.action_payloads);
         assert!(union.pending_actions);
+    }
+
+    #[test]
+    fn recovery_cannot_resume_state_prioritizes_exact_evidence_reason() {
+        let state = RecoveryCannotResumeState {
+            slot_values: true,
+            workflow_missing: true,
+            store_missing: true,
+            ..RecoveryCannotResumeState::RESUMABLE
+        };
+
+        assert!(!state.is_resumable());
+        assert_eq!(state.unsupported_reason(), "slot_values");
+    }
+
+    #[test]
+    fn recovery_cannot_resume_state_classifies_pending_action() {
+        let run = RunId::new(77);
+        let seed = RecoveryFrameSeed {
+            summary: RecoveryRuntimeSummary {
+                run,
+                first_seq: EventSeq::ZERO,
+                last_seq: EventSeq::ZERO,
+                workflow: Some(sample_digest(77)),
+                steps_started: 1,
+                steps_succeeded: 0,
+                actions_scheduled: 1,
+                actions_resolved: 0,
+                suspensions: 1,
+                slots_written: 0,
+                terminal: None,
+            },
+            first_step: StepIdx::ZERO,
+            step_count: 1,
+            slot_count: 0,
+            pc: StepIdx::ZERO,
+            steps: vec![RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Asking,
+            }],
+            slots: Vec::new(),
+            pending_actions: vec![RecoveredPendingAction {
+                step: StepIdx::ZERO,
+                action: ActionId::new(1),
+            }],
+            unsupported: UnsupportedRecoveryState::SUPPORTED,
+        };
+        let state = seed.cannot_resume_state();
+
+        assert!(state.pending_actions);
+        assert!(state.pending_asks);
+        assert_eq!(state.unsupported_reason(), "pending_actions");
     }
 
     // =========================================================================
@@ -1112,6 +1165,7 @@ mod tests {
                 RecoveryError::MissingSnapshot { .. } => "missing_snapshot",
                 RecoveryError::TerminalStateMismatch { .. } => "terminal_state_mismatch",
                 RecoveryError::FrameDimensionOverflow { .. } => "frame_dimension_overflow",
+                RecoveryError::UnsupportedFrameSeed { .. } => "unsupported_frame_seed",
             }
         }
         let _ = _exhaustive_match;

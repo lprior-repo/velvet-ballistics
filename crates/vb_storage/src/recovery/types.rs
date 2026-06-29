@@ -142,6 +142,19 @@ pub enum RecoveryError {
         /// Run identifier.
         run: RunId,
     },
+    /// Recovery frame seed cannot support a live `RunState` (workflow,
+    /// store, action attempts, admission, collect states, action
+    /// contracts, or action ABI digests are not present in durable
+    /// events). The runtime cannot resume execution from a frame-only
+    /// seed; callers must reconcile via summary-only observation or
+    /// restart from scratch.
+    #[error("recovery frame seed is not resumable for run {run:?}: {reason}")]
+    UnsupportedFrameSeed {
+        /// Run identifier.
+        run: RunId,
+        /// Canonical reason string for the cannot-resume classification.
+        reason: String,
+    },
 }
 
 // Manual `PartialEq, Eq` impl: `RecoveryError::Journal(_)` wraps
@@ -231,6 +244,16 @@ impl PartialEq for RecoveryError {
                 Self::FrameDimensionOverflow { run: lr },
                 Self::FrameDimensionOverflow { run: rr },
             ) => lr == rr,
+            (
+                Self::UnsupportedFrameSeed {
+                    run: lr,
+                    reason: ld,
+                },
+                Self::UnsupportedFrameSeed {
+                    run: rr,
+                    reason: rd,
+                },
+            ) => lr == rr && ld == rd,
             _ => false,
         }
     }
@@ -646,6 +669,182 @@ pub struct RecoveryFrameSeed {
     pub pending_actions: Vec<RecoveredPendingAction>,
     /// Exact pieces of live runtime state not represented by durable events yet.
     pub unsupported: UnsupportedRecoveryState,
+}
+
+/// Typed recovery decision for live resume eligibility.
+///
+/// This is deliberately wider than [`UnsupportedRecoveryState`]: a frame seed
+/// can have supported slot bytes and still be unsafe to resume because live
+/// runtime boundary state is not represented by `RunFrame`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveryCannotResumeState {
+    /// Slot values are not present or cannot be reconstructed.
+    pub slot_values: bool,
+    /// Slot taint is not present or cannot be reconstructed.
+    pub slot_taint: bool,
+    /// Action payload/result bodies are not present in durable records.
+    pub action_payloads: bool,
+    /// An unresolved action boundary exists without live queue reconstruction.
+    pub pending_actions: bool,
+    /// A wait/timer boundary exists without timer-wheel authority.
+    pub pending_timers: bool,
+    /// An ask boundary exists without ask-ticket/resume-slot authority.
+    pub pending_asks: bool,
+    /// A compiled workflow is required by the live runtime but is not represented.
+    pub workflow_missing: bool,
+    /// A cold value store is required by the live runtime but is not represented.
+    pub store_missing: bool,
+    /// Per-Do-step action attempt counters are required but not represented.
+    pub action_attempts_missing: bool,
+    /// Admission metadata is required by the live runtime but is not represented.
+    pub admission_missing: bool,
+    /// Per-run collect pagination state is required but not represented.
+    pub collect_states_missing: bool,
+    /// Validated action contracts are required but not represented.
+    pub action_contracts_missing: bool,
+    /// Dense action ABI digest table is required but not represented.
+    pub action_abi_digests_missing: bool,
+}
+
+impl RecoveryCannotResumeState {
+    /// Fully resumable state: no missing evidence and no pending live boundary.
+    pub const RESUMABLE: Self = Self {
+        slot_values: false,
+        slot_taint: false,
+        action_payloads: false,
+        pending_actions: false,
+        pending_timers: false,
+        pending_asks: false,
+        workflow_missing: false,
+        store_missing: false,
+        action_attempts_missing: false,
+        admission_missing: false,
+        collect_states_missing: false,
+        action_contracts_missing: false,
+        action_abi_digests_missing: false,
+    };
+
+    /// Starts classification from storage-level unsupported evidence.
+    #[must_use]
+    pub const fn from_unsupported(unsupported: UnsupportedRecoveryState) -> Self {
+        Self {
+            slot_values: unsupported.slot_values,
+            slot_taint: unsupported.slot_taint,
+            action_payloads: unsupported.action_payloads,
+            pending_actions: unsupported.pending_actions,
+            pending_timers: false,
+            pending_asks: false,
+            workflow_missing: false,
+            store_missing: false,
+            action_attempts_missing: false,
+            admission_missing: false,
+            collect_states_missing: false,
+            action_contracts_missing: false,
+            action_abi_digests_missing: false,
+        }
+    }
+
+    /// Classifies a recovered frame seed as resumable or cannot-resume.
+    #[must_use]
+    pub fn from_seed(seed: &RecoveryFrameSeed) -> Self {
+        let mut state = Self::from_unsupported(seed.unsupported);
+        state.pending_actions = state.pending_actions || !seed.pending_actions.is_empty();
+        for entry in &seed.steps {
+            state.classify_step_state(entry.state);
+        }
+        state.mark_full_run_state_missing();
+        state
+    }
+
+    const fn mark_full_run_state_missing(&mut self) {
+        self.workflow_missing = true;
+        self.store_missing = true;
+        self.action_attempts_missing = true;
+        self.admission_missing = true;
+        self.collect_states_missing = true;
+        self.action_contracts_missing = true;
+        self.action_abi_digests_missing = true;
+    }
+
+    fn classify_step_state(&mut self, state: RecoveredStepState) {
+        match state {
+            RecoveredStepState::Waiting => {
+                self.pending_timers = true;
+            }
+            RecoveredStepState::Asking => {
+                self.pending_asks = true;
+            }
+            RecoveredStepState::Running
+            | RecoveredStepState::Succeeded
+            | RecoveredStepState::Failed => {}
+        }
+    }
+
+    /// Returns true only when every cannot-resume flag is false.
+    #[must_use]
+    pub const fn is_resumable(self) -> bool {
+        !self.slot_values
+            && !self.slot_taint
+            && !self.action_payloads
+            && !self.pending_actions
+            && !self.pending_timers
+            && !self.pending_asks
+            && !self.workflow_missing
+            && !self.store_missing
+            && !self.action_attempts_missing
+            && !self.admission_missing
+            && !self.collect_states_missing
+            && !self.action_contracts_missing
+            && !self.action_abi_digests_missing
+    }
+
+    /// Canonical reason string for a typed `UnsupportedFrameSeed` error.
+    #[must_use]
+    pub const fn unsupported_reason(self) -> &'static str {
+        if self.slot_values {
+            "slot_values"
+        } else if self.slot_taint {
+            "slot_taint"
+        } else if self.action_payloads {
+            "action_payloads"
+        } else if self.pending_actions {
+            "pending_actions"
+        } else if self.pending_timers {
+            "pending_timers"
+        } else if self.pending_asks {
+            "pending_asks"
+        } else if self.workflow_missing {
+            "workflow_missing"
+        } else if self.store_missing {
+            "store_missing"
+        } else if self.action_attempts_missing {
+            "action_attempts_missing"
+        } else if self.admission_missing {
+            "admission_missing"
+        } else if self.collect_states_missing {
+            "collect_states_missing"
+        } else if self.action_contracts_missing {
+            "action_contracts_missing"
+        } else if self.action_abi_digests_missing {
+            "action_abi_digests_missing"
+        } else {
+            "resumable"
+        }
+    }
+}
+
+impl RecoveryFrameSeed {
+    /// Returns the exact cannot-resume classification for this seed.
+    #[must_use]
+    pub fn cannot_resume_state(&self) -> RecoveryCannotResumeState {
+        RecoveryCannotResumeState::from_seed(self)
+    }
+
+    /// Returns true when this seed has enough evidence to hydrate a live frame safely.
+    #[must_use]
+    pub fn is_resumable(&self) -> bool {
+        self.cannot_resume_state().is_resumable()
+    }
 }
 
 /// Snapshot of a run's runtime state at a specific event sequence.

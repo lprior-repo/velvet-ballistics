@@ -318,6 +318,11 @@ fn increment_executed(
 /// Returns `RecoveryError` when:
 /// - Events are empty
 /// - Derived dimensions are zero or overflow `u16`
+/// - The recovered frame seed is cannot-resume (e.g. pending
+///   actions, pending timers, pending asks, unsupported slot
+///   values/taint/payloads, or missing full-RunState components
+///   like workflow, store, action attempts, admission, collect
+///   states, action contracts, or action ABI digests).
 pub fn hydrate_run_frame_from_events(
     events: &[JournalEvent],
     run_id: RunId,
@@ -328,6 +333,13 @@ pub fn hydrate_run_frame_from_events(
 
     let seed = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(events)?;
     ensure_nonzero_step_count(seed.step_count)?;
+    let cannot_resume = seed.cannot_resume_state();
+    if !cannot_resume.is_resumable() {
+        return Err(RecoveryError::UnsupportedFrameSeed {
+            run: run_id,
+            reason: String::from(cannot_resume.unsupported_reason()),
+        });
+    }
     let mut frame = build_frame_from_seed(&seed, run_id)?;
     apply_seed_step_states(&mut frame, &seed.steps)?;
     apply_seed_slots(&mut frame, &seed.slots)?;

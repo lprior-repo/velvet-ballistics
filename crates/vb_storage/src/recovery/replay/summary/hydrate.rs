@@ -118,7 +118,7 @@ fn initialized_recovered_slots(
     frame: &vb_core::RunFrame,
     target: StepIdx,
 ) -> RecoveryResult<Vec<RecoveredSlotEntry>> {
-    Ok(frame
+    let mut entries: Vec<RecoveredSlotEntry> = frame
         .initialized_slots()
         .map_err(|_| RecoveryError::ReplayDivergence {
             step: target,
@@ -126,7 +126,13 @@ fn initialized_recovered_slots(
         })?
         .into_iter()
         .map(|(slot, value, taint)| RecoveredSlotEntry { slot, value, taint })
-        .collect::<Vec<_>>())
+        .collect();
+    // Sort by slot index so seeded replay output is deterministic
+    // across runs. The source collection's iteration order is not
+    // stable, so without this sort the recovered slot vec would
+    // differ between runs that share the same event log.
+    entries.sort_by_key(|entry| entry.slot);
+    Ok(entries)
 }
 
 impl RecoveredSlots {

@@ -276,17 +276,21 @@ pub const fn recovery_observed_dimension_is_positive(max_index: Option<u16>, cou
 }
 
 fn recovered_steps(step_states: HashMap<StepIdx, RecoveredStepState>) -> Vec<RecoveredStepEntry> {
-    step_states
+    let mut entries: Vec<RecoveredStepEntry> = step_states
         .into_iter()
         .map(|(step, state)| RecoveredStepEntry { step, state })
-        .collect()
+        .collect();
+    entries.sort_by_key(|entry| entry.step);
+    entries
 }
 
 fn recovered_pending_actions(
     pending_actions: HashSet<(ActionId, StepIdx)>,
 ) -> Vec<RecoveredPendingAction> {
-    pending_actions
+    let mut entries: Vec<RecoveredPendingAction> = pending_actions
         .into_iter()
         .map(|(action, step)| RecoveredPendingAction { step, action })
-        .collect()
+        .collect();
+    entries.sort_by_key(|entry| (entry.step, entry.action));
+    entries
 }

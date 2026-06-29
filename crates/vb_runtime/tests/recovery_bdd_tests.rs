@@ -38,6 +38,18 @@ fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) {
     }
 }
 
+fn assert_unsupported_frame_seed<T: core::fmt::Debug>(
+    result: Result<T, RecoveryError>,
+    expected_run: RunId,
+    expected_reason: &str,
+) {
+    let Err(RecoveryError::UnsupportedFrameSeed { run, reason }) = result else {
+        panic!("expected UnsupportedFrameSeed, got: {result:?}");
+    };
+    assert_eq!(run, expected_run);
+    assert_eq!(reason, expected_reason);
+}
+
 fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
         run,
@@ -313,20 +325,9 @@ fn snapshot_plus_tail_applies_tail_after_watermark() {
 
     let _journal = open_journal(&dir);
 
-    // GA-003a: Tail applied after snapshot watermark succeeds
+    // GA-003a: Tail after snapshot watermark with a missing slot payload fails closed.
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    let frame =
-        result.expect("hydrate_run_frame should succeed when tail events are after snapshot seq");
-    assert_eq!(
-        frame.pc(),
-        StepIdx::new(1),
-        "PC must advance to step 1 after tail StepStarted"
-    );
-    assert_eq!(
-        frame.step_count(),
-        2,
-        "step_count = max_step_idx + 1 = 1 + 1 = 2"
-    );
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 // ---------------------------------------------------------------------------
@@ -2217,10 +2218,7 @@ fn slot_written_none_value_reconstructed_correctly() {
         ],
         run,
     );
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with None slot value"
-    );
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 #[test]
@@ -2268,16 +2266,7 @@ fn multiple_slots_different_indices_reconstructed() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with multiple non-contiguous slots"
-    );
-    let frame = result.unwrap();
-    assert_eq!(
-        frame.slot_count(),
-        6,
-        "slot_count should cover max slot index + 1"
-    );
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 #[test]
@@ -2301,10 +2290,7 @@ fn step_started_event_advances_pc() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "should hydrate frame with step started");
-    let frame = result.unwrap();
-    assert_eq!(frame.pc(), StepIdx::new(3), "PC should be at step 3");
-    assert_eq!(frame.step_count(), 4, "step_count should be max_step + 1");
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 #[test]
@@ -2343,10 +2329,14 @@ fn action_scheduled_then_completed_reconstructed() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with completed action"
-    );
+    // A frame seed alone never carries the full RunState, so the
+    // storage boundary must reject the hydration with
+    // `UnsupportedFrameSeed`. The legacy event-only frame
+    // reconstruction that this test used to exercise is no
+    // longer reachable from the public API; the run state has
+    // to be rebuilt by the higher-level runtime boundary that
+    // supplies the missing full-state components.
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 #[test]
@@ -2385,10 +2375,14 @@ fn action_scheduled_then_failed_reconstructed() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with failed action"
-    );
+    // A frame seed alone never carries the full RunState, so the
+    // storage boundary must reject the hydration with
+    // `UnsupportedFrameSeed`. The legacy event-only frame
+    // reconstruction that this test used to exercise is no
+    // longer reachable from the public API; the run state has
+    // to be rebuilt by the higher-level runtime boundary that
+    // supplies the missing full-state components.
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 #[test]
@@ -2418,10 +2412,14 @@ fn retry_scheduled_event_reconstructed() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with retry scheduled"
-    );
+    // A frame seed alone never carries the full RunState, so the
+    // storage boundary must reject the hydration with
+    // `UnsupportedFrameSeed`. The legacy event-only frame
+    // reconstruction that this test used to exercise is no
+    // longer reachable from the public API; the run state has
+    // to be rebuilt by the higher-level runtime boundary that
+    // supplies the missing full-state components.
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 #[test]
@@ -2450,10 +2448,14 @@ fn ask_scheduled_and_answered_events_reconstructed() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "should reconstruct frame with retry scheduled events"
-    );
+    // A frame seed alone never carries the full RunState, so the
+    // storage boundary must reject the hydration with
+    // `UnsupportedFrameSeed`. The legacy event-only frame
+    // reconstruction that this test used to exercise is no
+    // longer reachable from the public API; the run state has
+    // to be rebuilt by the higher-level runtime boundary that
+    // supplies the missing full-state components.
+    assert_unsupported_frame_seed(result, run, "workflow_missing");
 }
 
 #[test]
@@ -2602,7 +2604,7 @@ fn watermark_preserves_snapshot_data_beyond_tail() {
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(result.is_ok(), "tail after watermark should succeed");
+    assert_unsupported_frame_seed(result, run, "slot_values");
 }
 
 #[test]
