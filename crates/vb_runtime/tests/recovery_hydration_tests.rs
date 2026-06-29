@@ -1810,14 +1810,36 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 }
 
 // ============================================================================
-// SECTION 12: Pending action journal crash/restart integration
+// SECTION 12: Pending action journal restart integration
 // ============================================================================
+//
+// TERMINOLOGY NOTE (FINDING-005 from vb-wy33p.11 review):
+// This section exercises the TYPED-REJECTION contract surface via the
+// persisted-journal reopen path; it is NOT a crash-survival test.
+// Rounds 1-4 of this bead inflated the test name with "crash" while
+// the body used `drop(journal)` after per-event `PersistMode::SyncAll`,
+// which is functionally a clean shutdown (each event has already been
+// fsynced before `drop` runs). Reviewers across rounds 2-3 correctly
+// flagged this mismatch between name and behavior.
+//
+// vb-wy33p.11 round 5 takes the HONEST DOWNGRADE path the original
+// brief allowed: rename to reflect what the test actually is, and add
+// a TODO tracking the real crash-survival test as out-of-scope.
+//
+// TODO(vb-wy33p.11-followup): True crash-survival test pending: requires
+// a multi-process harness (spawn `std::process::Command::new(...)` on
+// a child test binary that calls `append_journaled` (non-fsync) on
+// the Fjall partition and `std::process::exit(0)` before graceful
+// close). Parent reopens the WAL, replays, asserts typed rejection.
+// Tracked as a follow-up bead; this test remains the
+// typed-rejection contract surface (FINDING-001 + FINDING-005
+// contract witness).
 
 /// Given a real `FjallJournal` with events including a
 /// `JournalEvent::ActionScheduled` for an action that never finishes
-/// When the journal handle is dropped (simulating a clean shutdown
-/// after per-event `PersistMode::SyncAll`) and the journal is reopened
-/// on the same path
+/// When the journal is reopened on the same `TempDir` after a clean
+/// close (each event already `PersistMode::SyncAll`'d via
+/// `write_events_strict`)
 /// Then `recover_runtime_frame_seed` reconstructs the seed with the
 /// pending action recorded, `DurableFrameRecoveryBoundary::resume_status`
 /// reports `CannotResume` with `pending_actions: true` (plus the
@@ -1827,28 +1849,28 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 /// `Err(RecoveryError::UnsupportedFrameSeed)` so the fail-closed
 /// surface is uniform across the runtime and storage layers.
 ///
-/// This is the deterministic persisted/restart test called out by
+/// This is the typed-rejection contract test called out by
 /// FINDING-005 in `vb-wy33p.11`. The journal is opened twice on the
 /// same `TempDir` so the test exercises the actual durable boundary
 /// (no in-memory mocking). The events are written strictly so the
 /// sequences are well-defined and the assertion is reproducible
 /// without timing variance.
 ///
-/// NOTE on terminology: `drop` simulates a clean shutdown after
-/// per-event `PersistMode::SyncAll`; this is the BEAD'S narrowing of
-/// "crash" to typed-rejection classification, NOT a power-loss WAL
-/// replay test. A true power-loss test would require corrupting the
-/// WAL mid-write and asserting partial-record rejection; that is out
-/// of scope for this test.
+/// NOTE on terminology: this is the TYPED-REJECTION CONTRACT test,
+/// NOT a power-loss WAL replay test. A true power-loss test would
+/// require a multi-process harness that writes events via the
+/// non-fsync `append_journaled` path and `std::process::exit(0)`s
+/// without graceful close; that is tracked as a follow-up bead.
 #[test]
-fn pending_action_persisted_restart_fails_closed_with_typed_rejection() {
+fn pending_action_persisted_restart_via_appends_with_syncall() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(11300);
     let digest = test_digest(0x2B);
     let action = ActionId::new(0x5A);
 
     // First lifecycle: write events for a run whose ActionScheduled
-    // never resolves, then drop the journal to simulate a crash.
+    // never resolves, with per-event `PersistMode::SyncAll` (clean
+    // shutdown semantics).
     {
         let journal = open_journal(&dir);
         write_events_strict(

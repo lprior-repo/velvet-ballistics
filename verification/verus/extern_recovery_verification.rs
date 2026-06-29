@@ -188,9 +188,43 @@
 //         proof `proof_unsupported_reason_first_match_wins` in
 //         `recovery_verification.rs` discharges the priority invariant.
 //         `RecoveryCannotResumeState::unsupported_reason()` is
-//         refactored to a const-table walk over `CANNOT_RESUME_REASONS`
-//         + `flag_at` helper at production
-//         `types.rs:820-855`.
+//         refactored to a priority-typed (`CannotResumePriority`)
+//         first-match dispatch at production `types.rs:801-887`,
+//         with each helper bounded to <=25 lines to satisfy Farley.
+//         The mirror's `unsupported_reason_pure` body remains
+//         `#[verifier::external]`-opaque; the priority ordering is
+//         discharged over `spec_unsupported_reason` in the spec.
+//
+//   - D4: `RecoveryCannotResumeState::from_seed`,
+//         `mark_full_run_state_missing`,
+//         `RecoveryCannotResumeState::unsupported_reason`, and
+//         `RecoveryCannotResumeState::from_unsupported` are production
+//         decision functions whose full bodies are
+//         `#[verifier::external]` in this Verus artifact. Their
+//         behavior is mirrored via the `from_seed_pure` /
+//         `unsupported_reason_pure` / `RESUMABLE` const / and the
+//         helper decision fns in this file, whose bodies are also
+//         `#[verifier::external]`-marked. Spec proofs (e.g.
+//         `proof_classify_seed_marks_all_full_state_missing` in
+//         `recovery_verification.rs`) verify properties of the MIRROR,
+//         not the production bodies. The production binding is WEAK
+//         (via `production_inner/recovery_verification_production.rs`
+//         field-shape drift-detection stub) per AGENTS.md WEAK-binding
+//         classification. This bead did NOT add STRONG production
+//         binding via `#[path =
+//         "../../crates/vb_storage/src/recovery/types.rs"]` for these
+//         decision fns because production `types.rs` transitively
+//         depends on `serde::{Deserialize, Serialize}` (line 10),
+//         `#[derive(thiserror::Error)]` (line 37), and `#[derive(...
+//         Serialize, Deserialize)]` on `RecoveryError` variants
+//         downstream — these proc-macro derives cannot be processed
+//         by `verus --crate-type=lib --no-lifetime` without
+//         registering the proc-macro crates. Tracking: a future bead
+//         would need to either port the production types to a
+//         no-proc-macro mirror (downgrading serde derives to manual
+//         impls) or split the dependency graph, OR rewrite the proof
+//         surface against a stable Rust->Verus translation via a tool
+//         like `cargo-verus`.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

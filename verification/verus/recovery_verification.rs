@@ -141,13 +141,47 @@
 //         (`verification/verus/extern_recovery_verification.rs`).
 //         The priority ordering of the 13 reason tokens matches
 //         production line-by-line. `RecoveryCannotResumeState::unsupported_reason()`
-//         is refactored to a const-table walk over
-//         `CANNOT_RESUME_REASONS` + `flag_at` helper at production
-//         `types.rs:820-855`. The spec proof
+//         is refactored to a priority-typed (`CannotResumePriority`)
+//         first-match dispatch (helper `CannotResumePriority::first_match`
+//         + `CannotResumePriority::reason`) at production
+//         `types.rs:801-887`, with each helper bounded to <=25 lines
+//         to satisfy Farley. The spec proof
 //         `proof_unsupported_reason_first_match_wins` below
 //         discharges the priority invariant: when a higher-priority
 //         flag is true, the returned reason is the highest-priority
 //         matching token, never a later-priority one.
+//
+//   - D4: `RecoveryCannotResumeState::from_seed`,
+//         `mark_full_run_state_missing`,
+//         `RecoveryCannotResumeState::unsupported_reason`, and
+//         `RecoveryCannotResumeState::from_unsupported` are production
+//         decision functions whose full bodies are
+//         `#[verifier::external]` in this Verus artifact. Their
+//         behavior is mirrored via the `from_seed_pure` /
+//         `unsupported_reason_pure` / `from_unsupported_pure` exec
+//         wrappers in
+//         `verification/verus/extern_recovery_verification.rs`, whose
+//         bodies are also `#[verifier::external]`-marked. Spec proofs
+//         (e.g. `proof_classify_seed_marks_all_full_state_missing`)
+//         verify properties of the MIRROR, not the production bodies.
+//         The production binding is WEAK (via
+//         `production_inner/recovery_verification_production.rs`
+//         field-shape drift-detection stub) per AGENTS.md
+//         WEAK-binding classification. This bead did NOT add STRONG
+//         production binding via `#[path =
+//         "../../crates/vb_storage/src/recovery/types.rs"]` for these
+//         decision fns because production `types.rs` transitively
+//         depends on `serde::{Deserialize, Serialize}` (line 10),
+//         `#[derive(thiserror::Error)]` (line 37), and
+//         `#[derive(... Serialize, Deserialize)]` on `RecoveryError`
+//         variants downstream of `types.rs` — these proc-macro derives
+//         cannot be processed by `verus --crate-type=lib
+//         --no-lifetime` without registering the proc-macro crates.
+//         Tracking: a future bead would need to either port the
+//         production types to a no-proc-macro mirror (downgrading
+//         serde derives to manual impls) or split the dependency
+//         graph, OR rewrite the proof surface against a stable
+//         Rust->Verus translation via a tool like `cargo-verus`.
 //
 // ============================================================================
 // TRUST BOUNDARY
