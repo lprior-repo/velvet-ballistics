@@ -6,7 +6,7 @@
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
-pub fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+pub(crate) fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -22,7 +22,7 @@ pub fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     }
 }
 
-pub fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+pub(crate) fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
         output: None,
@@ -35,7 +35,7 @@ pub fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     }
 }
 
-pub fn nop_node(index: u16) -> CompiledNode {
+pub(crate) fn nop_node(index: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
         output: None,
@@ -46,7 +46,7 @@ pub fn nop_node(index: u16) -> CompiledNode {
     }
 }
 
-pub fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
+pub(crate) fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
         output: Some(SlotIdx::new(output)),

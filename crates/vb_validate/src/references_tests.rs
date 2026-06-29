@@ -8,7 +8,7 @@
 mod tests {
     use crate::ValidationError;
     use crate::ref_validate::{
-        RefTables, WorkflowRefs, string_set, validate_references, validate_single_reference,
+        RefTables, WorkflowRefs, validate_references, validate_single_reference,
     };
 
     fn make_tables(
@@ -17,27 +17,20 @@ mod tests {
         secrets: &[&str],
         step_ids: &[&str],
     ) -> RefTables {
-        RefTables {
-            inputs: string_set(
-                &inputs
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-            ),
-            vars: string_set(&vars.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
-            secrets: string_set(
-                &secrets
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-            ),
-            step_ids: string_set(
-                &step_ids
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-            ),
-        }
+        let input_names = inputs
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let var_names = vars.iter().map(|s| s.to_string()).collect::<Vec<String>>();
+        let secret_names = secrets
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let step_names = step_ids
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        RefTables::from_slices(&input_names, &var_names, &secret_names, &step_names)
     }
 
     #[test]

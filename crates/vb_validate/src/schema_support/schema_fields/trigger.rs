@@ -50,7 +50,11 @@ fn validate_trigger_rejects_unsupported_trigger_shapes() {
                 trigger: "schedule".to_owned(),
             },
         ),
-        ("http", FieldValue::Empty, ValidationError::HttpTriggerOutOfCore),
+        (
+            "http",
+            FieldValue::Empty,
+            ValidationError::HttpTriggerOutOfCore,
+        ),
         (
             "cron",
             FieldValue::Empty,

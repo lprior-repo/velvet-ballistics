@@ -188,19 +188,27 @@ fn selected_legacy_codes_are_stable() {
     assert_eq!(forbidden.numeric_code.code(), 0x0102);
     assert_eq!(forbidden.severity, Severity::Error);
     assert_eq!(
-        diagnostic_from_error(&ValidationError::DirectRuntimeReference).numeric_code.code(),
+        diagnostic_from_error(&ValidationError::DirectRuntimeReference)
+            .numeric_code
+            .code(),
         0x0204
     );
     assert_eq!(
-        diagnostic_from_error(&ValidationError::SecretResultLeak).numeric_code.code(),
+        diagnostic_from_error(&ValidationError::SecretResultLeak)
+            .numeric_code
+            .code(),
         0x0406
     );
     assert_eq!(
-        diagnostic_from_error(&ValidationError::PayloadTooLarge).numeric_code.code(),
+        diagnostic_from_error(&ValidationError::PayloadTooLarge)
+            .numeric_code
+            .code(),
         0x0408
     );
     assert_eq!(
-        diagnostic_from_error(&ValidationError::HttpTriggerOutOfCore).numeric_code.code(),
+        diagnostic_from_error(&ValidationError::HttpTriggerOutOfCore)
+            .numeric_code
+            .code(),
         0x040C
     );
 }

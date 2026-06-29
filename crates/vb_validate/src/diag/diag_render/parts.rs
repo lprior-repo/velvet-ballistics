@@ -5,6 +5,10 @@ use crate::ValidationError;
 use crate::diag::diag_codes::*;
 use vb_core::diagnostic::DiagnosticCode;
 
+mod contract;
+
+use contract::contract_parts;
+
 pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
     if let Some(parts) = schema_parts(error) {
         return parts;
@@ -82,7 +86,9 @@ fn control_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
         ValidationError::InvalidThenTarget => {
             code_msg(CODE_INVALID_THEN_TARGET, "invalid then target")
         }
-        ValidationError::ControlFlowCycle => code_msg(CODE_CONTROL_FLOW_CYCLE, "control-flow cycle"),
+        ValidationError::ControlFlowCycle => {
+            code_msg(CODE_CONTROL_FLOW_CYCLE, "control-flow cycle")
+        }
         ValidationError::UnreachableStep { step } => {
             code_msg(CODE_UNREACHABLE_STEP, format!("unreachable step: {step}"))
         }
@@ -104,7 +110,9 @@ fn control_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
 
 fn limit_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
     let parts = match error {
-        ValidationError::SecretResultLeak => code_msg(CODE_SECRET_RESULT_LEAK, "secret result leak"),
+        ValidationError::SecretResultLeak => {
+            code_msg(CODE_SECRET_RESULT_LEAK, "secret result leak")
+        }
         ValidationError::TypeMismatch { expected, found } => code_msg(
             CODE_TYPE_MISMATCH,
             format!("type mismatch: expected {expected}, found {found}"),
@@ -140,7 +148,9 @@ fn gate_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
             computed,
         } => code_msg(
             CODE_EXPRESSION_STACK_MISMATCH,
-            format!("expression stack mismatch: expr {expr_index}, declared {declared}, computed {computed}"),
+            format!(
+                "expression stack mismatch: expr {expr_index}, declared {declared}, computed {computed}"
+            ),
         ),
         ValidationError::AccessorSlotOutOfRange {
             accessor_index,
@@ -148,7 +158,9 @@ fn gate_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
             slot_count,
         } => code_msg(
             CODE_ACCESSOR_SLOT_OUT_OF_RANGE,
-            format!("accessor slot out of range: accessor {accessor_index}, slot {slot}, slot_count {slot_count}"),
+            format!(
+                "accessor slot out of range: accessor {accessor_index}, slot {slot}, slot_count {slot_count}"
+            ),
         ),
         ValidationError::AccessorPathInvalid {
             accessor_index,
@@ -172,7 +184,9 @@ fn gate_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
             symbols_count,
         } => code_msg(
             CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS,
-            format!("accessor symbol out of bounds: accessor {accessor_index}, segment {segment_index}, symbol {symbol}, symbols_count {symbols_count}"),
+            format!(
+                "accessor symbol out of bounds: accessor {accessor_index}, segment {segment_index}, symbol {symbol}, symbols_count {symbols_count}"
+            ),
         ),
         ValidationError::SlotReferenceOutOfRange {
             slot,
@@ -180,30 +194,11 @@ fn gate_parts(error: &ValidationError) -> Option<(DiagnosticCode, String)> {
             context,
         } => code_msg(
             CODE_SLOT_REFERENCE_OUT_OF_RANGE,
-            format!("slot reference out of range: slot {slot}, slot_count {slot_count}, context {context}"),
+            format!(
+                "slot reference out of range: slot {slot}, slot_count {slot_count}, context {context}"
+            ),
         ),
         _ => return None,
     };
     Some(parts)
-}
-
-fn contract_parts(error: &ValidationError) -> (DiagnosticCode, String) {
-    match error {
-        ValidationError::LoopBodyStepOutOfRange { step, node_count, source_node, label } => code_msg(CODE_LOOP_BODY_STEP_OUT_OF_RANGE, format!("loop body step out of range: step {step}, node_count {node_count}, source_node {source_node}, label {label}")),
-        ValidationError::SlotDependencyCycle { slot, chain } => code_msg(CODE_SLOT_DEPENDENCY_CYCLE, format!("slot dependency cycle: slot {slot}, chain {chain}")),
-        ValidationError::NodeKindConstraintViolation { node_index, detail } => code_msg(CODE_NODE_KIND_CONSTRAINT_VIOLATION, format!("node kind constraint violation: node {node_index}, {detail}")),
-        ValidationError::ActionContractMissing { action_id, node_index } => code_msg(CODE_ACTION_CONTRACT_MISSING, format!("action contract missing: action_id {action_id} referenced by Do node {node_index}")),
-        ValidationError::ActionContractOrphan { action_id } => code_msg(CODE_ACTION_CONTRACT_ORPHAN, format!("action contract orphan: action_id {action_id} has no corresponding Do node")),
-        ValidationError::CapabilityNameEmpty { action_id, capability_index } => code_msg(CODE_CAPABILITY_NAME_EMPTY, format!("capability name is empty for action {action_id} at required_capabilities[{capability_index}]")),
-        ValidationError::CapabilityNameTooLong { action_id, capability_index, len, max } => code_msg(CODE_CAPABILITY_NAME_TOO_LONG, format!("capability name too long for action {action_id} at required_capabilities[{capability_index}]: {len} > {max}")),
-        ValidationError::CapabilityNameInvalid { action_id, capability_index, name } => code_msg(CODE_CAPABILITY_NAME_INVALID, format!("invalid capability name for action {action_id} at required_capabilities[{capability_index}]: {name}")),
-        ValidationError::CapabilityActionMismatch { contract_action_id, capability_action_id, capability_index } => code_msg(CODE_CAPABILITY_ACTION_MISMATCH, format!("capability action {capability_action_id} does not match contract action {contract_action_id} at required_capabilities[{capability_index}]")),
-        ValidationError::CapabilityDuplicate { action_id, first_index, duplicate_index, name } => code_msg(CODE_CAPABILITY_DUPLICATE, format!("duplicate capability requirement for action {action_id}: {name} at required_capabilities[{first_index}] and required_capabilities[{duplicate_index}]")),
-        ValidationError::SlotTypeInconsistency { slot } => code_msg(CODE_SLOT_TYPE_INCONSISTENCY, format!("slot type inconsistency: slot {slot} has incompatible writers")),
-        ValidationError::NonDeterministicPath { from_node, to_node } => code_msg(CODE_NON_DETERMINISTIC_PATH, format!("non-deterministic path: from node {from_node} to node {to_node} contains no suspension point")),
-        ValidationError::MissingSchemaVersion => code_msg(CODE_MISSING_SCHEMA_VERSION, "missing schema_version field"),
-        ValidationError::CueVetFailed { file } => code_msg(CODE_CUE_VET_FAILED, format!("cue vet failed for {file}")),
-        ValidationError::VersionMonotonicityBreach { file, expected, actual } => code_msg(CODE_VERSION_MONOTONICITY_BREACH, format!("version monotonicity breach: {file} expected {expected} got {actual}")),
-        other => code_msg(CODE_MISSING_REQUIRED_FIELD, format!("unmapped validation error: {other}")),
-    }
 }

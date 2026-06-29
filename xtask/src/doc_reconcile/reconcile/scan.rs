@@ -226,7 +226,7 @@ fn segment_contains_node_and(
     predicate: impl Fn(&str) -> bool,
 ) -> bool {
     let node = node_label(node).to_ascii_lowercase();
-    text.split(|ch| ch == '\n' || ch == '.')
+    text.split(['\n', '.'])
         .map(str::to_ascii_lowercase)
         .any(|segment| segment.contains(&node) && predicate(&segment))
 }

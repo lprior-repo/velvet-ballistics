@@ -21,7 +21,7 @@ mod tests {
     use super::*;
     use crate::RuntimeError;
     use crate::engine::action::compute_idempotency_key;
-    use crate::shard::{AskAnswer, InspectResponse, ShardDirective};
+    use crate::shard::{AskAnswer, InspectResponse, PendingTimerKind, ShardDirective};
     use crate::trace::TraceEvent;
     use std::num::NonZeroUsize;
 
@@ -275,6 +275,64 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([ConstValue::I64(0), ConstValue::I64(0)]),
             slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_prompt = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let ask = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: None,
+            },
+        };
+        let resume = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(1),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("ask_without_timeout_test"),
+            digest: WorkflowDigest::from_bytes([43; 32]),
+            nodes: Box::from([set_prompt, ask, resume, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::I64(0)]),
+            slot_count: 2,
             symbols_count: 0,
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
@@ -2569,6 +2627,204 @@ mod tests {
         assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
         assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
         assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn pending_boundary_snapshot_reports_empty_state() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(2)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let runtime = Runtime::new(shard_count, runtime_config());
+        let snapshot = runtime.pending_boundary_snapshot(8);
+        assert_eq!(snapshot.shards().len(), 2);
+        assert_snapshot_counts(&snapshot, 0, 0, 0, 0, false);
+        for shard in snapshot.shards() {
+            assert_eq!(shard.active_runs(), &[]);
+            assert_eq!(shard.pending_timers(), &[]);
+            assert_eq!(shard.pending_actions(), &[]);
+            assert_eq!(shard.pending_asks(), &[]);
+            assert_eq!(shard.command_queue_depth(), 0);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn pending_boundary_snapshot_reports_populated_boundaries() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(1)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let action_workflow = suspended_workflow()
+            .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
+        let ask_workflow =
+            ask_waiting_workflow().ok_or_else(|| String::from("ask workflow fixture failed"))?;
+        let action_run = vb_core::ids::RunId::new(10);
+        let ask_run = vb_core::ids::RunId::new(11);
+        assert_eq!(
+            submit_suspended(&runtime, action_run, action_workflow),
+            Ok(())
+        );
+        assert_eq!(submit_ask_waiting(&runtime, ask_run, ask_workflow), Ok(()));
+        assert_eq!(
+            runtime.pending_boundary_snapshot(8).command_queue_depth(),
+            2
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let snapshot = runtime.pending_boundary_snapshot(8);
+        assert_snapshot_counts(&snapshot, 2, 1, 1, 1, false);
+        let shard = snapshot
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing shard"))?;
+        assert_eq!(shard.active_runs(), &[action_run, ask_run]);
+        let action = shard
+            .pending_actions()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing action"))?;
+        assert_eq!(action.run_id(), action_run);
+        assert_eq!(action.ticket().step, StepIdx::ZERO);
+        assert_eq!(action.ticket().action, ActionId::new(0));
+        assert_eq!(action.ticket().attempt, 1);
+        assert_eq!(action.ticket().capacity, 1);
+        let timer = shard
+            .pending_timers()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing timer"))?;
+        assert_eq!(timer.run_id(), ask_run);
+        assert_eq!(timer.step(), StepIdx::new(2));
+        assert_eq!(timer.kind(), PendingTimerKind::Ask);
+        assert_eq!(timer.generation(), 1);
+        let ask = shard
+            .pending_asks()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing ask"))?;
+        assert_eq!(ask.run_id(), ask_run);
+        assert_eq!(ask.ask_step(), StepIdx::new(2));
+        let timeout = ask
+            .timeout()
+            .ok_or_else(|| String::from("snapshot missing ask timeout"))?;
+        assert_eq!(timeout.generation(), timer.generation());
+        assert_eq!(timeout.deadline(), timer.deadline());
+        assert_eq!(ask.generation(), Some(timer.generation()));
+        assert_eq!(ask.deadline(), Some(timer.deadline()));
+        Ok(())
+    }
+
+    #[test]
+    fn pending_boundary_snapshot_reports_ask_without_timeout() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(1)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let workflow = ask_without_timeout_workflow()
+            .ok_or_else(|| String::from("ask without timeout workflow fixture failed"))?;
+        let ask_run = vb_core::ids::RunId::new(12);
+        assert_eq!(submit_ask_waiting(&runtime, ask_run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let snapshot = runtime.pending_boundary_snapshot(4);
+        assert_snapshot_counts(&snapshot, 1, 0, 0, 1, false);
+        let shard = snapshot
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing shard"))?;
+        let ask = shard
+            .pending_asks()
+            .first()
+            .ok_or_else(|| String::from("snapshot missing open ask"))?;
+        assert_eq!(ask.run_id(), ask_run);
+        assert_eq!(ask.ask_step(), StepIdx::new(1));
+        assert_eq!(ask.timeout(), None);
+        assert_eq!(ask.generation(), None);
+        assert_eq!(ask.deadline(), None);
+        Ok(())
+    }
+
+    #[test]
+    fn pending_boundary_snapshot_bounds_truncates_and_repeats_read_only() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(1)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let action_workflow = suspended_workflow()
+            .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
+        let timed_ask_workflow = ask_waiting_workflow()
+            .ok_or_else(|| String::from("timed ask workflow fixture failed"))?;
+        let open_ask_workflow = ask_without_timeout_workflow()
+            .ok_or_else(|| String::from("open ask workflow fixture failed"))?;
+        let action_run = vb_core::ids::RunId::new(20);
+        let timed_ask_run = vb_core::ids::RunId::new(21);
+        let open_ask_run = vb_core::ids::RunId::new(22);
+        assert_eq!(
+            submit_suspended(&runtime, action_run, action_workflow),
+            Ok(())
+        );
+        assert_eq!(
+            submit_ask_waiting(&runtime, timed_ask_run, timed_ask_workflow),
+            Ok(())
+        );
+        assert_eq!(
+            submit_ask_waiting(&runtime, open_ask_run, open_ask_workflow),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let zero = runtime.pending_boundary_snapshot(0);
+        assert_snapshot_counts(&zero, 3, 1, 1, 2, true);
+        let zero_shard = zero
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("zero snapshot missing shard"))?;
+        assert_eq!(zero_shard.active_runs().len(), 0);
+        assert_eq!(zero_shard.pending_timers().len(), 0);
+        assert_eq!(zero_shard.pending_actions().len(), 0);
+        assert_eq!(zero_shard.pending_asks().len(), 0);
+        let limited = runtime.pending_boundary_snapshot(1);
+        assert_snapshot_counts(&limited, 3, 1, 1, 2, true);
+        let limited_shard = limited
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("limited snapshot missing shard"))?;
+        assert_eq!(limited_shard.active_runs().len(), 1);
+        assert_eq!(limited_shard.pending_asks().len(), 1);
+        let exact = runtime.pending_boundary_snapshot(3);
+        assert_snapshot_counts(&exact, 3, 1, 1, 2, false);
+        let exact_shard = exact
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("exact snapshot missing shard"))?;
+        assert_eq!(
+            exact_shard.active_runs(),
+            &[action_run, timed_ask_run, open_ask_run]
+        );
+        assert_eq!(exact_shard.pending_asks().len(), 2);
+        assert_eq!(
+            exact_shard
+                .pending_asks()
+                .first()
+                .map(|ask| ask.timeout().is_some()),
+            Some(true)
+        );
+        assert_eq!(
+            exact_shard.pending_asks().get(1).map(|ask| ask.timeout()),
+            Some(None)
+        );
+        let repeated = runtime.pending_boundary_snapshot(3);
+        assert_eq!(repeated, exact);
+        Ok(())
+    }
+
+    fn assert_snapshot_counts(
+        snapshot: &crate::runtime::RuntimePendingBoundarySnapshot,
+        active_runs: usize,
+        pending_timers: usize,
+        pending_actions: usize,
+        pending_asks: usize,
+        truncated: bool,
+    ) {
+        assert_eq!(snapshot.command_queue_depth(), 0);
+        assert_eq!(snapshot.active_run_count(), active_runs);
+        assert_eq!(snapshot.pending_timer_count(), pending_timers);
+        assert_eq!(snapshot.pending_action_count(), pending_actions);
+        assert_eq!(snapshot.pending_ask_count(), pending_asks);
+        assert_eq!(snapshot.truncated(), truncated);
     }
 
     // --- Helper: wait-then-finish workflow (SetConst -> WaitUntil -> Finish) ---

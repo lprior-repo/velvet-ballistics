@@ -563,7 +563,7 @@ impl kani::Arbitrary for ActionContract {
     fn any() -> Self {
         // Bounded capability count (0..4) to keep symbolic state space manageable
         let cap_count = kani::any::<u8>() % 4;
-        let mut caps = Vec::with_capacity(cap_count as usize);
+        let mut caps = Vec::with_capacity(usize::from(cap_count));
         let mut i = 0u8;
         while i < cap_count {
             caps.push(kani::any::<Capability>());
@@ -574,7 +574,7 @@ impl kani::Arbitrary for ActionContract {
         }
         ActionContract {
             id: kani::any(),
-            name: ActionName::new("test-action").unwrap(),
+            name: ActionName::from_static_infallible("test-action"),
             input_slot_count: kani::any(),
             output_slot_count: kani::any(),
             max_input_bytes: kani::any(),

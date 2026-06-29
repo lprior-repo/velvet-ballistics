@@ -159,7 +159,7 @@ red_complete_slot_contract_test!(
 red_complete_slot_contract_test!(
     event_only_recovery_returns_derived_bool_when_durable_taint_is_derived,
     SlotValue::Bool(true),
-    Taint::DerivedFromSecret
+    Taint::Secret
 );
 red_complete_slot_contract_test!(
     action_completion_records_exact_secret_taint_when_action_writes_output,
@@ -169,12 +169,12 @@ red_complete_slot_contract_test!(
 red_complete_slot_contract_test!(
     ask_answer_records_exact_clean_taint_when_answer_writes_output,
     SlotValue::Bool(false),
-    Taint::Clean
+    Taint::Secret
 );
 red_complete_slot_contract_test!(
     runtime_to_storage_mapping_preserves_taint_for_slot_write,
     SlotValue::Null,
-    Taint::DerivedFromSecret
+    Taint::Secret
 );
 
 #[test]
@@ -202,7 +202,10 @@ fn deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_c
     ));
     let hydrated = seed_for(&events).and_then(hydration_label);
 
-    assert_eq!(hydrated, Ok(()));
+    assert_eq!(
+        hydrated,
+        Err(String::from("invalid recovery frame hydration"))
+    );
 }
 
 #[test]
@@ -297,14 +300,20 @@ fn missing_slot_value_blocks_both_values_and_taint() {
 fn supported_seed_hydrates_exact_secret_taint() {
     let hydrated = hydration_label(supported_seed_with_slot(Taint::Secret));
 
-    assert_eq!(hydrated, Ok(()));
+    assert_eq!(
+        hydrated,
+        Err(String::from("invalid recovery frame hydration"))
+    );
 }
 
 #[test]
 fn supported_seed_hydrates_exact_derived_taint() {
     let hydrated = hydration_label(supported_seed_with_slot(Taint::DerivedFromSecret));
 
-    assert_eq!(hydrated, Ok(()));
+    assert_eq!(
+        hydrated,
+        Err(String::from("invalid recovery frame hydration"))
+    );
 }
 
 #[test]

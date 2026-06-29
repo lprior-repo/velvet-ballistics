@@ -3,14 +3,14 @@
 //! Deterministic drive loop for the runtime engine.
 //!
 //! Split into focused submodules:
-//! - [`actions`]: `SlotWritten` evidence emission, collect-slot lookup,
+//! - `actions`: `SlotWritten` evidence emission, collect-slot lookup,
 //!   and `TogetherStart` branch counting.
-//! - [`loop`]: top-level `drive_deterministic_full` and
+//! - `loop_step`: top-level `drive_deterministic_full` and
 //!   `drive_with_actions` orchestration.
-//! - [`recovery`]: drive-state object that records evidence gaps so
+//! - `recovery`: drive-state object that records evidence gaps so
 //!   `read_slot` errors are surfaced instead of swallowed.
-//! - [`timers`]: step-budget consumption helpers.
-//! - [`transitions`]: `begin_drive_step` / `finish_drive_step` and
+//! - `timers`: step-budget consumption helpers.
+//! - `transitions`: `begin_drive_step` / `finish_drive_step` and
 //!   signal classification.
 
 pub(crate) mod actions;

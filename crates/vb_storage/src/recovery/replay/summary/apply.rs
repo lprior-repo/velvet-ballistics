@@ -10,8 +10,8 @@
 
 use crate::recovery::hydrate_support::verify_action_ticket_event;
 use crate::recovery::types::{
-    ActionReplayEffect, ActionReplayTracker, RecoveredStepState, RecoveryError, RecoveryHydration,
-    RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState,
+    ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryHydration, RecoveryResult,
+    RecoveryRuntimeSummary, RecoveryTerminalState,
 };
 use crate::{EventSeq, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx};

@@ -926,10 +926,7 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
     ];
 
     for (index, (label, bytes)) in cases.into_iter().enumerate() {
-        let byte = u8::try_from(index)
-            .map_err(|error| error.to_string())?
-            .saturating_add(1);
-        let requested = digest(byte);
+        let requested = WorkflowDigest::from_bytes(*blake3::hash(&bytes).as_bytes());
         let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
         let journal =
             vb_storage::FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?;

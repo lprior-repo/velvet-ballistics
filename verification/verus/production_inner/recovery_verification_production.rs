@@ -18,7 +18,7 @@
 // verbatim copies of the production source at:
 //
 //   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types.rs:577-649
-//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:680-834
+//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:674-836
 //   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types.rs:533-544
 //   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types.rs:548-553
 //   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types.rs:557-564
@@ -27,7 +27,7 @@
 //   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:470-493
 //   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:512-528
 //   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:269-449
-//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1058-1065
+//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1055-1101
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
 //                                            + crates/vb_storage/src/recovery/hydrate.rs:206-225
 //                                            + crates/vb_runtime/src/recovery.rs:99-115,188-190
@@ -38,7 +38,7 @@
 // DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:577-649`
 // Production source coverage:
 //   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types.rs:577-649
-//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:680-834
+//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:674-836
 //   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types.rs:533-544
 //   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types.rs:548-553
 //   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types.rs:557-564
@@ -47,7 +47,7 @@
 //   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:470-493
 //   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:512-528
 //   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:269-449
-//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1058-1065
+//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1055-1101
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
 //                                            + crates/vb_storage/src/recovery/hydrate.rs:206-225
 //                                            + crates/vb_runtime/src/recovery.rs:99-115,188-190
@@ -92,7 +92,7 @@ impl UnsupportedRecoveryStateStub {
 }
 
 /// Mirror of production `RecoveryCannotResumeState` field shape at
-/// `crates/vb_storage/src/recovery/types.rs:680-834`.
+/// `crates/vb_storage/src/recovery/types.rs:674-836`.
 #[derive(Clone, Copy)]
 pub struct RecoveryCannotResumeStateStub {
     pub slot_values: bool,
@@ -115,18 +115,10 @@ impl RecoveryCannotResumeStateStub {
     /// decision at `crates/vb_storage/src/recovery/types.rs:783-799`.
     #[verifier::external]
     pub fn is_resumable_stub(self) -> bool {
-        !self.slot_values
-            && !self.slot_taint
-            && !self.action_payloads
-            && !self.pending_actions
-            && !self.pending_timers
-            && !self.pending_asks
-            && !self.workflow_missing
-            && !self.store_missing
-            && !self.action_attempts_missing
-            && !self.admission_missing
-            && !self.collect_states_missing
-            && !self.action_contracts_missing
+        !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
+            && !self.pending_timers && !self.pending_asks && !self.workflow_missing
+            && !self.store_missing && !self.action_attempts_missing && !self.admission_missing
+            && !self.collect_states_missing && !self.action_contracts_missing
             && !self.action_abi_digests_missing
     }
 }

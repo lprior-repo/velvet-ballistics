@@ -9,8 +9,8 @@ use vb_core::SlotValue;
 /// Evaluates one binary operation over two already-popped values.
 pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     match op {
-        BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
-        BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
+        BinaryOp::And => eval_and_op(left, right),
+        BinaryOp::Or => eval_or_op(left, right),
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
         BinaryOp::Add => eval_add_op(left, right),
@@ -22,6 +22,18 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
         BinaryOp::Lt => eval_lt_op(left, right),
         BinaryOp::Lte => eval_lte_op(left, right),
     }
+}
+
+fn eval_and_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    let left_bool = expect_bool(left)?;
+    let right_bool = expect_bool(right)?;
+    Ok(SlotValue::Bool(left_bool && right_bool))
+}
+
+fn eval_or_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    let left_bool = expect_bool(left)?;
+    let right_bool = expect_bool(right)?;
+    Ok(SlotValue::Bool(left_bool || right_bool))
 }
 
 fn eval_add_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {

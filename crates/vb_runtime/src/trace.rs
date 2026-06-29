@@ -55,11 +55,11 @@ impl TraceRing {
         self.consumer.is_empty()
     }
 
-    /// Pending drainable events (alias for [`pending_len`]).
+    /// Pending drainable events (alias for `pending_len`).
     pub fn len(&self) -> usize {
         self.pending_len()
     }
-    /// Pending drainable events empty (alias for [`pending_is_empty`]).
+    /// Pending drainable events empty (alias for `pending_is_empty`).
     pub fn is_empty(&self) -> bool {
         self.pending_is_empty()
     }

@@ -99,14 +99,16 @@ fn code_msg(code: u16, message: impl Into<String>) -> (DiagnosticCode, String) {
     (DiagnosticCode::new(code), message.into())
 }
 
-fn action_contract_missing(action_id: u16, node_index: u16) -> (DiagnosticCode, String) {
+fn action_contract_missing(action_id: usize, node_index: usize) -> (DiagnosticCode, String) {
     code_msg(
         CODE_ACTION_CONTRACT_MISSING,
-        format!("action contract missing: action_id {action_id} referenced by Do node {node_index}"),
+        format!(
+            "action contract missing: action_id {action_id} referenced by Do node {node_index}"
+        ),
     )
 }
 
-fn capability_name_empty(action_id: u16, capability_index: u16) -> (DiagnosticCode, String) {
+fn capability_name_empty(action_id: usize, capability_index: usize) -> (DiagnosticCode, String) {
     code_msg(
         CODE_CAPABILITY_NAME_EMPTY,
         format!(
@@ -116,8 +118,8 @@ fn capability_name_empty(action_id: u16, capability_index: u16) -> (DiagnosticCo
 }
 
 fn capability_name_too_long(
-    action_id: u16,
-    capability_index: u16,
+    action_id: usize,
+    capability_index: usize,
     len: usize,
     max: usize,
 ) -> (DiagnosticCode, String) {
@@ -130,8 +132,8 @@ fn capability_name_too_long(
 }
 
 fn capability_name_invalid(
-    action_id: u16,
-    capability_index: u16,
+    action_id: usize,
+    capability_index: usize,
     name: &str,
 ) -> (DiagnosticCode, String) {
     code_msg(
@@ -143,9 +145,9 @@ fn capability_name_invalid(
 }
 
 fn capability_action_mismatch(
-    contract_action_id: u16,
-    capability_action_id: u16,
-    capability_index: u16,
+    contract_action_id: usize,
+    capability_action_id: usize,
+    capability_index: usize,
 ) -> (DiagnosticCode, String) {
     code_msg(
         CODE_CAPABILITY_ACTION_MISMATCH,
@@ -156,9 +158,9 @@ fn capability_action_mismatch(
 }
 
 fn capability_duplicate(
-    action_id: u16,
-    first_index: u16,
-    duplicate_index: u16,
+    action_id: usize,
+    first_index: usize,
+    duplicate_index: usize,
     name: &str,
 ) -> (DiagnosticCode, String) {
     code_msg(

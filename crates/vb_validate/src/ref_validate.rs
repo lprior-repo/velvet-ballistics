@@ -6,15 +6,14 @@
 //! references resolve to declared names. Rejects `$runtime.*`, `$now`, `$random`,
 //! and direct step-result references.
 //!
-//! The [`RefTables`] type and [`validate_single_reference`] function are public
-//! so that `vb_compile` can build tables from its AST and share the core
-//! reference validation logic without duplication (DRIFT-5).
+//! This duplicate test module keeps the same reference-validation behavior as
+//! the public `references` module while remaining crate-local under `cfg(test)`.
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashSet;
 
 /// Builds reference tables and validates all references in a workflow.
-pub fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
+pub(crate) fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
     let tables = RefTables::build(workflow);
     for reference in &workflow.references {
         validate_single_reference(reference, &tables)?;
@@ -24,19 +23,17 @@ pub fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
 
 /// Reference tables built from declared workflow names.
 ///
-/// Public so that downstream crates (e.g. `vb_compile`) can build tables from
-/// their own AST types and call [`validate_single_reference`] directly,
-/// avoiding duplicate reference validation logic.
-pub struct RefTables {
-    inputs: HashSet<String>,
-    vars: HashSet<String>,
-    secrets: HashSet<String>,
-    step_ids: HashSet<String>,
+/// Crate-local duplicate of the public reference table used by test modules.
+pub(crate) struct RefTables {
+    pub(crate) inputs: HashSet<String>,
+    pub(crate) vars: HashSet<String>,
+    pub(crate) secrets: HashSet<String>,
+    pub(crate) step_ids: HashSet<String>,
 }
 
 impl RefTables {
     /// Builds reference tables from a [`WorkflowRefs`] document.
-    pub fn build(workflow: &WorkflowRefs) -> Self {
+    pub(crate) fn build(workflow: &WorkflowRefs) -> Self {
         Self {
             inputs: string_set(&workflow.inputs),
             vars: string_set(&workflow.vars),
@@ -45,11 +42,7 @@ impl RefTables {
         }
     }
 
-    /// Builds reference tables from individual name slices.
-    ///
-    /// This is the shared entry point used by `vb_compile` to avoid
-    /// duplicating reference validation logic.
-    pub fn from_slices(
+    pub(crate) fn from_slices(
         inputs: &[String],
         vars: &[String],
         secrets: &[String],
@@ -63,30 +56,26 @@ impl RefTables {
         }
     }
 
-    /// Returns whether the given name is a declared input.
-    pub fn contains_input(&self, name: &str) -> bool {
+    pub(crate) fn contains_input(&self, name: &str) -> bool {
         self.inputs.contains(name)
     }
 
-    /// Returns whether the given name is a declared variable.
-    pub fn contains_var(&self, name: &str) -> bool {
+    pub(crate) fn contains_var(&self, name: &str) -> bool {
         self.vars.contains(name)
     }
 
-    /// Returns whether the given name is a declared secret.
-    pub fn contains_secret(&self, name: &str) -> bool {
+    pub(crate) fn contains_secret(&self, name: &str) -> bool {
         self.secrets.contains(name)
     }
 
-    /// Returns whether the given name is a declared step ID.
-    pub fn contains_step_id(&self, name: &str) -> bool {
+    pub(crate) fn contains_step_id(&self, name: &str) -> bool {
         self.step_ids.contains(name)
     }
 }
 
 /// Workflow reference data used for reference validation.
 #[derive(Debug, Clone, Default)]
-pub struct WorkflowRefs {
+pub(crate) struct WorkflowRefs {
     /// Declared input names.
     pub inputs: Vec<String>,
     /// Declared variable names.
@@ -104,7 +93,10 @@ pub struct WorkflowRefs {
 /// Returns `Ok(())` for non-`$` references (they are not validated here).
 /// Returns an error for unknown roots, undeclared names, runtime references,
 /// and step-result references.
-pub fn validate_single_reference(reference: &str, tables: &RefTables) -> ValidationResult<()> {
+pub(crate) fn validate_single_reference(
+    reference: &str,
+    tables: &RefTables,
+) -> ValidationResult<()> {
     let Some(body) = reference.strip_prefix('$') else {
         return Ok(());
     };

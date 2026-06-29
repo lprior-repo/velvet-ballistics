@@ -82,9 +82,8 @@ fn is_valid_id_rejects_underscore_first() {
 #[test]
 fn reserved_ids_detect_known_words() {
     for reserved in [
-        "runtime", "now", "null", "true", "false", "input", "inputs", "vars", "secrets",
-        "steps", "error", "attempt", "total", "result", "when", "item", "do", "set",
-        "finish",
+        "runtime", "now", "null", "true", "false", "input", "inputs", "vars", "secrets", "steps",
+        "error", "attempt", "total", "result", "when", "item", "do", "set", "finish",
     ] {
         assert!(is_reserved_id(reserved));
     }

@@ -3,12 +3,8 @@
 //!
 //! `RecoveredSlots` is the per-step recovery output: an ordered list of
 //! `(slot, value, taint)` triples plus a flag tracking whether every value
-//! can be replayed deterministically. The two production paths are:
-//!
-//! 1. `recover_slots_through_step` — deterministic replay against the
-//!    compiled workflow up to the last succeeded step.
-//! 2. `recovered_event_slots` — fallback that uses the durable event log
-//!    alone when no compiled workflow is available.
+//! can be replayed deterministically. Production paths are deterministic
+//! replay through the last succeeded step and durable-event fallback.
 //!
 //! Also provides the `max_step`/`min_step`/`max_slot` combiners, the
 //! `RecoveredSlotTaint` helpers, and the `FrameSeedAccumulator` slot

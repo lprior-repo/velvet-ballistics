@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Tests for plan verifier gates.
 
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
@@ -12,7 +12,7 @@ use vb_core::workflow::{
 // Helper constructors
 // ---------------------------------------------------------------------------
 
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> WorkflowParts {
+fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -21,8 +21,9 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> 
         accessors: Box::new([]),
         constants: Box::new([]),
         slot_count,
-        symbols_count,
+        symbols_count: 0,
         entry: StepIdx::new(0),
+        step_names: Box::new([]),
         resource_contract: ResourceContract::DEFAULT,
     }
 }
@@ -186,7 +187,8 @@ fn gate_08_accepts_empty_accessors() {
 
 #[test]
 fn gate_08_accepts_valid_accessor() {
-    let mut parts = make_parts(vec![finish_node(0, 0)], 2, 2);
+    let mut parts = make_parts(vec![finish_node(0, 0)], 2);
+    parts.symbols_count = 2;
     parts.accessors = Box::new([AccessorProgram {
         root: SlotIdx::new(0),
         path: Box::new([PathSegment::Field(SymbolId::new(1))]),

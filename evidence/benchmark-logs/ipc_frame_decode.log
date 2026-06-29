@@ -1,29 +1,29 @@
 metric: ipc_frame_decode
 claim_scope: current-head IR interpreter IPC decode baseline snapshot; no speedup claim
-commit: c27df8533ed0138f02fe8a669ea7ffc8cbf203a5
+commit: 2990ccb0e5db2f15046562adb20a5ea4e2d9591f
 criterion_command: target/release/deps/velvet_ballistics-80a7ce22525a11f8 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 criterion_output_excerpt:
   storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
-                          time:   [68.779 ns 69.662 ns 70.775 ns]
-                          change: [+1.1888% +2.0186% +2.9705%] (p = 0.00 < 0.05)
-                          Performance has regressed within the configured 5% policy threshold.
+                          time:   [68.877 ns 69.128 ns 69.432 ns]
+                          change: [−82.377% −82.274% −82.165%] (p = 0.00 < 0.05)
+                          Criterion reported improvement versus the immediately preceding heaptrack-instrumented sample; this evidence records a current snapshot, not a speedup claim.
 criterion_sample_percentiles_from_target_criterion_sample_json:
-  p50_latency: 68.914829 ns
-  p95_latency: 71.004841 ns
-  p99_latency: 71.625766 ns
-perf_command: perf stat -x, -e instructions,cycles -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  p50_latency: 68.946805 ns
+  p95_latency: 69.533149 ns
+  p99_latency: 69.660534 ns
+perf_command: perf stat -x, -e instructions,cycles -o /tmp/opencode/vb-bench-evidence/ipc_frame_decode.perf.log -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 perf_summary:
-  instructions: 70689372592
-  cycles: 38644050087
-heaptrack_command: heaptrack --record-only -o target/bench-current/heaptrack-ipc_frame_decode target/release/deps/velvet_ballistics-80a7ce22525a11f8 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  instructions: 70411966259
+  cycles: 39262713788
+heaptrack_command: heaptrack --record-only -o /tmp/opencode/vb-bench-evidence/heaptrack-ipc_frame_decode target/release/deps/velvet_ballistics-80a7ce22525a11f8 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 heaptrack_summary:
-  allocation_count_process_level: 14517586
+  allocation_count_process_level: 14464650
   peak_heap_memory: 8.04M
-  total_memory_leaked: 257.66K
+  total_memory_leaked: 257.95K
 metadata:
   rustc_version: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
   cpu_model: AMD Ryzen 9 9950X3D 16-Core Processor
   cpu_governor: performance
-  kernel_version: Linux 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 GNU/Linux
+  kernel_version: Linux omarchy 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 x86_64 GNU/Linux
   benchmark_tool_version: criterion 0.8.2
   fixture_digest: sha256:43a599ec8f5195977aae4eb6ec30496a64a80518c25101d50178554b1ba88793

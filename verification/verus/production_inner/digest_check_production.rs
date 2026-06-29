@@ -6,7 +6,7 @@
 //
 // This file is a VERBATIM copy of the production `DigestCheck` enum
 // and impl block from
-//   crates/vb_storage/src/recovery/types.rs:855-900
+//   crates/vb_storage/src/recovery/types.rs:1055-1101
 // with three minimal substitutions:
 //
 //   1. `#[derive(Debug, Clone, Copy, PartialEq, Eq)]` is dropped
@@ -42,7 +42,7 @@
 // requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:855-900` whenever
+// `crates/vb_storage/src/recovery/types.rs:1055-1101` whenever
 // production changes. The mirror is annotated at the top of every
 // section with the originating production line range so regeneration
 // is mechanical.
@@ -61,7 +61,7 @@
 // VERBATIM PRODUCTION: DigestCheck enum
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:855-865
+// Source: crates/vb_storage/src/recovery/types.rs:1055-1065
 // Drift policy: any change to the production enum between these line
 // numbers MUST be mirrored here. Variant names, variant order, and
 // variant set are matched exactly.
@@ -81,7 +81,7 @@ pub enum DigestCheck {
 // VERBATIM PRODUCTION: DigestCheck impl block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:867-900
+// Source: crates/vb_storage/src/recovery/types.rs:1067-1101
 // Drift policy: any change to the production impl block between these
 // line numbers MUST be mirrored here. Method signatures, body
 // structure, and `pub const` initializers are preserved.

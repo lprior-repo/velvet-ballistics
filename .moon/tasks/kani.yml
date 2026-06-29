@@ -81,7 +81,7 @@ tasks:
             RUSTFLAGS="-Dwarnings" \
             CARGO_TARGET_DIR=target/kani-baseline-vb-core \
         timeout 60m rustup run nightly-2026-04-28 \
-          cargo kani --lib -p vb_core --all-features --quiet -j 1 \
+          cargo kani --lib -p vb_core --all-features -j 1 \
             --harness 'kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary' \
             --harness 'kani_idempotency_gates::' \
             --harness 'kani_taint::' \
@@ -94,7 +94,7 @@ tasks:
             RUSTFLAGS="-Dwarnings" \
             CARGO_TARGET_DIR=target/kani-baseline-vb-validate \
         timeout 60m rustup run nightly-2026-04-28 \
-          cargo kani --lib -p vb_validate --all-features --quiet -j 1 \
+          cargo kani --lib -p vb_validate --all-features -j 1 \
             --harness 'kani_gate_08_arbitrary_parts_valid_accessors_pass' \
             --harness 'kani_gate_08_arbitrary_parts_root_oob_rejected' \
             --harness 'kani_gate_08_arbitrary_parts_symbol_oob_rejected' \
@@ -131,4 +131,3 @@ tasks:
     options:
       runInCI: true
       cache: false
-

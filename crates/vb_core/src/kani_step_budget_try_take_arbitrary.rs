@@ -8,7 +8,7 @@
 //! prove a single hardcoded dummy frame shape.
 
 use crate::engine::StepBudget;
-use crate::frame::RunFrame;
+use crate::frame::{RunFrame, StepState};
 use crate::ids::{RunId, StepIdx};
 
 #[derive(Clone, Copy)]
@@ -63,6 +63,16 @@ impl kani::Arbitrary for FrameShape {
     }
 }
 
+fn checked_step_state(frame: &RunFrame, step: StepIdx) -> StepState {
+    match frame.step_state(step) {
+        Ok(state) => state,
+        Err(_) => {
+            kani::assert(false, "generated step index remains valid");
+            StepState::Pending
+        }
+    }
+}
+
 /// PO-009: zero-budget production budget transition preserves generated actual run frames.
 #[kani::proof]
 #[kani::unwind(12)]
@@ -95,7 +105,7 @@ fn kani_step_budget_try_take_arbitrary() {
     let before_slot_count = run.slot_count();
     let before_max_parallel = run.max_parallel_in_flight();
     let before_parallel = run.parallel_in_flight();
-    let before_first_step = run.step_state(shape.first_step);
+    let before_first_step = checked_step_state(&run, shape.first_step);
 
     let mut budget = StepBudget::new(0);
     let result = budget.try_take();
@@ -132,7 +142,7 @@ fn kani_step_budget_try_take_arbitrary() {
         "actual parallel accounting is preserved",
     );
     kani::assert(
-        run.step_state(shape.first_step) == before_first_step,
+        checked_step_state(&run, shape.first_step) == before_first_step,
         "actual entry step state is preserved",
     );
 }

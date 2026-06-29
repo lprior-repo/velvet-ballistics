@@ -7,7 +7,10 @@ use crate::schema_support::schema_fields::{validate_version, validate_workflow_s
 
 #[test]
 fn accepts_valid_workflow() {
-    assert_eq!(validate_workflow_schema(&super::valid_workflow_doc()), Ok(()));
+    assert_eq!(
+        validate_workflow_schema(&super::valid_workflow_doc()),
+        Ok(())
+    );
 }
 
 #[test]

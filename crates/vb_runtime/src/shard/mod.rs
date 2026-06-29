@@ -6,6 +6,7 @@ pub mod directive;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;
+pub mod snapshot;
 pub mod tests;
 pub mod timer_wheel;
 pub mod transitions;
@@ -13,6 +14,10 @@ pub mod types;
 
 pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};
 pub use directive::ShardDirective;
+pub use snapshot::{
+    PendingActionBoundarySnapshot, PendingAskBoundarySnapshot, PendingAskTimeoutBoundarySnapshot,
+    PendingTimerBoundarySnapshot, ShardPendingBoundarySnapshot,
+};
 pub use types::{
     AskAnswer, AskTicket, InspectHandle, InspectResponse, InspectSnapshot,
     InspectSnapshotFormatter, IntrospectionRegistry, MAX_COMMAND_QUEUE_CAPACITY, PendingTimer,

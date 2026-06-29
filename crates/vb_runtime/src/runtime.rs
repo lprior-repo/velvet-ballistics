@@ -11,7 +11,10 @@ use vb_core::workflow::CompiledWorkflow;
 use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
 use crate::journal::SharedRuntimeJournal;
 use crate::shard::timer_wheel::TimerEntry;
-use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig, ShardDirective};
+use crate::shard::{
+    AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig, ShardDirective,
+    ShardPendingBoundarySnapshot,
+};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -26,6 +29,104 @@ pub struct ActiveRunSummary {
     pub step_count: u16,
     /// Steps that reached a terminal state (Succeeded, Failed, Skipped, or Cancelled).
     pub steps_completed: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimePendingBoundarySnapshot {
+    shards: Box<[ShardPendingBoundarySnapshot]>,
+    command_queue_depth: usize,
+    active_run_count: usize,
+    pending_timer_count: usize,
+    pending_action_count: usize,
+    pending_ask_count: usize,
+    truncated: bool,
+}
+
+impl RuntimePendingBoundarySnapshot {
+    fn new(
+        shards: Box<[ShardPendingBoundarySnapshot]>,
+        totals: RuntimePendingBoundaryTotals,
+    ) -> Self {
+        Self {
+            shards,
+            command_queue_depth: totals.command_queue_depth,
+            active_run_count: totals.active_run_count,
+            pending_timer_count: totals.pending_timer_count,
+            pending_action_count: totals.pending_action_count,
+            pending_ask_count: totals.pending_ask_count,
+            truncated: totals.truncated,
+        }
+    }
+
+    #[must_use]
+    pub fn shards(&self) -> &[ShardPendingBoundarySnapshot] {
+        &self.shards
+    }
+
+    #[must_use]
+    pub const fn command_queue_depth(&self) -> usize {
+        self.command_queue_depth
+    }
+
+    #[must_use]
+    pub const fn active_run_count(&self) -> usize {
+        self.active_run_count
+    }
+
+    #[must_use]
+    pub const fn pending_timer_count(&self) -> usize {
+        self.pending_timer_count
+    }
+
+    #[must_use]
+    pub const fn pending_action_count(&self) -> usize {
+        self.pending_action_count
+    }
+
+    #[must_use]
+    pub const fn pending_ask_count(&self) -> usize {
+        self.pending_ask_count
+    }
+
+    #[must_use]
+    pub const fn truncated(&self) -> bool {
+        self.truncated
+    }
+}
+
+#[derive(Default)]
+struct RuntimePendingBoundaryTotals {
+    command_queue_depth: usize,
+    active_run_count: usize,
+    pending_timer_count: usize,
+    pending_action_count: usize,
+    pending_ask_count: usize,
+    truncated: bool,
+}
+
+impl RuntimePendingBoundaryTotals {
+    fn add_shard(&mut self, shard: &ShardPendingBoundarySnapshot) {
+        self.command_queue_depth = self
+            .command_queue_depth
+            .saturating_add(shard.command_queue_depth());
+        self.active_run_count = self
+            .active_run_count
+            .saturating_add(shard.active_run_count());
+        self.pending_timer_count = self
+            .pending_timer_count
+            .saturating_add(shard.pending_timer_count());
+        self.pending_action_count = self
+            .pending_action_count
+            .saturating_add(shard.pending_action_count());
+        self.pending_ask_count = self
+            .pending_ask_count
+            .saturating_add(shard.pending_ask_count());
+        self.truncated |= shard.truncated();
+    }
+}
+
+fn shard_id_from_index(index: usize) -> u32 {
+    u32::try_from(index).map_or(u32::MAX, core::convert::identity)
 }
 
 /// Multi-shard runtime.
@@ -198,6 +299,22 @@ impl Runtime {
     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> RuntimeResult<InspectResponse> {
         let shard = self.shard_for(run)?;
         Ok(shard.snapshot_run(run, correlation))
+    }
+
+    #[must_use]
+    pub fn pending_boundary_snapshot(
+        &self,
+        max_items_per_shard: usize,
+    ) -> RuntimePendingBoundarySnapshot {
+        let mut shards = Vec::with_capacity(self.shards.len());
+        let mut totals = RuntimePendingBoundaryTotals::default();
+        for (index, shard) in self.shards.iter().enumerate() {
+            let snapshot =
+                shard.pending_boundary_snapshot(shard_id_from_index(index), max_items_per_shard);
+            totals.add_shard(&snapshot);
+            shards.push(snapshot);
+        }
+        RuntimePendingBoundarySnapshot::new(shards.into_boxed_slice(), totals)
     }
 
     /// Processes one command on each shard. Returns false if any shard is shutting down.

@@ -1,29 +1,29 @@
 metric: bench_engine_step_once_save_const_single_transition
 claim_scope: current-head IR interpreter baseline snapshot; no speedup claim
-commit: c27df8533ed0138f02fe8a669ea7ffc8cbf203a5
+commit: 2990ccb0e5db2f15046562adb20a5ea4e2d9591f
 criterion_command: target/release/deps/velvet_ballistics-80a7ce22525a11f8 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 criterion_output_excerpt:
   runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
-                          time:   [16.435 ns 16.453 ns 16.480 ns]
-                          change: [−0.9908% −0.6363% −0.3079%] (p = 0.00 < 0.05)
+                          time:   [16.598 ns 16.627 ns 16.682 ns]
+                          change: [+0.3754% +0.7629% +1.1935%] (p = 0.00 < 0.05)
                           Change within noise threshold.
 criterion_sample_percentiles_from_target_criterion_sample_json:
-  p50_latency: 16.440415 ns
-  p95_latency: 16.533241 ns
-  p99_latency: 16.563940 ns
-perf_command: perf stat -x, -e instructions,cycles -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  p50_latency: 16.666330 ns
+  p95_latency: 16.875021 ns
+  p99_latency: 16.900154 ns
+perf_command: perf stat -x, -e instructions,cycles -o /tmp/opencode/vb-bench-evidence/bench_engine_step_once_save_const_single_transition.perf.log -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 perf_summary:
-  instructions: 54472966128
-  cycles: 37621468935
-heaptrack_command: heaptrack --record-only -o target/bench-current/heaptrack-bench_engine_step_once_save_const_single_transition target/release/deps/velvet_ballistics-80a7ce22525a11f8 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+  instructions: 54419223615
+  cycles: 36985634458
+heaptrack_command: heaptrack --record-only -o /tmp/opencode/vb-bench-evidence/heaptrack-bench_engine_step_once_save_const_single_transition target/release/deps/velvet_ballistics-80a7ce22525a11f8 bench_engine_step_once_save_const_single_transition --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 heaptrack_summary:
-  allocation_count_process_level: 902923
+  allocation_count_process_level: 923218
   peak_heap_memory: 7.67M
-  total_memory_leaked: 258.82K
+  total_memory_leaked: 258.53K
 metadata:
   rustc_version: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
   cpu_model: AMD Ryzen 9 9950X3D 16-Core Processor
   cpu_governor: performance
-  kernel_version: Linux 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 GNU/Linux
+  kernel_version: Linux omarchy 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 x86_64 GNU/Linux
   benchmark_tool_version: criterion 0.8.2
   fixture_digest: sha256:43a599ec8f5195977aae4eb6ec30496a64a80518c25101d50178554b1ba88793

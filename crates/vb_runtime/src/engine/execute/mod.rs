@@ -4,13 +4,13 @@
 //! dedicated per-kind handler.
 //!
 //! Split into focused submodules:
-//! - [`budget`]: retry-attempt counter and overflow handling.
-//! - [`dispatch`]: the main `execute_node_full` dispatcher.
-//! - [`handlers`]: shared attempt-slot reader for retry budget.
-//! - [`handlers_compound`]: for_each / together / collect / reduce /
+//! - `budget`: retry-attempt counter and overflow handling.
+//! - `dispatch`: the main `execute_node_full` dispatcher.
+//! - `handlers`: shared attempt-slot reader for retry budget.
+//! - `handlers_compound`: for_each / together / collect / reduce /
 //!   repeat handler helpers.
-//! - [`handlers_suspend`]: wait / ask / do / error-handler handlers.
-//! - [`signals`]: `EngineSignal`-fallback conversion.
+//! - `handlers_suspend`: wait / ask / do / error-handler handlers.
+//! - `signals`: `EngineSignal`-fallback conversion.
 
 mod budget;
 mod dispatch;

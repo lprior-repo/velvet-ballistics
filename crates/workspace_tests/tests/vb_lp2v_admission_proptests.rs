@@ -8,8 +8,9 @@
 //!
 //! - **PI-02**: Digest roundtrip through `submit_artifact` and journal read —
 //!   After `submit_artifact(journal, workflow, policy)` returns `Ok(artifact)`,
-//!   `journal.compiled_ir(workflow.digest())` returns `Ok(Some(record))`
-//!   where `record.digest == workflow.digest()`.
+//!   `artifact.source_digest == workflow.digest()`,
+//!   `journal.compiled_ir(artifact.digest)` returns `Ok(Some(record))`, and
+//!   `record.digest == artifact.digest`.
 
 use proptest::prelude::*;
 use rand::SeedableRng;
@@ -203,23 +204,30 @@ proptest! {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };
-        let expected_digest = workflow.digest();
+        let expected_source_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
         prop_assert!(result.is_ok(), "submit_artifact(relaxed) should succeed: {:?}", result);
         let artifact = result.unwrap();
+        let artifact_digest = artifact.digest;
         prop_assert_eq!(
-            artifact.digest, expected_digest,
-            "artifact.digest must match workflow.digest()"
+            artifact.source_digest,
+            expected_source_digest,
+            "artifact.source_digest must match workflow.digest()"
+        );
+        prop_assert_eq!(
+            artifact.verification.digest,
+            artifact_digest,
+            "verification digest must match artifact.digest"
         );
 
         let loaded = journal
-            .compiled_ir(expected_digest)
+            .compiled_ir(artifact_digest)
             .map_err(|e| format!("compiled_ir read failed: {}", e))
             .unwrap();
         prop_assert!(loaded.is_some(), "artifact must be readable after submit_artifact");
         let record = loaded.unwrap();
-        prop_assert_eq!(record.digest, expected_digest);
+        prop_assert_eq!(record.digest, artifact_digest);
     }
 }
 
@@ -239,20 +247,22 @@ proptest! {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };
-        let expected_digest = workflow.digest();
+        let expected_source_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled);
         prop_assert!(result.is_ok(), "submit_artifact(journaled) should succeed: {:?}", result);
         let artifact = result.unwrap();
-        prop_assert_eq!(artifact.digest, expected_digest);
+        let artifact_digest = artifact.digest;
+        prop_assert_eq!(artifact.source_digest, expected_source_digest);
+        prop_assert_eq!(artifact.verification.digest, artifact_digest);
 
         let loaded = journal
-            .compiled_ir(expected_digest)
+            .compiled_ir(artifact_digest)
             .map_err(|e| format!("compiled_ir read failed: {}", e))
             .unwrap();
         prop_assert!(loaded.is_some(), "artifact must be readable from journal");
         let record = loaded.unwrap();
-        prop_assert_eq!(record.digest, expected_digest);
+        prop_assert_eq!(record.digest, artifact_digest);
     }
 }
 
@@ -272,20 +282,22 @@ proptest! {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };
-        let expected_digest = workflow.digest();
+        let expected_source_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);
         prop_assert!(result.is_ok(), "submit_artifact(strict) should succeed: {:?}", result);
         let artifact = result.unwrap();
-        prop_assert_eq!(artifact.digest, expected_digest);
+        let artifact_digest = artifact.digest;
+        prop_assert_eq!(artifact.source_digest, expected_source_digest);
+        prop_assert_eq!(artifact.verification.digest, artifact_digest);
 
         let loaded = journal
-            .compiled_ir(expected_digest)
+            .compiled_ir(artifact_digest)
             .map_err(|e| format!("compiled_ir read failed: {}", e))
             .unwrap();
         prop_assert!(loaded.is_some(), "artifact must be readable from journal");
         let record = loaded.unwrap();
-        prop_assert_eq!(record.digest, expected_digest);
+        prop_assert_eq!(record.digest, artifact_digest);
     }
 }
 

@@ -98,6 +98,41 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
     CompiledWorkflow::try_from_parts(parts).ok()
 }
 
+fn raw_payload_digest(bytes: &[u8]) -> WorkflowDigest {
+    WorkflowDigest::from_bytes(blake3::hash(bytes).into())
+}
+
+fn raw_compiled_ir_record(ir: Vec<u8>) -> CompiledIrRecord {
+    let digest = raw_payload_digest(&ir);
+    CompiledIrRecord { digest, ir }
+}
+
+fn accepted_artifact_record(compiled: &CompiledWorkflow) -> CompiledIrRecord {
+    let parts = compiled.to_parts();
+    let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
+    let zero = WorkflowDigest::from_bytes([0; 32]);
+    let mut artifact = vb_storage::AcceptedArtifact {
+        digest: zero,
+        source_digest: compiled.digest(),
+        policy_digest: vb_storage::admission::compute_policy_digest(compiled)
+            .expect("policy digest must encode"),
+        ir,
+        verification: vb_storage::VerificationProof::new(
+            zero,
+            vb_runtime::admission::REQUIRED_GATE_COUNT,
+            true,
+        ),
+        accepted_at_seq: EventSeq::ZERO,
+        required_capabilities: Box::new([]),
+    };
+    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)
+        .expect("accepted artifact digest must encode");
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let ir = postcard::to_allocvec(&artifact).expect("accepted artifact must encode");
+    CompiledIrRecord { digest, ir }
+}
+
 /// Local implementation mirroring vb_cli::StorageWorkflowResolver behavior.
 /// This is needed because StorageWorkflowResolver is not publicly exported.
 struct TestStorageResolver {
@@ -115,15 +150,54 @@ impl TestStorageResolver {
         &mut self,
         digest: WorkflowDigest,
     ) -> Result<CompiledWorkflow, WorkflowResolutionError> {
-        let record = match self.journal.compiled_ir(digest) {
-            Ok(Some(record)) => record,
-            Ok(None) => return Err(WorkflowResolutionError::NotFound),
-            Err(_) => return Err(WorkflowResolutionError::InvalidArtifact),
+        let record = match self.compiled_record_for_digest(digest) {
+            Ok(record) => record,
+            Err(error) => return Err(error),
         };
-        if record.digest != digest {
+        self.decode_compiled_record(&record, digest)
+    }
+
+    fn compiled_record_for_digest(
+        &self,
+        digest: WorkflowDigest,
+    ) -> Result<CompiledIrRecord, WorkflowResolutionError> {
+        match self.journal.compiled_ir(digest) {
+            Ok(Some(record)) => Ok(record),
+            Ok(None) => match self.journal.compiled_ir_for_source_digest(digest) {
+                Ok(Some(record)) => Ok(record),
+                Ok(None) => Err(WorkflowResolutionError::NotFound),
+                Err(_) => Err(WorkflowResolutionError::InvalidArtifact),
+            },
+            Err(_) => return Err(WorkflowResolutionError::InvalidArtifact),
+        }
+    }
+
+    fn decode_compiled_record(
+        &self,
+        record: &CompiledIrRecord,
+        requested: WorkflowDigest,
+    ) -> Result<CompiledWorkflow, WorkflowResolutionError> {
+        if raw_payload_digest(record.ir.as_slice()) == record.digest {
+            return Self::decode_workflow_parts(record.ir.as_slice());
+        }
+
+        let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(record.ir.as_slice())
+            .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        let artifact_digest = vb_storage::admission::accepted_artifact_digest(&artifact)
+            .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        let digest_matches = artifact.digest == record.digest
+            && artifact.verification.digest == record.digest
+            && artifact_digest == record.digest;
+        let lookup_matches = record.digest == requested || artifact.source_digest == requested;
+        if !(digest_matches && lookup_matches) {
             return Err(WorkflowResolutionError::InvalidArtifact);
         }
-        let parts = postcard::from_bytes::<WorkflowParts>(&record.ir)
+
+        Self::decode_workflow_parts(artifact.ir.as_slice())
+    }
+
+    fn decode_workflow_parts(bytes: &[u8]) -> Result<CompiledWorkflow, WorkflowResolutionError> {
+        let parts = postcard::from_bytes::<WorkflowParts>(bytes)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
         CompiledWorkflow::try_from_parts(parts)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)
@@ -848,12 +922,7 @@ fn resolver_loads_compiled_ir_when_present() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     if let Some(compiled) = compiled {
-        let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
-        let record = CompiledIrRecord {
-            digest: compiled.digest(),
-            ir,
-        };
+        let record = accepted_artifact_record(&compiled);
         journal
             .put_compiled_ir(&record)
             .expect("put_compiled_ir must succeed");
@@ -875,10 +944,7 @@ fn resolver_returns_invalid_artifact_for_corrupted_ir() {
     let dir = test_tempdir();
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
-    let record = CompiledIrRecord {
-        digest: dummy_digest(),
-        ir: vec![0xDE, 0xAD, 0xBE, 0xEF], // Corrupted data
-    };
+    let record = raw_compiled_ir_record(vec![0xDE, 0xAD, 0xBE, 0xEF]);
     journal
         .put_compiled_ir(&record)
         .expect("put_compiled_ir must succeed");
@@ -905,12 +971,7 @@ fn resolver_returns_invalid_artifact_for_tampered_digest() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     if let Some(compiled) = compiled {
-        let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
-        let record = CompiledIrRecord {
-            digest: compiled.digest(),
-            ir,
-        };
+        let record = accepted_artifact_record(&compiled);
         journal
             .put_compiled_ir(&record)
             .expect("put_compiled_ir must succeed");

@@ -4,9 +4,10 @@ use std::sync::Arc;
 
 use vb_core::{ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::admission::{
-    AdmissionError, REQUIRED_GATE_COUNT, StorageArtifactStore, admit_artifact_run,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
+    StorageArtifactStore, admit_artifact_run,
 };
-use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+use vb_storage::admission::{AcceptedArtifact, VerificationProof, accepted_artifact_digest};
 use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
 
 fn digest(byte: u8) -> WorkflowDigest {
@@ -21,17 +22,15 @@ fn granted_capabilities(required: Capability) -> CapabilitySet {
     CapabilitySet::from_grants(Box::new([required]))
 }
 
-fn accepted_artifact(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-) -> AcceptedArtifact {
-    AcceptedArtifact {
-        digest: artifact_digest,
-        source_digest: artifact_digest,
-        policy_digest: artifact_digest,
+fn accepted_artifact(source_digest: WorkflowDigest) -> Result<AcceptedArtifact, String> {
+    let zero = digest(0);
+    let mut artifact = AcceptedArtifact {
+        digest: zero,
+        source_digest,
+        policy_digest: source_digest,
         ir: Vec::new(),
         verification: VerificationProof {
-            digest: proof_digest,
+            digest: zero,
             gate_count: REQUIRED_GATE_COUNT,
             durable: true,
             bounded_claimed: true,
@@ -45,6 +44,23 @@ fn accepted_artifact(
         },
         accepted_at_seq: EventSeq::new(42),
         required_capabilities: Box::new([required_capability()]),
+    };
+    let artifact_digest = accepted_artifact_digest(&artifact).map_err(|error| error.to_string())?;
+    artifact.digest = artifact_digest;
+    artifact.verification.digest = artifact_digest;
+    Ok(artifact)
+}
+
+struct FixedAcceptedStore {
+    artifact: AcceptedArtifact,
+}
+
+impl AcceptedArtifactStore for FixedAcceptedStore {
+    fn load_accepted_artifact(
+        &self,
+        _artifact_digest: WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        Ok(self.artifact.clone())
     }
 }
 
@@ -73,8 +89,8 @@ fn given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admit
 -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
     let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
-    let requested = digest(0xA1);
-    let artifact = accepted_artifact(requested, requested);
+    let artifact = accepted_artifact(digest(0xA1))?;
+    let requested = artifact.digest;
     persist_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
     let run = RunId::new(9001);
@@ -94,12 +110,12 @@ fn given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admit
 fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch_denies()
 -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
-    let requested = digest(0xB1);
+    let _journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
     let found = digest(0xB2);
-    let artifact = accepted_artifact(requested, found);
-    persist_artifact(&journal, &artifact)?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let mut artifact = accepted_artifact(digest(0xB1))?;
+    let requested = artifact.digest;
+    artifact.verification.digest = found;
+    let store = FixedAcceptedStore { artifact };
 
     let result = admit_artifact_run(
         &store,
@@ -117,27 +133,25 @@ fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch
 }
 
 #[test]
-fn given_storage_record_with_mismatched_artifact_digest_when_strict_admission_runs_then_digest_mismatch_denies()
+fn given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted()
 -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
     let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
     let requested = digest(0xC1);
-    let found = digest(0xC2);
-    let artifact = accepted_artifact(found, found);
-    persist_artifact_as(&journal, requested, &artifact)?;
+    let artifact = accepted_artifact(requested)?;
+    let found = artifact.digest;
+    persist_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
 
-    let result = admit_artifact_run(
+    let admission = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
         RunId::new(9003),
         requested,
         granted_capabilities(required_capability()),
-    );
+    )
+    .map_err(|error| error.to_string())?;
 
-    assert_eq!(
-        result,
-        Err(AdmissionError::ArtifactDigestMismatch { requested, found })
-    );
+    assert_eq!(admission.artifact_digest(), found);
     Ok(())
 }

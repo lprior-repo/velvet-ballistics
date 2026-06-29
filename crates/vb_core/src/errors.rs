@@ -529,7 +529,7 @@ pub enum CoreError {
         /// Associated run ID if available.
         bead_id: Option<RunId>,
     },
-    /// A `Span` was constructed via [`Span::try_new`] with `start > end`.
+    /// A `Span` was constructed via `Span::try_new` with `start > end`.
     #[error("invalid span: start {start} is greater than end {end}")]
     InvalidSpan {
         /// Inclusive start offset that exceeded the end offset.

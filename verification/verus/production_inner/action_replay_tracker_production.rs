@@ -6,7 +6,7 @@
 //
 // This file is a VERBATIM copy of the production `ActionReplayTracker`
 // implementation block from
-//   crates/vb_storage/src/recovery/types.rs:666-852
+//   crates/vb_storage/src/recovery/types.rs:867-1053
 // with two minimal substitutions:
 //
 //   1. The crate-internal `RecoveryError` and `RecoveryResult` aliases are
@@ -24,7 +24,7 @@
 //      field names, same `#[repr(transparent)]` shape, and same method
 //      surface (`new`, `get`). These are `Copy + PartialEq + Eq +
 //      Hash` so the `HashSet<(ActionId, StepIdx)>` operations on lines
-//      670-672 and 762/825/831/837/844 of production resolve
+//      871-873 and 963/1026/1032/1038/1045 of production resolve
 //      identically.
 //
 // This file exists so that the companion `extern_idempotency_replay_tracker.rs`
@@ -36,7 +36,7 @@
 // the explicit drift-detection mechanism the user requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:666-852` whenever production
+// `crates/vb_storage/src/recovery/types.rs:867-1053` whenever production
 // changes. The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -152,7 +152,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // VERBATIM PRODUCTION: ActionReplayTracker block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:666-852
+// Source: crates/vb_storage/src/recovery/types.rs:867-1053
 // Drift policy: any change to the production block between these line
 // numbers MUST be mirrored here.
 
@@ -160,7 +160,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// re-execution of non-idempotent actions.
 ///
 /// Note on field visibility: the production struct at
-/// `crates/vb_storage/src/recovery/types.rs:668-674` has PRIVATE fields
+/// `crates/vb_storage/src/recovery/types.rs:870-875` has PRIVATE fields
 /// `scheduled_tickets`, `completed`, `failed`, and
 /// `completed_envelopes`. This in-tree mirror declares them as `pub`
 /// so the companion Verus spec can reason about the HashSet view
