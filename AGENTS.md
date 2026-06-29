@@ -18,16 +18,16 @@ This repository uses a pure virtual workspace pattern.
 ## Absolute Workspace Rule
 
 - The main checkout at `/home/lewis/src/velvet-ballistics` is a **coordination checkout only**. Do not implement features, run broad verification, or leave dirty code in this main checkout.
-- All implementation, repair, review-fix, proof-writing, test-writing, and broad verification work MUST happen in an isolated Git worktree **and JJ workspace** under `/home/lewis/src/isolated/` unless the user explicitly names another non-main workspace path.
+- All implementation, repair, review-fix, proof-writing, test-writing, and broad verification work MUST happen in an isolated Git worktree **and JJ workspace** under `~/src/isoloated/` unless the user explicitly names another non-main workspace path.
 - Before creating, using, rebasing, landing, or cleaning an isolated workspace, load the `jj`/`jujutsu` skill and follow its workspace-isolation workflow. Do not improvise Git-only multi-agent workflows.
-- Every agent MUST use a unique worktree/JJ workspace path, for example `/home/lewis/src/isolated/velvet-ballistics-<bead-id>-<agent-role>`. Never share a worktree or JJ workspace between concurrent agents.
+- Every agent MUST use a unique worktree/JJ workspace path, for example `~/src/isoloated/velvet-ballistics-<bead-id>-<agent-role>`. Never share a worktree or JJ workspace between concurrent agents.
 - Before editing, committing, pushing, or running broad verification, verify both:
   - `git rev-parse --show-toplevel` resolves to that agent's isolated worktree, not `/home/lewis/src/velvet-ballistics`.
   - `jj root` resolves to the same isolated workspace root, or the agent has stopped and reported that JJ workspace initialization is required.
 - The only permitted actions in `/home/lewis/src/velvet-ballistics` are coordination actions: `git fetch`, `git pull --rebase`, `git status`, `git worktree add/list/remove`, `jj workspace list`, `jj git fetch`, bead tracker operations, documentation/instruction updates explicitly requested by the user, and emergency cleanup of accidental dirty state.
 - Standard startup for a new implementation agent is:
   1. From `/home/lewis/src/velvet-ballistics`, pull latest `main`.
-  2. Create a dedicated isolated workspace under `/home/lewis/src/isolated/` using JJ workspace isolation when the repository is JJ-initialized, or create a dedicated Git worktree and immediately initialize/use JJ there before editing.
+  2. Create a dedicated isolated workspace under `~/src/isoloated/` using JJ workspace isolation when the repository is JJ-initialized, or create a dedicated Git worktree and immediately initialize/use JJ there before editing.
   3. Change into that isolated path and verify both the Git root and JJ root resolve to that isolated workspace.
   4. Create a new JJ change for the bead, describe it with the bead ID, and claim/create the bead from the isolated workspace before editing.
 - If `jj root` reports that the repository is not JJ-initialized, do not proceed with implementation from plain Git. Stop and either initialize the isolated workspace with JJ or ask for operator confirmation when repository-level JJ setup is required.
