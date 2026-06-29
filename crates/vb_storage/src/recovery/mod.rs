@@ -38,7 +38,8 @@ mod recovery_unit_tests;
 
 pub use types::{
     ActionAbiDigestComparison, ActionReplayTracker, DigestCheck, DigestPair,
-    DigestVerificationRequest, FullDigestEvidence, PolicyDigestComparison, RecoveredPendingAction,
+    DigestVerificationRequest, FullDigestEvidence, MissingRunStateComponent,
+    MissingRunStateComponents, PolicyDigestComparison, RecoveredPendingAction,
     RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
     RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult,
     RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,

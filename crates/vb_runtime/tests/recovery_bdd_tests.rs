@@ -11,12 +11,13 @@ use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestVerificationRequest, RecoveredStepEntry, RecoveredStepState,
+    ActionReplayTracker, DigestVerificationRequest, MissingRunStateComponent,
+    MissingRunStateComponents, RecoveredStepEntry, RecoveredStepState, RecoveryCannotResumeState,
     RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
-    RecoveryTerminalState, RunSnapshot, check_action_abi_digests, check_compiled_ir_digest,
-    check_policy_digests, check_workflow_source_digest, hydrate_run_frame,
-    hydrate_run_frame_from_events, recover_full_journal, recover_runtime_frame_seed,
-    recover_runtime_summary, verify_digests,
+    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_action_abi_digests,
+    check_compiled_ir_digest, check_policy_digests, check_workflow_source_digest,
+    hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
+    recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -3267,4 +3268,141 @@ fn typed_rejection_hydrate_from_events_workflow_missing_fails_closed() {
 
     let result = hydrate_run_frame_from_events(&events, run);
     assert_unsupported_frame_seed(result, run, "workflow_missing");
+}
+
+// ============================================================================
+// B-021 through B-026: parametrized missing-component mask — gap closure
+// (vb-wy33p.11 round 8)
+//
+// `mark_full_run_state_missing` was previously unconditional: it set all
+// seven `*_missing` flags together, so the priority chain
+// `priority_class_second_half` always resolved `workflow_missing` first.
+// The six later-priority tokens (`store_missing`,
+// `action_attempts_missing`, `admission_missing`,
+// `collect_states_missing`, `action_contracts_missing`,
+// `action_abi_digests_missing`) were structurally unreachable from
+// `from_seed`.
+//
+// Round 8 introduced `mark_missing_components(MissingRunStateComponents)`
+// and `MissingRunStateComponents::single(MissingRunStateComponent)`. The
+// tests below drive the priority chain with a mask that contains
+// EXACTLY one `*_missing` flag, so each second-half reason token is
+// reachable in isolation. This proves the priority chain is correct
+// for every token, not just `workflow_missing`.
+//
+// Construction pattern (used by every test below):
+//   let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+//       .mark_missing_components(MissingRunStateComponents::single(MissingRunStateComponent::<TOKEN>));
+//   assert_eq!(state.unsupported_reason(), "<token>_missing");
+// ============================================================================
+
+/// Parametrized mask — `single(Store)` yields reason `"store_missing"`.
+#[test]
+fn parametrized_mask_single_store_missing_yields_store_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::Store,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "store_missing");
+}
+
+/// Parametrized mask — `single(ActionAttempts)` yields reason
+/// `"action_attempts_missing"`.
+#[test]
+fn parametrized_mask_single_action_attempts_missing_yields_action_attempts_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::ActionAttempts,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "action_attempts_missing");
+}
+
+/// Parametrized mask — `single(Admission)` yields reason
+/// `"admission_missing"`.
+#[test]
+fn parametrized_mask_single_admission_missing_yields_admission_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::Admission,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "admission_missing");
+}
+
+/// Parametrized mask — `single(CollectStates)` yields reason
+/// `"collect_states_missing"`.
+#[test]
+fn parametrized_mask_single_collect_states_missing_yields_collect_states_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::CollectStates,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "collect_states_missing");
+}
+
+/// Parametrized mask — `single(ActionContracts)` yields reason
+/// `"action_contracts_missing"`.
+#[test]
+fn parametrized_mask_single_action_contracts_missing_yields_action_contracts_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::ActionContracts,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "action_contracts_missing");
+}
+
+/// Parametrized mask — `single(ActionAbiDigests)` yields reason
+/// `"action_abi_digests_missing"`.
+#[test]
+fn parametrized_mask_single_action_abi_digests_missing_yields_action_abi_digests_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::ActionAbiDigests,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "action_abi_digests_missing");
+}
+
+/// Parametrized mask — `single(Workflow)` (the highest-priority
+/// second-half token) still yields reason `"workflow_missing"` when
+/// the storage-layer / pending-boundary flags are all false. This
+/// confirms the parametrized mask and the `from_seed`-style `ALL`
+/// mask produce the same canonical reason for the workflow case.
+#[test]
+fn parametrized_mask_single_workflow_missing_yields_workflow_reason() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::single(
+            MissingRunStateComponent::Workflow,
+        ));
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "workflow_missing");
+}
+
+/// Parametrized mask — `ALL` (the `from_seed` default) yields reason
+/// `"workflow_missing"` because the priority chain resolves
+/// `workflow_missing` first. This is the FINDING-001 invariant:
+/// every frame-seed-only classification fails closed with
+/// `"workflow_missing"` regardless of which other second-half flags
+/// are also true.
+#[test]
+fn parametrized_mask_all_yields_workflow_reason_due_to_priority_order() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::ALL);
+    assert!(!state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "workflow_missing");
+}
+
+/// Parametrized mask — `NONE` plus a fully-supported `UnsupportedRecoveryState`
+/// is the resumable sentinel. The priority chain returns `"resumable"`
+/// because every `*_missing` flag is false. `is_resumable()` returns true.
+#[test]
+fn parametrized_mask_none_yields_resumable() {
+    let state = RecoveryCannotResumeState::from_unsupported(UnsupportedRecoveryState::SUPPORTED)
+        .mark_missing_components(MissingRunStateComponents::NONE);
+    assert!(state.is_resumable());
+    assert_eq!(state.unsupported_reason(), "resumable");
 }

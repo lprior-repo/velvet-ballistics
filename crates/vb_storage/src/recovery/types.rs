@@ -7,7 +7,6 @@
 //! - Frame seed types for live-frame reconstruction
 
 use crate::{EventSeq, JournalError};
-use serde::{Deserialize, Serialize};
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx,
     Taint, WorkflowDigest,
@@ -34,14 +33,12 @@ impl ReplayResolutionSet {
 }
 
 /// Recovery failures with typed diagnostics.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum RecoveryError {
     /// Journal operation failed during recovery.
-    #[error("journal error during recovery: {0}")]
-    Journal(#[from] JournalError),
+    Journal(JournalError),
     /// Workflow source digest does not match the stored record.
-    #[error("workflow source digest mismatch: expected {expected:?}, found {found:?}")]
     WorkflowSourceDigestMismatch {
         /// Expected digest.
         expected: WorkflowDigest,
@@ -49,7 +46,6 @@ pub enum RecoveryError {
         found: WorkflowDigest,
     },
     /// Compiled IR digest does not match the stored record.
-    #[error("compiled IR digest mismatch: expected {expected:?}, found {found:?}")]
     CompiledIrDigestMismatch {
         /// Expected digest.
         expected: WorkflowDigest,
@@ -57,21 +53,16 @@ pub enum RecoveryError {
         found: WorkflowDigest,
     },
     /// Action ABI digest mismatch during recovery.
-    #[error("action ABI digest mismatch for action {action_id:?}")]
     ActionAbiMismatch {
         /// Action with mismatched ABI.
         action_id: ActionId,
     },
     /// Policy digest mismatch during recovery.
-    #[error("policy digest mismatch for step {step:?}")]
     PolicyDigestMismatch {
         /// Step where policy diverged.
         step: StepIdx,
     },
     /// A non-idempotent action was encountered during recovery and cannot be re-executed.
-    #[error(
-        "non-idempotent action {action:?} at step {step:?} cannot be re-executed during recovery"
-    )]
     NonIdempotentActionBlocked {
         /// Action identifier.
         action: ActionId,
@@ -79,7 +70,6 @@ pub enum RecoveryError {
         step: StepIdx,
     },
     /// Replay diverged from expected state machine trajectory.
-    #[error("replay divergence at step {step:?}: {detail}")]
     ReplayDivergence {
         /// Step where divergence was detected.
         step: StepIdx,
@@ -87,25 +77,21 @@ pub enum RecoveryError {
         detail: String,
     },
     /// Recovery could not read existing slot taint and must fail closed.
-    #[error("slot taint read_taint failed for slot {slot:?}")]
     SlotTaintReadFailed {
         /// Slot whose taint could not be read.
         slot: SlotIdx,
     },
     /// Durable slot taint metadata was present but could not be decoded.
-    #[error("slot taint metadata corrupt for slot {slot:?}")]
     CorruptSlotTaint {
         /// Slot whose persisted taint metadata was corrupt.
         slot: SlotIdx,
     },
     /// No snapshot or journal events found for run.
-    #[error("no recovery data found for run {run:?}")]
     NoRecoveryData {
         /// Run identifier.
         run: RunId,
     },
     /// Snapshot is present but corrupt or unreadable.
-    #[error("snapshot corrupt for run {run:?} at seq {seq:?}")]
     CorruptSnapshot {
         /// Run identifier.
         run: RunId,
@@ -121,7 +107,6 @@ pub enum RecoveryError {
     /// line 873 requires a typed storage-error surface so the recovery
     /// boundary can pick snapshot-plus-tail recovery (missing) versus
     /// fail-closed on real corruption (corrupt) without conflating them.
-    #[error("no snapshot found for run {run:?} at seq {seq:?}")]
     MissingSnapshot {
         /// Run identifier.
         run: RunId,
@@ -129,7 +114,6 @@ pub enum RecoveryError {
         seq: EventSeq,
     },
     /// Recovery produced a terminal state that does not match expectations.
-    #[error("recovery terminal state mismatch: expected {expected:?}, found {found:?}")]
     TerminalStateMismatch {
         /// Expected terminal event kind.
         expected: String,
@@ -137,7 +121,6 @@ pub enum RecoveryError {
         found: String,
     },
     /// Durable event indexes exceed the runtime frame dimensions that can be represented.
-    #[error("recovery frame dimension overflow for run {run:?}")]
     FrameDimensionOverflow {
         /// Run identifier.
         run: RunId,
@@ -148,13 +131,107 @@ pub enum RecoveryError {
     /// events). The runtime cannot resume execution from a frame-only
     /// seed; callers must reconcile via summary-only observation or
     /// restart from scratch.
-    #[error("recovery frame seed is not resumable for run {run:?}: {reason}")]
     UnsupportedFrameSeed {
         /// Run identifier.
         run: RunId,
         /// Canonical reason string for the cannot-resume classification.
         reason: String,
     },
+}
+
+impl core::fmt::Display for RecoveryError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Journal(inner) => {
+                write!(f, "journal error during recovery: {inner}")
+            }
+            Self::WorkflowSourceDigestMismatch { expected, found } => {
+                write!(
+                    f,
+                    "workflow source digest mismatch: expected {expected:?}, found {found:?}"
+                )
+            }
+            Self::CompiledIrDigestMismatch { expected, found } => {
+                write!(
+                    f,
+                    "compiled IR digest mismatch: expected {expected:?}, found {found:?}"
+                )
+            }
+            Self::ActionAbiMismatch { action_id } => {
+                write!(f, "action ABI digest mismatch for action {action_id:?}")
+            }
+            Self::PolicyDigestMismatch { step } => {
+                write!(f, "policy digest mismatch for step {step:?}")
+            }
+            Self::NonIdempotentActionBlocked { action, step } => {
+                write!(
+                    f,
+                    "non-idempotent action {action:?} at step {step:?} cannot be re-executed during recovery"
+                )
+            }
+            Self::ReplayDivergence { step, detail } => {
+                write!(f, "replay divergence at step {step:?}: {detail}")
+            }
+            Self::SlotTaintReadFailed { slot } => {
+                write!(f, "slot taint read_taint failed for slot {slot:?}")
+            }
+            Self::CorruptSlotTaint { slot } => {
+                write!(f, "slot taint metadata corrupt for slot {slot:?}")
+            }
+            Self::NoRecoveryData { run } => {
+                write!(f, "no recovery data found for run {run:?}")
+            }
+            Self::CorruptSnapshot { run, seq } => {
+                write!(f, "snapshot corrupt for run {run:?} at seq {seq:?}")
+            }
+            Self::MissingSnapshot { run, seq } => {
+                write!(f, "no snapshot found for run {run:?} at seq {seq:?}")
+            }
+            Self::TerminalStateMismatch { expected, found } => {
+                write!(
+                    f,
+                    "recovery terminal state mismatch: expected {expected:?}, found {found:?}"
+                )
+            }
+            Self::FrameDimensionOverflow { run } => {
+                write!(f, "recovery frame dimension overflow for run {run:?}")
+            }
+            Self::UnsupportedFrameSeed { run, reason } => {
+                write!(
+                    f,
+                    "recovery frame seed is not resumable for run {run:?}: {reason}"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for RecoveryError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Journal(inner) => Some(inner),
+            Self::WorkflowSourceDigestMismatch { .. }
+            | Self::CompiledIrDigestMismatch { .. }
+            | Self::ActionAbiMismatch { .. }
+            | Self::PolicyDigestMismatch { .. }
+            | Self::NonIdempotentActionBlocked { .. }
+            | Self::ReplayDivergence { .. }
+            | Self::SlotTaintReadFailed { .. }
+            | Self::CorruptSlotTaint { .. }
+            | Self::NoRecoveryData { .. }
+            | Self::CorruptSnapshot { .. }
+            | Self::MissingSnapshot { .. }
+            | Self::TerminalStateMismatch { .. }
+            | Self::FrameDimensionOverflow { .. }
+            | Self::UnsupportedFrameSeed { .. } => None,
+        }
+    }
+}
+
+impl From<JournalError> for RecoveryError {
+    fn from(inner: JournalError) -> Self {
+        Self::Journal(inner)
+    }
 }
 
 // Manual `PartialEq, Eq` impl: `RecoveryError::Journal(_)` wraps
@@ -449,7 +526,7 @@ impl<'a> DigestVerificationRequest<'a> {
 }
 
 /// Terminal status recovered from durable journal events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RecoveryTerminalState {
     /// Run was cancelled before completion.
@@ -466,7 +543,7 @@ pub enum RecoveryTerminalState {
 }
 
 /// Runtime summary that can be recovered without reconstructing a live `RunFrame`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryRuntimeSummary {
     /// Run identifier summarized by this recovery view.
     pub run: RunId,
@@ -493,7 +570,7 @@ pub struct RecoveryRuntimeSummary {
 }
 
 /// Admission metadata recovered from durable journal events.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveredRunAdmission {
     /// Digest of the accepted compiled artifact.
     pub artifact_digest: WorkflowDigest,
@@ -507,7 +584,7 @@ pub struct RecoveredRunAdmission {
 
 /// Explicit recovery product. Supports summary-only or full live-frame seed
 /// recovery from durable journal events.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RecoveryHydration {
     /// Summary-only recovery product.
@@ -528,7 +605,7 @@ impl RecoveryHydration {
 }
 
 /// Step state recovered from durable lifecycle events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RecoveredStepState {
     /// Step has started or is waiting on action completion.
@@ -544,7 +621,7 @@ pub enum RecoveredStepState {
 }
 
 /// One recovered step-state entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveredStepEntry {
     /// Step index.
     pub step: StepIdx,
@@ -553,7 +630,7 @@ pub struct RecoveredStepEntry {
 }
 
 /// One slot value recovered by deterministic workflow replay.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveredSlotEntry {
     /// Slot index.
     pub slot: SlotIdx,
@@ -564,7 +641,7 @@ pub struct RecoveredSlotEntry {
 }
 
 /// One pending action reconstructed from unresolved action lifecycle events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveredPendingAction {
     /// Step that scheduled the action.
     pub step: StepIdx,
@@ -573,7 +650,7 @@ pub struct RecoveredPendingAction {
 }
 
 /// State that durable headers/events still cannot reconstruct into a live frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnsupportedRecoveryState {
     /// Slot values are not present in current slot-written records.
     pub slot_values: bool,
@@ -649,7 +726,7 @@ impl UnsupportedRecoveryState {
 }
 
 /// Minimal live-frame seed recovered from durable journal headers/events.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveryFrameSeed {
     /// Runtime summary for the same event set.
     pub summary: RecoveryRuntimeSummary,
@@ -671,12 +748,127 @@ pub struct RecoveryFrameSeed {
     pub unsupported: UnsupportedRecoveryState,
 }
 
+/// Identifier for a single full-RunState component whose absence is
+/// tracked on a [`RecoveryCannotResumeState`] witness.
+///
+/// These map 1:1 to the seven `*_missing` flags on
+/// [`RecoveryCannotResumeState`]. The enum is intentionally distinct
+/// from the mask struct ([`MissingRunStateComponents`]) so callers
+/// can talk about a single component (e.g. via
+/// [`MissingRunStateComponents::single`]) without constructing the
+/// whole bitmask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MissingRunStateComponent {
+    /// A compiled workflow is required by the live runtime but is not represented.
+    Workflow,
+    /// A cold value store is required by the live runtime but is not represented.
+    Store,
+    /// Per-Do-step action attempt counters are required but not represented.
+    ActionAttempts,
+    /// Admission metadata is required by the live runtime but is not represented.
+    Admission,
+    /// Per-run collect pagination state is required but not represented.
+    CollectStates,
+    /// Validated action contracts are required but not represented.
+    ActionContracts,
+    /// Dense action ABI digest table is required but not represented.
+    ActionAbiDigests,
+}
+
+/// Mask for which full-RunState components are absent from a seed.
+///
+/// Used to parameterize
+/// [`RecoveryCannotResumeState::mark_missing_components`] so the
+/// priority chain reason string in
+/// [`RecoveryCannotResumeState::unsupported_reason`] can exercise
+/// every reachable token (e.g. `"store_missing"`,
+/// `"action_attempts_missing"`, `"admission_missing"`,
+/// `"collect_states_missing"`, `"action_contracts_missing"`,
+/// `"action_abi_digests_missing"`), not just the first one in priority
+/// order (`"workflow_missing"`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct MissingRunStateComponents {
+    /// Compile workflow digest is not represented in the seed.
+    pub workflow: bool,
+    /// Cold value store is not represented in the seed.
+    pub store: bool,
+    /// Per-Do-step action attempt counters are not represented.
+    pub action_attempts: bool,
+    /// Admission metadata is not represented.
+    pub admission: bool,
+    /// Per-run collect pagination state is not represented.
+    pub collect_states: bool,
+    /// Validated action contracts are not represented.
+    pub action_contracts: bool,
+    /// Dense action ABI digest table is not represented.
+    pub action_abi_digests: bool,
+}
+
+impl MissingRunStateComponents {
+    /// Mask with every full-RunState component marked missing.
+    pub const ALL: Self = Self {
+        workflow: true,
+        store: true,
+        action_attempts: true,
+        admission: true,
+        collect_states: true,
+        action_contracts: true,
+        action_abi_digests: true,
+    };
+
+    /// Mask with no full-RunState component marked missing.
+    pub const NONE: Self = Self {
+        workflow: false,
+        store: false,
+        action_attempts: false,
+        admission: false,
+        collect_states: false,
+        action_contracts: false,
+        action_abi_digests: false,
+    };
+
+    /// Build a mask that marks exactly one component missing.
+    #[must_use]
+    pub const fn single(component: MissingRunStateComponent) -> Self {
+        match component {
+            MissingRunStateComponent::Workflow => Self {
+                workflow: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::Store => Self {
+                store: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::ActionAttempts => Self {
+                action_attempts: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::Admission => Self {
+                admission: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::CollectStates => Self {
+                collect_states: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::ActionContracts => Self {
+                action_contracts: true,
+                ..Self::NONE
+            },
+            MissingRunStateComponent::ActionAbiDigests => Self {
+                action_abi_digests: true,
+                ..Self::NONE
+            },
+        }
+    }
+}
+
 /// Typed recovery decision for live resume eligibility.
 ///
 /// This is deliberately wider than [`UnsupportedRecoveryState`]: a frame seed
 /// can have supported slot bytes and still be unsafe to resume because live
 /// runtime boundary state is not represented by `RunFrame`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryCannotResumeState {
     /// Slot values are not present or cannot be reconstructed.
     pub slot_values: bool,
@@ -745,6 +937,14 @@ impl RecoveryCannotResumeState {
     }
 
     /// Classifies a recovered frame seed as resumable or cannot-resume.
+    ///
+    /// The frame seed is missing every component of the live runtime
+    /// `RunState` (workflow, store, action attempts, admission,
+    /// collect states, action contracts, action ABI digests), so the
+    /// mask is [`MissingRunStateComponents::ALL`]. Tests that want to
+    /// exercise a single second-half reason token call
+    /// [`Self::mark_missing_components`] directly with
+    /// [`MissingRunStateComponents::single`] instead.
     #[must_use]
     pub fn from_seed(seed: &RecoveryFrameSeed) -> Self {
         let mut state = Self::from_unsupported(seed.unsupported);
@@ -752,18 +952,58 @@ impl RecoveryCannotResumeState {
         for entry in &seed.steps {
             state.classify_step_state(entry.state);
         }
-        state.mark_full_run_state_missing();
+        state = state.mark_missing_components(MissingRunStateComponents::ALL);
         state
     }
 
-    const fn mark_full_run_state_missing(&mut self) {
-        self.workflow_missing = true;
-        self.store_missing = true;
-        self.action_attempts_missing = true;
-        self.admission_missing = true;
-        self.collect_states_missing = true;
-        self.action_contracts_missing = true;
-        self.action_abi_digests_missing = true;
+    /// Apply a parameter-mask of missing full-RunState components,
+    /// setting the corresponding `*_missing` flags. Replaces the
+    /// previous unconditional `mark_full_run_state_missing`. Tests
+    /// drive this with [`MissingRunStateComponents::single`] to
+    /// exercise each second-half reason token
+    /// (`"store_missing"`, `"action_attempts_missing"`, etc.) in
+    /// isolation, since the priority chain in
+    /// [`Self::unsupported_reason`] is dominated by `"workflow_missing"`
+    /// when all seven flags are set together.
+    #[must_use]
+    pub const fn mark_missing_components(mut self, components: MissingRunStateComponents) -> Self {
+        if components.workflow {
+            self.workflow_missing = true;
+        }
+        if components.store {
+            self.store_missing = true;
+        }
+        if components.action_attempts {
+            self.action_attempts_missing = true;
+        }
+        if components.admission {
+            self.admission_missing = true;
+        }
+        if components.collect_states {
+            self.collect_states_missing = true;
+        }
+        if components.action_contracts {
+            self.action_contracts_missing = true;
+        }
+        if components.action_abi_digests {
+            self.action_abi_digests_missing = true;
+        }
+        self
+    }
+
+    /// Deprecated alias for
+    /// [`Self::mark_missing_components`] with
+    /// [`MissingRunStateComponents::ALL`]. Retained so any external
+    /// call site (currently none — only `from_seed` invokes it) keeps
+    /// compiling unchanged. New code should call
+    /// [`Self::mark_missing_components`] directly.
+    #[must_use]
+    #[deprecated(
+        since = "0.0.0",
+        note = "use `mark_missing_components(MissingRunStateComponents::ALL)` instead"
+    )]
+    pub const fn mark_full_run_state_missing(self) -> Self {
+        self.mark_missing_components(MissingRunStateComponents::ALL)
     }
 
     fn classify_step_state(&mut self, state: RecoveredStepState) {
@@ -974,7 +1214,7 @@ impl RecoveryFrameSeed {
 }
 
 /// Snapshot of a run's runtime state at a specific event sequence.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RunSnapshot {
     /// Run identifier.
     pub run: RunId,
