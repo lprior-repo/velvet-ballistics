@@ -1124,12 +1124,17 @@ fn frame_dimension_overflow_returns_typed_error() {
 
     // Tail with a slot index at u16::MAX to overflow slot_count derivation
     // derive_dimensions_from_snapshot_and_tail computes max_slot + 1;
-    // u16::MAX + 1 overflows and returns FrameDimensionOverflow
+    // u16::MAX + 1 overflows and returns FrameDimensionOverflow.
+    // The slot value must decode successfully so the typed cannot-
+    // resume gate (BLOCKER 4) does not reject with "slot_values"
+    // first; the dimension overflow path must run.
     let tail = vec![JournalEvent::SlotWrittenEvent {
         run,
         seq: EventSeq::new(2),
         slot: SlotIdx::new(u16::MAX), // overflow: max_slot + 1 = u16::MAX + 1
-        value: None,
+        value: Some(
+            postcard::to_allocvec(&SlotValue::I64(0)).expect("slot value encoding should succeed"),
+        ),
         extra: None,
         attempt: 1,
     }];
@@ -1154,6 +1159,92 @@ fn frame_dimension_overflow_returns_typed_error() {
         panic!("expected FrameDimensionOverflow for overflowing slot index, got: {result:?}");
     };
     assert_eq!(found, run);
+}
+
+// ---------------------------------------------------------------------------
+// B-011b: Snapshot+Tail Typed-Gate Pre-Hydration Rejection (BLOCKER 4)
+// GA-011b — Tail with unresolved WaitScheduledEvent is rejected by the
+// typed cannot-resume gate BEFORE any RunFrame is allocated.
+// Mirrors `crates/vb_storage/src/recovery/hydrate.rs` BLOCKER 4 fix
+// (`classify_snapshot_tail_cannot_resume`).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn snapshot_plus_tail_with_unresolved_wait_rejects_at_typed_gate() {
+    let run = RunId::new(11002);
+    let digest = test_digest(0xBA);
+
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(1),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+
+    // Tail contains a StepStarted + WaitScheduledEvent without a
+    // matching WaitResolvedEvent. The typed cannot-resume gate must
+    // fail closed with reason "pending_timers" (priority index 4).
+    let tail = vec![
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::WaitScheduledEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+    ];
+
+    // GA-011b: hydrate_run_frame rejects with UnsupportedFrameSeed
+    // and the priority-ordered reason "pending_timers" before any
+    // RunFrame allocation.
+    let result = hydrate_run_frame(&snapshot, &tail, run);
+    assert_unsupported_frame_seed(result, run, "pending_timers");
+}
+
+// ---------------------------------------------------------------------------
+// B-011c: Snapshot+Tail Typed-Gate Pre-Hydration Rejection (BLOCKER 4)
+// GA-011c — Tail with unresolved AskScheduledEvent is rejected with
+// reason "pending_asks". Confirms Ask path of the typed gate.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn snapshot_plus_tail_with_unresolved_ask_rejects_at_typed_gate() {
+    let run = RunId::new(11003);
+    let digest = test_digest(0xCA);
+
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(1),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+
+    let tail = vec![
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::AskScheduledEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+    ];
+
+    // GA-011c: hydrate_run_frame rejects with UnsupportedFrameSeed
+    // and the priority-ordered reason "pending_asks".
+    let result = hydrate_run_frame(&snapshot, &tail, run);
+    assert_unsupported_frame_seed(result, run, "pending_asks");
 }
 
 // ---------------------------------------------------------------------------

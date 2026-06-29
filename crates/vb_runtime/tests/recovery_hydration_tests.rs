@@ -1815,8 +1815,9 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 
 /// Given a real `FjallJournal` with events including a
 /// `JournalEvent::ActionScheduled` for an action that never finishes
-/// When the journal handle is dropped (simulating a crash) and the
-/// journal is reopened on the same path
+/// When the journal handle is dropped (simulating a clean shutdown
+/// after per-event `PersistMode::SyncAll`) and the journal is reopened
+/// on the same path
 /// Then `recover_runtime_frame_seed` reconstructs the seed with the
 /// pending action recorded, `DurableFrameRecoveryBoundary::resume_status`
 /// reports `CannotResume` with `pending_actions: true` (plus the
@@ -1826,14 +1827,21 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 /// `Err(RecoveryError::UnsupportedFrameSeed)` so the fail-closed
 /// surface is uniform across the runtime and storage layers.
 ///
-/// This is the deterministic crash/restart test called out by
+/// This is the deterministic persisted/restart test called out by
 /// FINDING-005 in `vb-wy33p.11`. The journal is opened twice on the
 /// same `TempDir` so the test exercises the actual durable boundary
 /// (no in-memory mocking). The events are written strictly so the
 /// sequences are well-defined and the assertion is reproducible
 /// without timing variance.
+///
+/// NOTE on terminology: `drop` simulates a clean shutdown after
+/// per-event `PersistMode::SyncAll`; this is the BEAD'S narrowing of
+/// "crash" to typed-rejection classification, NOT a power-loss WAL
+/// replay test. A true power-loss test would require corrupting the
+/// WAL mid-write and asserting partial-record rejection; that is out
+/// of scope for this test.
 #[test]
-fn pending_action_crash_restart_fails_closed_with_typed_rejection() {
+fn pending_action_persisted_restart_fails_closed_with_typed_rejection() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(11300);
     let digest = test_digest(0x2B);

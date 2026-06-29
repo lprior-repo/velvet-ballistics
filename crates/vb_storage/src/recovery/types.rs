@@ -798,40 +798,60 @@ impl RecoveryCannotResumeState {
             && !self.action_abi_digests_missing
     }
 
+    /// Canonical reason strings ordered by classification priority
+    /// (the first true flag wins). Index `i` corresponds to
+    /// [`flag_at`](Self::flag_at).
+    pub const CANNOT_RESUME_REASONS: [&str; 13] = [
+        "slot_values",
+        "slot_taint",
+        "action_payloads",
+        "pending_actions",
+        "pending_timers",
+        "pending_asks",
+        "workflow_missing",
+        "store_missing",
+        "action_attempts_missing",
+        "admission_missing",
+        "collect_states_missing",
+        "action_contracts_missing",
+        "action_abi_digests_missing",
+    ];
+
+    /// Returns the cannot-resume flag at priority index `i`. Out-of-
+    /// range indices return `false` so the walk above terminates.
+    #[must_use]
+    pub const fn flag_at(self, i: usize) -> bool {
+        match i {
+            0 => self.slot_values,
+            1 => self.slot_taint,
+            2 => self.action_payloads,
+            3 => self.pending_actions,
+            4 => self.pending_timers,
+            5 => self.pending_asks,
+            6 => self.workflow_missing,
+            7 => self.store_missing,
+            8 => self.action_attempts_missing,
+            9 => self.admission_missing,
+            10 => self.collect_states_missing,
+            11 => self.action_contracts_missing,
+            12 => self.action_abi_digests_missing,
+            _ => false,
+        }
+    }
+
     /// Canonical reason string for a typed `UnsupportedFrameSeed` error.
     ///
     /// The first true flag in classification-priority order wins.
     #[must_use]
     pub const fn unsupported_reason(self) -> &'static str {
-        if self.slot_values {
-            "slot_values"
-        } else if self.slot_taint {
-            "slot_taint"
-        } else if self.action_payloads {
-            "action_payloads"
-        } else if self.pending_actions {
-            "pending_actions"
-        } else if self.pending_timers {
-            "pending_timers"
-        } else if self.pending_asks {
-            "pending_asks"
-        } else if self.workflow_missing {
-            "workflow_missing"
-        } else if self.store_missing {
-            "store_missing"
-        } else if self.action_attempts_missing {
-            "action_attempts_missing"
-        } else if self.admission_missing {
-            "admission_missing"
-        } else if self.collect_states_missing {
-            "collect_states_missing"
-        } else if self.action_contracts_missing {
-            "action_contracts_missing"
-        } else if self.action_abi_digests_missing {
-            "action_abi_digests_missing"
-        } else {
-            "resumable"
+        let mut i: usize = 0;
+        while i < Self::CANNOT_RESUME_REASONS.len() {
+            if self.flag_at(i) {
+                return Self::CANNOT_RESUME_REASONS[i];
+            }
+            i += 1;
         }
+        "resumable"
     }
 }
 

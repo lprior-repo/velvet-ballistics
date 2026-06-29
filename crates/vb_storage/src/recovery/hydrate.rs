@@ -12,10 +12,11 @@ use crate::recovery::hydrate_support::{
 };
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::types::{
-    ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryResult, RunSnapshot,
+    ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
+    RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot,
 };
-use vb_core::RunId;
+use std::collections::BTreeSet;
+use vb_core::{RunId, StepIdx};
 
 /// Production proof surface for snapshot-plus-tail run identity.
 #[must_use]
@@ -186,7 +187,7 @@ pub(crate) const fn validate_recovery_data_present(
 /// to derive a `RunFrame` shape with hydrated slot/taint data and a
 /// monotonically advanced program counter. The corresponding cannot-
 /// resume witness lives at the typed boundary that consumes this
-/// frame (the [`crate::recovery::RuntimeRecoveryBoundary`]
+/// frame (the `RuntimeRecoveryBoundary`
 /// implementation at the runtime layer; see
 /// `DurableFrameRecoveryBoundary::hydrate_run_frame` and
 /// `summary::recover_runtime_frame_seed_from_events`). The events-only
@@ -194,21 +195,35 @@ pub(crate) const fn validate_recovery_data_present(
 /// `UnsupportedFrameSeed { run, reason }` rejection is enforced, so
 /// any caller passing a frame seed alone through the typed boundary
 /// still fails closed with the precise reason string. The
-/// per-event-typed lower-level gate is enforced inside the tail
-/// application helpers (see
-/// [`crate::recovery::hydrate_support::apply_slot_written`]) so a
-/// `SlotWrittenEvent { value: None }` entering the snapshot+tail path
-/// is rejected with `UnsupportedFrameSeed { reason: "slot_values" }`
-/// while a valid (snapshot slot bytes + tail step lifecycle) path
-/// continues to assemble the lower-level frame successfully. This
-/// keeps the unit-level durability, taint preservation, and
-/// replay-shape tests green: they construct valid durable evidence.
+/// snapshot+tail entry point ALSO enforces the typed cannot-resume
+/// gate up-front via [`classify_snapshot_tail_cannot_resume`] so a
+/// tail that would leave pending timers/asks/actions or carry a
+/// `SlotWrittenEvent { value: None, .. }` is rejected with
+/// `UnsupportedFrameSeed { reason }` BEFORE any frame is allocated.
+/// This closes BLOCKER 4 and matches the typed-boundary contract the
+/// events-only path already satisfies. The per-event-typed lower-
+/// level gate is also enforced inside the tail application helpers
+/// (see `hydrate_support::apply_slot_written`) so any
+/// `SlotWrittenEvent { value: None }` that slips past the up-front
+/// check (e.g. through a programmatic call path) is rejected by the
+/// helper as defense-in-depth. A valid (snapshot slot bytes + tail
+/// step lifecycle) path continues to assemble the lower-level frame
+/// successfully. This keeps the unit-level durability, taint
+/// preservation, and replay-shape tests green: they construct valid
+/// durable evidence.
 pub fn hydrate_run_frame(
     snapshot: &RunSnapshot,
     tail_events: &[JournalEvent],
     run_id: RunId,
 ) -> RecoveryResult<vb_core::RunFrame> {
     validate_snapshot_recovery_inputs(snapshot, tail_events, run_id)?;
+    let cannot_resume = classify_snapshot_tail_cannot_resume(snapshot, tail_events);
+    if !cannot_resume.is_resumable() {
+        return Err(RecoveryError::UnsupportedFrameSeed {
+            run: run_id,
+            reason: String::from(cannot_resume.unsupported_reason()),
+        });
+    }
     let snapshot_slots = decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id)?;
     let (step_count, slot_count, first_step) =
         derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
@@ -222,6 +237,83 @@ pub fn hydrate_run_frame(
     let executed = apply_tail_events(&mut frame, tail_events, &mut tracker)?;
     increment_executed(&mut frame, run_id, executed)?;
     Ok(frame)
+}
+
+/// Walks the snapshot+tail pair and classifies the cannot-resume
+/// surface that the typed boundary would otherwise flag. Returns a
+/// [`RecoveryCannotResumeState`] whose `is_resumable()` reflects
+/// whether the pair carries enough evidence to rebuild a live frame.
+///
+/// Flags set by this helper:
+/// - `slot_values` — any `SlotWrittenEvent { value: None, .. }` in
+///   the tail (defense-in-depth alongside `apply_slot_written`).
+/// - `pending_actions` — any `ActionScheduled` /
+///   `ActionScheduledTicket` whose step still appears in the tail
+///   without a matching `ActionCompleted*` / `ActionFailedEvent` /
+///   `ActionAbandoned`.
+/// - `pending_timers` — any `WaitScheduledEvent` whose step still
+///   appears without a matching `WaitResolvedEvent`.
+/// - `pending_asks` — any `AskScheduledEvent` whose step still
+///   appears without a matching `AskAnsweredEvent` /
+///   `AskTimedOutEvent`.
+///
+/// The frame-seed-only `*_missing` flags are NOT set by this helper:
+/// they describe the absence of full RunState evidence, which the
+/// snapshot+tail path rebuilds from durable snapshot bytes.
+#[must_use]
+pub fn classify_snapshot_tail_cannot_resume(
+    _snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> RecoveryCannotResumeState {
+    let mut state = RecoveryCannotResumeState::RESUMABLE;
+    let mut pending_waits: BTreeSet<StepIdx> = BTreeSet::new();
+    let mut pending_asks: BTreeSet<StepIdx> = BTreeSet::new();
+    let mut pending_actions: BTreeSet<StepIdx> = BTreeSet::new();
+    for event in tail_events {
+        match event {
+            JournalEvent::SlotWrittenEvent { value: None, .. } => {
+                state.slot_values = true;
+            }
+            JournalEvent::WaitScheduledEvent { step, .. } => {
+                pending_waits.insert(*step);
+            }
+            JournalEvent::WaitResolvedEvent { step, .. } => {
+                pending_waits.remove(step);
+            }
+            JournalEvent::AskScheduledEvent { step, .. } => {
+                pending_asks.insert(*step);
+            }
+            JournalEvent::AskAnsweredEvent { step, .. } => {
+                pending_asks.remove(step);
+            }
+            JournalEvent::AskTimedOutEvent { step, .. } => {
+                pending_asks.remove(step);
+            }
+            JournalEvent::ActionScheduled { step, .. } => {
+                pending_actions.insert(*step);
+            }
+            JournalEvent::ActionCompletedEvent { step, .. } => {
+                pending_actions.remove(step);
+            }
+            JournalEvent::ActionFailedEvent { step, .. } => {
+                pending_actions.remove(step);
+            }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                pending_actions.insert(ticket.step);
+            }
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+                pending_actions.remove(&ticket.step);
+            }
+            JournalEvent::ActionAbandoned { ticket, .. } => {
+                pending_actions.remove(&ticket.step);
+            }
+            _ => {}
+        }
+    }
+    state.pending_timers = !pending_waits.is_empty();
+    state.pending_asks = !pending_asks.is_empty();
+    state.pending_actions = !pending_actions.is_empty();
+    state
 }
 
 fn validate_snapshot_recovery_inputs(

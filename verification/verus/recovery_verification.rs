@@ -135,6 +135,20 @@
 //         `RuntimeError::InvalidRecoveryHydration` per production
 //         reality.
 //
+//   - D3: production `CANNOT_RESUME_REASONS` array at
+//         `crates/vb_storage/src/recovery/types.rs:801-818` is
+//         redeclared in the extern mirror
+//         (`verification/verus/extern_recovery_verification.rs`).
+//         The priority ordering of the 13 reason tokens matches
+//         production line-by-line. `RecoveryCannotResumeState::unsupported_reason()`
+//         is refactored to a const-table walk over
+//         `CANNOT_RESUME_REASONS` + `flag_at` helper at production
+//         `types.rs:820-855`. The spec proof
+//         `proof_unsupported_reason_first_match_wins` below
+//         discharges the priority invariant: when a higher-priority
+//         flag is true, the returned reason is the highest-priority
+//         matching token, never a later-priority one.
+//
 // ============================================================================
 // TRUST BOUNDARY
 // ============================================================================
@@ -154,9 +168,9 @@ mod production;
 // Re-export the production-bound types and exec wrappers so the spec
 // proofs below reference them as `UnsupportedRecoveryState`, etc.
 pub use production::{
+    CANNOT_RESUME_REASONS,
     ActionAbiDigestComparison,
     ActionId,
-    CANNOT_RESUME_REASONS,
     DigestCheck,
     DigestPair,
     DigestVerificationRequest,
@@ -313,18 +327,10 @@ pub open spec fn spec_summary_boundary_never_hydrates() -> bool {
 /// `crates/vb_storage/src/recovery/types.rs:785-799`. Returns true iff
 /// every cannot-resume flag is false.
 pub open spec fn spec_cannot_resume_is_resumable(state: RecoveryCannotResumeState) -> bool {
-    !state.slot_values
-        && !state.slot_taint
-        && !state.action_payloads
-        && !state.pending_actions
-        && !state.pending_timers
-        && !state.pending_asks
-        && !state.workflow_missing
-        && !state.store_missing
-        && !state.action_attempts_missing
-        && !state.admission_missing
-        && !state.collect_states_missing
-        && !state.action_contracts_missing
+    !state.slot_values && !state.slot_taint && !state.action_payloads && !state.pending_actions
+        && !state.pending_timers && !state.pending_asks && !state.workflow_missing
+        && !state.store_missing && !state.action_attempts_missing && !state.admission_missing
+        && !state.collect_states_missing && !state.action_contracts_missing
         && !state.action_abi_digests_missing
 }
 
@@ -332,7 +338,7 @@ pub open spec fn spec_cannot_resume_is_resumable(state: RecoveryCannotResumeStat
 /// at `crates/vb_storage/src/recovery/types.rs:748-757`. Returns the
 /// priority-ordered lower-level reason for a non-resumable seed (the
 /// first true non-`RESUMABLE` flag wins, matching the priority order
-/// of [`CANNOT_RESUME_REASONS`]).
+/// of the canonical reason priority list).
 ///
 /// `Resumable` is intentionally not a [`RecoveryResumeStatus`] variant
 /// (see the production runtime's
@@ -809,9 +815,7 @@ pub proof fn proof_reject_unsupported_action_payloads_alone(state: RecoveryCanno
 
 /// Proof: `reject_unsupported_live_frame_state` rejects when
 /// `pending_actions` is true in the 13-flag cannot-resume witness.
-pub proof fn proof_pending_actions_unsupported_blocks_hydration(
-    state: RecoveryCannotResumeState,
-)
+pub proof fn proof_pending_actions_unsupported_blocks_hydration(state: RecoveryCannotResumeState)
     requires
         state.pending_actions,
     ensures
@@ -1088,10 +1092,26 @@ pub proof fn proof_classify_seed_marks_all_full_state_missing()
 /// Proof: priority-ordering invariant of `unsupported_reason`. When
 /// `slot_values` is true on the input state, the returned reason is
 /// `"slot_values"` (the highest-priority token in
-/// [`CANNOT_RESUME_REASONS`]).
+/// the canonical reason priority list).
 pub proof fn proof_unsupported_reason_priority_slot_values(state: RecoveryCannotResumeState)
     requires
         state.slot_values,
+    ensures
+        spec_unsupported_reason(state) == "slot_values",
+{
+}
+
+/// Proof: priority-ordering invariant of `unsupported_reason`. When
+/// both `slot_values` AND a lower-priority flag (e.g.
+/// `action_abi_digests_missing`) are true, the first-match-wins rule
+/// still picks `"slot_values"` — never the lower-priority token.
+/// Demonstrates that `unsupported_reason`'s const-table walk does not
+/// stop at the first lower-priority match when an earlier-priority
+/// match exists. Mirrors production `types.rs:820-855` refactor.
+pub proof fn proof_unsupported_reason_first_match_wins(state: RecoveryCannotResumeState)
+    requires
+        state.slot_values,
+        state.action_abi_digests_missing,
     ensures
         spec_unsupported_reason(state) == "slot_values",
 {

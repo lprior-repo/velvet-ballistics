@@ -178,6 +178,19 @@
 //         have `FrameDimensionOverflow`) and the runtime error
 //         mapping narrows to `InvalidRecoveryHydration` for the
 //         hydration-specific failure paths.
+//   - D3: production `CANNOT_RESUME_REASONS` array at
+//         `crates/vb_storage/src/recovery/types.rs:801-818` is
+//         redeclared in this extern layer because `crate::recovery::types`
+//         is not reachable from the standalone `verus --crate-type=lib`
+//         invocation (see "WHY NOT FULL `#[path]` INCLUSION OF
+//         PRODUCTION SOURCES" above). The priority ordering of the 13
+//         reason tokens matches production line-by-line; the spec
+//         proof `proof_unsupported_reason_first_match_wins` in
+//         `recovery_verification.rs` discharges the priority invariant.
+//         `RecoveryCannotResumeState::unsupported_reason()` is
+//         refactored to a const-table walk over `CANNOT_RESUME_REASONS`
+//         + `flag_at` helper at production
+//         `types.rs:820-855`.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -255,11 +268,9 @@ fn prod_methods_drift_check() {
 }
 
 } // verus!
-
 // ============================================================================
 // ID type mirrors — production newtypes
 // ============================================================================
-
 /// Mirror of `RunId` (u64 newtype) at `crates/vb_core/src/ids/mod.rs:65`.
 #[derive(Clone, Copy)]
 pub struct RunId(pub u64);
@@ -646,7 +657,7 @@ impl RecoveryCannotResumeState {
 
     /// Mirror of `RecoveryCannotResumeState::unsupported_reason()`
     /// at `types.rs:803-833`. Returns the priority-ordered first
-    /// matching token from [`CANNOT_RESUME_REASONS`], or
+    /// matching canonical reason token, or
     /// `"resumable"` if every flag is false.
     #[verifier::external]
     pub const fn unsupported_reason_pure(self) -> &'static str {
@@ -658,24 +669,35 @@ impl RecoveryCannotResumeState {
 }
 
 /// Canonical reason strings for [`RecoveryCannotResumeState`], ordered
-/// by classification priority (the first true flag wins). The order
-/// MUST match [`RecoveryCannotResumeState`]'s flag-accessor
-/// contract.
-pub const CANNOT_RESUME_REASONS: [&str; 13] = [
-    "slot_values",
-    "slot_taint",
-    "action_payloads",
-    "pending_actions",
-    "pending_timers",
-    "pending_asks",
-    "workflow_missing",
-    "store_missing",
-    "action_attempts_missing",
-    "admission_missing",
-    "collect_states_missing",
-    "action_contracts_missing",
-    "action_abi_digests_missing",
-];
+    /// by classification priority (the first true flag wins). The order
+    /// MUST match [`RecoveryCannotResumeState`]'s flag-accessor
+    /// contract.
+    ///
+    /// DRIFT D3 (binding ledger): the production array is named
+    /// `CANNOT_RESUME_REASONS` at
+    /// `crates/vb_storage/src/recovery/types.rs:801-818`. The mirror
+    /// redeclares it in the extern layer because `crate::recovery::types`
+    /// is not reachable from this standalone `verus --crate-type=lib`
+    /// invocation (see "WHY NOT FULL `#[path]` INCLUSION OF PRODUCTION
+    /// SOURCES" at the top of this file). The spec proof
+    /// `proof_unsupported_reason_first_match_wins` in
+    /// `recovery_verification.rs` demonstrates the priority invariant
+    /// over this mirror.
+    pub const CANNOT_RESUME_REASONS: [&str; 13] = [
+        "slot_values",
+        "slot_taint",
+        "action_payloads",
+        "pending_actions",
+        "pending_timers",
+        "pending_asks",
+        "workflow_missing",
+        "store_missing",
+        "action_attempts_missing",
+        "admission_missing",
+        "collect_states_missing",
+        "action_contracts_missing",
+        "action_abi_digests_missing",
+    ];
 
 // ============================================================================
 // Digest* mirrors — types.rs:269-449, 1058-1101
@@ -809,8 +831,8 @@ pub enum RecoveryError {
     /// at `crates/vb_storage/src/recovery/types.rs:151-157`.
     ///
     /// DRIFT D3 (binding ledger): production `reason` is `String`
-    /// (alloc-bearing) carrying one of 13 constants from
-    /// [`CANNOT_RESUME_REASONS`]. Verus 0.2026.05.05 cannot reason
+    /// (alloc-bearing) carrying one of 13 canonical reason constants.
+    /// Verus 0.2026.05.05 cannot reason
     /// about `String` because the `RecoveryError` enum derives
     /// `Copy` (the closure of pre-existing analyses requires it),
     /// so the spec projection models the reason as `&'static str`

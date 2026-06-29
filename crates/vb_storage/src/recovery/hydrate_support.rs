@@ -484,6 +484,24 @@ fn apply_action_failed(
     Ok(ApplyOutcome::Executed)
 }
 
+fn reject_missing_slot_payload(run: RunId) -> RecoveryError {
+    RecoveryError::UnsupportedFrameSeed {
+        run,
+        reason: String::from("slot_values"),
+    }
+}
+
+fn decode_slot_value(
+    bytes: &[u8],
+    run: RunId,
+    slot: vb_core::SlotIdx,
+) -> RecoveryResult<vb_core::SlotValue> {
+    postcard::from_bytes(bytes).map_err(|_| RecoveryError::ReplayDivergence {
+        step: vb_core::StepIdx::ZERO,
+        detail: format!("slot value decode failed for run {:?} slot {:?}", run, slot),
+    })
+}
+
 fn apply_slot_written(
     frame: &mut vb_core::RunFrame,
     event: &JournalEvent,
@@ -495,28 +513,26 @@ fn apply_slot_written(
         return Ok(ApplyOutcome::NotApplicable);
     };
     let Some(bytes) = value else {
-        // A `SlotWrittenEvent { value: None, .. }` is missing the
-        // persisted payload: the runtime hydration boundary cannot
-        // rebuild the slot's live value, so the typed witness fires
-        // here rather than later in the typed boundary gate. This is
-        // the lower-level enforcement for BLOCKER 6.
-        return Err(RecoveryError::UnsupportedFrameSeed {
-            run: *run,
-            reason: String::from("slot_values"),
-        });
+        return Err(reject_missing_slot_payload(*run));
     };
-    let slot_value = postcard::from_bytes(bytes).map_err(|_| RecoveryError::ReplayDivergence {
-        step: vb_core::StepIdx::ZERO,
-        detail: format!("slot value decode failed for slot {:?}", slot),
-    })?;
+    let slot_value = decode_slot_value(bytes, *run, *slot)?;
     let taint = resolve_slot_taint_or_fail(frame, *slot)?;
+    write_slot_with_replay_divergence(frame, *slot, slot_value, taint)?;
+    Ok(ApplyOutcome::Executed)
+}
+
+fn write_slot_with_replay_divergence(
+    frame: &mut vb_core::RunFrame,
+    slot: vb_core::SlotIdx,
+    slot_value: vb_core::SlotValue,
+    taint: vb_core::Taint,
+) -> RecoveryResult<()> {
     frame
-        .write_slot_with_taint(*slot, slot_value, taint)
+        .write_slot_with_taint(slot, slot_value, taint)
         .map_err(|_| RecoveryError::ReplayDivergence {
             step: vb_core::StepIdx::ZERO,
             detail: "slot write out of bounds".to_owned(),
-        })?;
-    Ok(ApplyOutcome::Executed)
+        })
 }
 
 fn resolve_slot_taint_or_fail(

@@ -3435,6 +3435,11 @@ mod hydrate_run_frame_tests {
     fn hydrate_run_frame_wait_scheduled_marks_waiting() {
         let run = RunId::new(1);
         let snapshot = empty_snapshot(run, EventSeq::new(0));
+        // The typed cannot-resume gate (BLOCKER 4) now rejects pending
+        // waits/asks before frame allocation. To exercise the lower-
+        // level frame-state machinery (`mark_waiting`), the tail must
+        // carry both the WaitScheduledEvent and the WaitResolvedEvent
+        // for the same step so the gate is closed.
         let tail = vec![
             JournalEvent::StepStarted {
                 run,
@@ -3448,17 +3453,21 @@ mod hydrate_run_frame_tests {
                 step: StepIdx::new(0),
                 attempt: 1,
             },
+            JournalEvent::WaitResolvedEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        // The snapshot+tail path remains a lower-level mechanism that
-        // can still build a frame from durable evidence. The events-only
-        // `hydrate_run_frame_from_events` path now fails closed with
-        // `UnsupportedFrameSeed` because a frame seed alone never carries
-        // the full RunState.
+        // After the typed gate passes (wait was resolved in the tail),
+        // the lower-level frame-state machinery applies the wait +
+        // resolution to the frame. The frame is successfully built.
         assert!(
             result.is_ok(),
-            "snapshot+tail hydration must succeed: {result:?}"
+            "snapshot+tail hydration must succeed for resolved wait: {result:?}"
         );
         // frame binding removed: storage boundary now fails closed.
     }
@@ -3467,6 +3476,11 @@ mod hydrate_run_frame_tests {
     fn hydrate_run_frame_ask_scheduled_marks_asking() {
         let run = RunId::new(1);
         let snapshot = empty_snapshot(run, EventSeq::new(0));
+        // The typed cannot-resume gate (BLOCKER 4) now rejects pending
+        // asks before frame allocation. To exercise the lower-level
+        // frame-state machinery (`mark_asking`), the tail must carry
+        // both the AskScheduledEvent and the AskAnsweredEvent for the
+        // same step so the gate is closed.
         let tail = vec![
             JournalEvent::StepStarted {
                 run,
@@ -3480,17 +3494,21 @@ mod hydrate_run_frame_tests {
                 step: StepIdx::new(0),
                 attempt: 1,
             },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        // The snapshot+tail path remains a lower-level mechanism that
-        // can still build a frame from durable evidence. The events-only
-        // `hydrate_run_frame_from_events` path now fails closed with
-        // `UnsupportedFrameSeed` because a frame seed alone never carries
-        // the full RunState.
+        // After the typed gate passes (ask was answered in the tail),
+        // the lower-level frame-state machinery applies the ask +
+        // answer to the frame. The frame is successfully built.
         assert!(
             result.is_ok(),
-            "snapshot+tail hydration must succeed: {result:?}"
+            "snapshot+tail hydration must succeed for answered ask: {result:?}"
         );
         // frame binding removed: storage boundary now fails closed.
     }
