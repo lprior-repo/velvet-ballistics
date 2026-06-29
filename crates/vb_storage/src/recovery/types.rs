@@ -844,12 +844,44 @@ impl RecoveryCannotResumeState {
     /// The first true flag in classification-priority order wins.
     #[must_use]
     pub const fn unsupported_reason(self) -> &'static str {
-        let mut i: usize = 0;
-        while i < Self::CANNOT_RESUME_REASONS.len() {
-            if self.flag_at(i) {
-                return Self::CANNOT_RESUME_REASONS[i];
-            }
-            i += 1;
+        if self.slot_values {
+            return "slot_values";
+        }
+        if self.slot_taint {
+            return "slot_taint";
+        }
+        if self.action_payloads {
+            return "action_payloads";
+        }
+        if self.pending_actions {
+            return "pending_actions";
+        }
+        if self.pending_timers {
+            return "pending_timers";
+        }
+        if self.pending_asks {
+            return "pending_asks";
+        }
+        if self.workflow_missing {
+            return "workflow_missing";
+        }
+        if self.store_missing {
+            return "store_missing";
+        }
+        if self.action_attempts_missing {
+            return "action_attempts_missing";
+        }
+        if self.admission_missing {
+            return "admission_missing";
+        }
+        if self.collect_states_missing {
+            return "collect_states_missing";
+        }
+        if self.action_contracts_missing {
+            return "action_contracts_missing";
+        }
+        if self.action_abi_digests_missing {
+            return "action_abi_digests_missing";
         }
         "resumable"
     }
