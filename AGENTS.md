@@ -17,10 +17,19 @@ This repository uses a pure virtual workspace pattern.
 
 ## Absolute Workspace Rule
 
-- All repository work MUST be executed from the Git root `/home/lewis/src/velvet-ballistics`; do not work from any sibling clone, parent checkout, or other `~/src/*` path.
-- Before editing, committing, pushing, or running broad verification, verify `git rev-parse --show-toplevel` resolves to `/home/lewis/src/velvet-ballistics`.
+- The main checkout at `/home/lewis/src/velvet-ballistics` is a **coordination checkout only**. Do not implement features, run broad verification, or leave dirty code in this main checkout.
+- All implementation, repair, review-fix, proof-writing, test-writing, and broad verification work MUST happen in an isolated Git worktree under `/home/lewis/src/isolated/` unless the user explicitly names another non-main workspace path.
+- Every agent MUST use a unique worktree path, for example `/home/lewis/src/isolated/velvet-ballistics-<bead-id>-<agent-role>`. Never share a worktree between concurrent agents.
+- Before editing, committing, pushing, or running broad verification, verify `git rev-parse --show-toplevel` resolves to that agent's isolated worktree, not `/home/lewis/src/velvet-ballistics`.
+- The only permitted actions in `/home/lewis/src/velvet-ballistics` are coordination actions: `git fetch`, `git pull --rebase`, `git status`, `git worktree add/list/remove`, bead tracker operations, documentation/instruction updates explicitly requested by the user, and emergency cleanup of accidental dirty state.
+- Standard startup for a new implementation agent is:
+  1. From `/home/lewis/src/velvet-ballistics`, pull latest `main`.
+  2. Create a dedicated worktree from latest `origin/main` under `/home/lewis/src/isolated/`.
+  3. Change into that worktree and verify its Git root.
+  4. Claim/create the bead from the isolated worktree before editing.
+- If an agent finds itself in the main checkout for implementation work, it MUST stop, create or move to an isolated worktree, and continue there. Do not "just make a quick fix" in the main checkout.
 - If `jj root` resolves above this repository, treat that as an enclosing workspace only; never commit, describe, rebase, or push from the parent JJ workspace for this repo.
-- If the Git root, JJ root, command working directory, or requested path disagree, stop and ask for clarification before modifying files.
+- If the Git root, JJ root, command working directory, requested path, or assigned worktree disagree, stop and ask for clarification before modifying files.
 
 - `crates/`: Contains all production code crates (e.g., `vb_core`, `vb_boundary_inventory`).
 - `crates/workspace_tests/`: Contains all cross-crate integration tests and benchmarks. Do not place `tests/` or `benches/` at the repository root.

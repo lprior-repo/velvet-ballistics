@@ -14,6 +14,8 @@ This file, `/velvet-ballistics-MASTER.md`, is the authoritative build plan, life
 
 Project spelling rule: any use of `velvet-ballistics` is invalid except for exactly these allowlisted legacy references: the current repository root path `/home/lewis/src/Velvet-ballistics`, the current master filename `/velvet-ballistics-MASTER.md`, and explicitly labeled migration references to pre-existing external artifacts. New code, docs, beads, crate names, package names, generated paths, CLI examples, diagnostics, and implementation artifacts must use the canonical names above.
 
+Agent workspace isolation rule: the main checkout at `/home/lewis/src/velvet-ballistics` is reserved for coordination only. Concurrent implementation agents MUST work in dedicated Git worktrees under `/home/lewis/src/isolated/` (or another explicit non-main path named by the user), one worktree per agent/bead. Feature work, repairs, proof writing, test writing, broad verification, commits, and pushes must be performed from the assigned isolated worktree after verifying `git rev-parse --show-toplevel` resolves to that worktree and not to the main coordination checkout. The main checkout may be used only for fetch/pull, worktree management, bead tracker coordination, explicit instruction/documentation updates, and emergency cleanup.
+
 ---
 
 ## 0. Prime Directive
