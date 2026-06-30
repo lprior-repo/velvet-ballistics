@@ -7,6 +7,8 @@ use std::collections::BTreeMap as Map;
 use std::collections::HashMap as Map;
 use std::time::SystemTime;
 
+use vb_core::time::{DeterministicTimeSource, TimeSource};
+
 use serde::{Deserialize, Serialize};
 use vb_core::errors::{
     CollectExtraHydrationFailureKind, CollectPageOrderViolationKind, EngineError,
@@ -644,7 +646,19 @@ fn check_time_limit(state: &CollectPaginationState) -> Result<(), EngineError> {
     Ok(())
 }
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// Process-wide override for the time source.
+/// `u64::MAX` (the sentinel) means "no override; use wall clock".
+static TIME_OVERRIDE_MILLIS: AtomicU64 = AtomicU64::new(u64::MAX);
+
+/// Returns current time in milliseconds. Defaults to wall clock; tests can
+/// inject a `DeterministicTimeSource` via the process-wide override.
 fn millis_since_epoch() -> Result<u64, EngineError> {
+    let override_val = TIME_OVERRIDE_MILLIS.load(Ordering::Acquire);
+    if override_val != u64::MAX {
+        return Ok(override_val);
+    }
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|_| EngineError::InternalInvariantViolation {
@@ -655,6 +669,16 @@ fn millis_since_epoch() -> Result<u64, EngineError> {
         .map_err(|_| EngineError::InternalInvariantViolation {
             reason: "millis_since_epoch overflow",
         })
+}
+
+/// Install a deterministic time source for tests. Process-wide.
+pub fn install_deterministic_time_source_for_test(source: DeterministicTimeSource) {
+    TIME_OVERRIDE_MILLIS.store(source.now_millis().unwrap_or(0), Ordering::Release);
+}
+
+/// Restore the real wall-clock time source (used in tests).
+pub fn restore_real_time_source_for_test() {
+    TIME_OVERRIDE_MILLIS.store(u64::MAX, Ordering::Release);
 }
 
 fn write_empty_collector(
