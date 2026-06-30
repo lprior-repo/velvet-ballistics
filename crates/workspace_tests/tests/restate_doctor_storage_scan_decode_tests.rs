@@ -1584,23 +1584,45 @@ proptest! {
 proptest! {
     /// PO-vb-t6hx-R12: Generated value lengths around preview boundary
     /// render bounded previews and required hints.
+    // vb-1poby: contract — `decode_record_header` MUST reject payloads with
+    // `value_len > cap` as `Err(JournalError::PayloadTooLarge { len, max })`
+    // (validated BEFORE the header CRC32C check at
+    // `vb_storage::codec::header::decode_record_header`) and MUST accept the
+    // header when `value_len <= cap`. The 60-byte header below is fully
+    // valid except for `payload_len = value_len`; the CRC is recomputed so
+    // the Ok branch is reachable.
     #[test]
     fn proptest_large_value_preview_truncated_with_hint(
         value_len in 0usize..512,
         cap in 1usize..64
     ) {
-        let mut header = vec![0u8; RECORD_HEADER_BYTES];
-        if value_len <= u32::MAX as usize {
-            let payload_len_u32 = value_len as u32;
-            header[12..16].copy_from_slice(&payload_len_u32.to_le_bytes());
-            let result = decode_record_header(
-                &header,
-                MAGIC_JOURNAL_EVENT,
-                cap as u32,
+        let mut header = [0u8; RECORD_HEADER_BYTES];
+        header[0..4].copy_from_slice(&MAGIC_JOURNAL_EVENT.to_le_bytes());
+        header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
+        header[6..8].copy_from_slice(&RecordKind::RunAccepted.id().to_le_bytes());
+        header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes());
+        // `value_len in 0usize..512` is bounded within `u32::MAX`, so the
+        // narrowing `as u32` cannot lose precision (matches the existing
+        // surrounding `as u32` pattern).
+        let payload_len_u32 = value_len as u32;
+        header[12..16].copy_from_slice(&payload_len_u32.to_le_bytes());
+        let crc = crc32c::crc32c(&header[..vb_storage::constants::CRC_OFFSET]);
+        header[vb_storage::constants::CRC_OFFSET
+            ..vb_storage::constants::CRC_OFFSET + 4]
+            .copy_from_slice(&crc.to_le_bytes());
+
+        let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, cap as u32);
+        if value_len > cap {
+            prop_assert!(
+                matches!(
+                    result,
+                    Err(JournalError::PayloadTooLarge { len, max })
+                        if len == payload_len_u32 && max == cap as u32
+                ),
+                "value_len={value_len} > cap={cap} must yield PayloadTooLarge, got {result:?}",
             );
-            if value_len > cap {
-                prop_assert!(result.is_err());
-            }
+        } else {
+            prop_assert!(result.is_ok(), "value_len={value_len} <= cap={cap} must decode Ok, got {result:?}");
         }
     }
 }
