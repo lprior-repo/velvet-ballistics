@@ -3,3 +3,4 @@
 pub mod and_or_short_circuit_tests;
 pub mod inline_tests;
 pub mod integration;
+pub mod integration_store;
