@@ -182,13 +182,23 @@ impl JournalWriterQueue {
         // do. We accumulate errors into a single typed return without
         // touching the durable store, preserving the §49 rule that a
         // partial prefix is never observable.
+        //
+        // `staged_keys` is the per-flush dedup set: it tracks keys
+        // inserted into `owned_batch` so two events with the same
+        // `(run, seq)` queued back-to-back surface as
+        // `DuplicateStagedKey` instead of silently overwriting one
+        // another at commit time. The set is allocated fresh per
+        // flush and dropped on return; cross-flush duplicates are
+        // caught by the durable-store idempotency check inside
+        // `stage_queued_event`.
         let mut owned_batch = journal.database.batch();
+        let mut staged_keys = std::collections::HashSet::new();
         let mut written = 0usize;
         while written < batch_len {
             let Some(item) = state.pending.get(written) else {
                 break;
             };
-            stage_queued_event(&mut owned_batch, journal, &item.event)?;
+            stage_queued_event(&mut owned_batch, journal, &item.event, &mut staged_keys)?;
             written = written.saturating_add(1);
         }
 

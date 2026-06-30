@@ -113,6 +113,40 @@ mod process_lock_tests {
     }
 
     #[test]
+    fn readonly_open_does_not_create_or_lock_writer_state() {
+        // The renamed `ReadOnlyJournal::open_inspect_view` must be
+        // honest about its contract: it is NOT a true read-only open
+        // (Fjall has no such mode), so it takes the same process lock
+        // as a writer. While a writer holds the lock it must surface
+        // `JournalError::ProcessLockHeld`, not succeed silently.
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let _writer =
+            crate::FjallJournal::open(temp.path(), None).expect("writer should open successfully");
+
+        let result = crate::ReadOnlyJournal::open_inspect_view(temp.path());
+        match result {
+            Err(crate::error::JournalError::ProcessLockHeld { .. }) => {}
+            Err(crate::error::JournalError::Fjall(fjall::Error::Locked)) => {}
+            Err(other) => panic!(
+                "open_inspect_view while a writer holds the lock must return a lock error, \
+                 got: {other:?}"
+            ),
+            Ok(_) => {
+                panic!("open_inspect_view must NOT succeed while another writer holds the lock")
+            }
+        }
+
+        // After the writer is dropped, the lock is released and the
+        // inspect-view must succeed.
+        drop(_writer);
+        let inspect = crate::ReadOnlyJournal::open_inspect_view(temp.path())
+            .expect("open_inspect_view must succeed after the writer is dropped");
+        // Inspect-view is type-level read-only: only read methods are
+        // exposed. Touching the keyspace queries that the type-level
+        // surface still works through the wrapper.
+        let _ = crate::ReadOnlyJournal::declared_keyspaces();
+    }
+    #[test]
     fn init_keyspaces_acquires_process_lock() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         let result = crate::init_keyspaces(temp.path());

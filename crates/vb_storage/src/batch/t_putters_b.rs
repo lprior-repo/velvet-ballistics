@@ -172,3 +172,38 @@ fn batch_put_compiled_ir_commits_and_is_readable() {
     };
     assert_eq!(found.ir, ir);
 }
+
+#[test]
+fn batch_index_key_error_aborts_commit() {
+    // Force a failing index-key construction path. `IndexStatusState::Other(0)`
+    // collides with the named variant `Submitted` (byte 0), so the
+    // `to_u8_checked()` guard inside `index_status_key` rejects the byte
+    // with a typed `JournalError::IndexStatusStateCollision`.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7777);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    let result = batch.put_status_index(IndexStatusState::Other(0), 1_000, run);
+    assert!(
+        matches!(result, Err(JournalError::IndexStatusStateCollision { .. })),
+        "IndexStatusState::Other(0) must produce IndexStatusStateCollision, got {result:?}"
+    );
+    assert!(
+        batch.is_aborted(),
+        "key construction failure must set batch.aborted = true so commit() short-circuits"
+    );
+
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted)),
+        "aborted batch commit must return Err(JournalError::BatchAborted), got {commit_result:?}"
+    );
+
+    // Nothing from the aborted batch may persist: no events for the run.
+    let events = journal.events_for_run(run).expect("replay should succeed");
+    assert!(
+        events.is_empty(),
+        "aborted batch must persist nothing; got {} events",
+        events.len()
+    );
+}

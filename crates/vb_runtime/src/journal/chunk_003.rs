@@ -26,7 +26,17 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     }
 
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
-        self.drain_all()
+        // Drain visible writes first, then force a strict durability barrier
+        // so every event that left the queue is durable on disk before Ok is
+        // returned to the caller (typically `Runtime::shutdown_graceful`).
+        // The previous implementation only flushed the queue into Fjall and
+        // relied on Fjall's lazy WAL flush; a process crash after
+        // `drain_for_shutdown` returned Ok could still lose the just-drained
+        // events. `persist_strict` performs `fjall::PersistMode::SyncAll`,
+        // satisfying the Master §49 Crash-Consistency Rule.
+        let report = self.drain_all()?;
+        self.journal.persist_strict()?;
+        Ok(report)
     }
 
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {

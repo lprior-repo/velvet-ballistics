@@ -36,11 +36,26 @@ impl ReadOnlyJournal {
         Self(inner)
     }
 
-    /// Opens a journal in read-only mode.
+    /// Opens an inspect-view journal at `path`.
     ///
-    /// This is just the normal open — the read-only guarantee comes from
-    /// the wrapper type, not from the filesystem.
-    pub fn open_read_only(path: impl AsRef<std::path::Path>) -> Result<Self, JournalError> {
+    /// **This is not a true read-only open.** Fjall does not expose a
+    /// read-only `Database::open` mode; every open performs LSM-tree
+    /// recovery and acquires the process-level write lock
+    /// (see `ProcessLock::acquire`). When another writer currently
+    /// holds that lock, this call returns
+    /// [`JournalError::ProcessLockHeld`] — that is the honest contract.
+    ///
+    /// The wrapper type still enforces a read-only surface: callers
+    /// cannot invoke any write method through `ReadOnlyJournal`. If you
+    /// need a true read-only open, you must close the writer first;
+    /// after drop the lock is released and a follow-up call here
+    /// succeeds with the writer's eventual consistency visible.
+    ///
+    /// For callers that want a guaranteed read facade without acquiring
+    /// the writer lock, construct a writer context first
+    /// (`FjallJournal::open`) and call `.into_read_only()` only after
+    /// writes have quiesced.
+    pub fn open_inspect_view(path: impl AsRef<std::path::Path>) -> Result<Self, JournalError> {
         let journal = FjallJournal::open(path, None)?;
         Ok(Self(journal))
     }

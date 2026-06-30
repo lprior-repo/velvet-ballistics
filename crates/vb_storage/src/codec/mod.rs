@@ -136,6 +136,17 @@ pub fn decode_journal_event(
     if !event.is_valid() {
         return Err(JournalError::InvalidEvent);
     }
+    // round10-a / Issue 5: the envelope's sequence field must equal the
+    // payload's seq. Any divergence indicates the wire record was forged or
+    // corrupted after the Fjall keyspace accepted the write; fail closed
+    // rather than silently replaying under the wrong identity.
+    if envelope.sequence != event.seq().get() {
+        return Err(JournalError::ReplayEnvelopeSequenceMismatch {
+            run: event.run_id(),
+            envelope_seq: envelope.sequence,
+            payload_seq: event.seq().get(),
+        });
+    }
     Ok((envelope, event))
 }
 

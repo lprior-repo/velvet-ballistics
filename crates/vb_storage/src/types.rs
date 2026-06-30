@@ -171,10 +171,36 @@ pub struct JournalWriterFlushReport {
 }
 
 /// Configuration for Fjall-backed storage.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FjallConfig {
-    /// Cache size in bytes.
     pub cache_size_bytes: u64,
+}
+
+impl FjallConfig {
+    /// Minimum cache size: 1 MiB.
+    pub const MIN_CACHE_SIZE_BYTES: u64 = 1 << 20;
+
+    /// Maximum cache size: 64 GiB. Past this, Fjall bloom / cache sizing
+    /// becomes pathological for a single-server embedded deployment.
+    pub const MAX_CACHE_SIZE_BYTES: u64 = 64 << 30;
+
+    /// Constructs a validated cache size, returning `None` for inputs
+    /// outside `[MIN_CACHE_SIZE_BYTES, MAX_CACHE_SIZE_BYTES]`.
+    #[must_use]
+    pub const fn try_new(cache_size_bytes: u64) -> Option<Self> {
+        if cache_size_bytes < Self::MIN_CACHE_SIZE_BYTES
+            || cache_size_bytes > Self::MAX_CACHE_SIZE_BYTES
+        {
+            return None;
+        }
+        Some(Self { cache_size_bytes })
+    }
+
+    /// Returns the configured cache size in bytes.
+    #[must_use]
+    pub const fn cache_size_bytes(self) -> u64 {
+        self.cache_size_bytes
+    }
 }
 
 impl Default for FjallConfig {

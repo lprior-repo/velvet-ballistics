@@ -102,6 +102,38 @@ mod type_tests {
     }
 
     #[test]
+    fn fjall_config_rejects_zero_and_extreme_cache() {
+        // Below MIN: 0 and any value strictly less than MIN.
+        assert_eq!(FjallConfig::try_new(0), None);
+        assert_eq!(
+            FjallConfig::try_new(FjallConfig::MIN_CACHE_SIZE_BYTES - 1),
+            None
+        );
+        // Above MAX: u64::MAX and 2 * MAX.
+        assert_eq!(FjallConfig::try_new(u64::MAX), None);
+        assert_eq!(
+            FjallConfig::try_new(2 * FjallConfig::MAX_CACHE_SIZE_BYTES),
+            None
+        );
+        // Boundary-inclusive: MIN and MAX both succeed.
+        let min_cfg =
+            FjallConfig::try_new(FjallConfig::MIN_CACHE_SIZE_BYTES).expect("MIN must be valid");
+        assert_eq!(
+            min_cfg.cache_size_bytes(),
+            FjallConfig::MIN_CACHE_SIZE_BYTES
+        );
+        let max_cfg =
+            FjallConfig::try_new(FjallConfig::MAX_CACHE_SIZE_BYTES).expect("MAX must be valid");
+        assert_eq!(
+            max_cfg.cache_size_bytes(),
+            FjallConfig::MAX_CACHE_SIZE_BYTES
+        );
+        // Sanity: an interior value also succeeds and round-trips.
+        let mid = FjallConfig::try_new(256 * 1024 * 1024).expect("256 MiB must be valid");
+        assert_eq!(mid.cache_size_bytes(), 256 * 1024 * 1024);
+    }
+
+    #[test]
     fn storage_limits_default_has_expected_value() {
         let limits = StorageLimits::DEFAULT;
         assert_eq!(

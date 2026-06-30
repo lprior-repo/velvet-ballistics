@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::recovery::types::{
     ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
 };
-use crate::{DurableActionOutcome, JournalEvent};
+use crate::{DurableActionOutcome, EventSeq, JournalEvent};
 use vb_core::{ActionTicket, RunId};
 
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
@@ -146,22 +146,19 @@ pub(super) fn decode_snapshot_slots(
     slots_bytes: &[u8],
     taint_bytes: &[u8],
     run: RunId,
+    seq: EventSeq,
 ) -> RecoveryResult<Vec<crate::recovery::types::RecoveredSlotEntry>> {
     if slots_bytes.is_empty() && taint_bytes.is_empty() {
         return Ok(Vec::new());
     }
 
     let slots: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)> =
-        postcard::from_bytes(slots_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
-            run,
-            seq: crate::EventSeq::new(0),
-        })?;
+        postcard::from_bytes(slots_bytes)
+            .map_err(|_| RecoveryError::CorruptSnapshot { run, seq })?;
 
     let taint: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)> =
-        postcard::from_bytes(taint_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
-            run,
-            seq: crate::EventSeq::new(0),
-        })?;
+        postcard::from_bytes(taint_bytes)
+            .map_err(|_| RecoveryError::CorruptSnapshot { run, seq })?;
 
     // Merge slots and taint, preferring explicit taint from the taint vector.
     let taint_by_slot: HashMap<vb_core::SlotIdx, vb_core::Taint> = taint

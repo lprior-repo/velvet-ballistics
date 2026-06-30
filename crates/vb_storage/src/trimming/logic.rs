@@ -1,8 +1,10 @@
+use crate::keys::decode_storage_key;
 use crate::trimming::helpers::snapshot_prefix_key;
 use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
     TrimmedRunResult,
 };
+use crate::types::StorageKey;
 use crate::{EventSeq, FjallJournal, JournalError};
 use fjall::Readable;
 use vb_core::{RunId, WorkflowId};
@@ -27,17 +29,21 @@ impl FjallJournal {
             return Ok(None);
         };
         let (key, _) = item.into_inner().map_err(TrimError::from)?;
-        if key.len() < 17 {
+        // Round 10 issue 7: snapshot keys must be exactly 17 bytes
+        // (1 prefix + 8 run + 8 seq). An overlong key could be a leftover
+        // test artefact or a corrupt prefix collision; treating it as
+        // durable would silently delete the wrong pre-snapshot events.
+        if key.len() != 17 {
             return Err(TrimError::IncompleteTrim { deleted_count: 0 });
         }
-        let slice = key
-            .get(9..17)
-            .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-        let seq_bytes: [u8; 8] = slice
-            .try_into()
-            .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
-        let key_seq_u64 = u64::from_be_bytes(seq_bytes);
-        Ok(Some(EventSeq::new(key_seq_u64)))
+        // Decode via the typed key helper so we additionally verify the
+        // keyspace prefix matches `StorageKey::RunSnapshot` (catches a
+        // stray `RunEvent` or other 17-byte variant) and reject the
+        // reserved `EventSeq::MAX` sentinel.
+        match decode_storage_key(&key) {
+            Ok(StorageKey::RunSnapshot { seq, .. }) => Ok(Some(seq)),
+            _ => Err(TrimError::IncompleteTrim { deleted_count: 0 }),
+        }
     }
 
     pub fn trim_events_for_run(
@@ -67,7 +73,8 @@ impl FjallJournal {
         let mut key_buf: Vec<u8> = Vec::with_capacity(64);
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
-            if key.len() < 17 {
+            // Round 10 issue 7: events keys must also be exactly 17 bytes.
+            if key.len() != 17 {
                 return Err(TrimError::IncompleteTrim { deleted_count });
             }
             let slice = key
@@ -209,7 +216,10 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix_key) {
             let key = item.key().map_err(JournalError::from)?;
-            if key.len() < 17 {
+            // Round 10 issue 7: events keys must be exactly 17 bytes
+            // (1 prefix + 8 run + 8 seq); an overlong key would corrupt
+            // the seq parse below and silently miscount trimmable events.
+            if key.len() != 17 {
                 return Err(JournalError::from(TrimError::IncompleteTrim {
                     deleted_count: count,
                 }));
@@ -368,6 +378,7 @@ impl FjallJournal {
                 retained.insert(run);
             }
         }
+
         retained
     }
 }

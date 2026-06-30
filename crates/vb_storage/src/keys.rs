@@ -433,6 +433,46 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
     }
 }
 
+/// Decodes a raw journal-event key byte slice into its typed
+/// `StorageKey::RunEvent { run, seq }` form.
+///
+/// Convenience wrapper around [`decode_storage_key`] that narrows the
+/// result to the run-event variant the journal event keyspace uses,
+/// and converts [`KeyDecodeError`] into [`JournalError`] so replay
+/// loops do not need a second `match` arm.
+///
+/// # Errors
+///
+/// Returns [`JournalError::MalformedKeyspaceRow`] for any
+/// `KeyDecodeError` (length mismatch, unknown prefix, invalid run id,
+/// reserved seq sentinel). Returns [`JournalError::MalformedKeyspaceRow`]
+/// with `actual_len == 17` shape when the prefix/format is fine but the
+/// stored shape is a different variant (e.g. RunHeader) than RunEvent.
+pub fn decode_run_event_key(
+    bytes: &[u8],
+    expected_run: RunId,
+) -> Result<(RunId, EventSeq), JournalError> {
+    decode_storage_key(bytes)
+        .map_err(|_err| JournalError::MalformedKeyspaceRow {
+            prefix: PREFIX_RUN_EVENT,
+            expected_len: JOURNAL_KEY_BYTES,
+            actual_len: bytes.len(),
+        })
+        .and_then(|key| match key {
+            StorageKey::RunEvent { run, seq } if run == expected_run => Ok((run, seq)),
+            StorageKey::RunEvent { .. } => Err(JournalError::MalformedKeyspaceRow {
+                prefix: PREFIX_RUN_EVENT,
+                expected_len: JOURNAL_KEY_BYTES,
+                actual_len: bytes.len(),
+            }),
+            _ => Err(JournalError::MalformedKeyspaceRow {
+                prefix: PREFIX_RUN_EVENT,
+                expected_len: JOURNAL_KEY_BYTES,
+                actual_len: bytes.len(),
+            }),
+        })
+}
+
 pub fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
     sequenced_run_key(PREFIX_RUN_EVENT, run, seq)
 }

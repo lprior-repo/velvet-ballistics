@@ -204,4 +204,80 @@ mod snapshot_tests {
         assert_eq!(la.run, run_a);
         assert_eq!(lb.run, run_b);
     }
+
+    // Round 10 issue 7: regression test that an overlong key in the
+    // snapshot keyspace is rejected by `latest_durable_snapshot_seq`
+    // with `TrimError::IncompleteTrim { deleted_count: 0 }`, NOT
+    // returned as a successful seq (which would otherwise silently
+    // delete the wrong pre-snapshot events).
+    #[test]
+    fn latest_durable_snapshot_seq_rejects_malformed_overlong_key() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(1);
+        let digest = WorkflowDigest::from_bytes([0x33; DIGEST_BYTES]);
+        let valid = make_snapshot(run, 5, digest);
+        journal
+            .put_snapshot(&valid)
+            .expect("put_snapshot should succeed");
+
+        // 9 prefix+run bytes + 4 extra trailing bytes = 13 bytes total,
+        // longer than the 17-byte `RunSnapshot` key shape but with a
+        // valid `0x12` (RunSnapshot) prefix.
+        let mut overlong: Vec<u8> = vec![0x12, 0, 0, 0, 0, 0, 0, 0, 1];
+        overlong.extend_from_slice(b"XYZ0");
+        journal
+            .run_snapshot
+            .insert(overlong, vec![0u8; 8])
+            .expect("raw insert should succeed");
+
+        let result = journal.latest_durable_snapshot_seq(run);
+        match result {
+            Err(crate::trimming::TrimError::IncompleteTrim { deleted_count: 0 }) => {}
+            other => panic!(
+                "overlong key must yield IncompleteTrim {{ deleted_count: 0 }}, got {:?}",
+                other
+            ),
+        }
+
+        // Direct `snapshot(...)` round-trip still works for the valid seq.
+        let loaded = journal
+            .snapshot(run, EventSeq::new(5))
+            .expect("snapshot lookup should succeed")
+            .expect("snapshot should exist");
+        assert_eq!(loaded.seq, EventSeq::new(5));
+    }
+
+    // Round 10 issue 4: regression test that `put_snapshot` commits with
+    // a strict durability barrier, so the snapshot key is visible to a
+    // fresh journal opening the same on-disk path (no extra fsync from
+    // the test process).
+    #[test]
+    fn put_snapshot_persists_strictly() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let run = RunId::new(42);
+        let digest = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
+        let snapshot = make_snapshot(run, 10, digest);
+
+        {
+            let journal =
+                FjallJournal::open(temp.path(), None).expect("journal open should succeed");
+            journal
+                .put_snapshot(&snapshot)
+                .expect("put_snapshot should succeed");
+        } // journal dropped without explicit close
+
+        // Fresh open on the same on-disk path; if `put_snapshot` had
+        // skipped the strict barrier, Fjall's lazy WAL would leave the
+        // snapshot unobservable after the drop. A strict `SyncAll`
+        // barrier guarantees the snapshot is durable here.
+        let reopened = FjallJournal::open(temp.path(), None).expect("reopen should succeed");
+        let loaded = reopened
+            .snapshot(run, EventSeq::new(10))
+            .expect("snapshot lookup should succeed")
+            .expect("snapshot must survive reopen");
+        assert_eq!(loaded.run, run);
+        assert_eq!(loaded.seq, EventSeq::new(10));
+        assert_eq!(loaded.workflow, digest);
+        assert_eq!(loaded.slots, vec![0x01, 0x02, 0x03]);
+    }
 }

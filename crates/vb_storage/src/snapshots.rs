@@ -15,7 +15,19 @@ use crate::{
 use crate::journal::FjallJournal;
 
 impl FjallJournal {
-    /// Stores a compact run snapshot.
+    /// Stores a compact run snapshot with a strict durability barrier.
+    ///
+    /// The snapshot key becomes visible to readers only after the WAL fsync
+    /// has returned, so `latest_durable_snapshot_seq` cannot name a snapshot
+    /// that would not survive a crash immediately after this call returns.
+    ///
+    /// Implementation: routes through a `fjall::OwnedWriteBatch` so the
+    /// insert and the `PersistMode::SyncAll` barrier commit atomically.
+    /// Without this barrier, `latest_durable_snapshot_seq` would observe a
+    /// snapshot that the Fjall memtable has accepted but the WAL has not
+    /// yet flushed, and a subsequent trim would delete pre-snapshot events
+    /// that the snapshot was supposed to cover — violating crash-consistency
+    /// (master §49 Crash-Consistency Rule).
     pub fn put_snapshot(&self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
         let key = run_snapshot_key(snapshot.run, snapshot.seq)?;
         let value = encode_record(
@@ -25,7 +37,10 @@ impl FjallJournal {
             snapshot,
             MAX_SNAPSHOT_BYTES,
         )?;
-        self.run_snapshot.insert(key.to_vec(), value)?;
+        let mut batch = self.database.batch();
+        batch.insert(&self.run_snapshot, key.to_vec(), value);
+        let batch = batch.durability(Some(fjall::PersistMode::SyncAll));
+        batch.commit()?;
         Ok(())
     }
 

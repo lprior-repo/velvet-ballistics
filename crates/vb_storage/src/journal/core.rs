@@ -71,13 +71,25 @@ pub struct FjallJournal {
 
 impl FjallJournal {
     /// Opens or creates the journal at `path`.
+    ///
+    /// When `config` is `Some`, the cache size is validated against the
+    /// bounds in [`FjallConfig::MIN_CACHE_SIZE_BYTES`] /
+    /// [`FjallConfig::MAX_CACHE_SIZE_BYTES`]. Out-of-range values return
+    /// [`JournalError::InvalidConfig`] before any Fjall call.
     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
         let config = config.unwrap_or_default();
+        if config.cache_size_bytes < crate::types::FjallConfig::MIN_CACHE_SIZE_BYTES
+            || config.cache_size_bytes > crate::types::FjallConfig::MAX_CACHE_SIZE_BYTES
+        {
+            return Err(JournalError::InvalidConfig {
+                field: "cache_size_bytes",
+                reason: "cache size must be in [MIN_CACHE_SIZE_BYTES, MAX_CACHE_SIZE_BYTES]",
+            });
+        }
         let path_ref = path.as_ref();
         let database = fjall::Database::builder(path_ref)
             .cache_size(config.cache_size_bytes)
             .open()?;
-
         let workflow_source = database.keyspace(KEYSPACE_WORKFLOW_SOURCE, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
         })?;

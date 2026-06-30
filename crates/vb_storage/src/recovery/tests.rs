@@ -2723,6 +2723,34 @@ mod hydrate_run_frame_tests {
         );
     }
 
+    // Round 10 issue 10: regression test that the `CorruptSnapshot`
+    // diagnostic returned from postcard-decode failure inside
+    // `decode_snapshot_slots` carries the real `seq` of the snapshot
+    // that failed (was previously a zero placeholder). The expected
+    // seq here is 42; matching must succeed with that exact value.
+    #[test]
+    fn corrupt_snapshot_reports_actual_seq() {
+        let run = RunId::new(1);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(42),
+            workflow: sample_digest(1),
+            slots: vec![1, 2, 3],
+            taint: vec![1, 2, 3],
+        };
+
+        let result = hydrate_run_frame(&snapshot, &[], run);
+
+        match result {
+            Err(RecoveryError::CorruptSnapshot { run: r, seq: s })
+                if r == run && s == EventSeq::new(42) => {}
+            other => panic!(
+                "expected CorruptSnapshot {{ run: 1, seq: 42 }}, got {:?}",
+                other
+            ),
+        }
+    }
+
     // --- Error: empty snapshot and empty events ---
 
     #[test]

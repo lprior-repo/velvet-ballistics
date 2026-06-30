@@ -1068,4 +1068,102 @@ mod internal_tests {
             result
         );
     }
+
+    #[test]
+    fn flush_batch_rejects_same_batch_duplicate_key() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(280);
+        // Two events with identical (run, seq) but distinct payloads.
+        // Pre-fix: both pass the durable-store idempotency check
+        // (key absent until commit), both insert into the OwnedWriteBatch,
+        // and the second silently overwrites the first at commit time.
+        // Post-fix: the per-flush `staged_keys` set in stage_queued_event
+        // catches the duplicate BEFORE the durable check, returning
+        // DuplicateStagedKey. Nothing is committed.
+        let first = make_event(run, 0);
+        let second = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0xAB; DIGEST_BYTES]),
+        };
+        queue
+            .enqueue_journaled(first.clone())
+            .expect("enqueue first should succeed");
+        queue
+            .enqueue_journaled(second.clone())
+            .expect("enqueue second should succeed");
+
+        let result = queue.flush_batch(&journal);
+        assert!(
+            matches!(
+                &result,
+                Err(JournalError::DuplicateStagedKey { run: r, seq: s })
+                    if *r == run && *s == EventSeq::new(0)
+            ),
+            "expected DuplicateStagedKey {{ run, seq=0 }}, got {:?}",
+            result
+        );
+
+        // After the fix, the OwnedWriteBatch is never committed, so
+        // the events keyspace remains empty for this run.
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert!(
+            events.is_empty(),
+            "journal must contain zero events after a rejected same-batch duplicate, got {}",
+            events.len()
+        );
+    }
+
+    #[test]
+    fn flush_batch_across_calls_handles_idempotent_retry() {
+        // Regression: ensure cross-flush (queued back-to-back across
+        // separate flush_batch calls) duplicate (run, seq) still works
+        // via the durable-store existing-bytes check inside
+        // stage_queued_event. The first flush writes the event; the
+        // second flush re-enqueues the same event and must be treated
+        // as an idempotent retry (Ok, no second insert) — NOT as a
+        // staged-in-flush duplicate (the dedup set is per-flush and
+        // does not carry across calls).
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(281);
+        let event = make_event(run, 0);
+
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("first enqueue should succeed");
+        let r1 = queue
+            .flush_batch(&journal)
+            .expect("first flush should succeed");
+        assert_eq!(r1.drained, 1);
+        assert_eq!(r1.written, 1);
+
+        // Re-enqueue the same (run, seq) AFTER the durable store
+        // already holds it. This must be an idempotent retry.
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("second enqueue should succeed");
+        let r2 = queue
+            .flush_batch(&journal)
+            .expect("idempotent flush should succeed");
+        assert_eq!(r2.drained, 1, "second flush should drain the retried event");
+        assert_eq!(
+            r2.written, 1,
+            "second flush reports the retried event as written (no-op insert)"
+        );
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(
+            events.len(),
+            1,
+            "journal must contain exactly one event after idempotent retry"
+        );
+        assert_eq!(
+            events[0], event,
+            "the durable event must equal the retried payload"
+        );
+    }
 }

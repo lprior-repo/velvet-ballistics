@@ -50,6 +50,22 @@ pub enum JournalError {
         expected: EventSeq,
         actual: EventSeq,
     },
+    #[error(
+        "journal replay key/payload mismatch for run {run:?}: key_seq={key_seq} payload_seq={payload_seq}"
+    )]
+    ReplayKeyMismatch {
+        run: RunId,
+        key_seq: u64,
+        payload_seq: u64,
+    },
+    #[error(
+        "journal replay envelope/payload sequence mismatch for run {run:?}: envelope_seq={envelope_seq} payload_seq={payload_seq}"
+    )]
+    ReplayEnvelopeSequenceMismatch {
+        run: RunId,
+        envelope_seq: u64,
+        payload_seq: u64,
+    },
     #[error("journal event sequence overflow")]
     SequenceOverflow,
     #[error("bad record magic: {found:#010x}")]
@@ -147,6 +163,15 @@ pub enum JournalError {
     ReplayAllocationFailed { run: RunId, requested: usize },
     #[error("admission clock unavailable")]
     ClockUnavailable,
+    #[error("invalid configuration for field {field}: {reason}")]
+    InvalidConfig {
+        field: &'static str,
+        reason: &'static str,
+    },
+    #[error(
+        "read-only journal open is not supported; Fjall does not expose a true read-only database open"
+    )]
+    UnsupportedReadOnly,
     #[error("process lock held by another process (pid: {holder_pid:?}) at {path}")]
     ProcessLockHeld {
         path: Box<Path>,

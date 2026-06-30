@@ -73,14 +73,26 @@ impl JournalError {
     pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
     /// Diagnostic code for journal batch accumulated byte budget exceeded.
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
-    /// Diagnostic code for keyspace scan encountering a malformed row under a known prefix.
-    pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
-    /// Diagnostic code for artifact-side postcard encode failure surfaced
-    /// by `JournalError::PostcardEncodeFailed(_)`. Distinct from
-    /// `ENCODE_CODE` (0x4002) so admission callers can distinguish a
-    /// serializer defect from a generic journal-encode failure (SA-015,
-    /// vb-36fly).
+    /// Diagnostic code for replay key/payload sequence mismatch
+    /// (`JournalError::ReplayKeyMismatch`).
+    pub const REPLAY_KEY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4040);
+    /// Diagnostic code for replay envelope/payload sequence mismatch
+    /// (`JournalError::ReplayEnvelopeSequenceMismatch`).
+    pub const REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4041);
+
+    /// Diagnostic code for invalid configuration supplied to journal open.
+    pub const INVALID_CONFIG_CODE: DiagnosticCode = DiagnosticCode::new(0x4033);
+    /// Diagnostic code for read-only journal open attempt that the
+    /// backend cannot honor.
+    pub const UNSUPPORTED_READ_ONLY_CODE: DiagnosticCode = DiagnosticCode::new(0x4034);
+    /// Diagnostic code for artifact-side postcard encode failure
+    /// (`JournalError::PostcardEncodeFailed`). Distinct from
+    /// `POSTCARD_DECODE_FAILED_CODE` so admission callers can
+    /// distinguish encode-side defects.
     pub const POSTCARD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
+    /// Diagnostic code for malformed keyspace row under a known prefix
+    /// (`JournalError::MalformedKeyspaceRow`).
+    pub const MALFORMED_KEYSPACE_ROW_CODE: DiagnosticCode = DiagnosticCode::new(0x4030);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -97,6 +109,10 @@ impl JournalError {
             Self::QueueShutdown => Self::QUEUE_SHUTDOWN_CODE,
             Self::WrongRun { .. } => Self::WRONG_RUN_CODE,
             Self::SequenceGap { .. } => Self::SEQUENCE_GAP_CODE,
+            Self::ReplayKeyMismatch { .. } => Self::REPLAY_KEY_MISMATCH_CODE,
+            Self::ReplayEnvelopeSequenceMismatch { .. } => {
+                Self::REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE
+            }
             Self::SequenceOverflow => Self::SEQUENCE_OVERFLOW_CODE,
             Self::BadMagic { .. } => Self::BAD_MAGIC_CODE,
             Self::UnsupportedSchemaVersion { .. } => Self::UNSUPPORTED_SCHEMA_VERSION_CODE,
@@ -150,6 +166,8 @@ impl JournalError {
             // `inner.diagnostic_code()` correctly.
             Self::Trim(inner) => inner.diagnostic_code(),
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
+            Self::InvalidConfig { .. } => Self::INVALID_CONFIG_CODE,
+            Self::UnsupportedReadOnly => Self::UNSUPPORTED_READ_ONLY_CODE,
             Self::MalformedKeyspaceRow { .. } => Self::MALFORMED_KEYSPACE_ROW_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
             Self::BatchAborted => Self::BATCH_ABORTED_CODE,
@@ -184,6 +202,8 @@ impl JournalError {
             Self::QueueShutdown => "QUEUE_SHUTDOWN",
             Self::WrongRun { .. } => "WRONG_RUN",
             Self::SequenceGap { .. } => "JOURNAL_SEQUENCE_GAP",
+            Self::ReplayKeyMismatch { .. } => "REPLAY_KEY_PAYLOAD_MISMATCH",
+            Self::ReplayEnvelopeSequenceMismatch { .. } => "REPLAY_ENVELOPE_SEQUENCE_MISMATCH",
             Self::SequenceOverflow => "SEQUENCE_OVERFLOW",
             Self::BadMagic { .. } => "BAD_MAGIC",
             Self::UnsupportedSchemaVersion { .. } => "UNSUPPORTED_SCHEMA_VERSION",
@@ -225,6 +245,8 @@ impl JournalError {
             Self::ReplayAllocationFailed { .. } => "REPLAY_ALLOCATION_FAILED",
             Self::ProcessLockHeld { .. } => "PROCESS_LOCK_HELD",
             Self::ProcessLockIo { .. } => "PROCESS_LOCK_IO",
+            Self::InvalidConfig { .. } => "INVALID_CONFIG",
+            Self::UnsupportedReadOnly => "UNSUPPORTED_READ_ONLY",
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",

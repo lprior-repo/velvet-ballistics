@@ -7641,6 +7641,10 @@ mod tests {
                 JournalError::QueueFull => "queue_full",
                 JournalError::QueueShutdown => "queue_shutdown",
                 JournalError::WrongRun { .. } => "wrong_run",
+                JournalError::ReplayKeyMismatch { .. } => "replay_key_mismatch",
+                JournalError::ReplayEnvelopeSequenceMismatch { .. } => {
+                    "replay_envelope_sequence_mismatch"
+                }
                 JournalError::SequenceGap { .. } => "sequence_gap",
                 JournalError::SequenceOverflow => "sequence_overflow",
                 JournalError::BadMagic { .. } => "bad_magic",
@@ -7687,6 +7691,8 @@ mod tests {
                 JournalError::MalformedKeyspaceRow { .. } => "malformed_keyspace_row",
                 JournalError::BatchAborted => "batch_aborted",
                 JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
+                JournalError::InvalidConfig { .. } => "invalid_config",
+                JournalError::UnsupportedReadOnly => "unsupported_read_only",
             }
         }
         let _ = _exhaustive_match;

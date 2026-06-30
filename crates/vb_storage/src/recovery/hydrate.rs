@@ -218,7 +218,8 @@ pub fn hydrate_run_frame(
 ) -> RecoveryResult<vb_core::RunFrame> {
     validate_snapshot_recovery_inputs(snapshot, tail_events, run_id)?;
     reject_if_cannot_resume(snapshot, tail_events, run_id)?;
-    let snapshot_slots = decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id)?;
+    let snapshot_slots =
+        decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id, snapshot.seq)?;
     let (step_count, slot_count, first_step) =
         derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
     ensure_nonzero_step_count(step_count)?;

@@ -180,38 +180,71 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a status index marker into the batch.
+    ///
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error, so a
+    /// subsequent `commit()` cannot persist a partial batch.
     pub fn put_status_index(
         &mut self,
         state: crate::types::IndexStatusState,
         timestamp: u64,
         run: vb_core::RunId,
     ) -> Result<(), JournalError> {
-        let key = index_status_key(state, timestamp, run)?;
+        let key = match index_status_key(state, timestamp, run) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner
             .insert(&self.journal.index_status, key, Vec::<u8>::new());
         Ok(())
     }
 
     /// Inserts a workflow index marker into the batch.
+    ///
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error, so a
+    /// subsequent `commit()` cannot persist a partial batch.
     pub fn put_workflow_index(
         &mut self,
         workflow: vb_core::WorkflowId,
         run: vb_core::RunId,
     ) -> Result<(), JournalError> {
-        let key = index_workflow_key(workflow, run)?;
+        let key = match index_workflow_key(workflow, run) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner
             .insert(&self.journal.index_workflow, key, Vec::<u8>::new());
         Ok(())
     }
 
     /// Inserts an action index marker into the batch.
+    ///
+    /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+    /// and [`Self::put_blob`]: every fallible step sets
+    /// `self.aborted = true` before propagating the typed error, so a
+    /// subsequent `commit()` cannot persist a partial batch.
     pub fn put_action_index(
         &mut self,
         action: vb_core::ActionId,
         run: vb_core::RunId,
         step: vb_core::StepIdx,
     ) -> Result<(), JournalError> {
-        let key = index_action_key(action, run, step)?;
+        let key = match index_action_key(action, run, step) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner
             .insert(&self.journal.index_action, key, Vec::<u8>::new());
         Ok(())

@@ -2749,3 +2749,71 @@ fn append_unfsynced_helper_rejects_duplicate_key() {
     assert_eq!(replayed.len(), 1, "duplicate must not overwrite original");
     assert_eq!(replayed[0], event_a, "original record must remain intact");
 }
+
+// =========================================================================
+// round10-a / Issue 5: replay/codec bind regression test
+//
+// The envelope binds three things: the Fjall key, the envelope's `sequence`
+// field, and the payload's `seq`. A tampered value whose envelope sequence
+// diverges from the payload seq must surface as
+// `JournalError::ReplayEnvelopeSequenceMismatch` at replay time, not be
+// silently replayed under the wrong identity.
+// =========================================================================
+
+#[test]
+fn key_payload_mismatch_fails_replay() -> Result<(), JournalError> {
+    let (_temp, journal) = temp_journal();
+    let run = vb_core::RunId::new(7);
+    let key_seq = EventSeq::new(42);
+    let envelope_seq: u64 = 99;
+
+    // Build a normal RunAccepted event for (run=7, seq=42). The payload's
+    // seq is 42, so the Fjall key will be (run=7, seq=42) and the payload
+    // will report seq=42.
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: key_seq,
+        workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+    };
+
+    // Encode the envelope with envelope.sequence=99 while the payload's
+    // seq remains 42. This produces a record whose envelope sequence
+    // disagrees with the payload's seq field — exactly the divergence
+    // round10-a / Issue 5 must catch.
+    let mut encoded = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::records::RecordKind::RunAccepted,
+        envelope_seq,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .expect("encode_record should succeed");
+
+    // Recompute the header checksum so the bind reaches the envelope-vs-
+    // payload check (rather than failing earlier with HeaderChecksumMismatch).
+    let checksum = crc32c::crc32c(&encoded[..56]);
+    encoded[56] = (checksum & 0xFF) as u8;
+    encoded[57] = ((checksum >> 8) & 0xFF) as u8;
+    encoded[58] = ((checksum >> 16) & 0xFF) as u8;
+    encoded[59] = ((checksum >> 24) & 0xFF) as u8;
+
+    // Insert the tampered record directly under the (run=7, seq=42) key
+    // so the replay path sees a real, on-disk mismatch.
+    let key = crate::keys::run_event_key(run, key_seq)?;
+    journal
+        .events
+        .insert(key.to_vec(), encoded)
+        .map_err(JournalError::Fjall)?;
+
+    // Replay must surface the typed mismatch error rather than silently
+    // returning the event under a forged sequence.
+    let err = journal
+        .events_for_run(run)
+        .expect_err("replay must reject envelope/payload sequence mismatch");
+    assert!(
+        matches!(err, JournalError::ReplayEnvelopeSequenceMismatch { .. }),
+        "expected ReplayEnvelopeSequenceMismatch, got {:?}",
+        err
+    );
+    Ok(())
+}

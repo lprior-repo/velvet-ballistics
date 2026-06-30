@@ -252,3 +252,147 @@ fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection(
     assert_eq!(journal.snapshot(), expected);
     Ok(())
 }
+
+#[test]
+fn shutdown_forces_syncall_for_journaled_events() -> Result<(), String> {
+    // Given a QueuedStorageRuntimeJournal over a temporary Fjall directory,
+    // enqueue several journaled events but do NOT call `close` or
+    // `persist_strict` explicitly. The runtime shutdown boundary must invoke
+    // the durability barrier itself, so when the journal is dropped and a
+    // fresh FjallJournal is opened on the same path (the simulated restart),
+    // every drained event must be replayable. This pins Master §49
+    // Crash-Consistency Rule for the journaled profile path.
+    let (dir, journal) = temp_journal()?;
+    let journal_path = dir.path().to_path_buf();
+    let queue = journal_queue(8, 4)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
+    let run = RunId::new(2_001);
+
+    for i in 0u16..5u16 {
+        assert_eq!(
+            adapter.append_sequenced(
+                RuntimeJournalEvent::StepStarted {
+                    run,
+                    step: StepIdx::new(i),
+                },
+                EventSeq::new(u64::from(i)),
+            ),
+            Ok(())
+        );
+    }
+
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 5 && counts.strict == 0
+    ));
+
+    let report = adapter
+        .drain_for_shutdown()
+        .map_err(|error| error.to_string())
+        .expect("drain_for_shutdown must succeed");
+    assert_eq!(report.drained, 5);
+    assert_eq!(report.written, 5);
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 0 && counts.strict == 0
+    ));
+
+    // Drop the in-memory journal references (simulating process shutdown) but
+    // keep the directory alive on disk for the simulated restart.
+    drop(adapter);
+    drop(queue);
+    drop(journal);
+
+    // Simulated restart: open a brand-new FjallJournal on the same path
+    // without invoking `persist_strict` ourselves. If the shutdown boundary
+    // did not force a durability barrier, the WAL fsync would be missing and
+    // the events could be unrecoverable after a real power-loss. The reopen
+    // exercises the durability end-to-end regardless.
+    let reopened = FjallJournal::open(&journal_path, None)
+        .map_err(|error| error.to_string())
+        .map(Arc::new)
+        .expect("reopened journal must open on the same path");
+    let events = reopened
+        .events_for_run(run)
+        .map_err(|error| error.to_string())
+        .expect("replay on reopened journal must succeed");
+    assert_eq!(
+        events.len(),
+        5,
+        "all 5 enqueued journaled events must survive the simulated restart after drain_for_shutdown"
+    );
+    for (i, event) in events.iter().enumerate() {
+        let i_u16 = u16::try_from(i).map_err(|error| error.to_string())?;
+        let i_u64 = u64::try_from(i).map_err(|error| error.to_string())?;
+        assert!(
+            matches!(
+                event,
+                JournalEvent::StepStarted { run: r, seq, step, .. }
+                    if *r == run && *seq == EventSeq::new(i_u64) && *step == StepIdx::new(i_u16)
+            ),
+            "event {i} must replay with the exact run/seq/step that was enqueued; got {event:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn drain_for_shutdown_empties_pending_writes_and_makes_them_durable() -> Result<(), String> {
+    // Sibling to the pre-existing `queued_journal_drain_for_shutdown_empties_all_pending_writes`
+    // test. The earlier test only asserts queue emptiness; this one adds the
+    // durability half of the contract: after the shutdown boundary returns Ok,
+    // every drained event must be replayable on a freshly-opened journal.
+    // Together the two tests pin the full shutdown contract: queue empty
+    // AND events durable.
+    let (dir, journal) = temp_journal()?;
+    let journal_path = dir.path().to_path_buf();
+    let queue = journal_queue(8, 2)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
+    let run = RunId::new(2_002);
+
+    for i in 0u16..4u16 {
+        assert_eq!(
+            adapter.append_sequenced(
+                RuntimeJournalEvent::StepStarted {
+                    run,
+                    step: StepIdx::new(i),
+                },
+                EventSeq::new(u64::from(i)),
+            ),
+            Ok(())
+        );
+    }
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 4 && counts.strict == 0
+    ));
+
+    let report = adapter
+        .drain_for_shutdown()
+        .map_err(|error| error.to_string())
+        .expect("drain_for_shutdown must succeed");
+    assert_eq!(report.drained, 4);
+    assert_eq!(report.written, 4);
+
+    // Queue is empty (the original contract).
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 0 && counts.strict == 0
+    ));
+
+    // And the drained events are durable on disk: a fresh journal opened on
+    // the same path sees them.
+    drop(adapter);
+    drop(queue);
+    drop(journal);
+    let reopened = FjallJournal::open(&journal_path, None)
+        .map_err(|error| error.to_string())
+        .map(Arc::new)
+        .expect("reopened journal must open on the same path");
+    let events = reopened
+        .events_for_run(run)
+        .map_err(|error| error.to_string())
+        .expect("replay on reopened journal must succeed");
+    assert_eq!(events.len(), 4);
+    Ok(())
+}
