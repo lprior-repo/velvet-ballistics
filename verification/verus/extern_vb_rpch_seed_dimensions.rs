@@ -67,7 +67,7 @@
 //   - `MirrorRecoveryError::FrameDimensionOverflow { run: RunId }`
 //                                                <- crates/vb_storage/src/recovery/types.rs:139-144
 //   - `MirrorRecoveryFrameSeed { step_count: u16, slot_count: u16 }`
-//                                                <- crates/vb_storage/src/recovery/types.rs:629-649
+//                                                <- crates/vb_storage/src/recovery/types.rs:730-749
 //
 // Production-bound exec wrappers:
 //   - `production_recovery_dimension_count_from_index`  <- derive.rs:250-261
