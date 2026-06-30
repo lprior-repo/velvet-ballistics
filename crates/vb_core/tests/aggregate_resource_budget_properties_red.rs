@@ -1,7 +1,30 @@
 use proptest::prelude::{ProptestConfig, *};
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
+// The admission shell is split across focused chunks under `parts/` that
+// are `include!`-d into `admission.rs` at compile time. The runtime-source
+// literals this proptest searches for (`admit_run_with_budget`,
+// `ResourceCapacityExceeded`) live in the chunks; the shell alone won't
+// satisfy `.contains(...)`. Concatenate the chunks so the proptest sees
+// the same surface the production binary sees.
 const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_ERRORS_RS: &str = include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs");
+const ADMISSION_BUDGET_RS: &str = include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs");
+
+/// Total runtime surface area of the admission module after the shell
+/// glues its chunks in via `include!`. Asserted at proptest time so the
+/// split does not silently re-break surface-area checks. See commit
+/// that fixed the BLOCK_GLOBAL `proptest_admission_with_budget...`
+/// failure (the literal `admit_run_with_budget` lives only in
+/// `chunk_006_admit_budget.rs`).
+fn admission_production_surface() -> String {
+    let mut s = String::from(ADMISSION_RS);
+    s.push('\n');
+    s.push_str(ADMISSION_ERRORS_RS);
+    s.push('\n');
+    s.push_str(ADMISSION_BUDGET_RS);
+    s
+}
 
 proptest! {
     #![proptest_config(ProptestConfig { failure_persistence: None, .. ProptestConfig::default() })]
@@ -68,8 +91,9 @@ proptest! {
     fn proptest_admission_with_budget_has_runtime_capacity_rejection_surface(requested in 1u64..1000) {
         let available = requested.saturating_sub(1);
 
+        let admission_rs = admission_production_surface();
         prop_assert_eq!(requested > available, true);
-        prop_assert_eq!(ADMISSION_RS.contains("admit_run_with_budget"), true);
-        prop_assert_eq!(ADMISSION_RS.contains("ResourceCapacityExceeded"), true);
+        prop_assert_eq!(admission_rs.contains("admit_run_with_budget"), true);
+        prop_assert_eq!(admission_rs.contains("ResourceCapacityExceeded"), true);
     }
 }
