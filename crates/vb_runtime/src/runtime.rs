@@ -137,20 +137,19 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    /// Creates a new runtime with the given number of shards and per-shard configuration.
+    /// Creates a new runtime with the given number of shards, per-shard configuration, and
+    /// explicit [`SharedRuntimeJournal`].
+    ///
+    /// The journal argument is **required**: this constructor will not silently pick a
+    /// non-durable default. Master §18 requires Fjall-backed persistence for recovery,
+    /// so production callers must wire a [`crate::journal::StorageRuntimeJournal`] (strict
+    /// barrier) or [`crate::journal::QueuedStorageRuntimeJournal`] (group-committed).
+    /// Tests and benchmarks that do not need durability should pass
+    /// [`crate::journal::VolatileRuntimeJournal::shared`] or
+    /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
+    /// call site documents the non-durable intent.
     #[must_use]
-    pub fn new(shard_count: NonZeroUsize, config: ShardConfig) -> Self {
-        Self::new_with_journal(
-            shard_count,
-            config,
-            crate::journal::VolatileRuntimeJournal::shared(),
-        )
-    }
-
-    /// Creates a new runtime with an explicit runtime journal sink.
-    #[allow(clippy::needless_pass_by_value)]
-    #[must_use]
-    pub fn new_with_journal(
+    pub fn new(
         shard_count: NonZeroUsize,
         config: ShardConfig,
         journal: SharedRuntimeJournal,
@@ -167,6 +166,24 @@ impl Runtime {
             shard_count: count,
             journal,
         }
+    }
+
+    /// Creates a new runtime whose journal events survive only until process exit.
+    ///
+    /// This is the **test/benchmark-only** non-durable path. It is intentionally named
+    /// long and explicit so every call site self-documents the trade-off. Production
+    /// callers must use [`Runtime::new`] with a storage-backed
+    /// [`SharedRuntimeJournal`].
+    #[must_use]
+    pub fn new_for_tests_and_benchmarks_only(
+        shard_count: NonZeroUsize,
+        config: ShardConfig,
+    ) -> Self {
+        Self::new(
+            shard_count,
+            config,
+            crate::journal::VolatileRuntimeJournal::shared(),
+        )
     }
 
     /// Submits a run using a compiled workflow.

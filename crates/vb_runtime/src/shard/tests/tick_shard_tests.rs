@@ -353,7 +353,7 @@ fn runtime_tick_shard_continue_processes_all_pending_commands() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf1) = suspended_workflow() else {
         return;
@@ -391,7 +391,7 @@ fn runtime_tick_shard_continue_returns_ok_true_with_empty_queue() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // Verify initial state: queue empty, counters at zero.
     let initial_snap = runtime.counters_snapshot();
@@ -422,7 +422,7 @@ fn runtime_tick_shard_continue_increments_step_counter_exactly_two() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = action_then_finish_workflow() else {
         return;
@@ -480,7 +480,7 @@ fn runtime_tick_shard_suspend_skips_all_command_processing() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -514,7 +514,7 @@ fn runtime_tick_shard_suspend_preserves_command_queue_depth() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -556,7 +556,7 @@ fn runtime_tick_shard_suspend_idempotent_on_idle_shard() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // When: tick_shard(Suspend) is called on idle shard.
     // NOTE: This will fail to compile until Runtime::tick_shard is implemented.
@@ -580,7 +580,7 @@ fn runtime_tick_shard_suspend_does_not_advance_resumed_run() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -617,7 +617,7 @@ fn runtime_tick_shard_migrate_transfers_actions_to_target_shard() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -658,7 +658,7 @@ fn runtime_tick_shard_migrate_rejects_self_migrate() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -690,7 +690,7 @@ fn runtime_tick_shard_migrate_rejects_invalid_target() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // When: tick_shard(Migrate { target: 99 }) is called.
     // NOTE: This will fail to compile until Runtime::tick_shard is implemented.
@@ -710,7 +710,7 @@ fn runtime_tick_shard_migrate_idempotent_on_empty_source() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let metrics_before = runtime.collect_metrics();
     let shard0_before = metrics_before.shards[0].command_queue_depth;
@@ -743,7 +743,7 @@ fn runtime_tick_shard_shutdown_drains_remaining_actions() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = action_then_finish_workflow() else {
         return;
@@ -794,7 +794,7 @@ fn runtime_tick_shard_shutdown_idempotent() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -827,7 +827,7 @@ fn runtime_tick_shard_shutdown_returns_false_on_dead_shard_continue_rejected() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = finished_workflow() else {
         return;
@@ -868,7 +868,7 @@ fn runtime_tick_shard_invalid_shard_index_returns_error() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // When: tick_shard(5, Continue) is called (OOB index).
     // NOTE: This will fail to compile until Runtime::tick_shard is implemented.
@@ -888,7 +888,7 @@ fn runtime_tick_shard_with_zero_shard_count_returns_ok_on_valid_index() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // When: tick_shard(0, Continue) is called on fresh runtime.
     // NOTE: This will fail to compile until Runtime::tick_shard is implemented.
@@ -914,7 +914,7 @@ fn runtime_tick_shard_all_directives_via_public_api_e2e() {
     let Some(shard_count) = std::num::NonZeroUsize::new(4) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -960,7 +960,7 @@ fn runtime_tick_shard_concurrent_migrate_and_continue_e2e() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -1008,7 +1008,7 @@ fn runtime_tick_shard_random_directive_does_not_panic() {
     let Some(shard_count) = std::num::NonZeroUsize::new(4) else {
         return;
     };
-    let runtime = Runtime::new(shard_count, runtime_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     // Valid indices: 0, 1, 2, 3
     // Directive variants: Continue, Suspend, Migrate { 0 }, Migrate { 1 },
@@ -1029,7 +1029,7 @@ fn runtime_tick_shard_migrate_preserves_run_identity() {
     let Some(shard_count) = std::num::NonZeroUsize::new(2) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = suspended_workflow() else {
         return;
@@ -1062,7 +1062,7 @@ fn runtime_tick_shard_shutdown_is_stable_idempotent() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
 
     let Some(wf) = finished_workflow() else {
         return;
