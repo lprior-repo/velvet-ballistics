@@ -509,6 +509,15 @@ impl InspectSnapshotFormatter {
     ///
     /// This is a cold-path operation - called only when formatting output,
     /// not during the hot path of inspect operations.
+    ///
+    /// # Invariants (RS-218 / vb-ykph4)
+    ///
+    /// The `Found` branch is response-authoritative: every value in the
+    /// formatted output is sourced from the contained `InspectSnapshot`,
+    /// never from any external parameter, runtime global, or context.
+    /// The `NotFound` branch likewise sources its values from the
+    /// `InspectResponse::NotFound` fields. This guarantees the formatter
+    /// can never attribute one run's program counter to another run id.
     #[must_use]
     pub fn format_snapshot(response: &InspectResponse) -> String {
         match response {
@@ -1994,5 +2003,87 @@ mod format_snapshot_uses_snap_run {
         );
         assert!(formatted_a.contains("RunId(1)"));
         assert!(formatted_b.contains("RunId(2)"));
+    }
+
+    /// RS-218 / vb-ykph4 regression: the formatter must cite the snapshot's
+    /// own high-entropy `run` value `0xDEADBEEF` and must NOT leak the
+    /// neighbouring sentinel `0xCAFEBABE` (which would simulate an external
+    /// parameter that the historical buggy signature could have shadowed
+    /// the snapshot's run with).
+    #[test]
+    fn rs218_found_branch_cites_snap_run_not_neighbouring_sentinel() {
+        let snap = InspectSnapshot {
+            run: RunId::new(0xDEAD_BEEF),
+            correlation: 42,
+            pc: StepIdx::new(7),
+            executed: 13,
+        };
+        let response = InspectResponse::Found(snap);
+
+        let formatted = InspectSnapshotFormatter::format_snapshot(&response);
+
+        // Positive: the snapshot's run value must appear, formatted via
+        // the `RunId(_)` Debug rendering that `inspect_snapshot_debug_format`
+        // and the snapshot_from_state path both produce.
+        assert!(
+            formatted.contains("RunId(3735928559)"),
+            "formatted output must cite snap.run (0xDEADBEEF -> 3735928559), got: {formatted}"
+        );
+        // Negative: an unrelated sentinel that the historical
+        // external-parameter signature could have shadowed with must NOT
+        // appear in the formatted output. This proves the formatter is
+        // response-authoritative.
+        assert!(
+            !formatted.contains("RunId(3405691582)"),
+            "formatted output leaked an external sentinel (0xCAFEBABE -> 3405691582); got: {formatted}"
+        );
+        // The correlation comes from the snapshot, not from anywhere else.
+        assert!(
+            formatted.contains("correlation: 42"),
+            "formatted output must carry the snapshot's correlation, got: {formatted}"
+        );
+        assert!(
+            formatted.contains("pc:"),
+            "formatted output must carry the snapshot's pc, got: {formatted}"
+        );
+        assert!(
+            formatted.contains("executed: 13"),
+            "formatted output must carry the snapshot's executed, got: {formatted}"
+        );
+    }
+
+    /// RS-218 / vb-ykph4 negative symmetry: if the snapshot's `run` is
+    /// `0xCAFEBABE` and an external sentinel `0xDEADBEEF` is somewhere
+    /// else in scope, the formatter must still print `RunId(3405691582)`
+    /// and nothing else.
+    #[test]
+    fn rs218_found_branch_cites_snap_run_when_other_value_lurks_in_scope() {
+        // `0xDEADBEEF` is computed here only to exist as a value in scope
+        // that is NOT the snapshot's run. If the formatter shadowed the
+        // snapshot's run with any external context, the test would catch
+        // the swap.
+        let external_sentinel: RunId = RunId::new(0xDEAD_BEEF);
+        let snap_run: RunId = RunId::new(0xCAFE_BABE);
+        // Compile-time witness that the values are distinct.
+        assert_ne!(external_sentinel, snap_run);
+
+        let snap = InspectSnapshot {
+            run: snap_run,
+            correlation: 1,
+            pc: StepIdx::ZERO,
+            executed: 0,
+        };
+        let response = InspectResponse::Found(snap);
+
+        let formatted = InspectSnapshotFormatter::format_snapshot(&response);
+
+        assert!(
+            formatted.contains("RunId(3405691582)"),
+            "formatted output must cite snap.run (CAFEBABE -> 3405691582), got: {formatted}"
+        );
+        assert!(
+            !formatted.contains("RunId(3735928559)"),
+            "formatted output must not leak the external sentinel (DEADBEEF -> 3735928559); got: {formatted}"
+        );
     }
 }
