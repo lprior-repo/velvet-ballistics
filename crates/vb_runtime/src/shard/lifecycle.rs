@@ -15,4 +15,5 @@ mod tests {
     include!("lifecycle_tests/chunk_005.rs");
     include!("lifecycle_tests/chunk_006.rs");
     include!("lifecycle_tests/chunk_007.rs");
+    include!("lifecycle_tests/chunk_008.rs");
 }

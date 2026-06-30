@@ -27,6 +27,17 @@ fn current_timestamp() -> u64 {
         .map_or(0, |duration| duration.as_secs())
 }
 
+/// Absolute runtime ceiling for the encoded byte length of a single action
+/// completion output.  This backstop is intentionally smaller than the
+/// `ActionContract::max_output_bytes` and `ResourceContract::max_blob_bytes`
+/// limits so that a malformed or oversized contract cannot bypass runtime
+/// memory containment.  A 64 KiB ceiling is large enough for the largest
+/// realistic single-value outputs the runtime is designed to carry (small
+/// structured records, encoded JSON blobs, medium-length list arenas) while
+/// keeping the worst-case per-completion allocation bounded and cache-line
+/// friendly.  See master §19 (action ABI) and §44 points 11/14/19.
+pub(crate) const MAX_ACTION_OUTPUT_BYTES: u32 = 64 * 1024;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ActionFailureOutcome {
     RetryNow,
@@ -63,6 +74,7 @@ pub(crate) fn preflight_action_completion(
         postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
     let encoded_len = encoded_len_u32(encoded_value.len(), contract.max_output_bytes)?;
     reject_encoded_len_mismatch(output.encoded_len, encoded_len)?;
+    reject_absolute_output_size(encoded_len)?;
     reject_contract_output_size(encoded_len, contract.max_output_bytes)?;
     reject_resource_output_size(
         encoded_len,
@@ -152,6 +164,24 @@ fn reject_contract_output_size(size: u32, max: u32) -> RuntimeResult<()> {
         Ok(())
     } else {
         Err(RuntimeError::ActionOutputTooLarge { size, max })
+    }
+}
+
+/// Enforces the absolute runtime ceiling [`MAX_ACTION_OUTPUT_BYTES`] on the
+/// encoded action output length.  This check runs before the
+/// per-contract and per-workflow size gates so that no contract value can
+/// grant a completion permission to write a payload larger than the runtime
+/// is willing to admit into its hot path.  The cap is the only place where
+/// the literal `64 KiB` boundary is enforced; the contract and resource
+/// limits are merely per-action and per-workflow refinements.
+fn reject_absolute_output_size(size: u32) -> RuntimeResult<()> {
+    if size <= MAX_ACTION_OUTPUT_BYTES {
+        Ok(())
+    } else {
+        Err(RuntimeError::ActionOutputTooLarge {
+            size,
+            max: MAX_ACTION_OUTPUT_BYTES,
+        })
     }
 }
 
