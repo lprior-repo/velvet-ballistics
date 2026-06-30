@@ -43,8 +43,14 @@ for bench in "${benches[@]}"; do
 
   log_file="$EVIDENCE_DIR/$bench.perf.log"
   printf '[bench-instruction-counts] running %s\n' "$bench" >&2
-  CARGO_TARGET_DIR="$TARGET_DIR" rustup run nightly-2026-04-28 cargo bench --quiet -p "$BENCH_PACKAGE" --bench "$bench" --all-features --no-run
-  CARGO_TARGET_DIR="$TARGET_DIR" perf stat -x, -e instructions -o "$log_file" -- rustup run nightly-2026-04-28 cargo bench --quiet -p "$BENCH_PACKAGE" --bench "$bench" --all-features -- --bench
+  if ! CARGO_TARGET_DIR="$TARGET_DIR" rustup run nightly-2026-04-28 cargo bench --quiet -p "$BENCH_PACKAGE" --bench "$bench" --all-features --no-run; then
+    printf '[bench-instruction-counts] compile failed for %s\n' "$bench" >&2
+    exit 1
+  fi
+  if ! CARGO_TARGET_DIR="$TARGET_DIR" perf stat -x, -e instructions -o "$log_file" -- rustup run nightly-2026-04-28 cargo bench --quiet -p "$BENCH_PACKAGE" --bench "$bench" --all-features -- --bench; then
+    printf '[bench-instruction-counts] perf stat failed for %s\n' "$bench" >&2
+    exit 1
+  fi
   if [ ! -s "$log_file" ]; then
     printf 'Instruction-count log is empty: %s\n' "$log_file" >&2
     exit 1
