@@ -17,23 +17,23 @@
 // `verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs`,
 // which carries verbatim copies of the production source at:
 //
-//   - `JournalEvent::run_id`   <- crates/vb_storage/src/events.rs:321-348
-//   - `JournalEvent::seq`      <- crates/vb_storage/src/events.rs:355-382
-//   - `JournalEvent::is_valid` <- crates/vb_storage/src/events.rs:499-535
+//   - `JournalEvent::run_id`   <- crates/vb_storage/src/events.rs:332-363
+//   - `JournalEvent::seq`      <- crates/vb_storage/src/events.rs:366-397
+//   - `JournalEvent::is_valid` <- crates/vb_storage/src/events.rs:514-550
 //   - `EventSeq`               <- crates/vb_storage/src/types.rs:73
-//   - `RunId`                  <- crates/vb_core/src/ids/mod.rs:65
+//   - `RunId`                  <- crates/vb_core/src/ids/mod.rs:80
 //   - `ActionTicket`           <- crates/vb_core/src/action/ticket.rs:6-21
 //
 // This stub mirrors the production `EventSeq` newtype as the smallest
 // drift-detection surface.
 //
-// DRIFT POLICY: `crates/vb_storage/src/events.rs:499-535`
+// DRIFT POLICY: `crates/vb_storage/src/events.rs:514-550`
 // Production source coverage:
-//   - `JournalEvent::run_id`   <- crates/vb_storage/src/events.rs:321-348
-//   - `JournalEvent::seq`      <- crates/vb_storage/src/events.rs:355-382
-//   - `JournalEvent::is_valid` <- crates/vb_storage/src/events.rs:499-535
+//   - `JournalEvent::run_id`   <- crates/vb_storage/src/events.rs:332-363
+//   - `JournalEvent::seq`      <- crates/vb_storage/src/events.rs:366-397
+//   - `JournalEvent::is_valid` <- crates/vb_storage/src/events.rs:514-550
 //   - `EventSeq`               <- crates/vb_storage/src/types.rs:73-93
-//   - `RunId`                  <- crates/vb_core/src/ids/mod.rs:65
+//   - `RunId`                  <- crates/vb_core/src/ids/mod.rs:80
 //   - `ActionTicket`           <- crates/vb_core/src/action/ticket.rs:6-21
 // Regenerate this file whenever production changes. Any rename of
 // `EventSeq::ZERO`/`MAX` or body change in `is_valid` breaks the
@@ -69,7 +69,7 @@ impl EventSeqStub {
 }
 
 /// Mirror of production `is_valid` decision at
-/// `crates/vb_storage/src/events.rs:499-535`. Body is
+/// `crates/vb_storage/src/events.rs:514-550`. Body is
 /// `#[verifier::external]` (opaque); the companion spec file attaches
 /// `assume_specification` contracts that the spec proofs discharge.
 #[verifier::external]
