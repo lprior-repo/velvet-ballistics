@@ -28,17 +28,3 @@ PASS verus verification/verus/accepted_envelope_model.rs
 PASS verus verification/verus/accepted_cli_digest_binding.rs
 PASS verus verification/verus/strict_admission_witness.rs
 PASS verus verification/verus/idempotency_decision.rs
-PASS verus verification/verus/recovery_verification.rs
-PASS verus verification/verus/idempotency_replay_tracker.rs
-PASS verus verification/verus/ipc_capacity_bounds.rs
-PASS verus verification/verus/ipc_runtime_transitions.rs
-PASS verus verification/verus/ipc_strict_admission.rs
-PASS verus verification/verus/collect_lowering.rs
-PASS verus verification/verus/collect_ir_structure.rs
-PASS verus verification/verus/emit_single_body_set.rs
-PASS verus verification/verus/error_parity.rs
-PASS verus verification/verus/v1_primitive_lowering.rs
-PASS verus verification/verus/diagnostic_envelope_verus.rs
-PASS verus verification/verus/cancel_kill_lattice.rs
-VERUS_TRUST_BOUNDARY_INVENTORY see .evidence/verus/trust-scan.txt
-VERUS_FORBIDDEN_TRUST_SCAN_OK no assume()/axiom code matches
