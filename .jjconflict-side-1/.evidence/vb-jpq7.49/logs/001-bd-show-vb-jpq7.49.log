@@ -1,0 +1,18 @@
+Warning: /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55/.beads has permissions 0755 (recommended: 0700). Run: chmod 700 /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55/.beads
+Error: failed to open database: database "velvet_ballistics" not found on Dolt server at 127.0.0.1:37481
+
+Common causes:
+  - Switched git branches (the Dolt database is runtime state, not in git)
+  - The server is serving a different data directory than expected
+  - The server was restarted and is using a different port
+  - Another project's Dolt server is running on this port
+
+To diagnose:
+  bd doctor                  # Check server and database health
+  bd dolt status             # Show which data directory the server is using
+
+Tip: If this is an existing project, fresh clone, or shared-server recovery, run bd bootstrap first.
+If bootstrap cannot find the expected remote automatically, set sync.git-remote
+in .beads/config.yaml and re-run bd bootstrap.
+Use bd bootstrap --dry-run if you need to confirm the plan before it initializes anything.
+Use bd init only when creating a brand-new project with no existing .beads data.

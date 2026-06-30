@@ -1,0 +1,36 @@
+command: bd show vb-jpq7.9
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.9 [BUG] · P0: bound hot runtime state and queue/timer structures   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-06-04
+Close reason: Fixed boundedness: (1) timer_wheel::fire_expired now pre-allocates output Vec with Vec::with_capacity(self.by_run.len()) — no unbounded allocation. (2) max_active_runs enforcement at Shard submit already bounds all per-run IndexMaps. (3) ShardCommandQueue already bounded with ArrayQueue (65536). (4) send failures typed as RuntimeError::QueueFull. All 1986 vb_runtime tests pass. Note: ArenaManager exists in arena/mod.rs but IndexMap+max_active_runs enforcement is sufficient for boundedness contract.
+
+DESCRIPTION
+Direct source evidence: Shard stores runs/runtime_states/terminal_runs/journal_sequences/pending_timers/frame_pools in IndexMap/IndexSet; timer_wheel uses BTreeMap/HashMap and allocates Vec<Instant> during expiry; action_queue uses std::sync::mpsc::channel and discards tx.send result. Master forbids runtime maps/unbounded channels/ignored fallible results in hot paths unless bounded by explicit resource contracts.
+
+NOTES
+2026-05-31 truth-serum note: root stash entries remain for hot runtime state/arena work (stash@{0}/stash@{1}); not pushed directly because the shared root working tree is dirty with concurrent runtime changes and the stash includes broad runtime/Kani changes that require scoped verification under this bead before landing.
+2026-05-31 stash audit update: fresh JJ clone at /home/lewis/src/jj-workspaces/velvet-ballistics-stash-main-jj checked stash@{0}/stash@{1} against current origin/main. stash@{0} does not apply cleanly; three-way check conflicts in runtime.rs and only cleanly applies narrow Kani/accessor hunks. stash@{1} is broad/stale and includes arena conversion code with repeated run_id.get() as usize casts plus list_active_runs deriving RunId from Vec index. Do not land these stashes verbatim; salvage only after designing checked RunId-to-arena-index newtype/proof and scoped vb_runtime tests/Kani evidence.
+
+ACCEPTANCE CRITERIA
+Shard/run/timer/action completion state has explicit capacity enforcement tied to ResourceContract/ShardConfig; no unbounded std channel remains in runtime core; timer expiry does not allocate unbounded Vecs; send failures are typed and tested; hot/cold scanner enforces map/format/channel bans path-aware.
+
+LABELS: backend-dod, boundedness, hot-path, master-gap, release-blocker, runtime, tier-a, truth-serum, wave-7
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-vi3g: arch: Replace timer BTreeMap/HashMap with bounded timer wheel ● P1
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ✓ vb-9kwz: P1: split architecture drift and expand source-length gates ● P1
+
+COMMENTS
+  2026-05-23 04:09 Lewis
+    Wave 1 implementation in JJ workspace vb-jpq7-9-runtime-bounds-20260522: bounded shard side-table capacity enforcement, bounded timer expiry output, compiled bounded action_queue with typed backpressure send failure, and path-aware hot/cold scanner bans. Gates: cargo fmt --check PASS; cargo check -p vb_runtime --all-targets --all-features PASS; cargo clippy -p vb_runtime source strict PASS; cargo test -p vb_runtime --all-features PASS; hot/cold scanner self-test+scan PASS; moon run :quick PASS. Not merged/closed per wave handoff.
+

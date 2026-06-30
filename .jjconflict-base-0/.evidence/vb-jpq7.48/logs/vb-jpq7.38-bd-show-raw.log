@@ -1,0 +1,28 @@
+command: bd show vb-jpq7.38
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.38 · P0: triage mutation survivors with release-grade scope   [● P0 · CLOSED]
+Owner: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Closed
+
+DESCRIPTION
+Split from vb-jpq7.6. Replace smoke-only mutation evidence with scoped but meaningful survivor triage for hot/current backend crates.
+
+ACCEPTANCE CRITERIA
+Prod-code survivors in vb_core vb_compile vb_runtime vb_storage vb_ipc vb_cli are killed or explicitly justified; mutation scope is tied to changed/hot crates; Moon mutation task is not limited to one diagnostic function/regex for release evidence; survivor failures create child beads rather than weakened tests.
+
+LABELS: backend-dod, coverage, master-gap, mutation, release-blocker, tests, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.30: P0: add expression and compiler parity properties ● P0
+  → ✓ vb-jpq7.32: P0: add runtime replay ordering and terminal-state properties ● P0
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

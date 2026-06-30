@@ -1,0 +1,932 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:16:27
+   |
+16 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2086:20
+     |
+2086 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2087:21
+     |
+2087 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+   Compiling vb_validate v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_validate)
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.39s
+Checking harness kani_idempotency_contract::kani_decision_001_all_combinations...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_validate-a6b1582fddaa9fea__RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.2 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 39 column 5 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.2 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 39 column 5 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.2 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 39 column 5 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.2 iteration 4 file crates/vb_validate/src/kani_idempotency_contract.rs line 39 column 5 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 1 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 2 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.0 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 45 column 13 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.1 iteration 3 file crates/vb_validate/src/kani_idempotency_contract.rs line 42 column 9 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Unwinding loop _RNvNtCsi6KCyRVreCl_11vb_validate25kani_idempotency_contract34kani_decision_001_all_combinations.2 iteration 5 file crates/vb_validate/src/kani_idempotency_contract.rs line 39 column 5 function kani_idempotency_contract::kani_decision_001_all_combinations thread 0
+Runtime Symex: 1.3947s
+size of program expression: 69924 steps
+slicing removed 58579 assignments
+Generated 3780 VCC(s), 695 remaining after simplification
+Runtime Postprocess Equation: 0.0487375s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.142495s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 4.83e-06s
+Solving with CaDiCaL 2.0.0
+83606 variables, 92396 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.0024635s
+Runtime decision procedure: 0.146594s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+83607 variables, 92397 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.0255458s
+Runtime decision procedure: 0.0256884s
+
+RESULTS:
+Check 1: malloc.assertion.1
+	 - Status: SUCCESS
+	 - Description: "max allocation size exceeded"
+	 - Location: <builtin-library-malloc>:31 in function malloc
+
+Check 2: malloc.assertion.2
+	 - Status: SUCCESS
+	 - Description: "max allocation may fail"
+	 - Location: <builtin-library-malloc>:36 in function malloc
+
+Check 3: idempotency_contract::is_statically_idempotent_contract.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:140:1 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 4: core::panicking::panic_nounwind_fmt::runtime.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "call to foreign "Rust" function `_RNvCs1hStedNDpZ2_7___rustc17rust_begin_unwind` is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/new/choose"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:110:17 in function core::panicking::panic_nounwind_fmt::runtime
+
+Check 5: std::panic::Location::<'_>::caller.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "caller_location is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/374"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/location.rs:147:9 in function std::panic::Location::<'_>::caller
+
+Check 6: __rust_dealloc.assertion.1
+	 - Status: SUCCESS
+	 - Description: "Alignment is power of two"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:83 in function __rust_dealloc
+
+Check 7: __rust_dealloc.assertion.2
+	 - Status: SUCCESS
+	 - Description: "rust_dealloc must be called on an object whose allocated size matches its layout"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:85 in function __rust_dealloc
+
+Check 8: kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:43:13 in function kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>
+
+Check 9: kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `align_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>
+
+Check 10: kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `align_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<[vb_core::Capability]>
+
+Check 11: kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:23:13 in function kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>
+
+Check 12: kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `size_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>
+
+Check 13: kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `size_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[vb_core::Capability]>
+
+Check 14: std::alloc::Layout::max_size_for_align.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to add with overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:95:32 in function std::alloc::Layout::max_size_for_align
+
+Check 15: std::alloc::Layout::max_size_for_align.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:95:18 in function std::alloc::Layout::max_size_for_align
+
+Check 16: core::num::<impl usize>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl usize>::checked_add
+
+Check 17: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 18: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 19: kani::rustc_intrinsics::size_of_val_raw::<str>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:23:13 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 20: kani::rustc_intrinsics::size_of_val_raw::<str>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `size_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 21: kani::rustc_intrinsics::size_of_val_raw::<str>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `size_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 22: kani_idempotency_contract::kani_decision_001_all_combinations.assertion.1
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:40:27 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 23: kani_idempotency_contract::kani_decision_001_all_combinations.assertion.2
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:43:32 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 24: kani_idempotency_contract::kani_decision_001_all_combinations.assertion.3
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:46:35 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 25: kani_idempotency_contract::kani_decision_001_all_combinations.assertion.4
+	 - Status: SUCCESS
+	 - Description: "is_statically_idempotent_contract must be deterministic"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:64:17 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 26: kani_idempotency_contract::kani_decision_001_all_combinations.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_validate/src/lib.rs:0:0 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 27: kani::rustc_intrinsics::align_of_val_raw::<str>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:43:13 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 28: kani::rustc_intrinsics::align_of_val_raw::<str>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `align_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 29: kani::rustc_intrinsics::align_of_val_raw::<str>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `align_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 30: std::fmt::Arguments::<'_>::from_str.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to shift left with overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:820:38 in function std::fmt::Arguments::<'_>::from_str
+
+Check 31: std::alloc::Layout::is_size_align_valid.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:68:5 in function std::alloc::Layout::is_size_align_valid
+
+Check 32: std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 33: std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 34: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 35: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 36: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 37: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 38: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 39: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 40: std::alloc::Layout::is_size_align_valid.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:69:27 in function std::alloc::Layout::is_size_align_valid
+
+Check 41: __rust_dealloc.precondition_instance.1
+	 - Status: SUCCESS
+	 - Description: "free argument must be NULL or valid pointer"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 42: __rust_dealloc.precondition_instance.2
+	 - Status: SUCCESS
+	 - Description: "free argument must be dynamic object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 43: __rust_dealloc.precondition_instance.3
+	 - Status: SUCCESS
+	 - Description: "free argument has offset zero"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 44: __rust_dealloc.precondition_instance.4
+	 - Status: SUCCESS
+	 - Description: "double free"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 45: __rust_dealloc.precondition_instance.5
+	 - Status: SUCCESS
+	 - Description: "free called for new[] object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 46: __rust_dealloc.precondition_instance.6
+	 - Status: SUCCESS
+	 - Description: "free called for stack-allocated object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 47: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 48: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 49: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 50: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 51: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 52: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 53: std::ptr::Alignment::new.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/alignment.rs:64:13 in function std::ptr::Alignment::new
+
+Check 54: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 55: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 56: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 57: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 58: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 59: std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), idempotency_contract::IdempotencyContractViolation>::is_ok
+
+Check 60: std::alloc::Layout::align.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 61: std::alloc::Layout::align.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 62: std::alloc::Layout::align.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 63: std::alloc::Layout::align.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 64: std::alloc::Layout::align.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 65: std::alloc::Layout::align.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 66: kani_idempotency_contract::kani_decision_001_all_combinations.array_bounds.1
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:40:27 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 67: kani_idempotency_contract::kani_decision_001_all_combinations.array_bounds.2
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:43:32 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 68: kani_idempotency_contract::kani_decision_001_all_combinations.array_bounds.3
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: crates/vb_validate/src/kani_idempotency_contract.rs:46:35 in function kani_idempotency_contract::kani_decision_001_all_combinations
+
+Check 69: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 70: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 71: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 72: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 73: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 74: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:144:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 75: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 76: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 77: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 78: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 79: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 80: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:145:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 81: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 82: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 83: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 84: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 85: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 86: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:146:9 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 87: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 88: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 89: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 90: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 91: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 92: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:159:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 93: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 94: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 95: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 96: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 97: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 98: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:180:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 99: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:174:13 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 100: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 101: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 102: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 103: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 104: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 105: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:167:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 106: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 107: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 108: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 109: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 110: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 111: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:151:25 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 112: idempotency_contract::is_statically_idempotent_contract.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_validate/src/idempotency_contract.rs:148:37 in function idempotency_contract::is_statically_idempotent_contract
+
+Check 113: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 114: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 115: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 116: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 117: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 118: <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[vb_core::Capability]> as std::ops::Drop>::drop
+
+Check 119: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 120: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 121: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 122: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 123: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 124: std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[vb_core::Capability]>>
+
+Check 125: std::alloc::Layout::size.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 126: std::alloc::Layout::size.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 127: std::alloc::Layout::size.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 128: std::alloc::Layout::size.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 129: std::alloc::Layout::size.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 130: std::alloc::Layout::size.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+
+SUMMARY:
+ ** 0 of 130 failed (2 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 2.0176034s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+
+EXIT_CODE=0

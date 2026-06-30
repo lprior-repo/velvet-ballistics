@@ -1,0 +1,20 @@
+   Compiling velvet-ballistics-idempotency-workspace-tests v0.1.0 (/home/lewis/src/velvet-ballistics/crates/workspace_tests/idempotency_suite)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-c0a831fea99e61fc)
+
+running 12 tests
+test given_conflicting_certificate_proof_digest_when_strict_admission_runs_then_digest_mismatch_is_exact ... ok
+test given_divergent_artifact_digest_when_strict_admission_runs_then_digest_mismatch_is_exact ... ok
+test given_retry_required_policy_when_same_key_dispatched_twice_then_second_dispatch_is_denied ... ok
+test given_stale_certificate_floor_when_strict_admission_runs_then_stale_error_and_journal_unchanged ... ok
+test given_duplicate_success_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok
+test given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable ... ok
+test given_same_sequence_in_different_runs_when_appended_then_cross_scope_journals_are_isolated ... ok
+test given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolves_action ... ok
+test given_distinct_run_scopes_when_lifecycle_retry_runs_then_each_scope_appends_its_own_retry ... ok
+test given_failed_run_retried_twice_when_cli_retry_collides_then_duplicate_error_and_no_append ... ok
+test given_duplicate_failure_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok
+test given_completed_run_when_cli_retry_uses_stale_key_then_stale_error_and_no_append ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

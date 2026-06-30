@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "contract-verification-owner-authorized-kani-kernel",
+  "delegate": "contract-verification-reviewer",
+  "attempt": 6,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Proof-review approved owner-authorized Kani proof kernels; independent contract/proof adequacy approval still required",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/proof-architecture-report.md", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/blocker-report.md", "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs", "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs"],
+  "output_artifacts": [".beads/vb-vt2f/contract-verification-review.md"],
+  "status": "QUEUED"
+}

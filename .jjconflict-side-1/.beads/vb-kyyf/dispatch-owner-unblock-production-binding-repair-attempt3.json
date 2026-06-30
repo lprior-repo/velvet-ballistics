@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 10,
+  "sublane": "owner-authorized-production-binding-repair-for-verus-normalization",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/proof-repair-guide.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-architecture-report.md",
+    "crates/vb_proof_kernels/src/vb_kyyf_normalization.rs",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/implementation.md",
+    "crates/vb_proof_kernels/src/vb_kyyf_normalization.rs",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "attempt": 3,
+  "cap_context": "owner-authorized proofability repair after proof-review/contract-verification rejection"
+}

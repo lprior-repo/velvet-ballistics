@@ -1,0 +1,38 @@
+{"bead_id":"vb-xi2f.34","scope":"compiler-digest-finish-coverage","status":"explored","artifact":"codebase-map.md","created":"2026-05-24T00:00:00Z"}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","api":"canonical_digest","risk_tags":["digest","hash","finish","scalar-value-coverage"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","api":"digest_step_primitive","risk_tags":["digest","hash","finish","match-arm-coverage"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","api":"canonical_primitive_name","risk_tags":["digest-fallback","known-bug-mapping"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","api":"canonical_finish_slot","risk_tags":["finish","resolution","slot-lookup"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_02.rs","api":"lower_canonical_finish","risk_tags":["finish","lowering","validation"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_07.rs","api":"lower_finish","risk_tags":["finish","lowering","node-construction"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","api":"compile_source","risk_tags":["compilation","digest-integration"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_core.rs","api":"compute_compiled_digest","risk_tags":["digest","raw-hash"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/compile/mod.rs","api":"canonical_digest","risk_tags":["duplicate-code","legacy-path","digest"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/compile/mod.rs","api":"digest_step_primitive","risk_tags":["duplicate-code","legacy-path","digest"]}
+{"kind":"crate","crate":"vb_compile","path":"crates/vb_compile/src/compile/mod.rs","api":"lower_finish","risk_tags":["duplicate-code","legacy-path","finish"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/ids/mod.rs","api":"WorkflowDigest","risk_tags":["type-definition","digest"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::Finish","risk_tags":["ir-node","finish"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::CollectFinish","risk_tags":["ir-node","finish-variant"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::ReduceFinish","risk_tags":["ir-node","finish-variant"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::RepeatFinish","risk_tags":["ir-node","finish-variant"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"CompiledWorkflow::digest","risk_tags":["accessor","digest"]}
+{"kind":"crate","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","api":"validate_parts","risk_tags":["validation","finish-slot-bounds"]}
+{"kind":"crate","crate":"vb_yaml","path":"crates/vb_yaml/src/ast/types.rs","api":"ScalarValue","risk_tags":["type-definition","finish-result","non-exhaustive"]}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/tests/error_variant_tests.rs","test":"compiled_digest_is_deterministic","coverage":"compute_compiled_digest only, NOT canonical_digest"}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/tests/error_variant_tests.rs","test":"different_sources_produce_different_digests","coverage":"compute_compiled_digest with name change only"}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/tests/error_variant_tests.rs","test":"last_step_not_finish_rejected_with_last_step_must_finish","coverage":"finish position validation"}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/taint/tests/secret_finish_tests.rs","test":"*_finish","coverage":"finish taint propagation, NOT digest"}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/kani_canonical_name.rs","test":"canonical_name_all_harness","coverage":"canonical_primitive_name(Finish) → \"finish\", NOT digest"}
+{"kind":"test","crate":"vb_core","path":"crates/vb_core/src/ids/mod.rs","test":"workflow_digest_*","coverage":"WorkflowDigest equality/hash tests only"}
+{"kind":"test","crate":"vb_core","path":"crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs","test":"*finish*","coverage":"structure validation of Finish nodes"}
+{"kind":"gap","id":"GAP-1","description":"No unit tests for canonical_digest() directly"}
+{"kind":"gap","id":"GAP-2","description":"No test that changing finish result value changes canonical_digest"}
+{"kind":"gap","id":"GAP-3","description":"No test that changing finish step ID changes canonical_digest"}
+{"kind":"gap","id":"GAP-4","description":"No test that changing finish result type (String vs Integer) changes canonical_digest"}
+{"kind":"gap","id":"GAP-5","description":"No test for _ fallback arm in digest_step_primitive"}
+{"kind":"gap","id":"GAP-6","description":"No integration test that finish semantic change alters CompiledWorkflow.digest()"}
+{"kind":"risk","id":"RISK-1","description":"Finish result hash entropy unverified by test","severity":"medium"}
+{"kind":"risk","id":"RISK-2","description":"Duplicate code divergence: compile/mod.rs vs mod_compile_lowering/part_05.rs","severity":"high"}
+{"kind":"risk","id":"RISK-3","description":"ScalarValue #[non_exhaustive] — future variants fall to identical hash","severity":"low"}
+{"kind":"risk","id":"RISK-4","description":"canonical_primitive_name has known bugs (Together/Aggregate mappings)","severity":"medium"}
+{"kind":"contract","artifact":"digest-contract","description":"Digest must be sensitive to: step ID, primitive kind, finish result value (String/Integer), workflow name, version, trigger"}

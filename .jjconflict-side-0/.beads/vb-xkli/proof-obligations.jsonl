@@ -1,0 +1,8 @@
+{"id":"KANI-EXPR-BYTECODE-001","verifier":"kani","command":"cargo kani --package vb_compile --harness compile_expr_to_bytecode_overflow --quiet","status":"planned","required":true}
+{"id":"KANI-SLOT-REF-001","verifier":"kani","command":"cargo kani --package vb_compile --harness lower_slot_reference_valid --quiet","status":"planned","required":true}
+{"id":"KANI-CONSTANT-POOL-001","verifier":"kani","command":"cargo kani --package vb_compile --harness push_constant_overflow --quiet","status":"planned","required":true}
+{"id":"KANI-ACCESSOR-REF-001","verifier":"kani","command":"cargo kani --package vb_compile --harness lower_accessor_reference_numeric --quiet","status":"planned","required":true}
+{"id":"INV-007-NODEDUP-001","verifier":"kani","command":"cargo kani --package vb_compile --harness node_id_uniqueness --quiet","status":"planned","required":true}
+{"id":"KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT","verifier":"kani","command":"cargo kani --package vb_runtime --harness strict_admission_invalid_artifact_cases_reject --default-unwind 1 --quiet","status":"planned","required":true}
+{"id":"KANI-ADMISSION-001-CAPABILITY-REJECT","verifier":"kani","command":"cargo kani --package vb_runtime --harness strict_admission_invalid_capability_rejects --default-unwind 1 --quiet","status":"planned","required":true}
+{"id":"KANI-ADMISSION-001-VALID-ACCEPT","verifier":"kani","command":"cargo kani --package vb_runtime --harness strict_admission_valid_artifact_admits --default-unwind 1 --quiet","status":"planned","required":true}

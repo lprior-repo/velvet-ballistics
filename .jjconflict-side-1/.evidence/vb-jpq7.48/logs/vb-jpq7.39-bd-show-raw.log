@@ -1,0 +1,24 @@
+command: bd show vb-jpq7.39
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.39 · P0: add deterministic flakiness and rerun gate   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Completed: determinism gate wired, typed postcard implemented, miri annotations added, DigestCheck extended
+
+DESCRIPTION
+Split from vb-jpq7.6/vb-jpq7.8. Add a gate and evidence policy distinguishing fresh pass cached pass skipped pass flaky pass and controlled repeated runs.
+
+ACCEPTANCE CRITERIA
+Gate rejects sleeps-as-sync uncontrolled clocks uncontrolled random seeds shared temp state and hidden mutable global state in critical tests; targeted concurrency/recovery reruns are defined; property/fuzz seeds are recorded; evidence labels cached/skipped/flaky results as non-release evidence.
+
+LABELS: backend-dod, ci, determinism, evidence, flakiness, master-gap, release-blocker, tests, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

@@ -1,0 +1,11 @@
+kind: mutants
+gate_name: mutants
+command: cargo mutants --package velvet_ballistics
+exit_code: 1
+log: .evidence/vb-itest-deep-agg/mutants.log
+status:
+  status: Fail
+why_failed:
+  gate_name: mutants
+  hint: Mutation testing found surviving mutants
+  repair_command: cargo mutants --package velvet_ballistics

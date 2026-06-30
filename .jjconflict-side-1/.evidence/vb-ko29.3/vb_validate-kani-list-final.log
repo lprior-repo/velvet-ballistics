@@ -1,0 +1,220 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on artifact directory
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:16:27
+   |
+16 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2151:20
+     |
+2151 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2152:21
+     |
+2152 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+   Compiling vb_validate v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_validate)
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.53s
+
+Contracts:
+No contracts or contract harnesses found.
+
+Standard Harnesses (#[kani::proof]):
++-------+-------------+-------------------------------------------------------------------------------+
+|       | Crate       | Harness                                                                       |
++=====================================================================================================+
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_field_symbol_oob_rejected                 |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_index_u32_max_rejected                    |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_no_panic_bounded_inputs                   |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_root_oob_rejected                         |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_valid_bounded_parts_pass                  |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_valid_index_without_symbols_pass          |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_accessor::kani_gate_08_valid_zero_accessors_pass                 |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_all_node_kinds_no_panic                 |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_arbitrary_parts_index_sentinel_rejected |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_arbitrary_parts_root_oob_rejected       |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_arbitrary_parts_symbol_oob_rejected     |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_arbitrary_parts_valid_accessors_pass    |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_arbitrary_resource_contract             |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_constants_with_symbols                  |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_empty_nodes_valid_accessors_pass        |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_expressions_with_accessor_refs          |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_full_structure_no_panic                 |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_many_accessors_varied_depths            |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_mixed_accessor_paths                    |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_step_names_independent_of_slots         |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_gate_08_structural::kani_gate_08_structure_coverage                      |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_idempotency_contract::decision_table_at_least_once_rejected              |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_idempotency_contract::decision_table_deterministic_rejected              |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_idempotency_contract::decision_table_ok_branch                           |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_idempotency_contract::decision_table_unsafe_rejected                     |
+|-------+-------------+-------------------------------------------------------------------------------|
+|       | vb_validate | kani_idempotency_contract::kani_decision_001_all_combinations                 |
+|-------+-------------+-------------------------------------------------------------------------------|
+| Total |             | 26                                                                            |
++-------+-------------+-------------------------------------------------------------------------------+
+
+EXIT_CODE=0

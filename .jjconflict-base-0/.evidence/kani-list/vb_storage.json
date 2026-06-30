@@ -1,0 +1,22 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_storage/src/kani_vb_u8gi_storage_decode_order.rs": [
+      "kani_vb_u8gi_storage_decode_order::vb_u8gi_storage_decode_order_arbitrary"
+    ],
+    "crates/vb_storage/src/kani_vb_u8gi_storage_numeric_fields.rs": [
+      "kani_vb_u8gi_storage_numeric_fields::vb_u8gi_storage_numeric_fields_arbitrary"
+    ],
+    "crates/vb_storage/src/kani_vb_u8gi_storage_payload_bounds.rs": [
+      "kani_vb_u8gi_storage_payload_bounds::vb_u8gi_storage_payload_bounds_arbitrary"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 3,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}

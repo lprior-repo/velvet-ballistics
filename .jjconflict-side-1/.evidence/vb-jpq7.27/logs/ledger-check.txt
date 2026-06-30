@@ -1,0 +1,5 @@
+2026-05-23T17:14:32Z
+953918cb43cfa7ac812dd83f6ff38c033b6c889e xorooknvkxqosmmwsruxsqvymytmmukv
+PASS: vb-jpq7.27 ledger is structurally valid
+
+COMMAND_EXIT=0

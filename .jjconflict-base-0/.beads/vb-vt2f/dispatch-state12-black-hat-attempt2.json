@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 12,
+  "sublane": "black-hat-review-after-stale-ask-implementation-and-formal-approval",
+  "delegate": "black-hat-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/implementation.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 12 rerun after prior stale ask Kani/test/implementation defect repaired and State 11 approved"
+}

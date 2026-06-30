@@ -1,0 +1,28 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 13,
+  "sublane": "truth-serum-audit-of-assurance-bundle",
+  "delegate": "truth-serum",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/dispatch-state13-evidence-packaging-attempt1.json",
+    ".beads/vb-vt2f/assurance-bundle.md",
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/traceability-matrix.jsonl",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/implementation.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl",
+    ".beads/vb-vt2f/black-hat-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/truth-serum-report.md"
+  ],
+  "attempt": 1,
+  "known_provenance_issue": "opencode reported agent evidence-packaging not found and fell back to default agent when creating assurance-bundle.md; audit must not launder this as specialist evidence-packaging approval"
+}

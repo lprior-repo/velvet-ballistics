@@ -1,0 +1,211 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:14:27
+   |
+14 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Idempotency`
+  --> crates/vb_core/src/kani_idempotency_gates.rs:12:37
+   |
+12 | use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect, verify_idempotency};
+   |                                     ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+   Compiling vb_validate v0.1.0 (/home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate)
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1621:20
+     |
+1621 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1622:21
+     |
+1622 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: variable does not need to be mutable
+  --> crates/vb_validate/src/kani_gate_08_structural.rs:28:9
+   |
+28 |     let mut parts: WorkflowParts = kani::any();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0594]: cannot assign to `parts.accessors[_].root`, as `parts` is not declared as mutable
+  --> crates/vb_validate/src/kani_gate_08_structural.rs:66:9
+   |
+66 |         parts.accessors[0].root = root;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+59 |     let mut parts: WorkflowParts = kani::any();
+   |         +++
+
+error[E0596]: cannot borrow `*parts.accessors[_].path` as mutable, as `parts` is not declared as mutable
+  --> crates/vb_validate/src/kani_gate_08_structural.rs:87:24
+   |
+87 |         for segment in parts.accessors[0].path.iter_mut() {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+81 |     let mut parts: WorkflowParts = kani::any();
+   |         +++
+
+warning: variable does not need to be mutable
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:176:9
+    |
+176 |     let mut parts: WorkflowParts = kani::any();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.
+error: could not compile `vb_validate` (lib) due to 2 previous errors; 2 warnings emitted
+error: Failed to execute cargo (exit status: 101). Found 2 compilation errors.

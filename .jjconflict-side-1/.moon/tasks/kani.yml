@@ -1,0 +1,133 @@
+# Kani bounded model checking verification tasks
+# These tasks run formal verification using the Kani model checker
+
+fileGroups:
+  kani_sources:
+    - 'crates/vb_core/src/**/*'
+    - 'crates/vb_validate/src/**/*'
+    - 'verification/kani/**/*'
+  kani_harnesses:
+    - 'crates/vb_validate/src/kani_gate_08_structural.rs'
+    - 'verification/kani/**/*.rs'
+
+tasks:
+  verify-kani:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      # Multi-harness invocation: cargo-kani accepts multiple --harness
+      # flags (per the cargo-kani 0.x help), so the CBMC pipeline spins
+      # up once and the dep-graph fingerprint is paid only once. Sharing
+      # CARGO_TARGET_DIR with the validate task keeps the CBMC side
+      # artifacts warm across tasks.
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-core RUSTFLAGS="-Dwarnings" timeout 25m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features --quiet --harness kani_budget_add_dim_zero --harness kani_budget_sub_dim_zero --harness kani_aggregate_usage_zero --harness kani_try_add_budget_zero_current
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: true
+      cache: false
+
+  verify-kani-vb-validate:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      # Multiple --harness flags run in one cargo kani invocation: the
+      # CBMC pipeline spins up once and the dep-graph fingerprint is
+      # paid only once. Previous per-harness calls cost ~9m for the
+      # validate crate; this form completes in seconds when the
+      # fingerprint and goto binaries are warm.
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" timeout 25m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --quiet --harness kani_gate_08_valid_zero_accessors_pass --harness kani_gate_08_arbitrary_parts_valid_accessors_pass --harness kani_gate_08_arbitrary_parts_root_oob_rejected --harness kani_gate_08_arbitrary_parts_symbol_oob_rejected
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: true
+      cache: false
+
+  # Fail-closed CI baseline: 8 named Kani harnesses that gate every PR.
+  # See .evidence/kani/baseline/README.md for the harness-to-claim map,
+  # known limitations, and cgroup resource-governance guidance.
+  kani-baseline:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp target/moon-locks .evidence/kani/baseline
+      # Per-package cargo kani invocation: the CBMC pipeline spins up
+      # once per package and the dep-graph fingerprint is paid only
+      # once per package. Resource governance: `-j 1` keeps CBMC solver
+      # parallelism at one process at a time. On hosts with systemd
+      # the recommended wrapper is:
+      #   systemd-run --user --scope --collect \
+      #     -p MemoryHigh=20G -p MemoryMax=24G -p MemorySwapMax=0 \
+      #     moon run :kani-baseline
+      # cargo-kani 0.67 --harness is a substring match; we use `::`-suffixed
+      # module filters (e.g. `kani_idempotency_gates::`) so substring search
+      # does not bleed into same-prefix modules such as `kani_taint_propagation`.
+      # Each harness filter is recorded in .evidence/kani/baseline/baseline-harnesses.json
+      # with its source file and module path.
+      flock --shared target/moon-locks/source-mutation.lock \
+        env -u RUSTC_WRAPPER \
+            TMPDIR="$PWD/target/kani-tmp" \
+            RUSTFLAGS="-Dwarnings" \
+            CARGO_TARGET_DIR=target/kani-baseline-vb-core \
+        timeout 60m rustup run nightly-2026-04-28 \
+          cargo kani --lib -p vb_core --all-features -j 1 \
+            --harness 'kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary' \
+            --harness 'kani_idempotency_gates::' \
+            --harness 'kani_taint::' \
+            --harness 'kani_workflow_budget_harnesses::' \
+          2>&1 | tee .evidence/kani/baseline/vb_core.log \
+        || { cat .evidence/kani/baseline/vb_core.log >&2; exit 1; }
+      flock --shared target/moon-locks/source-mutation.lock \
+        env -u RUSTC_WRAPPER \
+            TMPDIR="$PWD/target/kani-tmp" \
+            RUSTFLAGS="-Dwarnings" \
+            CARGO_TARGET_DIR=target/kani-baseline-vb-validate \
+        timeout 60m rustup run nightly-2026-04-28 \
+          cargo kani --lib -p vb_validate --all-features -j 1 \
+            --harness 'kani_gate_08_arbitrary_parts_valid_accessors_pass' \
+            --harness 'kani_gate_08_arbitrary_parts_root_oob_rejected' \
+            --harness 'kani_gate_08_arbitrary_parts_symbol_oob_rejected' \
+            --harness 'kani_step_primitives::' \
+          2>&1 | tee .evidence/kani/baseline/vb_validate.log \
+        || { cat .evidence/kani/baseline/vb_validate.log >&2; exit 1; }
+      # Fail-closed: every baseline package must emit the success sentinel.
+      # cargo-kani emits "VERIFICATION:- SUCCESSFUL" once per harness on
+      # success; the substring check proves we did not silently skip a
+      # harness without an error code.
+      for pkg in vb_core vb_validate; do
+        log=".evidence/kani/baseline/${pkg}.log"
+        if ! grep -q 'VERIFICATION:- SUCCESSFUL' "$log"; then
+          printf 'kani-baseline: missing VERIFICATION:- SUCCESSFUL in %s\n' "$log" >&2
+          exit 1
+        fi
+      done
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.evidence/kani-list/vb_core.json'
+      - '.evidence/kani-list/vb_validate.json'
+      - '.evidence/kani/baseline/README.md'
+      - '.evidence/kani/baseline/baseline-harnesses.json'
+      - '.moon/tasks/kani.yml'
+    outputs:
+      - '.evidence/kani/baseline/vb_core.log'
+      - '.evidence/kani/baseline/vb_validate.log'
+    options:
+      runInCI: true
+      cache: false

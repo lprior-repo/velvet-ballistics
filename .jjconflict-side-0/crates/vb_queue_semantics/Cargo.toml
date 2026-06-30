@@ -1,0 +1,11 @@
+[package]
+name = "vb_queue_semantics"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# Stub — actual implementation deferred to vb-queue-semantics bead.
+# All types/functions will be added in the full implementation bead.
+
+[dependencies]

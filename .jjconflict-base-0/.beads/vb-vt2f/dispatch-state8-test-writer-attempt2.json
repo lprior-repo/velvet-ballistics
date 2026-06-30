@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 8,
+  "sublane": "test-suite-repair",
+  "delegate": "test-writer",
+  "attempt": 2,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 7 repaired exact oracles after State 9 rejection; suite must cover stale/wrong ask-ticket, invalid/wrong fail_action, and catalog negative variants with strong assertions",
+  "input_artifacts": [".beads/vb-vt2f/test-plan.md", ".beads/vb-vt2f/test-plan-review.md", ".beads/vb-vt2f/test-suite-review.md", ".beads/vb-vt2f/test-repair-guide.md", ".beads/vb-vt2f/test-writer-report.md"],
+  "output_artifacts": [".beads/vb-vt2f/test-writer-report.md", "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs", "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"],
+  "status": "QUEUED"
+}

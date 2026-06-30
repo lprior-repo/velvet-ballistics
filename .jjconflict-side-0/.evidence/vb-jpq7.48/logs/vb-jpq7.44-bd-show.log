@@ -1,0 +1,23 @@
+✓ vb-jpq7.44 [BUG] · P0: remove IPC MemoryIngress clone data-loss trap   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Completed in JJ workspace /home/lewis/src/vb-jpq7-44-ipc-memoryingress-gpt55 at change ovkzxypr 02f011f5. Acceptance: MemoryIngress production Clone removed; explicit cloneable MemoryIngressSender producer handle added; tests prove queued-frame preservation, shared backpressure, and exact producer Disconnected after receiver drop. Commands passed from workspace: cargo +nightly fmt --all -- --check; cargo +nightly test -p vb_ipc producer_handle --all-features; cargo +nightly test -p vb_ipc memory_ingress --all-features; cargo +nightly check -p vb_ipc --all-targets --all-features; cargo +nightly clippy -p vb_ipc --lib --all-features with strict denies. OpenCode tool output retained in session; no command output exceeded truncation for these pass logs.
+
+DESCRIPTION
+Split from vb-jpq7.9/doc section 18. Production Clone for MemoryIngress creates an empty queue with same capacity, silently losing queued frames if used.
+
+NOTES
+Blocked: workspace file writes to crates/vb_ipc/src/ingress.rs did not persist after apply_patch/read verification in this session; current file still shows #[derive(Debug, Clone)] on MemoryIngress and the production test-only clone comment remains. Validation attempts also hit unrelated/global workspace blockers at different times (vb_proof_kernels manifest conflict/missing step_state and earlier clippy unexpected cfg verus_keep_ghost). Bead not closed.
+Implementation in JJ workspace /home/lewis/src/vb-jpq7-44-ipc-memoryingress-gpt55 change ovkzxypr c13b4810: removed Clone from MemoryIngress, added explicit cloneable MemoryIngressSender producer handle, added frame preservation/backpressure handle tests. Not closing pending external review; moon ci still has pre-existing/global vb_codegen non-exhaustive match failures.
+
+ACCEPTANCE CRITERIA
+Production Clone is removed replaced with shared ownership semantics or gated to tests only; clone-like behavior has explicit semantics and tests proving no frame loss; IPC ingress tests cover queued-frame preservation backpressure and clone/handle behavior; no production comments admit test-only behavior in active code.
+
+LABELS: backend-dod, clone, data-loss, ingress, ipc, master-gap, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

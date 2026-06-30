@@ -1,0 +1,13 @@
+command: python - <<PY ... manifest row summary
+cwd: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered
+timestamp: 2026-05-23T18:06:34Z
+commit_sha: caebe6d224d5f17bf1a793bcd767b9a457501684
+tool_version: Python 3.14.5
+manifest_path: .beads/vb-jpq7/closure-evidence-manifest.jsonl
+rows: 34
+by_status: {'FAIL': 27, 'PASS': 7}
+by_exit_code: {1: 27, 0: 7}
+by_resolution: {'split_followup': 27, '': 7}
+pass_beads: vb-jpq7.44,vb-jpq7.40,vb-jpq7.27,vb-jpq7.28,vb-jpq7.30,vb-jpq7.24,vb-jpq7.5
+split_followup_beads: vb-jpq7.52,vb-jpq7.50,vb-jpq7.51,vb-jpq7.45,vb-jpq7.46,vb-jpq7.41,vb-jpq7.42,vb-jpq7.43,vb-jpq7.37,vb-jpq7.29,vb-jpq7.25,vb-jpq7.26,vb-jpq7.20,vb-jpq7.22,vb-jpq7.16,vb-jpq7.17,vb-jpq7.18,vb-jpq7.19,vb-jpq7.14,vb-jpq7.15,vb-jpq7.10,vb-jpq7.11,vb-jpq7.12,vb-jpq7.6,vb-jpq7.7,vb-jpq7.1,vb-jpq7.2
+exit_code: 0

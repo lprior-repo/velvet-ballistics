@@ -1,0 +1,19 @@
+# State 2 Explore Repair Transcript
+
+bead_id: vb-b8i8f
+state: 2
+sublane: explore-repair
+delegate: explore
+attempt: 2
+workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-b8i8f
+
+Actions performed:
+- Loaded explore skill instructions.
+- Read existing State 2 artifacts: codebase-map.md and delivery-scope.jsonl.
+- Read existing agent-invocation-ledger.jsonl.
+- Ran the canonical go-skill validator before repair and observed the reported ledger/hash failures.
+- Repaired only State 2 provenance ledger metadata and this transcript artifact.
+- Did not edit production code, tests, proof artifacts, manifests, dependency files, or bead state outside requested discovery/provenance outputs.
+
+Validator command to run after repair:
+/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace "$(pwd -P)" --bead "vb-b8i8f" --state 2 --source-checkout "/home/lewis/src/velvet-ballistics" --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format text

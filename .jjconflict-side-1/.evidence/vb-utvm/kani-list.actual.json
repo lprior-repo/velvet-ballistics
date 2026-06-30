@@ -1,0 +1,45 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_validate/src/kani_gate_08_accessor.rs": [
+      "kani_gate_08_accessor::kani_gate_08_field_symbol_oob_rejected",
+      "kani_gate_08_accessor::kani_gate_08_index_u32_max_rejected",
+      "kani_gate_08_accessor::kani_gate_08_no_panic_bounded_inputs",
+      "kani_gate_08_accessor::kani_gate_08_root_oob_rejected",
+      "kani_gate_08_accessor::kani_gate_08_valid_bounded_parts_pass",
+      "kani_gate_08_accessor::kani_gate_08_valid_index_without_symbols_pass",
+      "kani_gate_08_accessor::kani_gate_08_valid_zero_accessors_pass"
+    ],
+    "crates/vb_validate/src/kani_gate_08_structural.rs": [
+      "kani_gate_08_structural::kani_gate_08_all_node_kinds_no_panic",
+      "kani_gate_08_structural::kani_gate_08_arbitrary_parts_index_sentinel_rejected",
+      "kani_gate_08_structural::kani_gate_08_arbitrary_parts_root_oob_rejected",
+      "kani_gate_08_structural::kani_gate_08_arbitrary_parts_symbol_oob_rejected",
+      "kani_gate_08_structural::kani_gate_08_arbitrary_parts_valid_accessors_pass",
+      "kani_gate_08_structural::kani_gate_08_arbitrary_resource_contract",
+      "kani_gate_08_structural::kani_gate_08_constants_with_symbols",
+      "kani_gate_08_structural::kani_gate_08_empty_nodes_valid_accessors_pass",
+      "kani_gate_08_structural::kani_gate_08_expressions_with_accessor_refs",
+      "kani_gate_08_structural::kani_gate_08_full_structure_no_panic",
+      "kani_gate_08_structural::kani_gate_08_many_accessors_varied_depths",
+      "kani_gate_08_structural::kani_gate_08_mixed_accessor_paths",
+      "kani_gate_08_structural::kani_gate_08_step_names_independent_of_slots",
+      "kani_gate_08_structural::kani_gate_08_structure_coverage"
+    ],
+    "crates/vb_validate/src/kani_idempotency_contract.rs": [
+      "kani_idempotency_contract::decision_table_at_least_once_rejected",
+      "kani_idempotency_contract::decision_table_deterministic_rejected",
+      "kani_idempotency_contract::decision_table_ok_branch",
+      "kani_idempotency_contract::decision_table_unsafe_rejected",
+      "kani_idempotency_contract::kani_decision_001_all_combinations"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 26,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 3,
+  "sublane": "proof-obligation-mode-repair",
+  "delegate": "rust-contract",
+  "attempt": 3,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 6 contract-verification rejected because canonical proof-obligations.jsonl still uses mode verify-standard for PRE-001/INV-002 while repaired plan uses review-artifact",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/domain-model-review.md",
+    ".beads/vb-vt2f/tla-spec.md",
+    ".beads/vb-vt2f/lean-contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl"
+  ],
+  "status": "QUEUED"
+}

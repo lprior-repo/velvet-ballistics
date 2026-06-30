@@ -1,0 +1,7 @@
+{"id":"TEST-PRE-001","result":"PASS","command":"rtk cargo test -p vb_runtime shard::tests::submit_rejects_duplicate_run_id","evidence":"1 passed, 1441 filtered out","owner_state":5,"rerun_from":12}
+{"id":"TEST-PRE-002","result":"PASS","command":"rtk cargo test -p vb_runtime admission_rejection_does_not_insert_run_state","evidence":"1 passed, 1441 filtered out","owner_state":5,"rerun_from":12}
+{"id":"TLA-ACK-001","result":"PASS","command":"moon run :verify-proof","evidence":"task completed; Kani no proof harnesses found; Lean directory skipped","owner_state":3,"rerun_from":12}
+{"id":"REC-HEADER-001","result":"PASS","command":"rtk cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header","evidence":"1 passed, 7 filtered out","owner_state":5,"rerun_from":12}
+{"id":"TEST-DUR-001","result":"PASS","command":"rtk cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack","evidence":"1 passed, 7 filtered out","owner_state":5,"rerun_from":12}
+{"id":"REL-GATE-001","result":"PASS","command":"moon ci","evidence":"exit 0; 19 tasks completed; 8015 tests passed; 2 cached","owner_state":8,"rerun_from":12}
+{"id":"WAIVER-VERUS-HEADER-ORDER","result":"WAIVED","command":"review formal-waivers.jsonl","evidence":"approved waiver with owner Lewis, expiry, reason, and compensating evidence present","owner_state":12,"rerun_from":12}

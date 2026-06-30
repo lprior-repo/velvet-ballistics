@@ -1,0 +1,3 @@
+/usr/lib/ruby/3.4.0/json/common.rb:221:in 'JSON::Ext::Parser.parse': unexpected token at 'Kani Rust Verifier 0.67.0 (cargo' (JSON::ParserError)
+	from /usr/lib/ruby/3.4.0/json/common.rb:221:in 'JSON.parse'
+	from -e:1:in '<main>'

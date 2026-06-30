@@ -1,0 +1,2 @@
+{"file":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","change":"replace from_parts_unchecked with try_from_parts","risk":"low","test":"new unit tests for validation error paths"}
+{"file":"crates/vb_compile/Cargo.toml","change":"remove test-util from production deps, add to dev-deps","risk":"low","test":"ensure tests still compile"}

@@ -1,0 +1,16 @@
+# Invalid Fixture: Malformed Parallel Branches
+# This workflow uses an integer list instead of proper TogetherBranch objects
+# for the parallel.branches field, causing a YAML-level parse failure
+---
+version: velvet-ballistics/v1
+name: malformed_parallel_branches
+
+when:
+  manual: {}
+steps:
+  - id: fanout
+    parallel:
+      branches: [5]
+  - id: done
+    finish:
+      result: 0

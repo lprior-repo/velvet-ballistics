@@ -1,0 +1,7 @@
+{"id":"PO-001","result":"PASS","command":"path isolation guard","evidence":"STATE.md","owner_state":1,"rerun_from":1}
+{"id":"PO-002","result":"PASS","command":"moon ci","evidence":"target/vb-qi37.23-evidence/resume2-20260518T213357Z/moon-ci.log","exit_status":0,"owner_state":11,"rerun_from":11}
+{"id":"PO-003","result":"PASS","command":"moon run :verify-standard","evidence":"target/vb-qi37.23-evidence/resume2-20260518T213357Z/verify-standard.log","exit_status":0,"owner_state":11,"rerun_from":11}
+{"id":"PO-004","result":"PASS","command":"specialized Moon gates","evidence":"target/vb-qi37.23-evidence/resume2-20260518T213357Z/summary.tsv","exit_status":0,"owner_state":11,"rerun_from":11}
+{"id":"PO-005","result":"WAIVED","command":"cargo public-api --workspace --all-features","evidence":"target/vb-qi37.23-evidence/resume2-20260518T213357Z/public-api-workspace.log plus target/vb-qi37.23-evidence/resume2-20260518T213357Z/public-api-per-package.log","exit_status":2,"waiver":"WVR-API-001","owner_state":11,"rerun_from":11}
+{"id":"PO-006","result":"PASS","command":"cargo bloat","evidence":"target/vb-qi37.23-evidence/resume2-20260518T213357Z/bloat.log","exit_status":0,"owner_state":11,"rerun_from":11}
+{"id":"PO-007","result":"PASS","command":"jq -c . verification-ledger.jsonl","evidence":"verification-ledger.jsonl","owner_state":11,"rerun_from":11}

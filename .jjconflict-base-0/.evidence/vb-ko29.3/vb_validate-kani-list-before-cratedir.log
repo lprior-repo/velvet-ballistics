@@ -1,0 +1,274 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:16:27
+   |
+16 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Idempotency`
+  --> crates/vb_core/src/kani_idempotency_gates.rs:12:37
+   |
+12 | use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect, verify_idempotency};
+   |                                     ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_step_budget_zero.rs:37:17
+   |
+37 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+  --> crates/vb_core/src/kani_step_budget_zero.rs:52:18
+   |
+52 |     let budget = AggregateResourceBudget {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_step_budget_zero.rs:79:17
+   |
+79 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+  --> crates/vb_core/src/kani_step_budget_zero.rs:94:18
+   |
+94 |     let budget = AggregateResourceBudget {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_step_budget_one.rs:92:17
+   |
+92 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+   --> crates/vb_core/src/kani_step_budget_one.rs:107:18
+    |
+107 |     let budget = AggregateResourceBudget {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_resource_budget_bounded.rs:15:17
+   |
+15 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+  --> crates/vb_core/src/kani_resource_budget_bounded.rs:30:18
+   |
+30 |     let budget = AggregateResourceBudget {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_resource_budget_bounded.rs:57:17
+   |
+57 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+  --> crates/vb_core/src/kani_resource_budget_bounded.rs:72:18
+   |
+72 |     let budget = AggregateResourceBudget {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_resource_budget_bounded.rs:99:17
+   |
+99 |     let usage = AggregateResourceUsage {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+   --> crates/vb_core/src/kani_resource_budget_bounded.rs:114:18
+    |
+114 |     let budget = AggregateResourceBudget {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+   --> crates/vb_core/src/kani_resource_budget_bounded.rs:144:17
+    |
+144 |     let usage = AggregateResourceUsage {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+   --> crates/vb_core/src/kani_resource_budget_bounded.rs:159:18
+    |
+159 |     let budget = AggregateResourceBudget {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+   --> crates/vb_core/src/kani_resource_budget_bounded.rs:186:17
+    |
+186 |     let usage = AggregateResourceUsage {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+   --> crates/vb_core/src/kani_resource_budget_bounded.rs:201:18
+    |
+201 |     let budget = AggregateResourceBudget {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceUsage`
+  --> crates/vb_core/src/kani_workflow_budget_harnesses.rs:30:9
+   |
+30 |         Self {
+   |         ^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceBudget`
+  --> crates/vb_core/src/kani_workflow_budget_harnesses.rs:50:9
+   |
+50 |         Self {
+   |         ^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields in initializer of `budget::AggregateResourceCapacity`
+  --> crates/vb_core/src/kani_workflow_budget_harnesses.rs:74:9
+   |
+74 |         Self {
+   |         ^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 2 other fields
+
+error[E0063]: missing fields `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 4 other fields in initializer of `budget::WholeWorkflowBudget`
+   --> crates/vb_core/src/kani_workflow_budget_harnesses.rs:132:18
+    |
+132 |     let budget = WholeWorkflowBudget {
+    |                  ^^^^^^^^^^^^^^^^^^^ missing `max_blob_bytes`, `max_input_bytes`, `max_ipc_payload_bytes` and 4 other fields
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `vb_core` (lib) due to 20 previous errors; 19 warnings emitted
+error: Failed to execute cargo (exit status: 101). Found 20 compilation errors.
+
+EXIT_CODE=1

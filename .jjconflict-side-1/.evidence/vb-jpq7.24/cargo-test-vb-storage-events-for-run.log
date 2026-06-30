@@ -1,0 +1,6 @@
+2026-05-23T14:15:47Z
+/home/lewis/src/vb-jpq7-24-verus-binding-gpt55
+COMMAND=rtk cargo test -p vb_storage events_for_run -- --nocapture
+vtsmnwnxqpunpozwsoxoupvwxyuwqxtz ef74f15b903f4ed86dfcb47b2526f1180809a495 vb-jpq7.24 bind Verus evidence to production exec
+cargo test: 24 passed, 1030 filtered out (4 suites, 0.04s)
+EXIT_CODE=0

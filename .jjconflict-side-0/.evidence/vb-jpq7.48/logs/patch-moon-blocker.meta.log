@@ -1,0 +1,8 @@
+command: PYTHONPYCACHEPREFIX=.evidence/vb-jpq7.48/scratch/pycache moon run :blocker-closure-evidence
+cwd: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered
+commit_sha: 6404b75690efd9c64f046cd9f9e09c8b550a9fb4
+tool_version: moon 2.2.4;
+timestamp: 2026-05-23T18:42:50Z
+stdout_log_path: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.evidence/vb-jpq7.48/logs/patch-moon-blocker.stdout.log
+stderr_log_path: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.evidence/vb-jpq7.48/logs/patch-moon-blocker.stderr.log
+exit_code: 0

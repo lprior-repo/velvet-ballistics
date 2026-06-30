@@ -1,0 +1,16 @@
+{
+  "bead_id": "vb-y9d3v",
+  "isolated_branch": "fresh/vb-y9d3v",
+  "isolated_head": "46cf615913a97de8dc036113ff593a2c166ba978",
+  "isolated_workdir": "/home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-y9d3v",
+  "loaded": "go-skill@10.1.0",
+  "loaded_skill_name": "go-skill",
+  "loaded_skill_version": "10.1.0",
+  "main_base_commit": "46cf61591",
+  "observed_state_range": "1..16",
+  "original_blocked_bead": "vb-8mdp.5",
+  "runtime_timestamp": "2026-05-29T19:19:41Z",
+  "schema_version": "runtime-skill-provenance/v1",
+  "source_branch": "main (control-plane only; not edited)",
+  "source_checkout": "/home/lewis/src/velvet-ballistics"
+}

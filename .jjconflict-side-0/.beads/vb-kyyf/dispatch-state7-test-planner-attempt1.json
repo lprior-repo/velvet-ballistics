@@ -1,0 +1,19 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 7,
+  "sublane": "test-plan-after-proof-approval",
+  "delegate": "test-planner",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/traceability-matrix.jsonl",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-plan.md"
+  ],
+  "attempt": 1
+}

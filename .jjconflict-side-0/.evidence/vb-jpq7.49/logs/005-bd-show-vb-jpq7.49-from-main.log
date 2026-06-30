@@ -1,0 +1,29 @@
+◐ vb-jpq7.49 · P0: block proof and evidence laundering   [● P0 · IN_PROGRESS]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-23
+
+DESCRIPTION
+Split from vb-jpq7.8/vb-jpq7.5. Enforce the non-negotiable closure rule so prose summaries stale logs skipped commands and subagent claims cannot close release-blocker beads.
+
+NOTES
+Blocked: dependency vb-jpq7.48 is not closed and vb-jpq7.27 remains open. No closure attempted. Anti-laundering live checker findings captured in .evidence/vb-jpq7.48/live-checker.log; summary-only/stale closure rows must be reopened/superseded by vb-rud5/backfill work before this bead can close.
+
+ACCEPTANCE CRITERIA
+Closure notes require exact command cwd commit SHA tool version timestamp raw stdout/stderr log path exit code and skipped/deferred/global-failure explanation; summary-only evidence is marked UNVERIFIED; stale PASS claims are reopened or superseded; remaining failures create child beads.
+
+LABELS: anti-laundering, backend-dod, beads, evidence, master-gap, process, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+  → ○ vb-jpq7.48: P0: make blocker closure evidence machine-checkable ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	rnvovdcikbk5509iag3cfpme5o3mcbo1
+}
+

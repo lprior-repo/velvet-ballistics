@@ -1,0 +1,88 @@
+bead: vb-1rqz7.22
+fix_id: SA-009
+date: 2026-06-24
+worktree: .worktrees/vb-1rqz7.22
+branch: bead/vb-1rqz7.22
+
+source_defect:
+  file: crates/vb_storage/src/admission.rs
+  function: submit_artifact_with_contracts
+  arm: RuntimePolicy::Relaxed
+  prior_lines: 336-361
+  issue: Relaxed arm wrote CompiledIrRecord via journal.put_compiled_ir and
+    returned Ok(artifact) WITHOUT the live readback check that Journaled |
+    Strict arms performed at lines 409-414. The Relaxed path therefore
+    never verified that the record it just wrote was actually observable.
+
+fix_summary:
+  - Added 7 lines (post-edit, including Ok(artifact)) to the Relaxed arm.
+    After journal.put_compiled_ir(&record)?, the arm now calls
+    journal.compiled_ir(workflow.digest())? and returns
+    Err(JournalError::ArtifactMalformed) on either Err or None. This is
+    the exact mirror of the Journaled | Strict readback at the prior
+    409-414.
+  - No forbidden constructs introduced. The error mapping
+    `.map_err(|_| JournalError::ArtifactMalformed)?` matches the existing
+    pattern in the Journaled | Strict arm; no new error variants added;
+    no swallowed Result/Option; no `unwrap`/`expect`/`panic`/`todo`.
+
+files_touched:
+  - crates/vb_storage/src/admission.rs (Relaxed arm, lines 359-366)
+  - crates/vb_storage/src/admission/tests.rs (new test inserted at line 274)
+
+tests_added:
+  - name: submit_artifact_relaxed_performs_immediate_live_readback
+    location: crates/vb_storage/src/admission/tests.rs
+    purpose: Locks in the Relaxed live-readback invariant. Calls
+      submit_artifact with Relaxed policy, verifies the returned artifact
+      digest and verification proof shape, then independently calls
+      journal.compiled_ir(workflow.digest()) and asserts Some(record)
+      with matching digest and non-empty ir bytes. Finally decodes the
+      persisted postcard envelope back to AcceptedArtifact and asserts
+      the digest survives the readback path.
+
+commands_run:
+  - cargo test -p vb_storage --lib admission::tests::submit_artifact_relaxed_performs_immediate_live_readback --no-fail-fast
+    result: 1 passed, 0 failed
+  - cargo test -p vb_storage --lib admission --no-fail-fast
+    result: 83 passed, 0 failed (1191 filtered out)
+  - cargo clippy -p vb_storage --lib --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::arithmetic_side_effects -D clippy::as_conversions
+    result: exit 0, no diagnostics
+
+evidence_artifacts:
+  - .evidence/vb-1rqz7.22/evidence.yaml
+  - .evidence/vb-1rqz7.22/test-result.log
+  - .evidence/vb-1rqz7.22/clippy-result.log
+
+holzman_self_audit:
+  rule_1_simple_control_flow: pass — match arms unchanged; new code is a
+    straight-line post-write verification.
+  rule_2_bounded_loops: pass — no loops introduced.
+  rule_3_no_post_init_alloc: pass — no allocation in the new code; the
+    existing postcard::to_allocvec calls were already present.
+  rule_4_short_functions: pass — added 5 net lines; Relaxed arm grew to
+    ~31 lines, well under the 60-line cold-path ceiling.
+  rule_5_invariant_density: pass — typed JournalError::ArtifactMalformed
+    return; no production assert/unreachable.
+  rule_6_smallest_scope: pass — `stored` borrows journal narrowly.
+  rule_7_checked_results: pass — `journal.compiled_ir(...)` Result is
+    mapped via `?`; `Option` is unwrapped via `if stored.is_none()`
+    with explicit error path (no `.unwrap()`).
+  rule_8_limited_macros: pass — no new macros.
+  rule_9_restricted_pointers: pass — no raw pointers, no FFI, no unsafe.
+  rule_10_zero_warnings: pass — clippy with all deny flags exited 0.
+
+forbidden_constructs_scan:
+  unsafe: none
+  unwrap: none
+  expect: none
+  panic: none
+  todo: none
+  unimplemented: none
+  dbg: none
+  unreachable: none
+  indexing_slicing: none
+  as_conversions: none
+  arithmetic_side_effects: none
+  let_underscore_must_use: none
+  ignored_result: none

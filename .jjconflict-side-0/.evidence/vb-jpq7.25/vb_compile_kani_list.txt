@@ -1,0 +1,214 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: unused import: `crate::errors::CoreError`
+    --> crates/vb_core/src/frame.rs:1992:25
+     |
+1992 |                     use crate::errors::CoreError;
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1948:25
+     |
+1948 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:25
+     |
+1963 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1981:25
+     |
+1981 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2000:29
+     |
+2000 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2010:29
+     |
+2010 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2023:29
+     |
+2023 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2044:25
+     |
+2044 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2065:25
+     |
+2065 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:76:9
+   |
+76 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:93:9
+   |
+93 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:115:9
+    |
+115 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1621:21
+     |
+1621 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:176:9
+    |
+176 |     let mut parts: WorkflowParts = kani::any();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ci`
+   --> crates/vb_compile/src/kani_foreach_parity.rs:278:10
+    |
+278 |     for (ci, node) in parts.nodes.iter().enumerate() {
+    |          ^^ help: if this is intentional, prefix it with an underscore: `_ci`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+error: internal compiler error: Kani unexpectedly panicked at panicked at kani-compiler/src/codegen_cprover_gotoc/overrides/hooks.rs:158:51:
+                                called `Option::unwrap()` on a `None` value.
+
+error: Failed to compile `vb_compile` due to an internal compiler error.: error: internal compiler error: Kani unexpectedly panicked at panicked at kani-compiler/src/codegen_cprover_gotoc/overrides/hooks.rs:158:51:
+                                called `Option::unwrap()` on a `None` value.
+
+

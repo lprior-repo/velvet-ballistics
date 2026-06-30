@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 4,
+  "sublane": "proof-replan-after-implementation",
+  "delegate": "proof-planner",
+  "attempt": 4,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 11 attempt 2 machine gates pass but formal-verifier rejects void TLA/Verus waivers after State 10 runtime/shard/admission semantic changes",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/formal-verification-report.md", ".beads/vb-vt2f/verification-ledger.jsonl", ".beads/vb-vt2f/waiver-validation.md", ".beads/vb-vt2f/implementation.md"],
+  "output_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.planned.jsonl"],
+  "status": "QUEUED"
+}

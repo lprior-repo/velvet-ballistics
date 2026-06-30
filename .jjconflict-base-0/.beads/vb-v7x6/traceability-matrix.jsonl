@@ -1,0 +1,4 @@
+{"requirement_id":"REQ-1","proof_obligation":"PO-UI-1","test":"xtask/tests/ui_release_gates.rs","evidence":"cargo test and nextest focused pass"}
+{"requirement_id":"REQ-2","proof_obligation":"PO-UI-1","test":"parsed_subgates equals expected_subgates","evidence":"test assertion unchanged"}
+{"requirement_id":"REQ-3","proof_obligation":"PO-DOC-1","test":"moon run :doc","evidence":"PASS with external CARGO_TARGET_DIR"}
+{"requirement_id":"REQ-4","proof_obligation":"diff-review","test":"jj diff --summary","evidence":"no master doc/name files changed"}

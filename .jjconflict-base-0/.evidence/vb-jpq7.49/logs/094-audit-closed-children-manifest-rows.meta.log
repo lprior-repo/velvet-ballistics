@@ -1,0 +1,4 @@
+command: python -c import json, subprocess; from pathlib import Path; manifest=Path('/home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.beads/vb-jpq7/closure-evidence-manifest.jsonl'); rows={json.loads(line)['bead_id'] for line in manifest.read_text().splitlines() if line.strip()}; issues=json.loads(subprocess.run(['bd','children','vb-jpq7','--json'], cwd='/home/lewis/src/velvet-ballistics', text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout); closed=sorted(issue['id'] for issue in issues if issue.get('status')=='closed'); missing=[issue for issue in closed if issue not in rows]; print('closed_children=' + str(len(closed))); print('missing_manifest_rows=' + (','.join(missing) if missing else 'NONE'))
+cwd: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered
+timestamp: 2026-05-24T10:21:25Z
+exit_code: 0

@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 14,
+  "sublane": "landing-after-global-gate-repair",
+  "delegate": "landing-skill",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/landing-report.md",
+    ".beads/vb-vt2f/global-gate-repair-report.md",
+    ".beads/vb-vt2f/state13-provenance-waiver.md",
+    ".beads/vb-vt2f/assurance-bundle.md",
+    ".beads/vb-vt2f/truth-serum-report.md",
+    ".beads/vb-vt2f/final-evidence-decision.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/landing-report.md"
+  ],
+  "attempt": 2,
+  "serial_section": "landing to main/remote must be serialized; vb-kyyf waits"
+}

@@ -1,0 +1,28 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "formal-verifier-after-command-and-local-implementation-repairs",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-plan-review-input.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/machine-gate-report.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 11 rerun after State 4 command repair and State 10 local failure repairs"
+}

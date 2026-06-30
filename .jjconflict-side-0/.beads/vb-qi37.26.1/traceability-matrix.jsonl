@@ -1,0 +1,7 @@
+{"contract_clause":"C1","tests":["test_vb_ipc_compiles_cleanly"],"proofs":["COMP-001","COMP-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"C2","tests":["test_workspace_tests_compiles_cleanly"],"proofs":["COMP-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"C3","tests":["test_no_unwrap_expect_panic_todo_unimplemented_introduced","test_no_unsafe_introduced"],"proofs":["SAFE-001","SAFE-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"C4","tests":["test_orphaned_handlers_files_do_not_affect_build"],"proofs":["ORPH-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["test_enum_variants_used_instead_of_string_literals"],"proofs":["TYPE-001","COMP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["test_orphaned_handlers_files_do_not_affect_build"],"proofs":["ORPH-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["test_no_unwrap_expect_panic_todo_unimplemented_introduced","test_no_unsafe_introduced"],"proofs":["SAFE-001","SAFE-002"],"review":"contract-verification-review.md"}

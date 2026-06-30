@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc cd5c7048b15ee3980ffb2d80a145f5558fb31422c1c2723a35b0ad65484efc3a # shrinks to usage = AggregateResourceUsage { max_steps_executable: 0, max_action_tickets: 0, max_parallel_in_flight: 4294967196, max_gather_pages: 0, max_gather_items: 0, max_result_bytes: 0, max_total_slots_written: 0, max_timer_entries: 0, max_trace_events: 0, max_active_runs: 0, max_queue_depth: 0, max_journal_batch_bytes: 0, max_ipc_payload_bytes: 0, max_blob_bytes: 0, max_input_bytes: 0, max_step_budget_per_tick: 0, max_transitions_per_tick: 8059684 }

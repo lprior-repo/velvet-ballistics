@@ -1,0 +1,33 @@
+command: bd show vb-jpq7.26
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T12:05:00Z
+exit_code: 0
+--- bd show output follows ---
+○ vb-jpq7.26 [BUG] · P0: repair TLA bounded overflow models   [● P0 · OPEN]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-05-23
+
+DESCRIPTION
+Split from vb-jpq7.5. Replace saturation-style bounded math with explicit typed overflow/error/suspend/fail transitions matching implementation contracts.
+
+NOTES
+Child vb-wgq3 implemented bounded VolatileRuntimeJournal capacity in isolated workspace /home/lewis/src/vb-jpq7-26-tla-overflow-gpt55: RuntimeError::JournalFull { capacity }, NonZeroUsize explicit capacity constructor, append pre-mutation full check, exact preservation/stable snapshot tests, LifecycleJournal TLC rerun exit 0, and acceptance-mapping updated. Do not close vb-jpq7.26 until external proof-review re-approves PO-TLA-VB-JPQ7-26-003 mapping.
+
+ACCEPTANCE CRITERIA
+TLA models use bounded hardware limits; overflow/resource exhaustion transitions are typed error/suspend/fail states not silent saturation; TLC deadlock/invariant outputs are attached with current command evidence; model obligations map to implementation surfaces.
+
+LABELS: backend-dod, formal, master-gap, model-checking, overflow, release-blocker, tla, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-wgq3: P0: implement bounded runtime journal full error path ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ○ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+
+DISCOVERED
+  ◊ ✓ vb-wgq3: P0: implement bounded runtime journal full error path ● P0
+

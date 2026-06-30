@@ -1,0 +1,55 @@
+vcs:
+  client: git
+  provider: github
+  defaultBranch: main
+
+projects:
+  velvet-ballistics: '.'
+
+defaultProject: velvet-ballistics
+
+versionConstraint: '>=1.0.0'
+
+# Layer 2 of the 3-layer cache: Moon's task outputs and CAS blobs are
+# persisted to a local bazel-remote. Combined with sccache (Layer 1) and
+# Cargo `target/` (Layer 3) this collapses cold-run `moon ci` cost into
+# warm cache hits across sessions and across CI reruns.
+#
+# `verifyIntegrity: false` — local trusted cache, saves digest checks.
+# `compression: zstd` — small blobs, modest CPU cost.
+# `localReadOnly: false` — local dev uploads (CI just reads).
+# `instanceName` — distinguishes this repo's cache from any other.
+# Managed by the user-systemd unit `bazel-remote.service`; it must be
+# running for this section to be useful. Service file lives at
+# ~/.config/systemd/user/bazel-remote.service.
+remote:
+  host: 'grpc://127.0.0.1:9092'
+  cache:
+    compression: 'zstd'
+    instanceName: 'velvet-ballistics'
+    verifyIntegrity: false
+    localReadOnly: false
+
+# `hasher.optimization: performance` skips lockfile-version-based hashing
+# and reuses the manifest hash. Trades micro-precision for measurably
+# faster `moon ci` graph build and rerun-skip decisions. The cache key
+# still binds to source file contents via `inputs`; what we lose is
+# re-hash on every Cargo.lock edit.
+hasher:
+  optimization: 'performance'
+  walkStrategy: 'vcs'
+
+# 2.2+ experiments: async affected tracking, async graph building, and
+# native file hashing all advertise 10-170% speedups on workspace-graph
+# build. The `casOutputsCache` keeps task outputs in the same content-
+# addressed layout as the remote cache, so cold/hot hydration share
+# storage and there is no tarball pack/unpack overhead.
+experiments:
+  asyncAffectedTracking: true
+  asyncGraphBuilding: true
+
+pipeline:
+  installDependencies: false
+  syncWorkspace: true
+
+telemetry: false

@@ -1,0 +1,22 @@
+[verus] verus --crate-type=lib verification/verus/step_budget.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:58:10
+   |
+58 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:76:10
+   |
+76 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/signals_production.rs:194:10
+    |
+194 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 21 verified, 0 errors
+warning: 3 warnings emitted
+

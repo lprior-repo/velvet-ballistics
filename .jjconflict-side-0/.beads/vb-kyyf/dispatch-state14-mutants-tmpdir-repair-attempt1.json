@@ -1,0 +1,22 @@
+{
+  "bead_id": "GLOBAL-main-gate-for-vb-kyyf-landing",
+  "state": 14,
+  "sublane": "serial-mutants-tmpdir-rerun",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/global-format-repair-report.md",
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/mutants-tmpdir-repair-report.md"
+  ],
+  "attempt": 1,
+  "blocker": "moon ci mutants-smoke failed because workspace-local TMPDIR caused recursive cargo-mutants copy and File name too long",
+  "required_gates": [
+    "rtk cargo fmt --check",
+    "moon ci with TMPDIR outside workspace, e.g. /tmp/opencode/vb-kyyf-moon-ci-tmp"
+  ],
+  "serial_section": "Global env/gate repair; no other landing or shared repair runs concurrently."
+}

@@ -1,0 +1,54 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_validate/src/kani/kani_validation_error_code.rs": [
+      "kani::kani_validation_error_code::harnesses::kani_validation_error_code_registered"
+    ],
+    "crates/vb_validate/src/verification/kani_gate_08_accessor.rs": [
+      "verification::kani_gate_08_accessor::kani_gate_08_field_symbol_oob_rejected",
+      "verification::kani_gate_08_accessor::kani_gate_08_index_u32_max_rejected",
+      "verification::kani_gate_08_accessor::kani_gate_08_no_panic_bounded_inputs",
+      "verification::kani_gate_08_accessor::kani_gate_08_root_oob_rejected",
+      "verification::kani_gate_08_accessor::kani_gate_08_valid_bounded_parts_pass",
+      "verification::kani_gate_08_accessor::kani_gate_08_valid_index_without_symbols_pass",
+      "verification::kani_gate_08_accessor::kani_gate_08_valid_zero_accessors_pass"
+    ],
+    "crates/vb_validate/src/verification/kani_gate_08_structural.rs": [
+      "verification::kani_gate_08_structural::kani_gate_08_all_node_kinds_no_panic",
+      "verification::kani_gate_08_structural::kani_gate_08_arbitrary_parts_index_sentinel_rejected",
+      "verification::kani_gate_08_structural::kani_gate_08_arbitrary_parts_root_oob_rejected",
+      "verification::kani_gate_08_structural::kani_gate_08_arbitrary_parts_symbol_oob_rejected",
+      "verification::kani_gate_08_structural::kani_gate_08_arbitrary_parts_valid_accessors_pass",
+      "verification::kani_gate_08_structural::kani_gate_08_arbitrary_resource_contract",
+      "verification::kani_gate_08_structural::kani_gate_08_constants_with_symbols",
+      "verification::kani_gate_08_structural::kani_gate_08_empty_nodes_valid_accessors_pass",
+      "verification::kani_gate_08_structural::kani_gate_08_expressions_with_accessor_refs",
+      "verification::kani_gate_08_structural::kani_gate_08_full_structure_no_panic",
+      "verification::kani_gate_08_structural::kani_gate_08_many_accessors_varied_depths",
+      "verification::kani_gate_08_structural::kani_gate_08_mixed_accessor_paths",
+      "verification::kani_gate_08_structural::kani_gate_08_step_names_independent_of_slots",
+      "verification::kani_gate_08_structural::kani_gate_08_structure_coverage"
+    ],
+    "crates/vb_validate/src/verification/kani_idempotency_contract.rs": [
+      "verification::kani_idempotency_contract::decision_table_at_least_once_rejected",
+      "verification::kani_idempotency_contract::decision_table_deterministic_rejected",
+      "verification::kani_idempotency_contract::decision_table_ok_branch",
+      "verification::kani_idempotency_contract::decision_table_unsafe_rejected",
+      "verification::kani_idempotency_contract::kani_decision_001_all_combinations"
+    ],
+    "crates/vb_validate/src/verification/kani_step_primitives.rs": [
+      "verification::kani_step_primitives::step_primitives_contains_reduce_harness",
+      "verification::kani_step_primitives::step_primitives_contains_together_harness",
+      "verification::kani_step_primitives::step_primitives_no_aggregate_harness",
+      "verification::kani_step_primitives::step_primitives_no_parallel_harness"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 31,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}

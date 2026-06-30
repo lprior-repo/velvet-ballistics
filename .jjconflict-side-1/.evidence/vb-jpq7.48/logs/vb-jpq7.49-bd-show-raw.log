@@ -1,0 +1,40 @@
+command: bd show vb-jpq7.49
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-24T10:20:28Z
+exit_code: 0
+stdout:
+✓ vb-jpq7.49 · P0: block proof and evidence laundering   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-24
+Close reason: Closed after external final proof/black-hat review returned APPROVED. Live checker passes with closed_children=35. Ledger checker passes. vb-rud5 remains open as explicit split-followup debt, not PASS laundering. Evidence workspace: /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55.
+
+DESCRIPTION
+Split from vb-jpq7.8/vb-jpq7.5. Enforce the non-negotiable closure rule so prose summaries stale logs skipped commands and subagent claims cannot close release-blocker beads.
+
+NOTES
+Blocked-state note superseded after closure: dependencies vb-jpq7.48 and vb-jpq7.27 are closed. Anti-laundering live checker findings are represented by the closure evidence manifest in /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.beads/vb-jpq7/closure-evidence-manifest.jsonl; prose-only or stale closure rows must be reopened or superseded by vb-rud5/backfill work before they can count as closure evidence.
+
+ACCEPTANCE CRITERIA
+Closure notes require exact command cwd commit SHA tool version timestamp raw stdout/stderr log path exit code and skipped/deferred/global-failure explanation; summary-only evidence is marked UNVERIFIED; stale PASS claims are reopened or superseded; remaining failures create child beads.
+
+LABELS: anti-laundering, backend-dod, beads, evidence, master-gap, process, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+  → ✓ vb-jpq7.48: P0: make blocker closure evidence machine-checkable ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+DISCOVERED
+  ◊ ✓ vb-r3q8: P0: add vb-jpq7.48 closure manifest row after approved close ● P0
+
+
+stderr:
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	b8ou9f87s1el6p27nl0821uanho4pv3f
+}
+

@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "contract-verification-after-state4-kani-projection-sync",
+  "delegate": "contract-verification-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl",
+    ".beads/vb-vt2f/proof-strategy.md",
+    ".beads/vb-vt2f/proof-plan-review-input.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-architecture-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/contract-verification-review.md"
+  ],
+  "attempt": 6
+}

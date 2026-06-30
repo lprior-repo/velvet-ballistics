@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "proof-repair-kani-tla",
+  "delegate": "proof-writer",
+  "attempt": 6,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 6 rejected Kani discoverability/generator adequacy and TLA lifecycle heartbeat-masked liveness; State 3/4 repaired ledgers",
+  "input_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/proof-repair-guide.md", ".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md"],
+  "output_artifacts": [".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md", "verification/tla/Vt2fRuntimeLifecycle.tla", "verification/tla/Vt2fRuntimeLifecycle.cfg", "verification/tla/Vt2fStrictAdmission.tla", "verification/tla/Vt2fStrictAdmission.cfg", "verification/kani/vt2f_runtime_facade.rs", "verification/kani/vt2f_shard_lower_semantics.rs", "Kani harness wiring if needed"],
+  "status": "QUEUED"
+}

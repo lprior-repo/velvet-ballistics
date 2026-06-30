@@ -1,0 +1,96 @@
+category: test
+gate: State 8 Moon machine gates
+bead: vb-nf2u
+workspace: /home/lewis/src/Velvet-ballistics-vb-nf2u-go
+canonical-command: moon ci
+effective-command: moon ci --base HEAD --head HEAD
+status: blocked-on-xtask-evidence-tests
+
+Primary failure:
+- `moon ci` failed before task execution because Moon attempted affected-file detection against Git ref `main`, but this JJ isolated workspace has no corresponding Git `main` ref visible to Git.
+- `moon ci --force` failed the same way.
+- `moon ci --base HEAD --head HEAD` bypassed the affected-base problem and executed tasks, but failed overall.
+
+First actionable failed task:
+- `velvet-ballistics:fmt`
+- Failure class: rustfmt / formatting drift.
+- Full captured Moon output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fb2da6d00114d1JoiC6isWA7`
+
+Representative rustfmt paths from the Moon output:
+- `crates/vb_runtime/src/primitives/../collect_tests.rs`
+- `crates/vb_storage/src/recovery/replay/summary.rs`
+- `crates/vb_storage/tests/accepted_artifact_red_phase.rs`
+- `crates/vb_ui_model/src/envelope.rs`
+- `crates/velvet_ballistics/src/main.rs`
+- `crates/velvet_ballistics/tests/cli_integration.rs`
+- `tests/vb_nf2u_ui_release_acceptance.rs`
+- `tests/vb_qi37_1_1_red_recovery_contract_test.rs`
+
+Additional failed/non-green signal:
+- Moon summary: `Tasks: 9 completed, 4 failed, 7 skipped`.
+- `velvet-ballistics:supply-chain` also emitted warnings/issues and an `ERROR × Couldn't acquire the store` line in the captured output; it is not the first actionable failure and needs separate classification after format is repaired.
+
+Repair routing:
+- Per go-skill repair targeting, route the next repair to `holzman-rust` as a targeted formatting/CI repair, not a generic "fix CI" request.
+- The repair agent must preserve behavior and avoid unrelated logic changes. It may format the new acceptance test and any workspace files required for `velvet-ballistics:fmt` to pass.
+
+Format repair result:
+- `state8-format-repair.md` reports `STATUS: PASS`.
+- Orchestrator re-ran `moon run velvet-ballistics:fmt`; result: `Tasks: 1 completed`.
+- `moon ci --base HEAD --head HEAD` still failed on later non-format tasks; latest full captured output from the repair agent: `/home/lewis/.local/share/opencode/tool-output/tool_e0fba7312001ydKljVr8naa6H2`.
+
+Current first actionable remaining failure:
+- `velvet-ballistics:miri`
+- Failure class: `vb_validate` Gate 08 accessor behavior under Miri after Miri isolation repair.
+- Lint-src repair wrote `.beads/vb-nf2u/state8-lint-src-repair.md` with `STATUS: PASS`; orchestrator re-ran `moon run velvet-ballistics:lint-src`, result: `Tasks: 1 completed`.
+- Orchestrator re-ran `moon run velvet-ballistics:miri`; full output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fd02cbb001mYcUtUg2YuP2hK`.
+- Miri failed in `vb_validate` test `gate_08_accessor::tests::proptest_above_bound_field_fixtures_use_checked_construction` while running with `--skip proptests` because the proptest macro-generated test name was not skipped and proptest tried file failure persistence.
+- Error: `unsupported operation: getcwd not available when isolation is enabled`, stack through `std::env::current_dir` and `proptest::test_runner::failure_persistence::file::absolutize_source_file`.
+- Rerun hint: `-p vb_validate --lib`.
+- Miri isolation repair wrote `.beads/vb-nf2u/state8-miri-repair.md` with `STATUS: FAIL`: original getcwd/failure-persistence issue was fixed by disabling proptest file persistence, and the focused Miri test passed, but full `moon run velvet-ballistics:miri` reached later failures.
+- Current remaining Miri failures from `/home/lewis/.local/share/opencode/tool-output/tool_e0fd5ca21001HsuZp4cMN4EGFv`:
+  - `gate_08_accessor::tests::proptest_gate_08_reports_first_invalid_accessor_with_root_precedence`: expected `Ok(())`, got `Err(AccessorPathInvalid { accessor_index: 0, segment_index: 0 })` at `crates/vb_validate/src/gate_08_accessor.rs:490`; panic at line 399.
+  - `gates::tests::gate_08_accepts_valid_accessor`: expected `Ok(())`, got `Err(AccessorPathInvalid { accessor_index: 0, segment_index: 0 })` at `crates/vb_validate/src/gates.rs:1461`.
+- This is now the next State 8 repair target. It matches the known open P2 bead family issue `vb-3ksi` (Gate 08 accessor root/segment validation returns `AccessorPathInvalid` for a valid fixture). Repair must stay targeted to Gate 08 accessor semantics and not weaken invalid-path diagnostics.
+
+Gate 08 Miri behavior repair result:
+- `.beads/vb-nf2u/state8-gate08-miri-repair.md` reports `STATUS: PASS`.
+- Orchestrator re-ran `moon run velvet-ballistics:miri`; result: `Tasks: 1 completed`, `908 passed; 0 failed`, full captured output `/home/lewis/.local/share/opencode/tool-output/tool_e0fe7c913001HIH97CgzagWnX2`.
+
+Current first actionable remaining failure:
+- `velvet-ballistics:test`
+- Failure class: xtask evidence/profile behavior regression from State 6 UI release gate changes.
+- Full captured Moon output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fedf4cc0013WH5A6xF1Mb4zH`.
+- `moon ci --base HEAD --head HEAD` summary: `Tasks: 17 completed (2 cached), 1 failed, 2 skipped`.
+- First failing test: `xtask::bin/xtask evidence::tests::test_explain_failure_populates_hint_and_repair_command` at `xtask/src/evidence.rs:648`, assertion `why_failed.is_some()` failed.
+- Additional same-gate xtask integration failures observed after cancellation started:
+  - `xtask::integration_gates test_ai_deep_profile_emits_yaml_evidence` failed because `target/debug/xtask -- ai-deep --bead vb-itest-deep` returned clap error `unexpected argument 'ai-deep' found`; clap hint says remove `--` before subcommand.
+  - `xtask::integration_gates test_bead_flag_creates_evidence_directory` failed because `.evidence/vb-itest-bead-flag` was not created.
+  - `xtask::integration_gates test_exit_code_1_when_any_gate_fails` got exit status `2` instead of `0` or `1`.
+  - `xtask::integration_gates test_ai_release_profile_emits_yaml_evidence` failed with the same `target/debug/xtask -- ai-release --bead ...` clap boundary issue.
+
+Repair routing:
+- Per go-skill repair targeting, route the next repair to `holzman-rust` as a targeted xtask evidence/profile test repair.
+- Preserve the new `cargo xtask ai-release --bead vb-nf2u` acceptance behavior and evidence shape.
+- Do not weaken tests or change unrelated logic; repair the xtask command compatibility/evidence explanation behavior so existing unit and integration tests pass.
+
+Post-State 10 machine gate rerun:
+- After State 10 approval, code changed since the original State 8 green run, so orchestrator re-ran `moon ci --base HEAD --head HEAD`.
+- Full captured Moon output: `/home/lewis/.local/share/opencode/tool-output/tool_e10434985001jf0BnY5zdVppDm`.
+- Moon summary: `Tasks: 15 completed (1 cached), 1 failed, 4 skipped`.
+
+Current first actionable failed task:
+- `velvet-ballistics:supply-chain`
+- Failure class: cargo-vet supply-chain policy / unvetted newly introduced fuzz dependencies.
+- Exact failure excerpt:
+  - `Vetting Failed!`
+  - `3 unvetted dependencies:`
+  - `arbitrary:1.4.2 missing ["safe-to-deploy"]`
+  - `jobserver:0.1.34 missing ["safe-to-deploy"]`
+  - `libfuzzer-sys:0.4.12 missing ["safe-to-deploy"]`
+- Context: these dependencies were introduced when State 10 wired `fuzz/fuzz_targets/ui_redaction_artifact.rs` and updated `fuzz/Cargo.toml`/`Cargo.lock`.
+
+Repair routing:
+- Per go-skill repair targeting, route the next repair to `holzman-rust` as a targeted supply-chain/fuzz-dependency repair.
+- The repair must preserve State 10 behavioral test intent and the `ui_redaction_artifact` fuzz target coverage, but make supply-chain vetting pass through the repository's accepted mechanism (vet import/audit/metadata or dependency adjustment), without weakening cargo-vet/cargo-deny policy.
+- Do not advance to State 11 until `moon ci --base HEAD --head HEAD` is green again and `.beads/vb-nf2u/moon-report.md` is refreshed with post-State-10 evidence.

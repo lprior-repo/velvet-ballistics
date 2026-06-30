@@ -1,0 +1,21 @@
+# Explicit exceptions for scripts/hotpath-scan.sh.
+# Format: crates/<crate>/src/<file>.rs|TOKEN|owner=<name>|reviewed_by=<name>|test=<evidence>|reason=<why>
+crates/vb_core/src/replay/step.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=replay collect state keyed by bounded SlotIdx during deterministic replay
+crates/vb_core/src/value_store.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=value store preserves object field insertion order for deterministic semantics
+crates/vb_runtime/src/action_queue.rs|std::sync::mpsc|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=bounded SyncSender/Receiver queue with explicit capacity and existing behavior tests
+crates/vb_runtime/src/action_queue.rs|channel(|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=sync_channel construction is the bounded action queue implementation point
+crates/vb_runtime/src/idempotency.rs|BTreeMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=kani deterministic map alias used under verification configuration
+crates/vb_runtime/src/idempotency.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=runtime idempotency tracker requires O(1) key lookup by run token
+crates/vb_runtime/src/primitives/collect.rs|BTreeMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=kani deterministic map alias used under verification configuration
+crates/vb_runtime/src/primitives/collect.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=collect primitive indexes bounded fan-in slots by workflow identifier
+crates/vb_runtime/src/shard/impl_parts/chunk_001.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=shard state initialization mirrors deterministic IndexMap fields in shard types
+crates/vb_runtime/src/shard/impl_parts/chunk_001.rs|IndexSet|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=terminal run tracking preserves deterministic iteration for shard shutdown
+crates/vb_runtime/src/shard/impl_parts/chunk_004.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=shard command handling uses deterministic run maps declared in shard types
+crates/vb_runtime/src/shard/impl_parts/chunk_004.rs|IndexSet|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=shard command handling uses deterministic terminal run sets declared in shard types
+crates/vb_runtime/src/shard/timer_wheel.rs|BTreeMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=timer wheel requires ordered deadline traversal
+crates/vb_runtime/src/shard/timer_wheel.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=timer wheel requires direct run-id lookup for cancellation
+crates/vb_runtime/src/shard/types.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=shard aggregate state preserves deterministic iteration for replay and diagnostics
+crates/vb_runtime/src/shard/types.rs|IndexSet|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=terminal run set preserves deterministic iteration for lifecycle transitions
+crates/vb_storage/src/recovery/replay/summary.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=recovery replay summary indexes bounded recovered state by typed ids
+crates/vb_ipc/src/server/impl_.rs|HashMap|owner=ipc-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=server connection registry needs direct lookup by connection id
+crates/vb_ipc/src/server/mod.rs|HashMap|owner=ipc-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=server state owns explicit connection registry by id

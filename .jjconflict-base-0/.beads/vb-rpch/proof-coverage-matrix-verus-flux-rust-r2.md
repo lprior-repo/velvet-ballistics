@@ -1,0 +1,13 @@
+# Proof Coverage Matrix — vb-rpch Verus/Flux/Rust R2
+
+| Clause | TLA+ | Verus | Kani | Flux RS | Loom | Miri | proptest | cargo-fuzz | State 11 attachment |
+|---|---|---|---|---|---|---|---|---|---|
+| INV-002 | Not applicable: see lane decision | Required: VFR-R2-VERUS-001 | Required: VFR-R2-KANI-001 | BLOCKED_TOOLING: VFR-R2-FLUX-001 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-001 | Not applicable: see lane decision | Required: VFR-R2-RUST-ATTACH-001 |
+| INV-003 | Not applicable: see lane decision | Required: VFR-R2-VERUS-002 | Required: VFR-R2-KANI-002 | BLOCKED_TOOLING: VFR-R2-FLUX-002 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-002 | Required: VFR-R2-FUZZ-001 | Required: VFR-R2-RUST-ATTACH-002 |
+| INV-004 | Not applicable: see lane decision | Required: VFR-R2-VERUS-003 | Required: VFR-R2-KANI-003 | BLOCKED_TOOLING: VFR-R2-FLUX-003 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-003 | Not applicable: see lane decision | Required: VFR-R2-RUST-ATTACH-003 |
+| INV-005 | Not applicable: see lane decision | Required: VFR-R2-VERUS-004 | Required: VFR-R2-KANI-004 | BLOCKED_TOOLING: VFR-R2-FLUX-004 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-004 | Not applicable: see lane decision | Required: VFR-R2-RUST-ATTACH-004 |
+| PRE-001 | Required: VFR-R2-TLA-PRESERVE-001 | Required: VFR-R2-VERUS-005 | Required: VFR-R2-KANI-005 | BLOCKED_TOOLING: VFR-R2-FLUX-005 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-005 | Required: VFR-R2-FUZZ-002 | Required: VFR-R2-RUST-ATTACH-005 |
+| PRE-002 | Not applicable: see lane decision | Required: VFR-R2-VERUS-006 | Required: VFR-R2-KANI-006 | BLOCKED_TOOLING: VFR-R2-FLUX-006 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-006 | Required: VFR-R2-FUZZ-003 | Required: VFR-R2-RUST-ATTACH-006 |
+| POST-009 | Required: VFR-R2-TLA-PRESERVE-002 | Required: VFR-R2-VERUS-007 | Required: VFR-R2-KANI-007 | BLOCKED_TOOLING: VFR-R2-FLUX-007 | Not applicable: synchronous/no concurrency | Not applicable: unsafe forbidden/no unsafe target | Required: VFR-R2-PROPTEST-007 | Required: VFR-R2-FUZZ-004 | Required: VFR-R2-RUST-ATTACH-007 |
+
+TLC round-3 approval is cited only for TLA/TLC abstraction; Flux is blocked by missing `cargo flux`; Kani, proptest, and cargo-fuzz are planned where assigned/applicable.

@@ -1,0 +1,64 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# vb_ui_snapshot is removed from current workspace scope.
+vb_validate = { path = "../crates/vb_validate" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1"
+serde-saphyr = { workspace = true }
+toml = "0.9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+tempfile = "3"
+blake3.workspace = true
+regex = "1"
+cargo_metadata = "0.19"
+crossbeam-channel = { workspace = true }
+chrono = { workspace = true }
+postcard = { workspace = true }
+
+[dev-dependencies]
+serde-saphyr = { workspace = true, features = ["serialize"] }
+saphyr = { workspace = true }
+proptest = "1"
+kani = "0.0.1"
+
+[package.metadata.cargo-machete]
+ignored = ["crossbeam-channel", "toml", "vb_validate"]
+
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+unreachable_pub = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+get_unwrap = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+let_underscore_must_use = "deny"
+await_holding_lock = "deny"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+result_large_err = "warn"

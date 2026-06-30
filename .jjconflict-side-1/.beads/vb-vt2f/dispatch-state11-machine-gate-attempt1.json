@@ -1,0 +1,12 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 11,
+  "sublane": "machine-gate",
+  "delegate": "controller",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [".beads/vb-vt2f/STATE.md", ".beads/vb-vt2f/baseline-report.md", ".beads/vb-vt2f/delivery-scope.jsonl", ".beads/vb-vt2f/implementation.md"],
+  "output_artifacts": [".beads/vb-vt2f/machine-gate-report.md", ".beads/vb-vt2f/regression-diff.md", ".beads/vb-vt2f/compiler-errors.log", ".beads/vb-vt2f/ci-failure-category.txt"],
+  "status": "QUEUED"
+}

@@ -1,0 +1,11 @@
+# vb-kyyf acceptance catalog traceability
+
+Catalog evidence for PO-007 / BDD-KYYF-007.
+
+| Scenario id | Given | When | Then | Public surface | Evidence path | Traceability |
+|---|---|---|---|---|---|---|
+| BDD-KYYF-001 | the same accepted workflow artifact, input, durability profile, and isolated stores | public runtime submission, inspection, storage read, and recovery replay are executed twice | terminal result, taint, event signature, digest status, and normalized digest match | vb_runtime public API | .evidence/vb-kyyf/bdd-cross-run-determinism.md | bead vb-kyyf / PO-001 / cross-run determinism through public runtime evidence |
+| BDD-KYYF-002 | a strict persisted run with durable journal evidence | events_for_run, recovery summary, frame seed, and CLI replay/events/inspect run repeatedly | normalized replay digest is stable and sequence numbers stay contiguous | vb_storage journal and recovery APIs plus CLI replay/events/inspect | .evidence/vb-kyyf/storage-replay-resume.md | bead vb-kyyf / PO-002 / persisted replay stays reproducible after reopen |
+| BDD-KYYF-003 | a durable scheduled action boundary already resolved by the replay tracker | public recovery replays the journal repeatedly | ReplayPolicyBlocked is emitted and the scheduled side-effect count is unchanged | vb_runtime recovery API | .evidence/vb-kyyf/non-replay-safe-actions.md | bead vb-kyyf / PO-003 / non-replay-safe actions are not re-executed |
+| BDD-KYYF-004 | gapped, duplicate, out-of-order, corrupt, and digest-mismatched journal evidence | public storage and recovery surfaces replay each fixture | ReplayDigestMismatch or ReplaySequenceViolation is returned without silent continuation | vb_storage journal and recovery APIs | .evidence/vb-kyyf/recovery-bdd-errors.md | bead vb-kyyf / PO-004 / corrupt replay evidence fails deterministically |
+| BDD-KYYF-007 | the release acceptance catalog contains the vb-kyyf group | the runner validates each scenario row | scenario id, Given/When/Then, public surface, mismatch or normalized digest, and evidence path are present | velvet_ballistics_workspace_tests::acceptance_catalog | .evidence/vb-kyyf/acceptance-catalog-traceability.md | bead vb-kyyf / PO-007 / vb-kyyf scenario evidence is traceable and strong |

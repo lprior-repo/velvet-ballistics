@@ -1,0 +1,41 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 12,
+  "sublane": "black-hat-review-after-state10-attempt5-and-state11-attempt4",
+  "delegate": "black-hat-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/traceability-matrix.jsonl",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/regression-diff.md",
+    ".beads/vb-kyyf/state11-bdd-acceptance-report.md",
+    ".beads/vb-kyyf/state11-storage-codegen-report.md",
+    ".beads/vb-kyyf/state11-formal-models-report.md",
+    ".evidence/vb-kyyf/bdd-cross-run-determinism.md",
+    ".evidence/vb-kyyf/storage-replay-resume.md",
+    ".evidence/vb-kyyf/non-replay-safe-actions.md",
+    ".evidence/vb-kyyf/recovery-bdd-errors.md",
+    ".evidence/vb-kyyf/generated-ir-parity.md",
+    ".evidence/vb-kyyf/generated-subset-fail-closed.md",
+    ".evidence/vb-kyyf/acceptance-catalog-traceability.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md"
+  ],
+  "attempt": 2,
+  "previous_rejection": "State 12 attempt 1 rejected six evidence/public-surface defects; State 8/9/10/11 reran and now all scoped obligations pass with PO-010 DEFERRED_GLOBAL"
+}

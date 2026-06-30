@@ -1,0 +1,31 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 8,
+  "sublane": "owner-authorized-cap-unblock-bdd-kyyf-002-cli-hardening",
+  "delegate": "test-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/blocker-report-state12-attempt2.md",
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".evidence/vb-kyyf/storage-replay-resume.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-writer-report.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs"
+  ],
+  "attempt": "owner-authorized-cap-unblock-1",
+  "owner_authorization": "User explicitly authorized an explicit State 8 cap-unblock lane for BDD-KYYF-002 hardening in this conversation.",
+  "black_hat_defect": {
+    "id": "BDD-KYYF-002-CLI-LOCKED-WRITER-ZERO-EVENT-STUB",
+    "summary": "CLI replay/events/inspect reports storage held by active writer, exits success, and emits events=0 while durable storage has 4 events.",
+    "required_test_hardening": "BDD-KYYF-002 must fail unless CLI invocation occurs after drop/reopen or another real public CLI-readable persisted store path, runs replay/events/inspect twice, captures stdout/stderr/status, asserts normalized equality, asserts nonzero event count/signature matching durable journal, and rejects locked-writer success stubs."
+  }
+}

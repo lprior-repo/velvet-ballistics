@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/velvet-ballistics/vb-jpq7-closure-evidence.schema.json",
+  "title": "vb-jpq7 closure evidence manifest row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["bead_id", "command", "cwd", "commit_sha", "tool_version", "timestamp", "raw_log_path", "stdout_summary", "stderr_summary", "exit_code", "status", "evidence_kind"],
+  "properties": {
+    "bead_id": { "type": "string", "pattern": "^vb-jpq7\\.[0-9]+$" },
+    "command": { "type": "string", "minLength": 1 },
+    "cwd": { "type": "string", "minLength": 1 },
+    "commit_sha": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "raw_log_path": { "type": "string", "minLength": 1 },
+    "stdout_summary": { "type": "string" },
+    "stderr_summary": { "type": "string" },
+    "exit_code": { "type": "integer" },
+    "status": { "type": "string", "enum": ["PASS", "CLOSURE_PASS", "EXECUTED_PASS", "FAIL", "WAIVED"] },
+    "evidence_kind": { "type": "string", "enum": ["raw-command", "command", "raw-log", "live-command"] },
+    "resolution_kind": { "type": "string", "enum": ["split_followup", "approved_waiver"] },
+    "resolution_rationale": { "type": "string", "minLength": 1 },
+    "waiver_id": { "type": "string" },
+    "split_bead_id": { "type": "string" }
+  }
+}

@@ -1,0 +1,263 @@
+2026-05-23T17:07:26Z
+829d8bcd1b3ff89a26dc70de415dc7e24078fb11 rrmkylzxvslwoprxsozlwotvuqykknmr
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling vb_core v0.1.0 (/home/lewis/src/vb-jpq7-27-proof-ledger-gpt55/crates/vb_core)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:14:27
+   |
+14 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Idempotency`
+  --> crates/vb_core/src/kani_idempotency_gates.rs:12:37
+   |
+12 | use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect, verify_idempotency};
+   |                                     ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1621:20
+     |
+1621 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1622:21
+     |
+1622 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+   Compiling vb_validate v0.1.0 (/home/lewis/src/vb-jpq7-27-proof-ledger-gpt55/crates/vb_validate)
+error[E0277]: the trait bound `vb_core::ExprIdx: kani::Arbitrary` is not satisfied
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:235:43
+    |
+235 |     let expr_idx: vb_core::ids::ExprIdx = kani::any();
+    |                                           ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::ExprIdx`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 82 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::AccessorIdx: kani::Arbitrary` is not satisfied
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:236:46
+    |
+236 |     let acc_idx: vb_core::ids::AccessorIdx = kani::any();
+    |                                              ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::AccessorIdx`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 82 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::ConstIdx: kani::Arbitrary` is not satisfied
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:420:45
+    |
+420 |     let const_idx: vb_core::ids::ConstIdx = kani::any();
+    |                                             ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::ConstIdx`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 82 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: variable does not need to be mutable
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:176:9
+    |
+176 |     let mut parts: WorkflowParts = kani::any();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0004]: non-exhaustive patterns: `&_` not covered
+   --> crates/vb_validate/src/kani_gate_08_structural.rs:213:46
+    |
+213 |             && acc.path.iter().all(|s| match s {
+    |                                              ^ pattern `&_` not covered
+    |
+note: `vb_core::PathSegment` defined here
+   --> /home/lewis/src/vb-jpq7-27-proof-ledger-gpt55/crates/vb_core/src/workflow/mod.rs:311:1
+    |
+311 | pub enum PathSegment {
+    | ^^^^^^^^^^^^^^^^^^^^
+    = note: the matched value is of type `&vb_core::PathSegment`
+    = note: `vb_core::PathSegment` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+215 ~                 PathSegment::Index(idx) => *idx != u32::MAX,
+216 ~                 &_ => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0277.
+For more information about an error, try `rustc --explain E0004`.
+error: could not compile `vb_validate` (lib) due to 4 previous errors; 1 warning emitted
+error: Failed to execute cargo (exit status: 101). Found 4 compilation errors.

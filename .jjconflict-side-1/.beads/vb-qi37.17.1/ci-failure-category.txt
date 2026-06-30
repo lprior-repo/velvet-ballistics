@@ -1,0 +1,26 @@
+BEAD_SCOPE: vb-qi37.17.1 (cli: Add incident command)
+GATE: moon ci --force
+RESULT: 3 tasks failed out of 21 (13 completed, 3 failed, 5 skipped)
+
+FAILURE CATEGORIES:
+
+1. velvet-ballistics:fmt — PRE_EXISTING_WORKSPACE_DEBT
+   Task: Format check
+   Failure: Formatting diffs in xtask/src/evidence_gate.rs, lanes.rs, profiles.rs, etc.
+   Scope: xtask crate (NOT in bead scope)
+   Bead impact: NONE
+
+2. velvet-ballistics:lint-src — PRE_EXISTING_WORKSPACE_DEBT
+   Task: Source clippy (lint-src)
+   Failure: 10 clippy warnings in xtask/src/evidence_gate.rs (4 unnecessary_map_or, 6 string_slice/arithmetic_side_effects)
+   Scope: xtask crate (NOT in bead scope)
+   Bead impact: NONE
+
+3. velvet-ballistics:test — PRE_EXISTING_WORKSPACE_DEBT
+   Task: Test suite
+   Failure: 3 tests in vb_runtime::primitives::collect::tests fail with PolicyDigestMismatch
+   Scope: vb_runtime crate (NOT in bead scope)
+   Bead impact: NONE
+
+OVERALL: All 3 failing tasks are PRE_EXISTING_WORKSPACE_DEBT unrelated to bead scope.
+         vb_cli (the touched crate) passes all gates clean.
