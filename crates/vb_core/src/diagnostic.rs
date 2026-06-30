@@ -41,6 +41,12 @@ pub enum CodeCategory {
     /// Expression errors: E12xx
     Expression,
     /// Accessor and path errors: E13xx
+    ///
+    /// The 0x13 high byte is reserved exclusively for [`CodeCategory::Accessor`].
+    /// See CV-105: previously the high-byte fallback mapped every
+    /// unregistered 0x13xx value to [`CodeCategory::Accessor`], which
+    /// made execution/internal codes category-ambiguous. Internal codes
+    /// were relocated to E16xx to keep the ranges disjoint.
     Accessor,
     /// Lowering errors: E14xx
     Lowering,
@@ -54,7 +60,14 @@ pub enum CodeCategory {
     Lifecycle,
     /// Runtime boundary errors: E40xx
     RuntimeBoundary,
-    /// Internal invariant violations (fallback codes): E13xx
+    /// Internal invariant violations (fallback codes): E16xx
+    ///
+    /// Disjoint from [`CodeCategory::Accessor`] (E13xx) by high byte.
+    /// See CV-105: previously the high-byte fallback mapped every
+    /// unregistered 0x13xx value to [`CodeCategory::Accessor`], which
+    /// made execution/internal codes category-ambiguous unless every
+    /// exact registry entry was present. The 0x16 high byte is reserved
+    /// exclusively for [`CodeCategory::Internal`].
     Internal,
 }
 
@@ -1574,9 +1587,11 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     // ---- Internal invariant (fallback code for HasSymbolicCode impls) ----
+    // CV-105: relocated from 0x1309 to 0x1601 so Internal owns a
+    // disjoint high byte (0x16) away from Accessor (0x13).
     CodeEntry {
         symbolic: "INTERNAL_INVARIANT_VIOLATION",
-        numeric: 0x1309,
+        numeric: 0x1601,
         category: CodeCategory::Internal,
         deprecated: false,
     },
@@ -1923,7 +1938,7 @@ impl Diagnostic {
     ///
     /// The `numeric_code` field is derived from `code` via
     /// [`SymbolicCode::as_diagnostic_code`]. Falls back to
-    /// `DiagnosticCode::new(0x1309)` when the symbolic code is not
+    /// `DiagnosticCode::new(0x1601)` when the symbolic code is not
     /// registered (internal invariant violation).
     #[must_use]
     pub fn new(
@@ -1938,8 +1953,9 @@ impl Diagnostic {
         // The None branch is only reachable through crate-internal raw construction.
         let numeric_code = match code.as_diagnostic_code() {
             Some(nc) => nc,
-            // Internal invariant fallback: 0x1309 = INTERNAL_INVARIANT_VIOLATION
-            None => DiagnosticCode::new(0x1309),
+            // Internal invariant fallback: 0x1601 = INTERNAL_INVARIANT_VIOLATION
+            // (CV-105: relocated from 0x1309 to keep Internal disjoint from Accessor.)
+            None => DiagnosticCode::new(0x1601),
         };
         Self {
             code,
@@ -2004,8 +2020,32 @@ pub trait HasSymbolicCode {
 ///
 /// This ensures that registry entries with explicit categories (such as
 /// `CodeCategory::Internal` for `INTERNAL_INVARIANT_VIOLATION` at
-/// 0x1309) are correctly classified instead of being misclassified by
+/// 0x1601) are correctly classified instead of being misclassified by
 /// the high-byte alone.
+///
+/// # High-byte map (CV-105 disjoint ranges)
+///
+/// | High byte | Category         |
+/// | --------- | ---------------- |
+/// | 0x01      | Schema           |
+/// | 0x02      | Reference        |
+/// | 0x03      | ControlFlow      |
+/// | 0x04      | TypeTaint        |
+/// | 0x05      | Gate             |
+/// | 0x06      | ContractDiscovery|
+/// | 0x10      | Compilation      |
+/// | 0x11      | WorkflowIr       |
+/// | 0x12      | Expression       |
+/// | 0x13      | Accessor         |
+/// | 0x14      | Lowering         |
+/// | 0x15      | Lifecycle        |
+/// | 0x16      | Internal         |
+/// | 0x20      | Storage          |
+/// | 0x30      | Runtime          |
+/// | 0x32      | Ipc              |
+/// | 0x33      | Lifecycle        |
+/// | 0x40      | RuntimeBoundary  |
+/// | other     | Internal         |
 #[must_use]
 pub fn category_from_numeric(numeric: u16) -> CodeCategory {
     // 1. Consult registry for the authoritative category.
@@ -2029,6 +2069,11 @@ pub fn category_from_numeric(numeric: u16) -> CodeCategory {
         0x13 => CodeCategory::Accessor,
         0x14 => CodeCategory::Lowering,
         0x15 => CodeCategory::Lifecycle,
+        // CV-105: 0x16 is reserved for CodeCategory::Internal so the
+        // high-byte map is disjoint from 0x13 (Accessor). Previously
+        // 0x13 also covered Internal, which made unregistered 0x13xx
+        // codes misclassify.
+        0x16 => CodeCategory::Internal,
         0x20 => CodeCategory::Storage,
         0x30 => CodeCategory::Runtime,
         0x32 => CodeCategory::Ipc,

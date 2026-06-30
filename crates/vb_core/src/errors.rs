@@ -583,7 +583,10 @@ impl CoreError {
     /// Unsupported primitive diagnostic code.
     pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode = DiagnosticCode::new(0x1308);
     /// Internal invariant diagnostic code.
-    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x1309);
+    ///
+    /// CV-105: relocated from 0x1309 to 0x1601 so `CodeCategory::Internal`
+    /// owns a disjoint high byte away from `CodeCategory::Accessor` (0x13).
+    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x1601);
     /// Unsupported accessor traversal diagnostic code.
     pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = DiagnosticCode::new(0x130A);
     /// Object accessor field not found diagnostic code.

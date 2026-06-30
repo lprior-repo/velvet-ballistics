@@ -221,7 +221,8 @@ fn core_error_diagnostic_code_internal_invariant_violation() {
     let error = CoreError::InternalInvariantViolation {
         reason: "impossible",
     };
-    assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1309));
+    // CV-105: relocated from 0x1309 to 0x1601 (Internal owns 0x16xx).
+    assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1601));
     assert_eq!(
         error.to_string(),
         "internal invariant violation: impossible"

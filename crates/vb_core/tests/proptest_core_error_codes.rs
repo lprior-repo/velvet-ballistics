@@ -281,10 +281,11 @@ fn list_index_out_of_bounds_returns_correct_code() {
 #[test]
 fn internal_invariant_violation_returns_correct_code() {
     let err = CoreError::InternalInvariantViolation { reason: "test" };
+    // CV-105: relocated from 0x1309 to 0x1601 (Internal owns 0x16xx).
     assert_eq!(
         err.diagnostic_code(),
-        DiagnosticCode::new(0x1309),
-        "INTERNAL_INVARIANT_CODE = 0x1309"
+        DiagnosticCode::new(0x1601),
+        "INTERNAL_INVARIANT_CODE = 0x1601"
     );
 }
 

@@ -377,4 +377,125 @@ mod tests {
             assert!(!is_supported_code(code), "E{:04X} must be rejected", code);
         }
     }
+
+    // ---- CV-105: E13xx / E16xx category-range collision regression ----
+
+    /// CV-105: `INTERNAL_INVARIANT_VIOLATION` was previously at 0x1309
+    /// (E13xx), which collided with the Accessor range. After the fix it
+    /// must be at 0x1601 (E16xx) and the old slot must be unsupported.
+    #[test]
+    fn cv105_internal_invariant_violation_relocated_to_e16xx() {
+        // Old slot must be unoccupied (the 0x1309 numeric must NOT be
+        // in the registry anymore).
+        assert!(
+            !is_supported_code(0x1309),
+            "CV-105: 0x1309 must no longer be a supported code"
+        );
+        assert_eq!(
+            numeric_to_symbolic(0x1309),
+            None,
+            "CV-105: 0x1309 must not appear in the registry"
+        );
+
+        // New slot must be the registered Internal code.
+        assert!(
+            is_supported_code(0x1601),
+            "CV-105: 0x1601 must be the new Internal code"
+        );
+        assert_eq!(
+            numeric_to_symbolic(0x1601),
+            Some("INTERNAL_INVARIANT_VIOLATION"),
+            "CV-105: 0x1601 must map to INTERNAL_INVARIANT_VIOLATION"
+        );
+    }
+
+    /// CV-105: The high-byte classification map must be a partition.
+    /// For each high byte, no two `CodeCategory` variants may claim it.
+    /// We assert that E13xx falls back to Accessor only, and E16xx
+    /// falls back to Internal only — never both.
+    #[test]
+    fn cv105_high_byte_partition_e13xx_is_accessor_only() {
+        // 0x1300 is unregistered and in the 0x13 high byte. It must
+        // classify as Accessor (not Internal).
+        let cat_1300 = crate::diagnostic::category_from_numeric(0x1300);
+        assert_eq!(
+            cat_1300,
+            CodeCategory::Accessor,
+            "CV-105: 0x1300 must classify as Accessor"
+        );
+
+        // 0x130E and 0x1310 are gaps in the E13xx range. They must
+        // classify as Accessor (not Internal).
+        assert_eq!(
+            crate::diagnostic::category_from_numeric(0x130E),
+            CodeCategory::Accessor,
+            "CV-105: 0x130E must classify as Accessor"
+        );
+        assert_eq!(
+            crate::diagnostic::category_from_numeric(0x1310),
+            CodeCategory::Accessor,
+            "CV-105: 0x1310 must classify as Accessor"
+        );
+    }
+
+    /// CV-105: E16xx must classify as Internal.
+    #[test]
+    fn cv105_high_byte_partition_e16xx_is_internal_only() {
+        // 0x1600 is unregistered in the 0x16 high byte. It must
+        // classify as Internal.
+        let cat_1600 = crate::diagnostic::category_from_numeric(0x1600);
+        assert_eq!(
+            cat_1600,
+            CodeCategory::Internal,
+            "CV-105: 0x1600 must classify as Internal"
+        );
+
+        // 0x1601 (the registered code) must also classify as Internal
+        // via the registry path.
+        let cat_1601 = crate::diagnostic::category_from_numeric(0x1601);
+        assert_eq!(
+            cat_1601,
+            CodeCategory::Internal,
+            "CV-105: 0x1601 must classify as Internal"
+        );
+
+        // 0x16FF (an unregistered high-byte-0x16 value) must classify
+        // as Internal.
+        assert_eq!(
+            crate::diagnostic::category_from_numeric(0x16FF),
+            CodeCategory::Internal,
+            "CV-105: 0x16FF must classify as Internal"
+        );
+    }
+
+    /// CV-105: No two registered codes may share the same numeric
+    /// (already covered by `registry_no_duplicate_numeric`); additionally
+    /// we assert the registry is now a clean partition — every 0x13xx
+    /// entry is Accessor, and the only 0x16xx entry is Internal.
+    #[test]
+    fn cv105_registry_partition_e13_accessor_e16_internal() {
+        use crate::diagnostic::CODE_REGISTRY;
+        for entry in CODE_REGISTRY {
+            let high_byte = (entry.numeric >> 8) & 0xFF_u16;
+            match high_byte {
+                0x13 => assert_eq!(
+                    entry.category,
+                    CodeCategory::Accessor,
+                    "CV-105: every 0x13xx entry must be Accessor; found {:?} for {} ({:04X})",
+                    entry.category,
+                    entry.symbolic,
+                    entry.numeric
+                ),
+                0x16 => assert_eq!(
+                    entry.category,
+                    CodeCategory::Internal,
+                    "CV-105: every 0x16xx entry must be Internal; found {:?} for {} ({:04X})",
+                    entry.category,
+                    entry.symbolic,
+                    entry.numeric
+                ),
+                _ => {}
+            }
+        }
+    }
 }
