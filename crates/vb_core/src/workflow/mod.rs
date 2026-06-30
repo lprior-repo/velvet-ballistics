@@ -1624,8 +1624,15 @@ fn validate_kind_edges(
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. }
-        | CompiledNodeKind::Jump { .. } => Ok(()),
+        | CompiledNodeKind::Finish { .. } => Ok(()),
+        // CW-007: A `Jump` carries a single `target` step. Forward-edge rule
+        // (Check B) requires every edge to point strictly forward of the
+        // current node; the previous implementation silently treated `Jump`
+        // as stateless and let backward targets slip through to the
+        // cycle-detection budget pass, which then reported a `JumpCycle`.
+        // Forward-edge validation is the correct first-line rejection:
+        // it returns the precise `from`/`to` of the offending edge.
+        CompiledNodeKind::Jump { target } => validate_forward_target(*target, ci, cid),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,

@@ -1567,6 +1567,12 @@ fn phase46_rejects_backward_next() -> Result<(), String> {
 
 #[test]
 fn phase46_accepts_jump_backward() -> Result<(), String> {
+    // CW-007: A backward Jump target is rejected by the forward-edge
+    // validator (`validate_forward_target`) before it reaches the budget
+    // cycle-detection pass, so the precise typed error is `BackwardEdge`
+    // rather than `JumpCycle`. The bug previously bypassed forward-edge
+    // validation on Jump targets, surfacing the same defect as a
+    // `JumpCycle` error. The fix narrows the rejection to its root cause.
     let parts = phase46_parts_with_nodes(
         vec![
             CompiledNode {
@@ -1592,12 +1598,14 @@ fn phase46_accepts_jump_backward() -> Result<(), String> {
     );
     let result = CompiledWorkflow::try_from_parts(parts).map(|_| ());
     match result {
-        Err(WorkflowError::JumpCycle { step, target })
-            if step == StepIdx::new(1) && target == StepIdx::new(0) =>
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(1) && to == StepIdx::new(0) =>
         {
             Ok(())
         }
-        other => Err(format!("expected exact JumpCycle variant, got {other:?}")),
+        other => Err(format!(
+            "expected exact BackwardEdge variant, got {other:?}"
+        )),
     }
 }
 
@@ -1643,6 +1651,128 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
             Ok(())
         }
         other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+// --- CW-007: Jump targets must be forward edges ---
+
+#[test]
+fn cw_007_jump_target_self_loop_rejected_as_backward_edge() -> Result<(), String> {
+    // A Jump whose `target` points at itself is a backward edge from
+    // node 0 to node 0. The forward-edge validator must reject it with
+    // `WorkflowError::BackwardEdge` before any cycle-detection pass
+    // runs.
+    let parts = phase46_parts_with_nodes(
+        vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Jump {
+                target: StepIdx::new(0),
+            },
+        }],
+        1,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!(
+            "expected exact BackwardEdge variant, got {other:?}"
+        )),
+    }
+}
+
+#[test]
+fn cw_007_jump_target_forward_accepted_by_validator() -> Result<(), String> {
+    // A Jump whose `target` points strictly forward of the current
+    // node must pass the forward-edge validator. The validator must
+    // not regress the existing behavior for legitimate forward jumps.
+    // Workflow: node 0 (Jump -> node 2) is the entry; node 1 is a
+    // forward-only Nop reached from node 0's predecessor and then
+    // chains to node 2 (Finish). All nodes are reachable; the Jump
+    // target (node 2) is forward of node 0.
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Jump {
+                    target: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ],
+        1,
+    );
+    let result = CompiledWorkflow::try_from_parts(parts).map(|_| ());
+    match result {
+        Ok(()) => Ok(()),
+        other => Err(format!("expected forward Jump to pass, got {other:?}")),
+    }
+}
+
+#[test]
+fn cw_007_jump_target_backward_carries_exact_from_to() -> Result<(), String> {
+    // The `from` field must be the source step of the Jump and the
+    // `to` field must be its target. This proves the validator pins
+    // the exact location of the offending edge for diagnostics.
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Jump {
+                    target: StepIdx::new(0),
+                },
+            },
+        ],
+        1,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(1) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!(
+            "expected exact BackwardEdge variant, got {other:?}"
+        )),
     }
 }
 
