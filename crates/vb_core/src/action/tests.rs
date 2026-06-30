@@ -1868,3 +1868,92 @@ fn test_canonical_key_validates() {
         );
     }
 }
+
+// =========================================================================
+// ActionTicket postcard roundtrip — vb-xsu4g regression.
+// Pins the encoding contract that the `idempotency_key` field (and every
+// other `ActionTicket` field) survives postcard serialize/deserialize.
+// The P0 durable-action-events defect lost this field when the legacy
+// `ActionCompletedEvent` variant was used in place of the full-ticket
+// `ActionCompletedEnvelope`; this roundtrip test fails the build if a
+// future change drops the field from the wire format.
+// =========================================================================
+
+#[test]
+fn action_ticket_postcard_roundtrip_preserves_idempotency_key() {
+    // Compute the canonical idempotency key for the chosen
+    // (run, seq, action) so the test exercises a real, valid ticket
+    // that recovery would actually accept on replay.
+    let run = RunId::new(0x0123_4567_89AB_CDEF_u64);
+    let step = StepIdx::new(0x00C3);
+    let seq = SeqNo::new(0x0042_1337_9000_0001_u64);
+    let action = ActionId::new(0x07B7);
+    let idempotency_key = compute_action_idempotency_key(run, seq, action);
+    let original = ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt: 2,
+        idempotency_key,
+        capacity: 5,
+    };
+
+    let bytes = postcard::to_allocvec(&original).expect("postcard encode must succeed");
+    let decoded: ActionTicket = postcard::from_bytes(&bytes).expect("postcard decode must succeed");
+
+    // Whole-struct equality: catches any field-level drop, rename, or
+    // hidden reordering. ActionTicket derives Eq + PartialEq so this is
+    // a true byte-for-byte field comparison.
+    assert_eq!(
+        decoded, original,
+        "ActionTicket postcard roundtrip must preserve every field"
+    );
+
+    // Defensive: explicitly pin `idempotency_key` so a future regression
+    // that survives PartialEq by chance (e.g. swap with another u128
+    // field) is still caught here with a clear diagnostic.
+    assert_eq!(
+        decoded.idempotency_key, original.idempotency_key,
+        "ActionTicket.idempotency_key must survive postcard roundtrip"
+    );
+
+    // The canonical-key invariant must still hold on the decoded ticket.
+    assert!(
+        action_ticket_has_valid_key(decoded),
+        "decoded ticket must still satisfy the canonical-key invariant"
+    );
+}
+
+#[test]
+fn action_ticket_postcard_roundtrip_at_idempotency_key_boundaries() {
+    // Boundary coverage for the `idempotency_key` u128 wire value:
+    // 0 (minimum), 1 (smallest non-zero), u128::MAX (largest).
+    for &key in &[
+        0u128,
+        1u128,
+        0xDEAD_BEEF_CAFE_F00D_1234_5678_9ABC_DEF0_u128,
+        u128::MAX,
+    ] {
+        let original = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(1),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: key,
+            capacity: 1,
+        };
+        let bytes = postcard::to_allocvec(&original).expect("postcard encode must succeed");
+        let decoded: ActionTicket =
+            postcard::from_bytes(&bytes).expect("postcard decode must succeed");
+        assert_eq!(
+            decoded.idempotency_key, key,
+            "idempotency_key boundary value 0x{key:032X} must survive roundtrip"
+        );
+        assert_eq!(
+            decoded, original,
+            "all fields must survive boundary roundtrip"
+        );
+    }
+}
