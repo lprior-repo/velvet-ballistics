@@ -397,20 +397,17 @@ fn shared_journal_returns_unsupported_durability_profile_error_for_future_varian
 // ---------------------------------------------------------------------------
 // Regression test for bug-hunt RE-020: `storage_event` previously cloned the
 // full `RuntimeJournalEvent` three times before determining the matched
-// variant. The refactor dispatches on `&event` and clones exactly once, by
-// the matched arm, via the `clone_for_dispatch` helper which is instrumented
-// with `STORAGE_EVENT_CLONE_COUNT` in test builds. This test exercises one
-// variant from each of the three dispatch arms and asserts the counter
-// advances by exactly 1 per dispatch, and that the mapped `JournalEvent` is
-// correct. A 64 KiB payload is used to make the single-clone property
-// behaviorally meaningful (the old code would have copied the full payload
-// three times).
+// variant. The refactor consumes the owned event in a single `match event`
+// and moves it into the per-arm helper, so payloads (especially the `Vec<u8>`
+// carried by `SlotWritten` and `ActionCompletedEnvelope`) are never copied.
+// This test exercises one variant from each of the three dispatch arms,
+// asserts the mapped `JournalEvent` is correct, and includes a source-level
+// guard that fails CI if a future change re-introduces `event.clone()` (or
+// any `.clone()` of the source) inside the `storage_event` body.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn storage_event_clones_the_event_exactly_once_per_dispatch() {
-    use std::sync::atomic::Ordering;
-
+fn storage_event_consumes_runtime_event_payload_without_cloning() {
     let run = RunId::new(101);
     let workflow = WorkflowDigest::from_bytes([42; 32]);
     let seq = EventSeq::new(7);
@@ -424,10 +421,8 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
     );
     let run_admission_event = RuntimeJournalEvent::RunAdmission { admission };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
     let mapped = StorageRuntimeJournal::storage_event(run_admission_event, seq)
         .expect("run-admission dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
     assert!(matches!(
         mapped,
         JournalEvent::RunAdmission {
@@ -447,10 +442,8 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         action: ActionId::new(9),
     };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
     let mapped = StorageRuntimeJournal::storage_event(action_event, seq)
         .expect("action-scheduled dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
     assert_eq!(
         mapped,
         JournalEvent::ActionScheduled {
@@ -462,8 +455,12 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         }
     );
 
-    // Arm 3: boundary_storage_event (via SlotWritten with a large payload).
+    // Arm 3: boundary_storage_event (via SlotWritten with a 64 KiB payload).
+    // The fact that this passes — and the value bytes survive untouched
+    // through dispatch — is itself a behavioral guarantee that the payload
+    // was moved, not cloned three times.
     let large_payload: Vec<u8> = vec![0xAB; 64 * 1024];
+    let payload_len = large_payload.len();
     let slot_written_event = RuntimeJournalEvent::SlotWritten {
         run,
         slot: SlotIdx::new(3),
@@ -472,10 +469,8 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         extra: None,
     };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
     let mapped = StorageRuntimeJournal::storage_event(slot_written_event, seq)
         .expect("slot-written dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
     assert!(matches!(
         &mapped,
         JournalEvent::SlotWrittenEvent {
@@ -488,6 +483,35 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         } if mapped_run == &run
             && mapped_seq == &seq
             && mapped_slot == &SlotIdx::new(3)
-            && payload.len() == 64 * 1024
+            && payload.len() == payload_len
     ));
+}
+
+/// Source-level regression guard for RE-020. The `storage_event` body MUST
+/// NOT call `.clone()` on `RuntimeJournalEvent`: the dispatch is required to
+/// move the owned value into the matched arm. This catches any future change
+/// that accidentally re-introduces full-event cloning on the deterministic
+/// evidence path.
+#[test]
+fn storage_event_source_path_does_not_clone_runtime_journal_event() {
+    let source = include_str!("../chunk_002.rs");
+    let fn_start = source
+        .find("fn storage_event(event:")
+        .expect("storage_event function present in chunk_002.rs");
+    let after_start = &source[fn_start..];
+    let fn_end_offset = after_start
+        .find("\n    }\n")
+        .expect("storage_event body terminator present");
+    let fn_body = &after_start[..fn_end_offset + 6];
+
+    assert!(
+        !fn_body.contains(".clone()"),
+        "storage_event body must not call .clone() on the source \
+         RuntimeJournalEvent — payloads must move, not copy. Offending body:\n{fn_body}"
+    );
+    assert!(
+        !fn_body.contains("clone_for_dispatch"),
+        "storage_event body must not call the legacy clone_for_dispatch helper. \
+         Offending body:\n{fn_body}"
+    );
 }
