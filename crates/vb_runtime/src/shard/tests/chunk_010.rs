@@ -30,11 +30,12 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    // Then the second run also completes and pool has 1 available frame
+    // Then the second run also completes
     assert_eq!(shard.counters().snapshot().runs_completed, 2);
+    // Both runs are finished; pool has all pre-allocated frames available
     assert_eq!(
         shard.frame_pools.get(&(2, 1)).map(FramePool::available),
-        Some(1)
+        Some(4)
     );
 }
 

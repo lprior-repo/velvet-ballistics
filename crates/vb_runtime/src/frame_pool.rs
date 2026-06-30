@@ -24,45 +24,61 @@ pub struct FramePool {
 
 impl FramePool {
     /// Creates a new frame pool with the given dimensions and capacity.
+    /// All frames are pre-allocated at construction so `take` never falls back
+    /// to fresh allocation on the runtime hot path.
     pub fn new(step_count: u16, slot_count: u16, capacity: usize) -> CoreResult<Self> {
         if capacity == 0 || capacity > MAX_POOL_CAPACITY {
             return Err(vb_core::errors::CoreError::ResourceLimitExceeded {
                 resource: "frame_pool_capacity",
             });
         }
+        let mut frames = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            match RunFrame::new(RunId::ZERO, StepIdx::ZERO, step_count, slot_count) {
+                Ok(frame) => frames.push(frame),
+                Err(_) => {
+                    return Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+                        reason: "step_count_zero",
+                    });
+                }
+            }
+        }
         Ok(Self {
-            frames: Vec::new(),
+            frames,
             step_count,
             slot_count,
             capacity,
         })
     }
 
-    /// Takes a frame from the pool or allocates a new one if the pool is empty.
-    /// Returns an error if the pool is empty and allocation is denied.
+    /// Takes a frame from the pre-allocated pool.
+    /// Returns an error if the pool is exhausted (all `capacity` frames are in use).
+    /// This replaces the previous behavior of falling back to fresh allocation
+    /// on the runtime hot path, which violated determinism and budget guarantees.
     pub fn take(&mut self, run_id: RunId, first_step: StepIdx) -> CoreResult<RunFrame> {
-        if self.frames.is_empty() {
-            RunFrame::new(run_id, first_step, self.step_count, self.slot_count)
-        } else {
-            let mut frame = self
-                .frames
-                .pop()
-                .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
-            frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
-            Ok(frame)
-        }
+        let mut frame = self
+            .frames
+            .pop()
+            .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
+        frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
+        Ok(frame)
     }
 
-    /// Returns a frame to the pool for reuse. Drops the frame if the pool is
-    /// at capacity.
+    /// Returns a frame to the pool for reuse. Drops the frame if dimensions
+    /// don't match or if the pool is unexpectedly at capacity.
+    /// Since the pool is pre-allocated at `capacity` frames, this is normally
+    /// a no-op push (the pool holds exactly `capacity` frames).
     pub fn release(&mut self, frame: RunFrame) {
-        if frame.step_count() == self.step_count
-            && frame.slot_count() == self.slot_count
-            && self.frames.len() < self.capacity
-        {
-            self.frames.push(frame);
+        if frame.step_count() != self.step_count || frame.slot_count() != self.slot_count {
+            // Mismatched dimensions: silently drop.
+            return;
         }
-        // Frame is dropped when the pool is full.
+        if self.frames.len() >= self.capacity {
+            // Pool is at capacity: silently drop (should not happen in practice
+            // since pre-allocation guarantees pool size matches capacity).
+            return;
+        }
+        self.frames.push(frame);
     }
 
     /// Number of frames currently available in the pool.
