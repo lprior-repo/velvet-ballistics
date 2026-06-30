@@ -920,6 +920,7 @@ fn execute_together_join_errors_on_missing_next_step() {
         let msg = format!("write output failed: {e}");
         panic!("{msg}");
     }
+    run.set_max_parallel_in_flight(2);
     if let Err(e) = run.add_parallel_in_flight(2) {
         let msg = format!("add_parallel_in_flight failed: {e}");
         panic!("{msg}");

@@ -1105,6 +1105,7 @@ mod behavior_parallel_in_flight {
         assert_eq!(frame.parallel_in_flight(), 0);
 
         // WHEN: Adding 5 to parallel in-flight
+        frame.set_max_parallel_in_flight(5);
         frame.add_parallel_in_flight(5).expect("add should succeed");
 
         // THEN: Count is 5
