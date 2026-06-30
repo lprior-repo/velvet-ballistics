@@ -1646,6 +1646,132 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
     }
 }
 
+// CW-001: `validate_loop_start_edges` must reject a backward `body` edge for
+// every loop-start variant. `CollectStart`, `ReduceStart`, and `RepeatStart`
+// route through the same helper as `ForEachStart`, but each was previously
+// untested at this boundary.
+
+#[test]
+fn collect_start_body_must_be_forward_edge() -> Result<(), String> {
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::CollectStart {
+                    source: SlotIdx::new(0),
+                    limit: 1,
+                    page_size: 1,
+                    body: StepIdx::new(0),
+                    done: StepIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ],
+        2,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn reduce_start_body_must_be_forward_edge() -> Result<(), String> {
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ReduceStart {
+                    input: SlotIdx::new(0),
+                    accumulator: SlotIdx::new(1),
+                    initial: ConstIdx::new(0),
+                    body: StepIdx::new(0),
+                    done: StepIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ],
+        2,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn repeat_start_body_must_be_forward_edge() -> Result<(), String> {
+    let parts = phase46_parts_with_nodes(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::RepeatStart {
+                    max_attempts: 1,
+                    body: StepIdx::new(0),
+                    done: StepIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ],
+        2,
+    );
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(0) && to == StepIdx::new(0) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
 #[test]
 fn phase46_accepts_foreach_forward() -> Result<(), String> {
     let parts = WorkflowParts {
