@@ -790,6 +790,67 @@ fn workflow_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
 }
 
 #[test]
+fn workflow_error_handler_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
+    let mut parts = finish_const_parts_with(resource_contract(3, 1, 1, 0, 0), Box::new([]));
+    parts.slot_count = 1;
+    parts.nodes = error_handler_nodes(Some(SlotIdx::new(5)));
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn workflow_error_handler_accepts_in_bounds_error_slot() -> Result<(), String> {
+    let mut parts = finish_const_parts_with(resource_contract(3, 1, 1, 0, 0), Box::new([]));
+    parts.slot_count = 1;
+    parts.nodes = error_handler_nodes(Some(SlotIdx::new(0)));
+
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| format!("unexpected result: {error:?}"))
+}
+
+fn error_handler_nodes(error_slot: Option<SlotIdx>) -> Box<[CompiledNode]> {
+    vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+                error_slot,
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
+    ]
+    .into_boxed_slice()
+}
+
+#[test]
 fn workflow_error_const_out_of_bounds_exact_variant() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![CompiledNode {
