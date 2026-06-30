@@ -3,7 +3,7 @@
 //! RE-004 / RE-011 regression tests for evidence gaps and capacity
 //! overflow in the drive loop.
 
-use super::common::{collect_start, fin, mkr, mkwf, setc, ws};
+use super::common::{collect_start, fin, mkr, mkwf, mkwfc, setc, ws};
 use crate::engine::drive::{DriveState, drive_deterministic_full, emit_slot_evidence};
 use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineError};
 use crate::primitives::collect::{CollectPaginationState, CollectStates};
@@ -12,8 +12,9 @@ use vb_core::engine::StepBudget;
 use vb_core::errors::EngineError;
 use vb_core::frame::StepState;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
+use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 
 #[cfg(test)]
 mod tests {
@@ -249,5 +250,194 @@ mod tests {
             return Err("RE-004: happy path must emit SlotWritten evidence".into());
         }
         Ok(())
+    }
+
+    /// RE-004 observability follow-up (black-hat FINDING-002): when
+    /// `drive_deterministic_full` completes with zero recorded evidence
+    /// gaps, the loop returns the natural `Ok(signal)` — the new gap
+    /// surfacing path must NOT poison the happy path.
+    #[test]
+    fn drive_returns_ok_signal_when_no_evidence_gaps_recorded() -> Result<(), String> {
+        // The SetConst → Finish workflow writes slot 0 from const 0
+        // and then finishes with slot 0 as the result. emit_slot_evidence
+        // reads slot 0 (the SetConst output), which is initialized by
+        // the executor, so no gap is recorded.
+        let wf = mkwfc(
+            vec![setc(0, 0, 0, 1), fin(1, 0)],
+            1,
+            vec![ConstValue::I64(7)],
+        )?;
+        let mut run = mkr(2, 1)?;
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(10);
+        let mut ev = EvidenceCollector::new();
+        let mut cs = CollectStates::new();
+
+        let result = drive_deterministic_full(
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut ev,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+
+        // Zero gaps → drive returns Ok(Finished(_)). The signal value
+        // is preserved (not coerced into a gap error).
+        match result {
+            Ok(crate::engine::types::RuntimeSignal::Finished(slot_value)) => {
+                if slot_value != SlotValue::I64(7) {
+                    return Err(format!(
+                        "RE-004-obs: zero-gap drive must return Finished with the constant value; got {slot_value:?}"
+                    ));
+                }
+                Ok(())
+            }
+            Ok(other) => Err(format!(
+                "RE-004-obs: zero-gap drive must return Ok(Finished); got Ok({other:?})"
+            )),
+            Err(e) => Err(format!(
+                "RE-004-obs: zero-gap drive must NOT return Err; got {e:?}"
+            )),
+        }
+    }
+
+    /// RE-004 observability follow-up (black-hat FINDING-002 +
+    /// FINDING-003): when `drive_deterministic_full` records at least
+    /// one evidence gap during a drive that naturally ends with
+    /// `Finished`, the loop surfaces the typed
+    /// `RuntimeEngineError::EvidenceGapsRecorded { count, last_slot }`
+    /// variant so operators can act on the gap without losing the
+    /// slot index that failed.
+    #[test]
+    fn drive_returns_evidence_gaps_recorded_when_at_least_one_gap() -> Result<(), String> {
+        // A three-step workflow: a Nop with `output = Some(slot 1)`
+        // where slot 1 is intentionally uninitialized, followed by a
+        // SetConst → Finish that exercises the normal evidence-emit
+        // path on slot 0 and terminates the drive. The Nop step
+        // doesn't write to its declared output, so emit_slot_evidence
+        // reads slot 1, fails with SlotUninitialized, and records a
+        // gap. Because the drive reaches a terminal Finished signal,
+        // the gap-surfacing path converts it into the typed error.
+        let nop_node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let wf = mkwfc(
+            vec![nop_node, setc(1, 0, 0, 2), fin(2, 0)],
+            2,
+            vec![ConstValue::I64(7)],
+        )?;
+        let mut run = mkr(3, 2)?;
+        let mut store = ValueStore::new();
+        let mut budget = StepBudget::new(10);
+        let mut ev = EvidenceCollector::new();
+        let mut cs = CollectStates::new();
+
+        let result = drive_deterministic_full(
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut ev,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+
+        // >=1 gap AND natural Finished signal → drive returns the
+        // typed EvidenceGapsRecorded variant carrying count and
+        // last_slot. The natural Finished signal is consumed by the
+        // gap surfacing path; the operator must investigate the gap
+        // before treating the run as complete.
+        match result {
+            Err(RuntimeEngineError::EvidenceGapsRecorded { count, last_slot }) => {
+                if count != 1 {
+                    return Err(format!("RE-004-obs: gap count must be 1; got {count}"));
+                }
+                if last_slot != Some(SlotIdx::new(1)) {
+                    return Err(format!(
+                        "RE-004-obs: last_slot must be Some(SlotIdx(1)); got {last_slot:?}"
+                    ));
+                }
+                Ok(())
+            }
+            Ok(other) => Err(format!(
+                "RE-004-obs: gap drive must NOT return Ok; got Ok({other:?})"
+            )),
+            Err(other) => Err(format!(
+                "RE-004-obs: gap drive must return Err(EvidenceGapsRecorded); got {other:?}"
+            )),
+        }
+    }
+
+    /// DriveState unit test for the new `take_evidence_gaps_report`
+    /// API. Records multiple gaps across two slots and asserts the
+    /// report carries the total count and the LAST failing slot,
+    /// then resets the state so the same DriveState can be reused.
+    #[test]
+    fn drive_state_take_evidence_gaps_report_returns_count_and_last_slot() {
+        let mut state = DriveState::new();
+
+        // First gap on slot 0.
+        state.record_evidence_gap(SlotIdx::new(0));
+        let report = state.take_evidence_gaps_report();
+        if report.count != 1 {
+            panic!("expected count=1 after first gap; got {}", report.count);
+        }
+        if report.last_slot != Some(SlotIdx::new(0)) {
+            panic!(
+                "expected last_slot=Some(0) after first gap; got {:?}",
+                report.last_slot
+            );
+        }
+
+        // take_evidence_gaps_report resets the counter so the same
+        // DriveState can serve a fresh drive. A second gap on slot 2
+        // must report count=1, last_slot=Some(2) (not the stale 0).
+        state.record_evidence_gap(SlotIdx::new(2));
+        state.record_evidence_gap(SlotIdx::new(2));
+        let report = state.take_evidence_gaps_report();
+        if report.count != 2 {
+            panic!("expected count=2 after two more gaps; got {}", report.count);
+        }
+        if report.last_slot != Some(SlotIdx::new(2)) {
+            panic!(
+                "expected last_slot=Some(2) after two more gaps; got {:?}",
+                report.last_slot
+            );
+        }
+
+        // After take, the state is back to default — a third report
+        // must observe count=0 / last_slot=None.
+        let report = state.take_evidence_gaps_report();
+        assert_eq!(report.count, 0);
+        assert_eq!(report.last_slot, None);
+    }
+
+    /// EvidenceGapReport has the stable runtime code
+    /// `EVIDENCE_GAPS_RECORDED` so operators can dispatch on it.
+    #[test]
+    fn evidence_gaps_recorded_runtime_code_is_stable() {
+        let error = RuntimeEngineError::EvidenceGapsRecorded {
+            count: 3,
+            last_slot: Some(SlotIdx::new(5)),
+        };
+        assert_eq!(
+            error.runtime_code(),
+            Some(RuntimeEngineError::EVIDENCE_GAPS_RECORDED_RUNTIME_CODE)
+        );
+        assert_eq!(
+            RuntimeEngineError::EVIDENCE_GAPS_RECORDED_RUNTIME_CODE,
+            "EVIDENCE_GAPS_RECORDED"
+        );
     }
 }
