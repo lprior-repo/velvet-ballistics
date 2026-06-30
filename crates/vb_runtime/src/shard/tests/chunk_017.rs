@@ -194,21 +194,23 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     }
 }
 
-// BH-SHD-07: Frame pool allocates beyond pool capacity.
+// BH-SHD-07: Frame pool is bounded by capacity — no fresh allocation as fallback.
 // Severity: Low. Mitigated by max_active_runs.
 #[test]
-fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
+fn bh_shd_07_frame_pool_bounded_no_fresh_alloc() {
     let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
         .ok()
         .unwrap_or_else(|| panic!("FramePool::new failed"));
+    // With pre-allocation, taking 2 frames exhausts the pool
     let f1 = pool.take(super::RunId::new(1), vb_core::ids::StepIdx::ZERO);
     let f2 = pool.take(super::RunId::new(2), vb_core::ids::StepIdx::ZERO);
+    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed (within capacity)");
+    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed (within capacity)");
+    // A 3rd take returns AllocationFailed (no fresh allocation fallback)
     let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
-    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
-    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
     assert!(
-        f3.is_ok(),
-        "BH-SHD-07: f3 should succeed beyond pool capacity"
+        matches!(f3, Err(vb_core::errors::CoreError::AllocationFailed)),
+        "BH-SHD-07: f3 should fail with AllocationFailed (pool bounded, no fresh alloc)"
     );
 }
 

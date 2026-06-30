@@ -174,16 +174,18 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    // Pool pre-allocated to capacity (4); one frame in use
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
-        Some(0)
+        Some(3)
     );
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.run_state_get(run), None);
+    // After cancel, frame returned to pool; all 4 available
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
-        Some(1)
+        Some(4)
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
 }
