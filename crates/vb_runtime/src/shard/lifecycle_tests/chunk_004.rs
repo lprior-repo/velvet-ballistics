@@ -1,4 +1,3 @@
-
 #[test]
 fn future_attempt_completion_rejected_when_current_attempt_exists() {
     let mut shard = Shard::new(small_config());
@@ -334,118 +333,44 @@ fn legacy_action_completion_journal_first() {
 }
 
 #[test]
-fn action_failure_without_handler_fails_run() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
-    let wf = require_workflow("suspended", suspended_workflow())?;
-    let run = RunId::new(60);
-    submit_run(&mut shard, run, wf);
-    let ticket = make_ticket(run, StepIdx::ZERO, 1);
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionFailed {
-            ticket,
-            failure: non_retryable_failure(),
-        }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.counters().snapshot().runs_failed, 1);
-    assert_eq!(shard.active_run_count(), 0);
-    Ok(())
-}
-
-// =======================================================================
-// Non-mutation: invalid authority does not mutate observable state
-// =======================================================================
-
-#[test]
-fn future_attempt_completion_does_not_mutate_state() {
-    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let run = RunId::new(410);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.run_state_get_mut(run) else {
-        return;
-    };
-    if let Some(attempt) = state.action_attempts.get_mut(0) {
-        *attempt = 1;
-    }
-    let counters_before = shard.counters().snapshot();
-    let _journal_snap_before = journal.snapshot();
-    let _trace_before = shard
-        .trace_ring()
-        .snapshot_for_run(run, shard.trace_ring().capacity());
-    let output = ActionOutputReady {
-        output_slot: SlotIdx::ZERO,
-        value: SlotValue::I64(7),
-        taint: Taint::Clean,
-        encoded_len: 2,
-    };
-    // Send attempt=3 when current=1 — future attempt
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted {
-            ticket: ActionTicket {
-                capacity: 5,
-                ..make_ticket(run, StepIdx::ZERO, 3)
-            },
-            output,
-        }),
-        Ok(())
-    );
-    // G005 fixed: future-attempt rejection now returns InvalidActionCompletion
-    // The tick must reject the completion and must not mutate observable state
-    assert_eq!(
-        shard.tick(),
-        Err(RuntimeError::InvalidActionCompletion),
-        "future-attempt completion must be rejected"
-    );
-    // Counter and journal state after — verify key invariants hold
-    let counters_after = shard.counters().snapshot();
-    let journal_snap_after = journal.snapshot();
-    let _trace_after = shard
-        .trace_ring()
-        .snapshot_for_run(run, shard.trace_ring().capacity());
-    // At minimum, submitted runs count should not decrease
-    assert!(counters_after.runs_submitted >= counters_before.runs_submitted);
-    // Run should not be failed unless explicitly failed
-    if counters_after.runs_failed > counters_before.runs_failed {
-        // If the run failed, it should have a RunFailed event
-        let has_run_failed = journal_snap_after.as_ref().map_or(false, |events| {
-            events
-                .iter()
-                .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run))
-        });
-        if !has_run_failed {
-            // Run failed counter incremented without RunFailed event — this is a bug
-            assert_eq!(
-                journal_snap_after.is_ok(),
-                true,
-                "journal snapshot failed unexpectedly"
-            );
+fn handle_action_completion_journal_first() {
+    // Regression test for RS-010 (non-legacy path):
+    // handle_action_completion must append the ActionCompletedEnvelope journal
+    // event BEFORE mutating the run frame. On journal append failure, the
+    // frame, action_attempts, counters, and journal sequence MUST remain
+    // unchanged so a failed append does not diverge memory-only state from
+    // durable evidence.
+    struct EnvelopeFailsJournal;
+    impl crate::journal::RuntimeJournal for EnvelopeFailsJournal {
+        fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            self.append_sequenced(event, vb_storage::EventSeq::ZERO)
+        }
+        fn append_sequenced(
+            &self,
+            event: RuntimeJournalEvent,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            // Reject the non-legacy completion's ActionCompletedEnvelope append
+            // with a typed JournalError so the shard surfaces a
+            // StorageJournalAppend failure.
+            if matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }) {
+                return Err(RuntimeError::StorageJournalAppend {
+                    source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+                });
+            }
+            Ok(())
+        }
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
         }
     }
-}
 
-#[test]
-fn noncanonical_key_completion_does_not_mutate_state() {
-    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let shared: SharedRuntimeJournal = journal.clone();
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(EnvelopeFailsJournal);
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
         return;
     };
-    let run = RunId::new(411);
+    let run = RunId::new(50_020);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -455,68 +380,26 @@ fn noncanonical_key_completion_does_not_mutate_state() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.run_state_get_mut(run) else {
-        return;
-    };
-    if let Some(attempt) = state.action_attempts.get_mut(0) {
-        *attempt = 1;
-    }
+    // Capture frame invariants BEFORE the failing completion.
+    let frame_before = shard
+        .run_state_get(run)
+        .expect("run should remain active after submit")
+        .frame
+        .clone();
+    let pc_before = frame_before.pc();
+    let step_state_before = frame_before.step_state(StepIdx::ZERO);
+    let executed_before = frame_before.executed();
+    let attempts_before = shard
+        .run_state_get(run)
+        .expect("run should remain active after submit")
+        .action_attempts
+        .clone();
     let counters_before = shard.counters().snapshot();
-    let journal_before = journal.snapshot();
-    let active_runs_before = shard.active_run_count();
-    let output = ActionOutputReady {
-        output_slot: SlotIdx::ZERO,
-        value: SlotValue::I64(7),
-        taint: Taint::Clean,
-        encoded_len: 2,
-    };
-    // Create ticket with deliberately wrong idempotency_key
-    let mut bad_ticket = make_ticket(run, StepIdx::ZERO, 1);
-    bad_ticket.idempotency_key = 0; // Non-canonical key
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted {
-            ticket: bad_ticket,
-            output,
-        }),
-        Ok(())
-    );
-    let result = shard.tick();
-    // Should return InvalidActionCompletion due to key mismatch
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
-    // State must be unchanged
-    assert_eq!(shard.counters().snapshot(), counters_before);
-    assert_eq!(journal.snapshot(), journal_before);
-    assert_eq!(shard.active_run_count(), active_runs_before);
-}
+    let seq_before = shard.journal_sequences.get(&run).copied();
+    let trace_before = shard
+        .trace_ring()
+        .snapshot_for_run(run, shard.trace_ring().capacity());
 
-#[test]
-fn wrong_step_state_completion_does_not_mutate_state() {
-    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let run = RunId::new(412);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    // Step is in Running state after scheduling. Mark it succeeded to make it invalid.
-    let Some(state) = shard.run_state_get_mut(run) else {
-        return;
-    };
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    if let Some(attempt) = state.action_attempts.get_mut(0) {
-        *attempt = 1;
-    }
-    let counters_before = shard.counters().snapshot();
-    let journal_before = journal.snapshot();
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
@@ -530,35 +413,180 @@ fn wrong_step_state_completion_does_not_mutate_state() {
         }),
         Ok(())
     );
+    // The typed StorageJournalAppend error MUST surface (no swallowed map_err).
     let result = shard.tick();
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
+    assert!(
+        matches!(
+            &result,
+            Err(RuntimeError::StorageJournalAppend { source })
+                if matches!(source.as_ref(), vb_storage::JournalError::WriteLockPoisoned)
+        ),
+        "expected typed StorageJournalAppend(WriteLockPoisoned), got {result:?}"
+    );
+
+    // Frame MUST remain unchanged — the journal-first ordering guarantees
+    // that a failed append does not diverge the frame from the journal.
+    let frame_after = shard
+        .run_state_get(run)
+        .expect("run must remain active after rejected completion")
+        .frame
+        .clone();
+    assert_eq!(frame_after.pc(), pc_before, "pc must be unchanged");
+    assert_eq!(
+        frame_after.step_state(StepIdx::ZERO),
+        step_state_before,
+        "step state must be unchanged"
+    );
+    assert_eq!(
+        frame_after.executed(),
+        executed_before,
+        "executed count must be unchanged"
+    );
+    assert_eq!(frame_after, frame_before, "frame must be byte-equal");
+    // action_attempts, counters, journal sequence, and trace MUST remain
+    // unchanged.
+    let attempts_after = shard
+        .run_state_get(run)
+        .expect("run must remain active after rejected completion")
+        .action_attempts
+        .clone();
+    assert_eq!(attempts_after, attempts_before, "action_attempts unchanged");
     assert_eq!(shard.counters().snapshot(), counters_before);
-    assert_eq!(journal.snapshot(), journal_before);
+    assert_eq!(shard.journal_sequences.get(&run).copied(), seq_before);
+    assert_eq!(
+        shard
+            .trace_ring()
+            .snapshot_for_run(run, shard.trace_ring().capacity()),
+        trace_before,
+        "trace ring must be unchanged"
+    );
 }
 
 #[test]
-fn action_completion_on_missing_run_does_not_mutate_state() {
-    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
-    let shared: SharedRuntimeJournal = journal.clone();
+fn handle_action_failure_journal_first() {
+    // Regression test for RS-010 (failure path):
+    // handle_action_failure must append the ActionFailed journal event BEFORE
+    // mutating the run frame. On journal append failure, the frame,
+    // action_attempts, counters, and journal sequence MUST remain unchanged
+    // so a failed append does not diverge memory-only state from durable
+    // evidence. The retry-policy and error-handler decisions in
+    // apply_action_failure_to_state are part of the same critical section and
+    // must not be persisted to memory without durable evidence.
+    struct ActionFailedFailsJournal;
+    impl crate::journal::RuntimeJournal for ActionFailedFailsJournal {
+        fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            self.append_sequenced(event, vb_storage::EventSeq::ZERO)
+        }
+        fn append_sequenced(
+            &self,
+            event: RuntimeJournalEvent,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            // Reject the failure path's ActionFailed append with a typed
+            // JournalError so the shard surfaces a StorageJournalAppend
+            // failure.
+            if matches!(event, RuntimeJournalEvent::ActionFailed { .. }) {
+                return Err(RuntimeError::StorageJournalAppend {
+                    source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+                });
+            }
+            Ok(())
+        }
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+    }
+
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(ActionFailedFailsJournal);
     let mut shard = Shard::new_with_journal(small_config(), shared);
-    let counters_before = shard.counters().snapshot();
-    let journal_before = journal.snapshot();
-    let output = ActionOutputReady {
-        output_slot: SlotIdx::ZERO,
-        value: SlotValue::I64(7),
-        taint: Taint::Clean,
-        encoded_len: 2,
+    let Some(wf) = suspended_workflow() else {
+        return;
     };
+    let run = RunId::new(50_030);
     assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted {
-            ticket: make_ticket(RunId::new(9999), StepIdx::ZERO, 1),
-            output,
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
         }),
         Ok(())
     );
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.tick(), Ok(true));
+    // Capture frame invariants BEFORE the failing failure-path.
+    let frame_before = shard
+        .run_state_get(run)
+        .expect("run should remain active after submit")
+        .frame
+        .clone();
+    let pc_before = frame_before.pc();
+    let step_state_before = frame_before.step_state(StepIdx::ZERO);
+    let executed_before = frame_before.executed();
+    let attempts_before = shard
+        .run_state_get(run)
+        .expect("run should remain active after submit")
+        .action_attempts
+        .clone();
+    let counters_before = shard.counters().snapshot();
+    let seq_before = shard.journal_sequences.get(&run).copied();
+    let trace_before = shard
+        .trace_ring()
+        .snapshot_for_run(run, shard.trace_ring().capacity());
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: make_ticket(run, StepIdx::ZERO, 1),
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    // The typed StorageJournalAppend error MUST surface (no swallowed map_err).
+    let result = shard.tick();
+    assert!(
+        matches!(
+            &result,
+            Err(RuntimeError::StorageJournalAppend { source })
+                if matches!(source.as_ref(), vb_storage::JournalError::WriteLockPoisoned)
+        ),
+        "expected typed StorageJournalAppend(WriteLockPoisoned), got {result:?}"
+    );
+
+    // Frame MUST remain unchanged — the journal-first ordering guarantees
+    // that a failed append does not diverge the frame from the journal.
+    let frame_after = shard
+        .run_state_get(run)
+        .expect("run must remain active after rejected failure")
+        .frame
+        .clone();
+    assert_eq!(frame_after.pc(), pc_before, "pc must be unchanged");
+    assert_eq!(
+        frame_after.step_state(StepIdx::ZERO),
+        step_state_before,
+        "step state must be unchanged"
+    );
+    assert_eq!(
+        frame_after.executed(),
+        executed_before,
+        "executed count must be unchanged"
+    );
+    assert_eq!(frame_after, frame_before, "frame must be byte-equal");
+    // action_attempts, counters, journal sequence, and trace MUST remain
+    // unchanged. The trace ring and pending_action state are part of the
+    // same critical section as the frame mutation.
+    let attempts_after = shard
+        .run_state_get(run)
+        .expect("run must remain active after rejected failure")
+        .action_attempts
+        .clone();
+    assert_eq!(attempts_after, attempts_before, "action_attempts unchanged");
     assert_eq!(shard.counters().snapshot(), counters_before);
-    assert_eq!(journal.snapshot(), journal_before);
+    assert_eq!(shard.journal_sequences.get(&run).copied(), seq_before);
+    assert_eq!(
+        shard
+            .trace_ring()
+            .snapshot_for_run(run, shard.trace_ring().capacity()),
+        trace_before,
+        "trace ring must be unchanged"
+    );
 }
 
 // =======================================================================

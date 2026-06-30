@@ -249,4 +249,21 @@ impl<'j> JournalWriteBatch<'j> {
             .insert(&self.journal.index_action, key, Vec::<u8>::new());
         Ok(())
     }
+
+    /// Stages a tombstone for the action index marker into the batch.
+    ///
+    /// The tombstone is part of the same atomic batch as the surrounding
+    /// event writes; a successful `commit()` removes the index entry
+    /// exactly when the corresponding terminal event (completion,
+    /// failure, or abandonment) becomes durable.
+    pub fn delete_action_index(
+        &mut self,
+        action: vb_core::ActionId,
+        run: vb_core::RunId,
+        step: vb_core::StepIdx,
+    ) -> Result<(), JournalError> {
+        let key = index_action_key(action, run, step)?;
+        self.inner.remove(&self.journal.index_action, key);
+        Ok(())
+    }
 }

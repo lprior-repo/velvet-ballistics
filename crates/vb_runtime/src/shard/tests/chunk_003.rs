@@ -107,7 +107,8 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
 
     let available = shard.frame_pools.get(&(2, 1)).map(FramePool::available);
-    assert_eq!(available, Some(1));
+    // Pool pre-allocated to capacity (4); finished run's frame was released back
+    assert_eq!(available, Some(4));
     Ok(())
 }
 
@@ -129,7 +130,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
-        Some(0)
+        // Pool pre-allocated to capacity (4); one frame in use, three available
+        Some(3)
     );
 
     assert_eq!(
@@ -139,7 +141,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
-        Some(1)
+        // After cancel, frame returned; 4 available
+        Some(4)
     );
     Ok(())
 }

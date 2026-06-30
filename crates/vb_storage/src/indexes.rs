@@ -45,4 +45,22 @@ impl FjallJournal {
         self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
         Ok(())
     }
+
+    /// Removes the pending action index marker for the given triple.
+    ///
+    /// Idempotent: removing a non-existent key is a no-op (Fjall returns
+    /// `Ok(())` for absent keys). Used to clear the index when an action
+    /// reaches a terminal state (completed, failed, abandoned) so the
+    /// runtime journal path leaves the `index_action` keyspace
+    /// consistent with the durable event log.
+    pub fn delete_action_index(
+        &self,
+        action: vb_core::ActionId,
+        run: vb_core::RunId,
+        step: vb_core::StepIdx,
+    ) -> Result<(), JournalError> {
+        let key = index_action_key(action, run, step)?;
+        self.index_action.remove(key.as_slice())?;
+        Ok(())
+    }
 }

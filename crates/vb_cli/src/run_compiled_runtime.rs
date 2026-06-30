@@ -58,7 +58,7 @@ pub(crate) fn run_compiled_workflow(
         Ok(journal) => journal,
         Err(code) => return code,
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
+    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, journal);
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
         report_runtime_error(format_args!("runtime submit error: {e}"), output);

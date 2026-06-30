@@ -228,7 +228,7 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
-        use crate::admission::{admit_artifact_run, AdmissionError};
+        use crate::admission::{AdmissionError, admit_artifact_run};
 
         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
             Ok(admission) => Ok(Some(admission)),
@@ -403,7 +403,9 @@ impl Shard {
             value_digest: preflight.value_digest,
             action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         })?;
-        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
             .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
@@ -432,7 +434,10 @@ impl Shard {
         step: StepIdx,
     ) -> RuntimeResult<()> {
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        state.frame.step_state(step).map_err(|_| RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .step_state(step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
         // Journal append FIRST so a journal failure does not diverge frame and journal.
@@ -442,7 +447,9 @@ impl Shard {
             output: SlotIdx::ZERO,
             attempt: 1,
         })?;
-        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
             .mark_succeeded(step)
@@ -461,20 +468,42 @@ impl Shard {
         let run = ticket.run;
         let code = failure.code;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
-        let outcome = self.apply_action_failure_to_state(ticket, failure)?;
+        // 1. Preflight (read-only): validate and decide the failure outcome.
+        //    No mutation has occurred yet, so a journal append failure
+        //    below cannot diverge memory-only state from durable evidence.
+        let preflight = {
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            preflight_action_failure(state, ticket, &failure)?
+        };
+        // 2. Journal append FIRST. On failure the typed
+        //    StorageJournalAppend error surfaces with the run, frame,
+        //    action_attempts, counters, journal sequence, trace ring,
+        //    and pending_action state all byte-equal to their
+        //    pre-call snapshots — mirroring the completion-path fix.
+        self.append_journal_event(RuntimeJournalEvent::ActionFailed {
+            run,
+            step: preflight.ticket.step,
+            action: preflight.ticket.action,
+            attempt: preflight.ticket.attempt,
+        })?;
+        // 3. Apply preflight mutations to the run frame / action_attempts.
+        //    Held in a narrow scope so `pending_action_remove` and
+        //    `trace_ring.push` can borrow `self` after the mutable
+        //    state borrow ends.
+        {
+            let state = self
+                .run_state_get_mut(run)
+                .ok_or(RuntimeError::RunNotFound)?;
+            apply_action_failure_preflight(state, &preflight)?;
+        }
         let _ = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
-            step: ticket.step,
+            step: preflight.ticket.step,
             code,
         });
-        self.append_journal_event(RuntimeJournalEvent::ActionFailed {
-            run,
-            step: ticket.step,
-            action: ticket.action,
-            attempt: ticket.attempt,
-        })?;
-        match outcome {
+        // 4. Drive the run state machine forward using the preflighted outcome.
+        match preflight.outcome {
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
                 self.drive_run(run)
             }
@@ -505,25 +534,6 @@ impl Shard {
             capacity: ticket.capacity.max(policy.max_attempts),
             ..ticket
         })
-    }
-
-    fn apply_action_failure_to_state(
-        &mut self,
-        ticket: ActionTicket,
-        failure: ActionFailure,
-    ) -> RuntimeResult<ActionFailureOutcome> {
-        let state = self
-            .run_state_get_mut(ticket.run)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        crate::shard::helpers::validate_action_completion(state, ticket)?;
-        if retry_is_available(state, ticket, failure.retry_policy)? {
-            state
-                .frame
-                .set_pc(ticket.step)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            return Ok(ActionFailureOutcome::RetryNow);
-        }
-        apply_error_handler(state, ticket)
     }
 }
 

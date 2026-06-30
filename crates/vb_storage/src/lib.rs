@@ -135,6 +135,11 @@ mod type_tests;
 #[path = "index_tests.rs"]
 mod index_tests;
 
+// vb-3wn7x: pending action index maintenance contract tests.
+#[cfg(test)]
+#[path = "index_maintenance_tests.rs"]
+mod index_maintenance_tests;
+
 #[cfg(test)]
 #[path = "artifact_tests.rs"]
 mod artifact_tests;

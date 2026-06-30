@@ -73,7 +73,7 @@ fn submit_artifact_then_run_succeeds() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+    let mut runtime = vb_runtime::runtime::Runtime::new(
         shard_count,
         test_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
@@ -139,7 +139,7 @@ fn run_without_artifact_under_relaxed_policy() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+    let mut runtime = vb_runtime::runtime::Runtime::new(
         shard_count,
         test_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
@@ -195,7 +195,7 @@ fn submit_artifact_yaml_compiled_then_run_with_inputs_taints() {
         fail_assert!("invalid shard count");
         return;
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+    let mut runtime = vb_runtime::runtime::Runtime::new(
         shard_count,
         test_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),

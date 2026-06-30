@@ -38,7 +38,7 @@ fn temp_socket_path(name: &str) -> PathBuf {
 fn make_runtime() -> Runtime {
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    Runtime::new(NonZeroUsize::MIN, config)
+    Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
 }
 
 fn make_client(server_path: &std::path::Path) -> UnixStream {

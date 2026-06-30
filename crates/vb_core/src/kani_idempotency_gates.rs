@@ -625,7 +625,10 @@ fn kani_action_ticket_has_valid_key() {
     kani::assume(selector < 4);
     let use_canonical_key: bool = kani::any();
     kani::cover!(selector == 0, "zero ticket components covered");
-    kani::cover!(selector == 3, "max representative ticket components covered");
+    kani::cover!(
+        selector == 3,
+        "max representative ticket components covered"
+    );
     match selector {
         0 => check_ticket_key_case(0, 0, 0, use_canonical_key),
         1 => check_ticket_key_case(1, 0, 1, use_canonical_key),
@@ -634,12 +637,7 @@ fn kani_action_ticket_has_valid_key() {
     }
 }
 
-fn check_ticket_key_case(
-    run_raw: u64,
-    seq_raw: u64,
-    action_raw: u16,
-    use_canonical_key: bool,
-) {
+fn check_ticket_key_case(run_raw: u64, seq_raw: u64, action_raw: u16, use_canonical_key: bool) {
     use crate::action::{action_ticket_has_valid_key, compute_action_idempotency_key};
 
     let run = RunId::new(run_raw);
@@ -661,7 +659,10 @@ fn check_ticket_key_case(
         capacity: kani::any(),
     };
     let observed = action_ticket_has_valid_key(ticket);
-    kani::cover!(use_canonical_key && observed, "matching canonical ticket covered");
+    kani::cover!(
+        use_canonical_key && observed,
+        "matching canonical ticket covered"
+    );
     kani::cover!(
         !use_canonical_key && !observed,
         "one-bit-flipped ticket rejection covered"

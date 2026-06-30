@@ -417,7 +417,7 @@ fn durable_runtime_public_surface(
             public_surface: "vb_core::CompiledWorkflow public constructor",
         }
     })?;
-    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), shared);
+    let mut runtime = Runtime::new(shard_count, runtime_config(), shared);
     runtime
         .submit_compiled_with_inputs(run, workflow, Box::from([]))
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
