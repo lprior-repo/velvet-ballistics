@@ -18,7 +18,7 @@
 //       * events_for_run_from     (replay.rs:130-161)
 //       * validate_replay_sequence (replay.rs:164-176)
 //   - crates/vb_storage/src/codec/mod.rs
-//       * next_seq                (codec/mod.rs:142-147)
+//       * next_seq                (codec/mod.rs:153-158)
 //       * validate_replayed_event (codec/mod.rs:149-167)
 //   - crates/vb_storage/src/trimming/logic.rs::FjallJournal
 //       * latest_durable_snapshot_seq (trimming/logic.rs:24-41)
@@ -108,7 +108,7 @@
 // so Verus skips body verification; the production contract is
 // attached via `assume_specification` in the companion spec file:
 //
-//   - `next_seq`                         <- crates/vb_storage/src/codec/mod.rs:142-147
+//   - `next_seq`                         <- crates/vb_storage/src/codec/mod.rs:153-158
 //        (production: `seq.get().checked_add(1).map(EventSeq::new)
 //                      .ok_or(JournalError::SequenceOverflow)`)
 //   - `production_validate_replayed_event`
@@ -370,7 +370,7 @@ impl MirrorJournal {
 // ============================================================================
 
 /// Production wrapper for `codec::next_seq` at
-/// `crates/vb_storage/src/codec/mod.rs:142-147`.
+/// `crates/vb_storage/src/codec/mod.rs:153-158`.
 ///
 /// Production body:
 /// ```text
