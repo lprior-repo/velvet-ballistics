@@ -8,8 +8,10 @@ const BUDGET_RS: &str = include_str!("../src/budget.rs");
 // satisfy `.contains(...)`. Concatenate the chunks so the proptest sees
 // the same surface the production binary sees.
 const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
-const ADMISSION_ERRORS_RS: &str = include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs");
-const ADMISSION_BUDGET_RS: &str = include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs");
+const ADMISSION_ERRORS_RS: &str =
+    include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs");
+const ADMISSION_BUDGET_RS: &str =
+    include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs");
 
 /// Total runtime surface area of the admission module after the shell
 /// glues its chunks in via `include!`. Asserted at proptest time so the
