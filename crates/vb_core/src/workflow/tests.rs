@@ -210,6 +210,49 @@ fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Res
     }
 }
 
+// CW-010: `max_step_budget_per_tick` must be validated at construction so that
+// a zero declaration is rejected as `ResourceContractExceeded` and any value
+// greater than the hard limit `MAX_STEP_BUDGET` is rejected as
+// `ResourceContractTooLarge`.
+
+#[test]
+fn workflow_parts_reject_zero_max_step_budget_per_tick() -> Result<(), String> {
+    let contract = resource_contract(1, 0, 1, 0, 0);
+    let parts = finish_const_parts_with(
+        ResourceContract {
+            max_step_budget_per_tick: 0,
+            ..contract
+        },
+        Box::new([]),
+    );
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_step_budget_per_tick",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_max_step_budget_per_tick_over_hard_limit() -> Result<(), String> {
+    let contract = resource_contract(1, 0, 1, 0, 0);
+    let parts = finish_const_parts_with(
+        ResourceContract {
+            max_step_budget_per_tick: crate::limits::MAX_STEP_BUDGET.saturating_add(1),
+            ..contract
+        },
+        Box::new([]),
+    );
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
 #[test]
 fn workflow_parts_reject_node_id_mismatch() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
