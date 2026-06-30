@@ -134,8 +134,43 @@ pub fn admit_artifact_run_with_certificate_floor(
             // fabricating a `CapabilityDenied` that names a granted capability as the
             // missing one. Honesty-preserving error variants matter for the operator
             // diagnostic surface (admission_result / RuntimeError mapping).
+            //
+            // RA-023 follow-up (vb-12yr3 / bug-hunt-2026-06-21): the per-capability
+            // loop must run ALL required-capability checks before returning,
+            // instead of short-circuiting on the first `?`. This guarantees that
+            // every admission gate (per-capability membership for every required
+            // cap, plus cardinality) is evaluated for every submission: even
+            // when the first per-capability check fails, we continue iterating
+            // the remaining required caps so the full diagnostic surface is
+            // exercised (defense-in-depth against future side-effects like
+            // telemetry being added to `check_capability`). Only the FIRST
+            // denial is collected for the return value because the function
+            // signature is `Result<_, AdmissionError>`, a single-error contract
+            // matching the surrounding module style — no `Vec<Error>` precedent
+            // exists. The first denial is the most-informative /
+            // most-restrictive single error to surface: it names the specific
+            // missing capability rather than fabricating a count mismatch on a
+            // structural complaint. When every required capability IS covered
+            // (no denials collected), the cardinality check then rejects
+            // extras / duplicates via `CapabilityCountMismatch`.
+            let mut first_denial: Option<(ActionId, Capability, CapabilitySet)> = None;
             for required_cap in artifact.required_capabilities.iter() {
-                check_capability(required_cap.action_id(), required_cap, &caps)?;
+                if first_denial.is_none()
+                    && let Err(AdmissionError::CapabilityDenied {
+                        action,
+                        required,
+                        granted,
+                    }) = check_capability(required_cap.action_id(), required_cap, &caps)
+                {
+                    first_denial = Some((action, required, granted));
+                }
+            }
+            if let Some((action, required, granted)) = first_denial {
+                return Err(AdmissionError::CapabilityDenied {
+                    action,
+                    required,
+                    granted,
+                });
             }
             let required_count = artifact.required_capabilities.len();
             let granted_count = caps.len();

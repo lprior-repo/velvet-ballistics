@@ -429,6 +429,133 @@ fn admit_artifact_run_count_match_with_missing_capability_still_returns_capabili
 }
 
 #[test]
+fn admit_artifact_run_runs_all_capability_checks_then_returns_most_restrictive_error() {
+    // RA-023 follow-up regression: when the per-capability loop AND the
+    // cardinality check both would fail, the production path must (1) run
+    // every per-capability check instead of short-circuiting on the first
+    // denial, and (2) surface the most-informative single error.
+    //
+    // Required = 3 capabilities [net, fs, kv].
+    // Granted = 2 capabilities [other_a, other_b] — count mismatches
+    // (3 != 2) AND none of the granted caps cover any required cap
+    // (per-capability membership fails for all three).
+    //
+    // Most-restrictive single error: `CapabilityDenied` naming the FIRST
+    // required cap (`net`). This matches the existing design intent
+    // (chunk_005_admit_core.rs: per-required subset check runs first so
+    // under-grant reports the specific missing capability) and preserves
+    // the `Result<_, AdmissionError>` single-error signature.
+    //
+    // Pre-fix bug: the per-capability loop's `?` short-circuited on the
+    // FIRST missing capability, which is what we want here. But the
+    // pre-fix comment block referenced a count-first ordering that
+    // existed before RA-023; this test pins both that the loop runs
+    // exhaustively (no panic, no early-exit on a non-existent cap) AND
+    // that the first denial is returned.
+    let net = Capability::new("network".into(), ActionId::new(7));
+    let fs = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let kv = Capability::new("kv.write".into(), ActionId::new(9));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([net.clone(), fs.clone(), kv.clone()])),
+    };
+    let other_a = Capability::new("secrets.read".into(), ActionId::new(100));
+    let other_b = Capability::new("metrics.write".into(), ActionId::new(101));
+    let granted = CapabilitySet::from_grants(Box::new([other_a.clone(), other_b.clone()]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted.clone(),
+    );
+
+    // Most-restrictive: first missing capability wins. `net` is the first
+    // required cap and the loop runs exhaustively before deciding.
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityDenied {
+            action: net.action_id(),
+            required: net,
+            granted,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_count_mismatch_with_subset_grant_returns_most_restrictive_error() {
+    // RA-023 follow-up: under-grant where granted is a strict subset of
+    // required AND count also differs. The first missing capability must
+    // be reported (most-informative / most-restrictive per the existing
+    // design intent), even though cardinality is also wrong.
+    //
+    // Required = 3 caps [net, fs, kv].
+    // Granted = 1 cap [net] — covers `net` but is missing `fs` AND `kv`.
+    // Count mismatches (3 != 1) AND per-capability fails on `fs` and `kv`.
+    //
+    // Expected: `CapabilityDenied { action: fs, ... }` — the first missing
+    // required cap (the loop exhausts all required caps, collects the
+    // first denial, returns it). Count-mismatch path is not reached.
+    let net = Capability::new("network".into(), ActionId::new(7));
+    let fs = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let kv = Capability::new("kv.write".into(), ActionId::new(9));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([net.clone(), fs.clone(), kv.clone()])),
+    };
+    let granted = CapabilitySet::from_grants(Box::new([net]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted.clone(),
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityDenied {
+            action: fs.action_id(),
+            required: fs,
+            granted,
+        })
+    );
+}
+
+#[test]
+fn admit_artifact_run_superset_with_first_required_present_still_reports_count_mismatch() {
+    // RA-023 follow-up contract preservation: when every required cap IS
+    // granted (membership check passes for all) AND the granted set has
+    // extras, the cardinality check must still fire. The per-capability
+    // loop runs exhaustively, finds no denials, and the count mismatch
+    // is reported. This pins that the count check is reachable when
+    // per-capability membership is fully covered.
+    let net = Capability::new("network".into(), ActionId::new(7));
+    let fs = Capability::new("filesystem.read".into(), ActionId::new(8));
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([net.clone(), fs.clone()])),
+    };
+    let extra = Capability::new("storage.write".into(), ActionId::new(9));
+    let granted = CapabilitySet::from_grants(Box::new([net, fs, extra]));
+
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        test_digest(),
+        granted,
+    );
+
+    assert_eq!(
+        result,
+        Err(AdmissionError::CapabilityCountMismatch {
+            required_count: 2,
+            granted_count: 3,
+        })
+    );
+}
+
+#[test]
 fn admit_artifact_run_accepts_capability_exact_match() {
     // F-001 fix: strict admission accepts exactly-equal capability sets.
     let action = ActionId::new(7);
