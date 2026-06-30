@@ -2027,6 +2027,43 @@ fn millis_since_epoch_returns_reasonable_value() -> Result<(), String> {
     )
 }
 
+/// When a `DeterministicTimeSource` is installed for the thread, `millis_since_epoch`
+/// returns the injected value rather than wall-clock time. This makes collect-primitive
+/// elapsed-time computation fully deterministic for tests.
+#[test]
+fn millis_since_epoch_uses_deterministic_time_source() -> Result<(), String> {
+    use crate::primitives::collect::{
+        install_deterministic_time_source_for_test, restore_real_time_source_for_test,
+    };
+    use vb_core::time::DeterministicTimeSource;
+
+    let injected: u64 = 1_700_000_000_000;
+    install_deterministic_time_source_for_test(DeterministicTimeSource::new(injected));
+    let observed = millis_since_epoch().map_err(|e| format!("{e:?}"))?;
+    ensure(
+        observed == injected,
+        format!("expected injected {injected}, got {observed}"),
+    )?;
+
+    // Switch to a different injected value mid-test to prove it's read each call.
+    let injected2: u64 = 1_800_000_000_000;
+    install_deterministic_time_source_for_test(DeterministicTimeSource::new(injected2));
+    let observed2 = millis_since_epoch().map_err(|e| format!("{e:?}"))?;
+    ensure(
+        observed2 == injected2,
+        format!("expected injected {injected2}, got {observed2}"),
+    )?;
+
+    // Restore real time and verify wall-clock returns a reasonable value.
+    restore_real_time_source_for_test();
+    let wall = millis_since_epoch().map_err(|e| format!("{e:?}"))?;
+    ensure(
+        wall > 946_684_800_000,
+        format!("wall clock should be post-2000, got {wall}"),
+    )?;
+    Ok(())
+}
+
 // =========================================================================
 // Additional coverage: state machine transitions, pagination boundaries,
 // capacity enforcement, and collect lifecycle edge cases.

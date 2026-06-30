@@ -27,6 +27,7 @@ pub mod replay;
 pub mod shard;
 pub mod span;
 pub mod value;
+pub mod time;
 pub mod value_store;
 pub mod workflow;
 
