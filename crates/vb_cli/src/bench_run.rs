@@ -49,7 +49,10 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
         return CliExitCode::RuntimeFailed.into();
     };
     let config = runtime_config_for_durability(DurabilityMode::None);
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
+    // `cmd_bench_run` is the explicit benchmark path. The non-durable intent is
+    // documented at the call site by using the long-named test/bench-only factory.
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
         if output != OutputFormat::Text {
             json_error(

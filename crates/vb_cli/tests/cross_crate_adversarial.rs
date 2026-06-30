@@ -1426,7 +1426,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
     let run_id = RunId::new(100);
 
     // When: submitting and ticking
@@ -1497,7 +1497,7 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
     let run_id = RunId::new(200);
 
     // When: submitting the same run ID twice, then ticking

@@ -309,7 +309,7 @@ fn count_events_for_run(events: &[TraceEvent], run: RunId) -> usize {
 fn test_direct_api_submit_to_finish_returns_result_and_taint() -> Result<(), String> {
     // Given: SCN-VT2F-001 fresh relaxed runtime and deterministic public workflow fixture.
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1001);
     let expected_value = SlotValue::Bool(true);
     let expected_bytes = encoded(&expected_value)?;
@@ -363,7 +363,7 @@ fn test_direct_api_submit_to_finish_returns_result_and_taint() -> Result<(), Str
 #[test]
 fn test_direct_api_inspect_known_and_unknown_run_returns_exact_state() -> Result<(), String> {
     // Given: SCN-VT2F-002 one active suspended run and one absent run id.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(1002);
     let absent = RunId::new(9002);
     assert_eq!(
@@ -419,7 +419,7 @@ fn test_direct_api_inspect_known_and_unknown_run_returns_exact_state() -> Result
 fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String> {
     // Given: SCN-VT2F-003 a known suspended run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1003);
     assert_eq!(
         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
@@ -458,7 +458,7 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1004);
     let unrelated = RunId::new(2004);
     assert_eq!(
@@ -527,7 +527,7 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
 #[test]
 fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> {
     // Given: SCN-VT2F-005 a suspended action workflow.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(1005);
     assert_eq!(
         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
@@ -567,7 +567,7 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
 fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let unrelated = RunId::new(2505);
     let absent = RunId::new(9505);
     assert_eq!(
@@ -614,7 +614,7 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
 fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
     // Given: SCN-VT2F-006 a run suspended on Ask with an exact public AskTicket.
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1006);
     assert_eq!(
         runtime.submit_direct(run, ask_then_finish_workflow()?),
@@ -665,7 +665,7 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
 fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run id and one unrelated suspended run.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let stale = RunId::new(1606);
     let unrelated = RunId::new(2606);
     assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
@@ -724,7 +724,8 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run whose bounded trace ring cannot retain
     // terminal evidence, plus one unrelated suspended run that must remain unchanged.
-    let mut runtime = Runtime::new(shard_count(1)?, trace_starved_config());
+    let mut runtime =
+        Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, trace_starved_config());
     let stale = RunId::new(1616);
     let unrelated = RunId::new(2616);
     assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
@@ -784,7 +785,7 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let wrong = RunId::new(9606);
     let unrelated = RunId::new(2607);
     assert_eq!(
@@ -829,7 +830,7 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
 #[test]
 fn test_direct_api_list_events_and_drain_trace_have_exact_semantics() -> Result<(), String> {
     // Given: SCN-VT2F-007 two runs that each emitted distinguishable trace events.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run_a = RunId::new(1007);
     let run_b = RunId::new(2007);
     assert_eq!(runtime.submit_direct(run_a, finished_workflow()?), Ok(()));
@@ -860,7 +861,7 @@ fn test_direct_api_list_events_and_drain_trace_have_exact_semantics() -> Result<
 #[test]
 fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), String> {
     // Given: SCN-VT2F-008 an active runtime with queued work.
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(1008);
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
     let pre_metrics = runtime.collect_metrics();
@@ -892,7 +893,7 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
 #[test]
 fn test_direct_api_rejects_submission_when_accepted_artifact_required() -> Result<(), String> {
     // Given: SCN-VT2F-009 strict/admission-required policy with no accepted artifact record.
-    let runtime = Runtime::new(shard_count(1)?, strict_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, strict_config());
     let workflow = finished_workflow()?;
     let digest = workflow.digest();
     let run = RunId::new(1009);
