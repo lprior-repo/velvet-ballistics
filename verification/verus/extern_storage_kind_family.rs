@@ -65,9 +65,9 @@
 //                                     (`pub(crate) fn validate_kind_family
 //                                       (magic: u32, kind: u16)
 //                                       -> Result<(), JournalError>`)
-//   - `next_seq`                   <- crates/vb_storage/src/codec/mod.rs:142
+//   - `next_seq`                   <- crates/vb_storage/src/codec/mod.rs:153
 //                                     (`pub(crate) fn next_seq`)
-//   - `validate_replayed_event`    <- crates/vb_storage/src/codec/mod.rs:149
+//   - `validate_replayed_event`    <- crates/vb_storage/src/codec/mod.rs:160
 //                                     (`pub(crate) fn validate_replayed_event`)
 //   - `validate_replay_sequence`   <- crates/vb_storage/src/journal/replay.rs:164
 //
@@ -493,7 +493,7 @@ impl MirrorJournalEvent {
 }
 
 // ============================================================================
-// Mirror of crates/vb_storage/src/codec/mod.rs::next_seq (line 142)
+// Mirror of crates/vb_storage/src/codec/mod.rs::next_seq (line 153)
 // ============================================================================
 pub const fn mirror_next_seq(seq: MirrorEventSeq) -> Result<MirrorEventSeq, MirrorJournalError> {
     match seq.get().checked_add(1) {
@@ -504,7 +504,7 @@ pub const fn mirror_next_seq(seq: MirrorEventSeq) -> Result<MirrorEventSeq, Mirr
 
 // ============================================================================
 // Mirror of crates/vb_storage/src/codec/mod.rs::validate_replayed_event
-// (line 149)
+// (line 160)
 // ============================================================================
 pub fn mirror_validate_replayed_event(
     run: MirrorRunId,
@@ -663,7 +663,7 @@ pub fn validate_replay_sequence(
 //   - validate_replay_sequence     (production journal/replay.rs:164)
 //
 // Plus the production mirror helpers `mirror_next_seq` and
-// `mirror_validate_replayed_event` (codec/mod.rs:142,149) and a
+// `mirror_validate_replayed_event` (codec/mod.rs:153,160) and a
 // representative `MirrorRecordKind` discriminant + `MirrorJournalEvent`
 // variant.
 #[allow(dead_code)]

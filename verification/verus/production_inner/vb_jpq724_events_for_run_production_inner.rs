@@ -17,7 +17,7 @@
 // `verification/verus/extern_vb_jpq724_events_for_run_production.rs`,
 // which carries verbatim copies of the production source at:
 //
-//   - `next_seq`                    <- crates/vb_storage/src/codec/mod.rs:142-147
+//   - `next_seq`                    <- crates/vb_storage/src/codec/mod.rs:153-158
 //   - `validate_replayed_event`     <- crates/vb_storage/src/codec/mod.rs:149-167
 //   - `validate_replay_sequence`    <- crates/vb_storage/src/journal/replay.rs:164-176
 //   - `events_for_run`              <- crates/vb_storage/src/journal/replay.rs:59-61
@@ -32,8 +32,8 @@
 //
 // DRIFT POLICY: `crates/vb_storage/src/journal/replay.rs:59-176`
 // Production source coverage:
-//   - `next_seq`                    <- crates/vb_storage/src/codec/mod.rs:142-147
-//   - `validate_replayed_event`     <- crates/vb_storage/src/codec/mod.rs:149-167
+//   - `next_seq`                    <- crates/vb_storage/src/codec/mod.rs:153-158
+//   - `validate_replayed_event`     <- crates/vb_storage/src/codec/mod.rs:160-178
 //   - `validate_replay_sequence`    <- crates/vb_storage/src/journal/replay.rs:164-176
 //   - `events_for_run`              <- crates/vb_storage/src/journal/replay.rs:59-61
 //   - `events_for_run_full`         <- crates/vb_storage/src/journal/replay.rs:74-79
@@ -85,7 +85,7 @@ pub struct EventReplayLimitStub {
 }
 
 /// Mirror of production `next_seq` decision at
-/// `crates/vb_storage/src/codec/mod.rs:142-147`. Returns Some(seq+1)
+/// `crates/vb_storage/src/codec/mod.rs:153-158`. Returns Some(seq+1)
 /// if seq < u64::MAX, otherwise returns None. Body is
 /// `#[verifier::external]` (opaque).
 #[verifier::external]

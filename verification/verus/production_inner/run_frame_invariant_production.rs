@@ -24,7 +24,7 @@
 //      (Verus models it as Seq<T> in math mode). The `into_boxed_slice`
 //      call in `run_frame_new` is the production-identical construction.
 //   4. Bare-path `use crate::errors::*`, `use crate::ids::*`,
-//      `use crate::value::*` in production frame.rs:5-7 are not
+//      `use crate::value::*` in production frame.rs:40-42 are not
 //      resolvable in a single-file Verus unit. The mirror inlines
 //      the relevant enum variants (Taint, SlotValue, CoreError) instead
 //      of pulling in the full value module which would require
@@ -184,11 +184,11 @@ pub enum CoreError {
 pub type CoreResult<T> = Result<T, CoreError>;
 
 // ============================================================================
-// StepState — mirror of `crates/vb_core/src/frame.rs:10-29`
+// StepState — mirror of `crates/vb_core/src/frame.rs:47-64`
 // ============================================================================
 
 /// Mirror of the closed `StepState` discriminant set at
-/// `crates/vb_core/src/frame.rs:10-29`. The 8 variants are the exact set
+/// `crates/vb_core/src/frame.rs:47-64`. The 8 variants are the exact set
 /// used by `is_valid_step_state_transition` and the step-state-machine
 /// kernels; the spec mirrors only those 8.
 ///
@@ -206,7 +206,7 @@ pub enum StepState {
 }
 
 // ============================================================================
-// RunFrame — mirror of `crates/vb_core/src/frame.rs:65-78`
+// RunFrame — mirror of `crates/vb_core/src/frame.rs:101-113`
 // ============================================================================
 //
 // Field names + types match production exactly so a drift in field
@@ -236,7 +236,8 @@ pub struct RunFrame {
 // `assume_specification` contract below is faithful.
 // ============================================================================
 
-/// Mirror of `RunFrame::new` at `crates/vb_core/src/frame.rs:82-110`.
+/// Mirror of `RunFrame::new` at
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -294,7 +295,8 @@ pub fn run_frame_new(
     })
 }
 
-/// Mirror of `RunFrame::reinitialize` at `crates/vb_core/src/frame.rs:113-150`.
+/// Mirror of `RunFrame::reinitialize` at
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -345,25 +347,29 @@ pub fn run_frame_reinitialize(
     Ok(())
 }
 
-/// Mirror of `RunFrame::step_count` at `crates/vb_core/src/frame.rs:170-174`.
+/// Mirror of `RunFrame::step_count` at
+/// `crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24`.
 #[verifier::external]
 pub fn run_frame_step_count(frame: &RunFrame) -> u16 {
     frame.step_count
 }
 
-/// Mirror of `RunFrame::slot_count` at `crates/vb_core/src/frame.rs:176-180`.
+/// Mirror of `RunFrame::slot_count` at
+/// `crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30`.
 #[verifier::external]
 pub fn run_frame_slot_count(frame: &RunFrame) -> u16 {
     frame.slot_count
 }
 
-/// Mirror of `RunFrame::pc` at `crates/vb_core/src/frame.rs:158-162`.
+/// Mirror of `RunFrame::pc` at
+/// `crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12`.
 #[verifier::external]
 pub fn run_frame_pc(frame: &RunFrame) -> StepIdx {
     frame.pc
 }
 
-/// Mirror of `RunFrame::set_pc` at `crates/vb_core/src/frame.rs:226-234`.
+/// Mirror of `RunFrame::set_pc` at
+/// `crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidProgramCounter { step: pc }) when
@@ -379,7 +385,7 @@ pub fn run_frame_set_pc(frame: &mut RunFrame, pc: StepIdx) -> CoreResult<()> {
 }
 
 /// Mirror of `RunFrame::write_slot_with_taint` at
-/// `crates/vb_core/src/frame.rs:264-280`.
+/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37`.
 ///
 /// Production contract:
 ///   - Err(CoreError::SlotOutOfBounds { slot }) when
@@ -404,29 +410,32 @@ pub fn run_frame_write_slot_with_taint(
     Ok(())
 }
 
-/// Mirror of `RunFrame::states_snapshot` at `crates/vb_core/src/frame.rs:304-308`.
+/// Mirror of `RunFrame::states_snapshot` at
+/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:63-65`.
 #[verifier::external]
 pub fn run_frame_states_snapshot(frame: &RunFrame) -> Vec<StepState> {
     frame.states.to_vec()
 }
 
-/// Mirror of `RunFrame::slots_snapshot` at `crates/vb_core/src/frame.rs:292-296`.
+/// Mirror of `RunFrame::slots_snapshot` at
+/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53`.
 #[verifier::external]
 pub fn run_frame_slots_snapshot(frame: &RunFrame) -> Vec<Option<SlotValue>> {
     frame.slots.to_vec()
 }
 
-/// Mirror of `RunFrame::taint_snapshot` at `crates/vb_core/src/frame.rs:298-302`.
+/// Mirror of `RunFrame::taint_snapshot` at
+/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:57-59`.
 #[verifier::external]
 pub fn run_frame_taint_snapshot(frame: &RunFrame) -> Vec<Taint> {
     frame.taint.to_vec()
 }
 
 /// Mirror of `is_valid_step_state_transition` at
-/// `crates/vb_core/src/frame.rs:33-63`. Pure decision fn (no Result).
+/// `crates/vb_core/src/frame.rs:67-98`. Pure decision fn (no Result).
 /// Marked `#[verifier::external]` so Verus skips body verification —
 /// the body below mirrors the production transition table from
-/// `crates/vb_core/src/frame.rs:37-56`, and the `assume_specification`
+/// `crates/vb_core/src/frame.rs:67-98`, and the `assume_specification`
 /// contract in the spec file pins the contract. (A module-level const
 /// holding the `VALID_TRANSITIONS` table triggers an internal Verus
 /// lifetime/erasure bug in this Verus version, so the body inlines the
@@ -438,7 +447,7 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         return true;
     }
     // Inlined mirror of the `VALID_TRANSITIONS` table at
-    // `crates/vb_core/src/frame.rs:37-56`. Drift between this list and
+    // `crates/vb_core/src/frame.rs:72-91`. Drift between this list and
     // the production table is a binding-debt item outside Verus.
     step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Running)
         || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Succeeded)

@@ -22,23 +22,23 @@
 //      the binding-gate WEAK marker.
 //
 // Production mirror binding ledger (pointing to production source files):
-//   - `RunFrame`                            <- crates/vb_core/src/frame.rs:65-78
-//   - `StepState`                           <- crates/vb_core/src/frame.rs:10-29
-//   - `is_valid_step_state_transition`      <- crates/vb_core/src/frame.rs:33-63
-//   - `RunFrame::new`                       <- crates/vb_core/src/frame.rs:82-110
-//   - `RunFrame::reinitialize`              <- crates/vb_core/src/frame.rs:113-150
-//   - `RunFrame::pc`                        <- crates/vb_core/src/frame.rs:158-162
-//   - `RunFrame::step_count`                <- crates/vb_core/src/frame.rs:170-174
-//   - `RunFrame::slot_count`                <- crates/vb_core/src/frame.rs:176-180
-//   - `RunFrame::set_pc`                    <- crates/vb_core/src/frame.rs:226-234
-//   - `RunFrame::write_slot_with_taint`     <- crates/vb_core/src/frame.rs:264-280
-//   - `RunFrame::states_snapshot`           <- crates/vb_core/src/frame.rs:304-308
-//   - `RunFrame::slots_snapshot`            <- crates/vb_core/src/frame.rs:292-296
-//   - `RunFrame::taint_snapshot`            <- crates/vb_core/src/frame.rs:298-302
-//   - `Taint` discriminant set              <- crates/vb_core/src/value.rs:14-25
-//   - `SlotValue` discriminant set          <- crates/vb_core/src/value.rs:125-142
-//   - `CoreError` relevant variants         <- crates/vb_core/src/errors.rs
-//   - `RunId`, `StepIdx`, `SlotIdx`         <- crates/vb_core/src/ids/mod.rs
+//   - `RunFrame`                                <- crates/vb_core/src/frame.rs:101-113
+//   - `StepState`                               <- crates/vb_core/src/frame.rs:47-64
+//   - `is_valid_step_state_transition`          <- crates/vb_core/src/frame.rs:67-98
+//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31
+//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71
+//   - `RunFrame::pc`                            <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12
+//   - `RunFrame::step_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24
+//   - `RunFrame::slot_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30
+//   - `RunFrame::set_pc`                        <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86
+//   - `RunFrame::write_slot_with_taint`         <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37
+//   - `RunFrame::states_snapshot`               <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:63-65
+//   - `RunFrame::slots_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53
+//   - `RunFrame::taint_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:57-59
+//   - `Taint` discriminant set                  <- crates/vb_core/src/value.rs:14-25
+//   - `SlotValue` discriminant set              <- crates/vb_core/src/value.rs:125-142
+//   - `CoreError` relevant variants             <- crates/vb_core/src/errors.rs
+//   - `RunId`, `StepIdx`, `SlotIdx`             <- crates/vb_core/src/ids/mod.rs
 //
 // ============================================================================
 // TRUST BOUNDARY

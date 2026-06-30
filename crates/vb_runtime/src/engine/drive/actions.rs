@@ -31,6 +31,13 @@ pub(crate) fn emit_slot_evidence(
     // success/failure contract (a read failure is recorded as a gap and
     // the step continues — capacity overflows and other push_* errors
     // still propagate via `?`).
+    //
+    // Black-hat FINDING-003: the slot is now threaded through the gap
+    // record so operators can see WHICH slot failed; the underlying
+    // `CoreError` variant is still collapsed to `Err(_)` because the
+    // only two callers (SlotOutOfBounds / SlotUninitialized) are
+    // surfaced identically at this layer and the variant will be
+    // classified at the report boundary.
     if let Some(slot) = collect_written_slot(node) {
         match run.read_slot(slot) {
             Ok(value) => {
@@ -41,7 +48,7 @@ pub(crate) fn emit_slot_evidence(
                     .map_err(RuntimeEngineError::Core)?;
             }
             Err(_) => {
-                drive_state.record_evidence_gap();
+                drive_state.record_evidence_gap(slot);
                 return Ok(());
             }
         }
@@ -54,7 +61,7 @@ pub(crate) fn emit_slot_evidence(
                     .map_err(RuntimeEngineError::Core)?;
             }
             Err(_) => {
-                drive_state.record_evidence_gap();
+                drive_state.record_evidence_gap(slot);
                 return Ok(());
             }
         }

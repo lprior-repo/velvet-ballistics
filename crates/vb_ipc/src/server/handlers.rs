@@ -138,8 +138,8 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
     };
 
     match runtime.snapshot_run(run_id, 0) {
-        Ok(vb_runtime::shard::InspectResponse::Found(_snapshot)) => IpcResponse::Inspected {
-            run_id: run_id.get(),
+        Ok(vb_runtime::shard::InspectResponse::Found(snapshot)) => IpcResponse::Inspected {
+            run_id: snapshot.run.get(),
         },
         Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => IpcResponse::RuntimeError {
             message: String::from("run not found"),

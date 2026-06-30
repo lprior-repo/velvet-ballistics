@@ -85,7 +85,11 @@ fn release_drops_when_at_capacity() {
 #[test]
 fn is_empty_returns_false_for_new_pool() {
     let pool = new_pool(2, 1, 4);
-    assert_eq!(pool.is_empty(), false, "pool is pre-allocated with capacity frames");
+    assert_eq!(
+        pool.is_empty(),
+        false,
+        "pool is pre-allocated with capacity frames"
+    );
     assert_eq!(pool.available(), 4);
 }
 
@@ -114,7 +118,11 @@ fn capacity_returns_configured_value() {
 fn frame_pool_new_preallocates_capacity_frames() {
     let pool = new_pool(2, 1, 8);
     assert_eq!(pool.capacity(), 8);
-    assert_eq!(pool.available(), 8, "all 8 frames pre-allocated at construction");
+    assert_eq!(
+        pool.available(),
+        8,
+        "all 8 frames pre-allocated at construction"
+    );
     assert_eq!(pool.is_empty(), false);
 }
 
@@ -139,8 +147,12 @@ fn frame_pool_exhausted_take_returns_error() {
     // Given a pool with capacity 2
     let mut pool = new_pool(2, 1, 2);
     // When taking all 2 frames without releasing
-    let _f1 = pool.take(RunId::new(1), StepIdx::new(0)).expect("first take");
-    let _f2 = pool.take(RunId::new(2), StepIdx::new(0)).expect("second take");
+    let _f1 = pool
+        .take(RunId::new(1), StepIdx::new(0))
+        .expect("first take");
+    let _f2 = pool
+        .take(RunId::new(2), StepIdx::new(0))
+        .expect("second take");
     // Then a third take fails (no fresh allocation as fallback)
     let result = pool.take(RunId::new(3), StepIdx::new(0));
     assert!(matches!(

@@ -55,7 +55,7 @@
 //   - `TimerWheel::len`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:144-146
 //   - `TimerWheel::get_kind`                          <- crates/vb_runtime/src/shard/timer_wheel.rs:150-152
 //   - `RuntimePolicy` (4-variant enum)                <- crates/vb_core/src/policy.rs:7+
-//   - `RunAdmission` (6-field struct)                 <- crates/vb_runtime/src/admission.rs:82-95
+//   - `RunAdmission` (6-field struct)                 <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-16
 //
 // ============================================================================
 // TRUST BOUNDARY

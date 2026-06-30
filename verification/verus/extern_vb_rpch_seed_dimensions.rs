@@ -51,7 +51,7 @@
 //      under a standalone `verus --crate-type=lib` invocation.
 //
 //   2. `types.rs:37-145` declares `RecoveryError` via
-//      `#[derive(thiserror::Error)]`, and `types.rs:629` uses
+//      `#[derive(thiserror::Error)]`, and `types.rs:730-749` uses
 //      `#[derive(... Serialize, Deserialize)]` for `RecoveryFrameSeed`.
 //
 // The in-tree mirror at
@@ -63,11 +63,11 @@
 // ============================================================================
 //
 // Type mirrors:
-//   - `RunId(pub u64)`                             <- crates/vb_core/src/ids/mod.rs:65
+//   - `RunId(pub u64)`                             <- crates/vb_core/src/ids/mod.rs:80
 //   - `MirrorRecoveryError::FrameDimensionOverflow { run: RunId }`
-//                                                <- crates/vb_storage/src/recovery/types.rs:139-144
+//                                                <- crates/vb_storage/src/recovery/types.rs:124-127
 //   - `MirrorRecoveryFrameSeed { step_count: u16, slot_count: u16 }`
-//                                                <- crates/vb_storage/src/recovery/types.rs:629-649
+//                                                <- crates/vb_storage/src/recovery/types.rs:730-749
 //
 // Production-bound exec wrappers:
 //   - `production_recovery_dimension_count_from_index`  <- derive.rs:250-261
