@@ -259,12 +259,62 @@ pub enum IndexStatusState {
     Active = 1,
     /// Completed — run finished successfully.
     Completed = 2,
-    /// Unknown or custom state marker.
+    /// Unknown or custom state marker for bytes in the safe range
+    /// `MIN_OTHER_STATUS_BYTE..=u8::MAX` (currently `3..=255`).
+    ///
+    /// **Construction:** caller code MUST use [`IndexStatusState::new_other`]
+    /// to construct this variant — the bare `Other(byte)` tuple syntax
+    /// is reserved for in-crate decoder/test paths and is unsafe for
+    /// external callers because bytes in `0..MIN_OTHER_STATUS_BYTE`
+    /// collide with the `Submitted`/`Active`/`Completed` variants on
+    /// the wire (SC-001 / vb-f1xkn / vb-3i8pq). The named variants
+    /// above are the only safe way to express the collision bytes.
     Other(u8) = 255,
 }
 
 impl IndexStatusState {
+    /// Safe constructor for `IndexStatusState::Other(byte)`.
+    ///
+    /// Rejects bytes in `0..MIN_OTHER_STATUS_BYTE` (currently `0..=2`)
+    /// because those bytes alias the named `Submitted` / `Active` /
+    /// `Completed` variants on the wire and would silently round-trip
+    /// to the wrong named variant on decode (SC-001 / vb-f1xkn / vb-3i8pq).
+    ///
+    /// This is the public-construction counterpart of
+    /// [`Self::from_u8`]: `from_u8` is the byte-decode constructor
+    /// (named for `0..=2`, `Other` above the threshold), and
+    /// `new_other` is the application-side constructor for the
+    /// `Other` payload byte (rejects the collision range so callers
+    /// cannot fabricate an illegal state).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(JournalError::IndexStatusStateCollision { byte, min })`
+    /// when `byte < MIN_OTHER_STATUS_BYTE`. The error carries the
+    /// rejected byte and the minimum accepted byte (currently `3`).
+    pub const fn new_other(byte: u8) -> Result<Self, crate::error::JournalError> {
+        if byte < crate::constants::MIN_OTHER_STATUS_BYTE {
+            return Err(crate::error::JournalError::IndexStatusStateCollision {
+                byte,
+                min: crate::constants::MIN_OTHER_STATUS_BYTE,
+            });
+        }
+        Ok(Self::Other(byte))
+    }
+
     /// Construct a state from a raw u8 byte.
+    ///
+    /// This is the **decode** constructor: bytes `0..=2` map to the
+    /// named variants (which is the correct semantic for wire bytes
+    /// in that range), and bytes `>= MIN_OTHER_STATUS_BYTE` (currently
+    /// `3..=255`) map to `Other(byte)`. The map is total and
+    /// collision-free because the range `0..MIN_OTHER_STATUS_BYTE`
+    /// is reserved for the named variants.
+    ///
+    /// To *create* an `Other` payload byte from application code,
+    /// use [`Self::new_other`] instead — it rejects the collision
+    /// range and prevents lossless round-trip failure (SC-001 /
+    /// vb-f1xkn / vb-3i8pq).
     #[must_use]
     pub const fn from_u8(value: u8) -> Self {
         match value {

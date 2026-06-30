@@ -166,6 +166,108 @@ mod type_tests {
         assert_eq!(IndexStatusState::Other(99).to_u8(), 99);
     }
 
+    // -- vb-3i8pq: IndexStatusState::new_other safe-construction tests -------
+    //
+    // These tests cover the public-safe construction path for the `Other`
+    // variant. The unsafe bare-tuple path `IndexStatusState::Other(byte)`
+    // is intentionally NOT exercised here; application code MUST go
+    // through `new_other` to avoid fabricating a state whose wire byte
+    // collides with one of the named variants (SC-001 / vb-f1xkn /
+    // vb-3i8pq).
+
+    #[test]
+    fn index_status_state_new_other_accepts_safe_range() {
+        for byte in crate::constants::MIN_OTHER_STATUS_BYTE..=u8::MAX {
+            let state = IndexStatusState::new_other(byte).unwrap_or_else(|e| {
+                panic!("new_other({byte}) must succeed in safe range, got {e:?}")
+            });
+            // The returned state must carry exactly the requested byte.
+            assert_eq!(
+                state.to_u8(),
+                byte,
+                "constructed Other({byte}) must encode to byte {byte}"
+            );
+        }
+    }
+
+    #[test]
+    fn index_status_state_new_other_accepts_min_boundary() {
+        // The boundary byte (MIN_OTHER_STATUS_BYTE) must succeed and
+        // must NOT collide with any named variant on the wire.
+        let min_byte = crate::constants::MIN_OTHER_STATUS_BYTE;
+        assert_eq!(min_byte, 3, "MIN_OTHER_STATUS_BYTE contract is 3");
+        let state =
+            IndexStatusState::new_other(min_byte).expect("MIN_OTHER_STATUS_BYTE must be accepted");
+        assert_eq!(state.to_u8(), min_byte);
+        assert_ne!(state.to_u8(), IndexStatusState::Submitted.to_u8());
+        assert_ne!(state.to_u8(), IndexStatusState::Active.to_u8());
+        assert_ne!(state.to_u8(), IndexStatusState::Completed.to_u8());
+    }
+
+    #[test]
+    fn index_status_state_new_other_rejects_collision_range() {
+        // Bytes in `0..MIN_OTHER_STATUS_BYTE` (currently `0..=2`) must
+        // be rejected with a typed IndexStatusStateCollision carrying
+        // both the rejected byte and the accepted minimum.
+        for byte in 0u8..crate::constants::MIN_OTHER_STATUS_BYTE {
+            let err = IndexStatusState::new_other(byte)
+                .expect_err("collision-range byte must be rejected by new_other");
+            match err {
+                JournalError::IndexStatusStateCollision { byte: b, min } => {
+                    assert_eq!(b, byte, "rejected byte must round-trip in error");
+                    assert_eq!(
+                        min,
+                        crate::constants::MIN_OTHER_STATUS_BYTE,
+                        "min must reflect the safe-range minimum"
+                    );
+                }
+                other => panic!(
+                    "expected JournalError::IndexStatusStateCollision for byte {byte}, got {other:?}"
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn index_status_state_new_other_safe_constructed_state_passes_to_u8_checked() {
+        // Belt-and-suspenders: states built via the safe constructor
+        // must also pass the existing encoder-boundary guard
+        // `to_u8_checked` without raising a collision error.
+        for byte in [
+            crate::constants::MIN_OTHER_STATUS_BYTE,
+            crate::constants::MIN_OTHER_STATUS_BYTE + 1,
+            42,
+            99,
+            255,
+        ] {
+            let state = IndexStatusState::new_other(byte).expect("safe byte must succeed");
+            let checked_byte = state
+                .to_u8_checked()
+                .expect("safe-constructed state must pass to_u8_checked");
+            assert_eq!(checked_byte, byte, "checked byte must equal payload");
+        }
+    }
+
+    #[test]
+    fn index_status_state_new_other_makes_collision_unrepresentable_for_safe_callers() {
+        // The whole point of approach (A): for callers using the safe
+        // construction path, it is impossible to obtain an
+        // `IndexStatusState` whose wire byte collides with a named
+        // variant. `new_other(0|1|2)` always returns `Err`.
+        for byte in 0u8..=2 {
+            assert!(
+                IndexStatusState::new_other(byte).is_err(),
+                "new_other({byte}) must reject the collision range"
+            );
+        }
+        // And the named variants are the only way to express the
+        // collision bytes: from_u8 maps them to the named variants
+        // (which is the correct decode semantic).
+        assert_eq!(IndexStatusState::from_u8(0), IndexStatusState::Submitted);
+        assert_eq!(IndexStatusState::from_u8(1), IndexStatusState::Active);
+        assert_eq!(IndexStatusState::from_u8(2), IndexStatusState::Completed);
+    }
+
     #[test]
     fn index_status_state_roundtrip_from_and_to_u8() {
         for value in [0u8, 1, 2, 7, 42, 255] {
@@ -176,6 +278,22 @@ mod type_tests {
 
     #[test]
     fn index_status_state_other_byte_collides_with_named_variant_at_byte_level() {
+        // This test deliberately constructs `IndexStatusState::Other(byte)`
+        // for bytes in the collision range, which is reserved for
+        // in-crate test/decoder paths. It exists to document the
+        // byte-level shape of the collision so that the unsafe
+        // bypass is visible to reviewers and so that future refactors
+        // (e.g. wrapping the inner byte in a newtype) can pivot on
+        // these exact assertions.
+        //
+        // Application code MUST use `IndexStatusState::new_other(byte)`
+        // to construct an `Other` state; the bare tuple syntax above
+        // is unsafe for caller code because it produces a wire byte
+        // that aliases the named variants (SC-001 / vb-f1xkn / vb-3i8pq).
+        //
+        // Companion tests for the safe-construction path:
+        // - `index_status_state_new_other_rejects_collision_range`
+        // - `index_status_state_new_other_makes_collision_unrepresentable_for_safe_callers`
         assert_eq!(
             IndexStatusState::Other(0).to_u8(),
             IndexStatusState::Submitted.to_u8(),
@@ -196,6 +314,14 @@ mod type_tests {
             IndexStatusState::Submitted.to_u8(),
             "boundary byte 3 must not collide with any named variant"
         );
+        // And `new_other` closes the door: the safe constructor must
+        // reject every byte that this test fabricates.
+        for collision_byte in 0u8..crate::constants::MIN_OTHER_STATUS_BYTE {
+            assert!(
+                IndexStatusState::new_other(collision_byte).is_err(),
+                "new_other({collision_byte}) must reject the collision byte directly"
+            );
+        }
     }
 
     #[test]
