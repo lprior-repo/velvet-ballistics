@@ -1433,7 +1433,6 @@ fn visit_node_for_total_steps(
                 *body,
                 *done,
                 u64::from(*limit),
-                visited,
                 node_count,
                 total,
                 stack,
@@ -1448,7 +1447,6 @@ fn visit_node_for_total_steps(
                 *body,
                 *done,
                 u64::from(*limit),
-                visited,
                 node_count,
                 total,
                 stack,
@@ -1460,10 +1458,9 @@ fn visit_node_for_total_steps(
                 Ok(value) => value,
                 Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
             };
-            total = count_and_push_loop_body(
-                nodes, *body, *done, iter_count, visited, node_count, total, stack,
-            )
-            .map_err(map_loop_body_budget_error)?;
+            total =
+                count_and_push_loop_body(nodes, *body, *done, iter_count, node_count, total, stack)
+                    .map_err(map_loop_body_budget_error)?;
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
@@ -1475,7 +1472,6 @@ fn visit_node_for_total_steps(
                 *body,
                 *done,
                 u64::from(*max_attempts),
-                visited,
                 node_count,
                 total,
                 stack,
@@ -1575,13 +1571,12 @@ fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalError> 
 
 /// Counts body region steps for a loop header and adds multiplied iterations to total.
 #[inline]
-#[allow(clippy::too_many_arguments, unused_variables)]
+#[allow(clippy::too_many_arguments)]
 fn count_and_push_loop_body(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
     done: StepIdx,
     iter_count: u64,
-    visited: &mut [bool],
     node_count: usize,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
