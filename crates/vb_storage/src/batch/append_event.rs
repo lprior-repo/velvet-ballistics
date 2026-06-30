@@ -102,6 +102,17 @@ impl<'j> JournalWriteBatch<'j> {
         }
 
         self.inner.insert(&self.journal.events, key, value);
+        // vb-3wn7x: maintain the pending action index atomically with
+        // the event write. The action lifecycle map (see
+        // `super::action_index`) translates each event variant into the
+        // index mutation it implies (insert for scheduled events,
+        // tombstone for completed/failed/abandoned events, no-op for
+        // every other variant). The mutation lands in the SAME
+        // OwnedWriteBatch, so committing this batch makes the event
+        // and the index update durable together — recovery can rely on
+        // the index as the authoritative pending-action cursor.
+        self.journal
+            .stage_pending_action_index_op(&mut self.inner, event)?;
         // Record the key as staged so a subsequent append_event with
         // the same `(run, seq)` is rejected by the same-batch
         // duplicate guard above before the durable lookup.

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+mod action_index;
 mod append_event;
 mod commit;
 mod putters;

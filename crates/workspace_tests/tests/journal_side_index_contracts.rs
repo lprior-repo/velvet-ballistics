@@ -269,6 +269,16 @@ proptest::proptest! {
     /// This test is inherently limited because Fjall's commit() rarely fails in practice.
     /// We verify the batch state machine behaves correctly by checking aborted flag
     /// and len() invariants after failed encode operations.
+    ///
+    /// vb-3wn7x: as of this fix, `append_event` for an action-lifecycle
+    /// event automatically stages the corresponding `index_action`
+    /// mutation in the same batch. A subsequent explicit
+    /// `put_action_index` call from the test is therefore redundant —
+    /// Fjall last-write-wins leaves the marker in place either way.
+    /// The expected `batch.len()` after `append_event` of an
+    /// `ActionScheduled` plus an explicit `put_action_index` is now 3:
+    /// one for the event, one auto-staged by `append_event`, and one
+    /// from the explicit call.
     #[test]
     fn test_batch_commit_all_or_nothing_across_keyspaces(
         action_val in 1u16..=100u16,
@@ -285,13 +295,20 @@ proptest::proptest! {
 
         let mut batch = JournalWriteBatch::new(&journal);
 
-        // Stage valid entries
+        // Stage valid entries. vb-3wn7x: append_event auto-stages the
+        // index_action mutation, so it contributes 2 (event + index)
+        // to batch.len(). The explicit put_action_index call adds one
+        // more (Fjall last-write-wins makes it idempotent).
         prop_assert!(batch.append_event(&event).is_ok(), "append_event must succeed");
         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index must succeed");
 
         // Before commit: batch is non-empty
         prop_assert!(!batch.is_empty(), "batch must be non-empty before commit");
-        prop_assert_eq!(batch.len(), 2, "batch.len() must be 2 before commit");
+        prop_assert_eq!(
+            batch.len(),
+            3,
+            "batch.len() must be 3 before commit (event + auto-index + explicit-index)"
+        );
 
         // Commit succeeds with valid data — verifying all-or-nothing in practice
         let commit_result = batch.commit();
@@ -381,14 +398,29 @@ proptest::proptest! {
 proptest::proptest! {
     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
-    /// PO-012: After N successful staging operations, batch.len() == N.
-    /// is_empty() == (len() == 0) always holds.
+    /// PO-012: After N successful staging operations, batch.len() ==
+    /// num_appends * 2 (each action-scheduled event auto-stages the
+    /// matching index_action mutation). `is_empty()` ==
+    /// `(len() == 0)` always holds.
+    ///
+    /// vb-3wn7x: as of this fix, each `append_event(ActionScheduled)`
+    /// appends the event AND its `index_action` mutation to the
+    /// OwnedWriteBatch, so each successful `append_event` increments
+    /// `batch.len()` by exactly 2 (event row + index marker). The
+    /// total `batch.len()` after `N` appends is therefore `N * 2`,
+    /// not `N`. The strict-monotonicity, `is_empty() == (len() == 0)`,
+    /// and never-shrinks invariants remain.
     #[test]
     fn test_batch_len_monotonic_and_is_empty_invariant(
         num_ops in 0u8..=20u8,
         action_val in 1u16..=100u16,
         run_val in 1u64..=1000u64,
     ) {
+        // vb-3wn7x: one for the event row + one for the auto-staged
+        // index_action mutation. Future action-lifecycle variants that
+        // stage additional index mutations would bump this constant.
+        const LEN_INCREMENT_PER_APPEND_EVENT: usize = 2;
+
         let action = ActionId::new(action_val);
         let run = RunId::new(run_val);
         let (_temp, journal) = temp_journal();
@@ -410,11 +442,16 @@ proptest::proptest! {
             let result = batch.append_event(&event);
             prop_assert!(result.is_ok(), "append_event must succeed for valid event");
 
-            // After successful staging: len increases by 1
+            // After successful staging: len increases by the per-call
+            // increment (event + auto-staged index_action).
             prop_assert_eq!(
                 batch.len(),
-                before_len + 1,
-                "len must increment by 1 after successful staging",
+                before_len + LEN_INCREMENT_PER_APPEND_EVENT,
+                "len must increment by 2 after successful staging (event + auto-staged index_action)",
+            );
+            prop_assert!(
+                batch.len() > before_len,
+                "len must be strictly greater after successful staging",
             );
             prop_assert!(
                 !batch.is_empty(),
@@ -429,11 +466,13 @@ proptest::proptest! {
             );
         }
 
-        // After all staging: len == num_ops
+        // After all staging: len == num_ops * 2 (each append_event
+        // contributes the event row plus the auto-staged index_action
+        // mutation).
         prop_assert_eq!(
             batch.len(),
-            num_ops,
-            "final len must equal number of successful staging ops",
+            num_ops * LEN_INCREMENT_PER_APPEND_EVENT,
+            "final len must equal num_ops * 2 (each append contributes event + index)",
         );
         prop_assert_eq!(
             batch.is_empty(),

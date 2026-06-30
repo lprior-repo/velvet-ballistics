@@ -24,6 +24,10 @@ use std::collections::HashSet;
 /// idempotent retry — the event is silently skipped so the queue's
 /// eventual drain remains correct. A mismatch returns `DuplicateEvent`
 /// so the operator can diagnose the divergence.
+///
+/// vb-3wn7x: the staged write also updates the `index_action` keyspace
+/// for action-lifecycle events so the queued path keeps the index in
+/// sync with the durable event log.
 pub(super) fn stage_queued_event(
     owned_batch: &mut fjall::OwnedWriteBatch,
     journal: &FjallJournal,
@@ -44,6 +48,9 @@ pub(super) fn stage_queued_event(
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
         if existing == *event {
+            // Idempotent retry: the durable event already reflects the
+            // queued state, including any prior index_action update.
+            // Skip both writes so the queued + durable order matches.
             return Ok(());
         }
         return Err(JournalError::DuplicateEvent {
@@ -59,5 +66,9 @@ pub(super) fn stage_queued_event(
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
     owned_batch.insert(&journal.events, key, value);
+    // vb-3wn7x: maintain the pending action index atomically with the
+    // event. The index mutation shares the OwnedWriteBatch, so a
+    // successful batch commit makes both writes durable together.
+    journal.stage_pending_action_index_op(owned_batch, event)?;
     Ok(())
 }
