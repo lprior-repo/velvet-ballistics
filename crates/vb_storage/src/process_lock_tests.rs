@@ -139,7 +139,7 @@ mod process_lock_tests {
         // After the writer is dropped, the lock is released and the
         // inspect-view must succeed.
         drop(_writer);
-        let inspect = crate::ReadOnlyJournal::open_inspect_view(temp.path())
+        let _inspect = crate::ReadOnlyJournal::open_inspect_view(temp.path())
             .expect("open_inspect_view must succeed after the writer is dropped");
         // Inspect-view is type-level read-only: only read methods are
         // exposed. Touching the keyspace queries that the type-level
