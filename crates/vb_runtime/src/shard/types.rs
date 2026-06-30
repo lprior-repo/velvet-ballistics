@@ -965,8 +965,32 @@ impl TimerDuration {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimerDeadline(u64);
 
+/// Failure modes for [`TimerDeadline::from_tick_and_duration`].
+///
+/// `ZeroDuration` and `Overflow` are both classes of *unrepresentable*
+/// deadlines: a zero-duration deadline would fire immediately (because
+/// `tick >= deadline` is true when the deadline equals the current tick),
+/// and an overflowing deadline would saturate past `u64::MAX`. Callers
+/// must surface these errors rather than silently substituting a default
+/// (e.g. `Instant::now()`), which would hide timer-fires-immediately
+/// defects from upstream observers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimerDeadlineError {
+    /// The supplied duration is zero. Zero-duration deadlines are
+    /// unrepresentable because they fire on the current tick instead of
+    /// at a future tick.
+    ZeroDuration,
+    /// The deadline computation overflowed `u64`.
+    Overflow,
+}
+
 impl TimerDeadline {
     /// Creates a new deadline at the given tick value.
+    ///
+    /// This is a raw constructor with no validation. Callers using this
+    /// to construct a deadline from a duration must go through
+    /// [`TimerDeadline::from_tick_and_duration`] instead, which rejects
+    /// zero-duration and overflowing inputs.
     #[must_use]
     pub const fn new(tick: u64) -> Self {
         Self(tick)
@@ -980,10 +1004,29 @@ impl TimerDeadline {
 
     /// Creates a deadline by adding a duration to a tick.
     ///
-    /// Returns `None` on overflow.
-    #[must_use]
-    pub fn from_tick_and_duration(tick: TimerTick, duration: TimerDuration) -> Option<Self> {
-        tick.get().checked_add(duration.get()).map(Self)
+    /// Returns `Err` when the requested deadline is *unrepresentable*:
+    ///
+    /// - `ZeroDuration`: the duration is zero ticks. A zero-duration
+    ///   deadline equals the current tick, so `has_elapsed` returns
+    ///   `true` on the next evaluation and the timer fires immediately.
+    ///   Callers must use a strictly positive duration.
+    /// - `Overflow`: the sum `tick + duration` exceeds `u64::MAX`.
+    ///
+    /// Both errors are typed so callers cannot silently fall back to a
+    /// placeholder value (e.g. `Instant::now()`), which would convert
+    /// the unrepresentable case into an immediate-fire defect.
+    pub fn from_tick_and_duration(
+        tick: TimerTick,
+        duration: TimerDuration,
+    ) -> Result<Self, TimerDeadlineError> {
+        let duration_ticks = duration.get();
+        if duration_ticks == 0 {
+            return Err(TimerDeadlineError::ZeroDuration);
+        }
+        tick.get()
+            .checked_add(duration_ticks)
+            .map(Self)
+            .ok_or(TimerDeadlineError::Overflow)
     }
 
     /// Returns `true` if this deadline has passed relative to the given tick.
@@ -1337,14 +1380,39 @@ mod tests {
         let tick = TimerTick::new(10);
         let dur = TimerDuration::new(20);
         let deadline = TimerDeadline::from_tick_and_duration(tick, dur);
-        assert_eq!(deadline, Some(TimerDeadline::new(30)));
+        assert_eq!(deadline, Ok(TimerDeadline::new(30)));
     }
 
     #[test]
-    fn timer_deadline_from_tick_and_duration_returns_none_on_overflow() {
+    fn timer_deadline_from_tick_and_duration_rejects_zero_duration() {
+        let tick = TimerTick::new(50);
+        let dur = TimerDuration::zero();
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::ZeroDuration);
+    }
+
+    #[test]
+    fn timer_deadline_from_tick_and_duration_zero_duration_at_zero_tick_is_zero_error() {
+        let tick = TimerTick::new(0);
+        let dur = TimerDuration::zero();
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::ZeroDuration);
+    }
+
+    #[test]
+    fn timer_deadline_from_tick_and_duration_rejects_zero_ticks_construction() {
+        let tick = TimerTick::new(100);
+        let dur = TimerDuration::new(0);
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::ZeroDuration);
+    }
+
+    #[test]
+    fn timer_deadline_from_tick_and_duration_returns_overflow_error_on_overflow() {
         let tick = TimerTick::new(u64::MAX);
         let dur = TimerDuration::new(1);
-        assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::Overflow);
     }
 
     #[test]
@@ -1557,27 +1625,27 @@ mod tests {
     }
 
     #[test]
-    fn timer_deadline_from_tick_and_duration_zero_plus_zero() {
+    fn timer_deadline_from_tick_and_duration_zero_plus_zero_is_zero_duration_error() {
         let tick = TimerTick::new(0);
         let dur = TimerDuration::new(0);
-        assert_eq!(
-            TimerDeadline::from_tick_and_duration(tick, dur),
-            Some(TimerDeadline::new(0))
-        );
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::ZeroDuration);
     }
 
     #[test]
     fn timer_deadline_from_tick_and_duration_one_plus_max_overflows() {
         let tick = TimerTick::new(1);
         let dur = TimerDuration::new(u64::MAX);
-        assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::Overflow);
     }
 
     #[test]
     fn timer_deadline_from_tick_and_duration_max_plus_max_overflows() {
         let tick = TimerTick::new(u64::MAX);
         let dur = TimerDuration::new(u64::MAX);
-        assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+        let err = TimerDeadline::from_tick_and_duration(tick, dur).unwrap_err();
+        assert_eq!(err, TimerDeadlineError::Overflow);
     }
 
     #[test]
@@ -1586,7 +1654,7 @@ mod tests {
         let dur = TimerDuration::new(1);
         assert_eq!(
             TimerDeadline::from_tick_and_duration(tick, dur),
-            Some(TimerDeadline::new(u64::MAX - 1))
+            Ok(TimerDeadline::new(u64::MAX - 1))
         );
     }
 
