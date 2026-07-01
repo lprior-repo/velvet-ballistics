@@ -12,6 +12,37 @@ use crate::recovery::types::{
 use crate::{DurableActionOutcome, EventSeq, JournalEvent};
 use vb_core::{ActionTicket, RunId};
 
+// ---------------------------------------------------------------------------
+// Test-only call counters
+//
+// SR-011 regression coverage: the events-only hydration path historically walked
+// the event list three times (seed accumulator, executed counter, parallel
+// peak). Two of those passes both invoked `verify_action_ticket_event` and
+// `verified_action_envelope_digest`, so the digest blake3 hash fired twice
+// per envelope. These counters let the TDD-fail test pin the visit count to
+// 2xN (one from the seed accumulator, one from the fused count/peak pass)
+// instead of the historical 3xN.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+pub(crate) mod test_hooks {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// Number of times `verified_action_envelope_digest` has been entered
+    /// across the current test process.
+    pub(crate) static ENVELOPE_DIGEST_CALLS: AtomicU64 = AtomicU64::new(0);
+
+    /// Number of times `verify_action_ticket_event` has been entered
+    /// across the current test process.
+    pub(crate) static TICKET_VERIFY_CALLS: AtomicU64 = AtomicU64::new(0);
+
+    /// Reset every counter to zero. Tests must invoke this before the
+    /// measurement window and assert the delta afterwards.
+    pub(crate) fn reset() {
+        ENVELOPE_DIGEST_CALLS.store(0, Ordering::Relaxed);
+        TICKET_VERIFY_CALLS.store(0, Ordering::Relaxed);
+    }
+}
+
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintReadObservation {
@@ -57,6 +88,10 @@ fn observe_slot_taint_read(
 }
 
 pub(crate) fn verify_action_ticket_event(run: RunId, ticket: ActionTicket) -> RecoveryResult<()> {
+    #[cfg(test)]
+    {
+        test_hooks::TICKET_VERIFY_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
     if ticket.run != run {
         return Err(RecoveryError::ReplayDivergence {
             step: ticket.step,
@@ -86,6 +121,10 @@ pub(crate) fn verified_action_envelope_digest(
     encoded_len: u32,
     expected: [u8; 32],
 ) -> RecoveryResult<[u8; 32]> {
+    #[cfg(test)]
+    {
+        test_hooks::ENVELOPE_DIGEST_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
     verify_action_ticket_event(run, ticket)?;
     match outcome {
         DurableActionOutcome::Ready => {}
