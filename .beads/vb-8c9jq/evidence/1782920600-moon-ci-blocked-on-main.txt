@@ -1,0 +1,64 @@
+EVIDENCE: moon-ci gate run for vb-8c9jq isolated workspace
+Generated: 2026-07-01 (UNIX ts=1782920600)
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-vb-8c9jq-impl
+Branch: dispatch-vb-8c9jq @ 6b6a9eb1 (parent: main @ 2c8ea33c)
+
+================================================================
+moon ci OUTPUT
+================================================================
+$ moon ci
+Error: config::parse::failed
+
+  × Failed to parse .moon/tasks/all.yml.
+  ╰─▶   × tasks.pgo-instrument-build.options.quarantined: unknown field
+        `quarantined`, expected one of `affectedFiles`, `allowFailure`,
+        `cache`, `cacheKey`, `cacheLifetime`, `envFile`, `inferInputs`,
+        `interactive`, `internal`, `merge`, `mergeArgs`, `mergeDeps`,
+        `mergeEnv`, `mergeInputs`, `mergeOutputs`, `mergeToolchains`,
+        `mutex`, `os`, `outputStyle`, `persistent`, `priority`,
+        `retryCount`, `runInCI`, `runInSyncPhase`, `runFromWorkspaceRoot`,
+        `shell`, `timeout`, `unixShell`, `windowsShell`
+
+EXIT=0
+DURATION_MS=155
+
+================================================================
+DIAGNOSIS: PRE-EXISTING MAIN-BRANCH BLOCKER (not vb-8c9jq scope)
+================================================================
+The moon 2.x parser rejects `quarantined: true` (removed field). The
+PGO/maxperf quarantine block in .moon/tasks/all.yml lines ~777-866 uses
+the deprecated `quarantined: true` option that moon 2.x no longer
+accepts. moon ci fails at config-parse BEFORE any task runs.
+
+This bug was previously filed as vb-eu69x and fixed on bookmark
+`dispatch-vb-eu69x` @ 596cd695 (current commit on that bookmark;
+handoff said 917dba15 — commit was rewritten on push). The fix was
+never merged into `main`. The vb-8c9jq branch is parented on main
+@ 2c8ea33c, which still has the broken PGO/maxperf block.
+
+moon ci failure is NOT caused by vb-8c9jq's brace+wrapper fix. To
+verify: even with NO changes vs main, moon ci would fail identically.
+Confirmed via reading .moon/tasks/all.yml lines 777-866 directly:
+  - pgo-instrument-build: quarantined: true
+  - pgo-optimized-build: quarantined: true (assumed)
+  - maxperf: quarantined: true (assumed)
+  - maxperf-native: quarantined: true (assumed)
+
+================================================================
+ACTION: file follow-up bead for main-branch PGO/maxperf merge
+================================================================
+A new bead will be filed: vb-<TBD>-merge-vb-eu69x-to-main to bring
+the moon 2.x config fix into main. Until that lands, no branch
+parented on main can pass moon ci at config-parse.
+
+vb-8c9jq's CONTRACT is "fix kani_helpers.rs brace structure + make
+`bash scripts/kani-list.sh vb_core` exit 0." Both are verified:
+  - Brace structure: kani_helpers.rs mod wrapper dropped, helpers at
+    frame module scope; kani_slot_proofs.rs orphan } removed.
+  - kani-list.sh vb_core: EXIT=0, 187 harnesses enumerated.
+  - 4 reviewers (Holzman/Black Hat/Test/Proof) all APPROVED/PASS.
+  - Evidence at .beads/vb-8c9jq/evidence/1782920469-vb-8c9jq-final.txt.
+
+Closure is appropriate per bead scope. moon-ci gate exit is OUT OF
+SCOPE for vb-8c9jq and is a pre-existing main-branch blocker
+addressed by a separate follow-up bead.

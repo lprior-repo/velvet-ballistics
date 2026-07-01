@@ -1,0 +1,156 @@
+EVIDENCE: vb-8c9jq closure — kani_helpers.rs + kani_slot_proofs.rs brace structure fix
+Generated: 2026-07-01 (UNIX ts=1782920469)
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-vb-8c9jq-impl
+JJ change: wyrkuryz (current @) on dispatch-vb-8c9jq bookmark
+
+================================================================
+Bead: vb-8c9jq (P0)
+  redesign kani_helpers.rs for #[cfg(kani)] standalone compilation
+  (use crate::* paths unresolved, blocks kani-list.sh vb_core green)
+================================================================
+
+ROOT CAUSE (multi-layer brace + wrapper bug):
+  1. crates/vb_core/src/frame/parts/kani_helpers.rs (original 22 lines):
+     - Line 1: `mod frame_kani_harnesses {` opened.
+     - Lines 7-22: fn validate_transition_inline and fn step_state_from_u8.
+     - Line 22: closing `}` of `fn step_state_from_u8`. No `}` for the outer mod.
+     -> rustc error E0761 "unclosed delimiter".
+     -> `cargo kani list vb_core` exits 1, blocking all vb_core Kani enumeration.
+
+  2. crates/vb_core/src/frame/parts/kani_slot_proofs.rs (original 46 lines):
+     - Lines 1-44: two `#[kani::proof]` fn bodies (`read_slot_no_panic`,
+       `write_slot_no_panic`) at file scope (matches kani_f1_exhaustive.rs pattern).
+     - Line 45: orphan `}` — closes nothing.
+     -> Even with kani_helpers.rs brace fixed, kani_slot_proofs.rs would have
+       an orphan-delimiter error.
+
+  3. STRUCTURAL DESIGN BUG (uncovered after step 1+2 fix):
+     - frame.rs:126 includes kani_helpers.rs INSIDE the `frame` module scope.
+     - kani_helpers.rs wrapped its helpers in `mod frame_kani_harnesses { ... }`,
+       making them PRIVATE to that sub-module.
+     - Sibling kani files (kani_f1_exhaustive.rs, kani_f2345_transitions.rs)
+       call `validate_transition_inline` and `step_state_from_u8` directly,
+       expecting them at frame module scope.
+     - With the mod wrapper, they were inaccessible -> 71 E0425 errors.
+     - Resolution: drop the mod wrapper (bead acceptance criterion #3 option (a)
+       explicitly authorizes this). Helpers live at frame module scope and are
+       visible to all sibling kani files. The `use crate::*` and
+       `use crate::ids::RunId` imports were UNUSED (warning emitted) because the
+       file is already inside the `frame` module scope where those names are
+       in scope from `frame.rs:40-42`.
+
+================================================================
+FIX APPLIED
+================================================================
+  crates/vb_core/src/frame/parts/kani_helpers.rs: 22 -> 26 lines
+    - Dropped `mod frame_kani_harnesses {` opener (line 1).
+    - Dropped the matching `}` closer (was line 23).
+    - Dropped unused `use crate::frame::{RunFrame, SlotIdx, SlotValue, StepIdx,
+      StepState, is_valid_step_state_transition};` (lines 2-4) and
+      `use crate::ids::RunId;` (line 5).
+    - Added header comment explaining the include!-d scope.
+    - fn validate_transition_inline and fn step_state_from_u8 now at frame
+      module scope, callable by sibling kani files.
+
+  crates/vb_core/src/frame/parts/kani_slot_proofs.rs: 46 -> 45 lines
+    - Removed orphan `}` at line 45 (cascading from same brace bug).
+    - Two `#[kani::proof]` fn bodies remain at file scope.
+
+================================================================
+REVIEWERS (4-of-4 PASS)
+================================================================
+
+[1] Holzman Rust reviewer (engineering rules grep)
+    Files in diff: kani_helpers.rs, kani_slot_proofs.rs, .evidence/kani-list/vb_core.json
+    Grep: jj diff | grep -nE "unsafe|unwrap|expect\(|panic|todo!|unimplemented!|dbg!"
+    Result: 0 banned Rust token usages.
+    Note: Matches on "panic" appear only as substring of kani harness function
+          NAMES (`read_slot_no_panic`, `validate_transition_no_panic_random`,
+          etc.) — these are identifier names, not Rust panic!() invocations.
+    STATUS: APPROVED.
+
+[2] Black Hat reviewer (AGENTS.md engineering rules + scope check)
+    Files changed: 2 source files + 1 evidence file.
+      - crates/vb_core/src/frame/parts/kani_helpers.rs
+      - crates/vb_core/src/frame/parts/kani_slot_proofs.rs
+      - .evidence/kani-list/vb_core.json (script output)
+    Production-type files (crates/vb_core/src/frame.rs,
+    crates/vb_core/src/frame/[a-z]+.rs) UNTOUCHED.
+    No ALLOWED_EXCEPTIONS added. No master.md changes. No AGENTS.md changes.
+    No unsafe/unwrap/expect/panic/todo/unimplemented/dbg introduced.
+    STATUS: APPROVED.
+
+[3] Test Reviewer (acceptance criterion #1)
+    Command: bash scripts/kani-list.sh vb_core
+    Cwd: /home/lewis/src/isoloated/velvet-ballistics-vb-8c9jq-impl
+    EXIT=0
+    DURATION_MS=38260 (38.26s wall time including cargo metadata + compile + list)
+    Output: Wrote list results to .evidence/kani-list/vb_core.json
+            KANI_LIST_OK output_dir=/home/lewis/src/isoloated/velvet-ballistics-vb-8c9jq-impl/.evidence/kani-list packages=vb_core
+    Harness inventory:
+      standard-harnesses: 187
+      contract-harnesses: 0
+      functions-under-contract: 0
+    Confirmed affected harnesses now reachable:
+      - frame::validate_transition_exhaustive_64 (kani_f1_exhaustive.rs)
+      - frame::validate_transition_idempotent
+      - frame::validate_transition_no_panic_random
+      - frame::validate_transition_running_to_all_valid_targets
+      - frame::validate_transition_terminal_blocks_all
+        (kani_f2345_transitions.rs)
+      - frame::read_slot_no_panic
+      - frame::write_slot_no_panic
+        (kani_slot_proofs.rs)
+    STATUS: PASS.
+
+[4] Proof Reviewer (acceptance criterion #1 part 2: codegen reach)
+    Command: cargo kani --manifest-path ./crates/vb_core/Cargo.toml \
+             --harness validate_transition_exhaustive_64 --only-codegen
+    Cwd: /home/lewis/src/isoloated/velvet-ballistics-vb-8c9jq-impl
+    EXIT=0
+    DURATION_MS=2028 (2.03s)
+    Output: Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.84s
+    Confirms the harness that was previously unreachable (called
+    validate_transition_inline via the dropped mod wrapper) now reaches
+    codegen under --only-codegen without solver execution.
+    STATUS: APPROVED.
+
+================================================================
+ACCEPTANCE CRITERIA (from bead body)
+================================================================
+  [1] bash scripts/kani-list.sh vb_core exits 0           -> PASS
+  [2] brace structure balanced + use crate::* paths resolve -> PASS
+      (helpers moved to frame module scope, no use statements needed)
+  [3] minimal structural change: option (a) drop mod wrapper -> PASS
+  [4] exit + duration captured in this file                -> DONE
+  [5] NO source code modifications to production types in
+      crates/vb_core/src/frame/                            -> PASS
+
+================================================================
+OUT OF SCOPE (NOT TOUCHED — separate bead candidates)
+================================================================
+  - crates/vb_core/src/kani/* (12 files): audit-bead-#3 scope, gated behind
+    #[cfg(all(kani, feature = "kani-diagnostic-codes"))]. Does not surface in
+    `cargo kani list` without the feature. Filed as separate follow-up.
+  - vb_ujujr parent bead: was blocked by this brace bug. Cascade-closable now.
+  - All other kani files in vb_core (37 files): unchanged.
+================================================================
+CYCLE-END ANNOTATION (2026-07-01)
+================================================================
+Brace+wrapper fix verified end-to-end. 4 reviewers pass. 187 kani
+harness inventory captured. Bookmark dispatch-vb-8c9jq pushed to
+origin at 51afc3e9.
+
+Bead stays in_progress per honest closure-evidence rule (moon ci
+gate does not pass on this branch due to cross-cutting main-branch
+blocker).
+
+Critical next bead: vb-auage (P0) — re-apply Wave 0 vb-eu69x moon
+2.x config fix to main. Until vb-auage closes, every in_progress
+bead worked from a main-forked workspace this cycle will fail
+moon ci. See bd remember cycle-handoff-2026-07-01 for full
+process learnings + outstanding in_progress bead list.
+
+Follow-up beads filed this cycle:
+- vb-auage (P0): cross-cutting moon-ci main-branch blocker
+- vb-n17jt (P1): Kani setup audit Recommended Bead #3 scope
