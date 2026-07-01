@@ -40,6 +40,18 @@ pub enum RuntimeError {
         /// Preserved storage journal source.
         source: Arc<vb_storage::JournalError>,
     },
+    /// Runtime attempted to restore live run state after a durable journal
+    /// append failed, but the rollback mutation also failed. Both errors are
+    /// preserved so the original durability failure is not laundered and the
+    /// rollback failure is not ignored.
+    RunStateRollbackFailed {
+        /// Run whose in-memory state could not be restored.
+        run: RunId,
+        /// Original error that triggered rollback.
+        original: Box<RuntimeError>,
+        /// Error returned by the rollback mutation.
+        rollback: Box<RuntimeError>,
+    },
     /// Durable run header persistence failed before admission acknowledgement.
     AdmissionHeaderPersistenceFailed {
         /// Preserved storage journal source.

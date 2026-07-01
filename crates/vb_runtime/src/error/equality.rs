@@ -62,6 +62,22 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::AdmissionHeaderPersistenceFailed { source: b },
         ) => a.diagnostic_code() == b.diagnostic_code(),
         (
+            RuntimeError::RunStateRollbackFailed {
+                run: left_run,
+                original: left_original,
+                rollback: left_rollback,
+            },
+            RuntimeError::RunStateRollbackFailed {
+                run: right_run,
+                original: right_original,
+                rollback: right_rollback,
+            },
+        ) => {
+            left_run == right_run
+                && left_original == right_original
+                && left_rollback == right_rollback
+        }
+        (
             RuntimeError::CommandQueueCapacityExceeded {
                 capacity: a,
                 max: b,

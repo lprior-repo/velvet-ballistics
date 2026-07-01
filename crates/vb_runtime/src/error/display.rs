@@ -83,6 +83,14 @@ fn write_runtime_error_dynamic(
         RuntimeError::StorageJournalAppend { source } => {
             write!(f, "storage journal append failed: {source}")
         }
+        RuntimeError::RunStateRollbackFailed {
+            run,
+            original,
+            rollback,
+        } => write!(
+            f,
+            "run state rollback failed for {run:?}: original {original}; rollback {rollback}"
+        ),
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
             write!(f, "admission header persistence failed: {source}")
         }
@@ -136,6 +144,7 @@ impl std::error::Error for RuntimeError {
         match self {
             Self::Core { source } => Some(source.as_ref()),
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
+            Self::RunStateRollbackFailed { original, .. } => Some(original.as_ref()),
             Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),
             Self::EngineDriveFailed { source, .. } => Some(source.as_ref()),
             _ => None,
