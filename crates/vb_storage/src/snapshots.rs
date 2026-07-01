@@ -9,7 +9,7 @@ use crate::{
     error::JournalError,
     keys::run_snapshot_key,
     recovery::RunSnapshot,
-    types::EventSeq,
+    types::{EventSeq, RecordEnvelope},
 };
 
 use crate::journal::FjallJournal;
@@ -51,11 +51,40 @@ impl FjallJournal {
         seq: EventSeq,
     ) -> Result<Option<RunSnapshot>, JournalError> {
         let key = run_snapshot_key(run, seq)?;
-        self.decode_optional(
+        self.decode_optional_with(
             &self.run_snapshot,
             key.as_slice(),
             MAGIC_SNAPSHOT,
             MAX_SNAPSHOT_BYTES,
+            |envelope, snapshot| validate_snapshot_read(envelope, run, seq, snapshot),
         )
     }
+}
+
+fn validate_snapshot_read(
+    envelope: &RecordEnvelope,
+    run: vb_core::RunId,
+    seq: EventSeq,
+    snapshot: &RunSnapshot,
+) -> Result<(), JournalError> {
+    if snapshot.run != run {
+        return Err(JournalError::WrongRun {
+            expected: run,
+            actual: snapshot.run,
+        });
+    }
+    if snapshot.seq != seq {
+        return Err(JournalError::SequenceGap {
+            expected: seq,
+            actual: snapshot.seq,
+        });
+    }
+    if envelope.sequence != seq.get() {
+        return Err(JournalError::ReplayEnvelopeSequenceMismatch {
+            run,
+            envelope_seq: envelope.sequence,
+            payload_seq: seq.get(),
+        });
+    }
+    Ok(())
 }

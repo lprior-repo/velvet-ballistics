@@ -7,25 +7,29 @@ use crate::{
     events::JournalEvent,
     journal::FjallJournal,
     keys::run_event_key,
+    types::RecordEnvelope,
 };
 use serde::de::DeserializeOwned;
 
 impl FjallJournal {
     #[allow(clippy::unused_self)]
-    pub(crate) fn decode_optional<T>(
+    pub(crate) fn decode_optional_with<T, F>(
         &self,
         keyspace: &fjall::Keyspace,
         key: &[u8],
         magic: u32,
         max_bytes: u32,
+        validate: F,
     ) -> Result<Option<T>, JournalError>
     where
         T: DeserializeOwned + EnforceKindParity,
+        F: FnOnce(&RecordEnvelope, &T) -> Result<(), JournalError>,
     {
         let Some(value) = keyspace.get(key)? else {
             return Ok(None);
         };
-        let (_, record) = decode_record(value.as_ref(), magic, max_bytes)?;
+        let (envelope, record) = decode_record(value.as_ref(), magic, max_bytes)?;
+        validate(&envelope, &record)?;
         Ok(Some(record))
     }
 

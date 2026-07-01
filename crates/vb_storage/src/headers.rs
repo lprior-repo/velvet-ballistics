@@ -5,10 +5,11 @@
 
 use crate::{
     codec::decode_record,
-    constants::{MAGIC_INDEX_RECORD, PREFIX_RUN_HEADER},
+    constants::{MAGIC_INDEX_RECORD, PREFIX_RUN_HEADER, RUN_ONLY_KEY_BYTES},
     error::JournalError,
-    keys::run_header_key,
+    keys::{decode_storage_key, run_header_key},
     records::RunHeaderRecord,
+    types::{RecordEnvelope, StorageKey},
 };
 
 use crate::journal::FjallJournal;
@@ -38,11 +39,12 @@ impl FjallJournal {
             return Err(JournalError::InvalidRunId { run });
         }
         let key = run_header_key(run)?;
-        self.decode_optional(
+        self.decode_optional_with(
             &self.run_header,
             key.as_slice(),
             MAGIC_INDEX_RECORD,
             crate::constants::MAX_RUN_HEADER_BYTES,
+            |envelope, record| validate_run_header_read(envelope, run, record),
         )
     }
 
@@ -63,21 +65,47 @@ impl FjallJournal {
         let prefix = [PREFIX_RUN_HEADER];
         for item in self.run_header.prefix(prefix) {
             let (raw_key, value) = item.into_inner()?;
-            let key_len = raw_key.len();
-            if key_len != crate::constants::RUN_ONLY_KEY_BYTES {
-                return Err(JournalError::MalformedKeyspaceRow {
-                    prefix: PREFIX_RUN_HEADER,
-                    expected_len: crate::constants::RUN_ONLY_KEY_BYTES,
-                    actual_len: key_len,
-                });
-            }
-            let (_, header) = decode_record(
+            let run = run_from_header_key(raw_key.as_ref())?;
+            let (envelope, header) = decode_record(
                 value.as_ref(),
                 MAGIC_INDEX_RECORD,
                 crate::constants::MAX_RUN_HEADER_BYTES,
             )?;
+            validate_run_header_read(&envelope, run, &header)?;
             headers.push(header);
         }
         Ok(headers)
+    }
+}
+
+fn validate_run_header_read(
+    envelope: &RecordEnvelope,
+    run: vb_core::RunId,
+    record: &RunHeaderRecord,
+) -> Result<(), JournalError> {
+    if record.run != run {
+        return Err(JournalError::WrongRun {
+            expected: run,
+            actual: record.run,
+        });
+    }
+    if envelope.sequence != run.get() {
+        return Err(JournalError::ReplayEnvelopeSequenceMismatch {
+            run,
+            envelope_seq: envelope.sequence,
+            payload_seq: run.get(),
+        });
+    }
+    Ok(())
+}
+
+fn run_from_header_key(key: &[u8]) -> Result<vb_core::RunId, JournalError> {
+    match decode_storage_key(key) {
+        Ok(StorageKey::RunHeader { run }) => Ok(run),
+        Ok(_) | Err(_) => Err(JournalError::MalformedKeyspaceRow {
+            prefix: PREFIX_RUN_HEADER,
+            expected_len: RUN_ONLY_KEY_BYTES,
+            actual_len: key.len(),
+        }),
     }
 }
