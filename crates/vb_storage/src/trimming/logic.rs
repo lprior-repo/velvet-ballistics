@@ -29,21 +29,10 @@ impl FjallJournal {
             return Ok(None);
         };
         let (key, _) = item.into_inner().map_err(TrimError::from)?;
-        // Round 10 issue 7: snapshot keys must be exactly 17 bytes
-        // (1 prefix + 8 run + 8 seq). An overlong key could be a leftover
-        // test artefact or a corrupt prefix collision; treating it as
-        // durable would silently delete the wrong pre-snapshot events.
-        if key.len() != 17 {
-            return Err(TrimError::IncompleteTrim { deleted_count: 0 });
-        }
-        // Decode via the typed key helper so we additionally verify the
-        // keyspace prefix matches `StorageKey::RunSnapshot` (catches a
-        // stray `RunEvent` or other 17-byte variant) and reject the
-        // reserved `EventSeq::MAX` sentinel.
-        match decode_storage_key(&key) {
-            Ok(StorageKey::RunSnapshot { seq, .. }) => Ok(Some(seq)),
-            _ => Err(TrimError::IncompleteTrim { deleted_count: 0 }),
-        }
+        // Decode via the typed key helper so the scan rejects short,
+        // overlong, wrong-prefix, wrong-run, and reserved-sentinel keys
+        // instead of treating a malformed prefix collision as durable.
+        decode_snapshot_seq_for_trim(key.as_ref(), run).map(Some)
     }
 
     pub fn trim_events_for_run(
@@ -73,21 +62,11 @@ impl FjallJournal {
         let mut key_buf: Vec<u8> = Vec::with_capacity(64);
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
-            // Round 10 issue 7: events keys must also be exactly 17 bytes.
-            if key.len() != 17 {
-                return Err(TrimError::IncompleteTrim { deleted_count });
-            }
-            let slice = key
-                .get(9..17)
-                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_bytes: [u8; 8] = slice
-                .try_into()
-                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_u64 = u64::from_be_bytes(seq_bytes);
+            let seq = decode_event_seq_for_trim(key.as_ref(), run, deleted_count)?;
 
-            if seq_u64 < cutoff_seq.get() {
+            if seq < cutoff_seq {
                 key_buf.clear();
-                key_buf.extend_from_slice(&key);
+                key_buf.extend_from_slice(key.as_ref());
                 batch.remove(&self.events, key_buf.as_slice());
                 deleted_count = deleted_count.saturating_add(1);
             }
@@ -216,23 +195,10 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix_key) {
             let key = item.key().map_err(JournalError::from)?;
-            // Round 10 issue 7: events keys must be exactly 17 bytes
-            // (1 prefix + 8 run + 8 seq); an overlong key would corrupt
-            // the seq parse below and silently miscount trimmable events.
-            if key.len() != 17 {
-                return Err(JournalError::from(TrimError::IncompleteTrim {
-                    deleted_count: count,
-                }));
-            }
-            let slice = key.get(9..17).ok_or_else(|| {
-                JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
-            })?;
-            let seq_bytes: [u8; 8] = slice
-                .try_into()
-                .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
-            let seq_u64 = u64::from_be_bytes(seq_bytes);
+            let seq =
+                decode_event_seq_for_trim(key.as_ref(), run, count).map_err(JournalError::from)?;
 
-            if seq_u64 < safe_point.get() {
+            if seq < safe_point {
                 count = count.saturating_add(1);
             }
         }
@@ -247,7 +213,8 @@ impl FjallJournal {
         let snap = self.database.snapshot();
 
         for item in snap.prefix(&self.events, prefix) {
-            let value = item.value().map_err(TrimError::from)?;
+            let (key, value) = item.into_inner().map_err(TrimError::from)?;
+            decode_event_seq_for_trim(key.as_ref(), run, 0)?;
             let (_, event) = crate::codec::decode_journal_event(
                 value.as_ref(),
                 crate::constants::MAGIC_JOURNAL_EVENT,
@@ -380,5 +347,19 @@ impl FjallJournal {
         }
 
         retained
+    }
+}
+
+fn decode_snapshot_seq_for_trim(key: &[u8], run: RunId) -> TrimResult<EventSeq> {
+    match decode_storage_key(key) {
+        Ok(StorageKey::RunSnapshot { run: key_run, seq }) if key_run == run => Ok(seq),
+        _ => Err(TrimError::IncompleteTrim { deleted_count: 0 }),
+    }
+}
+
+fn decode_event_seq_for_trim(key: &[u8], run: RunId, deleted_count: u64) -> TrimResult<EventSeq> {
+    match decode_storage_key(key) {
+        Ok(StorageKey::RunEvent { run: key_run, seq }) if key_run == run => Ok(seq),
+        _ => Err(TrimError::IncompleteTrim { deleted_count }),
     }
 }
