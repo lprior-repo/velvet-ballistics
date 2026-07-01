@@ -45,7 +45,7 @@ pub(crate) fn preflight_action_failure(
             .action_attempts
             .get(ticket.step.as_usize())
             .copied()
-            .unwrap_or(0);
+            .ok_or(RuntimeError::InvalidActionCompletion)?;
         let new_attempt = current_attempt.max(ticket.attempt);
         if new_attempt < policy.max_attempts {
             let next = new_attempt
@@ -53,6 +53,7 @@ pub(crate) fn preflight_action_failure(
                 .ok_or(RuntimeError::UnsupportedOperation {
                     operation: "retry_attempt_overflow",
                 })?;
+            validate_retry_apply(state, ticket.step)?;
             return Ok(ActionFailurePreflight {
                 ticket,
                 outcome: ActionFailureOutcome::RetryNow,
@@ -69,13 +70,16 @@ pub(crate) fn preflight_action_failure(
 
     // Error-handler path.
     match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
-        Some((handler, error_slot)) => Ok(ActionFailurePreflight {
-            ticket,
-            outcome: ActionFailureOutcome::DriveHandler,
-            next_attempt: 0,
-            handler_pc: Some(handler),
-            error_slot,
-        }),
+        Some((handler, error_slot)) => {
+            validate_handler_apply(state, ticket.step, handler, error_slot)?;
+            Ok(ActionFailurePreflight {
+                ticket,
+                outcome: ActionFailureOutcome::DriveHandler,
+                next_attempt: 0,
+                handler_pc: Some(handler),
+                error_slot,
+            })
+        }
         None => Ok(ActionFailurePreflight {
             ticket,
             outcome: ActionFailureOutcome::FailRun,
@@ -87,7 +91,9 @@ pub(crate) fn preflight_action_failure(
 }
 
 /// Apply the preflighted outcome to state. Pure mutation driven by
-/// the preflight decision; never touches the journal.
+/// the preflight decision; never touches the journal. All bounds and
+/// transition predicates for these fallible frame operations are checked in
+/// `preflight_action_failure` before the durable `ActionFailed` append.
 pub(crate) fn apply_action_failure_preflight(
     state: &mut RunState,
     preflight: &ActionFailurePreflight,
@@ -131,6 +137,50 @@ pub(crate) fn apply_action_failure_preflight(
             Ok(())
         }
     }
+}
+
+fn validate_retry_apply(state: &RunState, step: StepIdx) -> RuntimeResult<()> {
+    validate_step_index(state, step)?;
+    if state.action_attempts.get(step.as_usize()).is_none() {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
+}
+
+fn validate_handler_apply(
+    state: &RunState,
+    failed: StepIdx,
+    handler: StepIdx,
+    error_slot: Option<SlotIdx>,
+) -> RuntimeResult<()> {
+    validate_step_index(state, failed)?;
+    validate_step_index(state, handler)?;
+    if state
+        .frame
+        .step_state(failed)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)?
+        != vb_core::frame::StepState::Running
+    {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    if let Some(slot) = error_slot {
+        validate_slot_index(state, slot)?;
+    }
+    Ok(())
+}
+
+fn validate_step_index(state: &RunState, step: StepIdx) -> RuntimeResult<()> {
+    if step.as_usize() >= usize::from(state.frame.step_count()) {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
+}
+
+fn validate_slot_index(state: &RunState, slot: SlotIdx) -> RuntimeResult<()> {
+    if slot.as_usize() >= usize::from(state.frame.slot_count()) {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
 }
 
 fn write_failure_slot(

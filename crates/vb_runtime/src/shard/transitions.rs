@@ -26,7 +26,7 @@ impl Shard {
     /// # State Transitions
     /// * `Submit` → `runtime_states.insert(run, RuntimeState::Initial)`
     /// * `Resume` → `runtime_states.insert(run, RuntimeState::Resuming)`
-    /// * `ResumeRollback` → `runtime_states.insert(run, RuntimeState::Resumable)` (journal failure)
+    /// * `ResumeRollback` → `runtime_states.insert(run, RuntimeState::Resumable)` (pre-commit journal failure)
     /// * `DriveContinue` → `runtime_states.insert(run, RuntimeState::Running)`
     /// * `AwaitAction` → `runtime_states.insert(run, RuntimeState::Resumable)`
     /// * `AwaitTimer` → `runtime_states.insert(run, RuntimeState::Resumable)`
@@ -83,7 +83,6 @@ impl Shard {
     }
 
     /// Marks a run as finished, releases its frame, and updates counters.
-    #[allow(clippy::let_underscore_must_use)]
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         let result = match crate::shard::helpers::result_slot_for_finished_run(&state) {
             Some(slot) => slot,
@@ -94,13 +93,23 @@ impl Shard {
         if let Err(error) =
             self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })
         {
-            // Best-effort rollback; the original `error` from the journal
-            // append is the one to surface. The rollback result is dropped
-            // intentionally via `let _` (see the `#[allow]` on this fn).
-            let _ = self.run_state_insert(run, state);
+            if let Err(rollback) = self.run_state_insert(run, state) {
+                return Err(RuntimeError::rollback_failed("finish_run", error, rollback));
+            }
             return Err(error);
         }
-        self.pending_timer_remove(run);
+        self.finish_run_after_journaled(run, state)
+    }
+
+    /// Completes successful-run cleanup after `RunFinished` is already
+    /// durably appended by the caller, either as a single event or as part of
+    /// a same-run atomic batch with preceding drive evidence.
+    pub(crate) fn finish_run_after_journaled(
+        &mut self,
+        run: RunId,
+        state: RunState,
+    ) -> RuntimeResult<()> {
+        let _removed_timer = self.pending_timer_remove(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
         self.add_executed_step_delta(run, state.frame.executed());
@@ -132,16 +141,19 @@ impl Shard {
             ActionTicket { capacity, ..ticket },
         )?;
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
-        self.trace_ring
-            .push(TraceEvent::ActionScheduled { run, step });
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
-        self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
             ticket,
             input,
             output,
             action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
-        })?;
+        }) {
+            self.run_state_insert(run, state)?;
+            return Err(error);
+        }
+        self.trace_ring
+            .push(TraceEvent::ActionScheduled { run, step });
         if let Err(error) = self.pending_action_insert(run, ticket) {
             self.run_state_insert(run, state)?;
             return Err(error);
@@ -196,13 +208,23 @@ impl Shard {
 
     /// Marks a run as failed, releases its frame, and updates counters.
     /// Runtime state mutation is applied after the durable failure event is persisted.
-    #[allow(clippy::let_underscore_must_use)]
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed { run }) {
-            let _ = self.run_state_insert(run, state);
+            self.run_state_insert(run, state)?;
             return Err(error);
         }
-        self.pending_timer_remove(run);
+        self.fail_run_state_after_journaled(run, state)
+    }
+
+    /// Completes failed-run cleanup after `RunFailed` is already durably
+    /// appended by the caller, either as a single event or as part of a
+    /// same-run atomic batch with preceding failure evidence.
+    pub(crate) fn fail_run_state_after_journaled(
+        &mut self,
+        run: RunId,
+        state: RunState,
+    ) -> RuntimeResult<()> {
+        let _removed_timer = self.pending_timer_remove(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });

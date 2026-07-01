@@ -15,6 +15,7 @@ impl RuntimeError {
     pub const SHUTDOWN_IN_PROGRESS_CODE: DiagnosticCode = DiagnosticCode::new(0x2006);
     pub const JOURNAL_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x2007);
     pub const STORAGE_JOURNAL_APPEND_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2008);
+    pub const ROLLBACK_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
     pub const JOURNAL_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x201E);
     pub const ADMISSION_HEADER_PERSISTENCE_FAILED_CODE: DiagnosticCode =
         DiagnosticCode::new(0x2015);
@@ -55,6 +56,7 @@ impl RuntimeError {
             Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
             Self::JournalFull { .. } => Self::JOURNAL_FULL_CODE,
             Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::RollbackFailed { .. } => Self::ROLLBACK_FAILED_CODE,
             Self::AdmissionHeaderPersistenceFailed { .. } => {
                 Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE
             }
@@ -90,6 +92,10 @@ impl RuntimeError {
             Self::AdmissionArtifactStale { .. } => Self::ADMISSION_ARTIFACT_STALE_CODE,
             Self::AdmissionDigestMismatch { .. } => Self::ADMISSION_DIGEST_MISMATCH_CODE,
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
+            Self::UnsupportedRuntimeJournalEventMapping { .. }
+            | Self::RuntimeJournalTimestampOutOfRange { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
             Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
@@ -115,6 +121,7 @@ impl RuntimeError {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)
             }
             Self::StorageJournalAppend { .. } => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            Self::RollbackFailed { primary, .. } => primary.runtime_code(),
             Self::AdmissionHeaderPersistenceFailed { .. } => {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
@@ -154,6 +161,8 @@ impl RuntimeError {
             | Self::AdmissionCapabilityDenied { .. }
             | Self::AdmissionCapabilityCountMismatch { .. }
             | Self::EncodeFailed
+            | Self::UnsupportedRuntimeJournalEventMapping { .. }
+            | Self::RuntimeJournalTimestampOutOfRange { .. }
             | Self::SecretResultNotAllowed
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
@@ -177,6 +186,7 @@ impl RuntimeError {
             Self::StorageJournalAppend { .. } | Self::Core { .. } => {
                 Some(Self::storage_append_symbolic_code())
             }
+            Self::RollbackFailed { primary, .. } => Some(primary.symbolic_code()),
             // NOTE: #[non_exhaustive] - new RuntimeError variants return None for symbolic code.
             // Add explicit match arms for new variants.
             _ => None,

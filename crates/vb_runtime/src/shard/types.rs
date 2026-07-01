@@ -780,7 +780,7 @@ pub enum RuntimeEvent {
     Submit,
     /// An existing run is being resumed from a suspended state.
     Resume,
-    /// Resume journal append failed, revert to Resumable state.
+    /// A pre-commit resume or drive append failed; revert to retryable state.
     ResumeRollback,
     /// A run's deterministic execution is continuing after a drive tick.
     DriveContinue,

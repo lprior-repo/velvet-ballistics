@@ -19,6 +19,14 @@ impl From<vb_storage::JournalError> for RuntimeError {
 }
 
 impl RuntimeError {
+    pub(crate) fn rollback_failed(operation: &'static str, primary: Self, rollback: Self) -> Self {
+        Self::RollbackFailed {
+            operation,
+            primary: Box::new(primary),
+            rollback: Box::new(rollback),
+        }
+    }
+
     pub(crate) fn admission_header_persistence_failed(error: Self) -> Self {
         match error {
             Self::StorageJournalAppend { source }

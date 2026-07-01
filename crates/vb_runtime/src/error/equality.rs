@@ -62,6 +62,18 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::AdmissionHeaderPersistenceFailed { source: b },
         ) => a.diagnostic_code() == b.diagnostic_code(),
         (
+            RuntimeError::RollbackFailed {
+                operation: operation_a,
+                primary: primary_a,
+                rollback: rollback_a,
+            },
+            RuntimeError::RollbackFailed {
+                operation: operation_b,
+                primary: primary_b,
+                rollback: rollback_b,
+            },
+        ) => operation_a == operation_b && primary_a == primary_b && rollback_a == rollback_b,
+        (
             RuntimeError::CommandQueueCapacityExceeded {
                 capacity: a,
                 max: b,
@@ -115,6 +127,20 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::ActionTaintDowngrade {
                 required: c,
                 supplied: d,
+            },
+        ) => a == c && b == d,
+        (
+            RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind: a },
+            RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind: b },
+        ) => a == b,
+        (
+            RuntimeError::RuntimeJournalTimestampOutOfRange {
+                event_kind: a,
+                timestamp: b,
+            },
+            RuntimeError::RuntimeJournalTimestampOutOfRange {
+                event_kind: c,
+                timestamp: d,
             },
         ) => a == c && b == d,
         (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => {

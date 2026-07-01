@@ -213,6 +213,25 @@ impl crate::journal::RuntimeJournal for RejectAdmissionHeaderJournal {
         Ok(())
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if events.iter().any(|event| {
+            (matches!(event, RuntimeJournalEvent::RunSubmitted { .. }) && self.reject_submitted)
+                || (matches!(event, RuntimeJournalEvent::RunAdmission { .. })
+                    && self.reject_admission)
+        }) {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .extend(events.iter().cloned());
+        Ok(())
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }

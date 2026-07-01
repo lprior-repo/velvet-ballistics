@@ -297,6 +297,26 @@ impl crate::journal::RuntimeJournal for RejectTimerScheduledJournal {
         Ok(())
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if events.iter().any(|event| {
+            (matches!(event, RuntimeJournalEvent::WaitScheduled { .. })
+                && self.rejected_kind == PendingTimerKind::Wait)
+                || (matches!(event, RuntimeJournalEvent::AskScheduled { .. })
+                    && self.rejected_kind == PendingTimerKind::Ask)
+        }) {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .extend(events.iter().cloned());
+        Ok(())
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }
@@ -387,7 +407,7 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
     assert_eq!(shard.run_state_contains(run), true);
     assert_eq!(
         shard.runtime_state_get(run),
-        Some(super::RuntimeState::Initial)
+        Some(super::RuntimeState::Resumable)
     );
     match journal.snapshot() {
         Ok(events) => {

@@ -276,6 +276,20 @@ impl crate::journal::RuntimeJournal for CancelAppendFailsJournal {
         Ok(())
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if events
+            .iter()
+            .any(|event| matches!(event, RuntimeJournalEvent::RunCancelled { .. }))
+        {
+            return Err(RuntimeError::JournalPoisoned);
+        }
+        Ok(())
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }

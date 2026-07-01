@@ -222,6 +222,34 @@ impl RuntimeJournalEvent {
             Self::RunAdmission { admission } => admission.run_id(),
         }
     }
+
+    /// Stable variant name for typed storage-mapping diagnostics.
+    #[must_use]
+    pub const fn kind(&self) -> &'static str {
+        match self {
+            Self::RunSubmitted { .. } => "RunSubmitted",
+            Self::RunAdmission { .. } => "RunAdmission",
+            Self::RunFinished { .. } => "RunFinished",
+            Self::RunFailed { .. } => "RunFailed",
+            Self::RunCancelled { .. } => "RunCancelled",
+            Self::RunKilled { .. } => "RunKilled",
+            Self::ActionScheduled { .. } => "ActionScheduled",
+            Self::ActionCompleted { .. } => "ActionCompleted",
+            Self::ActionScheduledTicket { .. } => "ActionScheduledTicket",
+            Self::ActionCompletedEnvelope { .. } => "ActionCompletedEnvelope",
+            Self::ActionFailed { .. } => "ActionFailed",
+            Self::ActionAbandoned { .. } => "ActionAbandoned",
+            Self::WaitScheduled { .. } => "WaitScheduled",
+            Self::WaitResolved { .. } => "WaitResolved",
+            Self::AskScheduled { .. } => "AskScheduled",
+            Self::AskAnswered { .. } => "AskAnswered",
+            Self::AskTimedOut { .. } => "AskTimedOut",
+            Self::SlotWritten { .. } => "SlotWritten",
+            Self::StepStarted { .. } => "StepStarted",
+            Self::StepSucceeded { .. } => "StepSucceeded",
+            Self::Resumed { .. } => "Resumed",
+        }
+    }
 }
 
 /// Append-only port used by runtime shards for lifecycle journaling.
@@ -242,6 +270,28 @@ pub trait RuntimeJournal: Send + Sync {
     /// Appends a lifecycle event whose per-run sequence is owned by the shard.
     fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> RuntimeResult<()> {
         self.append(event)
+    }
+
+    /// Appends a same-run lifecycle batch whose first per-run sequence is owned
+    /// by the shard.
+    ///
+    /// The default fails closed for multi-event batches so callers cannot get a
+    /// partial durable prefix from a journal implementation that has not opted
+    /// into atomic batch semantics.
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let Some((event, rest)) = events.split_first() else {
+            return Ok(());
+        };
+        if !rest.is_empty() {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "runtime_journal_batch_append",
+            });
+        }
+        self.append_sequenced(event.clone(), start_seq)
     }
 
     /// Probes journal health without side effects.
@@ -282,6 +332,15 @@ impl RuntimeJournal for NoopRuntimeJournal {
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Ok(())
     }
+
+    fn append_sequenced_batch(
+        &self,
+        _events: &[RuntimeJournalEvent],
+        _start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         Ok(())
     }
@@ -385,7 +444,6 @@ impl RuntimeJournalConfig {
                 journal, queue,
             )),
             DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
-            #[allow(unreachable_patterns)]
             _ => Err(RuntimeError::UnsupportedDurabilityProfile {
                 profile_debug: format!("{:?}", self.profile),
             }),
@@ -431,6 +489,36 @@ impl RuntimeJournal for VolatileRuntimeJournal {
         events.push(event);
         Ok(())
     }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let mut stored = self
+            .events
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+        let available = self
+            .capacity
+            .checked_sub(stored.len())
+            .ok_or(RuntimeError::JournalFull {
+                capacity: self.capacity,
+            })?;
+        if events.len() > available {
+            return Err(RuntimeError::JournalFull {
+                capacity: self.capacity,
+            });
+        }
+        stored
+            .try_reserve(events.len())
+            .map_err(|_| RuntimeError::JournalFull {
+                capacity: self.capacity,
+            })?;
+        stored.extend(events.iter().cloned());
+        Ok(())
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         // Verify the mutex is not poisoned.
         let _guard = self

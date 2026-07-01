@@ -116,6 +116,17 @@ impl RuntimeJournal for SourceFailingRuntimeJournal {
         self.inner.probe()
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> vb_runtime::RuntimeResult<()> {
+        for event in events {
+            self.append(event.clone())?;
+        }
+        Ok(())
+    }
+
     fn drain_for_shutdown(
         &self,
     ) -> vb_runtime::RuntimeResult<vb_storage::JournalWriterFlushReport> {
@@ -152,6 +163,17 @@ impl RuntimeJournal for FailingRuntimeJournal {
 
     fn probe(&self) -> vb_runtime::RuntimeResult<()> {
         self.inner.probe()
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> vb_runtime::RuntimeResult<()> {
+        for event in events {
+            self.append(event.clone())?;
+        }
+        Ok(())
     }
 
     fn drain_for_shutdown(
@@ -670,33 +692,19 @@ fn handle_resume_propagates_flush_evidence_failure() {
     // ignores the drive_run failure. The submit appears to succeed even though
     // the run's drive failed.
     //
-    // After fix: tick() would propagate the error from handle_submit's drive_run.
-    let _tick_result = shard.tick();
-
-    // With the bug, tick() returns Ok(true) even though drive_run failed.
-    // After fix, tick() should return Err if drive_run failed.
-    // But we can't easily verify this from external tests since handle_submit
-    // is pub(crate) and tick() is a higher-level operation.
-    //
-    // The real test would be: create a run in Resumable state, then call
-    // handle_resume with a journal that fails during flush_evidence.
-    // But this requires handle_resume to be callable from tests, which it isn't.
-    //
-    // For now, we document the bug: observe_resume_drive_result drops errors.
-    // The BUG CONFIRMED assertion below describes the expected behavior after fix.
-    let run_exists = shard.run_state_contains(run_id);
-
-    // BUG CONFIRMED: due to observe_resume_drive_result dropping the error,
-    // the run may or may not exist depending on whether the drive failure
-    // was properly propagated. With the bug, the error is silently dropped.
-    // This test documents the contract that should hold:
-    // If drive_run fails during submit, the run should NOT be in Resumable state.
+    // After fix: tick() propagates the error from handle_submit's drive_run.
+    // The transactional drive layer keeps the pre-drive run state available so
+    // operators can inspect or retry from a non-orphaned state.
+    let tick_result = shard.tick();
     assert!(
-        !run_exists,
-        "BUG: drive_run failed (journal failed during flush_evidence) but \
-         observe_resume_drive_result silently dropped the error. \
-         The run should not exist in Resumable state. \
-         After fix: handle_submit should propagate drive_run errors."
+        matches!(tick_result, Err(RuntimeError::StorageJournalAppend { .. })),
+        "drive failure must propagate through tick, got {tick_result:?}"
+    );
+
+    let run_exists = shard.run_state_contains(run_id);
+    assert!(
+        run_exists,
+        "drive failure must leave an inspectable pre-drive run state instead of orphaning it"
     );
 }
 

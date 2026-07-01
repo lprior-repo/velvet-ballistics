@@ -194,6 +194,110 @@ fn re_009_wait_resolved_maps_to_dedicated_journal_event() {
     assert_eq!(event.record_kind(), vb_storage::RecordKind::WaitResolved);
 }
 
+fn resumed_datetime(timestamp: u64) -> Result<chrono::DateTime<chrono::Utc>, String> {
+    let seconds = i64::try_from(timestamp).map_err(|error| error.to_string())?;
+    chrono::DateTime::<chrono::Utc>::from_timestamp(seconds, 0)
+        .ok_or_else(|| "timestamp must be representable".to_owned())
+}
+
+#[test]
+fn strict_storage_resume_persists_run_resumed_not_run_failed() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::strict(journal.clone());
+    let run = RunId::new(4_601);
+    let timestamp = 1_700_000_000_u64;
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::Resumed { run, timestamp },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        events,
+        vec![JournalEvent::RunResumed {
+            run,
+            seq: EventSeq::new(0),
+            timestamp: resumed_datetime(timestamp)?,
+        }]
+    );
+    assert_eq!(
+        events
+            .iter()
+            .any(|event| matches!(event, JournalEvent::RunFailedEvent { .. })),
+        false
+    );
+    Ok(())
+}
+
+#[test]
+fn queued_storage_resume_persists_run_resumed_not_run_failed() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(4, 4)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
+    let run = RunId::new(4_602);
+    let timestamp = 1_700_000_001_u64;
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::Resumed { run, timestamp },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+    assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
+    assert!(matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1));
+
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        events,
+        vec![JournalEvent::RunResumed {
+            run,
+            seq: EventSeq::new(0),
+            timestamp: resumed_datetime(timestamp)?,
+        }]
+    );
+    assert_eq!(
+        events
+            .iter()
+            .any(|event| matches!(event, JournalEvent::RunFailedEvent { .. })),
+        false
+    );
+    Ok(())
+}
+
+#[test]
+fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> Result<(), String>
+{
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::strict(journal.clone());
+    let run = RunId::new(4_603);
+
+    let result = adapter.append_sequenced(
+        RuntimeJournalEvent::Resumed {
+            run,
+            timestamp: u64::MAX,
+        },
+        EventSeq::new(0),
+    );
+    assert!(matches!(
+        result,
+        Err(crate::RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind: "Resumed",
+            timestamp: u64::MAX,
+        })
+    ));
+    assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
+    Ok(())
+}
+
 #[test]
 fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {

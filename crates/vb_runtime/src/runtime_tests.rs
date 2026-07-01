@@ -57,6 +57,24 @@ mod tests {
             Ok(())
         }
 
+        fn append_sequenced_batch(
+            &self,
+            events: &[RuntimeJournalEvent],
+            _start_seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            if events
+                .iter()
+                .any(|event| matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }))
+            {
+                return Err(RuntimeError::JournalFull { capacity: 0 });
+            }
+            self.events
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .extend(events.iter().cloned());
+            Ok(())
+        }
+
         fn probe(&self) -> crate::RuntimeResult<()> {
             Ok(())
         }
