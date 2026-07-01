@@ -23,6 +23,7 @@ set -uo pipefail
 
 REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 VERIFICATION_DIR="${REPO_ROOT}/verification/verus"
+CRATE_VERIFICATION_GLOB="${REPO_ROOT}/crates/*/verification/verus ${REPO_ROOT}/crates/*/src/verification/verus"
 
 if [[ ! -d "${VERIFICATION_DIR}" ]]; then
     echo "ERROR: ${VERIFICATION_DIR} does not exist"
@@ -121,7 +122,22 @@ while IFS= read -r -d '' file; do
 
     # Otherwise: VACUUM — fail this gate
     vacuum_files+=("${rel}")
-done < <(find "${VERIFICATION_DIR}" -type f -name '*.rs' -print0)
+done < <(
+    {
+        find "${VERIFICATION_DIR}" -type f -name '*.rs' -print0
+        # Also scan crate-local verification/verus directories so a
+        # vacuum spec hiding under crates/*/verification/verus/ is
+        # caught. The root-level scan above only catches
+        # verification/verus/**/*.rs; crate-local copies were
+        # previously outside the gate (vb-q6xm8). The
+        # `crates/*/verification/verus` glob expands to zero or more
+        # directories; missing dirs are silently skipped.
+        for crate_dir in ${CRATE_VERIFICATION_GLOB}; do
+            [[ -d "${crate_dir}" ]] || continue
+            find "${crate_dir}" -type f -name '*.rs' -print0
+        done
+    } | sort -zu
+)
 
 echo "================================================================"
 echo "  Verus production-binding audit (ABSOLUTE — no exceptions)"

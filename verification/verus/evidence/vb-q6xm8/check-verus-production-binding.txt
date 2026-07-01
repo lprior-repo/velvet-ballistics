@@ -1,0 +1,62 @@
+============================================================
+  scripts/check-verus-production-binding.sh — VB-Q6XM8 evidence
+  Captured: 2026-07-01T16:12:04Z
+  Workspace: /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-q6xm8
+============================================================
+
+--- baseline (before extension, vacuum spec still present) ---
+  STRONG: 0  WEAK: 71  VACUUM: 0
+  (false-negative: recovery_types_spec.rs at
+   crates/vb_storage/verification/verus/ was not scanned because
+   the original script only walked verification/verus/)
+
+--- after extension + vacuum-spec retirement ---
+================================================================
+  Verus production-binding audit (ABSOLUTE — no exceptions)
+================================================================
+  STRONG (direct crates/ binding): 0
+  WEAK (production_inner/ mirror): 72
+  VACUUM (no production binding):  2
+
+  VACUUM files — GOD RULE 2 VIOLATION:
+    - crates/vb_runtime/src/verification/verus/vb_sxkz6_shard_for_run.rs
+    - crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+
+  Every VACUUM file MUST be fixed. NO EXCEPTIONS.
+  Options:
+    1. Bind via #[path = ".../crates/.../src/...rs"] + assume_specification
+    2. Bind via #[path = "production_inner/...rs"] + assume_specification
+    3. DELETE the file
+
+  There is no fourth option. There is no override. There is no allowlist.
+  Hand-written shadow types are NOT proof. They prove nothing.
+  If your spec cannot bind to production, delete it.
+
+--- exit telemetry ---
+EXIT=1
+DURATION_MS=424
+
+--- bead disposition ---
+The script EXTENSION (scanning crates/*/verification/verus/ and
+crates/*/src/verification/verus/) successfully closed the
+GOD-RULE-2 vacuum that vb-q6xm8 was filed to retire:
+  - crates/vb_storage/verification/verus/recovery_types_spec.rs
+    (369-line vacuum spec) is DELETED in this JJ change.
+  - verification/verus/recovery_types_production_bridge.rs is
+    ADDED in this JJ change with a WEAK assume_specification
+    bridge (WEAK count went from 71 to 72; bridge visible in
+    WEAK list under
+    verification/verus/recovery_types_production_bridge.rs).
+  - The script extension revealed 2 ADDITIONAL vacuum files
+    in crates/vb_runtime/src/verification/verus/ that the prior
+    scan missed:
+      * crates/vb_runtime/src/verification/verus/vb_sxkz6_shard_for_run.rs
+      * crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+    These are OUT OF SCOPE for vb-q6xm8 (do not auto-fix
+    unrelated findings); they are surfaced as P1 follow-up
+    beads (vb-q6xm8-vb-runtime-vacuum-1, vb-q6xm8-vb-runtime-vacuum-2)
+    filed in the same dispatcher cycle. The bead cannot close
+    at EXIT=0 because the script extension is doing its job
+    (catching vacuum files that were previously hiding), and
+    the unrelated vacuum files require their own retirement
+    workflow per AGENTS.md.
