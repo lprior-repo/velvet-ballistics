@@ -468,6 +468,10 @@ pub mod test_helpers {
     ///
     /// This is needed because cancel/resume/retry/answer write events but not headers.
     /// Without a header, replay's run_headers() iteration skips the run.
+    ///
+    /// The `put_run_header` result is now propagated: tests that hit a write
+    /// failure must observe it (the helper panics with a clear message rather
+    /// than silently swallowing the error). See bead vb-3mz3u.
     #[allow(unreachable_pub)]
     pub fn create_run_header(journal: &FjallJournal, run: RunId) {
         use vb_core::WorkflowDigest;
@@ -479,6 +483,8 @@ pub mod test_helpers {
             status: 1,
             accepted_at_ms: 0,
         };
-        if journal.put_run_header(&header).is_err() {}
+        if let Err(error) = journal.put_run_header(&header) {
+            panic!("create_run_header: put_run_header failed for run {run:?}: {error}");
+        }
     }
 }
