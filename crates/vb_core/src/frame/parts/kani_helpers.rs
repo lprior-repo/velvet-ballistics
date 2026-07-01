@@ -1,9 +1,4 @@
-mod frame_kani_harnesses {
-    use crate::frame::{
-        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, is_valid_step_state_transition,
-    };
-    use crate::ids::RunId;
-
+        
     fn validate_transition_inline(current: StepState, new: StepState) -> bool {
         is_valid_step_state_transition(current, new)
     }

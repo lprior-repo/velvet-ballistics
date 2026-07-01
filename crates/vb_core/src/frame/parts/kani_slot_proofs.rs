@@ -42,5 +42,4 @@
         let result = frame.write_slot(slot, SlotValue::Null);
         kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
     }
-}
 
