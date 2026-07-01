@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Atomic staging of pending action index maintenance for journal appends.
+//! Atomic staging of recovery index maintenance for journal appends.
 //!
 //! vb-3wn7x: the runtime journal path drives the lifecycle of pending
 //! actions in three groups:
@@ -13,15 +13,17 @@
 //! 3. `ActionFailedEvent` / `ActionAbandoned` — terminal failure or
 //!    cancellation-driven abandonment; the marker must be removed.
 //!
-//! All other event kinds (runs, steps, waits, asks, slot writes, …) leave
-//! the index untouched.
+//! `RunAccepted` intentionally does not derive run-header, status, or workflow
+//! indexes from the journal event alone: that event carries a workflow digest
+//! but not a real `WorkflowId`, and its sequence is not an admission timestamp.
+//! Those indexes must be staged only by callers that carry real metadata.
+//! All non-action event kinds therefore leave this event-derived index path
+//! untouched.
 //!
-//! [`stage_pending_action_index_op`] is the single staging entry point:
-//! it stages either a value insert or a tombstone on the supplied
-//! `fjall::OwnedWriteBatch`. Callers MUST commit the same batch that
-//! holds the journal event so index and journal writes succeed or fail
-//! together; partial writes would leave the index inconsistent with the
-//! event log.
+//! [`stage_recovery_index_ops`] is the staging entry point for event-derived
+//! index maintenance. Callers MUST commit the same batch that holds the journal
+//! event so index and journal writes succeed or fail together; partial writes
+//! would leave recovery scans inconsistent with the event log.
 
 use crate::{
     error::JournalError, events::JournalEvent, journal::FjallJournal, keys::index_action_key,
@@ -90,6 +92,22 @@ fn pending_action_index_op_for(event: &JournalEvent) -> Option<PendingActionInde
 }
 
 impl FjallJournal {
+    /// Stages all recovery indexes implied by a journal event onto the
+    /// supplied `fjall::OwnedWriteBatch`.
+    ///
+    /// This includes only metadata that is present in the event itself. In
+    /// particular, `RunAccepted` is a no-op here because deriving a
+    /// `WorkflowId` from a digest or an admission timestamp from `seq` would
+    /// fabricate recovery metadata. Callers that have real admission metadata
+    /// must stage those indexes through the explicit putter APIs.
+    pub(crate) fn stage_recovery_index_ops(
+        &self,
+        batch: &mut fjall::OwnedWriteBatch,
+        event: &JournalEvent,
+    ) -> Result<(), JournalError> {
+        self.stage_pending_action_index_op(batch, event)
+    }
+
     /// Stages the pending-action-index mutation implied by `event` onto
     /// the supplied `fjall::OwnedWriteBatch`.
     ///

@@ -4897,6 +4897,39 @@ mod tests {
     }
 
     #[test]
+    fn journal_writer_queue_rejects_same_flush_duplicate_keys() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("q");
+        let run = RunId::new(30_010);
+        let first = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(10),
+        };
+        let duplicate_key = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: test_digest(11),
+        };
+
+        assert!(matches!(queue.enqueue_journaled(first), Ok(())));
+        assert!(matches!(queue.enqueue_journaled(duplicate_key), Ok(())));
+
+        assert!(matches!(
+            queue.flush_batch(&journal),
+            Err(JournalError::DuplicateStagedKey { run: found, seq })
+                if found == run && seq == EventSeq::new(0)
+        ));
+        assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
+        assert!(matches!(journal.run_header(run), Ok(None)));
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 2 && counts.strict == 0
+        ));
+    }
+
+    #[test]
     fn journal_writer_queue_flush_persists_journaled_events_before_drain() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let path = temp_dir.path().to_path_buf();

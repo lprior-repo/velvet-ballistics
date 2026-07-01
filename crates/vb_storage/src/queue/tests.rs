@@ -1166,4 +1166,43 @@ mod internal_tests {
             "the durable event must equal the retried payload"
         );
     }
+
+    #[test]
+    fn flush_batch_same_call_drains_already_durable_idempotent_retries() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(282);
+        let event = make_event(run, 0);
+
+        journal
+            .append_journaled(&event)
+            .expect("durable seed append should succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("first retry enqueue should succeed");
+        queue
+            .enqueue_journaled(event.clone())
+            .expect("second retry enqueue should succeed");
+
+        let report = queue
+            .flush_batch(&journal)
+            .expect("already-durable duplicate retries must drain without staged-key poison");
+        assert_eq!(report.drained, 2, "both queued retries must drain");
+        assert_eq!(
+            report.written, 2,
+            "idempotent no-op retries are counted as processed writes"
+        );
+        assert!(matches!(
+            queue.pending_profile_counts(),
+            Ok(counts) if counts.journaled == 0 && counts.strict == 0
+        ));
+
+        let events = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(
+            events,
+            vec![event],
+            "durable store must still contain exactly the original event"
+        );
+    }
 }

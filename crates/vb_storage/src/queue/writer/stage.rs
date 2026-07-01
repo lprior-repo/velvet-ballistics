@@ -11,12 +11,12 @@ use std::collections::HashSet;
 
 /// Stages one queued event into the supplied `OwnedWriteBatch`.
 ///
-/// Per-flush dedup: `staged_keys` accumulates the journal keys staged
-/// earlier in the *same* `flush_batch` call. A second event with the
-/// same `(run, seq)` collides here — before the durable keyspace is
-/// consulted — and surfaces as `DuplicateStagedKey` so the operator
-/// can distinguish a within-batch collision from a divergence against
-/// an already-durable event.
+/// Per-flush dedup: `staged_keys` accumulates only the journal keys
+/// actually staged earlier in the *same* `flush_batch` call. A second
+/// non-durable event with the same `(run, seq)` collides here and
+/// surfaces as `DuplicateStagedKey` so the operator can distinguish a
+/// within-batch collision from a divergence against an already-durable
+/// event. Already-durable idempotent retries never enter this set.
 ///
 /// Durable-store idempotency: when the durable events keyspace already
 /// holds a value at the same `(run, seq)`, the existing bytes are
@@ -25,9 +25,10 @@ use std::collections::HashSet;
 /// eventual drain remains correct. A mismatch returns `DuplicateEvent`
 /// so the operator can diagnose the divergence.
 ///
-/// vb-3wn7x: the staged write also updates the `index_action` keyspace
-/// for action-lifecycle events so the queued path keeps the index in
-/// sync with the durable event log.
+/// The staged write also updates action recovery indexes in the same
+/// batch for action-lifecycle events. `RunAccepted` carries no real
+/// workflow-id or wall-clock admission metadata, so this path must not
+/// synthesize run-header/status/workflow indexes from digest or seq data.
 pub(super) fn stage_queued_event(
     owned_batch: &mut fjall::OwnedWriteBatch,
     journal: &FjallJournal,
@@ -35,12 +36,6 @@ pub(super) fn stage_queued_event(
     staged_keys: &mut HashSet<[u8; crate::constants::JOURNAL_KEY_BYTES]>,
 ) -> Result<(), JournalError> {
     let key = run_event_key(event.run_id(), event.seq())?;
-    if !staged_keys.insert(key) {
-        return Err(JournalError::DuplicateStagedKey {
-            run: event.run_id(),
-            seq: event.seq(),
-        });
-    }
     if let Some(existing_bytes) = journal.events.get(key.as_slice())? {
         let (_, existing) = decode_journal_event(
             existing_bytes.as_ref(),
@@ -58,6 +53,12 @@ pub(super) fn stage_queued_event(
             seq: event.seq(),
         });
     }
+    if !staged_keys.insert(key) {
+        return Err(JournalError::DuplicateStagedKey {
+            run: event.run_id(),
+            seq: event.seq(),
+        });
+    }
     let value = encode_record(
         MAGIC_JOURNAL_EVENT,
         event.record_kind(),
@@ -65,10 +66,7 @@ pub(super) fn stage_queued_event(
         event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
+    journal.stage_recovery_index_ops(owned_batch, event)?;
     owned_batch.insert(&journal.events, key, value);
-    // vb-3wn7x: maintain the pending action index atomically with the
-    // event. The index mutation shares the OwnedWriteBatch, so a
-    // successful batch commit makes both writes durable together.
-    journal.stage_pending_action_index_op(owned_batch, event)?;
     Ok(())
 }
