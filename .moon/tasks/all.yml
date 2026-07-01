@@ -751,6 +751,16 @@ tasks:
     options:
       runInCI: false
 
+  # ── maxperf / PGO QUARANTINE ─────────────────────────────────────────────
+  # The pgo-instrument-build, pgo-optimized-build, maxperf, and maxperf-native
+  # tasks below are QUARANTINED (vb-pcfi1). The current master scope has
+  # removed generated Rust and the active maxperf release path; these tasks
+  # are retained for historical/audit reasons only and MUST NOT be invoked
+  # as part of the current release pipeline. They are gated by `runInCI:
+  # false` and additionally by `quarantined: true` so downstream automation
+  # can detect and skip them. Each task's `script` is preserved unchanged
+  # for future re-activation under explicit waiver.
+
   pgo-instrument-build:
     script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
@@ -763,6 +773,7 @@ tasks:
       - 'target/pgo/profiles/**'
     options:
       runInCI: false
+      quarantined: true
 
   pgo-optimized-build:
     script: |
@@ -783,6 +794,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   maxperf:
     script: |
@@ -806,6 +818,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   maxperf-native:
     script: |
@@ -826,6 +839,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   verify-fast:
     command: 'bash scripts/rust-verification-gauntlet.sh fast'
