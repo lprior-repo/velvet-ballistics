@@ -197,7 +197,7 @@ fn write_completed(journal: &FjallJournal, run: RunId) {
 fn cancel_succeeds_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(1);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
@@ -245,7 +245,7 @@ fn cancel_succeeds_when_bead_is_active() {
 fn cancel_succeeds_when_bead_is_waiting_answer() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(2);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
@@ -292,7 +292,7 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
 fn resume_succeeds_when_bead_is_cancelled() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(3);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
     write_cancelled(&journal, run);
@@ -339,7 +339,7 @@ fn resume_succeeds_when_bead_is_cancelled() {
 fn retry_succeeds_when_bead_is_failed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(4);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Failed state (replaces set_lifecycle_state)
     write_failed(&journal, run);
@@ -387,7 +387,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(5);
     let answer_content = "the answer is 42".to_string();
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
@@ -441,7 +441,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
 fn cancel_returns_invalid_transition_when_bead_is_pending() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(10);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -469,7 +469,7 @@ fn cancel_returns_invalid_transition_when_bead_is_pending() {
 fn cancel_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(11);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -497,7 +497,7 @@ fn cancel_returns_invalid_transition_when_bead_is_completed() {
 fn cancel_returns_invalid_transition_when_bead_is_failed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(12);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -525,7 +525,7 @@ fn cancel_returns_invalid_transition_when_bead_is_failed() {
 fn resume_returns_invalid_transition_when_bead_is_pending() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(13);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -553,7 +553,7 @@ fn resume_returns_invalid_transition_when_bead_is_pending() {
 fn resume_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(14);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -581,7 +581,7 @@ fn resume_returns_invalid_transition_when_bead_is_active() {
 fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(15);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -609,7 +609,7 @@ fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
 fn resume_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(16);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -637,7 +637,7 @@ fn resume_returns_invalid_transition_when_bead_is_completed() {
 fn resume_returns_invalid_transition_when_bead_is_failed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(17);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -665,7 +665,7 @@ fn resume_returns_invalid_transition_when_bead_is_failed() {
 fn retry_returns_invalid_transition_when_bead_is_pending() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(18);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -693,7 +693,7 @@ fn retry_returns_invalid_transition_when_bead_is_pending() {
 fn retry_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(19);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -721,7 +721,7 @@ fn retry_returns_invalid_transition_when_bead_is_active() {
 fn retry_returns_invalid_transition_when_bead_is_cancelled() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(20);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -749,7 +749,7 @@ fn retry_returns_invalid_transition_when_bead_is_cancelled() {
 fn retry_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(21);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -777,7 +777,7 @@ fn retry_returns_invalid_transition_when_bead_is_completed() {
 fn retry_returns_invalid_transition_when_bead_is_waiting_answer() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(22);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -805,7 +805,7 @@ fn retry_returns_invalid_transition_when_bead_is_waiting_answer() {
 fn answer_returns_invalid_transition_when_bead_is_pending() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(23);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
@@ -833,7 +833,7 @@ fn answer_returns_invalid_transition_when_bead_is_pending() {
 fn answer_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(24);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
@@ -861,7 +861,7 @@ fn answer_returns_invalid_transition_when_bead_is_active() {
 fn answer_returns_invalid_transition_when_bead_is_cancelled() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(25);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
@@ -889,7 +889,7 @@ fn answer_returns_invalid_transition_when_bead_is_cancelled() {
 fn answer_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(26);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
@@ -917,7 +917,7 @@ fn answer_returns_invalid_transition_when_bead_is_completed() {
 fn answer_returns_invalid_transition_when_bead_is_failed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(27);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
@@ -951,7 +951,7 @@ fn answer_returns_invalid_transition_when_bead_is_failed() {
 fn cancel_returns_duplicate_request_when_called_twice() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(30);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
@@ -990,7 +990,7 @@ fn cancel_returns_duplicate_request_when_called_twice() {
 fn resume_returns_duplicate_request_when_called_twice() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(31);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
     write_cancelled(&journal, run);
@@ -1034,7 +1034,7 @@ fn resume_returns_duplicate_request_when_called_twice() {
 fn retry_returns_duplicate_request_when_called_twice() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(32);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Failed state (replaces set_lifecycle_state)
     write_failed(&journal, run);
@@ -1078,7 +1078,7 @@ fn retry_returns_duplicate_request_when_called_twice() {
 fn answer_returns_duplicate_request_when_called_twice() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(33);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
@@ -1128,7 +1128,7 @@ fn answer_returns_duplicate_request_when_called_twice() {
 fn cancel_returns_stale_request_when_state_already_advanced() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(40);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
@@ -1148,7 +1148,7 @@ fn cancel_returns_stale_request_when_state_already_advanced() {
 fn resume_returns_stale_request_when_not_in_cancelled_state() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(41);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
@@ -1168,7 +1168,7 @@ fn resume_returns_stale_request_when_not_in_cancelled_state() {
 fn retry_returns_stale_request_when_not_in_failed_state() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(42);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
@@ -1196,7 +1196,7 @@ fn retry_returns_stale_request_when_not_in_failed_state() {
 fn answer_returns_stale_request_when_not_in_waiting_answer_state() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(43);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
@@ -1256,7 +1256,7 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
 fn replay_full_journal_reconstructs_bit_identical_state() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(50);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Drive run through Pending -> Active -> Cancelled via journal events
     write_run_accepted(&journal, run);
@@ -1307,7 +1307,7 @@ fn replay_with_malformed_event_returns_replay_corruption() {
     let run = RunId::new(90);
 
     // Create a run header so replay's run_headers() iteration finds this run
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state (required for cancel to succeed)
     write_run_accepted(&journal, run);
@@ -1347,7 +1347,7 @@ fn replay_with_missing_event_returns_replay_corruption() {
     let run = RunId::new(91);
 
     // Create a run header so replay's run_headers() iteration finds this run
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Create a sequence gap by injecting an event at seq=1 without writing seq=0.
     // This creates a gap in the sequence that replay will detect when
@@ -1405,7 +1405,7 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
         // Journal opened successfully - verify we can call lifecycle commands
         // (This proves a connected journal is required for lifecycle operations)
         let run = RunId::new(999);
-        create_run_header(&journal, run);
+        create_run_header(&journal, run).expect("create_run_header for test setup");
         write_run_accepted(&journal, run);
 
         // This should succeed because journal IS connected
@@ -1427,7 +1427,7 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
 fn lifecycle_command_returns_journal_write_failure_on_io_error() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(60);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state so cancel reaches journal write
     write_run_accepted(&journal, run);
@@ -1481,7 +1481,7 @@ fn invalid_transition_error_includes_structured_diagnostics() {
 fn duplicate_request_error_includes_structured_diagnostics() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(71);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
@@ -1510,7 +1510,7 @@ fn duplicate_request_error_includes_structured_diagnostics() {
 fn stale_request_error_includes_structured_diagnostics() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(72);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
