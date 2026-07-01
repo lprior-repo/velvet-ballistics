@@ -11,15 +11,13 @@
 #[cfg(test)]
 mod edge_case_tests {
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-        JournalWriterQueue, RecordKind, RunHeaderRecord, RunSnapshot, StorageLimits,
-        WorkflowSourceRecord, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-        MAGIC_INDEX_RECORD,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
-        DIGEST_BYTES, decode_record, encode_record,
+        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        JournalEvent, JournalWriterQueue, MAGIC_BLOB, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, RecordKind, RunHeaderRecord,
+        RunSnapshot, StorageLimits, WorkflowSourceRecord, decode_record, encode_record,
     };
-    use std::thread;
     use std::sync::Arc;
+    use std::thread;
     use vb_core::{RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -41,7 +39,9 @@ mod edge_case_tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };
-        journal.append_journaled(&event).expect("append should succeed");
+        journal
+            .append_journaled(&event)
+            .expect("append should succeed");
 
         journal.fail_next_persist_for_test();
         let result = journal.persist_strict();
@@ -50,7 +50,9 @@ mod edge_case_tests {
             "simulated disk failure must yield StrictDurabilityFailed"
         );
 
-        let replayed = journal.events_for_run(run).expect("replay after failure should succeed");
+        let replayed = journal
+            .events_for_run(run)
+            .expect("replay after failure should succeed");
         assert_eq!(replayed.len(), 1, "event should still be in WAL");
     }
 
@@ -63,17 +65,100 @@ mod edge_case_tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0x11; 32]),
         };
+        // Stage the event via the unfsynced path: visible in the WAL memtable
+        // but not yet fsync'd.
+        journal
+            .append_journaled(&event)
+            .expect("append_journaled should stage the event");
 
+        // First persist_strict fails (simulated disk failure via the persist
+        // hook, which is the correct hook for the persist_strict() path).
         journal.fail_next_persist_for_test();
-        let result = journal.append_strict(&event);
+        let result = journal.persist_strict();
         assert!(
             matches!(result, Err(JournalError::StrictDurabilityFailed)),
-            "first persist should simulate failure"
+            "first persist_strict should simulate failure, got {:?}",
+            result
         );
 
-        journal.append_strict(&event).expect("retry should succeed");
+        // Retry: the hook is auto-consumed, so the second persist_strict
+        // succeeds and the staged event remains visible throughout.
+        journal
+            .persist_strict()
+            .expect("retry persist_strict should succeed");
         let events = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(events.len(), 1);
+    }
+
+    // =========================================================================
+    // vb-o6qcf.3: append_strict batch-commit fault injection (LIVE regression)
+    // =========================================================================
+    //
+    // Closes the evidence gap from vb-6da68: the design-correct append_strict
+    // fix had NO live test proving that a commit failure on the batched path
+    // leaves the event not-visible and that retry is idempotent-Ok. This test
+    // injects a synthetic JournalError::Fjall via the cfg(test) hook in
+    // JournalWriteBatch::commit (the exact path append_strict uses) BEFORE
+    // the real OwnedWriteBatch reaches Fjall, then asserts the full contract.
+
+    #[test]
+    fn append_strict_commit_failure_leaves_event_not_visible_and_retry_is_idempotent() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(3);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0x22; 32]),
+        };
+
+        // (a) Arm the batch-commit fault hook: the NEXT
+        // JournalWriteBatch::commit() (the path append_strict uses) returns
+        // Err(JournalError::Fjall) WITHOUT touching the real Fjall store.
+        journal.fail_next_batch_commit_for_test();
+
+        // (b) append_strict must surface a Fjall error, NOT DuplicateEvent.
+        let result = journal.append_strict(&event);
+        assert!(
+            matches!(result, Err(JournalError::Fjall(_))),
+            "append_strict commit failure must surface JournalError::Fjall, got {:?}",
+            result
+        );
+
+        // (c) The event must NOT be visible: the batch never reached Fjall,
+        // so the staged insert was rejected atomically and no reader can
+        // observe it. events_for_run returns an empty vector.
+        let visible = journal
+            .events_for_run(run)
+            .expect("replay after failed commit should succeed");
+        assert!(
+            visible.is_empty(),
+            "event must not be visible after a failed batch commit"
+        );
+
+        // (d) Retry WITHOUT clearing anything extra: the hook was auto-consumed
+        // (exactly once), so the retry re-stages and commits cleanly. It must
+        // be Ok — NOT DuplicateEvent — proving the retry is idempotent after a
+        // non-visible failure.
+        let retry = journal.append_strict(&event);
+        assert!(
+            retry.is_ok(),
+            "retry append_strict must be Ok (idempotent), got {:?}",
+            retry
+        );
+
+        // (e) The event is now durable and visible to readers.
+        let replayed = journal
+            .events_for_run(run)
+            .expect("replay after retry should succeed");
+        assert_eq!(
+            replayed.len(),
+            1,
+            "event must be durable and visible after the retried commit"
+        );
+        assert_eq!(
+            replayed[0], event,
+            "replayed event must equal the appended event"
+        );
     }
 
     // =========================================================================
@@ -111,7 +196,12 @@ mod edge_case_tests {
         for thread_idx in 0..8 {
             let run = RunId::new((thread_idx as u64) + 1);
             let events = journal.events_for_run(run).expect("replay should succeed");
-            assert_eq!(events.len(), 5, "thread {} should have 5 events", thread_idx);
+            assert_eq!(
+                events.len(),
+                5,
+                "thread {} should have 5 events",
+                thread_idx
+            );
             for (i, ev) in events.iter().enumerate() {
                 assert_eq!(ev.seq(), EventSeq::new(i as u64));
                 assert_eq!(ev.run_id(), run);
@@ -177,7 +267,9 @@ mod edge_case_tests {
                         step: StepIdx::new(seq as u16),
                         attempt: 1,
                     };
-                    batch.append_event(&event).expect("batch append should succeed");
+                    batch
+                        .append_event(&event)
+                        .expect("batch append should succeed");
                 }
                 batch.commit().expect("batch commit should succeed");
             });
@@ -255,7 +347,10 @@ mod edge_case_tests {
             bytes: large.clone(),
         };
         journal.put_blob(&record).expect("large blob put");
-        let loaded = journal.blob(digest).expect("get should succeed").expect("present");
+        let loaded = journal
+            .blob(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.bytes, large);
     }
 
@@ -269,7 +364,10 @@ mod edge_case_tests {
             ir: large_ir.clone(),
         };
         journal.put_compiled_ir(&record).expect("large ir put");
-        let loaded = journal.compiled_ir(digest).expect("get should succeed").expect("present");
+        let loaded = journal
+            .compiled_ir(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.ir, large_ir);
     }
 
@@ -282,8 +380,13 @@ mod edge_case_tests {
             digest,
             source: large_source.clone(),
         };
-        journal.put_workflow_source(&record).expect("large source put");
-        let loaded = journal.workflow_source(digest).expect("get should succeed").expect("present");
+        journal
+            .put_workflow_source(&record)
+            .expect("large source put");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.source, large_source);
     }
 
@@ -320,8 +423,13 @@ mod edge_case_tests {
             status: 255,
             accepted_at_ms: u64::MAX,
         };
-        journal.put_run_header(&header).expect("max-value header put");
-        let loaded = journal.run_header(run).expect("get should succeed").expect("present");
+        journal
+            .put_run_header(&header)
+            .expect("max-value header put");
+        let loaded = journal
+            .run_header(run)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.run, run);
         assert_eq!(loaded.status, 255);
         assert_eq!(loaded.accepted_at_ms, u64::MAX);
@@ -340,7 +448,9 @@ mod edge_case_tests {
                 step: StepIdx::new((i % 256) as u16),
                 attempt: 1,
             };
-            journal.append_journaled(&ev).expect("append should succeed");
+            journal
+                .append_journaled(&ev)
+                .expect("append should succeed");
         }
 
         let events = journal.events_for_run(run).expect("replay should succeed");
@@ -445,13 +555,7 @@ mod edge_case_tests {
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             source: vec![1],
         };
-        let result = encode_record(
-            0xFFFF_0000,
-            RecordKind::WorkflowSource,
-            0,
-            &record,
-            128,
-        );
+        let result = encode_record(0xFFFF_0000, RecordKind::WorkflowSource, 0, &record, 128);
         assert!(
             matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
             "unknown magic with valid kind must be rejected"
@@ -474,7 +578,10 @@ mod edge_case_tests {
             &record,
             MAX_RUN_HEADER_BYTES,
         );
-        assert!(result.is_ok(), "RunHeader kind 3 must be accepted by MAGIC_INDEX_RECORD");
+        assert!(
+            result.is_ok(),
+            "RunHeader kind 3 must be accepted by MAGIC_INDEX_RECORD"
+        );
     }
 
     #[test]
@@ -493,7 +600,10 @@ mod edge_case_tests {
             &record,
             MAX_RUN_HEADER_BYTES,
         );
-        assert!(result.is_ok(), "IndexUpdate kind 50 must be accepted by MAGIC_INDEX_RECORD");
+        assert!(
+            result.is_ok(),
+            "IndexUpdate kind 50 must be accepted by MAGIC_INDEX_RECORD"
+        );
     }
 
     #[test]
@@ -568,7 +678,11 @@ mod edge_case_tests {
 
         let mut batch = journal.batch();
         let _ = batch.put_workflow_source(&record);
-        assert_eq!(batch.len(), 0, "batch should report 0 after digest mismatch abort");
+        assert_eq!(
+            batch.len(),
+            0,
+            "batch should report 0 after digest mismatch abort"
+        );
     }
 
     #[test]
@@ -589,9 +703,14 @@ mod edge_case_tests {
         let (_temp, journal) = temp_journal();
         let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(42);
-        queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(0), step: StepIdx::new(0), attempt: 1,
-        }).expect("enqueue");
+        queue
+            .enqueue_journaled(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("enqueue");
         queue.flush_batch(&journal).expect("flush");
         let events = journal.events_for_run(run).expect("replay");
         assert_eq!(events.len(), 1);
@@ -603,9 +722,14 @@ mod edge_case_tests {
         let queue = JournalWriterQueue::new(4, 10, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(100);
         for i in 0..4u64 {
-            queue.enqueue_journaled(JournalEvent::StepStarted {
-                run, seq: EventSeq::new(i), step: StepIdx::new(i as u16), attempt: 1,
-            }).expect("enqueue");
+            queue
+                .enqueue_journaled(JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(i),
+                    step: StepIdx::new(i as u16),
+                    attempt: 1,
+                })
+                .expect("enqueue");
         }
         queue.drain_all(&journal).expect("drain_all");
         let events = journal.events_for_run(run).expect("replay");
@@ -618,19 +742,30 @@ mod edge_case_tests {
         let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(1);
 
-        queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(0), step: StepIdx::new(0), attempt: 1,
-        }).expect("enqueue");
+        queue
+            .enqueue_journaled(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("enqueue");
 
         queue.shutdown(&journal).expect("shutdown");
 
         let result_j = queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(1), step: StepIdx::new(1), attempt: 1,
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            attempt: 1,
         });
         assert!(matches!(result_j, Err(JournalError::QueueShutdown)));
 
         let result_s = queue.enqueue_strict(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(2), step: StepIdx::new(2), attempt: 1,
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            attempt: 1,
         });
         assert!(matches!(result_s, Err(JournalError::QueueShutdown)));
     }

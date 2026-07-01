@@ -24,8 +24,12 @@ impl FjallJournal {
     /// caller from cleanly retrying the strict durability barrier. The
     /// batched implementation closes that window: the event is staged and
     /// committed (with `SyncAll`) atomically, and a failed commit surfaces
-    /// as `JournalError::StrictDurabilityFailed` (or a Fjall error) rather
-    /// than as `DuplicateEvent`.
+    /// as `JournalError::Fjall(..)` (the underlying Fjall batch-commit
+    /// error) rather than as `DuplicateEvent`. Note:
+    /// `JournalError::StrictDurabilityFailed` is reachable only on the
+    /// legacy `persist_strict()` barrier path, NOT on this batched
+    /// `append_strict` path, because the single `OwnedWriteBatch::commit`
+    /// converts its failure via `#[from] fjall::Error`.
     ///
     /// Idempotency on retry: if the commit fails after staging but before
     /// returning, the event is *not* visible because the entire batch

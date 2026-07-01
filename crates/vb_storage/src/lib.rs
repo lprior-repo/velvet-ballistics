@@ -128,6 +128,10 @@ mod error_tests;
 mod error_code_tests;
 
 #[cfg(test)]
+#[path = "edge_case_tests.rs"]
+mod edge_case_tests;
+
+#[cfg(test)]
 #[path = "type_tests.rs"]
 mod type_tests;
 

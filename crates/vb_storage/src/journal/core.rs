@@ -63,6 +63,13 @@ pub struct FjallJournal {
     pub(crate) fail_next_persist: AtomicBool,
     #[cfg(test)]
     pub(crate) fail_next_compiled_ir_readback: AtomicBool,
+    /// Test-only fault hook: forces the next `JournalWriteBatch::commit()`
+    /// (the path `append_strict` uses) to return `Err(JournalError::Fjall(..))`
+    /// WITHOUT touching the real Fjall store. This proves the `append_strict`
+    /// commit-failure contract: the staged event is never made visible and a
+    /// retry is idempotent. Consumed exactly once.
+    #[cfg(test)]
+    pub(crate) fail_next_batch_commit: AtomicBool,
     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
     // The lock guard is acquired and dropped, never read directly.
     pub(crate) write_lock: Mutex<()>,
@@ -133,6 +140,8 @@ impl FjallJournal {
             fail_next_persist: AtomicBool::new(false),
             #[cfg(test)]
             fail_next_compiled_ir_readback: AtomicBool::new(false),
+            #[cfg(test)]
+            fail_next_batch_commit: AtomicBool::new(false),
             write_lock: Mutex::new(()),
             _process_lock,
         })
@@ -247,6 +256,23 @@ impl FjallJournal {
     pub(crate) fn consume_compiled_ir_readback_failure_for_test(&self) -> bool {
         self.fail_next_compiled_ir_readback
             .swap(false, Ordering::SeqCst)
+    }
+
+    /// Test-only setter: forces the next `JournalWriteBatch::commit()` to
+    /// return `Err(JournalError::Fjall(..))` before reaching Fjall. Mirrors
+    /// `fail_next_persist_for_test` but targets the batched strict-commit
+    /// path used by `append_strict`.
+    #[cfg(test)]
+    pub(crate) fn fail_next_batch_commit_for_test(&self) {
+        self.fail_next_batch_commit.store(true, Ordering::SeqCst);
+    }
+
+    /// Test-only consumer: returns and clears the batch-commit fault flag.
+    /// Called by `JournalWriteBatch::commit()` so the injected failure fires
+    /// exactly once; a subsequent real commit succeeds normally.
+    #[cfg(test)]
+    pub(crate) fn consume_batch_commit_failure_for_test(&self) -> bool {
+        self.fail_next_batch_commit.swap(false, Ordering::SeqCst)
     }
 }
 

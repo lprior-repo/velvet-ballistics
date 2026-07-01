@@ -21,6 +21,20 @@ impl<'j> JournalWriteBatch<'j> {
         if self.aborted {
             return Err(JournalError::BatchAborted);
         }
+        // Test-only fault injection: return a synthetic `JournalError::Fjall`
+        // BEFORE the real `OwnedWriteBatch` reaches the storage engine. This
+        // proves the `append_strict` commit-failure contract (vb-o6qcf.3): the
+        // staged event is never made visible because the batch never commits,
+        // and a retry re-stages and commits cleanly (idempotent Ok). The hook
+        // is consumed exactly once, so a subsequent real commit succeeds.
+        // cfg(test) guarantees this path is absent from non-test builds.
+        #[cfg(test)]
+        if self.journal.consume_batch_commit_failure_for_test() {
+            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "injected batch commit failure (test hook)",
+            ))));
+        }
         self.inner.commit()?;
         Ok(())
     }
