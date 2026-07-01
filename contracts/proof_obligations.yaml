@@ -1137,6 +1137,11 @@ verus_registry:
     verus: verification/verus/cancel_kill_lattice.rs
     production: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
 
+  - id: PO-VERUS-031
+    description: "vb-6da68 append_strict commit contract: a failed batch.strict().commit() surfaces as Err(JournalError::Fjall) (NOT Ok or DuplicateEvent); the staged event is NOT visible after the failure (events keyspace unchanged — Fjall OwnedWriteBatch atomicity); a retry append_strict of the same event returns Ok(()) (idempotent-retry). Supersedes the vb-vzcuf-PS-004 commit-bridge for the append_strict surface (POB-vb-vzcuf-013 coverage of the commit-failure mode). Single localized trusted axiom: Fjall OwnedWriteBatch atomicity on Err (TBP-008 + vb-o6qcf.3 LIVE test compensating evidence)."
+    verus: verification/verus/vb-6da68-append-strict-commit.rs
+    production: crates/vb_storage/src/journal/append.rs
+
 # ============================================================
 # EVIDENCE FORMAT
 # ============================================================
