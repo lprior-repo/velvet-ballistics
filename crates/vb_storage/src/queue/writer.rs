@@ -149,6 +149,23 @@ impl JournalWriterQueue {
     /// queued bytes are compared to the existing value, and the event is
     /// skipped on match (so retries after a partial flush succeed) or
     /// surface `DuplicateEvent` on mismatch.
+    ///
+    /// ## Structural commit-before-drain ordering (master §49)
+    ///
+    /// The atomicity above is a sequential control-flow invariant, not
+    /// an out-of-line predicate. The `owned_batch.commit()?` call MUST
+    /// run to success before the `while drained < written` drain loop
+    /// removes any item from the pending deque. Because the commit uses
+    /// `?`, a failed durable commit propagates `JournalError` and
+    /// returns early, so the deque is mutated only after the batch is
+    /// durably committed. Reordering commit after drain — or making the
+    /// flush non-atomic — would violate §49: a crash could leave durable
+    /// records whose deque entries were already removed (or vice-versa),
+    /// producing a partial durable-visible prefix. Any refactor of this
+    /// function MUST preserve commit-then-drain ordering. (As of this
+    /// commit the two sites are the `owned_batch.commit()?` call and the
+    /// `while drained < written` loop just below it; line numbers may
+    /// drift, the symbolic ordering is the binding contract.)
     pub fn flush_batch(
         &self,
         journal: &FjallJournal,
