@@ -1,0 +1,134 @@
+vb-240tk — proof-plan re-derivation evidence
+=============================================
+
+Bead: vb-240tk (P0 OPEN, owner Lewis, type task)
+Re-derivation cycle: proof-planner + proof-plan-reviewer
+Date: 2026-07-01
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk
+Parent commit (zuvmvvzm 2c8ea33c): bookmarks dispatch/vb-god2f-chain,
+  dispatch/vb-wm2z2-audit, dispatch/vb-wy33p-chain, main
+Working-copy commit (pnloqlqw b11a4ce4 -> c60d63a6 after file track): empty
+  before edits; new files added below.
+Bookmark to push: dispatch-vb-240tk
+
+(a) Plan files written
+======================
+
+1. /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk/.beads/vb-god2f.2/dispatch/plan-vb-god2f.2.md
+   Bead: vb-god2f.2 — bound vb-god2f Kani timeout lanes
+   Obligations: HVR-PO-BI-001, HVR-PO-CORE-004
+   Verifier lane: Kani (default Rust behavior lane for panic/overflow/index risk)
+   Production-binding: N/A for Kani; harnesses bind via #[path] or kani::Arbitrary
+   Planner invocation: proof-planner/vb-god2f.2@2026-07-01
+   State: 4 (planned) -> approved by proof-plan-reviewer
+
+2. /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk/.beads/vb-god2f.3/dispatch/plan-vb-god2f.3.md
+   Bead: vb-god2f.3 — replan HVR-PO-STORAGE-001 production-bound Verus closure
+   Obligations: HVR-PO-STORAGE-001 (MRWE5 scalar kernel)
+   Verifier lane: Verus (default Rust behavior lane for pure/core invariants)
+   Production-binding: STRONG preferred; WEAK_MIRROR acceptable with drift-gate
+     header (drift_threshold: zero). No EXPLICITLY_ALLOWED/ALLOWED_EXCEPTIONS/
+     OFFLOAD mechanism permitted.
+   Mirror-model retirement (black-hat handoff): crates/vb_storage/verification/
+     verus/recovery_types_spec.rs MUST be deleted or annotated+allowlisted
+     before formal-verifier PASS is recorded.
+   Planner invocation: proof-planner/vb-god2f.3@2026-07-01
+   State: 4 (planned) -> approved by proof-plan-reviewer
+
+3. /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk/.beads/vb-god2f.4/dispatch/plan-vb-god2f.4.md
+   Bead: vb-god2f.4 — vb-god2f gated fuzz obligations after non-fuzz closure
+   Obligations: HVR-PO-STORAGE-004, HVR-PO-STORAGE-007, HVR-PO-BI-003
+   Verifier lane: cargo-fuzz (bounded dynamic evidence only — NOT formal proof)
+   Production-binding: N/A for fuzz; harnesses invoke production entry point
+     with #[path] to production bytes or Arbitrary impl mirroring production
+     layout (named in header comment).
+   Pre-execution gate: verify three fuzz target source files exist in
+     fuzz/fuzz_targets/, cargo fuzz build exits 0, non-fuzz gates (vb-god2f.2,
+     vb-god2f.3) closed or accepted non-closure.
+   Planner invocation: proof-planner/vb-god2f.4@2026-07-01
+   State: 4 (planned) -> approved by proof-plan-reviewer
+
+4. /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-240tk/.beads/vb-god2f/dispatch/black-hat.md
+   Black-hat review (proof-plan-reviewer)
+   Reviewer skill: proof-plan-reviewer
+   Reviewer invocation: proof-plan-reviewer/vb-god2f-chain@2026-07-01
+   Review state: 4b
+   STATUS: APPROVED (all three plans approved; no blocker findings)
+   Six verifier-lane-review/v1 rows emitted inlined under the bead IDs.
+
+(b) Line counts (from `wc -l` on 2026-07-01)
+============================================
+
+plan-vb-god2f.2.md       174 lines
+plan-vb-god2f.3.md       221 lines
+plan-vb-god2f.4.md       174 lines
+black-hat.md             129 lines
+plans-re-derived.txt     (this file)
+TOTAL plan content       698 lines (excluding this file)
+
+(c) Approval status from black-hat.md
+=====================================
+
+plan-vb-god2f.2.md  : APPROVED (verifier-lane-review accepted for both
+                      HVR-PO-BI-001 and HVR-PO-CORE-004, Kani lane)
+plan-vb-god2f.3.md  : APPROVED (verifier-lane-review accepted for
+                      HVR-PO-STORAGE-001, Verus lane, STRONG-or-WEAK_MIRROR
+                      production_binding required)
+plan-vb-god2f.4.md  : APPROVED (verifier-lane-review accepted for all three
+                      fuzz obligations, cargo-fuzz lane, classified as
+                      bounded-dynamic-evidence)
+overall STATUS      : APPROVED — no blocker findings; four minor/observation
+                      findings recorded with disposition.
+
+(d) Remediations required
+=========================
+
+None blocking. Minor / observation findings (not blockers):
+  F-01 (plan-2):  Kani harness file paths discovered via
+                   bash scripts/kani-list.sh <package> at proof-writer time.
+                   Disposition: owner_approved_no_action.
+  F-02 (plan-3):  If scripts/check-verus-production-binding.sh cannot run
+                   in this isolated workspace (toolchain gating), proof-writer
+                   MUST cite last-green run log + commit a re-runnable
+                   wrapper. Disposition: owner_approved_debt.
+  F-03 (plan-4):  Plan depends on closure of vb-god2f.2 and vb-god2f.3
+                   (chain dependency). Disposition: owner_approved_no_action.
+  F-04 (all):      Verifier-lane-review rows are inlined in black-hat.md;
+                   proof-writer lands per-bead copies in dispatch/.md
+                   downstream. Disposition: owner_approved_no_action.
+
+(e) Re-derivation note
+======================
+
+Parent bead vb-god2f closed 2026-06-30 with NOTES claiming these four
+files existed at the above paths. They did not (verified 2026-07-01:
+git log --all --diff-filter=A -- '.beads/vb-god2f/dispatch/' returns
+empty; ls .beads/vb-god2f/dispatch/ in coord returns No such file or
+directory). This re-derivation cycle (proof-planner producing three
+plans; proof-plan-reviewer producing this black-hat.md) restores the
+contract that vb-god2f.{2,3,4} were dispatched against. Master §42
+audit row in /home/lewis/src/isoloated/velvet-ballistics-dispatch-vb-wm2z2-audit-aux/.beads/vb-wm2z2/evidence/master-conformance-audit.md
+documents the original closure-evidence gap; this re-derivation closes
+that gap without modifying the parent bead record.
+
+(f) Workflow provenance
+=======================
+
+Files written under JJ workspace isolation rule (AGENTS.md §workspace).
+Working copy bookmark: dispatch-vb-240tk (to be created via
+`jj bookmark create dispatch-vb-240tk -r @` after `jj describe`).
+Push from workspace only via `jj git push --bookmark dispatch-vb-240tk`.
+Bead closure performed from coord checkout only via
+`bd update vb-240tk --status=closed --notes "..."`.
+
+(g) Out of scope (not touched in this re-derivation)
+====================================================
+
+- No proof artifacts (no Verus spec, no Kani harness, no fuzz target).
+- No source file modifications (no crates/, no scripts/, no Cargo.*,
+  no .moon/).
+- No vb-god2f.{2,3,4} child bead record edits (status remains IN_PROGRESS;
+  these plans unblock their proofs in a downstream bead).
+
+END
