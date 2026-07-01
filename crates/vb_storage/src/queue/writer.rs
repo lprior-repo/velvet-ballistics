@@ -293,4 +293,22 @@ impl JournalWriterQueue {
         }
         self.drain_all(journal)
     }
+
+    /// Returns whether the queue has been shut down.
+    pub fn is_shutdown(&self) -> Result<bool, JournalError> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        Ok(state.shutdown)
+    }
+
+    /// Returns whether the queue is full (pending count >= capacity).
+    pub fn is_full(&self) -> bool {
+        let state = match self.state.lock() {
+            Ok(guard) => guard,
+            Err(_) => return false,
+        };
+        state.pending.len() >= self.capacity
+    }
 }

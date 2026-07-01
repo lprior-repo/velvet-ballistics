@@ -1204,3 +1204,85 @@ fn storage_journal_run_admission_event_maps_to_journal_event_correctly() {
         vb_storage::JournalEvent::RunAdmission { .. }
     ));
 }
+
+
+// ---------------------------------------------------------------------------
+// RE-021: storage-backed journal `probe()` must delegate to a real health
+// check on the underlying FjallJournal. The previous `Ok(())` noop masked
+// I/O failures; after the fix the probe surfaces
+// `JournalError::ProbeStorageFailed` as a typed
+// `RuntimeError::StorageJournalAppend { source }`. Both storage-backed
+// adapters (direct and queued) must be covered.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn re021_storage_journal_probe_returns_ok_on_healthy_storage() {
+    use crate::journal::StorageRuntimeJournal;
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let adapter = StorageRuntimeJournal::journaled(journal);
+    assert_eq!(adapter.probe(), Ok(()));
+}
+
+#[test]
+fn re021_storage_journal_probe_returns_err_when_storage_unhealthy() {
+    use crate::journal::StorageRuntimeJournal;
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    journal.force_probe_failure_for_test();
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    match adapter.probe() {
+        Err(crate::RuntimeError::StorageJournalAppend { source }) => {
+            assert!(
+                matches!(
+                    source.as_ref(),
+                    vb_storage::JournalError::ProbeStorageFailed { .. }
+                ),
+                "probe must surface ProbeStorageFailed, got {source:?}"
+            );
+        }
+        other => panic!("probe must return typed StorageJournalAppend, got {other:?}"),
+    }
+    // The force-failure switch is one-shot: the next probe must succeed.
+    assert_eq!(adapter.probe(), Ok(()));
+}
+
+#[test]
+fn re021_queued_journal_probe_returns_ok_on_healthy_storage() {
+    use crate::journal::QueuedStorageRuntimeJournal;
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let Some(queue) = require_ok(journal_queue(8, 4), "journal queue creates") else {
+        return;
+    };
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal, queue);
+    assert_eq!(adapter.probe(), Ok(()));
+}
+
+#[test]
+fn re021_queued_journal_probe_returns_err_when_storage_unhealthy() {
+    use crate::journal::QueuedStorageRuntimeJournal;
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    journal.force_probe_failure_for_test();
+    let Some(queue) = require_ok(journal_queue(8, 4), "journal queue creates") else {
+        return;
+    };
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal, queue);
+    match adapter.probe() {
+        Err(crate::RuntimeError::StorageJournalAppend { source }) => {
+            assert!(
+                matches!(
+                    source.as_ref(),
+                    vb_storage::JournalError::ProbeStorageFailed { .. }
+                ),
+                "queued probe must surface ProbeStorageFailed, got {source:?}"
+            );
+        }
+        other => panic!("queued probe must return typed StorageJournalAppend, got {other:?}"),
+    }
+}

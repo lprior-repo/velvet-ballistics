@@ -19,10 +19,30 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         if self.profile == DurabilityProfile::Strict {
             return Err(RuntimeError::UnsupportedAsyncStrictAck);
         }
-        self.journal.probe_health().map_err(RuntimeError::from)?;
-        self.queue
-            .probe_accepting_writes()
-            .map_err(RuntimeError::from)
+        // RE-021: delegate to a real, non-side-effecting storage health
+        // check on the FjallJournal. Additionally, refuse a positive health
+        // verdict if the writer queue has been moved into the shutdown state
+        // or the queue is full.
+        self.journal
+            .probe_storage_health()
+            .map_err(RuntimeError::from)?;
+        if self
+            .queue
+            .is_shutdown()
+            .map_err(|err| RuntimeError::StorageJournalAppend {
+                source: std::sync::Arc::new(err),
+            })?
+        {
+            return Err(RuntimeError::StorageJournalAppend {
+                source: std::sync::Arc::new(vb_storage::JournalError::QueueShutdown),
+            });
+        }
+        if self.queue.is_full() {
+            return Err(RuntimeError::StorageJournalAppend {
+                source: std::sync::Arc::new(vb_storage::JournalError::QueueFull),
+            });
+        }
+        Ok(())
     }
 
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {

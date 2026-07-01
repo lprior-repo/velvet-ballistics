@@ -185,6 +185,8 @@ pub enum JournalError {
     },
     #[error("trim operation failed: {0}")]
     Trim(Box<crate::TrimError>),
+    #[error("storage probe failed: {source}")]
+    ProbeStorageFailed { source: Box<JournalError> },
 }
 
 #[path = "conversions.rs"]

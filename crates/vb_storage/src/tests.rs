@@ -7693,6 +7693,7 @@ mod tests {
                 JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
                 JournalError::InvalidConfig { .. } => "invalid_config",
                 JournalError::UnsupportedReadOnly => "unsupported_read_only",
+                JournalError::ProbeStorageFailed { .. } => "probe_storage_failed",
             }
         }
         let _ = _exhaustive_match;

@@ -73,6 +73,8 @@ impl JournalError {
     pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
     /// Diagnostic code for journal batch accumulated byte budget exceeded.
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
+    /// Diagnostic code for `ProbeStorageFailed`.
+    pub const PROBE_STORAGE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x403B);
     /// Diagnostic code for replay key/payload sequence mismatch
     /// (`JournalError::ReplayKeyMismatch`).
     pub const REPLAY_KEY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4040);
@@ -172,6 +174,7 @@ impl JournalError {
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
             Self::BatchAborted => Self::BATCH_ABORTED_CODE,
             Self::IndexStatusStateCollision { .. } => Self::ARTIFACT_MALFORMED_CODE,
+            Self::ProbeStorageFailed { .. } => Self::PROBE_STORAGE_FAILED_CODE,
         }
     }
 
@@ -252,6 +255,7 @@ impl JournalError {
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
             Self::BatchAborted => "BATCH_ABORTED",
             Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
+            Self::ProbeStorageFailed { .. } => "PROBE_STORAGE_FAILED",
             // SC-009 (vb-1rqz7.28): `Self::Trim(_)` is handled above by
             // the early return. Keep this arm so the match on `&Self`
             // satisfies exhaustiveness; it is not reachable at runtime.

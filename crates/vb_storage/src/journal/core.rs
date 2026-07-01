@@ -6,7 +6,6 @@
 
 use std::path::Path;
 use std::sync::Mutex;
-#[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
@@ -70,6 +69,10 @@ pub struct FjallJournal {
     /// retry is idempotent. Consumed exactly once.
     #[cfg(test)]
     pub(crate) fail_next_batch_commit: AtomicBool,
+    /// Test-only fault hook: forces the next `probe_storage_health()` call to
+    /// return `Err(JournalError::ProbeStorageFailed { .. })` wrapping a
+    /// `StrictDurabilityFailed` source. One-shot: consumed on the next probe.
+    pub(crate) force_probe_failure: AtomicBool,
     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
     // The lock guard is acquired and dropped, never read directly.
     pub(crate) write_lock: Mutex<()>,
@@ -142,6 +145,7 @@ impl FjallJournal {
             fail_next_compiled_ir_readback: AtomicBool::new(false),
             #[cfg(test)]
             fail_next_batch_commit: AtomicBool::new(false),
+            force_probe_failure: AtomicBool::new(false),
             write_lock: Mutex::new(()),
             _process_lock,
         })
@@ -273,6 +277,61 @@ impl FjallJournal {
     #[cfg(test)]
     pub(crate) fn consume_batch_commit_failure_for_test(&self) -> bool {
         self.fail_next_batch_commit.swap(false, Ordering::SeqCst)
+    }
+
+    /// Sets a test-only switch that forces the next call to
+    /// [`Self::probe_storage_health`] to fail with
+    /// [`JournalError::ProbeStorageFailed`] wrapping
+    /// [`JournalError::StrictDurabilityFailed`].
+    ///
+    /// RE-021: lets regression tests assert that the probe surfaces
+    /// unhealthy storage as a typed `Err`, not as `Ok(())`. The switch
+    /// is `pub` (not `#[cfg(test)]`) so cross-crate integration tests
+    /// in dependent crates can call it.
+    pub fn force_probe_failure_for_test(&self) {
+        self.force_probe_failure.store(true, Ordering::SeqCst);
+    }
+
+    pub fn consume_probe_failure_for_test(&self) -> bool {
+        self.force_probe_failure.swap(false, Ordering::SeqCst)
+    }
+
+    /// Non-side-effecting storage health probe (RE-021).
+    ///
+    /// Returns `Ok(())` if a read-only keyspace probe succeeds; otherwise
+    /// wraps the underlying `JournalError` in
+    /// [`JournalError::ProbeStorageFailed`] so callers can route on its
+    /// diagnostic code.
+    ///
+    /// Implementation: probes `index_status` with a non-empty probe key.
+    /// The empty key may collide with reserved or sentinel encodings in
+    /// other keyspaces, so we deliberately use a single-byte probe key
+    /// that no legitimate record can produce (every existing key
+    /// encoding is at least one full key-prefix byte + payload, e.g.
+    /// `KEYSPACE_INDEX_STATUS` magic + content).
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError::ProbeStorageFailed { source }` if either:
+    /// - the test-only force-failure hook is set, or
+    /// - the read-only keyspace query surfaces a Fjall error.
+    pub fn probe_storage_health(&self) -> Result<(), JournalError> {
+        if self.consume_probe_failure_for_test() {
+            return Err(JournalError::ProbeStorageFailed {
+                source: Box::new(JournalError::StrictDurabilityFailed),
+            });
+        }
+        // Non-side-effecting keyspace probe: a single-byte key cannot
+        // collide with any real record (key encodings all start with a
+        // 1-byte keyspace tag plus at least one content byte). A
+        // successful lookup just means storage is responding; a miss
+        // is also a valid result.
+        self.index_status.contains_key([0xFF_u8]).map_err(|err| {
+            JournalError::ProbeStorageFailed {
+                source: Box::new(JournalError::Fjall(err)),
+            }
+        })?;
+        Ok(())
     }
 }
 

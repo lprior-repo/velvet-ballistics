@@ -346,7 +346,15 @@ impl RuntimeJournal for StorageRuntimeJournal {
     }
 
     fn probe(&self) -> RuntimeResult<()> {
-        self.journal.probe_health().map_err(RuntimeError::from)
+        // RE-021: delegate to a real, non-side-effecting storage health
+        // check on the FjallJournal. `probe_storage_health` returns
+        // `Err(JournalError::ProbeStorageFailed { .. })` on Fjall
+        // failure; we surface it through the standard
+        // `StorageJournalAppend` channel so existing callers route on
+        // the same typed error path.
+        self.journal
+            .probe_storage_health()
+            .map_err(RuntimeError::from)
     }
 
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
