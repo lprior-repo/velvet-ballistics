@@ -22,6 +22,72 @@
         assert_eq!(shard.pending_timer_count(), 0);
     }
 
+    // RS-110 regression: ask-timer fire must append a typed
+    // RuntimeJournalEvent::AskTimedOut to the runtime journal BEFORE
+    // drive_state advances the run. Replay relies on this signal to
+    // distinguish an unanswered pending ask from an ask whose timeout
+    // already fired; the original test only asserted `runs_failed == 1`,
+    // which would also pass if the journal append were silently skipped.
+    #[test]
+    fn ask_timer_fire_appends_ask_timed_out_to_journal() -> Result<(), String> {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let wf = require_workflow("ask", ask_workflow())?;
+        let run = RunId::new(510);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.pending_timer_count(), 1);
+        assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        let events = require_snapshot(&journal)
+            .map_err(|e| e.to_string())?;
+        assert!(
+            events.iter().any(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::AskTimedOut { run: r, step: s }
+                        if *r == run && *s == StepIdx::new(2)
+                )
+            }),
+            "journal events should contain AskTimedOut {{ run: {run:?}, step: StepIdx(2) }}: {events:?}"
+        );
+        // The AskTimedOut event must be appended in the same journal pass
+        // as the failure it explains — i.e. before the terminal RunFailed
+        // on the same run. The step value is the Ask node id from the
+        // `ask_workflow` fixture (`StepIdx::new(2)`), NOT `StepIdx::ZERO`
+        // (which would be the `set_prompt` step). Asserting both the step
+        // identity AND the ordering keeps this regression test focused on
+        // the gap RS-110 exposed: the fix's typed journal emission with
+        // the correct step provenance.
+        let ask_timed_out_idx = events
+            .iter()
+            .position(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::AskTimedOut { run: r, step: s }
+                        if *r == run && *s == StepIdx::new(2)
+                )
+            })
+            .expect("AskTimedOut must be present (first assertion guarantees it)");
+        let run_failed_idx = events
+            .iter()
+            .position(|event| matches!(event, RuntimeJournalEvent::RunFailed { run: r } if *r == run));
+        assert!(
+            run_failed_idx.map_or(true, |i| i > ask_timed_out_idx),
+            "AskTimedOut must be appended before RunFailed for run {run:?}: {events:?}"
+        );
+        Ok(())
+    }
+
     #[test]
     fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         let config = ShardConfig {
