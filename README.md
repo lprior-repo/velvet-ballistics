@@ -4,7 +4,7 @@ A formally bounded workflow runtime for AI agent orchestration.
 
 **TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-velvet-ballistics is a nightly-Rust, single-binary orchestration engine that verifies YAML-authored workflows into compact numeric IR, executes accepted IR through a bounded interpreter, dispatches native actions, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
+velvet-ballistics is a nightly-Rust, single-binary orchestration engine. The clarified product contract is **Rust-code authoring only**: Rust-authored workflows/actions compile into accepted numeric IR, the runtime executes accepted IR through a bounded interpreter, dispatches native actions, and persists events through Fjall-backed append-only storage. The legacy YAML source format remains as an internal/test-only cold-authoring surface for v1 fixtures; it is not a public user-facing input. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
 ## Why This Exists
 
@@ -22,37 +22,44 @@ velvet-ballistics addresses all four dimensions:
 | Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
 | IR compilation | `CompiledWorkflow` numeric artifact with exact semantics | Interpreted history/worker model | Interpreted graph model |
 | Runtime boundary | IR interpreter only; no runtime YAML/JSON/HTTP | Service/runtime boundary | Python object graph/runtime |
+| Public authoring | Rust code → accepted numeric IR (YAML is internal/test-only v1) | Workflow source as runtime object | Graph source as runtime object |
 
 ## Architecture
 
 ```text
-YAML source
-  -> strict compile-time parser
-  -> validated AST
-  -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
-  -> numeric slot compiler
-  -> compact IR (34 node kinds, u16 step indices, u16 slot indices)
+Rust source (public authoring contract)
+  -> rustc + vb_compile driver (cold path, off hot path)
+  -> accepted numeric IR (34 node kinds, u16 step indices, u16 slot indices)
   -> bounded IR interpreter
   -> shard-owned in-memory runtime (no async, no allocation in hot path)
   -> native ActionId dispatch with taint enforcement
   -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
   -> Unix domain socket IPC (bounded queue, 256 concurrent clients)
   -> SPSC trace ring (rtrb, 4096 events)
+
+Legacy v1 cold authoring surface (internal/test-only, NOT public):
+  YAML source -> strict compile-time parser -> validated AST
+  -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
+  -> numeric slot compiler
+  (YAML input is retained only for test fixtures and migration; the public
+   product contract is Rust-code authoring.)
 ```
 
 ## Workspace
 
 ```text
 crates/vb_core         Compiled IR, engine, frame, value store, diagnostics
-crates/vb_yaml         YAML parser, AST, source maps
+crates/vb_compile      Full compilation pipeline (Rust source -> validated IR)
 crates/vb_validate     Control-flow, reference, schema, taint validation
 crates/vb_expr         Expression lexer, parser, bytecode, typecheck
-crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
 crates/vb_storage      Fjall journal, envelope, recovery, snapshots
 crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
 crates/vb_ipc          Unix domain socket server/client, binary protocol
 crates/workspace_tests Cross-crate integration tests and benchmark harnesses
 fuzz/                  Parser, decoder, and IR fuzz targets
+
+Legacy internal/test-only (v1 cold authoring, not public API):
+crates/vb_yaml         YAML parser, AST, source maps (test fixtures + migration only)
 ```
 
 ## Safety Guarantees

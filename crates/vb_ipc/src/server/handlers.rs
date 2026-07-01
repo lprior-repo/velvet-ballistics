@@ -12,7 +12,7 @@ use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
 use super::trace::typed_events_response;
-use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
+use crate::server::ticket::{payload_len, step_from_ticket, wire_ticket_step};
 use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
 use crate::{IpcActionOutputPayload, IpcCommand, IpcPayload, SubmitRunPayload};
 
@@ -251,7 +251,7 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
         return IpcResponse::BadRequest;
     };
 
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+    let Some(action_ticket) = runtime.lookup_pending_action_ticket(run_id, ticket) else {
         return IpcResponse::BadRequest;
     };
     if output.len() > MAX_ACTION_OUTPUT_LEN {
@@ -290,7 +290,7 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         return IpcResponse::BadRequest;
     };
 
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+    let Some(action_ticket) = runtime.lookup_pending_action_ticket(run_id, ticket) else {
         return IpcResponse::BadRequest;
     };
     if error.len() > MAX_ACTION_ERROR_LEN {
