@@ -3824,7 +3824,7 @@ mod hydrate_run_frame_tests {
     // making the merge O(N + M).
     //
     // The regression check below exercises the real decoder
-    // (`super::snapshot_decode::decode_snapshot_slots`, `pub(super)`)
+    // (`crate::recovery::hydrate_support::decode_snapshot_slots`, `pub(super)`)
     // through the `recovery` module path so a future rewrite that moves
     // the function or its helper still has to honour the same contract.
     //
@@ -3841,17 +3841,17 @@ mod hydrate_run_frame_tests {
         slot_entries: &[(SlotIdx, SlotValue, Taint)],
     ) -> (Vec<u8>, Vec<u8>) {
         // Mirror the on-disk shape produced by `snapshot_write`:
-        // slots = Vec<(SlotIdx, SlotValue)>, taint = Vec<(SlotIdx, Taint)>.
+        // slots = Vec<(SlotIdx, SlotValue, Taint)>, taint = Vec<(SlotIdx, SlotValue, Taint)>.
         // Only emit taint entries for non-Clean slots so the decoder's
         // default branch (no override -> Clean) is also exercised.
-        let slots: Vec<(SlotIdx, SlotValue)> = slot_entries
+        let slots: Vec<(SlotIdx, SlotValue, Taint)> = slot_entries
             .iter()
-            .map(|(slot, value, _)| (*slot, *value))
+            .map(|(slot, value, t)| (*slot, *value, *t))
             .collect();
-        let taint: Vec<(SlotIdx, Taint)> = slot_entries
+        let taint: Vec<(SlotIdx, SlotValue, Taint)> = slot_entries
             .iter()
             .filter(|(_, _, t)| *t != Taint::Clean)
-            .map(|(slot, _, t)| (*slot, *t))
+            .map(|(slot, value, t)| (*slot, *value, *t))
             .collect();
         let slots_bytes = postcard::to_allocvec(&slots).expect("postcard encode slots");
         let taint_bytes = postcard::to_allocvec(&taint).expect("postcard encode taint");
@@ -3889,10 +3889,11 @@ mod hydrate_run_frame_tests {
         let (slots_bytes, taint_bytes) = sr_012_build_snapshot_bytes(&slot_entries);
 
         let started = Instant::now();
-        let decoded = crate::recovery::snapshot_decode::decode_snapshot_slots(
+        let decoded = crate::recovery::hydrate_support::decode_snapshot_slots(
             &slots_bytes,
             &taint_bytes,
             run,
+            EventSeq::new(0),
         )
         .expect("decode_snapshot_slots must succeed on well-formed bytes");
         let elapsed = started.elapsed();
@@ -3960,10 +3961,11 @@ mod hydrate_run_frame_tests {
         ];
         let (slots_bytes, taint_bytes) = sr_012_build_snapshot_bytes(&slot_entries);
 
-        let decoded = crate::recovery::snapshot_decode::decode_snapshot_slots(
+        let decoded = crate::recovery::hydrate_support::decode_snapshot_slots(
             &slots_bytes,
             &taint_bytes,
             run,
+            EventSeq::new(0),
         )
         .expect("decode_snapshot_slots must succeed on well-formed bytes");
 
@@ -3975,17 +3977,20 @@ mod hydrate_run_frame_tests {
         // Edge case: taint vector empty (no overrides at all) -> every slot
         // resolves to `Taint::Clean`. This is the decoder's documented
         // default branch (see `decode_snapshot_slots` doc-comment).
-        let slots_only: Vec<(SlotIdx, SlotValue)> = slot_entries
+        let slots_only: Vec<(SlotIdx, SlotValue, Taint)> = slot_entries
             .iter()
-            .map(|(slot, value, _)| (*slot, *value))
+            .map(|(slot, value, _)| (*slot, *value, Taint::Clean))
             .collect();
         let slots_bytes_no_taint =
             postcard::to_allocvec(&slots_only).expect("postcard encode slots");
-        let empty_taint_bytes: Vec<u8> = Vec::new();
-        let decoded_default = crate::recovery::snapshot_decode::decode_snapshot_slots(
+        let empty_taint_bytes: Vec<u8> =
+            postcard::to_allocvec(&Vec::<(SlotIdx, SlotValue, Taint)>::new())
+                .expect("encode empty taint vec");
+        let decoded_default = crate::recovery::hydrate_support::decode_snapshot_slots(
             &slots_bytes_no_taint,
             &empty_taint_bytes,
             run,
+            EventSeq::new(0),
         )
         .expect("decode_snapshot_slots must succeed when taint vector is empty");
         assert_eq!(decoded_default.len(), 3);
