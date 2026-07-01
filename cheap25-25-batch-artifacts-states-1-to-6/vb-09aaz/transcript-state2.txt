@@ -1,0 +1,5 @@
+State 2 (explore) for vb-09aaz via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-09aaz
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=5695851efc548357...), delivery-scope.jsonl (sha256=47e6900496872c49...)

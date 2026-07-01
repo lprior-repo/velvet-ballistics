@@ -1,0 +1,83 @@
+p6-proof-reviewer transcript — vb-7akm0
+
+timestamp: 2026-07-01T23:30Z
+isolation: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+parent_invocation_id: proof-writer-vb-7akm0-state5
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+
+inputs read:
+- .beads/vb-7akm0/proof-writer-report.md (sha256 9ac21ed700d390f54ca3ce07f0642e9ceaa4701f2c4b995c13254be4995e92f3)
+- .beads/vb-7akm0/proof-evidence.md (sha256 8a64efaf16eb623b27b2d0588de78a93b288d90e3a5a7494e6dd923c16b8ce6c)
+- .beads/vb-7akm0/proof-plan-review.md (sha256 f5e9121cc284bb33490e8cd1ae2d06621460abf59c35a112872bb3bcb9dc6f90)
+- .beads/vb-7akm0/trusted-base-ledger.jsonl (sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, 0 bytes)
+- .beads/vb-7akm0/agent-invocation-ledger.jsonl (4 rows prior to state 6)
+- .beads/vb-7akm0/proof-strategy.md
+- .beads/vb-7akm0/verifier-lane-decisions.jsonl (16 rows)
+- .beads/vb-7akm0/verifier-lane-review.jsonl (16 rows)
+- .beads/vb-7akm0/proof-obligations.planned.jsonl (6 rows)
+- .beads/vb-7akm0/waiver-candidates.jsonl (1 row, W-NONE-001 sentinel)
+- .beads/vb-7akm0/proof-seeds.jsonl (29 rows)
+- .beads/vb-7akm0/proof-coverage-matrix.md
+- .beads/vb-7akm0/verifier-lane-matrix.md
+
+scope check:
+- jj root resolved to /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0 — isolated workspace confirmed.
+- pwd -P matches isolated workspace.
+- no production source edited in state 6 (jj diff -r @ is empty at start; state 6 only wrote proof-review.md and proof-findings.jsonl).
+- no formal-verifier artifact created or modified.
+
+non-vacuity sweep (lethal-pattern check):
+- verus specs in scope: 0 (binding_classification trivially zero in every column).
+- kani hardcoded shapes / cover! / assert(true): 0.
+- flux #[trusted] / #[ignore] abuse: 0 (no flux annotations touched).
+- loom model missing concurrent actors: 0 (no loom model touched).
+- disconnected / vacuum verus spec: 0.
+- trust markers (extern_spec, assume_specification, kani::assume, flux #[trusted]/#[ignore]): 0.
+- merge-conflict markers: 0.
+- nonexistent file refs in writer-report / evidence / plan-review: 0.
+- unledgered trust: trusted-base-ledger.jsonl is 0 bytes (verified by sha256 e3b0c44...).
+- reviewer invocation id distinct from writer / plan-reviewer / planner: VERIFIED.
+  - proof-reviewer-vb-7akm0-state6
+    != proof-writer-vb-7akm0-state5
+    != proof-plan-reviewer-vb-7akm0-state4b
+    != proof-planner-vb-7akm0-state4 (synthetic)
+
+trust marker scan patterns searched:
+- extern_spec: 0 hits
+- assume_specification: 0 hits
+- kani::assume: 0 hits
+- #[trusted]: 0 hits
+- #[ignore] on kani::proof: 0 hits
+- #[cfg(kani)]: 0 hits
+- stub/const/external_body/block Verus markers: 0 hits
+
+obligation triangulation (6 obligations):
+- PO-LINT-001 (moon-lint-src): PENDING_FORMAL_EXECUTION (state 11). Acceptable.
+- PO-COMPILE-001 (cargo-check): PENDING_FORMAL_EXECUTION (state 11). Acceptable.
+- PO-TEST-001 (cargo-test): PENDING_FORMAL_EXECUTION (state 11). Acceptable.
+- PO-EXTERN-001 (grep-externality + check-verus-production-binding + check-production-inner-drift):
+  PENDING_FORMAL_EXECUTION (state 11). Acceptable.
+- PO-DECISION-001 (decision-ack): PENDING_FORMAL_EXECUTION (state 4/7 pre-condition). Acceptable.
+- PO-DECISION-GREP-001 (grep IncidentReport production_inner/): PENDING_FORMAL_EXECUTION (state 4/7
+  pre-condition). Acceptable.
+
+verifier-lane triangulation (16 rows):
+- 8 required lanes (moon-lint-src, cargo-check, cargo-test, grep-externality, check-verus-production-binding,
+  check-production-inner-drift, decision-ack, grep) — planner disposition: required, plan-reviewer
+  disposition: accepted.
+- 8 not_applicable lanes (verus, kani, flux-rs, loom, proptest, cargo-fuzz, miri, tla-plus) — planner
+  disposition: not_applicable, plan-reviewer disposition: accepted. All 8 with concrete
+  non_applicability_evidence_refs.
+
+outputs written:
+- .beads/vb-7akm0/proof-review.md (sha256 2f6efb969f66c81edd0f03159e0ff7782c1fd1412c9e21ac3851cba19e43102e)
+- .beads/vb-7akm0/proof-findings.jsonl (sha256 e3b0c44..., 0 bytes — empty is the disposition)
+- .beads/vb-7akm0/agent-invocation-ledger.jsonl row 5 (state 6, proof-reviewer)
+- .beads/vb-7akm0/transcript-state6.txt (this file)
+
+hand-off:
+- state 7 (holzman-rust implementation owner) — applies 25 visibility narrowings + decision-ack
+- state 11 (formal-verifier) — owns PENDING_FORMAL_EXECUTION evidence capture under .evidence/
+
+status: completed.
+disposition: APPROVED — NO_PROOF_WORK

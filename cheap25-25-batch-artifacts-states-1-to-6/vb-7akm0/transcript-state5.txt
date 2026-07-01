@@ -1,0 +1,40 @@
+p5-proof-writer transcript — vb-7akm0
+
+timestamp: 2026-07-01T22:38Z
+isolation: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+parent_invocation_id: proof-plan-reviewer-vb-7akm0-state4b
+
+inputs read:
+- .beads/vb-7akm0/proof-strategy.md
+- .beads/vb-7akm0/verifier-lane-decisions.jsonl
+- .beads/vb-7akm0/proof-obligations.planned.jsonl
+- .beads/vb-7akm0/proof-plan-review.md
+- .beads/vb-7akm0/trusted-base-plan.md
+
+decision: NO PROOF WORK
+
+reasons:
+1. proof-strategy.md §3.7 marks 8 formal verifier lanes (verus, kani, flux-rs,
+   loom, proptest, cargo-fuzz, miri, tla-plus) as not_applicable with concrete
+   evidence refs (delivery-scope.jsonl:31-32, codebase-map.md, contract.md §2.x).
+2. proof-plan-review.md rows 9-16 confirm the 8 not_applicable dispositions;
+   reviewer disposition is APPROVED (state4b, 2026-07-01T17:00:30Z).
+3. proof-obligations.planned.jsonl has 6 obligations, all behavior_affecting=false,
+   all bound to Rust-local lanes (moon-lint-src, cargo-check, cargo-test, grep,
+   check-verus-production-binding, check-production-inner-drift, decision-ack).
+4. The 25 attribute changes are pure visibility-metadata edits — no spec fn,
+   no proof fn, no #[kani::proof], no #[flux::*], no loom model, no proptest
+   property, no fuzz target, no Miri harness, no TLA+ spec.
+
+outputs written:
+- .beads/vb-7akm0/proof-writer-report.md
+- .beads/vb-7akm0/proof-evidence.md
+- .beads/vb-7akm0/trusted-base-ledger.jsonl (0 bytes, empty)
+
+moon run :lint-src status:        PENDING_FORMAL_EXECUTION (PO-LINT-001, State 11)
+cargo test --workspace status:    PENDING_FORMAL_EXECUTION (PO-TEST-001, State 11)
+
+no production source edited.
+no formal verifier artifact created.
+
+status: completed.

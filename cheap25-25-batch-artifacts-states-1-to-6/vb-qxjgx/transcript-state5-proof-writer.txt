@@ -1,0 +1,43 @@
+State 5 (proof-writer) transcript for vb-qxjgx.
+
+Wrote 5 Kani harnesses, 2 proptest files, and 6 back-compat unit tests at
+codec/tests.rs:1617-1783. All 7 proof-obligation rows are written as
+PENDING_FORMAL_EXECUTION (forward-looking; post-implementation compiles +
+executes). 4 cargo check --tests errors are the expected E0599 sites
+referencing RecordKind::StepSucceeded which does not exist in pre-fix code.
+Pre-existing kani_helpers.rs delimiter in vb_core blocks cargo kani list
+workspace-wide; recorded as TBR-001 in trusted-base-ledger.jsonl. All
+artifacts produced:
+
+  - .beads/vb-qxjgx/proof-writer-report.md (339 lines)
+  - .beads/vb-qxjgx/proof-evidence.md (320 lines)
+  - .beads/vb-qxjgx/trusted-base-ledger.jsonl (9 rows, valid jsonl)
+
+Source artifacts in production crate:
+  - crates/vb_storage/Cargo.toml (+1 line; new kani-vb-qxjgx-record-kind-split feature)
+  - crates/vb_storage/src/lib.rs (+15 lines; module registration)
+  - crates/vb_storage/src/codec/tests.rs (+167 lines; 6 back-compat tests at line 1617)
+
+New kani harness files (vb_storage):
+  - kani_record_kind_id_step_succeeded.rs (109 lines, PO-QXJGX-001)
+  - kani_record_kind_projection_split.rs (154 lines, PO-QXJGX-002)
+  - kani_record_kind_journal_family_33.rs (149 lines, PO-QXJGX-003)
+  - kani_record_kind_parity_legacy_envelope.rs (302 lines, PO-QXJGX-004)
+  - kani_record_kind_decode_round_trip.rs (226 lines, PO-QXJGX-005)
+
+New proptest files:
+  - crates/vb_storage/tests/proptest_replay_summary_step_succeeded_split.rs (282 lines, PO-QXJGX-006)
+  - crates/vb_runtime/tests/proptest_durability_matrix_step_succeeded.rs (269 lines, PO-QXJGX-007)
+
+Smoke evidence:
+  - cargo check -p vb_storage: PASS (5.52s)
+  - cargo check -p vb_storage --features kani-vb-qxjgx-record-kind-split: PASS (1.76s)
+  - cargo check -p vb_storage --tests: 3 E0599 errors (expected; PENDING_FORMAL_EXECUTION)
+  - cargo check -p vb_runtime --tests: 1 E0599 error (expected; PENDING_FORMAL_EXECUTION)
+  - cargo fmt --check -p vb_storage: clean on my files
+  - python3 json.loads(trusted-base-ledger.jsonl): all 9 rows valid
+
+Gate: pwd -P correct (isolated workspace at
+/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx), all 3
+artifacts present, trusted-base-ledger.jsonl is valid jsonl with 9 rows,
+agent-invocation-ledger.jsonl seq=4 entry appended.

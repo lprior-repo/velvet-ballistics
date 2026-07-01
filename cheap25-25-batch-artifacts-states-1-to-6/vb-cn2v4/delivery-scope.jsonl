@@ -1,0 +1,59 @@
+{"kind":"scope","bead":"vb-cn2v4","artifact":"codebase-map","path":".beads/vb-cn2v4/codebase-map.md","owner":"explore"}
+{"kind":"scope","bead":"vb-cn2v4","artifact":"delivery-scope","path":".beads/vb-cn2v4/delivery-scope.jsonl","owner":"explore"}
+{"kind":"crate","name":"vb_storage","reason":"primary crate owning all key encoders; mirrors decode in same file"}
+{"kind":"crate","name":"vb_core","reason":"owns RunId newtype and ZERO constant; new() stays unchanged, encoder owns the validation"}
+{"kind":"file","role":"primary-fix","path":"crates/vb_storage/src/keys.rs","apis":["run_header_key","run_event_key","run_snapshot_key","index_status_key","index_workflow_key","index_action_key","encode_key","encode_key_into","journal_key","run_prefix_key","sequenced_run_key","run_only_key","run_prefix"],"fix":"add require_non_zero_run guard; surface JournalError::InvalidRunId { run } for RunId(0)"}
+{"kind":"file","role":"redundant-guard","path":"crates/vb_storage/src/headers.rs","apis":["FjallJournal::run_header","FjallJournal::put_run_header"],"fix":"manual if run.get() == 0 in run_header() becomes redundant; keep for defence-in-depth OR remove; put_run_header inherits new encoder rejection"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/journal/append.rs","apis":["FjallJournal::append_strict"],"note":"run_event_key called before event.is_valid(); RunId(0) now surfaces Err(InvalidRunId) instead of Err(InvalidEvent)"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/journal/internal.rs","apis":["FjallJournal::append_unfsynced","FjallJournal::append_queued_unfsynced"],"note":"same pattern; RunId(0) surfaces Err(InvalidRunId) before is_valid()"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/journal/injection.rs","apis":["FjallJournal::inject_raw_event","FjallJournal::inject_seq_gap"],"note":"same pattern"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/queue/writer/stage.rs","apis":["stage_queued_event"],"note":"same pattern"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/batch/append_event.rs","apis":["JournalWriteBatch::append_event"],"note":"G1 guard (line 43) gets a stronger typed error for RunId(0)"}
+{"kind":"file","role":"call-site-shift","path":"crates/vb_storage/src/batch/action_index.rs","apis":["FjallJournal::stage_pending_action_index_op"],"note":"index_action_key called for Insert and Remove arms; inherits rejection"}
+{"kind":"file","role":"call-site","path":"crates/vb_storage/src/snapshots.rs","apis":["FjallJournal::put_snapshot","FjallJournal::snapshot"],"note":"run_snapshot_key callers"}
+{"kind":"file","role":"call-site","path":"crates/vb_storage/src/indexes.rs","apis":["FjallJournal::put_status_index","FjallJournal::put_workflow_index","FjallJournal::put_action_index","FjallJournal::delete_action_index"],"note":"all four call index encoders that will reject RunId(0)"}
+{"kind":"file","role":"call-site","path":"crates/vb_storage/src/trimming/logic.rs","apis":["trim_events_for_run","trim_run_event_log","trim_eligibility_diagnostic"],"note":"all call crate::keys::run_prefix_key(run)?"}
+{"kind":"test","role":"flip-to-err","path":"crates/vb_storage/src/keys/tests.rs","tests":["run_header_key_has_correct_prefix","run_event_key_length","index_status_key_has_correct_prefix","index_status_key_length","index_workflow_key_length","index_action_key_length","run_header_key_with_zero_run_id","index_status_key_with_zero_values","run_prefix_key_is_9_bytes","index_status_key_rejects_other_state_in_collision_range","index_status_key_accepts_other_state_above_collision_range"],"fix":"replace RunId::new(0) happy-path assertions with Err(JournalError::InvalidRunId { run: RunId::new(0) })"}
+{"kind":"test","role":"flip-to-err","path":"crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs","tests":["encode_exact_length_run_header","encode_exact_length_run_event","encode_exact_length_index_action"],"fix":"replace unwrap() on RunId::new(0) with expect_err(InvalidRunId)"}
+{"kind":"test","role":"flip-to-err","path":"crates/workspace_tests/tests/vb_eepg_bdd_tests.rs","tests":["run_header_key_prefix_is_0x10","run_header_key_zero_run_id","index_workflow_key_zero_values","run_id_zero_roundtrip"],"fix":"replace Ok assertions with Err(JournalError::InvalidRunId) assertions"}
+{"kind":"test","role":"already-correct","path":"crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs","tests":["decode_storage_key_returns_invalid_run_id_for_zero_run_header","decode_storage_key_returns_invalid_run_id_for_zero_run_event","decode_storage_key_returns_invalid_run_id_for_zero_index_status_run"],"note":"decoder side already enforces; keep as templates"}
+{"kind":"test","role":"already-correct","path":"crates/workspace_tests/tests/storage_contract_pack_runner.rs","tests":["invalid_key_prefix_returns_typed_error"],"note":"test still passes; rename suggested for clarity (it documents run_id=0 contract, not key prefix)"}
+{"kind":"test","role":"proptest-no-change","path":"crates/vb_storage/src/proptests.rs","tests":["all_key_functions_are_deterministic"],"note":"run_val range already starts at 1, excludes zero; no change"}
+{"kind":"test","role":"symbolic-code-table","path":"crates/vb_storage/src/tests.rs","tests":["symbolic_code_table"],"note":"line 7670-7680 already maps InvalidRunId to invalid_run_id; no change"}
+{"kind":"verifier","name":"kani","target":"crates/vb_storage/src/kani_typed_partitioned_ids.rs","proof":["vb_eepg_typed_partitioned_ids","assert_key_contracts"],"fix":"split or kani::assume(run != 0); current Err(_) => assert!(false) arms will fire for RunId(0)"}
+{"kind":"verifier","name":"kani","target":"crates/vb_storage/src/kani_vb_vzcuf_ps004.rs","note":"already pattern-matches JournalError::InvalidRunId at line 151; good template"}
+{"kind":"verifier","name":"verus","target":"verification/verus/extern_vb_storage_keys.rs","symbols":["SpecKeyEncodeError","run_event_key","encode_key","journal_key","run_prefix_key","run_header_key","run_snapshot_key","index_status_key","index_workflow_key","index_action_key"],"fix":"add SpecKeyEncodeError::InvalidRunId { run: u64 } variant; update assume_specification contracts for all encoder mirrors to reject run == 0"}
+{"kind":"verifier","name":"verus","target":"verification/verus/vb-jnz9-journal-event-seq-valid.rs","note":"spec fn run_id_zero already exists at line 137; production events.rs::is_valid() already returns false on RunId(0); no change needed but verify bridge parity"}
+{"kind":"verifier","name":"verus","target":"verification/verus/vb-vzcuf-PS-008.rs","note":"Guard::KeyConstruction at line 238 names run_event_key; the G1 guard contract now must surface InvalidRunId not Ok; assume_specification contract update propagates here"}
+{"kind":"verifier","name":"verus","target":"verification/verus/extern_vb_vzcuf_PS_001.rs","note":"production_inner mirror acknowledges run_event_key at line 31 of its header comment; will need SpecJournalError::InvalidRunId variant if append_event path is to be mirrored"}
+{"kind":"verifier","name":"verus","target":"verification/verus/production_inner/vb_vzcuf_PS_001_production.rs","note":"mirror body lists crates/vb_storage/src/keys.rs::run_event_key as a blocker at lines 79-80; new encoder rejection may ripple into the comment / mirror"}
+{"kind":"contract","name":"domain","target":"crates/vb_storage/src/keys.rs","contract":"encoder/decoder symmetry: every (prefix, RunId(0)) encoding now returns Err(JournalError::InvalidRunId { run })"}
+{"kind":"contract","name":"type","target":"crates/vb_storage/src/error/mod.rs","contract":"reuse JournalError::InvalidRunId { run: RunId } variant; code 0x4021 INVALID_RUN_ID_CODE; symbolic INVALID_RUN_ID; do NOT add new variant"}
+{"kind":"risk","tag":"persistence","impact":"encoder bytes for RunId(0) are no longer produced; existing rows unaffected because decoder already rejects them"}
+{"kind":"risk","tag":"parser/codec","impact":"encoder contract tightens; decoder contract unchanged; asymmetric gap closed"}
+{"kind":"risk","tag":"public-api","impact":"9 typed encoder functions + encode_key/encode_key_into wrappers change Result<_, JournalError> semantics for RunId(0); all in-crate callers enumerated"}
+{"kind":"risk","tag":"user-visible","impact":"CLI / FjallJournal callers that pass RunId(0) now get a typed error instead of silently-emitted bytes; behaviour is the same that run_header() already enforced manually"}
+{"kind":"risk","tag":"performance","impact":"single == 0 integer compare per encoder call; no measurable cost"}
+{"kind":"risk","tag":"concurrency","impact":"none; pure synchronous encode"}
+{"kind":"risk","tag":"temporal","impact":"none"}
+{"kind":"risk","tag":"unsafe-ub","impact":"none"}
+{"kind":"risk","tag":"auth-security","impact":"none"}
+{"kind":"risk","tag":"dependency","impact":"none"}
+{"kind":"risk","tag":"migration","impact":"none; existing data unchanged"}
+{"kind":"out-of-scope","path":"crates/vb_core/src/ids/mod.rs","reason":"RunId::new stays invariant; validation lives in encoder per bead text"}
+{"kind":"out-of-scope","path":"crates/vb_core/src/ids/parts/chunk_001_custom_types.rs","reason":"RunId::ZERO constant stays; recovery diagnostics use it as a placeholder not a key"}
+{"kind":"out-of-scope","path":"crates/vb_storage/src/recovery/replay/summary/derive.rs","reason":"uses RunId::new(0) as NoRecoveryData placeholder, never reaches encoder"}
+{"kind":"out-of-scope","path":"crates/vb_storage/src/recovery/replay/summary/apply.rs","reason":"same placeholder pattern"}
+{"kind":"out-of-scope","path":"crates/vb_storage/src/recovery/replay/summary/tests.rs","reason":"tests verify the NoRecoveryData placeholder pattern"}
+{"kind":"out-of-scope","path":"crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs","reason":"runtime callers use RunId::new(0) but do not reach key encoder"}
+{"kind":"out-of-scope","path":"crates/workspace_tests/tests/integration_runtime_storage_fault_tolerance.rs","reason":"runtime caller, not encoder path"}
+{"kind":"out-of-scope","path":"crates/workspace_tests/tests/runtime_version_barrier_tests.rs","reason":"runtime caller, not encoder path"}
+{"kind":"out-of-scope","path":"crates/workspace_tests/tests/cancel_kill_lattice_props.rs","reason":"runtime caller, not encoder path"}
+{"kind":"out-of-scope","path":"crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs","reason":"recovery diagnostic caller"}
+{"kind":"out-of-scope","path":"contracts/verus/vb_qi37_16_5_lifecycle_journal_storage.rs","reason":"TLA+ spec mirror; uses RunId::Run(0) as spec placeholder"}
+{"kind":"owner-recommendation","agent":"rust-contract","reason":"write domain/type contract for new require_non_zero_run guard and encoder/decoder symmetry"}
+{"kind":"owner-recommendation","agent":"proof-planner","reason":"plan Verus SpecKeyEncodeError::InvalidRunId variant + Kani harness split/assume for kani_typed_partitioned_ids"}
+{"kind":"owner-recommendation","agent":"proof-writer","reason":"implement Verus spec additions and Kani harness edits"}
+{"kind":"owner-recommendation","agent":"test-planner","reason":"plan BDD 'encoder rejects zero RunId' per-prefix tests + parity matrix + mutation test"}
+{"kind":"owner-recommendation","agent":"holzman-rust","reason":"implement require_non_zero_run in keys.rs; flip listed tests; edit Kani harness; edit Verus spec mirror; decide on headers.rs manual-check fate"}
+{"kind":"verification-gate","pwd":"correct","test-s":"artifacts-exist","jq":"parses"}

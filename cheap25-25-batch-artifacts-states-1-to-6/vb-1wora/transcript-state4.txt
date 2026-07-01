@@ -1,0 +1,32 @@
+=== proof-plan-reviewer invocation: ppr-vb-1wora-2026-07-01 ===
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-1wora
+bead: vb-1wora
+state: 4 (proof-plan-review)
+inputs:
+  - proof-strategy.md (24.4K)
+  - verifier-lane-decisions.jsonl (10.8K, 10 rows)
+  - proof-obligations.planned.jsonl (22.8K, 7 rows)
+  - trusted-base-plan.md (14.1K, 9 trusted bases)
+  - waiver-candidates.jsonl (8.1K, 5 rows)
+  - contracts/contract.md (16.3K)
+  - contracts/proof-seeds.jsonl (10 rows)
+  - contracts/traceability-matrix.jsonl (10 rows)
+outputs:
+  - proof-plan-review.md
+  - verifier-lane-review.jsonl (10 rows, all accepted)
+verification:
+  - 7 obligations verified (POB-vb-1wora-001..007)
+  - TrailingBytes variant added (0x4042, JOURNAL_TRAILING_BYTES)
+  - Verus WEAK_MIRROR binding to production_inner/vb_vzcuf_PS_003_production.rs
+  - Kani H6 extension to kani_postcard_envelope_wire.rs
+  - cargo-fuzz hostile-input oracle in fuzz_storage_codec_payload_corruption.rs
+schema checks:
+  - verifier-lane-decisions.jsonl: all 10 rows schema_version=verifier-lane-decision/v1 PASS
+  - proof-obligations.planned.jsonl: all 7 rows schema_version=proof-obligation/v1 PASS
+  - waiver-candidates.jsonl: all 5 rows behavior_affecting=false PASS
+  - POB-vb-1wora-006 production_binding: WEAK_MIRROR with all 5 required fields PASS
+god-rule checks:
+  - GOD RULE 2 (vacuum-proof prohibition): PASS via extern_vb_vzcuf_PS_003.rs:71-72 #[path] to production_inner mirror
+  - GOD RULE 1 (no hardcoded Kani shapes): PASS via kani::any() in H6 harness
+  - GOD RULE 5 (differential verification): PASS, scope trimmed to 7 obligations covering 7 invariants
+verdict: STATUS: APPROVED

@@ -1,0 +1,59 @@
+{
+  "bead_id": "vb-d9ml3",
+  "state": 4,
+  "sublane": "proof-planner",
+  "intended_skill": "proof-planner",
+  "actual_agent": "proof-planner",
+  "actual_subagent_type": "proof-planner",
+  "fallback": false,
+  "user_approved_fallback": false,
+  "fallback_reason": null,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3",
+  "inputs": [
+    ".beads/vb-d9ml3/STATE.md",
+    ".beads/vb-d9ml3/codebase-map.md",
+    ".beads/vb-d9ml3/contract.md",
+    ".beads/vb-d9ml3/proof-seeds.jsonl"
+  ],
+  "expected_outputs": [
+    ".beads/vb-d9ml3/proof-strategy.md",
+    ".beads/vb-d9ml3/verifier-lane-matrix.md",
+    ".beads/vb-d9ml3/verifier-lane-decisions.jsonl",
+    ".beads/vb-d9ml3/proof-coverage-matrix.md",
+    ".beads/vb-d9ml3/proof-obligations.planned.jsonl",
+    ".beads/vb-d9ml3/trusted-base-plan.md",
+    ".beads/vb-d9ml3/waiver-candidates.jsonl"
+  ],
+  "attempt": 1,
+  "status": "returned",
+  "invocation_id": "proof-planner-vb-d9ml3-state4",
+  "owner_state": 4,
+  "validator_summary": {
+    "obligations": 5,
+    "lane_decisions": 10,
+    "waivers": 7,
+    "findings_total": 6,
+    "findings_blocker": 0,
+    "findings_major": 6,
+    "status": "PASS"
+  },
+  "obligations_count": 5,
+  "obligations_breakdown": {
+    "PO-001-UNIT": "verifier=proptest, behavior_affecting=false, risk=equality",
+    "PO-001-REGRESSION": "verifier=proptest, behavior_affecting=false, risk=equality",
+    "PO-002-INTEGRATION": "verifier=proptest, behavior_affecting=false, risk=rejection",
+    "PO-003-PROPTEST": "verifier=proptest, behavior_affecting=false, risk=rejection",
+    "PO-004-LINT": "verifier=proptest, behavior_affecting=false, risk=parse_canonicalization"
+  },
+  "vld_count": 10,
+  "vld_breakdown": {
+    "required": 5,
+    "not_applicable": 5
+  },
+  "waiver_count": 7,
+  "waiver_rationale_summary": "7 waivers (WVR-001..007) all behavior_affecting=false. Each cites a proof-seed (PS-CAP-VERUS-OMIT-001 / PS-CAP-UNIT-001 / PS-CAP-PROPTEST-001 / PS-CAP-CROSS-CRATE-001) and a delivery-scope.jsonl row documenting the contract-explicit kani/verus/cargo-fuzz omission.",
+  "handoff_to": "proof-plan-reviewer",
+  "handoff_state_target": 4,
+  "notes": "Bead is a low-blast-radius numeric/cap refinement; all obligations are behavior_affecting=false per task directive. Validator returns PASS (0 blockers, 6 major E_LANE_DECISION_MISSING findings for the contract-explicit kani/verus/cargo-fuzz omissions, documented in 7 waivers with concrete boundary_proof and compensating_evidence). proof-to-implementation-input.md is out of scope for this bead (no behavior-affecting obligations). The bridge artifact will be produced by proof-to-implementation at State 7 only if the reviewer accepts the plan and the implementation agent is engaged."
+}

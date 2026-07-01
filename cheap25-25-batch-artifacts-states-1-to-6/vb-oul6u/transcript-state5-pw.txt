@@ -1,0 +1,39 @@
+proof-writer invocation: p5-proof-writer-cheap25-vb-oul6u
+bead_id: vb-oul6u
+state: 5
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-oul6u
+status: completed
+disposition: NO_FORMAL_PROOF_WORK_REQUIRED
+
+Inputs read first:
+- .beads/vb-oul6u/proof-strategy.md
+- .beads/vb-oul6u/verifier-lane-decisions.jsonl
+- .beads/vb-oul6u/proof-obligations.planned.jsonl
+- .beads/vb-oul6u/proof-plan-review.md
+- .beads/vb-oul6u/trusted-base-plan.md
+
+Outputs:
+- .beads/vb-oul6u/proof-writer-report.md
+- .beads/vb-oul6u/proof-evidence.md
+- .beads/vb-oul6u/trusted-base-ledger.jsonl (empty as required)
+
+Pre-fix baseline smoke evidence:
+- .beads/vb-oul6u/evidence/cargo-check-pre-fix.log (cargo exit 0)
+- .beads/vb-oul6u/evidence/cargo-test-pre-fix.log (cargo exit 0)
+- .beads/vb-oul6u/evidence/clippy-as-conversions-pre-fix.log (cargo exit 101, pre-fix as-cast at runtime.rs:584)
+- .beads/vb-oul6u/evidence/rg-policy-invariant.log (exit 0; 2 matches; lint policy preserved)
+- .beads/vb-oul6u/evidence/rg-vb-runtime-as-casts-pre-fix.log (exit 0; runtime.rs:584 is the production as-cast this bead fixes)
+- .beads/vb-oul6u/evidence/rg-safety-comment-pre-fix.log (exit 0; 1 match at line 581; SAFETY block this bead removes)
+
+Agent invocation ledger:
+- Entry 4 appended to .beads/vb-oul6u/agent-invocation-ledger.jsonl
+  - entry_hash: 53364ae287e498a39dc5735a9d774274197108941372845ae7dd1bd7ebdb3d0b
+  - previous_entry_hash: 0b9e8b1b79b74a63bc5ee3affd972cf958e4cd2611ff08315e66ff636b45309a (matches entry 3)
+
+Gate: PASS
+- pwd -P: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-oul6u
+- jj root: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-oul6u
+- All 3 artifacts present and non-empty (ledger is 0B by design)
+- Ledger chain valid (entry 4's previous_entry_hash matches entry 3's entry_hash)
+
+Final disposition: READY_FOR_STATE6_REVIEW

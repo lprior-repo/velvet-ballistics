@@ -1,0 +1,46 @@
+State 4b (proof-plan-reviewer) for vb-jtqqx via proof-plan-reviewer direct child of femdation.
+workdir=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+parent_invocation=explore-vb-jtqqx-state2 (state 2 explore; planner state-4 row expected to land in control-plane provenance)
+planner_invocation_id=vb-jtqqx-state4-proof-planner-attempt1
+reviewer_invocation_id=vb-jtqqx-state4-proof-plan-review-attempt1
+invocation_id=proof-plan-reviewer-vb-jtqqx-state4
+inputs_read_first:
+  - proof-strategy.md (5e99f19f497677dafb289f561814f3dd990f7addb511291365e0f859b8531af4)
+  - verifier-lane-decisions.jsonl (3a05c4f60d7aeaa3ee53e94b9f78d3c97ff148949cff91a8f196e6217fe02633; 24 rows)
+  - proof-obligations.planned.jsonl (abbbe53fa9cc7c3cbef6ce285ba83b12c7d58ecfdb2061d2791a5b81460114ab; 2 rows)
+  - trusted-base-plan.md (445550c827219e14fcd7ba4a7c3dd6b022088b90170ba766748f6d0f6aa46c1a)
+  - waiver-candidates.jsonl (1d988dfeffec44b0bda86166bd280ba6a49d0dba0831440718e0adcb7ac829a4; 6 rows; behavior_affecting=false)
+supporting_artifacts_reviewed:
+  - contract.md (3ab0f24c385ec24c77fa8277ccae6124d57f9856dbfae1526f8376084948113e)
+  - error-taxonomy.md (136ecc55723b433cc180edce1d6d4d2d4352ed51649df4d6629ec4c2da6e58dc)
+  - proof-seeds.jsonl (b0e5ce274923dbbb805df1b6848004076f775ec081102bd610f0d1c750e2e828; 20 rows incl 2 follow-up)
+  - traceability-matrix.jsonl (e8bf337cecea9cf11e4d732292f2485e010266f55e7e5645798c1979e0c44a31; 20 rows)
+  - proof-coverage-matrix.md (c3bb515cd2b2fe2c011ecbcf85c8bd924cdb465c16e733a845f84953067e692d)
+  - verifier-lane-matrix.md (2835e8aaaafaa751d5acc31a6c70d57910403132593b95b0d9a1852afce379ce)
+  - domain-model.md, type-contracts.md, boundary-map.md, hazard-analysis.md, workflow-model.md (all read)
+read_only_source_confirmed:
+  - crates/vb_storage/src/keys.rs:281-295 (try_key_prefix, pure match)
+  - crates/vb_storage/src/keys.rs:346-434 (decode_storage_key, pure match + key_array)
+  - crates/vb_storage/src/error/key_decode.rs:8-31 (KeyDecodeError, #[non_exhaustive])
+  - crates/vb_storage/src/constants.rs:38-43, 77-79 (prefix bytes + length envelopes)
+in_scope_target:
+  - crates/workspace_tests/tests/journal_side_index_contracts.rs:14 (forbid(unsafe_code))
+  - crates/workspace_tests/tests/journal_side_index_contracts.rs:23 (JOURNAL_KEY_PROPTEST_CASES=128)
+  - crates/workspace_tests/tests/journal_side_index_contracts.rs:183-257 (PO-008 proptest block)
+outputs_emitted:
+  - .beads/vb-jtqqx/verifier-lane-review.jsonl (24 rows; reviewer_disposition=accepted across all VLDs)
+  - .beads/vb-jtqqx/proof-plan-review.md (STATUS: APPROVED)
+ledger_artifact:
+  - .beads/vb-jtqqx/agent-invocation-ledger.jsonl seq=3 (this entry)
+results:
+  - Default-profile verifiers (Kani, Verus, Flux-rs) addressed; kani and verus = surface_absent; flux-rs = risk_out_of_scope
+  - Conditional lanes (Loom, Miri, cargo-fuzz) addressed; loom and miri = surface_absent; cargo-fuzz = superseded_by_other_lane_with_evidence
+  - All 6 not_applicable decisions carry concrete non_applicability_evidence_refs (file:line) and a limitation_kind
+  - 2 obligations (PO-MAL-001, PO-MAL-002); both verifier=proptest, both behavior_affecting=false, both with exact command, workdir, expected_evidence
+  - No behavior-affecting waivers; 6 waiver candidates are bookkeeping for not_applicable lane decisions
+  - No production source change; no Cargo.toml/Cargo.lock edit; bounded to one test file per contract SIDEX-MAL-008
+  - Trusted-base plan covers read-only decoder, constants, fixtures, type invariants, and Holzman-Rust surface
+  - Bridge planning present (State 7 mapping documented in proof-strategy.md)
+  - Status: APPROVED
+started_at=2026-07-01T16:50:00Z
+completed_at=2026-07-01T17:00:00Z

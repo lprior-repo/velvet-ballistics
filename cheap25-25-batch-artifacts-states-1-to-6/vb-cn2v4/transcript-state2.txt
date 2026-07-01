@@ -1,0 +1,5 @@
+State 2 (explore) for vb-cn2v4 via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cn2v4
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=ef6220515b97305b...), delivery-scope.jsonl (sha256=f764bed7e7824c84...)

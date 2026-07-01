@@ -1,0 +1,13 @@
+proof-writer: vb-qol58 state 5 attempt 1 (no proof work).
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58
+Inputs read: proof-strategy.md, verifier-lane-decisions.jsonl, proof-obligations.planned.jsonl, proof-plan-review.md, trusted-base-plan.md, verifier-lane-review.jsonl, proof-seeds.jsonl, traceability-matrix.jsonl, contract.md, domain-model.md, type-contracts.md, workflow-model.md, error-taxonomy.md, boundary-map.md, hazard-analysis.md, .moon/tasks/all.yml.
+Outcome: STATUS: NO_PROOF_WORK_DECLARED. Zero Verus/Kani/Flux/Loom/Miri/cargo-fuzz/proptest-as-property-pressure artifacts written. The 3 planned proof-obligation/v1 rows (PO-qol58-001, PO-qol58-002, PO-qol58-003) are pure cargo/moon gates owned by formal-verifier at State 12. All 3 obligations dispositioned as PENDING_FORMAL_EXECUTION in proof-evidence.md.
+Artifacts written:
+- .beads/vb-qol58/proof-writer-report.md (sha256 fa01f7f80da7cffc575d66b076201346c88aec82c3e89798405c42814dfaefe3)
+- .beads/vb-qol58/proof-evidence.md (sha256 fbae1f6963afae5add7713458f923d5b9b45a8740f6caf41ba15637d076bce6c)
+- .beads/vb-qol58/trusted-base-ledger.jsonl (empty; sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
+- .beads/vb-qol58/agent-invocation-ledger.jsonl (state5 row appended; entry_hash 4e637702725dba52c0a748aa56c59cde8a994e975199cc4d456500f17bac3671; ledger_sequence 4)
+Production source/test/dependency edits: none. Coord checkout /home/lewis/src/velvet-ballistics: not written.
+Notes: All 23 lane decisions from verifier-lane-decisions.jsonl dispositioned (5 required proptest + 18 not_applicable). All 18 not_applicable rows cite concrete SHA-256 evidence refs approved by proof-plan-reviewer at State 4b. Per proof-strategy.md §10 handoff: "State 4b → State 5 (proof-writer): No proofs/harnesses are required (the Verus/Kani/Flux/Loom/Miri/cargo-fuzz lanes are not_applicable; the 3 obligations use the existing unit tests + lint gate)." This disposition is the planned outcome, not a deviation.
+Verifier commands run by proof-writer: none (gate execution owned by formal-verifier at State 12). Workspace isolation + JSONL schema + production-line citation + deny-list verification all PASS.
+Next routing: State 6 (proof-reviewer) reviews this report; State 7 (proof-to-implementation) emits zero rust-refinement-obligation/v1 rows (all behavior_affecting=false); State 11 (holzman-rust) applies the 3 production-line edits; State 12 (formal-verifier) runs moon run :lint-src + cargo check + cargo test and emits verification-ledger/v1 rows.
