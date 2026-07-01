@@ -995,6 +995,7 @@ tasks:
       - 'benchmark-regression-policy'
       - 'fuzz-smoke'
       - 'kani-baseline'
+      - 'kani-baseline-heavy'
     options:
       cache: false
       runDepsInParallel: false
