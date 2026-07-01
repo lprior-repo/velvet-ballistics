@@ -154,15 +154,13 @@ tasks:
   # pinned nightly toolchain. Use this in addition to `nightly-feature-gate`
   # (which scans source for forbidden tokens). See bead vb-qblm4.
   nightly-feature-cargo-probe:
-    command: |
-      bash -c '
-        set -euo pipefail
-        rustup run nightly-2026-04-28 cargo tree -p velvet-ballistics -e features \
-          --all-features --format "{p} {f}" > /tmp/opencode/nightly-features.txt
-        rustup run nightly-2026-04-28 cargo metadata --format-version 1 \
-          --all-features > /tmp/opencode/nightly-features-metadata.json
-        echo "[nightly-feature-cargo-probe] OK: cargo-driven feature enumeration complete."
-      '
+    script: |
+      set -euo pipefail
+      rustup run nightly-2026-04-28 cargo tree -p velvet-ballistics -e features \
+        --all-features --format "{p} {f}" > /tmp/opencode/nightly-features.txt
+      rustup run nightly-2026-04-28 cargo metadata --format-version 1 \
+        --all-features > /tmp/opencode/nightly-features-metadata.json
+      echo "[nightly-feature-cargo-probe] OK: cargo-driven feature enumeration complete."
     toolchains:
       - rust
     inputs:
@@ -774,96 +772,96 @@ tasks:
     options:
       runInCI: false
 
-  # ── maxperf / PGO QUARANTINE ─────────────────────────────────────────────
-  # The pgo-instrument-build, pgo-optimized-build, maxperf, and maxperf-native
-  # tasks below are QUARANTINED (vb-pcfi1). The current master scope has
-  # removed generated Rust and the active maxperf release path; these tasks
-  # are retained for historical/audit reasons only and MUST NOT be invoked
-  # as part of the current release pipeline. They are gated by `runInCI:
-  # false` and additionally by `quarantined: true` so downstream automation
-  # can detect and skip them. Each task's `script` is preserved unchanged
-  # for future re-activation under explicit waiver.
-
-  pgo-instrument-build:
-    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
-    toolchains:
-      - rust
-    inputs:
-      - '@globs(sources)'
-      - '@globs(configs)'
-    outputs:
-      - 'target/maxperf/**'
-      - 'target/pgo/profiles/**'
-    options:
-      runInCI: false
-      quarantined: true
-
-  pgo-optimized-build:
-    script: |
-      set -euo pipefail
-      profile_data="$PWD/target/pgo/merged.profdata"
-      if [ ! -s "$profile_data" ]; then
-        printf 'Missing non-empty PGO profile data: %s\n' "$profile_data" >&2
-        exit 1
-      fi
-      RUSTFLAGS="-Cprofile-use=$profile_data -Dwarnings" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
-    toolchains:
-      - rust
-    inputs:
-      - '@globs(sources)'
-      - '@globs(configs)'
-      - 'target/pgo/merged.profdata'
-    outputs:
-      - 'target/maxperf/**'
-    options:
-      runInCI: false
-      quarantined: true
-
-  maxperf:
-    script: |
-      set -euo pipefail
-      mkdir -p target/moon-locks
-      mkdir -p target/tmp
-      # Default CARGO_TARGET_DIR; --profile maxperf only changes the artifact
-      # subdir, not the dep-graph fingerprint, so we share cache with
-      # `test`/`check`/`lint-src`/`hardened-build` rather than pay a fresh
-      # CARGO_TARGET_DIR cold-start.
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
-    deps:
-      - 'test'
-      - 'lint-src'
-    toolchains:
-      - rust
-    inputs:
-      - '@globs(sources)'
-      - '@globs(configs)'
-    outputs:
-      - 'target/maxperf/**'
-    options:
-      runInCI: false
-      quarantined: true
-
-  maxperf-native:
-    script: |
-      set -euo pipefail
-      mkdir -p target/moon-locks
-      mkdir -p target/tmp
-      export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
-    deps:
-      - 'test'
-      - 'lint-src'
-    toolchains:
-      - rust
-    inputs:
-      - '@globs(sources)'
-      - '@globs(configs)'
-    outputs:
-      - 'target/maxperf/**'
-    options:
-      runInCI: false
-      quarantined: true
-
+#   # ── maxperf / PGO QUARANTINE ─────────────────────────────────────────────
+#   # The pgo-instrument-build, pgo-optimized-build, maxperf, and maxperf-native
+#   # tasks below are QUARANTINED (vb-pcfi1). The current master scope has
+#   # removed generated Rust and the active maxperf release path; these tasks
+#   # are retained for historical/audit reasons only and MUST NOT be invoked
+#   # as part of the current release pipeline. They are gated by `runInCI:
+#   # false` and additionally by `quarantined: true` so downstream automation
+#   # can detect and skip them. Each task's `script` is preserved unchanged
+#   # for future re-activation under explicit waiver.
+# 
+#   pgo-instrument-build:
+#     script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
+#     toolchains:
+#       - rust
+#     inputs:
+#       - '@globs(sources)'
+#       - '@globs(configs)'
+#     outputs:
+#       - 'target/maxperf/**'
+#       - 'target/pgo/profiles/**'
+#     options:
+#       runInCI: false
+#       quarantined: true
+# 
+#   pgo-optimized-build:
+#     script: |
+#       set -euo pipefail
+#       profile_data="$PWD/target/pgo/merged.profdata"
+#       if [ ! -s "$profile_data" ]; then
+#         printf 'Missing non-empty PGO profile data: %s\n' "$profile_data" >&2
+#         exit 1
+#       fi
+#       RUSTFLAGS="-Cprofile-use=$profile_data -Dwarnings" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
+#     toolchains:
+#       - rust
+#     inputs:
+#       - '@globs(sources)'
+#       - '@globs(configs)'
+#       - 'target/pgo/merged.profdata'
+#     outputs:
+#       - 'target/maxperf/**'
+#     options:
+#       runInCI: false
+#       quarantined: true
+# 
+#   maxperf:
+#     script: |
+#       set -euo pipefail
+#       mkdir -p target/moon-locks
+#       mkdir -p target/tmp
+#       # Default CARGO_TARGET_DIR; --profile maxperf only changes the artifact
+#       # subdir, not the dep-graph fingerprint, so we share cache with
+#       # `test`/`check`/`lint-src`/`hardened-build` rather than pay a fresh
+#       # CARGO_TARGET_DIR cold-start.
+#       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
+#     deps:
+#       - 'test'
+#       - 'lint-src'
+#     toolchains:
+#       - rust
+#     inputs:
+#       - '@globs(sources)'
+#       - '@globs(configs)'
+#     outputs:
+#       - 'target/maxperf/**'
+#     options:
+#       runInCI: false
+#       quarantined: true
+# 
+#   maxperf-native:
+#     script: |
+#       set -euo pipefail
+#       mkdir -p target/moon-locks
+#       mkdir -p target/tmp
+#       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
+#       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf
+#     deps:
+#       - 'test'
+#       - 'lint-src'
+#     toolchains:
+#       - rust
+#     inputs:
+#       - '@globs(sources)'
+#       - '@globs(configs)'
+#     outputs:
+#       - 'target/maxperf/**'
+#     options:
+#       runInCI: false
+#       quarantined: true
+# 
   verify-fast:
     command: 'bash scripts/rust-verification-gauntlet.sh fast'
     toolchains:
