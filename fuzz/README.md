@@ -1,26 +1,42 @@
-# Fuzz Target Layout
+# velvet-ballistics/fuzz
 
-This package intentionally exposes cargo-fuzz targets as explicit `[[bin]]`
-entries under `src/bin/*.rs`. `cargo fuzz list` is the source of truth for the
-active target names.
+This crate hosts two distinct categories of harnesses. The categories exist
+because **they are not equivalent evidence** (see bead vb-4b0mk).
 
-The master plan names `fuzz_targets/*.rs` as the logical target set. In this
-repository, that contract is satisfied by these cargo-fuzz binaries:
+## `fuzz_targets/` — libFuzzer harnesses (real fuzz coverage)
 
-- `src/bin/yaml_events.rs`
-- `src/bin/expression.rs`
-- `src/bin/ipc_frame.rs`
-- `src/bin/journal_event.rs`
-- `src/bin/compiled_ir.rs`
-- `src/bin/generated_compare.rs`
+Each file uses `#![no_main]` and `libfuzzer_sys::fuzz_target!`. These are
+the canonical fuzz targets. Run with:
 
-`fuzz_targets.rs` remains a compatibility module for callable harness bodies;
-do not add duplicate `fuzz/fuzz_targets/*.rs` wrappers unless cargo-fuzz is
-reconfigured to consume that layout directly.
+```bash
+cargo fuzz run <target> -- -max_len=65536 -runs=100000
+```
 
-On Linux, cargo-fuzz 0.13 defaults `check` to `x86_64-unknown-linux-musl`,
-which is incompatible with ASan static libc linking. Use:
+They mutate input via libFuzzer, maintain a corpus, and report coverage.
+**Only these count as fuzz coverage for an obligation.**
 
-```sh
-cargo fuzz check --target x86_64-unknown-linux-gnu
+## `stdin_smoke/` — stdin-fed static binaries (NOT fuzz coverage)
+
+Each file is a thin wrapper around `fuzz_lib::bin_common::run_with_stdin`.
+They take input from stdin and call the same harness body as the
+corresponding `fuzz_targets/` entry, but they do NOT use libFuzzer
+mutation, do NOT maintain a corpus, and do NOT report coverage.
+
+They are useful for:
+
+- Reproducing a single saved input without spinning up a libFuzzer session.
+- Smoke-testing the harness body in CI without the libFuzzer toolchain.
+
+**They are NOT fuzz coverage.** CI must NOT report a stdin_smoke binary
+run as evidence that an obligation has been fuzzed.
+
+## Layout
+
+```text
+fuzz/
+├── Cargo.toml
+├── fuzz_targets/   # libFuzzer harnesses (real fuzz coverage)
+├── stdin_smoke/    # stdin wrappers (NOT fuzz coverage)
+├── corpus/         # libFuzzer corpus (used only by fuzz_targets/)
+└── src/            # shared harness bodies (`fuzz_lib`)
 ```

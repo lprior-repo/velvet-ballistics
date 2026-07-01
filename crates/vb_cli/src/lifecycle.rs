@@ -468,8 +468,15 @@ pub mod test_helpers {
     ///
     /// This is needed because cancel/resume/retry/answer write events but not headers.
     /// Without a header, replay's run_headers() iteration skips the run.
+    ///
+    /// The `put_run_header` result is now propagated: callers must observe
+    /// the returned error rather than silently swallowing it. See bead
+    /// vb-3mz3u.
     #[allow(unreachable_pub)]
-    pub fn create_run_header(journal: &FjallJournal, run: RunId) {
+    pub fn create_run_header(
+        journal: &FjallJournal,
+        run: RunId,
+    ) -> Result<(), vb_storage::JournalError> {
         use vb_core::WorkflowDigest;
         use vb_core::WorkflowId;
         let header = vb_storage::RunHeaderRecord {
@@ -479,6 +486,6 @@ pub mod test_helpers {
             status: 1,
             accepted_at_ms: 0,
         };
-        if journal.put_run_header(&header).is_err() {}
+        journal.put_run_header(&header)
     }
 }

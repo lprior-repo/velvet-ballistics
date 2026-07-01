@@ -208,7 +208,7 @@ fn replay_explain_prints_snapshot_boundary_then_journal_tail() {
     // Given: journal with snapshot and tail events
     let (_temp, journal) = temp_journal();
     let run = make_run_id(42);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     // Write events: RunAccepted -> StepStarted -> ActionScheduled (tail)
     let events = vec![
@@ -284,8 +284,8 @@ fn replay_explain_handles_multiple_runs() {
     let (_temp, journal) = temp_journal();
     let run1 = make_run_id(1);
     let run2 = make_run_id(2);
-    create_run_header(&journal, run1);
-    create_run_header(&journal, run2);
+    create_run_header(&journal, run1).expect("create_run_header for test setup");
+    create_run_header(&journal, run2).expect("create_run_header for test setup");
 
     // Run 1: completed
     let run1_events = vec![
@@ -680,7 +680,7 @@ fn replay_explain_is_read_only_no_journal_mutation() {
     // Given: journal with events
     let (_temp, journal) = temp_journal();
     let run = make_run_id(1);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let events = vec![JournalEvent::RunAccepted {
         run,
@@ -723,7 +723,7 @@ fn replay_timeline_includes_digest_or_record_kind_per_event() {
     // Given: journal with events that have different digest/record_kind properties
     let (_temp, journal) = temp_journal();
     let run = make_run_id(77);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let events = vec![
         JournalEvent::RunAccepted {
@@ -787,7 +787,7 @@ fn replay_timeline_entry_has_digest_for_run_accepted() {
     // Given: journal with RunAccepted event
     let (_temp, journal) = temp_journal();
     let run = make_run_id(88);
-    create_run_header(&journal, run);
+    create_run_header(&journal, run).expect("create_run_header for test setup");
 
     let digest = WorkflowDigest::from_bytes([0x1A_u8; 32]);
     let events = vec![JournalEvent::RunAccepted {

@@ -93,7 +93,7 @@ impl ReleaseProfileEvidence {
                 code: "core_parity_unsupported",
                 claim,
                 blocker: "blocked-by-core",
-                action: "keep evidence fixture-backed until live Makepad/core parity exists",
+                action: "UI/Makepad release contract is intentionally deferred; velvet-ballistics is Rust-only durable orchestration per the public surface alignment (vb-vwnfw). No live Makepad/core parity gate is active in this milestone.",
             });
         }
         let missing = REQUIRED_UI_SUBGATES

@@ -485,6 +485,38 @@ impl Runtime {
         shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
+    /// Looks up the canonical in-flight action ticket for `run`.
+    ///
+    /// IPC handlers receive only a `(run_id, ticket: u64)` wire pair. The wire
+    /// `ticket` encodes only the lower-16-bit step index and does not carry the
+    /// real `seq`, `action`, `attempt`, `idempotency_key`, or `capacity`
+    /// values. The canonical ticket is held by the shard's `pending_actions`
+    /// index and is the only authoritative source of those fields.
+    ///
+    /// Returns `None` if:
+    /// - the run is not found,
+    /// - the run has no in-flight action ticket,
+    /// - the wire `ticket`'s lower 16 bits do not match the canonical step.
+    ///
+    /// This lookup is the boundary that prevents the IPC layer from
+    /// fabricating dummy `seq`/`action`/`idempotency_key`/`capacity` fields
+    /// (see bead vb-xb62s). Callers must fail closed if this returns `None`
+    /// and must never invent fields the wire did not carry.
+    #[must_use]
+    pub fn lookup_pending_action_ticket(
+        &self,
+        run: RunId,
+        ticket_wire: u64,
+    ) -> Option<vb_core::action::ActionTicket> {
+        let shard = self.shard_for_run(run).ok()?;
+        let canonical = shard.pending_action_get(run)?;
+        let wire_step = u16::try_from(ticket_wire).ok()?;
+        if canonical.step.get() != wire_step {
+            return None;
+        }
+        Some(canonical)
+    }
+
     /// Lists trace events for a run without draining the shard trace ring.
     ///
     /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard

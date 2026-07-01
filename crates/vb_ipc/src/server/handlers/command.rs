@@ -8,7 +8,7 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket};
 
 use super::query::{decode_payload, sanitize_runtime_error};
-use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
+use crate::server::ticket::{payload_len, step_from_ticket};
 use crate::IpcPayload;
 
 const MAX_ANSWER_ASK_BYTES: usize = 65536;
@@ -85,7 +85,7 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
         return IpcResponse::BadRequest;
     };
 
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+    let Some(action_ticket) = runtime.lookup_pending_action_ticket(run_id, ticket) else {
         return IpcResponse::BadRequest;
     };
     if output.len() > MAX_ACTION_OUTPUT_LEN {
@@ -123,7 +123,7 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         return IpcResponse::BadRequest;
     };
 
-    let Some(action_ticket) = action_ticket_from_wire(run_id, ticket) else {
+    let Some(action_ticket) = runtime.lookup_pending_action_ticket(run_id, ticket) else {
         return IpcResponse::BadRequest;
     };
     if error.len() > MAX_ACTION_ERROR_LEN {

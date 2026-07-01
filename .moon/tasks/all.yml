@@ -149,6 +149,29 @@ tasks:
     options:
       runInCI: true
 
+  # First-party feature-scope probe. Drives `cargo` (rather than a static
+  # source scan) to enumerate the actually-compiled feature set under the
+  # pinned nightly toolchain. Use this in addition to `nightly-feature-gate`
+  # (which scans source for forbidden tokens). See bead vb-qblm4.
+  nightly-feature-cargo-probe:
+    command: |
+      bash -c '
+        set -euo pipefail
+        rustup run nightly-2026-04-28 cargo tree -p velvet-ballistics -e features \
+          --all-features --format "{p} {f}" > /tmp/opencode/nightly-features.txt
+        rustup run nightly-2026-04-28 cargo metadata --format-version 1 \
+          --all-features > /tmp/opencode/nightly-features-metadata.json
+        echo "[nightly-feature-cargo-probe] OK: cargo-driven feature enumeration complete."
+      '
+    toolchains:
+      - rust
+    inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/**/Cargo.toml'
+    options:
+      runInCI: true
+
   agent-cli-contract:
     command: 'bash scripts/check-agent-cli-contract.sh'
     toolchains:
@@ -751,6 +774,16 @@ tasks:
     options:
       runInCI: false
 
+  # ── maxperf / PGO QUARANTINE ─────────────────────────────────────────────
+  # The pgo-instrument-build, pgo-optimized-build, maxperf, and maxperf-native
+  # tasks below are QUARANTINED (vb-pcfi1). The current master scope has
+  # removed generated Rust and the active maxperf release path; these tasks
+  # are retained for historical/audit reasons only and MUST NOT be invoked
+  # as part of the current release pipeline. They are gated by `runInCI:
+  # false` and additionally by `quarantined: true` so downstream automation
+  # can detect and skip them. Each task's `script` is preserved unchanged
+  # for future re-activation under explicit waiver.
+
   pgo-instrument-build:
     script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
@@ -763,6 +796,7 @@ tasks:
       - 'target/pgo/profiles/**'
     options:
       runInCI: false
+      quarantined: true
 
   pgo-optimized-build:
     script: |
@@ -783,6 +817,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   maxperf:
     script: |
@@ -806,6 +841,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   maxperf-native:
     script: |
@@ -826,6 +862,7 @@ tasks:
       - 'target/maxperf/**'
     options:
       runInCI: false
+      quarantined: true
 
   verify-fast:
     command: 'bash scripts/rust-verification-gauntlet.sh fast'

@@ -35,9 +35,14 @@ impl AskTicketId {
     }
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
+    ///
+    /// The lower 16 bits are masked before conversion, so the value always
+    /// fits in `u16`; `try_from` cannot fail. We avoid the lossy `as u16`
+    /// conversion per the lint policy (see bead vb-af1hu).
     #[must_use]
-    pub const fn step_idx(self) -> u16 {
-        (self.0 & 0xFFFF) as u16
+    pub fn step_idx(self) -> u16 {
+        let masked = self.0 & 0xFFFF;
+        u16::try_from(masked).expect("mask guarantees value fits in u16")
     }
 }
 
@@ -69,9 +74,14 @@ impl ActionTicketId {
     }
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
+    ///
+    /// The lower 16 bits are masked before conversion, so the value always
+    /// fits in `u16`; `try_from` cannot fail. We avoid the lossy `as u16`
+    /// conversion per the lint policy (see bead vb-af1hu).
     #[must_use]
-    pub const fn step_idx(self) -> u16 {
-        (self.0 & 0xFFFF) as u16
+    pub fn step_idx(self) -> u16 {
+        let masked = self.0 & 0xFFFF;
+        u16::try_from(masked).expect("mask guarantees value fits in u16")
     }
 }
 

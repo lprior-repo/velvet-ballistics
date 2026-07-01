@@ -169,7 +169,7 @@ fn core_parity_unsupported_returns_typed_variant_when_fixture_evidence_overclaim
             code: "core_parity_unsupported",
             claim: "live-cli-parity",
             blocker: "blocked-by-core",
-            action: "keep evidence fixture-backed until live Makepad/core parity exists",
+            action: "UI/Makepad release contract is intentionally deferred; velvet-ballistics is Rust-only durable orchestration per the public surface alignment (vb-vwnfw). No live Makepad/core parity gate is active in this milestone.",
         })
     );
 }
