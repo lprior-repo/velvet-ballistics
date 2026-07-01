@@ -1,0 +1,5 @@
+State 2 (explore) for vb-qxjgx via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=6890dfd29e5965aa...), delivery-scope.jsonl (sha256=6ae7a5e9bfe38e09...)

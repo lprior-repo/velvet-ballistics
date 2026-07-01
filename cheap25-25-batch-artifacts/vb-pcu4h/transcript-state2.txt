@@ -1,0 +1,5 @@
+State 2 (explore) for vb-pcu4h via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-pcu4h
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=17b9ff8a6e395d11...), delivery-scope.jsonl (sha256=064b75fd5548a894...)

@@ -1,0 +1,5 @@
+State 2 (explore) for vb-n5k6v via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=950d409de3b327ed...), delivery-scope.jsonl (sha256=4f090d009ca7dd34...)

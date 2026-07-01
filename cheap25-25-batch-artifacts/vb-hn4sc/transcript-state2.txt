@@ -1,0 +1,5 @@
+State 2 (explore) for vb-hn4sc via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-hn4sc
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=febccbf7e802ceb7...), delivery-scope.jsonl (sha256=94aa152a178a94bc...)

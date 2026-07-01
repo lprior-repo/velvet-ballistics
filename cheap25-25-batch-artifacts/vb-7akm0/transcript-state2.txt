@@ -1,0 +1,5 @@
+State 2 (explore) for vb-7akm0 via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=adb2745b51958585...), delivery-scope.jsonl (sha256=e9264ea601ab02e7...)
