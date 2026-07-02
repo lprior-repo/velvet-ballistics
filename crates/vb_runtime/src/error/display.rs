@@ -83,13 +83,13 @@ fn write_runtime_error_dynamic(
         RuntimeError::StorageJournalAppend { source } => {
             write!(f, "storage journal append failed: {source}")
         }
-        RuntimeError::RunStateRollbackFailed {
-            run,
-            original,
+        RuntimeError::RollbackFailed {
+            operation,
+            primary,
             rollback,
         } => write!(
             f,
-            "run state rollback failed for {run:?}: original {original}; rollback {rollback}"
+            "rollback failed during {operation}: primary={primary}; rollback={rollback}"
         ),
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
             write!(f, "admission header persistence failed: {source}")
@@ -129,6 +129,16 @@ fn write_runtime_error_dynamic(
             f,
             "action output taint {supplied:?} is below required {required:?}"
         ),
+        RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind } => {
+            write!(f, "unsupported runtime journal event mapping: {event_kind}")
+        }
+        RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind,
+            timestamp,
+        } => write!(
+            f,
+            "runtime journal timestamp out of range for {event_kind}: {timestamp}"
+        ),
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
         }
@@ -144,7 +154,7 @@ impl std::error::Error for RuntimeError {
         match self {
             Self::Core { source } => Some(source.as_ref()),
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
-            Self::RunStateRollbackFailed { original, .. } => Some(original.as_ref()),
+            Self::RollbackFailed { primary, .. } => Some(primary.as_ref()),
             Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),
             Self::EngineDriveFailed { source, .. } => Some(source.as_ref()),
             _ => None,

@@ -512,7 +512,7 @@ impl Shard {
             .mark_succeeded(preflight.ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
-        let _ = self.pending_action_remove(run);
+        let _removed_ticket = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
             slot: preflight.output_slot,
@@ -572,17 +572,25 @@ impl Shard {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             preflight_action_failure(state, ticket, &failure)?
         };
-        // 2. Journal append FIRST. On failure the typed
-        //    StorageJournalAppend error surfaces with the run, frame,
-        //    action_attempts, counters, journal sequence, trace ring,
-        //    and pending_action state all byte-equal to their
-        //    pre-call snapshots — mirroring the completion-path fix.
-        self.append_journal_event(RuntimeJournalEvent::ActionFailed {
+        // 2. Journal append FIRST. FailRun needs both ActionFailed and
+        //    RunFailed to append as one same-run batch before any pending
+        //    action, trace, frame, counter, or terminal-state mutation. If
+        //    the batch is rejected by a bounded queued journal, no partial
+        //    ActionFailed prefix can consume the last queue slot.
+        let action_failed_event = RuntimeJournalEvent::ActionFailed {
             run,
             step: preflight.ticket.step,
             action: preflight.ticket.action,
             attempt: preflight.ticket.attempt,
-        })?;
+        };
+        if preflight.outcome == ActionFailureOutcome::FailRun {
+            self.append_journal_events_atomically([
+                action_failed_event,
+                RuntimeJournalEvent::RunFailed { run },
+            ])?;
+        } else {
+            self.append_journal_event(action_failed_event)?;
+        }
         // 3. Apply preflight mutations to the run frame / action_attempts.
         //    Held in a narrow scope so `pending_action_remove` and
         //    `trace_ring.push` can borrow `self` after the mutable
@@ -593,7 +601,7 @@ impl Shard {
                 .ok_or(RuntimeError::RunNotFound)?;
             apply_action_failure_preflight(state, &preflight)?;
         }
-        let _ = self.pending_action_remove(run);
+        let _removed_ticket = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: preflight.ticket.step,
@@ -606,9 +614,7 @@ impl Shard {
             }
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
-                // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-                self.apply(run, RuntimeEvent::Fail)?;
-                self.fail_run_state(run, state)
+                self.fail_run_state_after_journaled(run, state)
             }
         }
     }

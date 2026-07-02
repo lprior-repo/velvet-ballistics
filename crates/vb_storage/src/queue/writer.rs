@@ -11,14 +11,17 @@ use crate::{
     },
 };
 
+mod group;
 mod stage;
 
+use self::group::{QueuedJournalGroup, count_profile, selected_flush_len};
 use self::stage::stage_queued_event;
 
 #[derive(Debug, Clone)]
 struct QueuedJournalEvent {
     event: JournalEvent,
     profile: DurabilityProfile,
+    group: QueuedJournalGroup,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +71,12 @@ impl JournalWriterQueue {
         self.enqueue(event, DurabilityProfile::Journaled)
     }
 
+    /// Enqueues a same-run batch for journaled append without permitting a
+    /// later flush to split the batch across durable commits.
+    pub fn enqueue_journaled_batch(&self, events: Vec<JournalEvent>) -> Result<(), JournalError> {
+        self.enqueue_batch(events, DurabilityProfile::Journaled)
+    }
+
     /// Enqueues an event for strict append.
     pub fn enqueue_strict(&self, event: JournalEvent) -> Result<(), JournalError> {
         self.enqueue(event, DurabilityProfile::Strict)
@@ -84,9 +93,11 @@ impl JournalWriterQueue {
         if state.pending.len() >= self.capacity {
             return Err(JournalError::QueueFull);
         }
-        state
-            .pending
-            .push_back(QueuedJournalEvent { event, profile });
+        state.pending.push_back(QueuedJournalEvent {
+            event,
+            profile,
+            group: QueuedJournalGroup::Single,
+        });
         Ok(())
     }
 
@@ -101,15 +112,7 @@ impl JournalWriterQueue {
             strict: 0,
         };
         for item in &state.pending {
-            match item.profile {
-                DurabilityProfile::Journaled => {
-                    counts.journaled = counts.journaled.saturating_add(1);
-                }
-                DurabilityProfile::Strict => {
-                    counts.strict = counts.strict.saturating_add(1);
-                }
-                DurabilityProfile::Volatile => {}
-            }
+            count_profile(&mut counts, item.profile);
         }
         Ok(counts)
     }
@@ -174,18 +177,8 @@ impl JournalWriterQueue {
             .state
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        let mut batch_len = 0usize;
+        let batch_len = selected_flush_len(&state, self.batch_size)?;
         let mut has_strict = false;
-
-        while batch_len < self.batch_size {
-            let Some(item) = state.pending.get(batch_len) else {
-                break;
-            };
-            if item.profile == DurabilityProfile::Strict {
-                has_strict = true;
-            }
-            batch_len = batch_len.saturating_add(1);
-        }
 
         if batch_len == 0 {
             return Ok(JournalWriterFlushReport {
@@ -215,6 +208,9 @@ impl JournalWriterQueue {
             let Some(item) = state.pending.get(written) else {
                 break;
             };
+            if item.profile == DurabilityProfile::Strict {
+                has_strict = true;
+            }
             stage_queued_event(&mut owned_batch, journal, &item.event, &mut staged_keys)?;
             written = written.saturating_add(1);
         }
@@ -249,8 +245,10 @@ impl JournalWriterQueue {
 
     /// Flushes queued journal writes until the queue is empty.
     ///
-    /// Maximum iterations: ceil(capacity / batch_size) + 2.
-    /// This is a static bound - the queue is bounded by construction.
+    /// Maximum iterations: capacity + 1. Atomic queued batches are never split,
+    /// so one flush can deliberately drain fewer than `batch_size` events when
+    /// the next queued item is an indivisible batch. The queue capacity is still
+    /// a static bound, and every non-empty flush drains at least one event.
     pub fn drain_all(
         &self,
         journal: &FjallJournal,
@@ -260,14 +258,7 @@ impl JournalWriterQueue {
             written: 0,
         };
 
-        // Static bound: queue capacity divided by minimum batch size, plus buffer.
-        // batch_size is guaranteed >= 1 by JournalBatchSize constructor invariants.
-        // checked_div returns None only on division by zero which is impossible.
-        let max_iterations = self
-            .capacity
-            .checked_div(self.batch_size)
-            .ok_or(JournalError::QueueCapacity)?
-            .saturating_add(2);
+        let max_iterations = self.capacity.saturating_add(1);
         for _ in 0..max_iterations {
             let report = self.flush_batch(journal)?;
             if report.drained == 0 {

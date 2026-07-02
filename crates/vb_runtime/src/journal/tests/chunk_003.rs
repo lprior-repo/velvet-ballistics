@@ -157,6 +157,154 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
 }
 
 #[test]
+fn queued_batch_append_waits_behind_pending_predecessor() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(8, 2)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
+    let run = RunId::new(2_010);
+    let step = StepIdx::new(4);
+    let slot = SlotIdx::new(5);
+    let value = vec![1, 2, 3];
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::StepStarted { run, step },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+    let batch = [
+        RuntimeJournalEvent::SlotWritten {
+            run,
+            slot,
+            value: value.clone(),
+            taint: Taint::Clean,
+            extra: None,
+        },
+        RuntimeJournalEvent::AskAnswered { run, step, slot },
+        RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: slot,
+            attempt: 1,
+        },
+    ];
+    assert_eq!(
+        adapter.append_sequenced_batch(&batch, EventSeq::new(1)),
+        Ok(())
+    );
+
+    assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 4 && counts.strict == 0
+    ));
+    assert!(matches!(
+        adapter.flush_batch(),
+        Ok(report) if report.drained == 1 && report.written == 1
+    ));
+    assert_eq!(
+        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step,
+            attempt: 1,
+        }]
+    );
+    assert!(matches!(
+        adapter.flush_batch(),
+        Ok(report) if report.drained == 3 && report.written == 3
+    ));
+    let expected_extra = vb_storage::encode_slot_written_extra(Taint::Clean, None)
+        .map_err(|error| format!("{error:?}"))?;
+    assert_eq!(
+        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step,
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot,
+                value: Some(value),
+                extra: Some(expected_extra),
+                attempt: 1,
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(2),
+                step,
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(3),
+                step,
+                output: slot,
+            },
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn queued_batch_append_returns_typed_error_when_batch_would_overfill_queue() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(2, 2)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
+    let run = RunId::new(2_011);
+    let step = StepIdx::new(6);
+    let slot = SlotIdx::new(7);
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::StepStarted { run, step },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+    let batch = [
+        RuntimeJournalEvent::AskAnswered { run, step, slot },
+        RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: slot,
+            attempt: 1,
+        },
+    ];
+    assert!(matches!(
+        adapter.append_sequenced_batch(&batch, EventSeq::new(1)),
+        Err(crate::RuntimeError::StorageJournalAppend { source })
+            if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
+    ));
+
+    assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
+    assert!(matches!(
+        queue.pending_profile_counts(),
+        Ok(counts) if counts.journaled == 1 && counts.strict == 0
+    ));
+    assert!(matches!(
+        adapter.flush_batch(),
+        Ok(report) if report.drained == 1 && report.written == 1
+    ));
+    assert_eq!(
+        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step,
+            attempt: 1,
+        }]
+    );
+    Ok(())
+}
+
+#[test]
 fn storage_runtime_journal_probe_delegates_to_fjall_health() -> Result<(), String> {
     let (_dir, journal) = temp_journal()?;
     let adapter = StorageRuntimeJournal::journaled(journal);

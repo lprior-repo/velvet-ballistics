@@ -40,16 +40,15 @@ pub enum RuntimeError {
         /// Preserved storage journal source.
         source: Arc<vb_storage::JournalError>,
     },
-    /// Runtime attempted to restore live run state after a durable journal
-    /// append failed, but the rollback mutation also failed. Both errors are
-    /// preserved so the original durability failure is not laundered and the
-    /// rollback failure is not ignored.
-    RunStateRollbackFailed {
-        /// Run whose in-memory state could not be restored.
-        run: RunId,
-        /// Original error that triggered rollback.
-        original: Box<RuntimeError>,
-        /// Error returned by the rollback mutation.
+    /// A primary fallible operation failed, and the required in-memory rollback
+    /// also failed. Both errors are preserved so callers do not lose the
+    /// original durability failure or the rollback failure.
+    RollbackFailed {
+        /// Static operation code for the rollback site.
+        operation: &'static str,
+        /// Original operation failure.
+        primary: Box<RuntimeError>,
+        /// Rollback operation failure.
         rollback: Box<RuntimeError>,
     },
     /// Durable run header persistence failed before admission acknowledgement.
@@ -145,6 +144,18 @@ pub enum RuntimeError {
     },
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
+    /// Runtime journal event has no durable storage mapping.
+    UnsupportedRuntimeJournalEventMapping {
+        /// Stable runtime journal event variant name.
+        event_kind: &'static str,
+    },
+    /// Runtime journal event timestamp cannot be represented by storage.
+    RuntimeJournalTimestampOutOfRange {
+        /// Stable runtime journal event variant name.
+        event_kind: &'static str,
+        /// Raw runtime timestamp in seconds since epoch.
+        timestamp: u64,
+    },
     /// Caller-declared action output length did not match encoded bytes.
     ActionOutputLengthMismatch {
         /// Caller-declared encoded length.

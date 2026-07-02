@@ -276,6 +276,20 @@ impl crate::journal::RuntimeJournal for CancelAppendFailsJournal {
         Ok(())
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if events
+            .iter()
+            .any(|event| matches!(event, RuntimeJournalEvent::RunCancelled { .. }))
+        {
+            return Err(RuntimeError::JournalPoisoned);
+        }
+        Ok(())
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }
@@ -365,12 +379,12 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
     assert!(
         matches!(
             result,
-            Err(RuntimeError::RunStateRollbackFailed {
-                run: observed_run,
-                ref original,
+            Err(RuntimeError::RollbackFailed {
+                operation,
+                ref primary,
                 ref rollback,
-            }) if observed_run == run
-                && matches!(original.as_ref(), RuntimeError::JournalPoisoned)
+            }) if operation == "fail_run_state"
+                && matches!(primary.as_ref(), RuntimeError::JournalPoisoned)
                 && matches!(
                     rollback.as_ref(),
                     RuntimeError::ActiveRunCapacityExceeded { capacity: 0 }

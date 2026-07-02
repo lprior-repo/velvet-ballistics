@@ -1,31 +1,4 @@
 impl Shard {
-    fn flush_slot_written(
-        &mut self,
-        run: RunId,
-        slot: SlotIdx,
-        value: vb_core::value::SlotValue,
-        taint: vb_core::Taint,
-        extra: Option<crate::primitives::collect::CollectPaginationState>,
-    ) -> RuntimeResult<()> {
-        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
-        let encoded_extra = extra
-            .map(|state| postcard::to_allocvec(&state))
-            .transpose()
-            .map_err(|_| RuntimeError::EncodeFailed)?;
-        self.trace_ring.push(TraceEvent::SlotWritten {
-            run,
-            slot,
-            value: encoded.clone(),
-        });
-        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
-            run,
-            slot,
-            value: encoded,
-            taint,
-            extra: encoded_extra,
-        })
-    }
-
     pub(crate) fn take_frame_for(
         &mut self,
         run: RunId,

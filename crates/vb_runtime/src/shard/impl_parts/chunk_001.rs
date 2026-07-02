@@ -201,6 +201,38 @@ impl Shard {
         self.advance_journal_sequence(run, seq)
     }
 
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_event_batch(
+        &mut self,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        let Some((first, rest)) = events.split_first() else {
+            return Ok(());
+        };
+        let run = first.run_id();
+        for event in rest {
+            if event.run_id() != run {
+                return Err(RuntimeError::UnsupportedOperation {
+                    operation: "mixed_run_journal_batch",
+                });
+            }
+        }
+        let seq = self.journal_sequence_for(run);
+        let next = Self::journal_sequence_after(seq, events.len())?;
+        self.reserve_journal_sequence_slot(run)?;
+        self.journal.append_sequenced_batch(events, seq)?;
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
+    }
+
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_events_atomically<const N: usize>(
+        &mut self,
+        events: [RuntimeJournalEvent; N],
+    ) -> RuntimeResult<()> {
+        self.append_journal_event_batch(&events)
+    }
+
     /// `#[cfg(kani)]` replacement for `append_journal_event` that returns
     /// nondeterministic Ok or Err. Trust boundary TB-vb282my-journal-stub-001.
     /// Production journal append uses Fjall-backed persistence; stubbed version
@@ -209,6 +241,22 @@ impl Shard {
     pub(crate) fn append_journal_event(
         &mut self,
         _event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn append_journal_event_batch(
+        &mut self,
+        _events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn append_journal_events_atomically<const N: usize>(
+        &mut self,
+        _events: [RuntimeJournalEvent; N],
     ) -> RuntimeResult<()> {
         Ok(())
     }
@@ -229,6 +277,16 @@ impl Shard {
             .get(&run)
             .copied()
             .unwrap_or(EventSeq::ZERO)
+    }
+
+    #[cfg(not(kani))]
+    fn journal_sequence_after(seq: EventSeq, count: usize) -> RuntimeResult<EventSeq> {
+        let count = u64::try_from(count)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        seq.get()
+            .checked_add(count)
+            .map(EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 
     fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
@@ -644,166 +702,117 @@ impl Shard {
     /// journal and trace ring. This satisfies the Phase 40/44 evidence
     /// chain requirement: StepStarted before SlotWritten for every step,
     /// followed by StepSucceeded.
-    ///
-    /// TBP-001 (vb-3kmre): All evidence events for a single `drive_run`
-    /// iteration are batched into one `JournalWriteBatch` and committed
-    /// atomically via `PersistMode::SyncAll`. A crash mid-flush leaves
-    /// either zero or all events durable — never a partial chain.
-    /// Non-storage journals (noop/volatile) fall back to per-event flush.
-    pub(crate) fn flush_evidence(
-        &mut self,
+    pub(crate) fn prepare_evidence_events(
+        &self,
         run: RunId,
         evidence: &mut EvidenceCollector,
-    ) -> RuntimeResult<()> {
-        let events = evidence.drain();
-        if events.is_empty() {
-            return Ok(());
+    ) -> RuntimeResult<(Vec<RuntimeJournalEvent>, Vec<TraceEvent>)> {
+        let event_count = evidence.len();
+        let mut journal_events = Vec::new();
+        Self::reserve_drive_vec(&mut journal_events, event_count)?;
+        let mut trace_events = Vec::new();
+        Self::reserve_drive_vec(&mut trace_events, event_count)?;
+        for event in evidence.drain() {
+            Self::prepare_evidence_event(run, event, &mut journal_events, &mut trace_events)?;
         }
-
-        // Push trace ring events first (in-memory, non-durable).
-        for event in &events {
-            match event {
-                EvidenceEvent::StepStarted { step } => {
-                    self.trace_ring
-                        .push(TraceEvent::StepStarted { run, step: *step });
-                }
-                EvidenceEvent::SlotWritten { slot, value, .. } => {
-                    let encoded =
-                        postcard::to_allocvec(value).map_err(|_| RuntimeError::EncodeFailed)?;
-                    self.trace_ring.push(TraceEvent::SlotWritten {
-                        run,
-                        slot: *slot,
-                        value: encoded,
-                    });
-                }
-                EvidenceEvent::StepSucceeded { .. } => {}
-            }
-        }
-
-        // Try batched flush via FjallJournal (atomic, Master §49 Crash-Consistency Rule).
-        if let Some(fjall_journal) = self.journal.storage_journal() {
-            return Self::flush_evidence_batched(
-                self,
-                run,
-                events,
-                &fjall_journal,
-            );
-        }
-
-        // Fallback: per-event flush for noop/volatile journals.
-        events
-            .into_iter()
-            .try_for_each(|event| self.flush_evidence_event(run, event))
+        Ok((journal_events, trace_events))
     }
 
-    /// Batches all evidence events into one `JournalWriteBatch` and commits
-    /// atomically. On success all events are durable; on failure zero events
-    /// are persisted and the shard sequence is rolled back.
-    fn flush_evidence_batched(
-        shard: &mut Shard,
+    fn reserve_drive_vec<T>(items: &mut Vec<T>, additional: usize) -> RuntimeResult<()> {
+        items
+            .try_reserve(additional)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))
+    }
+
+    pub(crate) fn push_drive_journal_event(
+        events: &mut Vec<RuntimeJournalEvent>,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Self::reserve_drive_vec(events, 1)?;
+        events.push(event);
+        Ok(())
+    }
+
+    fn prepare_evidence_event(
         run: RunId,
-        events: Vec<EvidenceEvent>,
-        fjall_journal: &vb_storage::FjallJournal,
+        event: EvidenceEvent,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
     ) -> RuntimeResult<()> {
-        use vb_storage::batch::JournalWriteBatch;
-
-        // Capture initial sequence for rollback on batch failure.
-        let initial_seq_value = shard
-            .journal_sequence_for(run)
-            .get();
-
-        // Stage all events into a batch.
-        let mut batch = JournalWriteBatch::new(fjall_journal);
-
-        for event in events {
-            // Get current sequence and advance it.
-            let seq = shard.journal_sequence_for(run);
-            shard.advance_journal_sequence(run, seq)?;
-
-            // Convert evidence event to RuntimeJournalEvent, then to storage event.
-            let runtime_event = Self::evidence_to_runtime_event(event, run)?;
-            let storage_event = shard.journal.convert_to_storage_event(runtime_event, seq)?;
-
-            batch.append_event(&storage_event).map_err(RuntimeError::from)?;
-        }
-
-        // Commit atomically with strict durability.
-        // On failure: rollback the shard sequence so the next flush
-        // doesn't skip sequence numbers that were never persisted.
-        match batch.strict().commit() {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                shard
-                    .journal_sequences
-                    .insert(run, vb_storage::EventSeq::new(initial_seq_value));
-                Err(RuntimeError::from(e))
-            }
-        }
-    }
-
-    /// Converts an evidence event into its corresponding `RuntimeJournalEvent`.
-    fn evidence_to_runtime_event(event: EvidenceEvent, run: RunId) -> RuntimeResult<RuntimeJournalEvent> {
         match event {
             EvidenceEvent::StepStarted { step } => {
-                Ok(RuntimeJournalEvent::StepStarted { run, step })
+                Self::push_drive_journal_event(
+                    journal_events,
+                    RuntimeJournalEvent::StepStarted { run, step },
+                )?;
+                trace_events.push(TraceEvent::StepStarted { run, step });
+                Ok(())
             }
             EvidenceEvent::StepSucceeded { step, output } => {
-                Ok(RuntimeJournalEvent::StepSucceeded {
-                    run,
-                    step,
-                    output: output.unwrap_or(SlotIdx::ZERO),
-                    attempt: 1,
-                })
+                Self::push_drive_journal_event(
+                    journal_events,
+                    RuntimeJournalEvent::StepSucceeded {
+                        run,
+                        step,
+                        output: match output {
+                            Some(slot) => slot,
+                            None => SlotIdx::ZERO,
+                        },
+                        attempt: 1,
+                    },
+                )
             }
             EvidenceEvent::SlotWritten {
                 slot,
                 value,
                 taint,
                 extra,
-            } => Ok(RuntimeJournalEvent::SlotWritten {
+            } => Self::prepare_slot_written_event(
                 run,
                 slot,
-                value: postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?,
-                taint,
-                extra: extra.map(|state| postcard::to_allocvec(&state).unwrap_or_default()),
-            }),
-        }
-    }
-
-    fn flush_evidence_event(&mut self, run: RunId, event: EvidenceEvent) -> RuntimeResult<()> {
-        match event {
-            EvidenceEvent::StepStarted { step } => self.flush_step_started(run, step),
-            EvidenceEvent::StepSucceeded { step, output } => {
-                self.flush_step_succeeded(run, step, output)
-            }
-            EvidenceEvent::SlotWritten {
-                slot,
                 value,
                 taint,
                 extra,
-            } => self.flush_slot_written(run, slot, value, taint, extra),
+                journal_events,
+                trace_events,
+            ),
         }
     }
 
-    fn flush_step_started(&mut self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
-        self.trace_ring.push(TraceEvent::StepStarted { run, step });
-        self.append_journal_event(RuntimeJournalEvent::StepStarted { run, step })
+    fn prepare_slot_written_event(
+        run: RunId,
+        slot: SlotIdx,
+        value: vb_core::value::SlotValue,
+        taint: vb_core::Taint,
+        extra: Option<crate::primitives::collect::CollectPaginationState>,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
+    ) -> RuntimeResult<()> {
+        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_extra = extra
+            .map(|state| postcard::to_allocvec(&state))
+            .transpose()
+            .map_err(|_| RuntimeError::EncodeFailed)?;
+        trace_events.push(TraceEvent::SlotWritten {
+            run,
+            slot,
+            value: encoded.clone(),
+        });
+        Self::push_drive_journal_event(
+            journal_events,
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value: encoded,
+                taint,
+                extra: encoded_extra,
+            },
+        )
     }
 
-    fn flush_step_succeeded(
-        &mut self,
-        run: RunId,
-        step: StepIdx,
-        output: Option<SlotIdx>,
-    ) -> RuntimeResult<()> {
-        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
-            run,
-            step,
-            output: match output {
-                Some(slot) => slot,
-                None => SlotIdx::ZERO,
-            },
-            attempt: 1,
-        })
+    pub(crate) fn push_trace_events(&mut self, trace_events: Vec<TraceEvent>) {
+        for event in trace_events {
+            self.trace_ring.push(event);
+        }
     }
 }

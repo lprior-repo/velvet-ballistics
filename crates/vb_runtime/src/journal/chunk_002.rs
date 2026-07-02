@@ -38,7 +38,41 @@ impl StorageRuntimeJournal {
         result.map_err(RuntimeError::from)
     }
 
-    fn run_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<Option<JournalEvent>> {
+    fn append_runtime_event_batch(
+        journal: &FjallJournal,
+        profile: DurabilityProfile,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        if events.is_empty() {
+            return Ok(());
+        }
+        let mut batch = journal.batch();
+        for (offset, event) in events.iter().enumerate() {
+            let seq = Self::sequence_at_offset(start_seq, offset)?;
+            let storage_event = Self::storage_event(event.clone(), seq)?;
+            batch.append_event(&storage_event).map_err(RuntimeError::from)?;
+        }
+        if profile == DurabilityProfile::Strict {
+            return batch.strict().commit().map_err(RuntimeError::from);
+        }
+        batch.commit().map_err(RuntimeError::from)
+    }
+
+    fn sequence_at_offset(start_seq: EventSeq, offset: usize) -> RuntimeResult<EventSeq> {
+        let offset = u64::try_from(offset)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        start_seq
+            .get()
+            .checked_add(offset)
+            .map(EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+    }
+
+    fn run_storage_event(
+        event: RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<Option<JournalEvent>> {
         match event {
             RuntimeJournalEvent::RunSubmitted { run, workflow } => {
                 Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
@@ -293,28 +327,39 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. } => {
                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
             }
-            _ => Self::boundary_storage_event(clone_for_dispatch(&event), seq),
+            RuntimeJournalEvent::WaitScheduled { .. }
+            | RuntimeJournalEvent::WaitResolved { .. }
+            | RuntimeJournalEvent::AskScheduled { .. }
+            | RuntimeJournalEvent::AskAnswered { .. }
+            | RuntimeJournalEvent::AskTimedOut { .. }
+            | RuntimeJournalEvent::SlotWritten { .. } => {
+                Self::boundary_storage_event(clone_for_dispatch(&event), seq)
+            }
         }?;
         if let Some(storage_event) = result {
             return Ok(storage_event);
         }
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "unmapped_runtime_journal_event",
+        Err(RuntimeError::UnsupportedRuntimeJournalEventMapping {
+            event_kind: event.kind(),
         })
     }
 }
 
 fn resumed_storage_event(
-    run: vb_core::ids::RunId,
+    run: RunId,
     seq: EventSeq,
     timestamp: u64,
 ) -> RuntimeResult<JournalEvent> {
-    let seconds = i64::try_from(timestamp).map_err(|_| RuntimeError::UnsupportedOperation {
-        operation: "invalid_resumed_timestamp",
+    let seconds = i64::try_from(timestamp).map_err(|_| {
+        RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind: "Resumed",
+            timestamp,
+        }
     })?;
     let timestamp = DateTime::<Utc>::from_timestamp(seconds, 0).ok_or(
-        RuntimeError::UnsupportedOperation {
-            operation: "invalid_resumed_timestamp",
+        RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind: "Resumed",
+            timestamp,
         },
     )?;
     Ok(JournalEvent::RunResumed {
@@ -371,6 +416,14 @@ impl RuntimeJournal for StorageRuntimeJournal {
         seq: EventSeq,
     ) -> RuntimeResult<vb_storage::JournalEvent> {
         Self::storage_event(event, seq)
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        start_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Self::append_runtime_event_batch(self.journal.as_ref(), self.profile, events, start_seq)
     }
 
     fn probe(&self) -> RuntimeResult<()> {

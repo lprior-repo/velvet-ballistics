@@ -62,21 +62,17 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::AdmissionHeaderPersistenceFailed { source: b },
         ) => a.diagnostic_code() == b.diagnostic_code(),
         (
-            RuntimeError::RunStateRollbackFailed {
-                run: left_run,
-                original: left_original,
-                rollback: left_rollback,
+            RuntimeError::RollbackFailed {
+                operation: operation_a,
+                primary: primary_a,
+                rollback: rollback_a,
             },
-            RuntimeError::RunStateRollbackFailed {
-                run: right_run,
-                original: right_original,
-                rollback: right_rollback,
+            RuntimeError::RollbackFailed {
+                operation: operation_b,
+                primary: primary_b,
+                rollback: rollback_b,
             },
-        ) => {
-            left_run == right_run
-                && left_original == right_original
-                && left_rollback == right_rollback
-        }
+        ) => operation_a == operation_b && primary_a == primary_b && rollback_a == rollback_b,
         (
             RuntimeError::CommandQueueCapacityExceeded {
                 capacity: a,
@@ -131,6 +127,20 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::ActionTaintDowngrade {
                 required: c,
                 supplied: d,
+            },
+        ) => a == c && b == d,
+        (
+            RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind: a },
+            RuntimeError::UnsupportedRuntimeJournalEventMapping { event_kind: b },
+        ) => a == b,
+        (
+            RuntimeError::RuntimeJournalTimestampOutOfRange {
+                event_kind: a,
+                timestamp: b,
+            },
+            RuntimeError::RuntimeJournalTimestampOutOfRange {
+                event_kind: c,
+                timestamp: d,
             },
         ) => a == c && b == d,
         (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => {
