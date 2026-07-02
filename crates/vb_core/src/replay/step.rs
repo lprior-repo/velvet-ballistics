@@ -87,7 +87,7 @@ impl ReplayCollectStates {
     }
 
     fn upsert(&mut self, collector: SlotIdx, state: ReplayCollectState) {
-        self.entries.insert(collector, state);
+        let _ = self.entries.insert(collector, state);
     }
 
     fn find(
@@ -105,7 +105,7 @@ impl ReplayCollectStates {
     }
 
     fn remove(&mut self, collector: SlotIdx) {
-        self.entries.remove(&collector);
+        let _ = self.entries.remove(&collector);
     }
 }
 

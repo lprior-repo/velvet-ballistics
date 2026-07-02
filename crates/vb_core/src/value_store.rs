@@ -145,8 +145,8 @@ impl ValueStore {
                 .ok_or(CoreError::InternalInvariantViolation {
                     reason: "object field index checked by loop bound",
                 })?;
-            index.entry(field.key).or_insert(field.value);
-            taint_index.entry(field.key).or_insert(field.taint);
+            let _ = index.entry(field.key).or_insert(field.value);
+            let _ = taint_index.entry(field.key).or_insert(field.taint);
             field_pos = field_pos
                 .checked_add(1)
                 .ok_or(CoreError::InternalInvariantViolation {

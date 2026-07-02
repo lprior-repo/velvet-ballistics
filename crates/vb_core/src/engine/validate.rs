@@ -8,7 +8,7 @@ use crate::workflow::{
 
 /// Validates compiled workflow IR integrity.
 pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    CompiledWorkflow::try_from_parts(parts.clone())?;
+    drop(CompiledWorkflow::try_from_parts(parts.clone())?);
     Ok(())
 }
 

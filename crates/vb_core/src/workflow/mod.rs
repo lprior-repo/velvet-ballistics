@@ -1291,7 +1291,7 @@ fn validate_expressions(
     accessor_count: usize,
 ) -> Result<(), WorkflowError> {
     for expression in expressions {
-        ExprProgram::try_from_parts(expression.ops.clone(), expression.max_stack)?;
+        drop(ExprProgram::try_from_parts(expression.ops.clone(), expression.max_stack)?);
         validate_expression_accessors(expression, accessor_count)?;
     }
     Ok(())
@@ -1786,7 +1786,7 @@ fn push_loop_span(
         .last()
         .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
     {
-        spans.pop();
+        let _ = spans.pop();
     }
 
     spans.push((ci, done_idx));

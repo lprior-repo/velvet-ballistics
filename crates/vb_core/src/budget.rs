@@ -1497,7 +1497,7 @@ fn visit_node_for_total_steps(
                     target: *target,
                 });
             }
-            insert_tracked_step(in_path, to, node_count)?;
+            let _ = insert_tracked_step(in_path, to, node_count)?;
             stack.push(*target);
         }
         CompiledNodeKind::Choose {
@@ -1952,7 +1952,7 @@ fn insert_tracked_step(
 
 fn remove_tracked_step(steps: &mut Vec<u16>, step: u16) {
     if let Some(position) = steps.iter().position(|candidate| *candidate == step) {
-        steps.remove(position);
+        let _ = steps.remove(position);
     }
 }
 
@@ -2003,7 +2003,7 @@ fn compute_fanout_and_depth(
     let node = node_at_position(nodes, idx, current)?;
 
     let current_u16 = current.get();
-    insert_tracked_step(in_path, current_u16, node_count)?;
+    let _ = insert_tracked_step(in_path, current_u16, node_count)?;
 
     if let CompiledNodeKind::Jump { target } = &node.kind {
         let target_u16 = target.get();

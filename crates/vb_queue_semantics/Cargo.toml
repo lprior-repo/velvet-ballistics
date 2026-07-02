@@ -9,3 +9,6 @@ publish = false
 # All types/functions will be added in the full implementation bead.
 
 [dependencies]
+
+[lints]
+workspace = true
