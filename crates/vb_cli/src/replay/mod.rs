@@ -9,6 +9,10 @@ use crate::inspect::write_vb_kyyf_trace;
 
 pub(crate) use event_to_json::event_to_json;
 
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;
+
 pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
