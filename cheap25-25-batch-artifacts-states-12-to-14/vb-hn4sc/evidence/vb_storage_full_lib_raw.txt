@@ -1,0 +1,8 @@
+test proptest_integration::proptests::ppi_003_no_recovery_data_for_nonexistent_run ... ok
+test tests::tests::adversarial_snapshot_exceeding_max_returns_payload_too_large ... ok
+test tests::tests::adversarial_put_blob_exceeding_max_returns_payload_too_large ... ok
+test proptest_integration::proptests::ppi_001_deterministic_replay_invariant ... ok
+test proptests::ppi_001_deterministic_replay_invariant ... ok
+
+test result: ok. 1539 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+

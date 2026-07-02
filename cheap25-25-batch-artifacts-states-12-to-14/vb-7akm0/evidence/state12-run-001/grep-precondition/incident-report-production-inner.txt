@@ -1,0 +1,31 @@
+verification/verus/production_inner/cli_envelope_production.rs:    pub const INCIDENT_REPORT: &str = "IncidentReport";
+verification/verus/production_inner/cli_envelope_production.rs:    IncidentReport,
+verification/verus/production_inner/cli_envelope_production.rs:            Kind::IncidentReport => kind::INCIDENT_REPORT,
+verification/verus/production_inner/cli_envelope_production.rs:            kind::INCIDENT_REPORT => Some(Kind::IncidentReport),
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs://   - The production `IncidentReport` struct's
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs://     &[JournalEvent]) -> IncidentReport` function (line 30-59) is
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// mechanical. Drift that changes the `IncidentReport` field set or
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// explicit drift-detection mechanism for the IncidentReport binding.
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// PRODUCTION MIRROR — IncidentReport (full field set, abstracted)
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// Mirror of production `vb_cli::commands_incident::IncidentReport` at
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs://   pub struct IncidentReport {
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:pub struct SpecIncidentReportProduction {
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:impl SpecIncidentReportProduction {
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// `build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentReport`
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs://   IncidentReport {
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:// mirrored `SpecIncidentReportProduction` whose fields equal those
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:) -> SpecIncidentReportProduction {
+verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs:    SpecIncidentReportProduction {
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs://       IncidentReport,
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:    IncidentReport,
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:            (SpecKindProduction::IncidentReport, SpecKindProduction::IncidentReport) => true,
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:            SpecKindProduction::IncidentReport => 9,
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:            SpecKindProduction::IncidentReport => 14,
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:            SpecKindProduction::IncidentReport => "IncidentReport",
+verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs:            "IncidentReport" => Some(SpecKindProduction::IncidentReport),
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:    IncidentReport,
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:            (SpecKindProduction::IncidentReport, SpecKindProduction::IncidentReport) => true,
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:            SpecKindProduction::IncidentReport => 9,
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:            SpecKindProduction::IncidentReport => 14,
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:            SpecKindProduction::IncidentReport => "IncidentReport",
+verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs:            "IncidentReport" => Some(SpecKindProduction::IncidentReport),

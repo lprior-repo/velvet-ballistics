@@ -1,0 +1,686 @@
+Modified regular file crates/vb_storage/src/kani_typed_partitioned_ids.rs:
+    ...
+  53   53:     let action = ActionId::new(action_value);
+  54   54:     let step = StepIdx::new(step_value);
+  55   55: 
+       56:     // PO-cn2v4-001: zero `RunId` is reserved as "no run"; every
+       57:     // storage-key encoder rejects it with `InvalidRunId`. The main
+       58:     // happy-path contract is verified under `kani::assume(run_value != 0)`.
+       59:     // The zero branch is verified by the separate split harness
+       60:     // `vb_eepg_typed_partitioned_ids_zero_run_rejection` below.
+       61:     if run_value == 0 {
+       62:         let r0 = RunId::new(0);
+       63:         assert!(matches!(
+       64:             keys::run_header_key(r0),
+       65:             Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+       66:         ));
+       67:         assert!(matches!(
+       68:             keys::run_event_key(r0, seq),
+       69:             Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+       70:         ));
+       71:         assert!(matches!(
+       72:             keys::index_workflow_key(workflow, r0),
+       73:             Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+       74:         ));
+       75:         assert!(matches!(
+       76:             keys::index_action_key(action, r0, step),
+       77:             Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+       78:         ));
+       79:         return;
+       80:     }
+       81: 
+  56   82:     match keys::run_header_key(run) {
+  57   83:         Ok(key) => {
+  58   84:             assert!(key[0] == PREFIX_RUN_HEADER);
+    ...
+  92  118:     }
+  93  119: }
+  94  120: 
+      121: #[kani::proof]
+      122: fn vb_eepg_typed_partitioned_ids() {
+      123:     let inputs: SymbolicKeyInputs = kani::any();
+      124:     // PO-cn2v4-001: zero RunId is rejected by the encoders; assume
+      125:     // it away here so the happy-path contracts are bounded to the
+      126:     // supported input domain. The zero branch is covered by
+      127:     // `vb_eepg_typed_partitioned_ids_zero_run_rejection`.
+      128:     kani::assume(run_raw(inputs) != 0);
+      129:     assert_key_contracts(inputs);
+      130: }
+      131: 
+      132: #[kani::proof]
+      133: fn vb_eepg_typed_partitioned_ids_zero_run_rejection() {
+      134:     // PO-cn2v4-001: the zero-RunId rejection contract. The harness
+      135:     // is dedicated to the boundary input; every encoder that embeds
+      136:     // RunId must return `JournalError::InvalidRunId { run }`.
+      137:     let mut inputs: SymbolicKeyInputs = kani::any();
+      138:     // Force run_value == 0 by zeroing the run halves; everything
+      139:     // else stays symbolic so we exercise the cross-key interactions.
+      140:     inputs.run_hi = 0;
+      141:     inputs.run_lo = 0;
+      142:     assert_key_contracts(inputs);
+      143: }
+      144: 
+  95  145: fn assert_record_kind_contract(input: SymbolicRecordKindInput) {
+  96  146:     let kind = u16::from(input.record_kind_raw);
+  97  147:     assert!(is_known_record_kind(kind) != unknown_record_kind(kind));
+    ...
+ 109  159: }
+ 110  160: 
+ 111  161: #[kani::proof]
+ 112     : fn vb_eepg_typed_partitioned_ids() {
+ 113     :     let inputs: SymbolicKeyInputs = kani::any();
+ 114     :     assert_key_contracts(inputs);
+ 115     : }
+ 116     : 
+ 117     : #[kani::proof]
+ 118  162: fn vb_eepg_record_kind_contracts() {
+ 119  163:     let input: SymbolicRecordKindInput = kani::any();
+ 120  164:     assert_record_kind_contract(input);
+    ...
+Modified regular file crates/vb_storage/src/keys/tests.rs:
+    ...
+  72   72: #[test]
+  73   73: fn run_header_key_has_correct_prefix() -> Result<(), JournalError> {
+  74   74:     let run = RunId::new(0);
+  75   75:     let key = run_header_key(run// PO-cn2v4-001: zero RunId is reserved as "no run"; encoders
+       76:     // must reject it with a typed `InvalidRunId` instead of emitting
+       77:     // a key with all-zero run bytes (which would collide with the
+       78:     // no-row sentinel). Use RunId::new(1) below to verify the
+       79:     // prefix byte for non-zero runs.
+       80:     let result = run_header_key(run);
+       81:     assert!(
+       82:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+       83:         "zero RunId must be rejected as InvalidRunId, got {:?}",
+       84:         result
+       85:     );
+  75   86:     let key = run_header_key(RunId::new(1))?;
+  76   87:     assert_eq!(key[0], PREFIX_RUN_HEADER, "prefix byte must be 0x10");
+  77   88:     Ok(())
+  78   89: }
+    ...
+ 122  133: 
+ 123  134: #[test]
+ 124  135: fn run_event_key_length() -> Result<(), JournalError> {
+ 125  136:     // PO-cn2v4-001: zero RunId is reserved; the encoder rejects it
+      137:     // before checking seq, so a (run=0, seq=0) call surfaces
+      138:     // InvalidRunId, not a 17-byte success.
+      139:     let result = run_event_key(RunId::new(0), EventSeq::new(0));
+      140:     assert!(
+      141:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      142:         "zero RunId must be rejected as InvalidRunId, got {:?}",
+      143:         result
+      144:     );
+ 125  145:     let key = run_event_key(RunId::new(01), EventSeq::new(0))?;
+ 126  146:     assert_eq!(key.len(), JOURNAL_KEY_BYTES);
+ 127  147:     Ok(())
+ 128  148: }
+    ...
+ 189  209: 
+ 190  210: #[test]
+ 191  211: fn index_status_key_has_correct_prefix() -> Result<(), JournalError> {
+ 192  212:     // PO-cn2v4-001: zero RunId is reserved; use a non-zero run to
+      213:     // verify the prefix byte. The zero-RunId rejection is covered by
+      214:     // `run_header_key_rejects_zero_run_id` and the unit tests below.
+ 192  215:     let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(01))?;
+ 193  216:     assert_eq!(key[0], PREFIX_INDEX_STATUS, "prefix byte must be 0x30");
+ 194  217:     Ok(())
+ 195  218: }
+    ...
+ 213  236: 
+ 214  237: #[test]
+ 215  238: fn index_status_key_length() -> Result<(), JournalError> {
+ 216     :     let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
+      239:     // PO-cn2v4-001: zero RunId is reserved; encoder must reject it
+      240:     // with `InvalidRunId` instead of encoding an 18-byte key.
+      241:     let result = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0));
+      242:     assert!(
+      243:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      244:         "zero RunId must be rejected as InvalidRunId, got {:?}",
+      245:         result
+      246:     );
+      247:     let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(1))?;
+ 217  248:     assert_eq!(key.len(), INDEX_STATUS_KEY_BYTES);
+ 218  249:     Ok(())
+ 219  250: }
+    ...
+ 245  276: 
+ 246  277: #[test]
+ 247  278: fn index_workflow_key_length() -> Result<(), JournalError> {
+ 248     :     let key = index_workflow_key(WorkflowId::new(0), RunId::new(0))?;
+      279:     // PO-cn2v4-001: zero RunId is reserved; the encoder must
+      280:     // surface `InvalidRunId` rather than emitting a 13-byte key
+      281:     // with all-zero run bytes.
+      282:     let result = index_workflow_key(WorkflowId::new(0), RunId::new(0));
+      283:     assert!(
+      284:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      285:         "zero RunId must be rejected as InvalidRunId, got {:?}",
+      286:         result
+      287:     );
+      288:     let key = index_workflow_key(WorkflowId::new(0), RunId::new(1))?;
+ 249  289:     assert_eq!(key.len(), INDEX_WORKFLOW_KEY_BYTES);
+ 250  290:     Ok(())
+ 251  291: }
+    ...
+ 283  323: 
+ 284  324: #[test]
+ 285  325: fn index_action_key_length() -> Result<(), JournalError> {
+ 286     :     let key = index_action_key(ActionId::new(0), RunId::new(0), vb_core::StepIdx::new(0))?;
+      326:     // PO-cn2v4-001: zero RunId is reserved; encoder must reject it
+      327:     // with `InvalidRunId` rather than emitting a 13-byte key.
+      328:     let result = index_action_key(ActionId::new(0), RunId::new(0), vb_core::StepIdx::new(0));
+      329:     assert!(
+      330:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      331:         "zero RunId must be rejected as InvalidRunId, got {:?}",
+      332:         result
+      333:     );
+      334:     let key = index_action_key(ActionId::new(0), RunId::new(1), vb_core::StepIdx::new(0))?;
+ 287  335:     assert_eq!(key.len(), INDEX_ACTION_KEY_BYTES);
+ 288  336:     Ok(())
+ 289  337: }
+    ...
+ 465  513: // Boundary: zero and max values
+ 466  514: // =========================================================================
+ 467  515: 
+      516: // PO-cn2v4-001 / SC-001: a zero `RunId` is reserved as "no run"
+      517: // and the encoder must reject it. The decoder in `decode_storage_key`
+      518: // was already producing `KeyDecodeError::InvalidRunId` for this case
+      519: // (keys.rs:373); this test now pins the matching encoder behaviour.
+      520: // Replace the previous "zero encodes to all-zero bytes" expectation
+      521: // with a typed-error expectation.
+ 468  522: #[test]
+ 469  523: fn run_header_key_with_zero_run_id() -> Result<(), JournalError> {
+ 470  524:     let result = run_header_key(RunId::new(0));
+      525:     assert!(
+      526:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      527:         "run_header_key must reject zero RunId as InvalidRunId, got {:?}",
+      528:         result
+      529:     );
+      530:     Ok(())
+      531: }
+      532: 
+      533: #[test]
+      534: fn run_header_key_accepts_nonzero_run_id() -> Result<(), JournalError> {
+      535:     // Companion to `run_header_key_with_zero_run_id` to keep the
+      536:     // prefix byte round-trip covered (was previously asserted by the
+      537:     // zero-run test which we just converted to an error expectation).
+ 470  538:     let key = run_header_key(RunId::new(01))?;
+ 471  539:     assert_eq!(key[0], PREFIX_RUN_HEADER);
+ 472     :     assert_eq!(&key[1..], &0u64.to_be_bytes());
+ 473  540:     Ok(())
+ 474  541: }
+ 475  542: 
+    ...
+ 504  571:     );
+ 505  572: }
+ 506  573: 
+      574: // PO-cn2v4-001: zero `RunId` is reserved and the encoder must reject
+      575: // it. The previous test encoded (state=Submitted, ts=0, run=0) into an
+      576: // 18-byte key with all-zero run bytes — that conflicts with the
+      577: // decoder's rejection of the same shape. The encoder now returns
+      578: // `InvalidRunId` first, mirroring the decoder ordering.
+ 507  579: #[test]
+ 508  580: fn index_status_key_with_zero_values() -> Result<(), JournalError> {
+ 509  581:     let result = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0));
+      582:     assert!(
+      583:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      584:         "index_status_key must reject zero RunId as InvalidRunId, got {:?}",
+      585:         result
+      586:     );
+      587:     Ok(())
+      588: }
+      589: 
+      590: #[test]
+      591: fn index_status_key_with_zero_state_and_timestamp_nonzero_run() -> Result<(), JournalError> {
+      592:     // Companion that pins the (state, ts=0, run=nonzero) zero-timestamp
+      593:     // byte layout the previous test used to cover.
+ 509  594:     let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(01))?;
+ 510  595:     assert_eq!(key[1], 0);
+ 511  596:     assert_eq!(&key[2..10], &0u64.to_be_bytes());
+ 512  597:     assert_eq!(&key[10..18], &0u641u64.to_be_bytes());
+ 513  598:     Ok(())
+ 514  599: }
+ 515  600: 
+    ...
+ 584  669:     Ok(())
+ 585  670: }
+ 586  671: 
+      672: // PO-cn2v4-001: `run_prefix_key` is `pub(crate)` and is used by
+      673: // FjallJournal scan iteration over the run-event keyspace. It must
+      674: // reject zero RunId so scan callers can never accidentally ask for
+      675: // the reserved "no-run" prefix key.
+ 587  676: #[test]
+ 588  677: fn run_prefix_key_is_9_bytes() -> Result<(), JournalError> {
+ 589  678:     let prefix = run_prefix_key(RunId::new(01))?;
+ 590  679:     assert_eq!(prefix.len(), RUN_ONLY_KEY_BYTES);
+ 591  680:     Ok(())
+ 592  681: }
+ 593  682: 
+      683: #[test]
+      684: fn run_prefix_key_rejects_zero_run_id() -> Result<(), JournalError> {
+      685:     let result = run_prefix_key(RunId::new(0));
+      686:     assert!(
+      687:         matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      688:         "run_prefix_key must reject zero RunId as InvalidRunId, got {:?}",
+      689:         result
+      690:     );
+      691:     Ok(())
+      692: }
+      693: 
+ 594  694: // =========================================================================
+ 595  695: // vb-282my: Journal key injectivity tests (RJ-01..RJ-04)
+ 596  696: // =========================================================================
+    ...
+ 674  774: // silently emitting a collision byte (SC-001 / vb-f1xkn).
+ 675  775: // ---------------------------------------------------------------------------
+ 676  776: 
+      777: // PO-cn2v4-001 + VB-NOORE: the collision-range rejection is
+      778: // downstream of the zero-RunId rejection. With both checks present,
+      779: // `index_status_key(Other(c), 0, RunId::new(0))` surfaces the FIRST
+      780: // failure: `InvalidRunId`. To exercise the collision rejection we
+      781: // must pass a non-zero RunId.
+ 677  782: #[test]
+ 678  783: fn index_status_key_rejects_other_state_in_collision_range() {
+ 679  784:     let err = index_status_key(IndexStatusState::Other(0), 0, RunId::new(0))
+      785:         .expect_err("RunId 0 must be rejected before the state check");
+      786:     assert!(
+      787:         matches!(err, JournalError::InvalidRunId { run: r } if r == RunId::new(0)),
+      788:         "zero RunId must be rejected first; got {err:?}"
+      789:     );
+      790: 
+      791:     let err = index_status_key(IndexStatusState::Other(0), 0, RunId::new(1))
+ 680  792:         .expect_err("Other(0) collides with Submitted");
+ 681  793:     match err {
+ 682  794:         JournalError::IndexStatusStateCollision { byte, min } => {
+    ...
+ 686  798:         other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+ 687  799:     }
+ 688  800: 
+ 689  801:     let err = index_status_key(IndexStatusState::Other(1), 0, RunId::new(01))
+ 690  802:         .expect_err("Other(1) collides with Active");
+ 691  803:     match err {
+ 692  804:         JournalError::IndexStatusStateCollision { byte, min } => {
+    ...
+ 696  808:         other => panic!("expected IndexStatusStateCollision, got {other:?}"),
+ 697  809:     }
+ 698  810: 
+ 699  811:     let err = index_status_key(IndexStatusState::Other(2), 0, RunId::new(01))
+ 700  812:         .expect_err("Other(2) collides with Completed");
+ 701  813:     match err {
+ 702  814:         JournalError::IndexStatusStateCollision { byte, min } => {
+    ...
+ 707  819:     }
+ 708  820: }
+ 709  821: 
+      822: // PO-cn2v4-001: zero RunId is reserved; the byte-roundtrip loop now
+      823: // uses RunId::new(1) so each valid Other(byte) can be exercised.
+ 710  824: #[test]
+ 711  825: fn index_status_key_accepts_other_state_above_collision_range() -> Result<(), JournalError> {
+ 712  826:     for byte in MIN_OTHER_STATUS_BYTE..=u8::MAX {
+ 713  827:         let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(01))?;
+ 714  828:         assert_eq!(key[1], byte, "byte {byte} must round-trip");
+ 715  829:     }
+ 716  830:     Ok(())
+    ...
+Modified regular file crates/vb_storage/src/keys.rs:
+    ...
+ 103  103:     timestamp: u64,
+ 104  104:     run: RunId,
+ 105  105: ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
+      106:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run" per the
+      107:     // storage contract. Reject it before any byte writing so the typed
+      108:     // error surfaces exactly once at the encoder boundary (the
+      109:     // decoder in `decode_storage_key` mirrors this check). This is
+      110:     // checked BEFORE the IndexStatusState collision check so the
+      111:     // encoder ordering matches what the decoder reports when both
+      112:     // conditions hold.
+      113:     require_non_zero_run(run)?;
+ 106  114:     // VB-NOORE (wildcard elimination): use `to_u8_checked` so an
+ 107  115:     // `Other(v)` whose byte is in the collision range
+ 108  116:     // `0..MIN_OTHER_STATUS_BYTE` is rejected with a typed
+    ...
+ 126  134:     workflow: WorkflowId,
+ 127  135:     run: RunId,
+ 128  136: ) -> Result<[u8; INDEX_WORKFLOW_KEY_BYTES], JournalError> {
+      137:     // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+      138:     // encoder (see `index_status_key` rationale).
+      139:     require_non_zero_run(run)?;
+ 129  140:     let mut key = ArrayVec::<u8, INDEX_WORKFLOW_KEY_BYTES>::new();
+ 130  141:     key.try_push(PREFIX_INDEX_WORKFLOW)
+ 131  142:         .map_err(|_| JournalError::KeyCapacity)?;
+    ...
+ 142  153:     run: RunId,
+ 143  154:     step: vb_core::StepIdx,
+ 144  155: ) -> Result<[u8; INDEX_ACTION_KEY_BYTES], JournalError> {
+      156:     // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+      157:     // encoder (see `index_status_key` rationale).
+      158:     require_non_zero_run(run)?;
+ 145  159:     let mut key = ArrayVec::<u8, INDEX_ACTION_KEY_BYTES>::new();
+ 146  160:     key.try_push(PREFIX_INDEX_ACTION)
+ 147  161:         .map_err(|_| JournalError::KeyCapacity)?;
+    ...
+ 482  496:     run: RunId,
+ 483  497:     seq: EventSeq,
+ 484  498: ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+      499:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+      500:     // it before any byte writing. The order matters: run validation
+      501:     // runs first so the encoder matches the decoder ordering for
+      502:     // the (run=0, seq=MAX) case (this surfaces `SequenceOverflow` is
+      503:     // NOT possible for zero runs, only `InvalidRunId`).
+      504:     require_non_zero_run(run)?;
+ 485  505:     if seq.get() == u64::MAX {
+ 486  506:         return Err(JournalError::SequenceOverflow);
+ 487  507:     }
+    ...
+ 512  532: }
+ 513  533: 
+ 514  534: fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
+      535:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+      536:     // it before any byte writing. Covers `run_header_key`,
+      537:     // `run_prefix_key`, and the `run_prefix` scan helper used by
+      538:     // journal replay/trimming paths.
+      539:     require_non_zero_run(run)?;
+ 515  540:     let mut key = ArrayVec::<u8, RUN_ONLY_KEY_BYTES>::new();
+ 516  541:     key.try_push(prefix)
+ 517  542:         .map_err(|_| JournalError::KeyCapacity)?;
+    ...
+ 520  545:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+ 521  546: }
+ 522  547: 
+      548: /// Validates that `run` is non-zero.
+      549: ///
+      550: /// Zero is reserved as the "no run" sentinel and must not be encoded
+      551: /// into any storage key. The decoder in `decode_storage_key` already
+      552: /// rejects this on the read path; the encoders mirror the same rule
+      553: /// so storage never silently accepts a zero run id at write time
+      554: /// and a later decode would surface a different key shape.
+      555: ///
+      556: /// PO-cn2v4-001: zero `RunId` rejection at every storage-key encoder
+      557: /// boundary; defence-in-depth against accidental all-zero run
+      558: /// encoding that would collide with no-row sentinel keys.
+      559: #[inline]
+      560: fn require_non_zero_run(run: RunId) -> Result<(), JournalError> {
+      561:     if run.get() == 0 {
+      562:         return Err(JournalError::InvalidRunId { run });
+      563:     }
+      564:     Ok(())
+      565: }
+      566: 
+ 523  567: // Re-export run_prefix for use by FjallJournal
+ 524  568: pub(crate) fn run_prefix_key(run: RunId) -> Result<[u8; 9], JournalError> {
+ 525  569:     run_prefix(run)
+    ...
+Modified regular file crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs:
+    ...
+ 130  130:         r2 in any::<u64>(),
+ 131  131:         s2 in 0u64..u64::MAX,
+ 132  132:     ) {
+      133:         // PO-cn2v4-001: zero RunId is reserved; encoders reject it
+      134:         // with `InvalidRunId`. Skip the property test pairs where
+      135:         // either run is zero so we exercise the ordering contract on
+      136:         // the supported input domain without surprising an `unwrap`.
+      137:         prop_assume!(r1 != 0, "r1 must be non-zero (zero RunId is reserved)");
+      138:         prop_assume!(r2 != 0, "r2 must be non-zero (zero RunId is reserved)");
+ 133  139:         let key1 = run_event_key(RunId::new(r1), vb_storage::types::EventSeq::new(s1)).unwrap();
+ 134  140:         let key2 = run_event_key(RunId::new(r2), vb_storage::types::EventSeq::new(s2)).unwrap();
+ 135  141: 
+    ...
+ 292  298:         digest2: [u8; 32],
+ 293  299:         run: u64,
+ 294  300:     ) {
+      301:         // PO-cn2v4-001: zero RunId is reserved and rejected by the
+      302:         // encoders; skip pairs that would otherwise unwrap a typed
+      303:         // `InvalidRunId` error.
+      304:         prop_assume!(run != 0, "run must be non-zero (zero RunId is reserved)");
+ 295  305:         let run_id = RunId::new(run);
+ 296  306:         let key_workflow = workflow_source_key(digest1).unwrap();
+ 297  307:         let key_compiled = compiled_ir_key(digest1).unwrap();
+    ...
+ 337  347:     );
+ 338  348: }
+ 339  349: 
+      350: // PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
+ 340  351: #[test]
+ 341  352: fn encode_exact_length_run_header() {
+ 342     :     let key = run_header_key(RunId::new(0)).unwrap();
+      353:     let result = run_header_key(RunId::new(0));
+      354:     assert!(
+      355:         matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      356:         "run_header_key must reject zero RunId as InvalidRunId, got {:?}",
+      357:         result
+      358:     );
+      359:     // Sanity: non-zero runs still produce a 9-byte key.
+      360:     let key = run_header_key(RunId::new(1)).unwrap();
+ 343  361:     assert_eq!(
+ 344  362:         key.len(),
+ 345  363:         RUN_ONLY_KEY_BYTES,
+ 346  364:         "run_header key must be 9 bytes"
+ 347  365:     );
+ 348  366: }
+ 349  367: 
+      368: // PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
+ 350  369: #[test]
+ 351  370: fn encode_exact_length_run_event() {
+ 352  371:     let result = run_event_key(RunId::new(0), vb_storage::types::EventSeq::new(0));
+      372:     assert!(
+      373:         matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      374:         "run_event_key must reject zero RunId as InvalidRunId, got {:?}",
+      375:         result
+      376:     );
+ 352  377:     let key = run_event_key(RunId::new(01), vb_storage::types::EventSeq::new(0)).unwrap();
+ 353  378:     assert_eq!(
+ 354  379:         key.len(),
+ 355  380:         JOURNAL_KEY_BYTES,
+    ...
+ 363  388:     assert_eq!(key.len(), DIGEST_KEY_BYTES, "blob key must be 33 bytes");
+ 364  389: }
+ 365  390: 
+      391: // PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
+ 366  392: #[test]
+ 367  393: fn encode_exact_length_index_action() {
+ 368  394:     let result = index_action_key(ActionId::new(0), RunId::new(0), StepIdx::new(0));
+      395:     assert!(
+      396:         matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+      397:         "index_action_key must reject zero RunId as InvalidRunId, got {:?}",
+      398:         result
+      399:     );
+ 368  400:     let key = index_action_key(ActionId::new(0), RunId::new(01), StepIdx::new(0)).unwrap();
+ 369  401:     assert_eq!(
+ 370  402:         key.len(),
+ 371  403:         INDEX_ACTION_KEY_BYTES,
+    ...
+ 382  414:     /// iff (a1 < a2) or (a1 == a2 and r1 < r2) or (a1 == a2 and r1 == r2 and s1 < s2).
+ 383  415:     #[test]
+ 384  416:     fn index_action_ordering(a1: u16, r1: u64, s1: u16, a2: u16, r2: u64, s2: u16) {
+      417:         // PO-cn2v4-001: zero RunId is reserved; encoders reject it.
+      418:         // Skip pairs where either run is zero so the property test
+      419:         // never unwraps a typed `InvalidRunId` error.
+      420:         prop_assume!(r1 != 0, "r1 must be non-zero (zero RunId is reserved)");
+      421:         prop_assume!(r2 != 0, "r2 must be non-zero (zero RunId is reserved)");
+ 385  422:         let key1 = index_action_key(ActionId::new(a1), RunId::new(r1), StepIdx::new(s1)).unwrap();
+ 386  423:         let key2 = index_action_key(ActionId::new(a2), RunId::new(r2), StepIdx::new(s2)).unwrap();
+ 387  424: 
+    ...
+Modified regular file crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs:
+    ...
+1222 1222:     }
+1223 1223: 
+1224 1224:     /// T8-PE-05: Missing required arg: verify that get_event_bytes with
+1225     :     /// an empty or invalid key safely returns None.
+     1225:     /// a non-existent (but valid) run id safely returns None.
+     1226:     ///
+     1227:     /// PO-cn2v4-001: a zero `RunId` is reserved as the "no run"
+     1228:     /// sentinel; the encoder now rejects it with `InvalidRunId`
+     1229:     /// before any keyspace lookup. This test therefore uses a
+     1230:     /// non-zero `RunId` that simply has no row in the empty
+     1231:     /// journal — the original "empty key is safe" contract is
+     1232:     /// preserved by typing it as `Err(InvalidRunId)` for the
+     1233:     /// reserved value and `Ok(None)` for a missing-but-valid row.
+1226 1234:     #[test]
+1227 1235:     fn parse_decode_error_missing_get_key_safe() -> Result<(), JournalError> {
+1228 1236:         // Given: an empty journal
+1229 1237:         let dir = temp_dir();
+1230 1238:         let journal = FjallJournal::open(dir.path(), None)?;
+1231 1239: 
+1232 1240:         // When: getting event bytes for a nonexistent run/seq
+1233 1241:         let result = journal.get_event_bytes(RunId::new(01), EventSeq::new(0))?;
+1234 1242: 
+1235 1243:         // Then: returns None safely (no crash)
+1236 1244:         assert!(result.is_none());
+1237 1245:         Ok(())
+1238 1246:     }
+1239 1247: 
+     1248:     /// PO-cn2v4-001: companion to `parse_decode_error_missing_get_key_safe`
+     1249:     /// that pins the typed-error contract for the reserved zero-RunId
+     1250:     /// sentinel at the storage keyspace lookup boundary.
+     1251:     #[test]
+     1252:     fn parse_decode_error_zero_run_id_is_typed_error() -> Result<(), JournalError> {
+     1253:         // Given: an empty journal
+     1254:         let dir = temp_dir();
+     1255:         let journal = FjallJournal::open(dir.path(), None)?;
+     1256: 
+     1257:         // When: getting event bytes for the reserved zero RunId
+     1258:         let result = journal.get_event_bytes(RunId::new(0), EventSeq::new(0));
+     1259: 
+     1260:         // Then: returns the typed `InvalidRunId` error rather than
+     1261:         // a silent Ok(None) for a non-existent row. The decoder
+     1262:         // already rejected zero on the read path; the encoder
+     1263:         // boundary now mirrors that contract.
+     1264:         match result {
+     1265:             Err(JournalError::InvalidRunId { run }) => {
+     1266:                 assert_eq!(run, RunId::new(0));
+     1267:             }
+     1268:             other => panic!(
+     1269:                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+     1270:                 other
+     1271:             ),
+     1272:         }
+     1273:         Ok(())
+     1274:     }
+     1275: 
+1240 1276:     /// T8-PE-06: Invalid hex key with odd length cannot be parsed as bytes.
+1241 1277:     #[test]
+1242 1278:     fn parse_decode_error_invalid_hex_key_odd_length() {
+    ...
+Modified regular file crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:
+    ...
+  90   90: 
+  91   91:     #[test]
+  92   92:     fn run_header_key_prefix_is_0x10() -> Result<(), JournalError> {
+  93   93:         // Given: a non-zero RunId with value 0(PO-cn2v4-001: zero is reserved)
+  94   94:         let run_id = RunId::new(01);
+  95   95: 
+  96   96:         // When: run_header_key is called
+  97   97:         let key = keys::run_header_key(run_id)?;
+    ...
+ 112  112:         let run_id = RunId::new(0);
+ 113  113: 
+ 114  114:         // When: run_header_key is called
+ 115  115:         let keyresult = keys::run_header_key(run_id)?;
+ 116  116: 
+ 117     :         // Then: key[1..9] equals 0u64.to_be_bytes()
+ 118     :         assert_eq!(
+ 119     :             &key[1..9],
+ 120     :             0u64.to_be_bytes(),
+ 121     :             "zero run_id must encode as all-zero bytes"
+ 122     :         );
+ 123     :         assert_eq!(key.len(), 9, "run_header_key must be 9 bytes");
+      117:         // Then: the encoder rejects RunId::new(0) with
+      118:         // `JournalError::InvalidRunId { run: RunId::new(0) }` because
+      119:         // zero is reserved as the "no run" sentinel (PO-cn2v4-001).
+      120:         match result {
+      121:             Err(JournalError::InvalidRunId { run }) => {
+      122:                 assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+      123:             }
+      124:             other => panic!(
+      125:                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+      126:                 other
+      127:             ),
+      128:         }
+ 124  129:         Ok(())
+ 125  130:     }
+ 126  131: 
+    ...
+ 209  214:         let run_id = RunId::new(0);
+ 210  215: 
+ 211  216:         // When: index_workflow_key is called
+      217:         let result = keys::index_workflow_key(workflow_id, run_id);
+      218: 
+      219:         // Then: the encoder rejects RunId::new(0) with
+      220:         // `JournalError::InvalidRunId { run: RunId::new(0) }` because
+      221:         // zero RunId is reserved (PO-cn2v4-001). The previous
+      222:         // expectation that zero bytes round-trip is no longer valid;
+      223:         // see `index_workflow_key_zero_workflow_id` for the
+      224:         // zero-workflow-but-non-zero-run coverage.
+      225:         match result {
+      226:             Err(JournalError::InvalidRunId { run }) => {
+      227:                 assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+      228:             }
+      229:             other => panic!(
+      230:                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+      231:                 other
+      232:             ),
+      233:         }
+      234:         Ok(())
+      235:     }
+      236: 
+      237:     #[test]
+      238:     fn index_workflow_key_zero_workflow_id() -> Result<(), JournalError> {
+      239:         // Companion that pins the (workflow=0, run=nonzero) byte
+      240:         // layout the previous test used to cover.
+      241:         let workflow_id = WorkflowId::new(0);
+      242:         let run_id = RunId::new(1);
+ 212  243:         let key = keys::index_workflow_key(workflow_id, run_id)?;
+ 213     : 
+ 214     :         // Then: key[1..5] equals 0u32.to_be_bytes()
+ 215     :         // And: key[5..13] equals 0u64.to_be_bytes()
+ 216  244:         assert_eq!(
+ 217  245:             &key[1..5],
+ 218  246:             0u32.to_be_bytes(),
+ 219  247:             "zero workflow_id must encode as all-zero bytes"
+ 220  248:         );
+ 221  249:         assert_eq!(
+ 222  250:             &key[5..13],
+ 223     :             0u64.to_be_bytes(),
+ 224     :             "zero run_id must encode as all-zero bytes"
+      251:             1u64.to_be_bytes(),
+      252:             "non-zero run_id bytes must encode as big-endian u64"
+ 225  253:         );
+ 226  254:         assert_eq!(key.len(), 13, "index_workflow_key must be 13 bytes");
+ 227  255:         Ok(())
+    ...
+ 701  729:         // Given: RunId::new(0)
+ 702  730:         let run_id = RunId::new(0);
+ 703  731: 
+ 704  732:         // When: run_header_key is called then decoded
+      733:         let result = keys::run_header_key(run_id);
+      734: 
+      735:         // Then: the encoder rejects RunId::new(0) per the
+      736:         // `InvalidRunId` contract (PO-cn2v4-001). The original
+      737:         // roundtrip expectation is no longer valid because zero is
+      738:         // a reserved sentinel on both the encode and decode paths.
+      739:         match result {
+      740:             Err(JournalError::InvalidRunId { run }) => {
+      741:                 assert_eq!(run, RunId::new(0));
+      742:             }
+      743:             other => panic!(
+      744:                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+      745:                 other
+      746:             ),
+      747:         }
+      748:         Ok(())
+      749:     }
+      750: 
+      751:     #[test]
+      752:     fn run_id_nonzero_roundtrip() -> Result<(), JournalError> {
+      753:         // Companion to `run_id_zero_roundtrip` that covers the
+      754:         // big-endian 8-byte layout for a non-zero RunId.
+ 704  755:         let run_id = RunId::new(42);
+ 705  756:         let key = keys::run_header_key(run_id)?;
+ 706     : 
+ 707     :         // Then: the decoded RunId equals the original
+ 708  757:         let decoded = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
+ 709  758:         assert_eq!(decoded, run_id, "non-zero RunId must roundtrip correctly");
+ 710  759:         Ok(())
+ 711  760:     }
+ 712  761: 
+    ...

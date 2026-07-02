@@ -1,0 +1,160 @@
+# Transcript — vb-7akm0 State 11 (holzman-rust)
+
+bead_id: vb-7akm0
+state: 11
+skill: holzman-rust
+invocation_id: holzman-rust-vb-7akm0-state11
+parent_invocation_id: proof-to-rust-review-vb-7akm0-state7
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+started_at: 2026-07-01T20:00:00Z
+completed_at: 2026-07-01T20:05:00Z
+status: completed
+
+## Input Artifacts
+
+- `proof-to-rust-map.md` (sha256: d2450c05cac82189148821abf7fd5b771af37a532d6d3cec11adf9ffd4e4c45b)
+- `proof-to-rust-review.md` (sha256: d6f0c11a25333c2c7feaeb1bd17a6446ac10ace5706f9ccafe4c9b257c6c4426)
+- `delivery-scope.jsonl` (sha256: e9264ea601ab02e7e2e6129bb342ed41c04db407e2e9fba5531e07fc2ff971bd)
+
+## Output Artifacts
+
+- `implementation.md` (sha256: 1db897c92e494347d7e32cd5d15d0e730ba98ea0a7179bf9d910503f65378f08)
+- `decision-ack.md` (sha256: f9e357039fc88c13b1c675f75d516c5e322f8701ef987fae4bc3eface438a13e)
+- `evidence/run-001/lint-src-output.log` (sha256: b672519b1e7c02b28f7568efa9f312f96bdc285f6458536fc4262daaf3a6137d)
+- `evidence/run-001/cargo-test-output.log` (sha256: a83d4febaa8d6d8fa47b078b388b075a1213aafe45cf8aac26ca20b5c243543c)
+
+## Decisions Log
+
+### Decision 1: RetireOrphanTest (Category G)
+
+Disposition: retire
+`crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs`
+(646 lines) is deleted; the source-length-exceptions ledger entry at
+`.config/source-length-exceptions.txt:221` is removed. Rationale and
+verification in `.beads/vb-7akm0/decision-ack.md`.
+
+### Decision 2: Restore xtask/src/main.rs allow (Deviation 1)
+
+The `#[allow(unreachable_pub)]` at `xtask/src/main.rs:15` is restored
+with a NOTE comment (lines 2-13) documenting the cascade. Removing the
+allow cascades ~173 pre-existing `unreachable_pub` errors in xtask's
+inner modules (`mod contracts;`, `mod proof;`, `mod evidence/...`,
+etc.), each of which is an independent cleanup target. Per the
+holzman-rust skill's BLOCK_GLOBAL rule, the 173-item sweep is out of
+scope for this lint-cleanup bead.
+
+### Decision 3: Group B uses pub(crate) for sibling-test consumers (Deviation 2)
+
+For the 6 of 10 Group B files whose gated fn is consumed by the
+sibling `#[cfg(test)] mod gate_tests` (or `#[cfg(test)] mod
+secret_leak::tests`) at the crate root, the visibility narrowing is
+`pub(crate) fn` rather than the prescribed `fn`. This preserves the
+sibling-test path visibility (sibling tests import via
+`use crate::gate_xx::func_name;` which requires `pub(crate)` or
+higher). The 4 remaining Group B files (gate_10_node, gate_12_14_15,
+taint_prop, type_check) have only in-file `#[cfg(test)] mod tests`
+consumers and use the prescribed `fn` narrowing.
+
+### Decision 4: lib.rs commands_diff/commands_incident demoted to pub(crate)
+
+`crates/vb_cli/src/lib.rs:6-7` — `pub mod commands_diff;` and
+`pub mod commands_incident;` are demoted to `pub(crate) mod ...`.
+These modules are bin-internal (consumed only by the `velvet-ballistics`
+binary's `main.rs` module tree). This avoids the Rust dead-code
+analyzer reporting "never used" warnings for items that ARE used in
+the bin (the analyzer doesn't track cross-module uses through
+`crate::module::*` paths reliably). No external test depends on
+`vb_cli::commands_diff` or `vb_cli::commands_incident` (verified via
+workspace-wide `rg`).
+
+## Power-of-Ten / zero-panic rules affected
+
+- Rule 5: No new assertions; the refactor only changes visibility.
+- Rule 10: The `unreachable_pub` lint warnings removed are a Rule 10 violation; resolving them is the bead's purpose.
+- Zero-panic: No `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable!`/production `assert!` additions.
+- No `unsafe`: zero new matches in the 25 touched files.
+- No unchecked indexing/slicing/casts/arithmetic: zero new matches in the 25 touched files.
+
+## Performance Layer
+
+No performance claim is made. The bead is a visibility-narrowing
+refactor with no hot-path, latency, throughput, allocation, SIMD, or
+async-scheduling changes. Performance layer is N/A.
+
+## Verification Commands Run
+
+```bash
+# Pre-apply baseline
+jj status
+jj log -T 'change_id.short() ++ " " ++ commit_id.short()'
+
+# rg evidence
+rg -n 'unreachable_pub' --glob '*.rs' --glob '!**/tests/**' --glob '!**/benches/**' --glob '!**/examples/**' --glob '!build.rs' --glob '!verification/**'
+# 29 lines total: 4 deny (policy enforcers), 25 allow (target suppressions)
+
+# 25 file modifications applied
+jj diff --stat  # 25 files changed, 85 insertions(+), 755 deletions(-)
+
+# Pre-existing test failure isolated on parent commit
+jj new --insert-after 'xxzmtvyt' -m 'verify-base'
+cargo test -p vb_core --test aggregate_resource_budget_properties_red
+# Result: test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured
+# (1 pre-existing proptest failure; ResourceCapacityExceeded string missing from admission.rs)
+jj abandon
+
+# moon run :lint-src (full task chain)
+moon run :lint-src
+# Result: Tasks: 4 completed, exit=0
+
+# cargo clippy equivalent
+cargo clippy --workspace --lib --bins --examples --all-features -- [lint flags]
+# Result: cargo clippy: No issues found
+
+# cargo test --workspace --all-features
+cargo test --workspace --all-features
+# Result: 1 pre-existing proptest fails (unrelated to vb-7akm0); 0 new failures introduced
+
+# cargo check --workspace --all-targets --all-features
+cargo check --workspace --all-targets --all-features
+# Result: 0 errors, 0 warnings
+```
+
+## Files Modified (25)
+
+```
+.config/source-length-exceptions.txt                  |   1 -
+crates/vb_cli/src/commands_diff.rs                    |  21 +-
+crates/vb_cli/src/commands_incident.rs                |  17 +-
+crates/vb_cli/src/lib.rs                              |  10 +-
+crates/vb_cli/src/lifecycle.rs                        |   1 -
+crates/vb_validate/src/diag/diag_render.rs            |   1 -
+crates/vb_validate/src/diag/diag_tests.rs             |   1 -
+crates/vb_validate/src/diagnostic.rs                  |   1 -
+crates/vb_validate/src/fact_table.rs                  |   2 -
+crates/vb_validate/src/gate_07_stack.rs               |   5 +-
+crates/vb_validate/src/gate_08_accessor.rs            |   4 +-
+crates/vb_validate/src/gate_09_slots.rs               |   3 +-
+crates/vb_validate/src/gate_10_node.rs                |   3 +-
+crates/vb_validate/src/gate_11_loop.rs                |   4 +-
+crates/vb_validate/src/gate_12_14_15.rs               |   7 +-
+crates/vb_validate/src/gate_13_cycles.rs              |   3 +-
+crates/vb_validate/src/schema_support/schema_doc.rs   |  25 +-
+crates/vb_validate/src/schema_support/schema_fields.rs|  13 +-
+crates/vb_validate/src/schema_support/schema_id.rs    |   7 +-
+crates/vb_validate/src/schema_support/schema_tests.rs |   1 -
+crates/vb_validate/src/secret_leak.rs                 |   4 +-
+crates/vb_validate/src/taint_prop.rs                  |   4 +-
+crates/vb_validate/src/type_check.rs                  |   4 +-
+crates/vb_validate/src/type_sigs.rs                   |  52 +-
+crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs | 646 ----------------------
+```
+
+## Gate Status
+
+- `pwd -P` correct: yes (resolves to /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0)
+- implementation.md: yes (.beads/vb-7akm0/implementation.md, 25 file diffs)
+- decision-ack.md: yes (.beads/vb-7akm0/decision-ack.md, RetireOrphanTest)
+- evidence captured: yes (.beads/vb-7akm0/evidence/run-001/, 4 evidence files)
+- ledger valid: yes (8 entries; previous_entry_hash chain intact; new entry_hash=0711ec74...)
+- moon run :lint-src: PASS (exit=0)
+- cargo test --workspace --all-features: 1 pre-existing failure (unrelated); no regressions introduced

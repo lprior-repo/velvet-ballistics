@@ -1,0 +1,42 @@
+state11 — p11-holzman-rust: implementation of vb-1wora (reject trailing bytes in codec)
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-1wora
+Bead: vb-1wora — Codec: reject trailing bytes after declared record payload (P1)
+Skill: holzman-rust
+Parent invocation: proof-writer-vb-1wora-state5 (sequence=4)
+
+Steps:
+1. Read skill files (/home/lewis/.opencode/skill/holzman-rust/SKILL.md, /home/lewis/.agents/skills/holzman-rust/SKILL.md).
+2. Read contract at .beads/vb-1wora/contracts/contract.md (state 3).
+3. Verified isolated workspace: pwd -P = /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-1wora, jj root matches.
+4. Created new jj change: vb-1wora: p11-holzman-rust — reject trailing bytes in codec.
+5. Implemented changes per contract §4.1:
+   - error/mod.rs: added TrailingBytes variant.
+   - error/codes.rs: added TRAILING_BYTES_CODE (0x4042), wired diagnostic_code and symbolic_code arms.
+   - codec/payload.rs: inserted cheap-before-expensive trailing-bytes check.
+   - codec/envelope.rs: mirrored the check at the inspection-only decode site.
+   - codec/tests.rs: inverted test (decode_ignores_trailing_bytes_beyond_payload -> decode_rejects_trailing_bytes_after_payload).
+   - codec/envelope.rs: added decode_envelope_only_rejects_trailing_payload mirror test.
+   - error_tests.rs: added variant trio (variant_and_fields, display_format, error_code); updated audit header.
+   - error_code_tests.rs: added trailing_bytes_error_has_correct_code.
+   - tests.rs: added TrailingBytes arm to exhaustive match.
+   - security_tests.rs: updated zero_payload_len_with_bytes_fails_digest_check to assert TrailingBytes (new ordering).
+   - tests/proptest_vb_vzcuf_PS_003.rs: added ps003_trailing_bytes_are_rejected and ps003_exact_boundary_roundtrips.
+6. Captured evidence to .beads/vb-1wora/evidence/:
+   - cargo_test_vb_storage.log
+   - cargo_test_proptest_vb_vzcuf_PS_003.log
+   - vb_storage_trailing_tests.log (6 unit tests pass)
+   - proptest_vb_vzcuf_PS_003_full.log (8 proptests pass)
+   - cargo_clippy_vb_storage.log (no issues)
+   - cargo_fmt_vb_storage.log (clean)
+7. Wrote implementation.md with full diffs, command evidence, Power-of-Ten mapping, residual risks.
+8. Appended state11 row to agent-invocation-ledger.jsonl (sequence=5, chain-linked).
+
+Gates:
+- cargo check -p vb_storage --all-features: PASS
+- cargo check -p vb_storage --all-features --tests: PASS
+- cargo test -p vb_storage --all-features: 1678 passed (17 suites)
+- cargo test -p vb_storage --test proptest_vb_vzcuf_PS_003: 8 passed
+- cargo clippy --lib --bins --examples --all-features (strict): No issues found
+- cargo fmt --check -p vb_storage: clean
+- chain links: OK

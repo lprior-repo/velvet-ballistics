@@ -1,0 +1,4 @@
+EXIT_CODE=0
+COMMAND=cargo fmt -p velvet-ballistics --check (the actual package name; crate dir is crates/vb_cli/)
+STDERR_TAIL=empty (clean)
+STDOUT=empty (clean)

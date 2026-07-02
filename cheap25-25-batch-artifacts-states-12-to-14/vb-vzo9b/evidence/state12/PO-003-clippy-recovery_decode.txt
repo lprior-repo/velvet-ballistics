@@ -1,0 +1,102 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/fuzz)
+warning: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+   --> src/expression_target.rs:257:13
+    |
+257 | /             match vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx) {
+258 | |                 Ok((slot_val, _taint)) => {
+259 | |                     eval_count += 1;
+260 | |                     assert!(
+...   |
+265 | |                 Err(_) => {}
+266 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#single_match
+    = note: `#[warn(clippy::single_match)]` on by default
+help: try
+    |
+257 ~             if let Ok((slot_val, _taint)) = vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx) {
+258 +                 eval_count += 1;
+259 +                 assert!(
+260 +                     !matches!(slot_val, vb_core::SlotValue::Null),
+261 ~                     "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
+262 +                 );
+263 +             }
+    |
+
+error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
+   --> src/workflow_target/budget.rs:142:13
+    |
+142 |     assert!(budget.max_fanout <= u16::MAX);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: because `u16::MAX` is the maximum value for this type, this comparison is always true
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#absurd_extreme_comparisons
+    = note: `#[deny(clippy::absurd_extreme_comparisons)]` on by default
+
+warning: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> src/workflow_target/collect.rs:87:9
+   |
+87 | /         match zero_page_result {
+88 | |             Ok(signal) => assert!(matches!(
+89 | |                 signal,
+90 | |                 vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
+91 | |             )),
+92 | |             Err(_) => {}
+93 | |         }
+   | |_________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#single_match
+help: try
+   |
+87 ~         if let Ok(signal) = zero_page_result { assert!(matches!(
+88 +             signal,
+89 +             vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
+90 +         )) }
+   |
+
+warning: this `if let` can be collapsed into the outer `match`
+   --> src/workflow_target/node_slots.rs:100:13
+    |
+100 | /             if let Some(slot) = error_slot {
+101 | |                 assert_slot(*slot, slot_count, node_idx);
+102 | |             }
+    | |_____________^
+    |
+help: the outer pattern can be modified to include the inner pattern
+   --> src/workflow_target/node_slots.rs:99:42
+    |
+ 99 |         CompiledNodeKind::ErrorHandler { error_slot, .. } => {
+    |                                          ^^^^^^^^^^ replace this binding
+100 |             if let Some(slot) = error_slot {
+    |                    ^^^^^^^^^^ with this pattern, prefixed by `error_slot: `
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_match
+    = note: `#[warn(clippy::collapsible_match)]` on by default
+
+warning: this `if` statement can be collapsed
+  --> src/ipc_target.rs:47:5
+   |
+47 | /     if let Ok(decoded_header) = header_result {
+48 | |         if let Ok(encoded) = decoded_header.encode() {
+49 | |             assert_eq!(
+50 | |                 &encoded[..],
+...  |
+55 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+   = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+   |
+47 ~     if let Ok(decoded_header) = header_result
+48 ~         && let Ok(encoded) = decoded_header.encode() {
+49 |             assert_eq!(
+...
+53 |             );
+54 ~         }
+   |
+

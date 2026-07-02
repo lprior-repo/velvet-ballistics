@@ -1,0 +1,84 @@
+# Transcript — vb-7akm0 State 13 (black-hat-reviewer)
+
+bead_id: vb-7akm0
+state: 13
+skill: black-hat-reviewer
+invocation_id: black-hat-reviewer-vb-7akm0-state13
+parent_invocation_id: formal-verifier-vb-7akm0-state12
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+started_at: 2026-07-01T22:15:00Z
+completed_at: 2026-07-01T22:20:00Z
+status: completed
+
+## Input Artifacts
+
+- `formal-verification-report.md` (sha256: 4f809906b9971ee729b8dbcf078f1ae393878b79a57b794fd3dac6d932cdc25c)
+- `verification-ledger.jsonl` (sha256: d84e5f82116a8b3db8deb1dd8288ab29acf419bd3f4e9cb04c38ff64fc671c7b)
+- `implementation.md` (sha256: 1db897c92e494347d7e32cd5d15d0e730ba98ea0a7179bf9d910503f65378f08)
+- `decision-ack.md` (sha256: f9e357039fc88c13b1c675f75d516c5e322f8701ef987fae4bc3eface438a13e)
+- `contract.md` (sha256: 03dbaa091dd487719bcc392f6a2e99cab517987888ba69333b61bf92e8582377)
+- `proof-obligations.planned.jsonl` (sha256: a5a03321ca16dca48e0e4d72a763fc5ec331b3e3e94071e849f1f1e3a0787334)
+- `delivery-scope.jsonl` (sha256: e9264ea601ab02e7e2e6129bb342ed41c04db407e2e9fba5531e07fc2ff971bd)
+
+## Output Artifacts
+
+- `black-hat-review.md` (sha256: 7718f255df5e1ae00157fa1bdc808825a2043473d4697d955eb589c56a9174ca)
+
+## 5-Phase Review
+
+### Phase 1: Contract & Bead Parity
+- 25 files in delivery-scope.jsonl rows 1-25
+- 25 files in jj diff (24 modified + 1 deleted)
+- decision-ack.md ## Decision: RetireOrphanTest present
+- Verus production binding gate clean (VACUUM=0)
+- Production_inner drift gate unchanged from parent
+- Zero new formal verifier artifacts
+- **STATUS: PASS**
+
+### Phase 2: Farley Engineering Rigor
+- 25 files changed, 85 insertions(+), 755 deletions(-)
+- Net 670-line removal (646 from orphan test retire; 109 from visibility narrowing net of `pub ` → `pub(crate) ` rewrites)
+- No new functions added; function bodies unchanged
+- 2 deviations explicitly documented and well-reasoned
+- **STATUS: PASS**
+
+### Phase 3: Holzman Rust (The Big 6)
+- Zero new unsafe, unwrap, expect, panic, todo, unimplemented, dbg
+- Visibility-only changes preserve all 6 Holzman rules
+- **STATUS: PASS**
+
+### Phase 4: Ruthless Simplicity & DDD
+- Refactor REDUCES public API surface (opposite of YAGNI violation)
+- No new abstractions, no new types, no new traits
+- **STATUS: PASS**
+
+### Phase 5: The Bitter Truth
+- Code is plainly obvious, mechanical, un-clever
+- 2 deviations are conservative and well-bounded
+- Orphan test retirement is well-documented
+- **STATUS: PASS**
+
+## Findings
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| (none) | - | - |
+
+5 observations (pre-existing conditions or future-bead backlog items), all explicitly documented in implementation.md and excluded from this bead's scope.
+
+## Verdict
+
+**STATUS: APPROVED** — The 25-file visibility-narrowing refactor is a mechanical God-Rule 10 compliance fix. 0 findings. 0 new Holzman Rust violations. 0 regressions. The 2 deviations and 5 observations are pre-existing or future-bead backlog, not introduced by vb-7akm0.
+
+## Quality Gates Verified
+
+| Gate | Result |
+|------|--------|
+| moon run :lint-src | PASS (exit 0) |
+| cargo check --workspace --all-features | PASS (exit 0) |
+| cargo test --workspace --all-features | 1 pre-existing proptest (verified identical on parent commit) |
+| cargo clippy --workspace --lib --bins --examples --all-features | PASS (exit 0) |
+| Verus production binding gate | PASS (VACUUM=0) |
+| Production_inner drift gate | 12 pre-existing drifts (unchanged from parent) |
+| Decision-ack pre-condition | PASS (RetireOrphanTest) |
+| IncidentReport grep pre-condition | non-empty (documented expected) |

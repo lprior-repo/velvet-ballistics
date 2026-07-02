@@ -1,0 +1,182 @@
+Modified regular file crates/vb_storage/Cargo.toml:
+    ...
+  25   25: legacy-kani = []
+  26   26: kani-recovery = []
+  27   27: kani-typed-partitioned-ids = []
+       28: kani-vb-eepg = []
+  28   29: kani-vb-u8gi-decode-taxonomy = []
+  29   30: kani-vb-vzcuf = []
+  30   31: 
+    ...
+Modified regular file crates/vb_storage/src/kani_typed_partitioned_ids.rs:
+    ...
+  60   60:         }
+  61   61:         Err(_) => assert!(false),
+  62   62:     }
+       63:     // PO-vb-uwxct-007 / C7: production encoder at
+       64:     // `crates/vb_storage/src/keys.rs:485-487` rejects `seq == u64::MAX`
+       65:     // with `JournalError::SequenceOverflow`. The explicit match arm
+       66:     // classifies the typed rejection as contract-conformant (the
+       67:     // sentinel is the ONLY trigger) and keeps the sentinel inside the
+       68:     // proof model; the defensive `Err(_) => assert!(false)` arm
+       69:     // remains only for non-SequenceOverflow variants.
+  63   70:     match keys::run_event_key(run, seq) {
+  64   71:         Ok(key) => {
+  65   72:             assert!(key[0] == PREFIX_RUN_EVENT);
+  66   73:             assert!(key[1..9] == run_value.to_be_bytes());
+  67   74:             assert!(key[9..17] == seq_value.to_be_bytes());
+  68   75:         }
+       76:         Err(crate::JournalError::SequenceOverflow) => {
+       77:             assert!(seq_value == u64::MAX);
+       78:         }
+  69   79:         Err(_) => assert!(false),
+  70   80:     }
+  71   81:     match keys::index_workflow_key(workflow, run) {
+    ...
+Modified regular file crates/vb_storage/src/lib.rs:
+    ...
+  61   61: #[cfg(all(kani, feature = "legacy-kani"))]
+  62   62: pub mod kani_postcard_envelope_wire;
+  63   63: 
+  64   64: #[cfg(all(
+  64   65:     kani, 
+  64   66:     any(feature = "kani-typed-partitioned-ids", feature = "kani-vb-eepg")
+  64   67: ))]
+  65   68: pub mod kani_typed_partitioned_ids;
+  66   69: 
+  67   70: #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+    ...
+Modified regular file crates/workspace_tests/tests/restate_journal_tail_scan_fallback_tests.rs:
+    ...
+1322 1322:     /// Verifies run_event key ordering matches (run_id, seq) tuple ordering.
+1323 1323:     /// For any (r1, s1) and (r2, s2):
+1324 1324:     ///   key(r1,s1) < key(r2,s2) iff (r1 < r2) or (r1 == r2 and s1 < s2)
+     1325:     ///
+     1326:     /// The seq strategy is constrained to `0u64..u64::MAX` because the
+     1327:     /// production encoder at `crates/vb_storage/src/keys.rs:485-487`
+     1328:     /// rejects `seq == u64::MAX` with `JournalError::SequenceOverflow`;
+     1329:     /// including the sentinel in the sampled space would over-reject with
+     1330:     /// a panic instead of observing the typed error. See vb-uwxct proof
+     1331:     /// seeds ps-vb-uwxct-001 / C1 in `.beads/vb-uwxct/contract.md`.
+1325 1332:     #[test]
+1326 1333:     fn run_event_key_lexicographic_ordering(
+1327 1334:         r1: u64,
+1328 1335:         s1:  in 0u64..u64::MAX,
+1329 1336:         r2: u64,
+1330 1337:         s2:  in 0u64..u64::MAX,
+1331 1338:     ) {
+1332 1339:         // Skip runs with id=0 since RunId(0) is the null placeholder
+1333 1340:         prop_assume!(r1 != 0, "r1 must be non-zero");
+1334 1341:         prop_assume!(r2 != 0, "r2 must be non-zero");
+1335 1342: 
+1336 1343:         let key1 = run_event_key(RunId::new(r1), EventSeq::new(s1))
+1337 1344:             .expect("key1 must encode on the encodable range");
+1338 1345:         let key2 = run_event_key(RunId::new(r2), EventSeq::new(s2))
+1339 1346:             .expect("key2 must encode on the encodable range");
+1340 1347: 
+1341 1348:         let expected_ordering = r1 < r2 || (r1 == r2 && s1 < s2);
+1342 1349: 
+    ...
+1351 1358:     }
+1352 1359: 
+1353 1360:     /// Verifies that sequence bytes at offsets 9..17 decode to the original u64.
+     1361:     ///
+     1362:     /// The seq strategy is constrained to `0u64..u64::MAX`; see vb-uwxct
+     1363:     /// proof seed ps-vb-uwxct-002 / C2 for the contract rationale.
+1354 1364:     #[test]
+1355 1365:     fn sequence_bytes_roundtrip_through_key_encoding(run_val: u64, seq_val:  in 0u64..u64::MAX) {
+1356 1366:         prop_assume!(run_val != 0, "run_id must be non-zero");
+1357 1367: 
+1358 1368:         let run = RunId::new(run_val);
+1359 1369:         let seq = EventSeq::new(seq_val);
+1360 1370:         let key = run_event_key(run, seq)
+1361     :             .expect("key must encode for any valid run/seq");
+     1371:             .expect("key must encode on the encodable range");
+1362 1372: 
+1363 1373:         let decoded = u64::from_be_bytes(event_key_seq_bytes(&key));
+1364 1374:         prop_assert_eq!(
+    ...
+1369 1379:     }
+1370 1380: 
+1371 1381:     /// Verifies key length is always 17 bytes for all valid run_event_key inputs.
+     1382:     ///
+     1383:     /// The seq strategy is constrained to `0u64..u64::MAX`; see vb-uwxct
+     1384:     /// proof seed ps-vb-uwxct-003 / C3 for the contract rationale.
+1372 1385:     #[test]
+1373 1386:     fn run_event_key_always_17_bytes(run_val: u64, seq_val:  in 0u64..u64::MAX) {
+1374 1387:         prop_assume!(run_val != 0, "run_id must be non-zero");
+1375 1388: 
+1376 1389:         let key = run_event_key(RunId::new(run_val), EventSeq::new(seq_val))
+1377     :             .expect("key must encode for valid inputs");
+     1390:             .expect("key must encode on the encodable range");
+1378 1391: 
+1379 1392:         prop_assert_eq!(
+1380 1393:             key.len(),
+    ...
+1386 1399:     }
+1387 1400: 
+1388 1401:     /// Verifies that the first byte of every run_event_key is always 0x11.
+     1402:     ///
+     1403:     /// The seq strategy is constrained to `0u64..u64::MAX`; see vb-uwxct
+     1404:     /// proof seed ps-vb-uwxct-004 / C4 for the contract rationale.
+1389 1405:     #[test]
+1390 1406:     fn run_event_key_always_has_correct_prefix(run_val: u64, seq_val:  in 0u64..u64::MAX) {
+1391 1407:         prop_assume!(run_val != 0, "run_id must be non-zero");
+1392 1408: 
+1393 1409:         let key = run_event_key(RunId::new(run_val), EventSeq::new(seq_val))
+1394     :             .expect("key must encode for valid inputs");
+     1410:             .expect("key must encode on the encodable range");
+1395 1411: 
+1396 1412:         prop_assert_eq!(
+1397 1413:             key[0], PREFIX_RUN_EVENT,
+    ...
+1401 1417:     }
+1402 1418: 
+1403 1419:     /// Verifies that key prefixes are distinct for different runs.
+     1420:     ///
+     1421:     /// The seq strategy is constrained to `0u64..u64::MAX`; see vb-uwxct
+     1422:     /// proof seed ps-vb-uwxct-005 / C5 for the contract rationale.
+1404 1423:     #[test]
+1405     :     fn different_runs_have_different_event_key_prefixes(r1: u64, r2: u64, s1: u64, s2: u64) {
+     1424:     fn different_runs_have_different_event_key_prefixes(
+     1425:         r1: u64,
+     1426:         r2: u64,
+     1427:         s1 in 0u64..u64::MAX,
+     1428:         s2 in 0u64..u64::MAX,
+     1429:     ) {
+1406 1430:         prop_assume!(r1 != 0, "r1 must be non-zero");
+1407 1431:         prop_assume!(r2 != 0, "r2 must be non-zero");
+1408 1432:         prop_assume!(r1 != r2, "r1 and r2 must be different runs");
+1409 1433: 
+1410 1434:         let key1 = run_event_key(RunId::new(r1), EventSeq::new(s1))
+1411 1435:             .expect("key1 must encode on the encodable range");
+1412 1436:         let key2 = run_event_key(RunId::new(r2), EventSeq::new(s2))
+1413 1437:             .expect("key2 must encode on the encodable range");
+1414 1438: 
+1415 1439:         // The first 9 bytes (prefix + run_id) must differ
+1416 1440:         let prefix1 = &key1[..9];
+    ...
+1423 1447:     }
+1424 1448: 
+1425 1449:     /// Verifies that same-run keys with different sequences differ only at seq offsets.
+     1450:     ///
+     1451:     /// The seq strategy is constrained to `0u64..u64::MAX`; see vb-uwxct
+     1452:     /// proof seed ps-vb-uwxct-006 / C6 for the contract rationale.
+1426 1453:     #[test]
+1427     :     fn same_run_different_seq_keys_differ_in_seq_bytes(run_val: u64, s1: u64, s2: u64) {
+     1454:     fn same_run_different_seq_keys_differ_in_seq_bytes(
+     1455:         run_val: u64,
+     1456:         s1 in 0u64..u64::MAX,
+     1457:         s2 in 0u64..u64::MAX,
+     1458:     ) {
+1428 1459:         prop_assume!(run_val != 0, "run_id must be non-zero");
+1429 1460:         prop_assume!(s1 != s2, "sequences must differ");
+1430 1461: 
+1431 1462:         let key1 = run_event_key(RunId::new(run_val), EventSeq::new(s1))
+1432 1463:             .expect("key1 must encode on the encodable range");
+1433 1464:         let key2 = run_event_key(RunId::new(run_val), EventSeq::new(s2))
+1434 1465:             .expect("key2 must encode on the encodable range");
+1435 1466: 
+1436 1467:         // First 9 bytes (prefix + run) must be identical
+1437 1468:         prop_assert_eq!(
+    ...

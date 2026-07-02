@@ -1,0 +1,5 @@
+0123dd737ddcefbec221db94c13977f6874aae2e71289a390e353a1218875bec  .beads/vb-pg2wq/formal-verification-report.md
+9d0efc72df7dbacb625d870ed6d384abdd67cb5ed74378dd4e930f3a63304c95  .beads/vb-pg2wq/verification-ledger.jsonl
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  .beads/vb-pg2wq/formal-waivers.jsonl
+3748c2de604dfe67089a2a24785f8cedc1f0a7af877e9770d1ca32da046c8bee  .beads/vb-pg2wq/black-hat-review.md
+8bd77a70bea89b5c4c11d4e0a97029747c6b7ba31d557cca8b42d5e12031855a  .beads/vb-pg2wq/defects.md

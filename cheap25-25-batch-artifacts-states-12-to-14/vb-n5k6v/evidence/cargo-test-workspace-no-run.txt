@@ -1,0 +1,5 @@
+33 |     pub(crate) fn new(parts: WorkflowSourceParts) -> Self {
+   |     ----------------------------------------------------- private associated function defined here
+
+warning: build failed, waiting for other jobs to finish...
+[full output: ~/.local/share/rtk/tee/1782960201_cargo_test.log]

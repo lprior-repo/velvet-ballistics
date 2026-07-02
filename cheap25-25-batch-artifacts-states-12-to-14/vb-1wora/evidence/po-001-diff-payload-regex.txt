@@ -1,0 +1,6 @@
+5:         .get(payload_start..payload_end)
+9:+    // `payload_end`, so any overshoot is corruption or truncation that
+11:+    if bytes.len() > payload_end {
+14:+            .checked_sub(payload_end)
+16:+        return Err(JournalError::TrailingBytes { trailing });
+18:     verify_digest_match(payload, header.payload_digest)?;

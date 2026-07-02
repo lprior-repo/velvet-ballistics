@@ -1,0 +1,5 @@
+State 2 (explore) for vb-0x1cb via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-0x1cb
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=46f1be5567017897...), delivery-scope.jsonl (sha256=f4a3e9fc16bdb2c0...)

@@ -1,0 +1,70 @@
+State 13 black-hat-reviewer transcript — vb-rz9ey — Cargo self-reference fix (P0)
+
+[2026-07-01T22:06:00Z] State 13 black-hat-reviewer started
+  - skill: black-hat-reviewer
+  - workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-rz9ey
+  - inputs: verification-ledger.jsonl (2 PASS), formal-waivers.jsonl (empty),
+            proof-test-source-alignment.{md,jsonl} (2 verified),
+            regression-diff.md, formal-verification-report.md,
+            layer-report-summary.md, contract.md, proof-obligations.planned.jsonl
+  - reviewed_artifacts_existed_before_start: true
+
+[2026-07-01T22:06:30Z] PHASE 1: Contract & Bead Parity
+  - 13/13 contract requirement rows PASS (table in black-hat-review.md)
+  - INV-1 through INV-8 all verified with command evidence
+  - Production-binding pre-check: no Verus specs to evaluate (N/A)
+  - Mirror-drift pre-check: no production_inner mirrors (N/A)
+  - Defect count: 0
+
+[2026-07-01T22:07:00Z] PHASE 2: Farley Engineering Rigor
+  - Cargo manifest is declarative; no function bodies
+  - 4-line addition; 0 function bodies; 0 parameters
+  - N/A (manifest-only patch)
+  - Defect count: 0
+
+[2026-07-01T22:07:30Z] PHASE 3: Holzman Rust (The Big 6)
+  - Rules 1-3 (simple control flow, bounded loops, bounded alloc): exit 0 cargo build
+  - Rule 4 (smallest-scope): test-util activation scoped to dev-deps; production sees nothing
+  - Rules 5-9: no Rust source change (N/A)
+  - Rule 10 (zero warnings): moon run :lint-src exit 0
+  - Defect count: 0
+
+[2026-07-01T22:08:00Z] PHASE 4: Ruthless Simplicity & DDD
+  - No Option-based state machines
+  - CUPID compliant (composable, unix-philosophy, predictable, idiomatic, domain-based)
+  - No clever abstractions; YAGNI clean
+  - Defect count: 0
+
+[2026-07-01T22:08:30Z] PHASE 5: The Bitter Truth
+  - 4-line Cargo.toml + 1-line Cargo.lock = canonical Rust fix per cargo/specifying-dependencies.html
+  - Pre-fix baseline (38 errors) eliminated
+  - Post-fix 1743 passed, 5 ignored, 38 suites
+  - Boring, correct, minimal
+  - Defect count: 0
+
+[2026-07-01T22:09:00Z] Quality gates
+  - cargo build -p vb_compile --tests: exit 0 (E0432=0, E0624=0)
+  - cargo build -p velvet-ballistics: exit 0
+  - cargo build -p velvet-ballistics-workspace-tests: exit 0 (and --tests: exit 0)
+  - cargo doc -p vb_compile --no-deps: exit 0 (WorkflowSourceParts=0)
+  - cargo test -p vb_compile: exit 0 (1743/5/38)
+  - moon run :lint-src: exit 0
+  - moon ci: exit 1 (FAIL_GLOBAL — pre-existing failures in vb_core kani_helpers.rs,
+    TimeError fmt drift, cargo-vet advisories, vb_storage admission tests;
+    none related to vb_compile manifest)
+
+[2026-07-01T22:09:30Z] Proof/Test/Source parity matrix
+  - PO-001: verified (build exit 0 + 1743/5/38)
+  - PO-002: verified (downstream builds exit 0 + doc grep=0)
+
+[2026-07-01T22:10:00Z] Holzman Rust verification
+  - All 10 Holzman rules audited; 4 applicable, 6 N/A
+  - All 4 applicable rules PASS
+
+[2026-07-01T22:10:30Z] Invariant alignment
+  - INV-1 through INV-8: all verified
+
+[2026-07-01T22:11:00Z] State 13 final disposition: STATUS: APPROVED
+  - 0 defects across 5 phases
+  - defects.md: empty
+  - Handoff to State 14 (evidence-packaging + truth-serum)

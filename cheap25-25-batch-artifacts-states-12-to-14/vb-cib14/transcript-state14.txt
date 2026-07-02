@@ -1,0 +1,46 @@
+vb-cib14 p14-evidence-packaging + p14b-truth-serum transcript
+
+[00:00:00] pwd -P confirmed: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cib14
+[00:00:01] jj root confirmed: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cib14
+[00:00:05] Loaded skill /home/lewis/.opencode/skill/evidence-packaging/SKILL.md
+[00:00:06] Loaded skill /home/lewis/.agents/skills/truth-serum/SKILL.md
+[00:00:10] Read assurance-bundle-template.md + evidence-audit-checklist.md
+[00:00:30] Pre-flight gates: jq parse 3 JSONL files (delivery-scope, traceability-matrix, verification-ledger); no merge conflicts
+[00:01:00] STATUS lines verified: 5 STATUS: APPROVED across 4 review artifacts
+[00:01:30] bash scripts/check-panic-surface.sh — NoViolationFound, ExitCode 0
+[00:02:00] bash scripts/check-hot-cold-forbidden-apis.sh — violations=0, justified=0
+[00:02:30] bash scripts/check-verus-production-binding.sh — 0 VACUUM, 72 WEAK, 0 STRONG
+[00:03:00] rg production assert!/unreachable!/assert_eq! on mapper site — empty
+[00:03:30] rg unwrap/expect/panic!/todo!/unimplemented!/dbg! on mapper site — empty
+[00:04:00] rg '#[verifier::external_body]|assume(|axiom' on spec file — empty (no verification laundering)
+[00:04:30] rg WorkflowParts/RunFrame in vb-cib14 surface — empty (no hardcoded Kani shapes)
+[00:05:00] cargo +nightly test -p vb_runtime --lib --features vb-cib14 storage_event — 6/6 PASS
+[00:05:30] cargo +nightly test -p vb_runtime --lib --features vb-cib14 runtime_journal_event_resumed — 1/1 PASS
+[00:06:00] cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_test_runtime_resume_replay --features vb-cib14 — 3/3 PASS
+[00:06:30] verus verification/verus/vb_cib14_resume_storage_map.rs — 27 verified, 0 errors
+[00:07:00] RUSTFLAGS="--cfg loom" cargo test -p vb_runtime --features vb-cib14 --lib models::loom::vb_cib14_resume_replay — 2/2 PASS
+[00:07:30] cargo check -p vb_runtime --features vb-cib14 — exit 0 (compile-clean)
+[00:08:00] Evidence files inventory: 13 state12-* evidence files + machine-gate-state14.log; all exist, non-empty, with raw command output
+[00:08:30] SHA-256 integrity check: all 6 primary artifacts match the values cited in formal-verification-report.md and black-hat-review.md
+[00:09:00] Wrote .beads/vb-cib14/machine-gate-report.md (PASS for vb-cib14 blast radius; pre-existing global failures recorded honestly)
+[00:09:15] Wrote .beads/vb-cib14/regression-diff.md (3 production files + tests + config; STRONG-coupling to vb-edvbj documented)
+[00:09:30] Wrote .beads/vb-cib14/assurance-bundle.md (full requirement coverage + proof/test/review evidence + findings disposition + waivers + truth-serum reference)
+[00:09:45] Wrote .beads/vb-cib14/truth-serum-report.md (audit mode; ran in active execution context; PASSED with 0 critical/high/medium; 1 informational)
+[00:10:00] Wrote .beads/vb-cib14/final-evidence-decision.md (STATUS: APPROVED)
+[00:10:30] Appended State 14 (evidence-packaging) row to agent-invocation-ledger.jsonl (sequence=11)
+[00:10:45] Appended State 14b (truth-serum) row to agent-invocation-ledger.jsonl (sequence=12)
+[00:11:00] Verified ledger chain integrity: 12 rows, all hashes match
+[00:11:15] Final state: 7/7 obligations PASS; 0 VACUUM; 0 runtime panic surface; black-hat review APPROVED with STRONG-coupling to vb-edvbj; truth-serum PASSED in active context; assurance bundle complete
+
+STATUS: APPROVED for landing with vb-edvbj coupling.
+
+Outputs:
+- .beads/vb-cib14/formal-verification-report.md (State 12)
+- .beads/vb-cib14/verification-ledger.jsonl (State 12; 7 rows, all PASS, hash chain validated)
+- .beads/vb-cib14/black-hat-review.md (State 13)
+- .beads/vb-cib14/assurance-bundle.md (State 14)
+- .beads/vb-cib14/truth-serum-report.md (State 14)
+- .beads/vb-cib14/final-evidence-decision.md (State 14)
+- .beads/vb-cib14/machine-gate-report.md (State 14)
+- .beads/vb-cib14/regression-diff.md (State 14)
+- .beads/vb-cib14/agent-invocation-ledger.jsonl (12 rows; hash chain validated)

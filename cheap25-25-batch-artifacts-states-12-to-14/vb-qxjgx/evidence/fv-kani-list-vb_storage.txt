@@ -1,0 +1,12 @@
+[kani-list] package=vb_storage dir=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage output=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.evidence/kani-list/vb_storage.json
+Kani Rust Verifier 0.67.0 (cargo plugin)
+error: this file contains an unclosed delimiter
+  --> crates/vb_core/src/frame/parts/kani_helpers.rs:22:7
+   |
+ 1 | mod frame_kani_harnesses {
+   |                          - unclosed delimiter
+...
+22 |     }
+   |      ^
+
+error: Failed to execute cargo (exit status: 101). Found 1 compilation errors.

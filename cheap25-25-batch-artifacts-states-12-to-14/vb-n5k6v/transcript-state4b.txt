@@ -1,0 +1,23 @@
+State 4b (proof-plan-reviewer, re-review) for vb-n5k6v via proof-plan-reviewer subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v
+invocation_id=cheap25-vb-n5k6v-p4b2-proof-plan-reviewer
+parent_invocation_id=cheap25-vb-n5k6v-p4-proof-planner
+prior_reviewer_invocation_id=cheap25-vb-n5k6v-p4b-proof-plan-reviewer
+prior_disposition=STATUS: REJECTED (1 blocker F-001; E_LANE_OBLIGATION_MISMATCH)
+started_at=2026-07-01T16:11:00Z
+completed_at=2026-07-01T16:14:00Z
+repair_applied:
+  - proof-obligations.planned.jsonl#PO-WIRE-DELTA-005: expected_evidence 950 passed -> 1556 passed; pre-wire 924 -> 1530; historic_2026_05_baseline flag added
+  - contract.md CC-WIRE-005: 924 -> 1530 pre-wire; 950 -> 1556 post-wire
+  - proof-strategy.md §6: 950 -> 1556; 924 -> 1530
+  - proof-coverage-matrix.md §1 + §8: (924 -> 950) -> (1530 -> 1556); current 1530 row added; 924 rows flagged as historic_2026_05_baseline
+  - trusted-base-plan.md §1/§5/§6/§12/§13/§15: 924 -> 1530, 950 -> 1556; historic captures flagged
+validation:
+  - PROPTEST_CASES=1 cargo test -p vb_storage --lib -> 1530 passed (verified baseline)
+  - jq -s 'length' proof-obligations.planned.jsonl -> 3
+  - jq 'select(.id == "PO-WIRE-DELTA-005") | .expected_evidence | test("1556")' -> true
+  - jq 'select(.id == "PO-WIRE-DELTA-005") | .expected_evidence | test("950 passed")' -> false
+  - jq -s 'length' verifier-lane-review.jsonl -> 105 (all accepted)
+  - rtk rg '\b924\b|\b950\b' plan artifacts -> 11 hits, all inside historic_2026_05_baseline-flagged notes
+outputs: proof-plan-review.md (sha256=cd7205d2c63b85786...), verifier-lane-review.jsonl (sha256=ebf5a1a0318e3b53...), proof-plan-findings.jsonl (sha256=6d4c0a5f992dbf02...)
+disposition: STATUS: APPROVED

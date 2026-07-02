@@ -1,0 +1,26 @@
+=== vb-t0iw9 evidence/claim-result.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+--- bd update vb-t0iw9 --claim (from main coord checkout; this is permitted by AGENTS.md)
+
+✓ Updated issue: vb-t0iw9 — Automation: repair femdation replacement_seq schema error
+exit_code=0
+
+--- bd show vb-t0iw9 | head -5 (verify claim and reopen took effect)
+
+◐ vb-t0iw9 [BUG] · Automation: repair femdation replacement_seq schema error   [● P1 · IN_PROGRESS]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-06-30 · Started: 2026-07-01 · Updated: 2026-07-02
+
+DESCRIPTION
+
+--- Final state via JSON
+
+{
+  "id": "vb-t0iw9",
+  "status": "in_progress",
+  "priority": 1,
+  "assignee": "Lewis"
+}
+
+--- Confirm bead is OPEN, in_progress has not been reset by the claim, priority=1

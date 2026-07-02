@@ -1,0 +1,20 @@
+================================================================
+  Verus production-binding audit (ABSOLUTE — no exceptions)
+================================================================
+  STRONG (direct crates/ binding): 0
+  WEAK (production_inner/ mirror): 73
+  VACUUM (no production binding):  2
+
+  VACUUM files — GOD RULE 2 VIOLATION:
+    - verification/verus/vb_edvbj_propagation.rs
+    - verification/verus/vb_edvbj_symbolic_code.rs
+
+  Every VACUUM file MUST be fixed. NO EXCEPTIONS.
+  Options:
+    1. Bind via #[path = ".../crates/.../src/...rs"] + assume_specification
+    2. Bind via #[path = "production_inner/...rs"] + assume_specification
+    3. DELETE the file
+
+  There is no fourth option. There is no override. There is no allowlist.
+  Hand-written shadow types are NOT proof. They prove nothing.
+  If your spec cannot bind to production, delete it.

@@ -1,0 +1,98 @@
+--- /proc/self/fd/11	2026-07-01 20:44:27.429710056 -0500
++++ crates/vb_storage/src/queue/writer.rs	2026-07-01 20:19:13.908657251 -0500
+@@ -33,6 +33,10 @@
+     state: Mutex<JournalWriterQueueState>,
+     capacity: usize,
+     batch_size: usize,
++    /// Maximum encoded-record bytes accepted in a single
++    /// [`Self::flush_batch`] call. Sourced from
++    /// [`StorageLimits::max_journal_batch_bytes`] at construction.
++    byte_budget: u64,
+ }
+ 
+ impl JournalWriterQueue {
+@@ -48,10 +52,19 @@
+     }
+ 
+     /// Creates a bounded writer queue from validated domain contracts.
++    ///
++    /// The supplied [`StorageLimits`] is now enforced: the configured
++    /// `max_journal_batch_bytes` is captured into [`Self::byte_budget`]
++    /// and applied to every [`Self::flush_batch`] call. The default
++    /// `StorageLimits::DEFAULT.max_journal_batch_bytes` equals
++    /// `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT + 60` (1_048_636 bytes), so a
++    /// single max-size event fits while larger groups are rejected with
++    /// `JournalError::JournalBatchBytesExceeded` before any durable
++    /// commit.
+     pub fn with_contracts(
+         capacity: JournalQueueCapacity,
+         batch_size: JournalBatchSize,
+-        _limits: StorageLimits,
++        limits: StorageLimits,
+     ) -> Result<Self, JournalError> {
+         Ok(Self {
+             state: Mutex::new(JournalWriterQueueState {
+@@ -60,9 +73,16 @@
+             }),
+             capacity: capacity.get(),
+             batch_size: batch_size.get(),
++            byte_budget: limits.max_journal_batch_bytes,
+         })
+     }
+ 
++    /// Returns the configured per-flush encoded-byte budget.
++    #[must_use]
++    pub const fn byte_budget(&self) -> u64 {
++        self.byte_budget
++    }
++
+     /// Enqueues an event for journaled append.
+     pub fn enqueue_journaled(&self, event: JournalEvent) -> Result<(), JournalError> {
+         self.enqueue(event, DurabilityProfile::Journaled)
+@@ -149,6 +169,16 @@
+     /// queued bytes are compared to the existing value, and the event is
+     /// skipped on match (so retries after a partial flush succeed) or
+     /// surface `DuplicateEvent` on mismatch.
++    ///
++    /// Byte-budget gate: the encoded length of each staged event is
++    /// accumulated into a stack-local `u64` via `checked_add` against
++    /// [`Self::byte_budget`]. A successful insert increments the
++    /// accumulator; idempotent retries (no insert) leave it unchanged.
++    /// When the next would-be insert pushes the accumulator above the
++    /// budget, the gate returns
++    /// [`JournalError::JournalBatchBytesExceeded`] *before* any
++    /// `owned_batch.commit()` call, so the OwnedWriteBatch is dropped
++    /// without persisting a partial prefix.
+     pub fn flush_batch(
+         &self,
+         journal: &FjallJournal,
+@@ -191,14 +221,28 @@
+         // flush and dropped on return; cross-flush duplicates are
+         // caught by the durable-store idempotency check inside
+         // `stage_queued_event`.
++        //
++        // `accumulated_bytes` is the per-flush byte-budget accumulator.
++        // It is a stack-local `u64` reset at every `flush_batch` entry
++        // (per W-HN4SC-5: never a field on the queue). It only
++        // increments when a successful `insert` happens — idempotent
++        // retries and rejected events leave it unchanged.
+         let mut owned_batch = journal.database.batch();
+         let mut staged_keys = std::collections::HashSet::new();
++        let mut accumulated_bytes: u64 = 0;
+         let mut written = 0usize;
+         while written < batch_len {
+             let Some(item) = state.pending.get(written) else {
+                 break;
+             };
+-            stage_queued_event(&mut owned_batch, journal, &item.event, &mut staged_keys)?;
++            stage_queued_event(
++                &mut owned_batch,
++                journal,
++                &item.event,
++                &mut staged_keys,
++                &mut accumulated_bytes,
++                self.byte_budget,
++            )?;
+             written = written.saturating_add(1);
+         }
+ 

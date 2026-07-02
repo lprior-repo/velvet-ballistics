@@ -1,0 +1,4 @@
+State 1 init for vb-5bqmr via femdation controller.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr
+started_at=2026-07-01T15:21:36Z
+pre_flight: workspace outside source checkout; canonical go-skill files loaded; loaded_skill_version=10.1.0; observed_state_range=1..16

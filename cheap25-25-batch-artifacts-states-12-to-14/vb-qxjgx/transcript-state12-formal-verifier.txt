@@ -1,0 +1,83 @@
+State 12 (formal-verifier) — vb-qxjgx: execute proof obligations PO-QXJGX-001..007
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx
+JJ change: ttulypyvxtty
+Commit: 376c7ccc
+Started: 2026-07-01T20:00:00Z
+Completed: 2026-07-01T20:30:00Z
+
+Inputs read:
+- /home/lewis/.opencode/skill/formal-verifier/SKILL.md
+- /home/lewis/.opencode/skill/formal-verifier/references/execution-ledger-guide.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-writer-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-to-rust-map.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-to-rust-review.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-obligations.planned.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/rust-refinement-obligations.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/trusted-base-ledger.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/verifier-lane-decisions.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/implementation.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/transcript-state11-holzman-rust.txt
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/records.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/events.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/validation.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/kind_parity.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/mod.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/durability_matrix.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/constants.rs
+
+Commands executed:
+- cargo test -p vb_storage --tests → 1678 passed (17 suites, 13.13s)
+- cargo test -p vb_runtime --tests → 2348 passed, 1 ignored (35 suites, 3.34s)
+- cargo test -p vb_storage --tests -- <6 back-compat tests> → 6 passed, 1672 filtered out
+- PROPTEST_CASES=10000 cargo test --test proptest_durability_matrix_step_succeeded --release -p vb_runtime → 5 passed
+- PROPTEST_CASES=10000 cargo test --test proptest_replay_summary_step_succeeded_split --release -p vb_storage → 4 passed
+- KANI_FEATURES=kani-vb-qxjgx-record-kind-split bash scripts/kani-list.sh vb_storage → BLOCKED_TOOLING (TBR-001)
+- cargo check -p vb_storage --all-targets → PASS
+- cargo check -p vb_runtime --all-targets → PASS
+- cargo clippy -p vb_storage --lib → No issues found
+- cargo clippy -p vb_runtime --lib → No issues found
+- cargo fmt --check -p vb_storage → clean
+
+Raw command evidence files:
+- .beads/vb-qxjgx/evidence/fv-cargo-test-vb_storage.txt
+- .beads/vb-qxjgx/evidence/fv-cargo-test-vb_runtime.txt
+- .beads/vb-qxjgx/evidence/fv-backcompat-6-tests.txt
+- .beads/vb-qxjgx/evidence/fv-proptest-durability.txt
+- .beads/vb-qxjgx/evidence/fv-proptest-replay-split.txt
+- .beads/vb-qxjgx/evidence/fv-kani-list-vb_storage.txt
+- .beads/vb-qxjgx/evidence/mg-cargo-fmt.txt
+- .beads/vb-qxjgx/evidence/mg-cargo-test-vb_storage-lib.txt
+- .beads/vb-qxjgx/evidence/mg-cargo-test-vb_runtime-lib.txt
+- .beads/vb-qxjgx/evidence/mg-proptest-durability.txt
+
+Verdict: 7/7 obligations dispositioned (2 PASS + 5 BLOCKED_TOOLING compensated)
+- PO-QXJGX-001 kani: BLOCKED_TOOLING (TBR-001; compensated by back-compat test #1)
+- PO-QXJGX-002 kani: BLOCKED_TOOLING (TBR-001; compensated by back-compat tests #1, #3)
+- PO-QXJGX-003 kani: BLOCKED_TOOLING (TBR-001; compensated by proptest PO-QXJGX-007-H4)
+- PO-QXJGX-004 kani: BLOCKED_TOOLING (TBR-001; compensated by back-compat tests #4, #6)
+- PO-QXJGX-005 kani: BLOCKED_TOOLING (TBR-001; compensated by back-compat test #5)
+- PO-QXJGX-006 proptest: PASS (4/4 at 10000 cases)
+- PO-QXJGX-007 proptest: PASS (5/5 at 10000 cases)
+
+CURRENT_SCHEMA_VERSION: 1 (preserved, UNCHANGED — back-compat is legacy envelope-12 tolerance, NOT a schema bump)
+Back-compat legacy envelope-12 tolerance: VERIFIED (test #4 legacy_envelope_id_12_with_step_succeeded_payload_is_accepted PASSES)
+
+Trusted-base ledger reconciliation:
+- TBR-001: BLOCKED_TOOLING accepted (pre-existing kani_helpers.rs; compensation: cargo test + proptest + back-compat)
+- TBR-002: resolved (state 11 implementation; 4 E0599 sites cleared)
+- TBR-003: accepted (kani::assume pre-conditions mirror JournalEvent::is_valid())
+- TBR-004: verified (CURRENT_SCHEMA_VERSION = 1 unchanged; proptest H2 asserts)
+- TBR-005: accepted (deviation: validate_schema_version via public surface)
+- TBR-006: accepted (deviation: proptest path)
+- TBR-007: accepted (extern_spec: closed-set golden array)
+- TBR-008: accepted (model: synthesized envelope-12)
+- TBR-009: verified (non_vacuity: invalid_input token present in both proptest files)
+- TBR-010: resolved (pre-fix check_unknown_kind_rejected DELETED in state 11)
+
+Outputs:
+- .beads/vb-qxjgx/formal-verification-report.md
+- .beads/vb-qxjgx/verification-ledger.jsonl (7 rows)
+- .beads/vb-qxjgx/evidence/ (10 evidence files)
+
+Status: COMPLETED

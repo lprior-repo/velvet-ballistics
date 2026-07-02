@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)
+
+running 12 tests
+test recovery::recovery_unit_tests::tests::summarize_recovery_events_with_run_cancelled ... ok
+test recovery::recovery_unit_tests::tests::summarize_recovery_events_with_run_finished ... ok
+test recovery::recovery_unit_tests::tests::summarize_recovery_events_counts_all_event_types ... ok
+test recovery::recovery_unit_tests::tests::summarize_recovery_events_with_run_failed ... ok
+test recovery::replay::summary::tests::summarize_recovery_events_empty_returns_exact_no_recovery_data ... ok
+test recovery::tests::summarize_recovery_events_rejects_action_completed_envelope_without_schedule ... ok
+test recovery::tests::summarize_recovery_events_rejects_divergent_action_scheduled_ticket ... ok
+test recovery::tests::summarize_recovery_events_rejects_multi_run_divergence ... ok
+test recovery::tests::summarize_recovery_events_counts_duplicate_action_completed_envelope_once ... ok
+test recovery::tests::summarize_recovery_events_returns_summary_hydration ... ok
+test recovery::tests::summarize_recovery_events_rejects_completion_output_mismatch_with_schedule ... ok
+test recovery::tests::summarize_recovery_events_counts_duplicate_action_scheduled_ticket_once ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 1518 filtered out; finished in 0.00s
+

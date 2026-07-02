@@ -1,0 +1,54 @@
+proof-plan-reviewer state4 transcript — vb-5bqmr
+==============================================
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr
+Host session: femdation-cheap25-batch
+Reviewer invocation: proof-plan-reviewer-vb-5bqmr-state4-attempt1
+Reviewer skill: proof-plan-reviewer
+State: 4 (reviewing proof-planner artifacts at state 4)
+Reviewed artifacts:
+  - .beads/vb-5bqmr/proof-strategy.md
+  - .beads/vb-5bqmr/verifier-lane-decisions.jsonl (7 rows)
+  - .beads/vb-5bqmr/proof-obligations.planned.jsonl (7 rows)
+  - .beads/vb-5bqmr/trusted-base-plan.md
+  - .beads/vb-5bqmr/waiver-candidates.jsonl (1 row)
+  - .beads/vb-5bqmr/contract.md
+
+Steps:
+1. Verified workdir: `pwd -P` and `jj root` both resolve to the isolated workspace;
+   `/home/lewis/src/velvet-ballistics` (coord checkout) not modified.
+2. Read contract.md (C-DEC-001..004, C-CON-001..004, C-ERR-001..003,
+   C-REC-001..004, C-RUN-001..004, C-ENC-001..002, C-NEG-001..006, C-FOR-001..003).
+3. Validated slot_extra.rs decoder at lines 60-69 (current buggy body); confirmed
+   the contract's description matches the source.
+4. Validated recovery_bdd_tests.rs lines 3158-3211 (legacy BDD scenario) and
+   recovery_unit_tests.rs line 1149-1172 (_exhaustive_match test for RecoveryError).
+5. Validated call-graph blast radius: hydrate.rs:220-235, collect.rs:248-275,
+   errors.rs CollectExtraHydrationFailureKind.
+6. Parsed verifier-lane-decisions.jsonl (7 rows); confirmed all 7 have
+   applicability=required, status=planned, owner_state=4; matched each
+   required_obligation_ids to the corresponding proof-obligation row.
+7. Parsed proof-obligations.planned.jsonl (7 rows); confirmed schema fields,
+   Verus obligation PO-VERUS-001 carries production_binding STRONG with all
+   required subfields, and references drift_gate_script
+   scripts/check-verus-production-binding.sh (which exists).
+8. Validated waiver-candidates.jsonl: 1 row, behavior_affecting=false, fuzz
+   gap tracked separately under vb-1rqz7.15.
+9. Cross-checked trusted-base-plan.md against TB-* ids cited in
+   trusted_base_refs of obligations: TB-KANI-001-cover-reachability,
+   TB-KANI-002-alloc-counter, TB-KANI-002-cover-reachability,
+   TB-PROP-003-tracing-capture, TB-PROP-003-compile-time-exhaustiveness — all
+   behavior_affecting=false (instrumentation/compile-time only).
+10. Wrote 7 verifier-lane-review/v1 rows, one per planner lane decision, with
+    distinct planner_invocation_id and reviewer_invocation_id. All accepted.
+11. Wrote 4 finding/v1 rows: 3 low-severity command/path defects
+    (PO-FLUX-001.command, PO-PROP-003.command, PO-VERUS-001.production_lines
+    format) and 1 informational missing-planner-ledger-row. All disposition
+    owner_approved_no_action; no blockers.
+12. Computed hashes for output artifacts and built ledger row 3.
+13. Appended row 3 to .beads/vb-5bqmr/agent-invocation-ledger.jsonl; verified
+    hash chain (row 2 previous → row 3 previous; row 3 entry_hash self-consistent
+    after removing entry_hash from canonical form).
+
+Final disposition: APPROVED (7/7 lane decisions accepted; 4 owner_approved_no_action
+findings; user constraints preserved).

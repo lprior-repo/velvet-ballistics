@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)
+
+running 6 tests
+test recovery::recovery_unit_tests::tests::recover_runtime_frame_seed_from_events_empty_returns_error ... ok
+test recovery::recovery_unit_tests::tests::recover_runtime_frame_seed_from_events_no_steps ... ok
+test recovery::recovery_unit_tests::tests::recover_runtime_frame_seed_from_events_with_asking_step ... ok
+test recovery::recovery_unit_tests::tests::recover_runtime_frame_seed_from_events_with_waiting_step ... ok
+test recovery::recovery_unit_tests::tests::recover_runtime_frame_seed_from_events_reconstructs_pc ... ok
+test recovery::tests::recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1524 filtered out; finished in 0.00s
+

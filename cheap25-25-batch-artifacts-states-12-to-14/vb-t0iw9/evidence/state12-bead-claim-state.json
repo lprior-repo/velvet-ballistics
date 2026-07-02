@@ -1,0 +1,19 @@
+[
+  {
+    "id": "vb-t0iw9",
+    "title": "Automation: repair femdation replacement_seq schema error",
+    "description": "Femdation first-wave dispatch failed immediately with: no such column: replacement_seq. This blocks broad go-skill/femdation execution for the newly-created durability/recovery backlog. Reproduce from /home/lewis/src/velvet-ballistics by dispatching femdation on ready P0 beads after bd status is healthy. Expected: femdation should read bead state and start State 1/2 lifecycle. Actual: subagent returns only schema error. Investigate bd schema/migration assumptions in the femdation agent environment and repair before running broad implementation waves.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "bug",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-06-30T10:50:07Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-07-02T01:24:22Z",
+    "started_at": "2026-07-01T15:18:58Z",
+    "dependent_count": 1,
+    "dependency_count": 0,
+    "comment_count": 0
+  }
+]

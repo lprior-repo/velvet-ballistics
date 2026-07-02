@@ -1,0 +1,30 @@
+# Hazard Analysis: vb-t0iw9
+
+| ID | Hazard | Impact | Contract Control |
+|---|---|---|---|
+| HAZ-001 | `replacement_seq` literal is a placeholder for a renamed column (`dependencies.depends_on_id` is now STORED-generated in `bd v1.0.5` per migrations 0041-0042). | Misclassification leads to speculative `ALTER TABLE … ADD COLUMN` repair and breaks the migration chain. | `SchemaErrorClass::parse` plus `GenerationColumnDrift` variant plus `AddSchemaMigrationStatementInvalid` error force a `ShowCreateTable` evidence check before any migration is staged. |
+| HAZ-002 | Femdation dispatch sandbox pins an older `bd` binary (mise shim, shell alias, per-bead export) that references a column the live `bd v1.0.5` no longer uses. | Dispatcher returns the legacy column name while the live schema is current; surface error is misleading. | `ProbeDispatchSandbox` + `CaptureBdVersion` capture the actual `BdBinaryPath` and `BdVersion`; `ReproductionTrace` re-runs from the captured binary, not from the host `PATH`. |
+| HAZ-003 | `dolt.server-port: 43643` pin in `.beads/config.yaml` conflicts with live server on `45645`. | bd may try to connect to a port that has no listener; `StalePortPin` is the likely surface error. | `StalePortPin` schema-error class plus `EditBeadsConfig { key: DoltServerPort, action: Unset }` decision; verify workflow re-runs `bd dolt status` and `bash scripts/check-beads-server-mode.sh`. |
+| HAZ-004 | `dolt_mode` flips to `embedded` either by accidental edit or by a sandbox that boots a stale `metadata.json`. | Hard AGENTS.md and `check-beads-server-mode.sh` violation; entire fleet breaks. | `MetadataServerModeViolation` error plus `BeadsMetadata::load` parser reject; `check-beads-server-mode.sh` is the hard gate before any repair decision. |
+| HAZ-005 | `.beads/dolt/` or `.beads/backup/` accidentally added to git. | Repo bloat and AGENTS.md policy violation. | `VerifyDoltRegression` check plus `git status --porcelain .beads/dolt .beads/backup` before verify completion. |
+| HAZ-006 | `dolt_server_port` added to `metadata.json` (forbidden by AGENTS.md and `check-beads-server-mode.sh`). | Hard-fail on `check-beads-server-mode.sh`. | `MetadataPortPinViolation` error plus `BeadsMetadata::load` reject; verify step runs `check-beads-server-mode.sh`. |
+| HAZ-007 | 8 ignored-migration rows on `ignored_schema_migrations` (versions 1..8 applied 2026-06-24) silently mask schema drift. | `bd migrate` reports green while a real column drift is hidden. | `BeadsSchemaState` MUST persist `ignored_schema_migrations` rows; `SchemaIntrospectionIncomplete` error if missing; `IgnoredMigrationConflict` class routes to `Escalate`. |
+| HAZ-008 | `dependencies.depends_on_id` re-added as a plain column via `AddSchemaMigration`. | Breaks the STORED-generated contract from migration 0041-0042; subsequent `bd migrate` rolls back. | `AddSchemaMigrationStatementInvalid` error rejects any statement that targets `depends_on_id` outside a STORED context. |
+| HAZ-009 | `bd sql` parser is bypassed or fed a hand-rolled query that hides missing columns. | Introspection lies; repair runs blind. | `BdSqlParseError` error; `SHOW COLUMNS FROM dependencies` is required and the captured table list is hashed. |
+| HAZ-010 | Reproduction trace is rerun with a different `bd` binary than the one captured. | Reproduction is meaningless; the trace misattributes the error. | `ReproductionTrace` records `dispatch_sandbox_hash`; verify workflow re-runs `bd version` to confirm parity. |
+| HAZ-011 | `.beads/dolt-server.port` written or rewound by `bd` mid-repair. | Race against `bd` server start. | Probe and verify read `.beads/dolt-server.port` at distinct timestamps; capture timestamps are recorded. |
+| HAZ-012 | `EditBeadsConfig` accidentally edits a non-target key while applying the targeted repair. | Silent config drift; subsequent `check-beads-server-mode.sh` still passes but unrelated keys shifted. | Implementer MUST regenerate the YAML with only the targeted key changed; verify step diffs the file before/after. |
+| HAZ-013 | Repair committed to git without cleaning the dispatch-sandbox evidence. | `.beads/vb-t0iw9/dispatch/` and `*.log` land in the commit. | `.gitignore` already covers `*.log` patterns; verify step checks `git status --porcelain .beads/vb-t0iw9` for unexpected paths. |
+| HAZ-014 | Decision slips from `Escalate` to `DocumentExpectedUserAction` without operator approval. | Unauthorized scope expansion. | `RepairDecision::DocumentExpectedUserAction` is the default only for `GenerationColumnDrift`; all other classes require explicit `Escalate` first. |
+| HAZ-015 | `bd supersede … --with …` smoke uses a real bead whose replacement semantics differ from the failing flow. | False verification green. | Smoke is constrained to `bd supersede vb-qryp7 --with vb-t0iw9` because both IDs are present in the live `issues` table; verify step confirms the captured exit code and stdout. |
+
+## Residual illegal-state risks
+
+- Until State 4 captures the actual failing SQL and `BdBinaryVersion`, the literal `replacement_seq` remains representable. The contract forces `Unclassified` → `Escalate` in that case.
+- Until the operator chooses between `EditBeadsConfig { key: DoltServerPort, action: Unset }` and `PinDispatchBinary`, the StalePortPin class has two legal decisions and the implementer must pick via the State 4 evidence.
+- Until `bd info --whats-new` is captured verbatim, migration 0041-0042's STORED-generation contract cannot be re-verified; the contract seeds flag this as a required evidence gate.
+
+## Out-of-scope hazards (acknowledged, not mitigated)
+
+- The 41 scripts under `scripts/` were enumerated; none reference `femdation` or `replacement_seq`. The hazard that the failing flow is implemented as a repo script is therefore zero.
+- The femdation skill lives at `~/.agents/skills/femdation/SKILL.md`; that file is not under this contract's read boundary and any change to it is out of scope for this bead.

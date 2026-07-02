@@ -1,0 +1,29 @@
+--- /tmp/codes-rktonwky.rs	2026-07-01 22:00:07.086254069 -0500
++++ crates/vb_storage/src/error/codes.rs	2026-07-01 19:27:39.645877817 -0500
+@@ -79,6 +79,10 @@
+     /// Diagnostic code for replay envelope/payload sequence mismatch
+     /// (`JournalError::ReplayEnvelopeSequenceMismatch`).
+     pub const REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4041);
++    /// Diagnostic code for trailing bytes after declared record payload
++    /// (`JournalError::TrailingBytes`). Returned by `decode_record_payload`
++    /// when the input slice extends past `RECORD_HEADER_BYTES + payload_len`.
++    pub const TRAILING_BYTES_CODE: DiagnosticCode = DiagnosticCode::new(0x4042);
+ 
+     /// Diagnostic code for invalid configuration supplied to journal open.
+     pub const INVALID_CONFIG_CODE: DiagnosticCode = DiagnosticCode::new(0x4033);
+@@ -125,6 +129,7 @@
+             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
+             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
+             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
++            Self::TrailingBytes { .. } => Self::TRAILING_BYTES_CODE,
+             Self::PostcardDecodeFailed(_) => Self::POSTCARD_DECODE_FAILED_CODE,
+             Self::PostcardEncodeFailed(_) => Self::POSTCARD_ENCODE_FAILED_CODE,
+             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
+@@ -216,6 +221,7 @@
+             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
+             Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
+             Self::UnexpectedEof => "UNEXPECTED_EOF",
++            Self::TrailingBytes { .. } => "JOURNAL_TRAILING_BYTES",
+             Self::PostcardDecodeFailed(_) => "POSTCARD_DECODE_FAILED",
+             Self::PostcardEncodeFailed(_) => "ARTIFACT_POSTCARD_ENCODE_FAILED",
+             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",

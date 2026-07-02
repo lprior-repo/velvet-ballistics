@@ -1,0 +1,62 @@
+=== vb-t0iw9 evidence/repro.txt ===
+captured_at: 2026-07-01T20:25:00Z (workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9)
+
+--- Step 1: confirm the bd binary version and the failing query.
+
+$ bd version
+bd version 1.0.5 (dev)
+
+Warning: multiple 'bd' binaries found in PATH:
+  /home/lewis/.local/share/mise/installs/go-github-com-steveyegge-beads-cmd-bd/1.0.5/bin/bd
+  /home/lewis/.local/share/mise/shims/bd
+The first one is being used. Remove duplicates to avoid confusion.
+
+$ which bd && sha256sum "/home/lewis/.local/share/mise/installs/go-github-com-steveyegge-beads-cmd-bd/1.0.5/bin/bd"
+/home/lewis/.local/share/mise/installs/go-github-com-steveyegge-beads-cmd-bd/1.0.5/bin/bd
+01553f0afa1b3d4b26909a785c600d60a650617c6a977a4c49fe68c8c140d723  /home/lewis/.local/share/mise/installs/go-github-com-steveyegge-beads-cmd-bd/1.0.5/bin/bd
+
+$ bd sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+
+--- Step 2: confirm the v49 schema is the highest applied migration.
+
+$ bd sql -q "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 5;"
+version
+-------
+49     
+48     
+47     
+46     
+45     
+(5 rows)
+
+--- Step 3: confirm 'Registered Migrations: 0' from the bd binary itself.
+
+$ bd migrate --inspect
+
+Migration Inspection
+====================
+Schema Version: 1.0.5
+Issue Count: 2661
+Registered Migrations: 0
+
+
+--- Step 4: confirm 'replacement_seq' string is NOT in the bd binary.
+
+$ strings /home/lewis/.local/share/mise/installs/go-github-com-steveyegge-beads-cmd-bd/1.0.5/bin/bd | grep -c replacement_seq
+0
+(0 == column is referenced as a runtime-composed identifier, not a string literal)
+
+--- Step 5: confirm --ignore-schema-skew bypasses the bd-level guard.
+
+$ bd --ignore-schema-skew show vb-t0iw9 --json | head -3
+[
+  {
+    "id": "vb-t0iw9",
+(proves: with the guard bypassed, basic operations on vb-t0iw9 work)
+
+--- Step 6: confirm raw SQL still fails (column genuinely absent).
+
+$ bd --ignore-schema-skew sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+(proves: --ignore-schema-skew only bypasses the BD-level guard, not the actual Dolt column-missing error)

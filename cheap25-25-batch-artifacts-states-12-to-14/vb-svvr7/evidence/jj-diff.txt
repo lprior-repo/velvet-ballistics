@@ -1,0 +1,82 @@
+Modified regular file crates/vb_cli/src/cli_postcard/error.rs:
+    ...
+  27   27:     JsonPayloadDecodeFailed,
+  28   28:     /// Data too short to contain valid header.
+  29   29:     DecodeFailed,
+       30:     /// Input buffer contains a valid frame followed by one or more trailing bytes.
+       31:     TrailingBytes,
+  30   32: }
+  31   33: 
+  32   34: impl std::fmt::Display for PostcardError {
+    ...
+  43   45:             Self::PayloadMetadataMismatch => write!(f, "postcard payload metadata mismatch"),
+  44   46:             Self::JsonPayloadDecodeFailed => write!(f, "postcard JSON payload decode failed"),
+  45   47:             Self::DecodeFailed => write!(f, "postcard decode failed: data too short"),
+       48:             Self::TrailingBytes => {
+       49:                 write!(
+       50:                     f,
+       51:                     "postcard decode failed: trailing bytes after valid frame"
+       52:                 )
+       53:             }
+  46   54:         }
+  47   55:     }
+  48   56: }
+    ...
+Modified regular file crates/vb_cli/src/cli_postcard/tests.rs:
+    ...
+ 176  176:     assert_eq!(decode_postcard(truncated), Err(PostcardError::DecodeFailed));
+ 177  177: }
+ 178  178: 
+      179: #[test]
+      180: fn decode_rejects_trailing_bytes_after_valid_frame() {
+      181:     let mut encoded = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload");
+      182:     encoded.push(0xAA);
+      183:     assert_eq!(decode_postcard(&encoded), Err(PostcardError::TrailingBytes));
+      184: }
+      185: 
+      186: #[test]
+      187: fn decode_accepts_exact_length_frame() {
+      188:     let encoded = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload");
+      189:     let (header, payload) = decode_postcard(&encoded).expect("exact-length frame decodes");
+      190:     assert_eq!(header.len(), HEADER_SIZE);
+      191:     assert_eq!(payload, b"payload");
+      192: }
+      193: 
+      194: #[test]
+      195: fn decode_postcard_json_propagates_trailing_bytes() {
+      196:     let mut encoded = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload");
+      197:     encoded.extend_from_slice(&[0u8; 8]);
+      198:     assert_eq!(
+      199:         decode_postcard_json(&encoded),
+      200:         Err(PostcardError::TrailingBytes)
+      201:     );
+      202: }
+      203: 
+      204: #[test]
+      205: fn postcard_error_trailing_bytes_is_unit_variant_and_distinct() {
+      206:     let trailing = PostcardError::TrailingBytes;
+      207:     let failed = PostcardError::DecodeFailed;
+      208:     assert_ne!(trailing, failed);
+      209:     assert_eq!(trailing, PostcardError::TrailingBytes);
+      210:     let display = format!("{trailing}");
+      211:     assert!(!display.is_empty());
+      212:     assert!(display.contains("trailing"));
+      213:     assert_ne!(display, format!("{failed}"));
+      214: }
+      215: 
+ 179  216: fn encode_test_postcard(schema_version: u16, kind: u16, payload: &[u8]) -> Vec<u8> {
+ 180  217:     encode_postcard(schema_version, kind, payload).expect("test postcard encodes")
+ 181  218: }
+    ...
+Modified regular file crates/vb_cli/src/cli_postcard/validation.rs:
+    ...
+  87   87:     if data.len() < payload_end {
+  88   88:         return Err(PostcardError::DecodeFailed);
+  89   89:     }
+       90:     if data.len() > payload_end {
+       91:         return Err(PostcardError::TrailingBytes);
+       92:     }
+  90   93: 
+  91   94:     let header_bytes = data
+  92   95:         .get(0..HEADER_SIZE)
+    ...

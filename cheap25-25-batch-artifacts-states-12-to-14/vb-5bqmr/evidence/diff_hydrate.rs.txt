@@ -1,0 +1,32 @@
+Modified regular file crates/vb_storage/src/recovery/replay/summary/hydrate.rs:
+    ...
+  15   15: use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, StepIdx, Taint};
+  16   16: 
+  17   17: use crate::recovery::types::{RecoveredSlotEntry, RecoveryError, RecoveryResult};
+  18   18: use crate::slot_extra::{DecodedSlotWrittenExtra, SlotWrittenExtraError};
+  19   19: 
+  20   20: use super::accumulator::FrameSeedAccumulator;
+  21   21: 
+    ...
+ 230  230:         Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_)) => {
+ 231  231:             Ok(legacy_frame_extra_recovered_slot_taint(value))
+ 232  232:         }
+      233:         Err(SlotWrittenExtraError::VersionMismatch { found }) => {
+      234:             // vb-5bqmr: magic matched but version byte is unknown. This
+      235:             // is a malformed write (or a write from a future envelope
+      236:             // version); it MUST NOT be classified as legacy frame
+      237:             // extra (the P1 bug). Log a structured warn with the slot
+      238:             // and the offending version byte so operators can trace
+      239:             // the source, then fail-closed with `CorruptSlotTaint`
+      240:             // matching the existing DecodeFailed behavior.
+      241:             tracing::warn!(
+      242:                 slot = ?slot,
+      243:                 found = found,
+      244:                 "slot extra: VBSE magic present but unknown version"
+      245:             );
+      246:             Err(RecoveryError::CorruptSlotTaint { slot })
+      247:         }
+ 233  248:         Err(_) => Err(RecoveryError::CorruptSlotTaint { slot }),
+ 234  249:     }
+ 235  250: }
+    ...

@@ -1,0 +1,33 @@
+vb-cib14 p12-formal-verifier transcript
+
+[00:00:00] pwd -P confirmed: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cib14
+[00:00:01] jj root confirmed: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cib14
+[00:00:02] Working copy on jj commit zpmskmnz 96dfa778, parent b2a2ee46 (State 11)
+[00:00:05] Loaded skill /home/lewis/.opencode/skill/formal-verifier/SKILL.md
+[00:00:10] Validated schemas: proof-obligations.planned.jsonl (7), rust-refinement-obligations.jsonl (7), trusted-base-ledger.jsonl (14), verifier-lane-decisions.jsonl (20), waiver-candidates.jsonl (1)
+[00:01:00] Pre-flight 1: bash scripts/check-verus-production-binding.sh — 0 VACUUM, 72 WEAK, 0 STRONG
+[00:01:30] Pre-flight 2: bash scripts/check-production-inner-drift.sh — TB-008 confirmed; no new production_inner mirror
+[00:02:00] Verified toolchain: verus 0.2024.10, cargo 1.96.0-nightly, rustc 1.97.0-nightly, loom dev-dep, proptest 1.11
+[00:03:00] PO-001 command: verus --crate-type=lib --edition=2021 verification/verus/vb_cib14_resume_storage_map.rs — 27 verified, 0 errors, exit 0
+[00:04:00] PO-002 + PO-003 command: PROPTEST_CASES=65536 cargo +nightly test -p vb_runtime --features vb-cib14 --lib -- storage_event_resumed_pass_through storage_event_resume_timestamp_conversion_total — 3/3 passed, exit 0
+[00:05:00] PO-004 command: cargo +nightly test -p vb_runtime --features vb-cib14 --lib -- storage_event_clones_the_event_exactly_once_per_dispatch storage_event_clones_the_resumed_event_exactly_once_per_dispatch — 2/2 passed, exit 0
+[00:06:00] PO-005 loom half: RUSTFLAGS="--cfg loom" cargo +nightly test -p vb_runtime --features vb-cib14 --lib models::loom::vb_cib14_resume_replay — 2/2 passed (release_resume_replay_classification + release_resume_replay_legacy_bug_classification), exit 0
+[00:06:30] PO-005 proptest half (re-verified): cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_test_runtime_resume_replay --features vb-cib14 — 3/3 passed, exit 0
+[00:07:00] PO-006 source-lint suite: check-panic-surface.sh (NoViolationFound ExitCode 0) + check-hot-cold-forbidden-apis.sh (violations=0) + check-source-length.sh (chunk_002.rs 447 lines + extern file 998 lines ledgered) + check-verus-production-binding.sh (0 VACUUM 72 WEAK) + check-error-exhaustiveness.sh (pre-existing failures in JournalError/IpcError/ValidationError, unrelated to vb-cib14)
+[00:08:00] PO-007 command: PROPTEST_CASES=4096 cargo +nightly test -p vb_runtime --features vb-cib14 --lib -- storage_event_resumed_emits_typed_runtime_error_variant — 1/1 passed, exit 0
+[00:09:00] Wrote .beads/vb-cib14/formal-verification-report.md
+[00:09:30] Built .beads/vb-cib14/verification-ledger.jsonl with 7 rows (VL-CIB14-V-001 through VL-CIB14-P-007), all PASS, hash chain validated
+[00:10:00] Appended State 12 row to .beads/vb-cib14/agent-invocation-ledger.jsonl (sequence=9, hash=6ba0dde90863e18b...)
+[00:10:15] Verified chain integrity: 9 rows, all hashes match
+[00:10:30] Final state: 7/7 PASS, ledger closed, formal-verifier complete
+
+Commands executed (raw evidence in evidence/state12-*.log):
+- verus verification/verus/vb_cib14_resume_storage_map.rs (PO-001) — exit 0
+- cargo +nightly test -p vb_runtime --features vb-cib14 --lib storage_event (6/6) — exit 0
+- cargo +nightly test -p vb_runtime --features vb-cib14 --lib runtime_journal_event_resumed_has_correct_timestamp (1/1) — exit 0
+- cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_test_runtime_resume_replay --features vb-cib14 (3/3) — exit 0
+- RUSTFLAGS="--cfg loom" cargo +nightly test -p vb_runtime --features vb-cib14 --lib models::loom::vb_cib14_resume_replay (2/2) — exit 0
+- bash scripts/check-verus-production-binding.sh (0 VACUUM) — exit 0
+- bash scripts/check-panic-surface.sh (NoViolationFound) — exit 0
+
+STATUS: APPROVED — all 7 obligations PASS

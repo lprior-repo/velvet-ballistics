@@ -1,0 +1,50 @@
+proof-planner invocation for vb-vzo9b state 4.
+
+Inputs read first:
+- STATE.md (bead metadata, current_state=1, controller=femdation, isolated_workdir=...)
+- codebase-map.md (defect site at fuzz/src/journal_target/readback.rs:196, target surface cataloged)
+- contract.md (8 clauses C-1 through C-8, fuzz_recovery_decode rewrite contract)
+- proof-seeds.jsonl (6 seeds PS-vb-vzo9b-1 through PS-vb-vzo9b-6)
+- delivery-scope.jsonl (32 rows: 1 touched file, 7 read-only context rows, 3 API rows, 2 risk_tag rows, 3 verifier_mode rows)
+- traceability-matrix.jsonl (19 rows mapping contract clauses to field-level assertions)
+
+Skill loaded: proof-planner from ~/.opencode/skill/proof-planner.
+References read: obligation-schema.md, lane-decision-guide.md, risk-taxonomy.md, evidence-requirements.md, handoff-contract.md, plan-quality-gates.md, implementation-binding.md, waiver-planning-guide.md, index.md, anti-patterns.md, examples/good-plan/*.
+
+Plan strategy:
+- TEST-ONLY repair; production code is read-only context.
+- Lane profile restricted to cargo-test and source-lint per bead directive.
+- 2-3 proof obligations; planned 3 (PO-001, PO-002, PO-003).
+- All obligations behavior_affecting=false per bead directive Behavior: false.
+- All default-profile verifiers (verus, kani, flux-rs, loom, miri, cargo-fuzz) are not_applicable with concrete SHA-256 evidence refs.
+
+Outputs written (8 files, 7 required by bead + 1 bonus proof-to-implementation-input.md required by skill handoff contract):
+1. proof-strategy.md
+2. verifier-lane-matrix.md
+3. verifier-lane-decisions.jsonl (9 rows: 3 required, 6 not_applicable)
+4. proof-coverage-matrix.md
+5. proof-obligations.planned.jsonl (3 obligations: PO-001 cargo-test summarize_recovery_events, PO-002 cargo-test recover_runtime_frame_seed_from_events, PO-003 cargo-build + 6 rg forbidden-pattern gates)
+6. trusted-base-plan.md (4 structural notes; no obligation-driven trust markers)
+7. waiver-candidates.jsonl (1 placeholder row, behavior_affecting=false)
+8. proof-to-implementation-input.md (bridge input stub; documents source refs, behavior test surface, forbidden patterns, closure commands)
+
+Schema validation: all JSONL files pass `jq -c .` (3 + 9 + 1 = 13 lines valid).
+
+Plan-quality gates self-audit:
+- Gate 1 Schema Compliance: PASS (all schema_version literal correct, all required fields present)
+- Gate 2 Lane Decision Coverage: PASS (every default-profile verifier has a lane decision; 6 not_applicable with non-empty evidence refs; 0 blocked_tooling)
+- Gate 3 Obligation Pairing: PASS (3 required lane decisions paired with 3 obligations)
+- Gate 4 Implementation Binding: PASS (all targets parse as crate::module::symbol)
+- Gate 5 Evidence Specificity: PASS (commands have no placeholders, workdirs absolute, expected_evidence cites concrete tool markers, tool_metadata.version_pin set)
+- Gate 6 Resource Governance: PASS (proptest obligations have model_bounds; PO-003 has max_total_time=600)
+- Gate 7 Waiver Discipline: PASS (no behavior-affecting waivers; WC-001 has boundary_proof, compensating_evidence, owner, expiry)
+- Gate 8 Trust Marker Ledger: PASS (no trust markers introduced; trusted-base-plan.md notes structural facts)
+- Gate 9 Cross-Reference Integrity: PASS (no behavior-affecting obligations; no bridge rows needed)
+- Gate 10 Mirror Parity: N/A (not modifying skill tree)
+
+Handoff: proof-plan-reviewer (state 4b) for independent review of the 9 lane decisions and 3 obligations.
+
+Critical contract patch: contract C-7 says `cargo build -p fuzz --bin recovery_decode` but the fuzz/ directory is a separate Cargo workspace with package name `velvet-ballistics-fuzz`. Corrected to `cargo build --bin recovery_decode --manifest-path fuzz/Cargo.toml` so the build runs against the correct package from any workdir. Documented in proof-strategy.md and proof-to-implementation-input.md.
+
+No production code changes.
+Test harness rewritten at fuzz/src/journal_target/readback.rs:196 from `assert!(... || ...)` to `assert_eq!(run_summary, expected_recovery_runtime_summary)`.

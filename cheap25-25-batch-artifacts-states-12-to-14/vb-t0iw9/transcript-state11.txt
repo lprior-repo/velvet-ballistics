@@ -1,0 +1,71 @@
+# state11 transcript for holzman-rust-vb-t0iw9
+# captured_at: 2026-07-01T20:25:00Z
+# skill: holzman-rust (config-only repair; no Rust code touched)
+# state: 11
+# bead: vb-t0iw9 (BUG, P1)
+# chosen_option: C (DocumentExpectedUserAction)
+
+scope: config-only repair; no Rust production code modified; no scripts/ modified;
+       no .beads/embeddeddolt/ created; no .beads/metadata.json widened; bd 1.0.5
+       binary untouched.
+
+inputs:
+  - .beads/vb-t0iw9/STATE.md
+  - .beads/vb-t0iw9/baseline-report.md
+  - .beads/vb-t0iw9/global-readiness-report.md
+  - .beads/vb-t0iw9/delivery-scope.jsonl
+
+actions:
+  1. verified pwd -P == /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+  2. verified jj root == /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+  3. confirmed bd 1.0.5 (dev) installed; bd migrate --inspect -> Registered Migrations: 0
+  4. confirmed v49 schema_migrations; no replacement_seq column in DESCRIBE issues
+  5. confirmed raw SQL "SELECT replacement_seq FROM issues LIMIT 1" returns
+     Dolt error 1105 "column replacement_seq could not be found in any table in scope"
+  6. confirmed --ignore-schema-skew bypasses BD-level forward-skew guard (supersede
+     path), but does NOT add the missing column (raw SQL still errors).
+  7. confirmed BD_IGNORE_SCHEMA_SKEW and BEADS_IGNORE_SCHEMA_SKEW env vars do NOT
+     affect the guard (only the --ignore-schema-skew flag does).
+  8. confirmed side-drift: .beads/config.yaml port 43643 vs actual server 45645 vs
+     inner .beads/dolt/config.yaml port 43627; bd finds 45645 via metadata.json
+     runtime discovery; drift is harmless but a follow-up bead candidate.
+  9. chose Option C (DocumentExpectedUserAction) over Options A (port edit) and
+     B (CUE migration file) because:
+       - Option A fixes cosmetic config drift, not the schema error.
+       - Option B is inert: .beads/schemas/ contains CUE project schemas, not
+         bd SQL migrations; bd loads migrations from the embedded binary only.
+       - Option C documents the two valid user actions (ALTER TABLE; bd upgrade)
+         that respect the MUST NOT list.
+ 10. wrote .beads/vb-t0iw9/runbook.md (Option C artifact)
+ 11. wrote .beads/vb-t0iw9/implementation.md (chosen repair + diff summary + gate)
+ 12. wrote 9 evidence files under .beads/vb-t0iw9/evidence/
+ 13. accidentally invoked `bd --ignore-schema-skew supersede vb-t0iw9 --with vb-ik5vm`
+     while testing the flag; reopened vb-t0iw9 and removed the wrong-target
+     dependency. Bead state returned to OPEN before claim.
+ 14. claimed bead via `bd update vb-t0iw9 --claim` (from coord checkout;
+     coordination actions are permitted by AGENTS.md).
+ 15. re-ran final gate; all 7 sub-gates PASS.
+
+outputs:
+  - .beads/vb-t0iw9/runbook.md
+  - .beads/vb-t0iw9/implementation.md
+  - .beads/vb-t0iw9/evidence/repro.txt
+  - .beads/vb-t0iw9/evidence/schema-before.txt
+  - .beads/vb-t0iw9/evidence/schema-migrations.txt
+  - .beads/vb-t0iw9/evidence/bd-version.txt
+  - .beads/vb-t0iw9/evidence/supersede-flag.txt
+  - .beads/vb-t0iw9/evidence/port-drift.txt
+  - .beads/vb-t0iw9/evidence/check-beads-server-mode.txt
+  - .beads/vb-t0iw9/evidence/claim-result.txt
+  - .beads/vb-t0iw9/evidence/workspace-gate.txt
+  - .beads/vb-t0iw9/transcript-state11.txt
+  - .beads/vb-t0iw9/agent-invocation-ledger.jsonl (state11 row appended)
+
+gates:
+  - pwd -P: PASS
+  - jj root: PASS
+  - bash scripts/check-beads-server-mode.sh: exit 0 (PASS)
+  - test ! -e .beads/embeddeddolt: PASS
+  - dolt_mode == "server": PASS
+  - bd update vb-t0iw9 --claim: exit 0 (PASS)
+  - implementation.md, runbook.md, evidence/ (9 files) all present: PASS

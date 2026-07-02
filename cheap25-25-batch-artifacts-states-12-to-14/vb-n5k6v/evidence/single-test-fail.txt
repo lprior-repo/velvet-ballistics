@@ -1,0 +1,9 @@
+---- edge_case_tests::edge_case_tests::persist_strict_recovers_after_simulated_failure stdout ----
+
+thread 'edge_case_tests::edge_case_tests::persist_strict_recovers_after_simulated_failure' (3092710) panicked at crates/vb_storage/src/edge_case_tests.rs:69:9:
+first persist should simulate failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1555 filtered out; finished in 0.01s
+[full output: ~/.local/share/rtk/tee/1782957429_cargo_test.log]

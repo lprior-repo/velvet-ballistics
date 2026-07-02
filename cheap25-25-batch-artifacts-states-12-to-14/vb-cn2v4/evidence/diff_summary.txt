@@ -1,0 +1,7 @@
+crates/vb_storage/src/kani_typed_partitioned_ids.rs |  56 +++++++-
+crates/vb_storage/src/keys/tests.rs                 | 142 +++++++++++++++++++---
+crates/vb_storage/src/keys.rs                       |  44 ++++++
+...ace_tests/tests/fjall_keyspace_manifest_tests.rs |  43 +++++-
+...ests/restate_doctor_storage_scan_decode_tests.rs |  40 +++++-
+crates/workspace_tests/tests/vb_eepg_bdd_tests.rs   |  87 ++++++++++---
+6 files changed, 368 insertions(+), 44 deletions(-)

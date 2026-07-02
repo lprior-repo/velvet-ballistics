@@ -1,0 +1,74 @@
+=== vb-t0iw9 evidence/workspace-gate.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+--- pwd -P  (must equal the isolated worktree)
+/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+
+--- jj root  (must equal the isolated worktree)
+/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+
+--- test: pwd -P matches expected isolated worktree
+PASS
+
+--- test: jj root matches expected isolated worktree
+PASS
+
+--- jj status
+The working copy has no changes.
+Working copy  (@) : qmpnxvym 20f731c6 (empty) (no description set)
+Parent commit (@-): rsvywymk 1d6c017f AGENTS.md: capture coord-checkout contamination traps seen in round10 forward-port
+
+--- jj log -r '@' --no-graph -T 'change_id.short() ++ " " ++ description ++ " " ++ commit_id.short()'
+qmpnxvymkzqy  20f731c62818
+--- ls -la .beads/vb-t0iw9/  (verify implementation.md, runbook.md, evidence/ are present)
+total 276
+drwxr-xr-x 1 lewis lewis  1334 Jul  1 20:23 .
+drwxr-xr-x 1 lewis lewis  3828 Jul  1 16:50 ..
+-rw-r--r-- 1 lewis lewis  4486 Jul  1 16:59 agent-invocation-ledger.jsonl
+-rw-r--r-- 1 lewis lewis   694 Jul  1 10:21 baseline-report.md
+-rw-r--r-- 1 lewis lewis  5796 Jul  1 11:31 boundary-map.md
+-rw-r--r-- 1 lewis lewis 12212 Jul  1 11:00 codebase-map.md
+-rw-r--r-- 1 lewis lewis  4279 Jul  1 11:32 contract.md
+-rw-r--r-- 1 lewis lewis  2520 Jul  1 11:00 delivery-scope.jsonl
+drwxr-xr-x 1 lewis lewis     0 Jul  1 10:19 dispatch
+-rw-r--r-- 1 lewis lewis 10472 Jul  1 11:29 domain-model.md
+-rw-r--r-- 1 lewis lewis  5472 Jul  1 11:31 error-taxonomy.md
+drwxr-xr-x 1 lewis lewis   308 Jul  1 20:24 evidence
+-rw-r--r-- 1 lewis lewis   527 Jul  1 10:21 global-readiness-report.md
+-rw-r--r-- 1 lewis lewis  5981 Jul  1 11:31 hazard-analysis.md
+-rw-r--r-- 1 lewis lewis  9360 Jul  1 20:23 implementation.md
+-rw-r--r-- 1 lewis lewis  8213 Jul  1 15:53 proof-coverage-matrix.md
+-rw-r--r-- 1 lewis lewis  8884 Jul  1 15:53 proof-obligations.planned.jsonl
+-rw-r--r-- 1 lewis lewis 22157 Jul  1 16:59 proof-plan-review.md
+-rw-r--r-- 1 lewis lewis 10433 Jul  1 11:32 proof-seeds.jsonl
+-rw-r--r-- 1 lewis lewis 11100 Jul  1 15:52 proof-strategy.md
+-rw-r--r-- 1 lewis lewis  7109 Jul  1 15:58 proof-to-implementation-input.md
+-rw-r--r-- 1 lewis lewis   804 Jul  1 11:01 routing-ledger.jsonl
+-rw-r--r-- 1 lewis lewis  8019 Jul  1 20:22 runbook.md
+-rw-r--r-- 1 lewis lewis   594 Jul  1 10:21 runtime-skill-provenance.json
+-rw-r--r-- 1 lewis lewis  1213 Jul  1 10:21 STATE.md
+-rw-r--r-- 1 lewis lewis  5502 Jul  1 11:32 traceability-matrix.jsonl
+-rw-r--r-- 1 lewis lewis   291 Jul  1 10:21 transcript-state1.txt
+-rw-r--r-- 1 lewis lewis   295 Jul  1 11:01 transcript-state2.txt
+-rw-r--r-- 1 lewis lewis  5837 Jul  1 15:55 trusted-base-plan.md
+-rw-r--r-- 1 lewis lewis  9772 Jul  1 11:29 type-contracts.md
+-rw-r--r-- 1 lewis lewis  9848 Jul  1 15:54 verifier-lane-decisions.jsonl
+-rw-r--r-- 1 lewis lewis  9613 Jul  1 15:52 verifier-lane-matrix.md
+-rw-r--r-- 1 lewis lewis 13357 Jul  1 16:58 verifier-lane-review.jsonl
+-rw-r--r-- 1 lewis lewis     0 Jul  1 15:58 waiver-candidates.jsonl
+-rw-r--r-- 1 lewis lewis  3569 Jul  1 15:58 waiver-candidates.md
+-rw-r--r-- 1 lewis lewis  7693 Jul  1 11:30 workflow-model.md
+
+--- ls -la .beads/vb-t0iw9/evidence/  (verify evidence files)
+total 44
+drwxr-xr-x 1 lewis lewis  308 Jul  1 20:24 .
+drwxr-xr-x 1 lewis lewis 1334 Jul  1 20:23 ..
+-rw-r--r-- 1 lewis lewis 6263 Jul  1 20:23 bd-version.txt
+-rw-r--r-- 1 lewis lewis  534 Jul  1 20:24 check-beads-server-mode.txt
+-rw-r--r-- 1 lewis lewis  772 Jul  1 20:24 claim-result.txt
+-rw-r--r-- 1 lewis lewis 1511 Jul  1 20:24 port-drift.txt
+-rw-r--r-- 1 lewis lewis 2317 Jul  1 20:23 repro.txt
+-rw-r--r-- 1 lewis lewis 5916 Jul  1 20:23 schema-before.txt
+-rw-r--r-- 1 lewis lewis 1314 Jul  1 20:23 schema-migrations.txt
+-rw-r--r-- 1 lewis lewis 2278 Jul  1 20:24 supersede-flag.txt
+-rw-r--r-- 1 lewis lewis 3235 Jul  1 20:24 workspace-gate.txt

@@ -1,0 +1,49 @@
+state11 — p11-holzman-rust: implementation of vb-815l8 (replace tautological recovery assertion)
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-815l8
+Bead: vb-815l8 — Tests: replace tautological recovery assertion (P1)
+Skill: holzman-rust
+Parent invocation: proof-plan-reviewer-vb-815l8-state4-attempt1 (sequence=3)
+
+Steps:
+1. Read skill files (/home/lewis/.opencode/skill/holzman-rust/SKILL.md, /home/lewis/.agents/skills/holzman-rust/SKILL.md).
+2. Read target file: crates/workspace_tests/tests/integration_runtime_storage_fault_tolerance.rs.
+3. Read production files (read-only verification, no edits):
+   - crates/vb_runtime/src/recovery.rs (hydrate_run_frame path + reject_unsupported_live_frame_state)
+   - crates/vb_storage/src/recovery/types.rs (RecoveryFrameSeed::cannot_resume_state, RecoveryCannotResumeState::from_seed)
+4. Verified isolated workspace:
+   - pwd -P = /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-815l8
+   - jj root matches
+   - git not initialized (expected — jj-only workspace)
+5. Created new jj change: vb-815l8: p11-holzman-rust — replace tautological recovery assertion.
+6. Implemented test-only fix:
+   - Added `use vb_runtime::RuntimeError;` to the test import block (rustfmt reordered to place the shorter path first; final order: vb_core, vb_runtime::RuntimeError, vb_runtime::recovery::{…}, vb_storage::recovery::{…}).
+   - Replaced tautological `assert!(result.is_ok() || result.is_err())` with typed-failure `assert_eq!(result, Err(RuntimeError::InvalidRecoveryHydration), "durable frame hydration must reject any frame seed")`.
+   - Replaced contradicting comments ("Hydration should succeed because the seed itself is valid" / "boundary is permissive on empty seed") with a precise contract statement explaining why every frame seed is rejected.
+7. Verified production files untouched: `jj diff crates/vb_storage/src/recovery/types.rs crates/vb_runtime/src/recovery.rs` returns empty.
+8. Captured evidence to .beads/vb-815l8/evidence/:
+   - cargo_test_integration_runtime_storage_fault_tolerance.log (18 passed)
+   - cargo_test_targeted_recovery_from_corrupt_snapshot.log (1 passed, the changed test)
+   - cargo_test_vb_runtime_recovery.log (13 passed, no regression)
+   - cargo_test_vb_runtime_lib.log (1807 passed, no regression)
+   - cargo_check_workspace_tests.log (exit=0)
+9. Wrote implementation.md with full diffs, production contract walk-through, Power-of-Ten mapping, exact commands, and residual risks.
+10. Updated STATE.md (current_state=11, attempts=1, status=holzman-rust complete).
+11. Appended state11 row to agent-invocation-ledger.jsonl (sequence=4, chain-linked to entry_hash from proof-plan-reviewer).
+
+Gates:
+- cargo +nightly check -p velvet-ballistics-workspace-tests --all-targets --all-features: PASS (exit=0)
+- cargo +nightly test -p velvet-ballistics-workspace-tests --test integration_runtime_storage_fault_tolerance: 18 passed; 0 failed; 0 ignored
+- cargo +nightly test -p velvet-ballistics-workspace-tests --test integration_runtime_storage_fault_tolerance recovery_from_corrupt_snapshot_sequence_is_detected: 1 passed
+- cargo +nightly test -p vb_runtime --lib recovery: 13 passed; 0 failed (no regression)
+- cargo +nightly test -p vb_runtime --lib: 1807 passed; 0 failed (no regression)
+- cargo +nightly fmt -p velvet-ballistics-workspace-tests: clean (reordered the two vb_runtime::… imports)
+- jj diff --stat: 1 file changed, 16 insertions(+), 4 deletions(-)
+- ledger chain: OK (4 entries, all hashes verified)
+
+Out-of-scope pre-existing failures (NOT introduced by this bead, NOT touched):
+- workspace-wide cargo fmt --check: 4 pre-existing failures in vb_core/src/lib.rs:26, vb_core/src/time.rs:71, vb_runtime/src/frame_pool/tests.rs:114,139
+- strict test clippy on integration_runtime_storage_fault_tolerance.rs:185 (panic in recovery_terminal_state_finished_carries_slot)
+- strict test clippy on restate_timer_deadline_primitive_tests.rs: 131 pre-existing failures
+
+These are BLOCK_GLOBAL prerequisite repair items tracked in the implementation.md "Residual risks" section.

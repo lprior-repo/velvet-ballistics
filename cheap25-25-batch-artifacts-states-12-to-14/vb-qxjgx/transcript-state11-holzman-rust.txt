@@ -1,0 +1,79 @@
+State 11 (holzman-rust) — vb-qxjgx: split StepSucceeded RecordKind (PO-QXJGX-001..007)
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx
+JJ change: ttulypyvxtty
+Commit: f1663e1fe883e876bda89d64736cf058b1388fac
+Started: 2026-07-01T19:00:00Z
+Completed: 2026-07-01T19:53:20Z
+
+Inputs read:
+- /home/lewis/.opencode/skill/holzman-rust/SKILL.md
+- /home/lewis/.agents/skills/holzman-rust/SKILL.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/STATE.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-writer-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-to-rust-map.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/contract.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/records.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/events.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/validation.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/kind_parity.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/mod.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/durability_matrix.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/flux_validation.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/kani_record_kind.rs
+
+Production changes (8 files):
+1. records.rs:139 - Added StepSucceeded = 33 variant
+2. records.rs:210 - Added Self::StepSucceeded => 33 arm in id()
+3. events.rs:406 - Split OR-pattern collapse
+4. validation.rs:23,42 - Extended is_known_record_kind + validate_kind_family for id 33
+5. kind_parity.rs:20,44,50,57 - Added LegacyEnvelopeBinding + use in EnforceKindParity
+6. mod.rs:20,97 - Re-export LegacyEnvelopeBinding + use in validate_journal_event_record_kind
+7. durability_matrix.rs:13 substitutions across 10 rows - SlotWritten -> StepSucceeded
+8. status.rs:337 - Fixed display mapping for StepSucceeded
+9. flux_validation.rs:14,33 - Literal-sync id 33
+
+Test code updates (5 files):
+- codec/tests/replay_integrity.rs:224 - Updated journal-family admission test
+- tests.rs:3325 - Updated all-variants projection test
+- durability_matrix/tests.rs:51 - Updated set row test
+- kani_record_kind.rs:177-188 - Deleted pre-fix check_unknown_kind_rejected
+- lib.rs:98 - Updated comment
+
+Tests run:
+- cargo test -p vb_storage --tests: 1678 passed
+- cargo test -p vb_runtime --tests: 2348 passed, 1 ignored
+- 6 back-compat tests at codec/tests.rs:1617-1791 all pass
+- 5 proptest properties at proptest_durability_matrix_step_succeeded.rs all pass
+- 4 proptest properties at proptest_replay_summary_step_succeeded_split.rs all pass
+
+Lints:
+- cargo clippy -p vb_storage: No issues found
+- cargo clippy -p vb_runtime: No issues found
+- cargo clippy -p velvet-ballistics: No issues found
+- cargo check --workspace --all-targets --all-features: clean
+- cargo fmt --check -p vb_storage: clean (vb_runtime has pre-existing fmt issues in frame_pool/tests.rs not touched by this bead)
+
+Skipped gates:
+- cargo kani <harness> for the 5 new kani files: BLOCKED_TOOLING (TBR-001)
+  - Pre-existing unclosed-delimiter in crates/vb_core/src/frame/parts/kani_helpers.rs:22:7
+  - Verified pre-existing in parent commit ywnswumt 1b72c500
+  - Not caused by this bead
+- cargo fmt --check -p vb_runtime: pre-existing Diff in crates/vb_runtime/src/frame_pool/tests.rs:85, 114, 139
+  - Not modified by this bead (jj diff confirms)
+  - BLOCK_GLOBAL scope, not a regression
+
+Residual risks (BLOCK_GLOBAL pre-existing):
+1. kani-helpers.rs unclosed delimiter blocks workspace-wide kani execution
+2. aggregate_resource_budget_properties_red proptest failure (literal-string check)
+3. vb_runtime/src/frame_pool/tests.rs pre-existing cargo fmt issues
+
+CURRENT_SCHEMA_VERSION: 1 (UNCHANGED — back-compat is legacy envelope-12 tolerance, NOT a schema bump)
+
+Outputs:
+- .beads/vb-qxjgx/implementation.md (32KB)
+- .beads/vb-qxjgx/evidence/ (18 evidence files)
+- .beads/vb-qxjgx/agent-invocation-ledger.jsonl (10KB, 5 entries)
+- .beads/vb-qxjgx/routing-ledger.jsonl (1.7KB, 2 entries)
+
+Status: COMPLETED

@@ -1,0 +1,312 @@
+Modified regular file crates/workspace_tests/tests/journal_side_index_contracts.rs:
+    ...
+   3    3: //! Covers PO-002, PO-004, PO-008, PO-009, PO-010, PO-012, PO-013, PO-014.
+   4    4: //!
+   5    5: //! Each test is independently runnable with:
+   6    6: //! `cargo nextest run -p velvet-ballasticsballistics-workspace-tests --test journal_side_index_contracts -- <filter>`
+   7    7: //!
+   8    8: //! # Trusted Base
+   9    9: //!
+  10   10: //! - Fjall OwnedWriteBatch::commit() provides WAL atomicity across keyspaces (TB-001).
+  11   11: //! - JournalWriteBatch is !Send + !Sync, enforcing single-threaded access (TB-002).
+  12   12: //! - index_*_key() functions are pure, bounded, and panic-free (TB-003, TB-004).
+       13: //!
+       14: //! # Planning note (vb-jtqqx, State 4)
+       15: //!
+       16: //! The three PO-008 proptests at lines 183-257 are scheduled for a
+       17: //! test-only repair (bead vb-jtqqx). Each repair shape exercises an
+       18: //! `invalid_input` payload against `vb_storage::keys::decode_storage_key`
+       19: //! and asserts on a typed `KeyDecodeError` variant via
+       20: //! `prop_assert!(matches!(...))`. See `.beads/vb-jtqqx/proof-strategy.md`
+       21: //! for the obligation map and `.beads/vb-jtqqx/contract.md#SIDEX-MAL-001..018`
+       22: //! for the normative clauses. The repair does not modify any
+       23: //! `vb_storage/**` source, `Cargo.toml`, `Cargo.lock`, or the
+       24: //! `PREFIX_INDEX_STATUS = 0x30` / `PREFIX_INDEX_WORKFLOW = 0x31` /
+       25: //! `PREFIX_INDEX_ACTION = 0x32` constants.
+  13   26: 
+  14   27: #![forbid(unsafe_code)]
+  15   28: 
+  16   29: use proptest::prelude::*;
+  17   30: use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
+  18   31: use vb_storage::{
+  19   32:     EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch,
+       33:     KeyDecodeError,
+  20   34: };
+  21   35: 
+  22   36: const JOURNAL_IO_PROPTEST_CASES: u32 = 64;
+    ...
+ 181  195: }
+ 182  196: 
+ 183  197: // ---------------------------------------------------------------------------
+ 184     : // PO-008: Malformed index keys return JournalError::KeyCapacity (proptest)
+      198: // PO-008: Malformed index keys surface typed KeyDecodeError (proptest)
+      199: //
+      200: // vb-jtqqx (State 11): each of the three proptests below constructs a real
+      201: // malformed byte sequence (truncated slice, oversize slice, run==0,
+      202: // within-family prefix mismatch, empty slice, unknown prefix) and asserts
+      203: // the typed `KeyDecodeError` variant surfaced by
+      204: // `vb_storage::keys::decode_storage_key`. Constants cited inline:
+      205: //   PREFIX_INDEX_ACTION  = 0x32, INDEX_ACTION_KEY_BYTES  = 13
+      206: //   PREFIX_INDEX_STATUS  = 0x30, INDEX_STATUS_KEY_BYTES  = 18
+      207: //   PREFIX_INDEX_WORKFLOW = 0x31, INDEX_WORKFLOW_KEY_BYTES = 13
+      208: // (see vb_storage/src/constants.rs:38-43). The decoder at
+      209: // vb_storage/src/keys.rs:346-434 is read-only for this bead.
+ 185  210: // ---------------------------------------------------------------------------
+ 186  211: 
+ 187  212: proptest::proptest! {
+ 188  213:     #![proptest_config(journal_proptest_config(JOURNAL_KEY_PROPTEST_CASES))]
+ 189  214: 
+ 190     :     /// PO-008: Short/truncated index keys return JournalError::KeyCapacity, not panic.
+      215:     /// PO-008: malformed index_action keys surface `KeyDecodeError`, never panic.
+ 191  216:     ///
+ 192     :     /// Generates malformed byte sequences with wrong length or wrong prefix
+ 193     :     /// and verifies decode functions return Err(JournalError::KeyCapacity).
+      217:     /// Three shapes per proptest case (SIDEX-MAL-001..018):
+      218:     ///   (a) truncated slice `valid[..13 - truncate_len]` →
+      219:     ///       `Err(KeyLengthMismatch { prefix: 0x32, expected: 13, actual: 13 - truncate_len })`
+      220:     ///   (b) 13-byte buffer with action prefix and `run == 0` →
+      221:     ///       `Err(KeyDecodeError::InvalidRunId)`
+      222:     ///   (c) within-family prefix mismatch `vec![0x30; 13]` →
+      223:     ///       `Err(KeyLengthMismatch { prefix: 0x30, expected: 18, actual: 13 })`
+      224:     ///   (d) empty slice → `Err(KeyDecodeError::EmptyKey)` (SIDEX-MAL-012)
+ 194  225:     #[test]
+ 195  226:     fn index_action_key_decode_error_on_short_input(
+ 196  227:         action_val in 1u16..=100u16,
+ 197  228:         run_val in 1u64..=1000u64,
+ 198  229:         step_val in 0u16..=50u16,
+ 199  230:         // Number of bytes to truncate from a valid 13-byte key (1..=12 ⇒ truncated len 1..=12).
+ 200  231:         truncate_len in 1u8..=12u8,
+ 201  232:     ) {
+ 202  233:         let action = ActionId::new(action_val);
+ 203  234:         let run = RunId::new(run_val);
+ 204  235:         let step = StepIdx::new(step_val);
+ 205  236: 
+ 206  237:         let valid_key = vb_storage::keys::index_action_key(action, run, step)
+ 207  238:             .expect("valid keyindex_action_key must succeed for valid inputs");
+ 208     :         let valid_len = valid_key.len();
+ 209  239: 
+ 210     :         // Truncate the key
+      240:         // (a) Truncated slice — truncated length stays in [1, 13) so the
+      241:         // assertion maps to KeyLengthMismatch and not EmptyKey.
+ 211  242:         let truncate_len = truncate_len as usize;
+ 212     :         if truncate_len < valid_len {
+ 213     :             let _short_key = &valid_key[..(valid_len - truncate_len)];
+ 214     :             // In production decode, short keys are rejected before field extraction.
+ 215     :             // We verify the encoding is correct by confirming valid_key is full-length.
+ 216     :             prop_assert_eq!(valid_len, 13, "valid index_action_key must be 13 bytes");
+ 217     :         }
+      243:         let truncated_len = valid_key.len() - truncate_len;
+      244:         prop_assert!(
+      245:             truncated_len >= 1 && truncated_len < valid_key.len(),
+      246:             "truncated_len must be in [1, 13), got {}",
+      247:             truncated_len,
+      248:         );
+      249:         let truncated = &valid_key[..truncated_len];
+      250:         let truncated_result = vb_storage::keys::decode_storage_key(truncated);
+      251:         match truncated_result {
+      252:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      253:                 prop_assert_eq!(prefix, 0x32, "truncated: prefix must be the action prefix 0x32");
+      254:                 prop_assert_eq!(expected, 13, "truncated: expected length is 13 for action prefix");
+      255:                 prop_assert_eq!(actual, truncated_len, "truncated: actual length must equal truncated slice length");
+      256:             }
+      257:             other => prop_assert!(false, "truncated decode must surface KeyLengthMismatch, got {:?}", other),
+      258:         }
+      259: 
+      260:         // (b) 13-byte buffer with prefix 0x32 and run == 0 → InvalidRunId.
+      261:         let mut zero_run: [u8; 13] = [0u8; 13];
+      262:         zero_run[0] = 0x32;
+      263:         zero_run[1..3].copy_from_slice(&action_val.to_be_bytes());
+      264:         // bytes 3..11 = run (already zero)
+      265:         zero_run[11..13].copy_from_slice(&step_val.to_be_bytes());
+      266:         let zero_run_result = vb_storage::keys::decode_storage_key(&zero_run);
+      267:         prop_assert!(
+      268:             matches!(zero_run_result, Err(KeyDecodeError::InvalidRunId)),
+      269:             "run==0 must surface KeyDecodeError::InvalidRunId, got {:?}",
+      270:             zero_run_result,
+      271:         );
+      272: 
+      273:         // (c) Within-family prefix mismatch: status prefix 0x30, action length 13.
+      274:         let prefix_mismatch = vec![0x30u8; 13];
+      275:         let mismatch_result = vb_storage::keys::decode_storage_key(&prefix_mismatch);
+      276:         match mismatch_result {
+      277:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      278:                 prop_assert_eq!(prefix, 0x30, "prefix-mismatch: prefix is the byte actually present (0x30)");
+      279:                 prop_assert_eq!(expected, 18, "prefix-mismatch: status prefix expects 18 bytes");
+      280:                 prop_assert_eq!(actual, 13, "prefix-mismatch: payload is 13 bytes");
+      281:             }
+      282:             other => prop_assert!(false, "prefix-mismatch must surface KeyLengthMismatch, got {:?}", other),
+      283:         }
+      284: 
+      285:         // (d) Empty slice → EmptyKey (SIDEX-MAL-012).
+      286:         let empty_result = vb_storage::keys::decode_storage_key(&[]);
+      287:         prop_assert!(
+      288:             matches!(empty_result, Err(KeyDecodeError::EmptyKey)),
+      289:             "empty slice must surface KeyDecodeError::EmptyKey, got {:?}",
+      290:             empty_result,
+      291:         );
+ 218  292:     }
+ 219  293: 
+ 220     :     /// PO-008: index_status_key decode error on wrong-length input.
+      294:     /// PO-008: malformed index_status keys surface `KeyDecodeError`, never panic.
+      295:     ///
+      296:     /// Four shapes per proptest case:
+      297:     ///   (a) overlong slice `valid + vec![0u8; _extra_bytes]` →
+      298:     ///       `Err(KeyLengthMismatch { prefix: 0x30, expected: 18, actual: 18 + _extra_bytes })`
+      299:     ///   (b) literal 24-byte overlong →
+      300:     ///       `Err(KeyLengthMismatch { prefix: 0x30, expected: 18, actual: 24 })`
+      301:     ///   (c) 18-byte buffer with status prefix and `run == 0` → `Err(InvalidRunId)`
+      302:     ///   (d) within-family prefix mismatch `vec![0x32; 18]` →
+      303:     ///       `Err(KeyLengthMismatch { prefix: 0x32, expected: 13, actual: 18 })`
+ 221  304:     #[test]
+ 222  305:     fn index_status_key_decode_error_on_wrong_length(
+ 223  306:         state in 0u8..=2u8,
+ 224  307:         timestamp in 0u64..=1000u64,
+ 225  308:         run_val in 1u64..=1000u64,
+ 226  309:         _extra_bytes in 0u81u8..=10u8,
+ 227  310:     ) {
+ 228  311:         let run = RunId::new(run_val);
+ 229  312:         let status_state = IndexStatusState::from_u8(state);
+ 230  313: 
+ 231  314:         let valid_key = vb_storage::keys::index_status_key(status_state, timestamp, run)
+ 232  315:             .expect("valid keyindex_status_key must succeed for valid inputs");
+ 233  316:         prop_assert_eq!(valid_key.len(), 18, "valid index_status_key must be 18 bytes");
+ 234  317: 
+ 235     :         // A key with extra bytes is clearly malformed
+ 236     :         // (in real decode, we check length before field extraction)
+ 237     :         prop_assert!(valid_key.len() >= 18, "valid key must be at least 18 bytes");
+      318:         // (a) Overlong slice — wires `_extra_bytes` into the payload
+      319:         // (SIDEX-MAL-015). Truncated length stays > 0 so the decoder
+      320:         // reaches the KeyLengthMismatch arm.
+      321:         let extra = _extra_bytes as usize;
+      322:         let mut overlong: Vec<u8> = valid_key.to_vec();
+      323:         overlong.resize(18 + extra, 0u8);
+      324:         let overlong_actual = 18 + extra;
+      325:         let overlong_result = vb_storage::keys::decode_storage_key(&overlong);
+      326:         match overlong_result {
+      327:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      328:                 prop_assert_eq!(prefix, 0x30, "overlong: prefix must be the status prefix 0x30");
+      329:                 prop_assert_eq!(expected, 18, "overlong: status prefix expects 18 bytes");
+      330:                 prop_assert_eq!(actual, overlong_actual, "overlong: actual must equal 18 + _extra_bytes");
+      331:             }
+      332:             other => prop_assert!(false, "overlong decode must surface KeyLengthMismatch, got {:?}", other),
+      333:         }
+      334: 
+      335:         // (b) Literal 24-byte overlong (P0 deliverable shape).
+      336:         let mut overlong_24: Vec<u8> = valid_key.to_vec();
+      337:         overlong_24.extend([0u8; 6]);
+      338:         prop_assert_eq!(overlong_24.len(), 24, "literal overlong buffer must be 24 bytes");
+      339:         let overlong_24_result = vb_storage::keys::decode_storage_key(&overlong_24);
+      340:         match overlong_24_result {
+      341:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      342:                 prop_assert_eq!(prefix, 0x30, "literal 24-byte: prefix is 0x30");
+      343:                 prop_assert_eq!(expected, 18, "literal 24-byte: expected is 18");
+      344:                 prop_assert_eq!(actual, 24, "literal 24-byte: actual is 24");
+      345:             }
+      346:             other => prop_assert!(false, "literal 24-byte decode must surface KeyLengthMismatch, got {:?}", other),
+      347:         }
+      348: 
+      349:         // (c) 18-byte buffer with prefix 0x30 and run == 0 → InvalidRunId.
+      350:         let mut zero_run: [u8; 18] = [0u8; 18];
+      351:         zero_run[0] = 0x30;
+      352:         // byte 1 = state_byte (already 0 = Submitted, valid)
+      353:         // bytes 2..10 = timestamp (already 0)
+      354:         // bytes 10..18 = run (already 0)
+      355:         let zero_run_result = vb_storage::keys::decode_storage_key(&zero_run);
+      356:         prop_assert!(
+      357:             matches!(zero_run_result, Err(KeyDecodeError::InvalidRunId)),
+      358:             "run==0 must surface KeyDecodeError::InvalidRunId, got {:?}",
+      359:             zero_run_result,
+      360:         );
+      361: 
+      362:         // (d) Within-family prefix mismatch: action prefix 0x32, status length 18.
+      363:         let prefix_mismatch = vec![0x32u8; 18];
+      364:         let mismatch_result = vb_storage::keys::decode_storage_key(&prefix_mismatch);
+      365:         match mismatch_result {
+      366:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      367:                 prop_assert_eq!(prefix, 0x32, "prefix-mismatch: prefix is the byte actually present (0x32)");
+      368:                 prop_assert_eq!(expected, 13, "prefix-mismatch: action prefix expects 13 bytes");
+      369:                 prop_assert_eq!(actual, 18, "prefix-mismatch: payload is 18 bytes");
+      370:             }
+      371:             other => prop_assert!(false, "prefix-mismatch must surface KeyLengthMismatch, got {:?}", other),
+      372:         }
+ 238  373:     }
+ 239  374: 
+ 240     :     /// PO-008: index_workflow_key decode error on wrong-length input.
+      375:     /// PO-008: malformed index_workflow keys surface `KeyDecodeError`, never panic.
+      376:     ///
+      377:     /// Four shapes per proptest case:
+      378:     ///   (a) overlong slice `valid + vec![0u8; _extra_bytes]` →
+      379:     ///       `Err(KeyLengthMismatch { prefix: 0x31, expected: 13, actual: 13 + _extra_bytes })`
+      380:     ///   (b) literal 11-byte truncated (correct workflow prefix + 10 bytes) →
+      381:     ///       `Err(KeyLengthMismatch { prefix: 0x31, expected: 13, actual: 11 })`
+      382:     ///   (c) 13-byte buffer with workflow prefix and `run == 0` → `Err(InvalidRunId)`
+      383:     ///   (d) unknown-prefix `vec![0xFF; 13]` → `Err(UnknownPrefix { prefix: 0xFF })` (SIDEX-MAL-013)
+ 241  384:     #[test]
+ 242  385:     fn index_workflow_key_decode_error_on_wrong_length(
+ 243  386:         workflow_val in 1u32..=100u32,
+ 244  387:         run_val in 1u64..=1000u64,
+ 245  388:         _extra_bytes in 0u81u8..=10u8,
+ 246  389:     ) {
+ 247  390:         let workflow = WorkflowId::new(workflow_val);
+ 248  391:         let run = RunId::new(run_val);
+ 249  392: 
+ 250  393:         let valid_key = vb_storage::keys::index_workflow_key(workflow, run)
+ 251  394:             .expect("valid keyindex_workflow_key must succeed for valid inputs");
+ 252  395:         prop_assert_eq!(valid_key.len(), 13, "valid index_workflow_key must be 13 bytes");
+ 253  396: 
+ 254     :         // Verify that valid encoding is always 13 bytes
+ 255     :         prop_assert!(valid_key.len() == 13, "index_workflow_key is exactly 13 bytes for any valid input");
+      397:         // (a) Overlong slice — wires `_extra_bytes` into the payload
+      398:         // (SIDEX-MAL-015).
+      399:         let extra = _extra_bytes as usize;
+      400:         let mut overlong: Vec<u8> = valid_key.to_vec();
+      401:         overlong.resize(13 + extra, 0u8);
+      402:         let overlong_actual = 13 + extra;
+      403:         let overlong_result = vb_storage::keys::decode_storage_key(&overlong);
+      404:         match overlong_result {
+      405:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      406:                 prop_assert_eq!(prefix, 0x31, "overlong: prefix must be the workflow prefix 0x31");
+      407:                 prop_assert_eq!(expected, 13, "overlong: workflow prefix expects 13 bytes");
+      408:                 prop_assert_eq!(actual, overlong_actual, "overlong: actual must equal 13 + _extra_bytes");
+      409:             }
+      410:             other => prop_assert!(false, "overlong decode must surface KeyLengthMismatch, got {:?}", other),
+      411:         }
+      412: 
+      413:         // (b) Literal 11-byte truncated (correct workflow prefix + 10 bytes).
+      414:         let truncated_11: Vec<u8> = valid_key.iter().take(11).copied().collect();
+      415:         prop_assert_eq!(truncated_11.len(), 11, "literal truncated buffer must be 11 bytes");
+      416:         let truncated_11_result = vb_storage::keys::decode_storage_key(&truncated_11);
+      417:         match truncated_11_result {
+      418:             Err(KeyDecodeError::KeyLengthMismatch { prefix, expected, actual }) => {
+      419:                 prop_assert_eq!(prefix, 0x31, "literal 11-byte: prefix is 0x31");
+      420:                 prop_assert_eq!(expected, 13, "literal 11-byte: expected is 13");
+      421:                 prop_assert_eq!(actual, 11, "literal 11-byte: actual is 11");
+      422:             }
+      423:             other => prop_assert!(false, "literal 11-byte decode must surface KeyLengthMismatch, got {:?}", other),
+      424:         }
+      425: 
+      426:         // (c) 13-byte buffer with prefix 0x31 and run == 0 → InvalidRunId.
+      427:         let mut zero_run: [u8; 13] = [0u8; 13];
+      428:         zero_run[0] = 0x31;
+      429:         zero_run[1..5].copy_from_slice(&workflow_val.to_be_bytes());
+      430:         // bytes 5..13 = run (already 0)
+      431:         let zero_run_result = vb_storage::keys::decode_storage_key(&zero_run);
+      432:         prop_assert!(
+      433:             matches!(zero_run_result, Err(KeyDecodeError::InvalidRunId)),
+      434:             "run==0 must surface KeyDecodeError::InvalidRunId, got {:?}",
+      435:             zero_run_result,
+      436:         );
+      437: 
+      438:         // (d) Unknown prefix (SIDEX-MAL-013).
+      439:         let unknown_prefix = vec![0xFFu8; 13];
+      440:         let unknown_result = vb_storage::keys::decode_storage_key(&unknown_prefix);
+      441:         match unknown_result {
+      442:             Err(KeyDecodeError::UnknownPrefix { prefix }) => {
+      443:                 prop_assert_eq!(prefix, 0xFF, "unknown prefix: byte must be 0xFF");
+      444:             }
+      445:             other => prop_assert!(false, "unknown prefix must surface KeyDecodeError::UnknownPrefix, got {:?}", other),
+      446:         }
+ 256  447:     }
+ 257  448: }
+ 258  449: 
+    ...

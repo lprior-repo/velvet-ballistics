@@ -1,0 +1,7 @@
+================================================================
+  Verus production-binding audit (ABSOLUTE — no exceptions)
+================================================================
+  STRONG (direct crates/ binding): 0
+  WEAK (production_inner/ mirror): 71
+  VACUUM (no production binding):  0
+

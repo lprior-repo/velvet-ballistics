@@ -1,0 +1,9 @@
+4d1be51fcd6484be23d246aa62ba849a439886a461727f903807099229715f2c  .beads/vb-pg2wq/proof-obligations.planned.jsonl
+dd4d338812807d0031826d05ce822d6fa342c0e7e89466de09ef08b5657daf05  .beads/vb-pg2wq/contract.md
+66c1035520c268cf99c523c2c373d968424570c79e3bcc6a1e8b4a2f946bd449  .beads/vb-pg2wq/proof-strategy.md
+b6a53461143d3dea7ce6f1adb4a420b14cf61acf1e8cdd53212feabd5c0c83c1  .beads/vb-pg2wq/verifier-lane-decisions.jsonl
+02267269023cd5c933280dfc1f43713c4e0c2fdef6110d2314e9ab3c2b4a0ba2  .beads/vb-pg2wq/verifier-lane-review.jsonl
+156d49e0e869f376ca6601c971998a6ccb33b123b29259bdc953ea0a0d83bd19  .beads/vb-pg2wq/proof-coverage-matrix.md
+780b0df9ba2bb1a3bf0ad4ea6c767e97de930d5c23fccbe6edbafe0ec941c118  .beads/vb-pg2wq/proof-seeds.jsonl
+45c3b6cf6af60cef3d5d39a82e9ad73f5c99f0e3b5f2eb0dc043d81a25ac5981  .beads/vb-pg2wq/trusted-base-plan.md
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  .beads/vb-pg2wq/waiver-candidates.jsonl

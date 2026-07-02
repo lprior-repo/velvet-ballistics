@@ -1,0 +1,56 @@
+bead_id: vb-d9ml3
+state: 11
+invocation_id: holzman-rust-vb-d9ml3-state11
+skill: holzman-rust
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+controller: femdation
+attempt: 1
+status: completed
+
+Inputs (read):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/contract.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/delivery-scope.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-plan-review.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-strategy.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/STATE.md
+
+Outputs (written):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/implementation.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_build_workspace.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_check_vb_storage.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_check_workspace.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_clippy_vb_storage.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_clippy_workspace.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_fmt_vb_storage.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_test_vb_storage.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_test_vb_storage_4_new_tests.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/cargo_test_vb_storage_all_features.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/evidence/cargo_test_vb_storage_all_regression.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/evidence/cargo_test_vb_storage_full.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/evidence/cargo_test_vb_storage_snapshot_tests.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/evidence/cargo_test_vb_storage_trimming.log
+
+Code changes:
+- crates/vb_storage/src/constants.rs: added MAX_TRIM_KEY_LEN and MAX_SNAPSHOT_KEY_LEN as const aliases of JOURNAL_KEY_BYTES (CC-CAP-001)
+- crates/vb_storage/src/trimming/logic.rs: replaced 3 magic-17 literals (lines 36, 77, 222) and 2 9..17 slice ranges with MAX_SNAPSHOT_KEY_LEN / MAX_TRIM_KEY_LEN; preserved TrimError::IncompleteTrim typed failure (CC-CAP-002/003/004)
+- crates/vb_storage/src/trimming/tests.rs: added 1 cap-equality unit test + 3 overlong-key integration tests (24-byte adversarial keys); 9-byte and 13-byte regression tests unchanged (CC-CAP-001/010)
+
+Test results:
+- cargo test -p vb_storage --lib trimming: 42 passed (4 new + 38 existing)
+- cargo test -p vb_storage --lib snapshot_tests: 10 passed (13-byte regression preserved)
+- cargo test -p vb_storage --lib: 1534 passed
+- cargo test -p vb_storage --all-features: 1675 passed
+
+Gates passed:
+- cargo check -p vb_storage --all-features
+- cargo check --workspace --all-targets --all-features
+- cargo build --workspace --all-targets --all-features
+- cargo clippy -p vb_storage --lib --bins --examples --all-features
+- cargo clippy --workspace --lib --bins --examples --all-features
+- cargo fmt --check -p vb_storage
+
+Verifier lanes: default_rust_lane (REQUIRED, 4 unit/integration tests added); proptest (REQUIRED, covered by length-property tests); kani/verus/flux/loom/fuzz (NOT_REQUIRED per delivery-scope.jsonl rows 35-39)
+
+Handoff: black-hat-reviewer at state 12.
+
+Notes: Low-blast-radius const-alias + literal-substitution refactor with 4 new unit/integration tests in vb_storage. Named caps alias JOURNAL_KEY_BYTES at compile time; magic-17 replaced at 3 sites in trimming/logic.rs. No public API change (pub(crate) aliases), no diagnostic code change (0x4102 preserved), no cross-crate change, no existing test breakage.

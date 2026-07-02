@@ -1,0 +1,20 @@
+=== vb-t0iw9 evidence/check-beads-server-mode.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+--- bash scripts/check-beads-server-mode.sh
+
+beads server-mode check passed
+exit_code=0
+
+--- test -e .beads/embeddeddolt  (must be absent)
+PASS: .beads/embeddeddolt/ does not exist
+
+--- cat .beads/metadata.json (dolt_mode MUST remain 'server')
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}

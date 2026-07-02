@@ -1,0 +1,93 @@
+Proof-reviewer state 6 execution for bead vb-cib14.
+
+Reviewed 9 new proof artifacts written by proof-writer (State 5):
+  1. verification/verus/vb_cib14_resume_storage_map.rs (NEW)
+  2. verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs (UPDATED, 876->998)
+  3. crates/vb_runtime/src/journal/tests/chunk_002.rs (UPDATED)
+  4. crates/vb_runtime/src/models/loom/vb_cib14_resume_replay.rs (NEW)
+  5. crates/vb_runtime/src/models/loom/mod.rs (UPDATED)
+  6. crates/workspace_tests/tests/vb_test_runtime_resume_replay.rs (NEW)
+  7. crates/vb_runtime/Cargo.toml (UPDATED, added vb-cib14 feature)
+  8. crates/workspace_tests/Cargo.toml (UPDATED, added vb-cib14 feature + [[test]])
+  9. .config/source-length-exceptions.txt (UPDATED)
+
+Re-ran Verus production-binding audit:
+  STRONG=0, WEAK=72, VACUUM=0
+  No new VACUUM files. The new spec file vb_cib14_resume_storage_map.rs is
+  correctly classified as WEAK via the companion extern pattern
+  (line 114: #[path = "extern_..."]; extern line 174: #[path =
+  "production_inner/..."]; spec lines 210+223: assume_specification bridges).
+
+Re-ran Verus smoke on the new spec file:
+  verus --crate-type=lib --edition=2021 \
+    verification/verus/vb_cib14_resume_storage_map.rs
+  Result: 27 verified, 0 errors (warning is pre-existing autoderive Clone
+  issue in the extern file).
+
+Re-ran Verus smoke on the extern file:
+  verus --crate-type=lib --edition=2021 \
+    verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs
+  Result: 3 verified, 0 errors.
+
+Re-ran Verus regression on the pre-existing jnz9 spec:
+  verus --crate-type=lib --edition=2021 \
+    verification/verus/vb_jnz9_journal_event_seq_valid.rs
+  Result: 36 verified, 0 errors. No regression.
+
+Re-ran cargo default build:
+  cargo +nightly test -p vb_runtime --lib --no-run
+  Result: Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s.
+  Default build OK; gated test code does not compile.
+
+Re-ran cargo default proptest:
+  cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_test_runtime_resume_replay
+  Result: 1/1 passed (no-op marker test).
+
+Re-ran existing storage_event single-clone regression:
+  cargo +nightly test -p vb_runtime --lib storage_event
+  Result: 1/1 passed (pre-existing test not regressed).
+
+Re-ran panic-surface audit:
+  bash scripts/check-panic-surface.sh
+  Result: NoViolationFound, ExitCode: 0. Source-lint PO-006 is clean.
+
+Behavior-affecting waiver check:
+  - waiver-candidates.jsonl: only W-NONE-001 (behavior_affecting=false).
+  - trusted-base-ledger.jsonl: TB-014 (behavior_affecting=true) but it is
+    trusted_kind="block" status="blocked" — this is the canonical pattern
+    for PENDING_FORMAL_EXECUTION bridges, NOT a behavior-affecting waiver.
+
+PENDING_FORMAL_EXECUTION bridges reviewed:
+  - PO-002: proptest body is feature-gated, has full pass-through +
+    single-clone assertions. Compiles in default build (no-op).
+  - PO-003: proptest and cargo-test bodies are documented
+    PENDING_FORMAL_EXECUTION bridges with vacuous bodies
+    (`let _ = timestamp_u64;`); the contract is verified by Verus spec fn
+    + 4 exec proofs (F-001 observation, owner_approved_debt).
+  - PO-004: cargo-test body has full assertions including single-clone
+    counter check, RunResumed variant match, run/seq pass-through.
+  - PO-005 loom half: PENDING (cfg(loom) gated); harness WRITTEN with
+    non-vacuous assertions and concurrent spawn of recovery classifier
+    (F-002 observation, owner_approved_debt).
+  - PO-005 proptest half: SMOKE-VERIFIED 3/3 (default) + 3/3 (--features vb-cib14).
+  - PO-007: cargo-test body has full assertions (variant shape match + non-empty
+    Display check).
+
+Findings: 5 observations (severity=observation), 0 blockers, 0 minors, 0 criticals.
+All findings use canonical finding/v1.disposition in {owner_approved_debt,
+owner_approved_no_action}. No blocker findings, so review is APPROVED.
+
+Trusted-base ledger validation:
+  14 entries (TB-001 .. TB-014). All schema_version=trusted-base-ledger/v1.
+  TB-001..TB-013 status=accepted, reviewer_disposition=accepted (consistent).
+  TB-014 status=blocked, reviewer_disposition missing (consistent with blocked
+  state; F-003 observation). F-004 narrative inconsistency: TB-014 scope text
+  says "All 7 obligations" but obligation_id lists 6 (excluding PO-006).
+
+Output artifacts:
+  - .beads/vb-cib14/proof-review.md
+  - .beads/vb-cib14/proof-findings.jsonl
+  - .beads/vb-cib14/transcript-state6.txt
+  - one row appended to .beads/vb-cib14/agent-invocation-ledger.jsonl (state 6).
+
+STATUS: APPROVED

@@ -1,0 +1,23 @@
+Modified regular file crates/vb_runtime/src/primitives/collect.rs:
+    ...
+ 265  265:             Ok(vb_storage::DecodedSlotWrittenExtra::LegacyFrameExtra(frame_extra)) => {
+ 266  266:                 self.hydrate_frame_extra(run, slot, seq, value, frame_extra)
+ 267  267:             }
+      268:             Err(vb_storage::SlotWrittenExtraError::VersionMismatch { found }) => {
+      269:                 // vb-5bqmr: VBSE magic matched but version byte is
+      270:                 // unknown. Map to the typed
+      271:                 // `CollectExtraHydrationFailureKind::VersionMismatch`
+      272:                 // variant (added by this bead) so callers can
+      273:                 // distinguish a malformed envelope from a generic
+      274:                 // postcard decode failure.
+      275:                 Err(EngineError::CollectExtraHydrationFailed {
+      276:                     kind: CollectExtraHydrationFailureKind::VersionMismatch { found },
+      277:                     run_id: run,
+      278:                     collector_slot: slot,
+      279:                     event_seq: Some(core_event_seq(seq)),
+      280:                 })
+      281:             }
+ 268  282:             Err(_) => Err(EngineError::CollectExtraHydrationFailed {
+ 269  283:                 kind: CollectExtraHydrationFailureKind::DecodeFailed,
+ 270  284:                 run_id: run,
+    ...

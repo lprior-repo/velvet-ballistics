@@ -1,0 +1,6 @@
+(B[m     // Then a third take fails (no fresh allocation as fallback)
+     let result = pool.take(RunId::new(3), StepIdx::new(0));
+     assert!(matches!(
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/frame_pool/tests.rs:85:
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/frame_pool/tests.rs:114:
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/frame_pool/tests.rs:139:

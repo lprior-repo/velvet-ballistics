@@ -1,0 +1,13 @@
+=== storage_event_test.txt ===
+running 1 test
+test journal::tests::storage_event_clones_the_event_exactly_once_per_dispatch ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1806 filtered out; finished in 0.00s
+
+
+=== recovery_test.txt ===
+test shard::types::introspection_poison_regression_tests::admission_continues_after_poison_recovery ... ok
+test shard::types::introspection_poison_regression_tests::register_rejects_run_already_exists_after_poison_recovery ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1794 filtered out; finished in 0.00s
+

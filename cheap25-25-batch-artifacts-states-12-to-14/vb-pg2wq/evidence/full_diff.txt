@@ -1,0 +1,31 @@
+Modified regular file crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs:
+    ...
+  74   74:         b1.commit().expect("commit");
+  75   75:         let mut b2 = JournalWriteBatch::new(&journal);
+  76   76:         let result = b2.append_event(&event);
+  77   77:         let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+  78   77:         prop_assert!(is_duprun: r, seq: s }) = result else {
+       78:             panic!("expected DuplicateEvent, got {:?}", result);
+       79:         };
+       80:         assert_eq!(r, RunId::new(run));
+  78   81:         assert_eq!(s, EventSeq::new(seq));
+  79   82:     }
+  80   83: }
+Modified regular file crates/vb_storage/tests/proptest_vb_vzcuf_PS_003.rs:
+    ...
+  60   60:         b1.commit().expect("commit");
+  61   61:         let mut b2 = JournalWriteBatch::new(&journal);
+  62   62:         let result = b2.append_event(&e);
+  63   63:         let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+  64   63:         prop_assert!(is_duprun: r, seq: s }) = result else {
+       64:             panic!("expected DuplicateEvent, got {:?}", result);
+       65:         };
+       66:         assert_eq!(r, RunId::new(run));
+  64   67:         assert_eq!(s, EventSeq::new(seq));
+  65   68:     }
+  66   69:     #[test]
+  67   70:     fn ps003_all_errors_have_msg(_dummy in proptest::bool::ANY) {
+    ...
+Modified regular file crates/vb_storage/tests/proptest_vb_vzcuf_PS_004.rs:
+    ...
+... (55 lines truncated)

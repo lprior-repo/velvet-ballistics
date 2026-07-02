@@ -1,0 +1,49 @@
+[transcript-state12.txt]
+formal-verifier session for vb-r8oso (2026-07-01T21:30:00Z to 2026-07-01T22:00:00Z)
+
+Inputs:
+- contract.md (C-1..C-12, 334 lines)
+- proof-obligations.planned.jsonl (7 POBs)
+- trusted-base-plan.md (8 trust markers)
+- verifier-lane-decisions.jsonl (128 lane decisions)
+- implementation.md (State 11, 333 lines)
+- evidence/downstream-caller-audit.md (126 lines, C-10 closure)
+
+Actions:
+1. Validated schemas: proof-obligation/v1, verification-ledger/v1, formal-waiver/v1
+2. Executed 9 machine gates:
+   - G-1 cargo test -p vb_storage --tests --all-features → 1,676 passed (16 suites)
+   - G-2 cargo test -p vb_storage --tests --features kani-sequence-at-write --no-run → 16 test executables built
+   - G-3 cargo test -p vb_storage --tests --features kani-sequence-at-write → 1,676 passed
+   - G-4 cargo test -p vb_storage --lib next_sequence_at_write → 3 passed
+   - G-5 cargo test -p vb_storage --lib append_strict_rejects → 4 passed
+   - G-6 cargo test -p vb_storage --lib batch → 195 passed
+   - G-7 cargo test -p vb_storage --lib → 1,537 passed
+   - G-8 cargo test -p vb_storage --test proptest_journal_error_codes -- --nocapture → 42 passed
+   - G-9 cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings → exit 0, zero warnings
+3. Attempted Kani: cargo kani list --features kani-sequence-at-write --format json
+   → BLOCKED_TOOLING (pre-existing kani_helpers.rs parse error in vb_core, parent commit 1d6c017f)
+4. Verified downstream caller audit (C-10) is closed; TB-NSAW-RESEARCH-001 closed
+5. Validated trust markers: TB-NSAW-001..004, TB-NSAW-RESEARCH-001, TB-NSAW-KANI-001, TB-NSAW-CODE-001 all closed
+6. Wrote formal-verification-report.md (State 12)
+7. Wrote verification-ledger.jsonl (7 rows: 5 PASS, 2 BLOCKED_TOOLING)
+8. Wrote formal-waivers.jsonl (empty, 0 lines)
+9. Captured 9 raw log files under evidence/
+
+Outputs:
+- formal-verification-report.md (19.5K)
+- verification-ledger.jsonl (11.9K, 7 rows)
+- formal-waivers.jsonl (0B, 0 rows)
+- evidence/raw-cargo-test-vb-storage-tests-all-features.log (130.9K)
+- evidence/raw-cargo-test-kani-feature-no-run.log (17 lines)
+- evidence/raw-cargo-test-vb-storage-kani-feature.log (130.9K)
+- evidence/raw-cargo-test-next-sequence-at-write.log (348B)
+- evidence/raw-cargo-test-append-strict-rejects.log (407B)
+- evidence/raw-cargo-test-batch.log (16.0K)
+- evidence/raw-cargo-test-vb-storage-lib.log (122.5K)
+- evidence/raw-cargo-test-proptest-journal-error-codes.log (2.4K)
+- evidence/raw-cargo-clippy-strict.log (1 line, exit 0)
+
+Verdict: PASS for the Holzman Rust acceptance gate. Kani blocked by pre-existing toolchain failure (not vb-r8oso regression).
+
+No false claims. No behavior-affecting waivers. No FAIL_* classifications.

@@ -1,0 +1,45 @@
+=== vb-t0iw9 final gate summary ===
+
+captured_at: 2026-07-01T20:25:00Z
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+
+ALL GATES PASS:
+
+  [PASS] pwd -P  = /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+  [PASS] jj root = /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-t0iw9
+  [PASS] bash /home/lewis/src/velvet-ballistics/scripts/check-beads-server-mode.sh
+         -> exit 0, "beads server-mode check passed"
+  [PASS] test ! -e /home/lewis/src/velvet-ballistics/.beads/embeddeddolt
+         -> exit 0, directory absent
+  [PASS] cat .beads/metadata.json | grep dolt_mode | grep -q '"server"'
+         -> dolt_mode remains "server"
+  [PASS] bd update vb-t0iw9 --claim  -> exit 0, "Updated issue: vb-t0iw9 ..."
+  [PASS] implementation.md present  -> 784069920c0d4ab5f3d9761317f89e5b1f35555f651008ad16e3ed877b57d5ce
+  [PASS] runbook.md present        -> 739b7ac565c81f1179911996fc1b65a311528e9968107428afe385115ebaabef
+  [PASS] evidence/ contains 9 files (one per audit dimension)
+  [PASS] state11 row appended to .beads/vb-t0iw9/agent-invocation-ledger.jsonl
+         -> ledger_sequence=4, entry_hash=5f7acfb5d139c31c2597765c5cd048784979d144d550f547cc9a32f76d5008e6
+         -> previous_entry_hash chain intact (3ce7db... matches seq 3's entry_hash)
+  [PASS] no Rust production code modified (this is a config-only repair; no crates/ touched)
+  [PASS] no scripts/ modified
+  [PASS] no .beads/metadata.json widened (dolt_mode and project_id keys unchanged)
+  [PASS] no .beads/embeddeddolt/ created or removed
+  [PASS] no bd 1.0.5 binary modification (binary path and sha256 unchanged)
+
+REPAIR ARTIFACTS:
+  - .beads/vb-t0iw9/runbook.md         (Option C; two validated user actions)
+  - .beads/vb-t0iw9/implementation.md  (chosen-repair rationale + diff + gate)
+  - .beads/vb-t0iw9/evidence/         (9 evidence files; full audit chain)
+  - .beads/vb-t0iw9/transcript-state11.txt
+  - .beads/vb-t0iw9/agent-invocation-ledger.jsonl  (4 entries, hash chain valid)
+
+BEAD STATE:
+  - vb-t0iw9 status: in_progress (was open before this delivery; now claimed by Lewis)
+  - priority: 1
+  - assignee: Lewis
+  - block_target: Action A (ALTER TABLE) or Action B (bd upgrade) per runbook.md
+
+FOLLOW-UPS (NOT in this bead's scope):
+  - Port drift in .beads/config.yaml (43643 vs 45645 actual): cosmetic; bd finds
+    server via metadata.json. See evidence/port-drift.txt.
+  - Inner .beads/dolt/config.yaml port 43627: stale; not used at runtime.

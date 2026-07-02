@@ -1,0 +1,16 @@
+FixturePass: clean production-like fixture exit=0
+FixturePass: DISCARD-001 bare fallible call exit=2
+FixturePass: DISCARD-002 let underscore exit=2
+FixturePass: DISCARD-003 ok err lossy exit=2
+FixturePass: DISCARD-003 embedded ok lossy exit=2
+FixturePass: DISCARD-003 split ok lossy exit=2
+FixturePass: DISCARD-004 swallowed Err exit=2
+FixturePass: DISCARD-005 drop fallible exit=2
+FixturePass: DISCARD-006 undocumented allow marker exit=2
+FixturePass: path-bound justified exception exit=0
+FixturePass: overbroad exception rejected exit=3
+FixturePass: malformed exception rejected exit=3
+ScanDomain: crates/*/src xtask/src
+NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+JustifiedException|DISCARD-006|crates/vb_runtime/src/shard/transitions.rs|line=199
+JustifiedException|DISCARD-006|crates/vb_runtime/src/shard/transitions.rs|line=86

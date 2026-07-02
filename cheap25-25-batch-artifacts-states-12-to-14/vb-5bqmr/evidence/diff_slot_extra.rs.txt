@@ -1,0 +1,268 @@
+Modified regular file crates/vb_storage/src/slot_extra.rs:
+   1    1: #![forbid(unsafe_code)]
+   2    2: //! Versioned slot-write extra envelope.
+        3: //!
+        4: //! The wire format is `[MAGIC][VERSION][postcard-payload]` where:
+        5: //! - `MAGIC = b"VBSE"` (4 bytes) — distinguishes the envelope from legacy
+        6: //!   frame extra bytes (vb-jpq7).
+        7: //! - `VERSION = 0x01` (1 byte) — the envelope version. Only `0x01` is
+        8: //!   recognized; any other value with a matching magic MUST be rejected
+        9: //!   as `SlotWrittenExtraError::VersionMismatch { found }` instead of
+       10: //!   silently downgrading to the legacy arm (vb-5bqmr). This prevents
+       11: //!   the P1 bug where a malformed write could be misclassified as
+       12: //!   legacy frame extra, leaking a taint sidecar downgrade.
+       13: //!
+       14: //! The discriminator uses `split_at_checked` to split the magic+version
+       15: //! prefix from the payload in a single bounds-checked operation; the
+       16: //! three arms are mutually exclusive and exhaustive over the byte
+       17: //! classification space.
+   3   18: 
+   4   19: use vb_core::Taint;
+   5   20: 
+   6   21: /// Magic bytes that distinguish the v1 slot-write envelope from legacy
+       22: /// frame extra bytes (hoisted from the prior `b"VBSE\x01"` prefix
+       23: /// composition so the discriminator can match magic and version
+       24: /// independently).
+       25: pub const SLOT_WRITTEN_EXTRA_MAGIC: &[u8; 4] = b"VBSE";
+       26: 
+       27: /// Envelope version byte. Only `0x01` is recognized; any other value
+       28: /// with a matching magic MUST be rejected as `VersionMismatch { found }`.
+       29: pub const SLOT_WRITTEN_EXTRA_VERSION: u8 = 0x01;
+       30: 
+   6   31: /// Prefix that distinguishes the v1 slot-write envelope from legacy
+   6   32: /// frame extra bytes. Composed from the hoisted [`SLOT_WRITTEN_EXTRA_MAGIC`]
+       33: /// and [`SLOT_WRITTEN_EXTRA_VERSION`] constants; the discriminator at
+       34: /// [`decode_slot_written_extra`] splits this prefix via
+       35: /// [`<[u8]>::split_at_checked`] before matching the magic and version
+   6   36: /// arms.
+   7   37: pub const SLOT_WRITTEN_EXTRA_PREFIX: &[u8; 5] = b"VBSE\x01";
+   8   38: 
+   9   39: /// Errors while encoding or decoding the slot-write extra envelope.
+    ...
+  16   46:     AllocationFailed,
+  17   47:     /// Envelope prefix was present, but the payload could not be decoded.
+  18   48:     DecodeFailed,
+       49:     /// Envelope magic matched but the version byte is not recognized.
+       50:     /// Carries the untrusted `found` byte for diagnostic reporting.
+       51:     VersionMismatch {
+       52:         /// Version byte observed on the wire (not equal to
+       53:         /// [`SLOT_WRITTEN_EXTRA_VERSION`]).
+       54:         found: u8,
+       55:     },
+  19   56: }
+  20   57: 
+  21   58: /// Decoded v1 slot-write extra envelope.
+    ...
+  56   93:     Ok(out)
+  57   94: }
+  58   95: 
+  59   96: /// Decodes a slot-write extra envelope or classifies legacy frame extra
+  59   97: /// bytes.
+       98: ///
+       99: /// The three mutually-exclusive arms partition every byte slice:
+      100: ///
+      101: /// 1. `bytes.len() < SLOT_WRITTEN_EXTRA_PREFIX.len()` — too short to
+      102: ///    carry magic + version. Treated as legacy frame extra.
+      103: /// 2. `bytes[..4] != SLOT_WRITTEN_EXTRA_MAGIC` — magic mismatch.
+      104: ///    Treated as legacy frame extra (preserves the
+      105: ///    `recovery_bdd_tests.rs:3158-3211` legacy path).
+      106: /// 3. `bytes[..4] == SLOT_WRITTEN_EXTRA_MAGIC`:
+      107: ///    - `bytes[4] == SLOT_WRITTEN_EXTRA_VERSION` — v1 envelope.
+      108: ///      Decoded via postcard; returns `Envelope(_)` on success or
+      109: ///      `DecodeFailed` on a corrupt payload.
+      110: ///    - `bytes[4] != SLOT_WRITTEN_EXTRA_VERSION` — version mismatch.
+      111: ///      Returns `VersionMismatch { found: bytes[4] }`. This arm is
+      112: ///      the vb-5bqmr fix: it MUST NOT silently downgrade to legacy.
+  60  113: pub fn decode_slot_written_extra(
+  61  114:     bytes: &[u8],
+  62  115: ) -> Result<DecodedSlotWrittenExtra<'_>, SlotWrittenExtraError> {
+  63     :     match bytes.strip_prefix(SLOT_WRITTEN_EXTRA_PREFIX) {
+  64     :         Some(payload) => postcard::from_bytes::<SlotWrittenExtraEnvelope>(payload)
+  65     :             .map(DecodedSlotWrittenExtra::Envelope)
+  66     :             .map_err(|_| SlotWrittenExtraError::DecodeFailed),
+  67     :         None => Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(bytes)),
+      116:     // Split_at_checked bounds-checks the prefix length in a single
+      117:     // operation; on failure the input cannot carry the magic+version
+      118:     // header and the legacy arm is correct.
+      119:     let Some((header, payload)) = bytes.split_at_checked(SLOT_WRITTEN_EXTRA_PREFIX.len()) else {
+      120:         return Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(bytes));
+      121:     };
+      122:     // Match the magic independently of the version so the
+      123:     // version-mismatch arm is reachable with exactly the bytes the
+      124:     // caller provided (no allocation, no buffer reuse).
+      125:     let magic = header
+      126:         .get(..SLOT_WRITTEN_EXTRA_MAGIC.len())
+      127:         .ok_or(SlotWrittenExtraError::DecodeFailed)?;
+      128:     if magic != SLOT_WRITTEN_EXTRA_MAGIC {
+      129:         return Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(bytes));
+      130:     }
+      131:     let version = *header
+      132:         .get(SLOT_WRITTEN_EXTRA_MAGIC.len())
+      133:         .ok_or(SlotWrittenExtraError::DecodeFailed)?;
+      134:     if version != SLOT_WRITTEN_EXTRA_VERSION {
+      135:         return Err(SlotWrittenExtraError::VersionMismatch { found: version });
+      136:     }
+      137:     postcard::from_bytes::<SlotWrittenExtraEnvelope>(payload)
+      138:         .map(DecodedSlotWrittenExtra::Envelope)
+      139:         .map_err(|_| SlotWrittenExtraError::DecodeFailed)
+      140: }
+      141: 
+      142: #[cfg(test)]
+      143: mod slot_extra_tests {
+      144:     //! vb-5bqmr default-lane tests for the slot_extra discriminator.
+      145:     //!
+      146:     //! These exercise the three arms of `decode_slot_written_extra`
+      147:     //! without requiring the `kani-vb-5bqmr` feature. The feature-gated
+      148:     //! proptests in `crates/vb_storage/tests/proptest_vb_5bqmr_slot_extra.rs`
+      149:     //! cover the same contract at higher resolution.
+      150: 
+      151:     use super::{
+      152:         SLOT_WRITTEN_EXTRA_MAGIC, SLOT_WRITTEN_EXTRA_PREFIX, SLOT_WRITTEN_EXTRA_VERSION,
+      153:         decode_slot_written_extra, encode_slot_written_extra,
+      154:     };
+      155:     use crate::DecodedSlotWrittenExtra;
+      156:     use crate::slot_extra::SlotWrittenExtraError;
+      157:     use vb_core::Taint;
+      158: 
+      159:     /// C-NEG-001: `b"\x01\x02\x03\x04"` (4 bytes, non-magic) hits the
+      160:     /// legacy arm.
+      161:     #[test]
+      162:     fn decode_short_non_magic_is_legacy_frame_extra() {
+      163:         let bytes: [u8; 4] = [0x01, 0x02, 0x03, 0x04];
+      164:         match decode_slot_written_extra(&bytes) {
+      165:             Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(returned)) => {
+      166:                 assert_eq!(returned, &bytes[..]);
+      167:             }
+      168:             other => panic!("legacy arm expected for short non-magic input, got {other:?}"),
+      169:         }
+      170:     }
+      171: 
+      172:     /// C-NEG-002: `b"VBSE"` (4 bytes, magic-only) hits the legacy arm
+      173:     /// because the input cannot claim a version byte.
+      174:     #[test]
+      175:     fn decode_magic_only_four_bytes_is_legacy_frame_extra() {
+      176:         let bytes: [u8; 4] = *b"VBSE";
+      177:         match decode_slot_written_extra(&bytes) {
+      178:             Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(returned)) => {
+      179:                 assert_eq!(returned, &bytes[..]);
+      180:             }
+      181:             other => panic!("legacy arm expected for 4-byte magic-only input, got {other:?}"),
+      182:         }
+      183:     }
+      184: 
+      185:     /// C-NEG-003: `b"VBSE\x01\xff\xff\xff"` (magic + v1 + corrupt
+      186:     /// payload) MUST return `DecodeFailed`, NOT `VersionMismatch`.
+      187:     /// This is the existing `recovery/tests.rs:2332`
+      188:     /// `corrupt_slot_taint_envelope` invariant — the corrupt payload
+      189:     /// is v1 (version 0x01), so the discriminator selects the v1
+      190:     /// envelope branch and postcard fails.
+      191:     #[test]
+      192:     fn decode_corrupt_v1_returns_decode_failed_not_version_mismatch() {
+      193:         let bytes: Vec<u8> = b"VBSE\x01\xff\xff\xff".to_vec();
+      194:         match decode_slot_written_extra(&bytes) {
+      195:             Err(SlotWrittenExtraError::DecodeFailed) => {}
+      196:             Err(SlotWrittenExtraError::VersionMismatch { .. }) => {
+      197:                 panic!("corrupt-v1 MUST return DecodeFailed, NOT VersionMismatch")
+      198:             }
+      199:             Err(other) => panic!("corrupt-v1 MUST return DecodeFailed, got {other:?}"),
+      200:             Ok(ok) => panic!("corrupt-v1 MUST return DecodeFailed, got {ok:?}"),
+      201:         }
+      202:     }
+      203: 
+      204:     /// C-DEC-002 + C-ERR-002: `b"VBSE\x02..."` (magic + unknown
+      205:     /// version 0x02) returns `VersionMismatch { found: 0x02 }` and
+      206:     /// does NOT downgrade to legacy (the P1 bug).
+      207:     #[test]
+      208:     fn decode_unknown_version_returns_version_mismatch_with_found_byte() {
+      209:         let mut bytes: Vec<u8> = Vec::with_capacity(8);
+      210:         bytes.extend_from_slice(SLOT_WRITTEN_EXTRA_MAGIC);
+      211:         bytes.push(0x02);
+      212:         bytes.extend_from_slice(&[0xFF, 0xFF, 0xFF]);
+      213:         match decode_slot_written_extra(&bytes) {
+      214:             Err(SlotWrittenExtraError::VersionMismatch { found }) => {
+      215:                 assert_eq!(found, 0x02);
+      216:             }
+      217:             other => panic!("VersionMismatch expected for magic + 0x02, got {other:?}"),
+      218:         }
+      219:     }
+      220: 
+      221:     /// C-DEC-002 + C-ERR-002: every non-v1 version byte (including
+      222:     /// the boundary value 0x00 and 0xFF) returns
+      223:     /// `VersionMismatch { found }` with the exact byte observed.
+      224:     #[test]
+      225:     fn decode_unknown_version_preserves_found_byte_across_boundary_values() {
+      226:         for &version in &[0x00_u8, 0x02, 0x7F, 0x80, 0xFE, 0xFF] {
+      227:             let mut bytes: Vec<u8> = Vec::with_capacity(8);
+      228:             bytes.extend_from_slice(SLOT_WRITTEN_EXTRA_MAGIC);
+      229:             bytes.push(version);
+      230:             bytes.extend_from_slice(&[0xFF, 0xFF, 0xFF]);
+      231:             match decode_slot_written_extra(&bytes) {
+      232:                 Err(SlotWrittenExtraError::VersionMismatch { found }) => {
+      233:                     assert_eq!(found, version, "found byte must equal input version");
+      234:                 }
+      235:                 other => {
+      236:                     panic!("VersionMismatch expected for magic + 0x{version:02x}, got {other:?}")
+      237:                 }
+      238:             }
+      239:         }
+      240:     }
+      241: 
+      242:     /// `VersionMismatch { found }` is `Copy` (round-trip by value
+      243:     /// preserves the `found` byte).
+      244:     #[test]
+      245:     fn version_mismatch_is_copy_round_trip() {
+      246:         let err: SlotWrittenExtraError = SlotWrittenExtraError::VersionMismatch { found: 0x42 };
+      247:         let copy = err;
+      248:         let copy2 = err;
+      249:         match (copy, copy2) {
+      250:             (
+      251:                 SlotWrittenExtraError::VersionMismatch { found: f1 },
+      252:                 SlotWrittenExtraError::VersionMismatch { found: f2 },
+      253:             ) => {
+      254:                 assert_eq!(f1, 0x42);
+      255:                 assert_eq!(f2, 0x42);
+      256:             }
+      257:             _ => panic!("VersionMismatch copy round-trip failed"),
+      258:         }
+      259:     }
+      260: 
+      261:     /// C-DEC-003: the encoded v1 envelope round-trips through
+      262:     /// `encode_slot_written_extra → decode_slot_written_extra` and
+      263:     /// produces the original taint + frame_extra payload.
+      264:     #[test]
+      265:     fn encode_decode_v1_round_trip_preserves_taint_and_frame_extra() {
+      266:         let taint = Taint::Secret;
+      267:         let frame_extra: Option<Vec<u8>> = Some(vec![0xAA, 0xBB, 0xCC]);
+      268:         let encoded = encode_slot_written_extra(taint, frame_extra.clone())
+      269:             .expect("encode_slot_written_extra must succeed");
+      270:         // The encoded output starts with the magic + version prefix.
+      271:         assert_eq!(
+      272:             &encoded[..SLOT_WRITTEN_EXTRA_PREFIX.len()],
+      273:             SLOT_WRITTEN_EXTRA_PREFIX
+      274:         );
+      275:         assert_eq!(encoded[4], SLOT_WRITTEN_EXTRA_VERSION);
+      276: 
+      277:         match decode_slot_written_extra(&encoded) {
+      278:             Ok(DecodedSlotWrittenExtra::Envelope(envelope)) => {
+      279:                 assert_eq!(envelope.taint, taint);
+      280:                 assert_eq!(envelope.frame_extra, frame_extra);
+      281:             }
+      282:             other => panic!("Envelope expected for v1 round-trip, got {other:?}"),
+      283:         }
+      284:     }
+      285: 
+      286:     /// Magic mismatch (`b"\x00VBSE\x01..."`) hits the legacy arm,
+      287:     /// not VersionMismatch, even though the input is 6 bytes long.
+      288:     #[test]
+      289:     fn decode_magic_mismatch_is_legacy_frame_extra() {
+      290:         let mut bytes: Vec<u8> = Vec::with_capacity(6);
+      291:         bytes.push(0x00); // first byte differs from SLOT_WRITTEN_EXTRA_MAGIC[0]
+      292:         bytes.extend_from_slice(b"VBSE\x01");
+      293:         match decode_slot_written_extra(&bytes) {
+      294:             Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(returned)) => {
+      295:                 assert_eq!(returned, &bytes[..]);
+      296:             }
+      297:             other => panic!("legacy arm expected for magic mismatch, got {other:?}"),
+      298:         }
+  68  299:     }
+  69  300: }

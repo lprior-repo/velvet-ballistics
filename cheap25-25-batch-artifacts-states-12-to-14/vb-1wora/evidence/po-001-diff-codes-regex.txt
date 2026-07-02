@@ -1,0 +1,3 @@
+10:+    pub const TRAILING_BYTES_CODE: DiagnosticCode = DiagnosticCode::new(0x4042);
+18:+            Self::TrailingBytes { .. } => Self::TRAILING_BYTES_CODE,
+26:+            Self::TrailingBytes { .. } => "JOURNAL_TRAILING_BYTES",

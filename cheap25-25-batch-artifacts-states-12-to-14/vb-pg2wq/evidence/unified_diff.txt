@@ -1,0 +1,96 @@
+--- a/crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs
++++ b/crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs
+@@ -74,11 +74,14 @@
+         b1.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let result = b2.append_event(&event);
+-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+-        prop_assert!(is_dup);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
++            panic!("expected DuplicateEvent, got {:?}", result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(seq));
+     }
+ }
+
+--- a/crates/vb_storage/tests/proptest_vb_vzcuf_PS_003.rs
++++ b/crates/vb_storage/tests/proptest_vb_vzcuf_PS_003.rs
+@@ -60,11 +60,14 @@
+         b1.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let result = b2.append_event(&e);
+-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+-        prop_assert!(is_dup);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
++            panic!("expected DuplicateEvent, got {:?}", result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(seq));
+     }
+     #[test]
+     fn ps003_all_errors_have_msg(_dummy in proptest::bool::ANY) {
+
+--- a/crates/vb_storage/tests/proptest_vb_vzcuf_PS_004.rs
++++ b/crates/vb_storage/tests/proptest_vb_vzcuf_PS_004.rs
+@@ -44,9 +44,12 @@
+         batch.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let append_result = b2.append_event(&event);
+-        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
+-        prop_assert!(duplicate_event);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = append_result else {
++            panic!("expected DuplicateEvent, got {:?}", append_result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(0));
+         prop_assert!(b2.is_aborted());
+         let commit_result = b2.commit();
+         prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));
+@@ -93,9 +96,12 @@
+         batch.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let append_result = b2.append_event(&event);
+-        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
+-        prop_assert!(duplicate_event);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = append_result else {
++            panic!("expected DuplicateEvent, got {:?}", append_result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(seq));
+         prop_assert!(b2.is_aborted());
+         let commit_result = b2.commit();
+         prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));
+
+--- a/crates/vb_storage/tests/proptest_vb_vzcuf_PS_008.rs
++++ b/crates/vb_storage/tests/proptest_vb_vzcuf_PS_008.rs
+@@ -32,8 +32,11 @@
+         b1.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let result = b2.append_event(&event);
+-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. })); prop_assert!(is_dup);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
++            panic!("expected DuplicateEvent, got {:?}", result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(seq));
+     }
+     #[test]
+     fn ps008_encode_before_mut(run in 1u64..1000u64) {
+
+--- a/crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs
++++ b/crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs
+@@ -32,8 +35,11 @@
+         b1.commit().expect("commit");
+         let mut b2 = JournalWriteBatch::new(&journal);
+         let result = b2.append_event(&event);
+-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+-        prop_assert!(is_dup);
++        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
++            panic!("expected DuplicateEvent, got {:?}", result);
++        };
++        assert_eq!(r, RunId::new(run));
++        assert_eq!(s, EventSeq::new(seq));
+     }
+     #[test]
+     fn ps009_encode_det(run in 1u64..500u64, seq in 0u64..50u64) {
