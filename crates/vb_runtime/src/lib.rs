@@ -86,6 +86,7 @@ pub mod models;
 pub mod primitives;
 pub mod recovery;
 pub mod runtime;
+pub mod scheduler;
 pub mod shard;
 pub mod taint;
 pub mod trace;
