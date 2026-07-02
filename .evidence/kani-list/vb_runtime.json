@@ -2,6 +2,18 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
+    "crates/vb_runtime/src/kani_vb_edvbj_propagation_strict_gate.rs": [
+      "kani_vb_edvbj_propagation_strict_gate::kani_append_sequenced_propagation",
+      "kani_vb_edvbj_propagation_strict_gate::kani_queued_strict_gate"
+    ],
+    "crates/vb_runtime/src/kani_vb_edvbj_storage_event_no_fabricate.rs": [
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_action_layer_no_fabricate",
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_boundary_layer_no_fabricate",
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_dispatch_no_fabricate",
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_event_kind_enumeration",
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_layer_consistency",
+      "kani_vb_edvbj_storage_event_no_fabricate::kani_run_layer_no_fabricate"
+    ],
     "crates/vb_runtime/src/primitives/collect.rs": [
       "primitives::collect::kani_collect_verification::collect_page_pagination_bounds"
     ],
@@ -40,7 +52,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 26,
+    "standard-harnesses": 34,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }
