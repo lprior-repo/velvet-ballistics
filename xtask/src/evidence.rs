@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 #![allow(dead_code)]
 // UI release contract moved to velvet-optional (deferred)
 include!("evidence/release_contract.rs");

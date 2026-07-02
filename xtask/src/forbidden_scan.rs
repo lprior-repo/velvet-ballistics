@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+#![allow(unreachable_pub)]
 use anyhow::Context;
 
 // `forbidden-scan` xtask command.

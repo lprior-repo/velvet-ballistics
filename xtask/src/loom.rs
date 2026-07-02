@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 //! Loom concurrency model test command.
 //!
 //! Implements `cargo xtask loom --model <name>` for VB-CONC-001..005.

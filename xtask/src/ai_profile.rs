@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 use anyhow::Context;
 use std::path::{Path, PathBuf};
 

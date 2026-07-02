@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 #![forbid(unsafe_code)]
 
 //! Contract-discovery: walk contracts/, validate schema_version + kind, run cue vet,

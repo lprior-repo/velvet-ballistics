@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]

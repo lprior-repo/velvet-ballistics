@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
-#![allow(unreachable_pub)]
+// xtask is a CLI binary with internal submodules. Many pub items are
+// only consumed by other modules within xtask itself. Per-module
+// #[allow(unreachable_pub)] below documents which items are externally
+// reachable (bin entry-point, public API for tests) vs internal.
 
 mod ai_profile;
 mod benchmark_policy;

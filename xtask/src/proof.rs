@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 //! Proof system commands for velvet-ballistics.
 //!
 //! Provides:

@@ -1,3 +1,4 @@
+#![allow(unreachable_pub)]
 //! Gate command wrappers for xtask command-center gates.
 
 #![allow(dead_code)]
