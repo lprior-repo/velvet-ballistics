@@ -20,7 +20,7 @@ impl<const N: usize> SeededBytes<N> {
         }
         let mut rng = StdRng::seed_from_u64(seed);
         let mut bytes = [0u8; N];
-        rng.fill(&mut bytes[..]);
+        rng.fill(bytes.as_mut_slice());
         Some(Self { bytes })
     }
 }
