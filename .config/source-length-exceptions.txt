@@ -2,6 +2,7 @@
 # Format: <file_path>|<owner>|<split_bead>|<removal_plan>|<reason>
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
+crates/vb_cli/src/commands_incident.rs|lewis|vb-z8fi1|split-test-mod-into-tests-file|Over-300-line incident-report CLI module (511 lines); production struct + impl is ~75 lines, the remainder is the in-file `#[cfg(test)] mod tests` (12 test cases + helpers). Split the test mod into `crates/vb_cli/src/commands_incident/tests.rs` to bring the production file under the 300-line limit.
 crates/vb_storage/src/codec/tests/kill_kind_admission.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f kill kind admission tests (486 lines); will split by test scenario after landing.
 crates/vb_storage/src/codec/tests/replay_integrity.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f replay integrity tests (321 lines); will split by test scenario after landing.
 crates/workspace_tests/tests/cancel_kill_lattice_props.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice property tests (378 lines); will split by property group after landing.

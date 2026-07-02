@@ -217,8 +217,10 @@ pub use types::*;
 
 // Journal
 pub use journal::incident::{
-    IncidentAnalysis, SideEffect, SideEffectCertainty, analyze_incident_events, build_repair_hints,
-    derive_lifecycle_state_from_events, event_to_lifecycle, lifecycle_state_to_inspect_status,
+    ActionTicketEvidence, FailureCode, HINT_ACTION_ABANDONED_PRIMARY, HINT_ASK_TIMED_OUT_PRIMARY,
+    HINT_RUN_KILLED_PRIMARY, IncidentAnalysis, SideEffect, SideEffectCertainty,
+    analyze_incident_events, build_repair_hints, derive_lifecycle_state_from_events,
+    event_to_lifecycle, lifecycle_state_to_inspect_status, sample_action_ticket,
 };
 pub use journal::{EventReplayLimit, FjallJournal, ReadOnlyJournal};
 
