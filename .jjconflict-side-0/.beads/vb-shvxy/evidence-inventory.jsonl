@@ -1,0 +1,23 @@
+{"path": ".evidence/vb-shvxy/po-001-kani-list-vb-core.raw.log", "size_bytes": 2154, "obligation": "PO-001", "lane": "Kani", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 198}
+{"path": ".evidence/vb-shvxy/po-002-kani-list-vb-runtime.raw.log", "size_bytes": 4934, "obligation": "PO-002", "lane": "Kani", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 17}
+{"path": ".evidence/vb-shvxy/po-003-kani-feature-gate.raw.log", "size_bytes": 702, "obligation": "PO-003", "lane": "Kani", "kind": "raw_command_log", "exit_code": 1, "applicable_count": 0, "classification": "fail_closed"}
+{"path": ".evidence/vb-shvxy/po-004-flux-check-vb-core.raw.log", "size_bytes": 363, "obligation": "PO-004", "lane": "Flux-rs", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 1}
+{"path": ".evidence/vb-shvxy/po-005a-flux-lib-rejection.raw.log", "size_bytes": 71, "obligation": "PO-005a", "lane": "Flux-rs", "kind": "raw_command_log", "exit_code": 2, "applicable_count": 0, "classification": "fail_closed"}
+{"path": ".evidence/vb-shvxy/po-005b-flux-test-rejection.raw.log", "size_bytes": 72, "obligation": "PO-005b", "lane": "Flux-rs", "kind": "raw_command_log", "exit_code": 2, "applicable_count": 0, "classification": "fail_closed"}
+{"path": ".evidence/vb-shvxy/po-006-zero-test-failclosed.raw.log", "size_bytes": 215, "obligation": "PO-006", "lane": "Proptest", "kind": "raw_command_log", "exit_code": 1, "applicable_count": 0, "classification": "fail_closed"}
+{"path": ".evidence/vb-shvxy/po-007-proptest-nonvacuous.raw.log", "size_bytes": 151, "obligation": "PO-007", "lane": "Proptest", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 5}
+{"path": ".evidence/vb-shvxy/po-008-fuzz-list.raw.log", "size_bytes": 1221, "obligation": "PO-008", "lane": "Cargo-fuzz", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 58}
+{"path": ".evidence/vb-shvxy/po-009-fuzz-build-gnu.raw.log", "size_bytes": 7444, "obligation": "PO-009", "lane": "Cargo-fuzz", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 58}
+{"path": ".evidence/vb-shvxy/po-010-loom-execution.raw.log", "size_bytes": 58, "obligation": "PO-010", "lane": "Loom", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 13}
+{"path": ".evidence/vb-shvxy/po-011-loom-list.raw.log", "size_bytes": 127, "obligation": "PO-011", "lane": "Loom", "kind": "raw_command_log", "exit_code": 0, "applicable_count": 5}
+{"path": ".evidence/kani-list/vb_core.json", "size_bytes": 16500, "obligation": "PO-001", "lane": "Kani", "kind": "kani_inventory_json", "description": "Kani harness inventory for vb_core: 198 harnesses, 29 files"}
+{"path": ".evidence/kani-list/vb_runtime.json", "size_bytes": 2000, "obligation": "PO-002", "lane": "Kani", "kind": "kani_inventory_json", "description": "Kani harness inventory for vb_runtime: 17 harnesses, 6 files"}
+{"path": ".beads/vb-shvxy/proof-review.md", "size_bytes": 14049, "kind": "review_artifact", "reviewer": "proof-reviewer", "status": "APPROVED", "state": 6}
+{"path": ".beads/vb-shvxy/test-plan-review.md", "size_bytes": 1744, "kind": "review_artifact", "reviewer": "test-reviewer", "status": "APPROVED", "state": 10}
+{"path": ".beads/vb-shvxy/test-review.md", "size_bytes": null, "kind": "review_artifact", "reviewer": "test-reviewer", "status": "APPROVED", "state": 10, "attempt": 2}
+{"path": "formal-verification-report.md", "size_bytes": 13855, "kind": "formal_verifier_report", "status": "ALL_PASS_16_OF_16", "state": 12}
+{"path": "verification-ledger.jsonl", "size_bytes": 53091, "kind": "verification_ledger", "entry_count": 144, "state_12_entries": 18}
+{"path": ".beads/vb-shvxy/traceability-matrix.jsonl", "size_bytes": 3079, "kind": "traceability_matrix", "requirement_count": 9}
+{"path": ".beads/vb-shvxy/contract.md", "size_bytes": null, "kind": "contract", "clause_count": 12}
+{"path": ".beads/vb-shvxy/delivery-scope.jsonl", "size_bytes": null, "kind": "delivery_scope", "row_count": 6}
+{"path": ".beads/vb-shvxy/agent-invocation-ledger.jsonl", "kind": "invocation_ledger", "sequence_count": 18, "states": [1,2,3,4,5,6,7,8,9,10,12]}

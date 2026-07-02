@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "final-proof-repair-or-block",
+  "delegate": "proof-writer",
+  "attempt": 7,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 6 attempt 5 rejected: Kani only codegen/timeout, strict admission TLA lacks temporal property, lifecycle TLA omits inspect/list/drain actions",
+  "input_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/proof-repair-guide.md", ".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md"],
+  "output_artifacts": [".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/blocker-report.md", "updated verification artifacts if repaired"],
+  "status": "QUEUED"
+}

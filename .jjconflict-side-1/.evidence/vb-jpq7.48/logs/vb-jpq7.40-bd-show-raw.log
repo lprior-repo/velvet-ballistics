@@ -1,0 +1,33 @@
+command: bd show vb-jpq7.40
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T12:12:00Z
+exit_code: 0
+--- stdout follows ---
+✓ vb-jpq7.40 · P0: implement whole-workflow boundedness analyzer   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: feature
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: External final black-hat/test-review approval returned: vb-jpq7.40 — APPROVED. Closure evidence workspace: /home/lewis/src/vb-jpq7-40-whole-workflow-budget-gpt55-recovered. Evidence covers runtime policy-aware admission, exact BudgetPolicyExceeded test, vb_core budget tests, vb_runtime admission tests, and combined check/clippy all passed.
+
+DESCRIPTION
+Split from black-hat review. Runtime bounded data structures are insufficient; the workflow as a whole must be statically bounded before admission.
+
+NOTES
+Attempted implementation audit: existing budget/admission code present but workspace worktree was repeatedly reset to clean state during command execution; no durable code changes remained. Scoped gates observed: cargo check -p vb_core --lib --all-features PASS; cargo check -p vb_runtime --lib --all-features PASS; strict clippy on vb_core/vb_runtime libs PASS; broader all-targets blocked by unrelated vb_storage JournalError::NoEvents exhaustiveness and missing test files. Leaving open for durable implementation.
+
+ACCEPTANCE CRITERIA
+Analyzer computes aggregate WholeWorkflowBudget from IR including nested fanout loops collect/reduce/repeat together retries timers trace journal queue IPC and blob/resource budgets; admission rejects over-policy workflows before run acceptance; tests cover nested fanout sequential accumulation conditional max unbounded rejection and exact typed errors.
+
+LABELS: admission, backend-dod, boundedness, budget, master-gap, release-blocker, runtime, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+
+--- stderr follows ---
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	a48h5oadmcqvfor53jh9d9t1mhtjfeip
+}
+

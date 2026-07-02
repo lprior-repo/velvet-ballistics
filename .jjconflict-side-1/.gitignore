@@ -1,0 +1,126 @@
+# Rust build output
+target/
+fuzz/target/
+
+# Local agent/search state
+.memsearch/
+.claude/worktrees/
+.jj/
+
+# Local workspace snapshots and duplicated export bundles
+/refactor/
+/vb-*/
+/velvet_ballistics_figma_ready_tightened_screens/
+/velvet_ballistics_makepad_ui_master_plan_with_images/
+
+# Moon local cache
+.moon/cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Beads / Dolt local state
+.dolt/
+.beads/dolt/
+.beads/backup/
+.beads/embeddeddolt/
+.beads-credential-key
+
+# Runtime lock/log/socket state
+*.lock
+*.log
+*.pid
+*.sock
+*.socket
+states/
+run/
+runtime/
+tmp/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Coverage and performance artifacts
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.lcov
+coverage/
+criterion/
+perf.data*
+flamegraph.svg
+heaptrack.*
+callgrind.out.*
+mutants.out/
+mutants.out.old/
+mutants.out.*/
+kani-list.json
+/*.rlib
+rustc-ice-*.txt
+.beads/moon-ci-output.md
+
+# TLA+/TLC generated model-checker state dumps
+specs/tla/states/
+verification/tla/**/_apalache-out/
+vb_oewy_bdd_runner_invariant
+vb_jpq724_events_for_run_production
+crates/workspace_tests/journal-db/
+crates/workspace_tests/nonexistent-db/
+verification/verus/vb_jpq724_events_for_run_production
+
+# Binary files and corpora
+*.bin
+fuzz/corpus/
+fuzz/artifacts/
+
+# Verus / rustc stray build artifacts (recursively anywhere in tree)
+# Verus emits .rlib/.rmeta/.d alongside source when invoked from non-target dirs.
+**/*.rlib
+**/*.rmeta
+**/*.d
+verification/**/*.bin
+verification/verus/vb_*
+# rustc long-type-hint dumps emitted when a type cannot be formatted
+*.long-type-*.txt
+
+# Large test artifacts
+test_string
+agent-invocation-ledger.jsonl
+
+# Orphaned root-level build artifacts (proptest failures, stray tool outputs)
+EOF
+budget_computation
+collect_ir_structure
+collect_lowering
+emit_single_body_set
+error_parity
+step_offset
+try_from_parts
+vb_jnz9_journal_event_seq_valid
+tarpaulin-report.json
+mutants.toml
+
+# Cargo registry cache (committed accidentally — should never be in repo)
+/.cargo_temp/
+
+# Evidence and landing artifacts (cache/scratch subdirs also tracked before .evidence/ ignore)
+/.evidence/
+.evidence/landing/cache/
+.evidence/landing/cargo-home/
+.evidence/landing/scratch/
+
+# Stale git worktrees (not tracked by design — committed before ignore rule)
+/.worktrees/
+
+# Isolates
+isolates/
+
+# Beads workspace state
+.beads/
+.beads/*/agent-invocation-ledger.jsonl

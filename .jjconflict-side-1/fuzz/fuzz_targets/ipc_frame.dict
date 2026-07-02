@@ -1,0 +1,16 @@
+"MAGIC_VBLT_LE="\x54\x4c\x42\x56
+"VERSION_LE_1="\x01\x00
+"CMD_SubmitRun_LE="\x01\x00
+"CMD_SubmitRunInline_LE="\x02\x00
+"CMD_CancelRun_LE="\x03\x00
+"CMD_InspectRun_LE="\x04\x00
+"CMD_ListEvents_LE="\x05\x00
+"CMD_AnswerAsk_LE="\x06\x00
+"CMD_CompleteAction_LE="\x07\x00
+"CMD_FailAction_LE="\x08\x00
+"CMD_DrainTrace_LE="\x09\x00
+"CMD_Health_LE="\x0a\x00
+"CMD_Shutdown_LE="\x0b\x00
+"FLAG_PAYLOAD_PRESENT_LE="\x01\x00
+"LEN_24_LE="\x18\x00\x00\x00
+"ZERO_8B="\x00\x00\x00\x00\x00\x00\x00\x00

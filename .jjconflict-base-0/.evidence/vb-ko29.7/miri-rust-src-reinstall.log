@@ -1,0 +1,3 @@
+info: removing component rust-src
+info: rolling back changes
+error: failure removing component 'rust-src', directory does not exist: 'lib/rustlib/src/rust/src/llvm-project/libunwind/test/unwind_scalable_vectors.pass.cpp'

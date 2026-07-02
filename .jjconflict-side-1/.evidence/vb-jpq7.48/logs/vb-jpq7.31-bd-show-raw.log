@@ -1,0 +1,27 @@
+command: bd show vb-jpq7.31
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.31 · P0: add digest layout and artifact stability properties   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Closed
+
+DESCRIPTION
+Split from vb-jpq7.6. Prove digest/layout/artifact stability invariants across compile validate store recover seams.
+
+ACCEPTANCE CRITERIA
+Properties cover digest stability slot/accessor layout stability artifact identity stability and stable diagnostic paths; generated cases assert exact stable outputs; seeds and counterexamples are recorded.
+
+LABELS: artifact, backend-dod, digest, layout, master-gap, property, proptest, release-blocker, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.28: P0: enforce parser validator exact diagnostics ● P0
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

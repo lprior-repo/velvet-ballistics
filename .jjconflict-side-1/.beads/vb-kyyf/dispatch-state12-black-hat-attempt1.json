@@ -1,0 +1,31 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 12,
+  "sublane": "black-hat-review-after-approved-state11",
+  "delegate": "black-hat-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/traceability-matrix.jsonl",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/regression-diff.md",
+    ".evidence/vb-kyyf/acceptance-catalog-traceability.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md"
+  ],
+  "attempt": 1,
+  "state11_status": "APPROVED with PO-010 DEFERRED_GLOBAL unrelated vb_cli invalid-path exit-code failures"
+}

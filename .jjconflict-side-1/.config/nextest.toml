@@ -1,0 +1,4 @@
+[profile.default]
+test-threads = "num-cpus"
+status-level = "fail"
+final-status-level = "fail"

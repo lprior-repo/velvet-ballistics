@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": "owner-authorized-unblock",
+  "sublane": "implementation-bound-replay-normalization-seam",
+  "delegate": "holzman-rust",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "reason": "Attempt-cap blocker VERUS-KYYF-001 remained non-implementation-bound; user requested keeping bead active through go-skill",
+  "input_artifacts": [".beads/vb-kyyf/blocker-report.md", ".beads/vb-kyyf/proof-writer-report.md", ".beads/vb-kyyf/proof-evidence.md", ".beads/vb-kyyf/contract.md", ".beads/vb-kyyf/verification-layers.md", "verification/verus/vb_kyyf_normalization.rs"],
+  "output_artifacts": [".beads/vb-kyyf/proof-architecture-report.md", ".beads/vb-kyyf/implementation.md", ".beads/vb-kyyf/proof-evidence.md", "production pure normalization/replay seam and/or Verus-bound artifact"],
+  "status": "QUEUED"
+}

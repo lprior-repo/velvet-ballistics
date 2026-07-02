@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 14,
+  "sublane": "landing-after-build-cache-cleanup-rerun",
+  "delegate": "landing-skill",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/landing-report.md",
+    ".beads/vb-kyyf/build-cache-cleanup-rerun-report.md",
+    ".beads/vb-kyyf/state13-provenance-waiver.md",
+    ".beads/vb-kyyf/assurance-bundle.md",
+    ".beads/vb-kyyf/truth-serum-report.md",
+    ".beads/vb-kyyf/final-evidence-decision.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "attempt": 2,
+  "serial_section": "landing to main/remote must be serialized"
+}

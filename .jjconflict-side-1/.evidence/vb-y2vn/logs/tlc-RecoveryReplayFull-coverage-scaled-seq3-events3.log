@@ -1,0 +1,285 @@
+Picked up JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=/home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 99 and seed 2563593410392772339 with 1 worker on 32 cores with 30688MB heap and 64MB offheap memory [pid: 2738743] (Linux 7.0.3-arch1-2 amd64, Oracle Corporation 26.0.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/specs/tla/RecoveryReplayFull.tla
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp/Integers.tla
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp/Sequences.tla
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp/TLC.tla
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp/FiniteSets.tla
+Parsing file /home/lewis/src/vb-y2vn-recovery-replay-scale-gpt55/.evidence/vb-y2vn/java-tmp/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module RecoveryReplayFull
+Starting... (2026-05-23 18:35:54)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-05-23 18:35:54.
+Progress(8) at 2026-05-23 18:35:57: 727,348 states generated (727,348 s/min), 71,748 distinct states found (71,748 ds/min), 23,920 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.0E-8
+  based on the actual fingerprints:  val = 4.0E-9
+The coverage statistics at 2026-05-23 18:36:01
+<Init line 89, col 1 to line 89, col 4 of module RecoveryReplayFull>: 1:1
+  line 90, col 5 to line 97, col 26 of module RecoveryReplayFull: 1
+<AppendEvent line 132, col 1 to line 132, col 14 of module RecoveryReplayFull>: 42357:125152
+  line 133, col 8 to line 133, col 32 of module RecoveryReplayFull: 125152
+  |line 133, col 8 to line 133, col 19 of module RecoveryReplayFull: 2886240
+  |line 133, col 23 to line 133, col 32 of module RecoveryReplayFull: 2886240
+  line 134, col 8 to line 134, col 36 of module RecoveryReplayFull: 449632
+  |line 134, col 8 to line 134, col 13 of module RecoveryReplayFull: 324480
+  |line 134, col 19 to line 134, col 36 of module RecoveryReplayFull: 324480
+  line 135, col 8 to line 135, col 27 of module RecoveryReplayFull: 125152
+  |line 135, col 8 to line 135, col 12 of module RecoveryReplayFull: 324480
+  |line 135, col 16 to line 135, col 27 of module RecoveryReplayFull: 324480
+  line 136, col 11 to line 136, col 26 of module RecoveryReplayFull: 224820
+  line 136, col 33 to line 136, col 36 of module RecoveryReplayFull: 1632
+  line 136, col 43 to line 136, col 76 of module RecoveryReplayFull: 123520
+  |line 136, col 43 to line 136, col 67 of module RecoveryReplayFull: 223188
+  |line 136, col 72 to line 136, col 76 of module RecoveryReplayFull: 223188
+  line 125, col 5 to line 130, col 45 of module RecoveryReplayFull: 109460
+  |line 125, col 5 to line 125, col 30 of module RecoveryReplayFull: 131352
+  |line 126, col 9 to line 130, col 45 of module RecoveryReplayFull: 37584
+  ||line 126, col 10 to line 130, col 45 of module RecoveryReplayFull: 21892
+  |||line 127, col 13 to line 130, col 45 of module RecoveryReplayFull: 38100
+  ||||line 127, col 16 to line 127, col 50 of module RecoveryReplayFull: 38100
+  ||||line 128, col 16 to line 128, col 43 of module RecoveryReplayFull: 6200
+  ||||line 129, col 16 to line 129, col 39 of module RecoveryReplayFull: 6200
+  ||||line 130, col 16 to line 130, col 45 of module RecoveryReplayFull: 6200
+  |||line 126, col 19 to line 126, col 33 of module RecoveryReplayFull: 21892
+  line 137, col 32 to line 137, col 32 of module RecoveryReplayFull: 131352
+  line 138, col 8 to line 138, col 36 of module RecoveryReplayFull: 125152
+  line 139, col 8 to line 141, col 44 of module RecoveryReplayFull: 125152
+  |line 139, col 26 to line 141, col 44 of module RecoveryReplayFull: 125152
+  ||line 139, col 29 to line 139, col 88 of module RecoveryReplayFull: 125152
+  ||line 140, col 31 to line 140, col 54 of module RecoveryReplayFull: 65676
+  ||line 141, col 31 to line 141, col 44 of module RecoveryReplayFull: 59476
+  line 142, col 8 to line 143, col 52 of module RecoveryReplayFull: 125152
+<SetSnapshot line 145, col 1 to line 145, col 16 of module RecoveryReplayFull>: 172:481040
+  line 146, col 8 to line 146, col 26 of module RecoveryReplayFull: 962080
+  |line 146, col 8 to line 146, col 10 of module RecoveryReplayFull: 481040
+  |line 146, col 16 to line 146, col 26 of module RecoveryReplayFull: 481040
+  line 147, col 8 to line 147, col 26 of module RecoveryReplayFull: 481040
+  line 148, col 8 to line 148, col 22 of module RecoveryReplayFull: 481040
+  line 149, col 8 to line 150, col 52 of module RecoveryReplayFull: 481040
+<DiscoverIncomplete line 152, col 1 to line 152, col 18 of module RecoveryReplayFull (160 9 163 56)>: 895:240520
+  line 160, col 12 to line 160, col 39 of module RecoveryReplayFull: 240520
+  |line 160, col 30 to line 160, col 39 of module RecoveryReplayFull: 240520
+  ||line 154, col 27 to line 159, col 9 of module RecoveryReplayFull: 240520:4356
+  |||line 155, col 13 to line 158, col 71 of module RecoveryReplayFull: 120260
+  ||||line 155, col 14 to line 158, col 71 of module RecoveryReplayFull: 120260
+  |||||line 156, col 17 to line 158, col 71 of module RecoveryReplayFull: 226552
+  ||||||line 156, col 20 to line 156, col 37 of module RecoveryReplayFull: 226552
+  ||||||line 157, col 20 to line 157, col 88 of module RecoveryReplayFull: 226552
+  ||||||line 158, col 20 to line 158, col 71 of module RecoveryReplayFull: 89538
+  |||||||line 158, col 20 to line 158, col 37 of module RecoveryReplayFull: 89538
+  |||||||line 158, col 41 to line 158, col 71 of module RecoveryReplayFull: 89538
+  ||||||||line 110, col 23 to line 110, col 66 of module RecoveryReplayFull: 89538:350466
+  |||||||||line 110, col 47 to line 110, col 65 of module RecoveryReplayFull: 260928
+  |||||||||line 110, col 30 to line 110, col 43 of module RecoveryReplayFull: 89538
+  ||||||||line 111, col 5 to line 113, col 52 of module RecoveryReplayFull: 89538
+  |||||||||line 111, col 8 to line 111, col 22 of module RecoveryReplayFull: 89538
+  |||||||||line 113, col 10 to line 113, col 52 of module RecoveryReplayFull: 89538
+  ||||||||||line 107, col 11 to line 107, col 46 of module RecoveryReplayFull: 89538
+  ||||||||||line 113, col 14 to line 113, col 51 of module RecoveryReplayFull: 89538:268614
+  |||||||||||line 113, col 15 to line 113, col 31 of module RecoveryReplayFull: 260928
+  |||||||||||line 113, col 41 to line 113, col 50 of module RecoveryReplayFull: 89538
+  ||||||||line 158, col 61 to line 158, col 67 of module RecoveryReplayFull: 89538
+  ||||||||line 158, col 70 to line 158, col 70 of module RecoveryReplayFull: 89538
+  |||||line 155, col 23 to line 155, col 37 of module RecoveryReplayFull: 120260
+  |||line 154, col 34 to line 154, col 37 of module RecoveryReplayFull: 240520
+  line 161, col 12 to line 161, col 29 of module RecoveryReplayFull: 240520
+  line 162, col 12 to line 163, col 56 of module RecoveryReplayFull: 240520
+<ReplayEvents line 165, col 1 to line 165, col 12 of module RecoveryReplayFull (180 9 183 56)>: 12115:120260
+  line 180, col 12 to line 180, col 84 of module RecoveryReplayFull: 120260
+  |line 180, col 23 to line 180, col 84 of module RecoveryReplayFull: 120260
+  ||line 180, col 24 to line 180, col 30 of module RecoveryReplayFull: 120260
+  ||line 180, col 53 to line 180, col 83 of module RecoveryReplayFull: 120260
+  |||line 180, col 53 to line 180, col 69 of module RecoveryReplayFull: 120260
+  |||line 180, col 76 to line 180, col 83 of module RecoveryReplayFull: 120260
+  ||||line 173, col 25 to line 173, col 100 of module RecoveryReplayFull: 120260:101101
+  |||||line 173, col 26 to line 173, col 81 of module RecoveryReplayFull: 61680
+  |||||line 173, col 91 to line 173, col 99 of module RecoveryReplayFull: 120260
+  ||||||line 172, col 26 to line 172, col 83 of module RecoveryReplayFull: 120260:181940
+  |||||||line 172, col 48 to line 172, col 82 of module RecoveryReplayFull: 345592
+  |||||||line 172, col 33 to line 172, col 44 of module RecoveryReplayFull: 120260
+  ||||||||line 168, col 29 to line 171, col 9 of module RecoveryReplayFull: 120260:465852
+  |||||||||line 169, col 13 to line 170, col 43 of module RecoveryReplayFull: 345592
+  ||||||||||line 169, col 16 to line 169, col 35 of module RecoveryReplayFull: 345592
+  ||||||||||line 170, col 16 to line 170, col 43 of module RecoveryReplayFull: 345592
+  |||||||||||line 170, col 16 to line 170, col 33 of module RecoveryReplayFull: 345592
+  |||||||||||line 170, col 37 to line 170, col 43 of module RecoveryReplayFull: 345592
+  ||||||||||||line 167, col 24 to line 167, col 51 of module RecoveryReplayFull: 345592
+  |||||||||||||line 115, col 33 to line 115, col 65 of module RecoveryReplayFull: 345592
+  ||||||||||||||line 110, col 23 to line 110, col 66 of module RecoveryReplayFull: 345592:1355684
+  |||||||||||||||line 110, col 47 to line 110, col 65 of module RecoveryReplayFull: 1010092
+  |||||||||||||||line 110, col 30 to line 110, col 43 of module RecoveryReplayFull: 345592
+  ||||||||||||||line 111, col 5 to line 113, col 52 of module RecoveryReplayFull: 345592
+  |||||||||||||||line 111, col 8 to line 111, col 22 of module RecoveryReplayFull: 345592
+  |||||||||||||||line 113, col 10 to line 113, col 52 of module RecoveryReplayFull: 345592
+  ||||||||||||||||line 107, col 11 to line 107, col 46 of module RecoveryReplayFull: 345592
+  ||||||||||||||||line 113, col 14 to line 113, col 51 of module RecoveryReplayFull: 345592:1036776
+  |||||||||||||||||line 113, col 15 to line 113, col 31 of module RecoveryReplayFull: 1010092
+  |||||||||||||||||line 113, col 41 to line 113, col 50 of module RecoveryReplayFull: 345592
+  ||||||||||||||line 115, col 53 to line 115, col 59 of module RecoveryReplayFull: 345592
+  |||||||||||||line 167, col 48 to line 167, col 50 of module RecoveryReplayFull: 345592
+  |||||||||line 168, col 36 to line 168, col 49 of module RecoveryReplayFull: 120260
+  line 181, col 12 to line 181, col 33 of module RecoveryReplayFull: 120260
+  |line 181, col 23 to line 181, col 33 of module RecoveryReplayFull: 120260
+  ||line 174, col 28 to line 178, col 56 of module RecoveryReplayFull: 120260
+  |||line 174, col 31 to line 174, col 47 of module RecoveryReplayFull: 120260
+  ||||line 174, col 31 to line 174, col 42 of module RecoveryReplayFull: 120260
+  |||||line 168, col 29 to line 171, col 9 of module RecoveryReplayFull: 120260
+  ||||||line 169, col 13 to line 170, col 43 of module RecoveryReplayFull: 345592
+  |||||||line 169, col 16 to line 169, col 35 of module RecoveryReplayFull: 345592
+  |||||||line 170, col 16 to line 170, col 43 of module RecoveryReplayFull: 345592
+  ||||||||line 170, col 16 to line 170, col 33 of module RecoveryReplayFull: 345592
+  ||||||||line 170, col 37 to line 170, col 43 of module RecoveryReplayFull: 345592
+  |||||||||line 167, col 24 to line 167, col 51 of module RecoveryReplayFull: 345592
+  ||||||||||line 115, col 33 to line 115, col 65 of module RecoveryReplayFull: 345592
+  |||||||||||line 110, col 23 to line 110, col 66 of module RecoveryReplayFull: 345592:1355684
+  ||||||||||||line 110, col 47 to line 110, col 65 of module RecoveryReplayFull: 1010092
+  ||||||||||||line 110, col 30 to line 110, col 43 of module RecoveryReplayFull: 345592
+  |||||||||||line 111, col 5 to line 113, col 52 of module RecoveryReplayFull: 345592
+  ||||||||||||line 111, col 8 to line 111, col 22 of module RecoveryReplayFull: 345592
+  ||||||||||||line 113, col 10 to line 113, col 52 of module RecoveryReplayFull: 345592
+  |||||||||||||line 107, col 11 to line 107, col 46 of module RecoveryReplayFull: 345592
+  |||||||||||||line 113, col 14 to line 113, col 51 of module RecoveryReplayFull: 345592:1036776
+  ||||||||||||||line 113, col 15 to line 113, col 31 of module RecoveryReplayFull: 1010092
+  ||||||||||||||line 113, col 41 to line 113, col 50 of module RecoveryReplayFull: 345592
+  |||||||||||line 115, col 53 to line 115, col 59 of module RecoveryReplayFull: 345592
+  ||||||||||line 167, col 48 to line 167, col 50 of module RecoveryReplayFull: 345592
+  ||||||line 168, col 36 to line 168, col 49 of module RecoveryReplayFull: 120260
+  ||||line 174, col 46 to line 174, col 47 of module RecoveryReplayFull: 120260
+  |||line 175, col 18 to line 175, col 21 of module RecoveryReplayFull: 178
+  |||line 176, col 18 to line 178, col 56 of module RecoveryReplayFull: 120082
+  ||||line 176, col 21 to line 176, col 49 of module RecoveryReplayFull: 120082
+  |||||line 176, col 21 to line 176, col 32 of module RecoveryReplayFull: 120082
+  ||||||line 168, col 29 to line 171, col 9 of module RecoveryReplayFull: 120082
+  |||||||line 169, col 13 to line 170, col 43 of module RecoveryReplayFull: 345592
+  ||||||||line 169, col 16 to line 169, col 35 of module RecoveryReplayFull: 345592
+  ||||||||line 170, col 16 to line 170, col 43 of module RecoveryReplayFull: 345592
+  |||||||||line 170, col 16 to line 170, col 33 of module RecoveryReplayFull: 345592
+  |||||||||line 170, col 37 to line 170, col 43 of module RecoveryReplayFull: 345592
+  ||||||||||line 167, col 24 to line 167, col 51 of module RecoveryReplayFull: 345592
+  |||||||||||line 115, col 33 to line 115, col 65 of module RecoveryReplayFull: 345592
+  ||||||||||||line 110, col 23 to line 110, col 66 of module RecoveryReplayFull: 345592:1355684
+  |||||||||||||line 110, col 47 to line 110, col 65 of module RecoveryReplayFull: 1010092
+  |||||||||||||line 110, col 30 to line 110, col 43 of module RecoveryReplayFull: 345592
+  ||||||||||||line 111, col 5 to line 113, col 52 of module RecoveryReplayFull: 345592
+  |||||||||||||line 111, col 8 to line 111, col 22 of module RecoveryReplayFull: 345592
+  |||||||||||||line 113, col 10 to line 113, col 52 of module RecoveryReplayFull: 345592
+  ||||||||||||||line 107, col 11 to line 107, col 46 of module RecoveryReplayFull: 345592
+  ||||||||||||||line 113, col 14 to line 113, col 51 of module RecoveryReplayFull: 345592:1036776
+  |||||||||||||||line 113, col 15 to line 113, col 31 of module RecoveryReplayFull: 1010092
+  |||||||||||||||line 113, col 41 to line 113, col 50 of module RecoveryReplayFull: 345592
+  ||||||||||||line 115, col 53 to line 115, col 59 of module RecoveryReplayFull: 345592
+  |||||||||||line 167, col 48 to line 167, col 50 of module RecoveryReplayFull: 345592
+  |||||||line 168, col 36 to line 168, col 49 of module RecoveryReplayFull: 120082
+  |||||line 176, col 36 to line 176, col 49 of module RecoveryReplayFull: 120082
+  ||||line 177, col 18 to line 177, col 24 of module RecoveryReplayFull: 120082
+  line 182, col 12 to line 183, col 56 of module RecoveryReplayFull: 120260
+<RecordError line 185, col 1 to line 185, col 16 of module RecoveryReplayFull>: 0:120260
+  line 186, col 8 to line 186, col 46 of module RecoveryReplayFull: 240520
+  |line 186, col 8 to line 186, col 10 of module RecoveryReplayFull: 120260
+  |line 186, col 16 to line 186, col 46 of module RecoveryReplayFull: 120260
+  line 187, col 8 to line 187, col 24 of module RecoveryReplayFull: 120260
+  line 188, col 8 to line 188, col 25 of module RecoveryReplayFull: 120260
+  line 189, col 8 to line 190, col 52 of module RecoveryReplayFull: 120260
+<CheckWorkflowDigest line 192, col 1 to line 192, col 19 of module RecoveryReplayFull (194 9 203 63)>: 38832:347688
+  line 195, col 16 to line 195, col 35 of module RecoveryReplayFull: 1730056
+  |line 195, col 16 to line 195, col 29 of module RecoveryReplayFull: 1382368
+  |line 195, col 33 to line 195, col 35 of module RecoveryReplayFull: 1382368
+  line 196, col 16 to line 196, col 46 of module RecoveryReplayFull: 1730056
+  |line 196, col 16 to line 196, col 30 of module RecoveryReplayFull: 1382368
+  line 197, col 19 to line 197, col 55 of module RecoveryReplayFull: 347688
+  line 198, col 24 to line 198, col 41 of module RecoveryReplayFull: 86922
+  line 199, col 24 to line 199, col 48 of module RecoveryReplayFull: 86922
+  line 200, col 24 to line 200, col 54 of module RecoveryReplayFull: 86922
+  line 201, col 24 to line 202, col 61 of module RecoveryReplayFull: 86922
+  line 186, col 8 to line 186, col 46 of module RecoveryReplayFull: 521532
+  |line 186, col 8 to line 186, col 10 of module RecoveryReplayFull: 260766
+  |line 186, col 16 to line 186, col 46 of module RecoveryReplayFull: 260766
+  line 187, col 8 to line 187, col 24 of module RecoveryReplayFull: 260766
+  line 188, col 8 to line 188, col 25 of module RecoveryReplayFull: 260766
+  line 189, col 8 to line 190, col 52 of module RecoveryReplayFull: 260766
+  line 194, col 18 to line 194, col 32 of module RecoveryReplayFull: 481040
+<CheckIrDigest line 205, col 1 to line 205, col 13 of module RecoveryReplayFull>: 25888:284472
+  line 206, col 8 to line 206, col 49 of module RecoveryReplayFull: 178508
+  |line 206, col 8 to line 206, col 19 of module RecoveryReplayFull: 120260
+  |line 206, col 25 to line 206, col 49 of module RecoveryReplayFull: 120260
+  line 207, col 8 to line 207, col 24 of module RecoveryReplayFull: 58248
+  line 210, col 16 to line 210, col 35 of module RecoveryReplayFull: 1380168
+  |line 210, col 16 to line 210, col 29 of module RecoveryReplayFull: 1095696
+  |line 210, col 33 to line 210, col 35 of module RecoveryReplayFull: 1095696
+  line 211, col 16 to line 211, col 46 of module RecoveryReplayFull: 1380168
+  |line 211, col 16 to line 211, col 30 of module RecoveryReplayFull: 1095696
+  line 212, col 19 to line 212, col 49 of module RecoveryReplayFull: 284472
+  line 213, col 24 to line 213, col 41 of module RecoveryReplayFull: 71118
+  line 214, col 24 to line 214, col 42 of module RecoveryReplayFull: 71118
+  line 215, col 24 to line 215, col 45 of module RecoveryReplayFull: 71118
+  line 216, col 24 to line 217, col 67 of module RecoveryReplayFull: 71118
+  line 186, col 8 to line 186, col 46 of module RecoveryReplayFull: 426708
+  |line 186, col 8 to line 186, col 10 of module RecoveryReplayFull: 213354
+  |line 186, col 16 to line 186, col 46 of module RecoveryReplayFull: 213354
+  line 187, col 8 to line 187, col 24 of module RecoveryReplayFull: 213354
+  line 188, col 8 to line 188, col 25 of module RecoveryReplayFull: 213354
+  line 189, col 8 to line 190, col 52 of module RecoveryReplayFull: 213354
+  line 209, col 18 to line 209, col 32 of module RecoveryReplayFull: 381312
+  line 208, col 19 to line 208, col 23 of module RecoveryReplayFull: 95328
+  line 208, col 39 to line 208, col 44 of module RecoveryReplayFull: 95328
+<TypeOK line 77, col 1 to line 77, col 6 of module RecoveryReplayFull>
+  line 78, col 5 to line 87, col 30 of module RecoveryReplayFull: 120260
+<TailCausalAfterSnapshot line 220, col 1 to line 220, col 23 of module RecoveryReplayFull>
+  line 221, col 5 to line 222, col 64 of module RecoveryReplayFull: 120260
+  |line 221, col 5 to line 221, col 21 of module RecoveryReplayFull: 120260
+  |line 222, col 9 to line 222, col 64 of module RecoveryReplayFull: 83424
+  ||line 222, col 36 to line 222, col 64 of module RecoveryReplayFull: 237908
+  ||line 222, col 18 to line 222, col 32 of module RecoveryReplayFull: 83424
+<ReplaySeqOrder line 224, col 1 to line 224, col 14 of module RecoveryReplayFull>
+  line 225, col 5 to line 225, col 75 of module RecoveryReplayFull: 120260
+  |line 225, col 35 to line 225, col 75 of module RecoveryReplayFull: 1010092
+  ||line 225, col 35 to line 225, col 39 of module RecoveryReplayFull: 1010092
+  ||line 225, col 44 to line 225, col 75 of module RecoveryReplayFull: 332250
+  |line 225, col 17 to line 225, col 31 of module RecoveryReplayFull: 120260
+<OnlyIncompleteRuns line 227, col 1 to line 227, col 18 of module RecoveryReplayFull>
+  line 228, col 5 to line 232, col 64 of module RecoveryReplayFull: 120260
+  |line 229, col 9 to line 232, col 64 of module RecoveryReplayFull: 15361
+  ||line 229, col 10 to line 232, col 64 of module RecoveryReplayFull: 15361
+  |||line 230, col 13 to line 232, col 64 of module RecoveryReplayFull: 42332
+  |||line 229, col 19 to line 229, col 33 of module RecoveryReplayFull: 15361
+  |line 228, col 16 to line 228, col 29 of module RecoveryReplayFull: 120260
+<NoResolvedReExecution line 234, col 1 to line 234, col 21 of module RecoveryReplayFull>
+  line 235, col 5 to line 242, col 58 of module RecoveryReplayFull: 120260
+  |line 236, col 9 to line 242, col 58 of module RecoveryReplayFull: 345592
+  ||line 236, col 9 to line 236, col 43 of module RecoveryReplayFull: 345592
+  ||line 237, col 13 to line 242, col 58 of module RecoveryReplayFull: 52192
+  |||line 237, col 14 to line 242, col 58 of module RecoveryReplayFull: 52192
+  ||||line 238, col 17 to line 242, col 58 of module RecoveryReplayFull: 151932
+  |||||line 238, col 20 to line 238, col 24 of module RecoveryReplayFull: 151932
+  |||||line 239, col 20 to line 239, col 54 of module RecoveryReplayFull: 42850
+  ||||line 237, col 23 to line 237, col 37 of module RecoveryReplayFull: 52192
+  |line 235, col 14 to line 235, col 28 of module RecoveryReplayFull: 120260
+<DigestVerificationOrder line 244, col 1 to line 244, col 23 of module RecoveryReplayFull>
+  line 245, col 5 to line 250, col 52 of module RecoveryReplayFull: 120260
+  |line 245, col 8 to line 245, col 39 of module RecoveryReplayFull: 120260
+  ||line 245, col 8 to line 245, col 18 of module RecoveryReplayFull: 120260
+  ||line 245, col 23 to line 245, col 39 of module RecoveryReplayFull: 63552
+  |line 246, col 8 to line 246, col 49 of module RecoveryReplayFull: 120260
+  ||line 246, col 8 to line 246, col 28 of module RecoveryReplayFull: 120260
+  ||line 246, col 33 to line 246, col 49 of module RecoveryReplayFull: 31776
+  |line 247, col 8 to line 250, col 52 of module RecoveryReplayFull: 120260
+  ||line 248, col 9 to line 250, col 52 of module RecoveryReplayFull: 345592
+  |||line 248, col 9 to line 248, col 39 of module RecoveryReplayFull: 345592
+  |||line 249, col 13 to line 250, col 52 of module RecoveryReplayFull: 86922
+  ||line 247, col 17 to line 247, col 31 of module RecoveryReplayFull: 120260
+End of statistics.
+1719393 states generated, 120260 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 13.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 29 and the 95th percentile is 4).
+Finished in 07s at (2026-05-23 18:36:01)

@@ -1,0 +1,68 @@
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/boundary_inventory/api.rs:213:        "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/boundary_inventory/api.rs:225:        "unsafe-adjacent-dependency-boundary" => Ok(BoundaryClass::UnsafeAdjacentDependency),
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/kani_harnesses.rs:178:            "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/tests/api_tests.rs:193:            "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/tests/api_tests.rs:273:        "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/tests/api_tests.rs:637:            "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_boundary_inventory/src/tests/property_tests.rs:422:                BoundaryClass::UnsafeAdjacentDependency => "unsafe-adjacent-dependency-boundary",
+/home/lewis/src/velvet-ballistics/crates/vb_cli/src/app_impl.rs:753:        vb_core::action::RetrySafety::Unsafe => "unsafe",
+/home/lewis/src/velvet-ballistics/crates/vb_cli/src/app_impl.rs:795:            "unsafe actions must not be retried automatically"
+/home/lewis/src/velvet-ballistics/crates/vb_cli/src/main_tests.rs:445:    assert_eq!(third.retry_safety, "unsafe");
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/proptests.rs:408:        fn generated_source_always_forbids_unsafe(slot_count in 1u16..10u16) {
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:111:            ("unsafe ", "unsafe block"),
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:2071:    fn emit_module_header_includes_forbid_unsafe() -> Result<(), String> {
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:2322:    fn generate_output_starts_with_forbid_unsafe() -> Result<(), String> {
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:2331:            "first line must be forbid unsafe, got: {first_line}"
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:3052:            "fixture must contain generated Rust with forbid unsafe"
+/home/lewis/src/velvet-ballistics/crates/vb_codegen/src/tests.rs:9868:    fn write_header_emits_forbid_unsafe() -> Result<(), String> {
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/kani_idempotency_parity.rs:86:                let expected_retry_unsafe =
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/kani_idempotency_parity.rs:89:                    && !expected_retry_unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/kani_idempotency_parity.rs:92:                    && !expected_retry_unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/kani_idempotency_parity.rs:94:                let expected_accept = !(expected_retry_unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/mod_compile_core.rs:151:/// retry-unsafe or non-idempotent semantics. This gate runs at compile time so
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/mod_compile_core.rs:152:/// that workflows with unsafe action configurations are rejected before deployment.
+/home/lewis/src/velvet-ballistics/crates/vb_compile/src/mod_compile_errors/kind.rs:165:    #[error("action {action:?} has side-effect {side_effect:?} with unsafe retry: {reason}")]
+/home/lewis/src/velvet-ballistics/crates/vb_core/src/action.rs:1477:    fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_runtime/src/primitives/retry.rs:849:    fn evaluate_retry_not_retriable_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_storage/src/batch.rs:818:    // or Sync without unsafe code, so no runtime test is needed.
+/home/lewis/src/velvet-ballistics/crates/vb_ui_snapshot/src/checks/image.rs:48:    "unsafe",
+/home/lewis/src/velvet-ballistics/crates/vb_ui_snapshot/src/checks.rs:141:    "unsafe",
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/console.rs:1284:    // Additional coverage: has_unsafe_replay mixed safe and unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/console.rs:1288:    fn test_has_unsafe_replay_mixed_safe_and_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/console.rs:1305:            "one unsafe record should make has_unsafe_replay true"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/console.rs:396:    fn test_has_unsafe_replay_true_when_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1358:                "unsafe replay should yield 2 suggestions for {:?}",
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1686:        let mut incident_unsafe = make_incident(
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1690:        incident_unsafe.replay_safe = false;
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1691:        let suggestions_unsafe = suggest_repairs(&incident_unsafe);
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1692:        let unsafe_diff = (suggestions_unsafe[0].confidence - 0.3_f32).abs();
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1847:        let record_unsafe = make_record(
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1855:        let suggestions_unsafe = suggest_repairs_for_record(&record_unsafe);
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1859:        assert_eq!(suggestions_unsafe.len(), 2);
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1865:        let pin_unsafe = suggestions_unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1869:        assert!(pin_unsafe.is_some());
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:1872:            pin_unsafe.map(|s| s.confidence)
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:2284:        assert_eq!(panel.len(), 2, "unsafe replay adds PinIdempotency");
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/repair.rs:957:            "expected 0.3 confidence for replay-unsafe failure"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/timeline.rs:1491:    /// both UnsafeSideEffect and Unknown count as unsafe. This is correct
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/timeline.rs:1492:    /// but worth documenting - Unknown is treated as unsafe.
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/timeline.rs:1494:    fn blackhat_has_unsafe_replay_treats_unknown_as_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/timeline.rs:1506:            "Unknown replay safety is treated as unsafe"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:1111:    fn blackhat_replay_safety_unknown_is_conservatively_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:1114:            "Unknown should be treated as unsafe"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:912:        // The bool can only represent safe/unsafe, losing the distinction between
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:914:        let record_unsafe = IncidentRecord {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:935:        assert!(!record_unsafe.replay_safety.is_safe());
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/incident/types.rs:938:        assert_ne!(record_unsafe.replay_safety, record_unknown.replay_safety);
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/ipc_wiring.rs:1392:    fn route_reply_taint_report_received_does_not_set_all_clean_when_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:1087:    /// unsafe if it triggers side effects twice).
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:454:    fn replay_safe_verdict_unsafe_ticket_makes_aggregate_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:483:            "a single unsafe ticket should make the aggregate unsafe"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:488:    fn replay_safe_verdict_certain_side_effect_makes_aggregate_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:503:            "certain side effects should make aggregate unsafe even if replay_safe is true"
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/replay/ticket_panel.rs:920:        // having unsafe side effects either -- a gap in the safety model.
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/verify/action_policy.rs:133:/// - RetrySafety::Safe (no unsafe retry)
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/verify/action_policy.rs:262:/// Strict-mode eligibility: DeterministicPure, has timeout, no unsafe retry, no issues.
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/verify/action_policy.rs:6://! issues such as missing timeouts, missing idempotency declarations, or unsafe
+/home/lewis/src/velvet-ballistics/crates/vb_ui/src/verify/durability_tests.rs:308:    fn replay_risk_unsafe() {
+/home/lewis/src/velvet-ballistics/crates/vb_validate/src/idempotency_contract.rs:45:    /// Side-effecting actions may not declare retry-unsafe behavior.

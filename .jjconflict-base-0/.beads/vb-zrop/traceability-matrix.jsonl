@@ -1,0 +1,4 @@
+{"contract_clause": "REQ-001", "proofs": ["PO-001", "PO-002"], "review": "contract-verification-review.md", "tests": ["focused scanner and moon verify-standard"]}
+{"contract_clause": "REQ-002", "proofs": ["PO-001", "PO-002"], "review": "black-hat-review.md", "tests": ["diff confirms scanner not weakened"]}
+{"contract_clause": "REQ-003", "proofs": ["PO-001", "PO-002"], "review": "test-suite-review.md", "tests": ["compile as part of verify-standard"]}
+{"contract_clause": "REQ-004", "proofs": ["PO-002"], "review": "black-hat-review.md", "tests": ["git diff --stat"]}

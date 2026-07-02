@@ -1,0 +1,2 @@
+I will run `"rustup" "component" "add" "rust-src"` to install the `rust-src` component for the selected toolchain. Proceed? [Y/n] info: component rust-src is up to date
+fatal error: given Rust source directory `/home/lewis/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library` does not exist.

@@ -1,0 +1,21 @@
+{
+  "bead_id": "GLOBAL-main-gate-for-vb-kyyf-landing",
+  "state": 14,
+  "sublane": "serial-global-format-repair",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/global-format-repair-report.md"
+  ],
+  "attempt": 1,
+  "blocker": "crates/vb_storage/src/kani_recovery_hydrate.rs import ordering drift after final rebase",
+  "required_gates": [
+    "rtk cargo fmt --check",
+    "moon ci if format passes"
+  ],
+  "serial_section": "Global format repair may mutate shared non-bead-local file; no other landing or shared repair runs concurrently."
+}

@@ -1,0 +1,12 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "attempt": 3,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md"],
+  "output_artifacts": [".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/proof-findings.jsonl"],
+  "status": "QUEUED"
+}

@@ -1,0 +1,14 @@
+{"contract_clause":"PRE-001","tests":["T-014 parse_run_id validates non-empty run_id"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["T-015 invalid db path returns structured error"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-003","tests":["T-001 empty events","T-002 step+runFailed","T-003 completed action+runFailed","T-004 failed action+runFailed","T-005 multiple actions+runFailed","T-006 runCancelled"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-004","tests":["T-009 RunFailed empty","T-010 RunFailed full","T-011 RunCancelled empty","T-012 RunCancelled full","T-013 unknown code"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["T-001 empty events → failure_found:false","T-002 RunFailed → failure_found:true, failure_code:RunFailed","T-003 completed action → certainty:confirmed","T-004 failed action → certainty:failed","T-005 multiple actions → side_effects.len()==2","T-006 RunCancelled → failure_code:RunCancelled"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["T-009 RunFailed empty → 1 hint","T-010 RunFailed full → 3 hints","T-011 RunCancelled empty → 1 hint","T-012 RunCancelled full → 2 hints","T-013 unknown → 0 hints"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["T-014 failed run JSON output valid","T-015 missing run error output valid"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["T-014 failed run → exit Success","T-015 missing run → exit StorageError","T-016 no-failure run → exit StorageError"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["T-001 through T-013 no unwrap_or_default in build_incident_report"],"proofs":["UNWRAP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["T-015 error output contains no backtrace"],"proofs":["QA-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["T-014 serde_json::from_str succeeds on JSON output"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-004","tests":["T-014 Text output key order: run_id, failure_code, failed_at_step, side_effects, repair_hints"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-005","tests":[],"proofs":["COMPILE-001","COMPILE-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-006","tests":[],"proofs":["DEAD-001"],"review":"contract-verification-review.md"}

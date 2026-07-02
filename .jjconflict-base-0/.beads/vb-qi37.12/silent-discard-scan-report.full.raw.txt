@@ -1,0 +1,690 @@
+crates/workspace_tests/src/quality/test_loop_inventory/scan.rs:259:        .ok()
+crates/vb_runtime/src/together_tests.rs:29:        .ok()
+crates/vb_runtime/src/together_tests.rs:70:        .ok()
+crates/vb_runtime/src/together_tests.rs:73:    run.add_parallel_in_flight(2).ok();
+crates/vb_runtime/src/together_tests.rs:89:        .ok()
+crates/vb_runtime/src/together_tests.rs:106:        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+crates/vb_runtime/src/together_tests.rs:130:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/together_tests.rs:157:        .ok()
+crates/vb_runtime/src/together_tests.rs:163:                .ok()
+crates/vb_runtime/src/together_tests.rs:183:        .ok()
+crates/vb_runtime/src/together_tests.rs:201:        .ok()
+crates/vb_runtime/src/together_tests.rs:207:                .ok()
+crates/vb_runtime/src/together_tests.rs:238:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/together_tests.rs:255:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:267:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/together_tests.rs:285:        .ok()
+crates/vb_runtime/src/together_tests.rs:288:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:300:        Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/together_tests.rs:382:        .ok()
+crates/vb_runtime/src/together_tests.rs:398:        .ok()
+crates/vb_runtime/src/together_tests.rs:405:                    .ok()
+crates/vb_runtime/src/together_tests.rs:427:        .ok()
+crates/vb_runtime/src/together_tests.rs:443:        .ok()
+crates/vb_runtime/src/together_tests.rs:447:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:465:        .ok()
+crates/vb_runtime/src/together_tests.rs:468:        .ok()
+crates/vb_runtime/src/together_tests.rs:482:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/together_tests.rs:502:        .ok()
+crates/vb_runtime/src/together_tests.rs:505:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:519:        .ok()
+crates/vb_runtime/src/together_tests.rs:523:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:543:        .ok()
+crates/vb_runtime/src/together_tests.rs:546:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:560:        .ok()
+crates/vb_runtime/src/together_tests.rs:564:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:586:        .ok()
+crates/vb_runtime/src/together_tests.rs:589:        .ok()
+crates/vb_runtime/src/together_tests.rs:592:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:606:        .ok()
+crates/vb_runtime/src/together_tests.rs:610:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:629:        .ok()
+crates/vb_runtime/src/together_tests.rs:632:        .ok()
+crates/vb_runtime/src/together_tests.rs:635:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:649:            .ok()
+crates/vb_runtime/src/together_tests.rs:698:        Err(EngineError::TogetherBranchLimitExceeded { max }) => {
+crates/vb_runtime/src/together_tests.rs:760:        .ok()
+crates/vb_runtime/src/together_tests.rs:776:        .ok()
+crates/vb_runtime/src/together_tests.rs:780:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:800:        .ok()
+crates/vb_runtime/src/together_tests.rs:816:        .ok()
+crates/vb_runtime/src/together_tests.rs:820:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:855:        .ok()
+crates/vb_runtime/src/together_tests.rs:872:        .ok()
+crates/vb_runtime/src/together_tests.rs:890:        .ok()
+crates/vb_runtime/src/together_tests.rs:894:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:920:        .ok()
+crates/vb_runtime/src/together_tests.rs:936:        .ok()
+crates/vb_runtime/src/together_tests.rs:940:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:965:        .ok()
+crates/vb_runtime/src/together_tests.rs:968:    run.add_parallel_in_flight(2).ok();
+crates/vb_runtime/src/together_tests.rs:983:        .ok()
+crates/vb_runtime/src/together_tests.rs:987:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:1013:        .ok()
+crates/vb_runtime/src/together_tests.rs:1016:    run.add_parallel_in_flight(3).ok();
+crates/vb_runtime/src/together_tests.rs:1030:        .ok()
+crates/vb_runtime/src/together_tests.rs:1034:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:1056:        .ok()
+crates/vb_runtime/src/together_tests.rs:1059:    run.add_parallel_in_flight(2).ok();
+crates/vb_runtime/src/together_tests.rs:1073:        .ok()
+crates/vb_runtime/src/together_tests.rs:1088:        .ok()
+crates/vb_runtime/src/together_tests.rs:1093:        .ok()
+crates/vb_runtime/src/together_tests.rs:1100:    .ok()
+crates/vb_runtime/src/together_tests.rs:1103:        .ok()
+crates/vb_runtime/src/together_tests.rs:1106:    run.add_parallel_in_flight(2).ok();
+crates/vb_runtime/src/together_tests.rs:1120:        .ok()
+crates/vb_runtime/src/together_tests.rs:1136:        .ok()
+crates/vb_runtime/src/together_tests.rs:1139:        .ok()
+crates/vb_runtime/src/together_tests.rs:1153:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/together_tests.rs:1172:        .ok()
+crates/vb_runtime/src/together_tests.rs:1177:        .ok()
+crates/vb_runtime/src/together_tests.rs:1193:        .ok()
+crates/vb_runtime/src/together_tests.rs:1206:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:1218:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/together_tests.rs:1237:        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+crates/vb_runtime/src/together_tests.rs:1273:        .ok()
+crates/vb_runtime/src/together_tests.rs:1291:        .ok()
+crates/vb_runtime/src/together_tests.rs:1295:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:1306:        .ok()
+crates/vb_runtime/src/together_tests.rs:1311:        .ok()
+crates/vb_runtime/src/together_tests.rs:1327:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/together_tests.rs:1348:        .ok()
+crates/vb_runtime/src/together_tests.rs:1365:        .ok()
+crates/vb_runtime/src/together_tests.rs:1383:        .ok()
+crates/vb_runtime/src/together_tests.rs:1398:        .ok()
+crates/vb_runtime/src/together_tests.rs:1401:    run.add_parallel_in_flight(1).ok();
+crates/vb_runtime/src/together_tests.rs:1415:        .ok()
+crates/vb_runtime/src/together_tests.rs:1419:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:1442:        .ok()
+crates/vb_runtime/src/together_tests.rs:1459:        .ok()
+crates/vb_runtime/src/together_tests.rs:1483:        .ok()
+crates/vb_runtime/src/together_tests.rs:1487:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/together_tests.rs:1511:        .ok()
+crates/vb_runtime/src/together_tests.rs:1514:    run.add_parallel_in_flight(4).ok();
+crates/vb_runtime/src/together_tests.rs:1528:        .ok()
+crates/vb_runtime/src/together_tests.rs:1532:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_storage/src/trimming/logic.rs:113:                Err(TrimError::NoDurableSnapshot { .. }) => continue,
+crates/vb_storage/src/trimming/logic.rs:114:                Err(TrimError::RetentionPolicyBlocks { .. }) => continue,
+crates/vb_storage/src/trimming/logic.rs:115:                Err(e) => return Err(e),
+crates/vb_storage/src/trimming/logic.rs:150:                Err(e) => {
+crates/vb_storage/src/trimming/logic.rs:159:                Err(TrimError::RetentionPolicyBlocks { .. }) => {
+crates/vb_storage/src/trimming/logic.rs:169:                Err(e) => return Err(JournalError::from(e)),
+crates/vb_compile/src/type_taint/tests.rs:13:        Err(errors) => errors
+crates/vb_compile/src/type_taint/tests.rs:168:        Err(errors) => match errors.0.into_iter().next() {
+crates/vb_compile/src/type_taint/tests.rs:181:        Err(errors) => match errors.0.into_iter().next() {
+crates/vb_compile/src/type_taint/tests.rs:619:        Err(errors) => match errors.0.into_iter().next() {
+crates/vb_compile/src/type_taint/tests.rs:632:        Err(errors) => match errors.0.into_iter().next() {
+crates/workspace_tests/src/quality/test_loop_inventory/discovery.rs:106:        .ok()
+crates/workspace_tests/src/quality/test_loop_inventory/discovery.rs:119:        .ok()
+crates/vb_compile/src/strict_yaml.rs:35:        Err(error) => Some(Err(error)),
+crates/vb_runtime/src/test_harness.rs:11:        .ok()
+crates/vb_runtime/src/test_harness.rs:23:        .ok()
+crates/vb_runtime/src/test_harness.rs:26:        .ok()
+crates/vb_compile/src/schema.rs:119:        Err(e) => {
+crates/vb_compile/src/schema.rs:330:            Err(e) => return vec![e],
+crates/vb_compile/src/schema.rs:376:        Err(e) => return vec![e],
+crates/vb_compile/src/schema.rs:380:        Err(e) => return vec![e],
+crates/vb_compile/src/schema.rs:420:        Err(e) => return vec![e],
+crates/vb_compile/src/schema.rs:424:        Err(e) => return vec![e],
+crates/vb_compile/src/schema.rs:530:            Err(errors) => match errors.first() {
+crates/vb_compile/src/schema.rs:658:            Err(errors) => errors
+crates/vb_runtime/src/shard/transitions.rs:100:            Err(error) => return Err(error),
+crates/vb_compile/src/references/tests.rs:6:        Err(errors) => errors
+crates/vb_compile/src/references/tests.rs:261:        Err(errors) => errors
+crates/vb_compile/src/expression.rs:667:            Err(error) => Ok(error),
+crates/vb_compile/src/control_flow.rs:97:            Err(error) => errors.push(error),
+crates/vb_compile/src/control_flow/tests.rs:6:        Err(errors) => errors
+crates/vb_runtime/src/shard/tests/chunk_025.rs:144:        let _ = shard.tick();
+crates/vb_compile/src/lib.rs:3759:        Err(_) => false,
+crates/vb_compile/src/lib.rs:3920:        Err(_) => usize::MAX,
+crates/vb_compile/src/lib.rs:4133:            Err(errors) => match errors.0.into_iter().next() {
+crates/vb_compile/src/lib.rs:4734:            Err(vb_validate::ValidationError::ActionContractOrphan { action_id }) => {
+crates/vb_compile/src/ast/tests.rs:41:        Err(errors) => match errors.first() {
+crates/vb_compile/src/ast/parse.rs:451:        Err(_) => false,
+crates/vb_compile/src/ast/parse.rs:577:        Err(_) => usize::MAX,
+crates/vb_storage/src/recovery/replay/summary.rs:406:            Some(Err(_)) | None => {
+crates/vb_storage/src/recovery/replay/summary.rs:431:        .and_then(|bytes| postcard::from_bytes::<Taint>(bytes).ok())
+crates/vb_storage/src/recovery/replay/summary.rs:950:            reject_workflow_digest_mismatch(&events, found).ok(),
+crates/vb_storage/src/recovery/replay/summary.rs:954:            reject_workflow_digest_mismatch(&[], expected).ok(),
+crates/vb_storage/src/recovery/replay/summary.rs:1177:            Err(error) => panic!("slot value encoding failed: {error}"),
+crates/vb_storage/src/recovery/replay/summary.rs:1184:            Err(error) => panic!("finite test value rejected: {error}"),
+crates/vb_runtime/src/shard/tests/chunk_017.rs:120:        Err(_) => return,
+crates/vb_runtime/src/shard/tests/chunk_017.rs:202:        .ok()
+crates/vb_storage/src/recovery/replay/core.rs:130:        Ok(None) | Err(crate::JournalError::PostcardDecodeFailed) => {
+crates/vb_storage/src/recovery/replay/core.rs:133:        Err(other) => Err(RecoveryError::Journal(other)),
+crates/vb_compile/src/kani/vb_compile_constant.rs:123:    let _ = compiler.push_constant(ConstValue::I64(1));
+crates/vb_compile/src/kani/vb_compile_constant.rs:124:    let _ = compiler.push_constant(ConstValue::I64(2));
+crates/vb_compile/src/kani/vb_compile_constant.rs:125:    let _ = compiler.push_constant(ConstValue::Bool(true));
+crates/vb_compile/src/kani/vb_compile_constant.rs:140:    let _ = compiler.push_constant(ConstValue::Null);
+crates/vb_runtime/src/shard/tests/chunk_013.rs:71:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/tests/chunk_012.rs:269:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_compile/src/expression_bytecode.rs:619:            Err(error @ CompileError::UnsupportedAccessorReference { .. }) => match error {
+crates/vb_compile/src/expression_bytecode.rs:640:            Err(error) => Ok(error),
+crates/vb_runtime/src/frame_pool.rs:97:            Err(_) => unreachable!("asserted Ok above"),
+crates/vb_runtime/src/frame_pool.rs:142:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:160:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:164:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:185:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:225:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:246:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:258:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:273:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:283:            Err(_) => {
+crates/vb_runtime/src/frame_pool.rs:317:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:321:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:374:            Err(_) => {
+crates/vb_runtime/src/frame_pool.rs:391:            Err(_) => {
+crates/vb_runtime/src/frame_pool.rs:403:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:407:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:415:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:429:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:446:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:456:            Err(_) => {
+crates/vb_runtime/src/frame_pool.rs:467:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:483:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:552:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:567:                Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:583:            Err(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason }) => {
+crates/vb_runtime/src/frame_pool.rs:603:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:617:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:640:                Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:652:            Err(_) => {
+crates/vb_runtime/src/frame_pool.rs:663:            .filter_map(|i| pool.take(RunId::new(i), StepIdx::new(0)).ok())
+crates/vb_runtime/src/frame_pool.rs:693:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:705:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:712:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:727:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:735:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:754:                Err(e) => {
+crates/vb_runtime/src/frame_pool.rs:768:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:771:            let _ = frame.increment_executed();
+crates/vb_runtime/src/frame_pool.rs:779:            Err(_) => return,
+crates/vb_runtime/src/frame_pool.rs:797:                Err(_) => return,
+crates/vb_runtime/src/shard/tests/chunk_007.rs:177:        Err(_) => return,
+crates/vb_runtime/src/shard/tests/chunk_007.rs:195:        Err(_) => return,
+crates/vb_runtime/src/shard/helpers.rs:390:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:427:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:474:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:534:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:594:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:632:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:643:        let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;
+crates/vb_runtime/src/shard/helpers.rs:779:            RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
+crates/vb_runtime/src/shard/helpers.rs:801:            RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
+crates/vb_runtime/src/shard/helpers.rs:815:            RunFrame::new(RunId::new(2), wf.entry(), wf.node_count(), wf.slot_count()).ok()
+crates/vb_runtime/src/shard/helpers.rs:1006:            Err(e) => {
+crates/vb_runtime/src/shard/helpers.rs:1422:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:1480:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:1544:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:1605:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:1906:            RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
+crates/vb_runtime/src/shard/helpers.rs:1977:        let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
+crates/vb_runtime/src/shard/helpers.rs:2083:        let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
+crates/vb_runtime/src/shard/helpers.rs:2168:        let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
+crates/vb_runtime/src/shard/helpers.rs:2303:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/helpers.rs:2415:        let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
+crates/vb_runtime/src/shard/helpers.rs:2419:            RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
+crates/vb_runtime/src/shard/tests/chunk_003.rs:70:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_storage/src/process_lock.rs:57:                let _ = file.set_len(0);
+crates/vb_storage/src/process_lock.rs:59:                let _ = write!(file, "{pid}");
+crates/vb_storage/src/process_lock.rs:66:            Err(errno) => {
+crates/vb_storage/src/process_lock.rs:100:    let _ = file.rewind();
+crates/vb_storage/src/process_lock.rs:102:    let _ = file.read_to_string(&mut buf);
+crates/vb_storage/src/process_lock.rs:103:    buf.trim().parse::<u32>().ok()
+crates/vb_runtime/src/for_each_tests.rs:40:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:100:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:156:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:163:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:182:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:197:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/for_each_tests.rs:236:        Err(EngineError::IterationLimitExceeded { resource }) => {
+crates/vb_runtime/src/for_each_tests.rs:266:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/for_each_tests.rs:304:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:339:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:390:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/for_each_tests.rs:407:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:420:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/for_each_tests.rs:444:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/for_each_tests.rs:476:        Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/for_each_tests.rs:558:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:565:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:571:                .ok()
+crates/vb_runtime/src/for_each_tests.rs:607:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:613:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:619:                .ok()
+crates/vb_runtime/src/for_each_tests.rs:679:        Err(EngineError::IterationLimitExceeded { resource }) => {
+crates/vb_runtime/src/for_each_tests.rs:751:        Err(EngineError::IterationLimitExceeded { resource }) => {
+crates/vb_runtime/src/for_each_tests.rs:790:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:796:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:801:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:817:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:836:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:849:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:864:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/for_each_tests.rs:901:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:905:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/for_each_tests.rs:942:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:948:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:955:                    .ok()
+crates/vb_runtime/src/for_each_tests.rs:996:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1003:                    .ok()
+crates/vb_runtime/src/for_each_tests.rs:1027:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1034:                    .ok()
+crates/vb_runtime/src/for_each_tests.rs:1099:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1114:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1137:        Err(EngineError::IterationLimitExceeded { resource }) => {
+crates/vb_runtime/src/for_each_tests.rs:1171:        Err(EngineError::IterationLimitExceeded { resource }) => {
+crates/vb_runtime/src/for_each_tests.rs:1238:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1291:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1316:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1352:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1397:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1405:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1423:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1474:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1481:        .ok()
+crates/vb_runtime/src/for_each_tests.rs:1521:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1538:                .ok()
+crates/vb_runtime/src/for_each_tests.rs:1602:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1622:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1639:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1658:    run.set_pc(StepIdx::ZERO).ok();
+crates/vb_runtime/src/for_each_tests.rs:1671:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1730:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1788:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1855:    .ok()
+crates/vb_runtime/src/for_each_tests.rs:1861:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1884:            .ok()
+crates/vb_runtime/src/for_each_tests.rs:1887:        let _ = before_pc; // used for clarity
+crates/vb_runtime/src/shard/tests/chunk_002.rs:198:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/tests/chunk_002.rs:245:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/tests/chunk_001.rs:43:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/tests/chunk_001.rs:103:    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/tests/chunk_001.rs:140:        Err(_) => return,
+crates/vb_storage/src/kani_codec.rs:146:        Err(JournalError::UnexpectedEof) => {
+crates/vb_storage/src/kani_codec.rs:149:        Err(JournalError::BadMagic { .. }) => {
+crates/vb_storage/src/kani_codec.rs:152:        Err(JournalError::UnsupportedSchemaVersion { .. }) => {
+crates/vb_storage/src/kani_codec.rs:155:        Err(JournalError::MigrationRequired { .. }) => {
+crates/vb_storage/src/kani_codec.rs:158:        Err(JournalError::HeaderChecksumMismatch) => {
+crates/vb_storage/src/kani_codec.rs:161:        Err(_) => {
+crates/vb_runtime/src/runtime.rs:354:            Err(_) => usize::MAX,
+crates/vb_runtime/src/runtime.rs:385:                        Err(_) => {}
+crates/vb_runtime/src/runtime.rs:480:        CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/runtime.rs:518:        CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/runtime.rs:797:        CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/runtime.rs:868:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:1061:            Err(_) => return,
+crates/vb_runtime/src/runtime.rs:1301:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:1783:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:1867:            Err(ref e) => assert_eq!(e.diagnostic_code(), RuntimeError::QUEUE_FULL_CODE),
+crates/vb_runtime/src/runtime.rs:2032:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:2070:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:2197:            Err(error) => {
+crates/vb_runtime/src/runtime.rs:2330:        CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/recovery.rs:288:            Err(error) => {
+crates/vb_runtime/src/recovery.rs:514:            Err(e) => panic!("hydration should succeed: {e}"),
+crates/vb_storage/src/journal/replay.rs:17:            .ok()
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs:70:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_storage/src/journal/internal.rs:56:            Err(JournalError::DuplicateEvent { run, seq }) => {
+crates/vb_storage/src/journal/internal.rs:72:            Err(e) => Err(e),
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:45:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:105:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:142:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:202:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:249:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_storage/src/journal/core.rs:111:            let _ = e;
+crates/vb_runtime/src/primitives/wait_ask.rs:122:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:136:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:139:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:153:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:156:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:171:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:186:                .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:222:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:247:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:278:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:284:            Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/primitives/wait_ask.rs:300:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:316:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:339:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:342:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:357:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:360:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:374:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:390:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:406:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:423:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:438:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:454:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:469:                .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:483:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:497:                .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:511:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:526:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:541:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:544:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:559:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:562:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:576:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:592:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:608:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:626:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:640:                .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:652:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:673:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:681:                .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:693:            .ok()
+crates/vb_runtime/src/primitives/wait_ask.rs:713:            .ok()
+crates/vb_runtime/src/engine/tests.rs:445:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:508:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:567:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:607:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:610:    let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0));
+crates/vb_runtime/src/engine/tests.rs:660:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:678:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:704:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:736:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:827:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:831:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1021:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1025:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1090:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1094:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1165:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1169:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1172:    let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+crates/vb_runtime/src/engine/tests.rs:1329:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1386:        Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:1489:                    Err(_) => drained = true,
+crates/vb_runtime/src/engine/tests.rs:1605:            Err(e) => {
+crates/vb_runtime/src/engine/tests.rs:1628:            Err(e) => {
+crates/vb_runtime/src/engine/tests.rs:1880:        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+crates/vb_runtime/src/engine/tests.rs:1919:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+crates/vb_runtime/src/engine/tests.rs:1958:        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+crates/vb_runtime/src/engine/tests.rs:2075:            Err(_) => return,
+crates/vb_runtime/src/engine/tests.rs:2079:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+crates/vb_runtime/src/engine/tests.rs:2151:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2229:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2272:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2274:        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+crates/vb_runtime/src/engine/tests.rs:2345:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2347:        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+crates/vb_runtime/src/engine/tests.rs:2366:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2388:            .ok()
+crates/vb_runtime/src/engine/tests.rs:2390:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:170:            Err(_) => self.apply_terminal_failed(run, state),
+crates/vb_storage/src/events.rs:299:            } => postcard::from_bytes(bytes).ok(),
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:166:                Err(error) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:177:                Err(error) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:199:            Err(error) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:218:            Err(AdmissionError::ArtifactNotFound { digest }) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:230:            Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:235:            Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:240:            Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:243:            Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
+crates/vb_runtime/src/primitives/retry.rs:422:        let policy = policy.ok().expect("must succeed");
+crates/vb_runtime/src/primitives/retry.rs:468:        assert_eq!(policy.ok().expect("must succeed").max_attempts(), u16::MAX);
+crates/vb_runtime/src/primitives/retry.rs:476:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:514:        let packed = state.encode().ok().expect("encode must succeed");
+crates/vb_runtime/src/primitives/retry.rs:516:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:530:        let packed = state.encode().ok().expect("encode must succeed");
+crates/vb_runtime/src/primitives/retry.rs:532:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:634:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:647:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:726:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:735:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:745:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:760:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:773:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:784:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:824:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:845:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:866:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:887:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:994:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1052:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1073:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1106:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1111:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1123:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1126:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1137:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1162:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1174:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1177:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1189:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1213:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1223:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1226:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1237:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1243:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1377:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1431:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1435:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1460:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1519:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1524:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1537:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1561:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1585:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1599:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1640:        let policy = policy.ok().expect("must succeed");
+crates/vb_runtime/src/primitives/retry.rs:1648:        let policy = policy.ok().expect("must succeed");
+crates/vb_runtime/src/primitives/retry.rs:1657:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1666:            .ok()
+crates/vb_runtime/src/primitives/retry.rs:1676:            .ok()
+crates/vb_runtime/src/engine/execute.rs:39:        Err(_) => Ok(0),
+crates/vb_runtime/src/engine/execute.rs:100:                Err(e) => Err(RuntimeEngineError::Core(e)),
+crates/vb_runtime/src/engine/execute.rs:142:                Err(e) => Err(RuntimeEngineError::Core(e)),
+crates/vb_runtime/src/engine/execute.rs:208:                Err(e) => Err(RuntimeEngineError::Core(e)),
+crates/vb_runtime/src/engine/execute.rs:259:                Err(e) => Err(RuntimeEngineError::Core(e)),
+crates/vb_runtime/src/engine/execute.rs:437:            Err(e) => {
+crates/vb_runtime/src/engine/execute.rs:447:            Err(e) => {
+crates/vb_runtime/src/engine/execute.rs:557:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+crates/vb_runtime/src/engine/execute.rs:607:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(10));
+crates/vb_runtime/src/engine/execute.rs:741:        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+crates/vb_runtime/src/engine/execute.rs:771:            Err(RuntimeEngineError::TaintViolation { step }) => {
+crates/vb_runtime/src/engine/execute.rs:848:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
+crates/vb_runtime/src/engine/execute.rs:896:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
+crates/vb_runtime/src/engine/execute.rs:940:        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(3));
+crates/vb_runtime/src/shard/impl_tests/chunk_001.rs:44:        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+crates/vb_storage/src/codec_miri_tests.rs:27:        Err(_) => {
+crates/vb_storage/src/codec_miri_tests.rs:40:        Err(_) => {
+crates/vb_storage/src/codec_miri_tests.rs:51:        Err(_) => {
+crates/vb_runtime/src/engine/drive.rs:881:        let _ = dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty());
+crates/vb_runtime/src/engine/drive.rs:1129:            Err(RuntimeEngineError::BranchLimitExceeded { max, requested }) => {
+crates/vb_runtime/src/primitives/repeat.rs:160:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:166:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:183:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:202:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:219:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:238:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:254:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:269:                .ok()
+crates/vb_runtime/src/primitives/repeat.rs:290:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:304:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:328:            Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/primitives/repeat.rs:348:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:365:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:371:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/repeat.rs:387:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:399:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/repeat.rs:416:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:422:            Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/primitives/repeat.rs:436:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:448:            Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/primitives/repeat.rs:462:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:474:            Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/primitives/repeat.rs:490:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:504:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:523:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:546:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:560:                .ok()
+crates/vb_runtime/src/primitives/repeat.rs:604:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:621:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:644:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:665:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:689:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:704:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:735:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:779:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:802:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:817:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:836:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:859:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:880:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:886:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/repeat.rs:902:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:914:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/repeat.rs:931:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:940:                .ok()
+crates/vb_runtime/src/primitives/repeat.rs:952:            .ok()
+crates/vb_runtime/src/primitives/repeat.rs:957:            .ok()
+crates/vb_runtime/src/engine/action.rs:91:        Err(CoreError::SlotUninitialized { .. }) => Taint::Clean,
+crates/vb_runtime/src/engine/action.rs:92:        Err(e) => return Err(RuntimeEngineError::Core(e)),
+crates/vb_runtime/src/engine/action.rs:99:    let _ = retry_policy;
+crates/vb_runtime/src/engine/action.rs:100:    let _ = seq;
+crates/vb_runtime/src/engine/action.rs:458:            Err(e) => {
+crates/vb_runtime/src/engine/action.rs:524:        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+crates/vb_runtime/src/engine/action.rs:553:        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+crates/vb_runtime/src/engine/action.rs:633:            Err(RuntimeEngineError::RetryExhausted { action, attempts }) => {
+crates/vb_runtime/src/primitives/reduce.rs:137:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:175:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:211:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:224:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:239:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:254:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:270:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/reduce.rs:306:            Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/primitives/reduce.rs:366:            Err(EngineError::ConstOutOfBounds { index }) => {
+crates/vb_runtime/src/primitives/reduce.rs:403:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:437:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:449:            Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/primitives/reduce.rs:463:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:475:            Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/primitives/reduce.rs:513:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:538:            Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/primitives/reduce.rs:605:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:628:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:642:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/reduce.rs:681:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:687:                    .ok()
+crates/vb_runtime/src/primitives/reduce.rs:724:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:730:                    .ok()
+crates/vb_runtime/src/primitives/reduce.rs:768:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:805:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:812:                        .ok()
+crates/vb_runtime/src/primitives/reduce.rs:854:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:860:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:864:                let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/primitives/reduce.rs:903:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:938:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:971:                .ok()
+crates/vb_runtime/src/primitives/reduce.rs:977:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:984:                        .ok()
+crates/vb_runtime/src/primitives/reduce.rs:1004:            .ok()
+crates/vb_runtime/src/primitives/reduce.rs:1018:                .ok()
+crates/vb_storage/src/batch.rs:74:            Err(e) => {
+crates/vb_storage/src/batch.rs:87:            Err(e) => {
+crates/vb_storage/src/batch.rs:148:            Err(e) => {
+crates/vb_storage/src/batch.rs:155:            Err(e) => {
+crates/vb_storage/src/batch.rs:789:            let _ = item.key();
+crates/vb_storage/src/batch.rs:796:            let _ = item.key();
+crates/vb_storage/src/batch.rs:803:            let _ = item.key();
+crates/vb_runtime/src/primitives/helpers.rs:111:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/helpers.rs:129:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/helpers.rs:147:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/helpers.rs:162:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/helpers.rs:181:            Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/helpers.rs:347:            Err(EngineError::MissingNextStep { step }) => ensure(
+crates/vb_runtime/src/primitives/helpers.rs:377:            Err(EngineError::MissingNextStep { step: s }) => {
+crates/vb_runtime/src/primitives/helpers.rs:398:            Err(EngineError::MissingOutputSlot { step: s }) => {
+crates/vb_runtime/src/action.rs:236:        let contract = resolved.ok().cloned();
+crates/vb_runtime/src/action.rs:311:        let contract = resolved.ok().cloned();
+crates/vb_runtime/src/action.rs:340:            Err(_) => {
+crates/vb_runtime/src/action.rs:517:            Err(_) => {
+crates/vb_runtime/src/action.rs:640:            Err(_) => return,
+crates/vb_runtime/src/action.rs:688:            Err(_) => return,
+crates/vb_runtime/src/action.rs:728:            Err(_) => {
+crates/vb_runtime/src/action.rs:776:            Err(_) => return,
+crates/vb_runtime/src/kani_capability_harnesses.rs:42:            Err(AdmissionError::CapabilityDenied { .. }) => {}
+crates/vb_runtime/src/kani_capability_harnesses.rs:43:            Err(_) => {
+crates/vb_runtime/src/collect_tests.rs:18:        Err(EngineError::InvalidCompiledWorkflow { reason }) => assert_eq!(reason, expected),
+crates/vb_runtime/src/collect_tests.rs:89:        .ok()
+crates/vb_runtime/src/collect_tests.rs:95:                .ok()
+crates/vb_runtime/src/collect_tests.rs:315:        .ok()
+crates/vb_runtime/src/collect_tests.rs:382:        .ok()
+crates/vb_runtime/src/collect_tests.rs:396:            .ok()
+crates/vb_runtime/src/collect_tests.rs:409:        .ok()
+crates/vb_runtime/src/collect_tests.rs:424:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/collect_tests.rs:465:        Err(EngineError::CollectItemLimitExceeded) => {}
+crates/vb_runtime/src/collect_tests.rs:492:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/collect_tests.rs:521:        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+crates/vb_runtime/src/collect_tests.rs:581:        .ok()
+crates/vb_runtime/src/collect_tests.rs:592:        Err(EngineError::MissingOutputSlot { step }) => {
+crates/vb_runtime/src/collect_tests.rs:608:        .ok()
+crates/vb_runtime/src/collect_tests.rs:619:        Err(EngineError::MissingNextStep { step }) => {
+crates/vb_runtime/src/collect_tests.rs:635:        .ok()
+crates/vb_runtime/src/collect_tests.rs:646:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/collect_tests.rs:684:        .ok()
+crates/vb_runtime/src/collect_tests.rs:690:                .ok()
+crates/vb_runtime/src/collect_tests.rs:793:        .ok()
+crates/vb_runtime/src/collect_tests.rs:844:        .ok()
+crates/vb_runtime/src/collect_tests.rs:855:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/collect_tests.rs:978:        Err(EngineError::CollectItemLimitExceeded) => {}
+crates/vb_runtime/src/collect_tests.rs:1019:        .ok()
+crates/vb_runtime/src/collect_tests.rs:1023:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/collect_tests.rs:1062:        .ok()
+crates/vb_runtime/src/collect_tests.rs:1066:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/collect_tests.rs:1126:        .ok()
+crates/vb_runtime/src/collect_tests.rs:1141:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/collect_tests.rs:1179:        .ok()
+crates/vb_runtime/src/collect_tests.rs:1183:            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+crates/vb_runtime/src/collect_tests.rs:1655:        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+crates/vb_runtime/src/collect_tests.rs:1673:        Err(EngineError::CollectPageLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:1694:        Err(EngineError::CollectItemLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:1788:        Err(EngineError::CollectPageLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:1809:        Err(EngineError::CollectItemLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:1830:        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+crates/vb_runtime/src/collect_tests.rs:1866:        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+crates/vb_runtime/src/collect_tests.rs:1994:        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+crates/vb_runtime/src/collect_tests.rs:2464:        Err(EngineError::CollectItemLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:2517:        Err(EngineError::CollectTimeLimitExceeded) => Ok(()),
+crates/vb_runtime/src/collect_tests.rs:2596:        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+crates/vb_runtime/src/primitives/for_each/tests.rs:34:        *run.read_slot(item_slot).ok().unwrap(),
+crates/vb_runtime/src/primitives/for_each/tests.rs:72:    assert_eq!(*run.read_slot(output_slot).ok().unwrap(), SlotValue::I64(7));
+crates/vb_runtime/src/primitives/for_each/tests.rs:101:    let output_value = *run.read_slot(output_slot).ok().unwrap();
+crates/vb_runtime/src/primitives/for_each/tests.rs:103:    let items = store.list(list_id).ok().unwrap();
+crates/vb_runtime/src/primitives/for_each/tests.rs:114:    run.write_slot(input, SlotValue::I64(42)).ok();
+crates/vb_runtime/src/primitives/for_each/tests.rs:117:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/for_each/tests.rs:135:        Err(EngineError::IterationLimitExceeded { resource }) => assert_eq!(resource, "for_each_limit"),
+crates/vb_runtime/src/primitives/for_each/tests.rs:149:        Err(EngineError::MissingOutputSlot { step }) => assert_eq!(step, StepIdx::ZERO),
+crates/vb_runtime/src/primitives/for_each/tests.rs:175:        Err(EngineError::MissingOutputSlot { step }) => assert_eq!(step, StepIdx::ZERO),
+crates/vb_runtime/src/primitives/for_each/tests.rs:186:    run.write_slot(iterator_slot, SlotValue::Bool(true)).ok();
+crates/vb_runtime/src/primitives/for_each/tests.rs:189:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/for_each/tests.rs:202:        Err(EngineError::MissingOutputSlot { step }) => assert_eq!(step, StepIdx::ZERO),
+crates/vb_runtime/src/primitives/for_each/tests.rs:216:        Err(EngineError::MissingNextStep { step }) => assert_eq!(step, StepIdx::ZERO),
+crates/vb_runtime/src/primitives/for_each/tests.rs:272:        Err(EngineError::IterationLimitExceeded { resource }) => assert_eq!(resource, "for_each_limit"),
+crates/vb_runtime/src/primitives/for_each/tests.rs:282:    run.write_slot(input, SlotValue::Null).ok();
+crates/vb_runtime/src/primitives/for_each/tests.rs:285:        Err(EngineError::TypeMismatch { expected, found }) => {
+crates/vb_runtime/src/primitives/for_each/tests.rs:302:    match *run.read_slot(iterator_slot).ok().unwrap() {
+crates/vb_runtime/src/primitives/for_each/tests.rs:304:            let items = store.list(id).ok().unwrap();
+crates/vb_runtime/src/primitives/collect.rs:340:            Err(_) => Err(EngineError::CollectExtraHydrationFailed {
+crates/vb_runtime/src/journal/chunk_002.rs:225:    extra.or_else(|| postcard::to_allocvec(&taint).ok())
+crates/vb_runtime/src/journal/tests/chunk_002.rs:140:                extra: postcard::to_allocvec(&Taint::Clean).ok(),
+crates/vb_runtime/src/journal/tests/chunk_001.rs:60:        Err(error) => {
+crates/vb_runtime/src/models/loom/bounded_queue.rs:86:        let _ = q1.try_take();
+crates/vb_runtime/src/models/loom/bounded_queue.rs:107:                let _ = q3.try_take();
+crates/vb_runtime/src/models/loom/bounded_queue.rs:112:            let _ = q1.try_take();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:69:        let _ = q1.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:84:                let _ = q1.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:89:                let _ = q2.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:94:            let _ = q3.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:110:                let _ = q1.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:114:            let _ = q2.try_append();
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:115:            let _ = q2.try_append();
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:66:            let _ = t1.try_complete();
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:69:        let _ = t2.try_cancel();
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:83:            let _ = t1.try_complete();
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:86:            let _ = t2.try_cancel();
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:89:            let _ = t3.try_complete();

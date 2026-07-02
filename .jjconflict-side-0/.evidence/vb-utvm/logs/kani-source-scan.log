@@ -1,0 +1,474 @@
+crates/vb_core/src/kani_workflow_arbitrary.rs:22:impl kani::Arbitrary for FiniteF64 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:28:impl kani::Arbitrary for ExprOp {
+crates/vb_core/src/kani_workflow_arbitrary.rs:30:        match kani::any::<u8>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:31:            0 => Self::LoadSlot(SlotIdx::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:32:            1 => Self::LoadConst(ConstIdx::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:33:            2 => Self::LoadAccessor(AccessorIdx::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:60:            _ => Self::LoadSlot(SlotIdx::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:65:impl kani::Arbitrary for ExprProgram {
+crates/vb_core/src/kani_workflow_arbitrary.rs:67:        let ops_len: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:68:        kani::assume(ops_len <= 16);
+crates/vb_core/src/kani_workflow_arbitrary.rs:72:            ops.push(kani::any::<ExprOp>());
+crates/vb_core/src/kani_workflow_arbitrary.rs:75:        let max_stack: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:83:impl kani::Arbitrary for PathSegment {
+crates/vb_core/src/kani_workflow_arbitrary.rs:85:        if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:86:            Self::Field(SymbolId::new(kani::any::<u32>()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:88:            Self::Index(kani::any::<u32>())
+crates/vb_core/src/kani_workflow_arbitrary.rs:93:impl kani::Arbitrary for SymbolId {
+crates/vb_core/src/kani_workflow_arbitrary.rs:95:        Self::new(kani::any())
+crates/vb_core/src/kani_workflow_arbitrary.rs:99:impl kani::Arbitrary for ConstValue {
+crates/vb_core/src/kani_workflow_arbitrary.rs:101:        match kani::any::<u8>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:103:            1 => Self::Bool(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:104:            2 => Self::I64(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:105:            3 => Self::F64(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:106:            _ => Self::Symbol(SymbolId::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:111:impl kani::Arbitrary for AccessorProgram {
+crates/vb_core/src/kani_workflow_arbitrary.rs:114:            root: SlotIdx::new(kani::any::<u16>()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:120:impl kani::Arbitrary for ExprBranch {
+crates/vb_core/src/kani_workflow_arbitrary.rs:123:            condition: ExprIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:124:            target: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:129:impl kani::Arbitrary for SlotBranch {
+crates/vb_core/src/kani_workflow_arbitrary.rs:132:            condition: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:133:            target: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:138:impl kani::Arbitrary for CompiledNodeKind {
+crates/vb_core/src/kani_workflow_arbitrary.rs:140:        match kani::any::<u8>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:143:                value: ConstIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:146:                source: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:149:                expr: ExprIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:158:                action: ActionId::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:159:                input: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:163:                otherwise: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:164:                    Some(StepIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:171:                otherwise: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:172:                    Some(StepIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:178:                input: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:179:                item_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:180:                limit: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:181:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:182:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:185:                iterator_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:186:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:187:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:190:                output: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:194:                join: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:197:                branch: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:198:                entry: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:199:                join: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:200:                accumulator: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:203:                branch_count: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:204:                accumulator: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:207:                source: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:208:                limit: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:209:                page_size: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:210:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:211:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:214:                collector_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:215:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:216:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:219:                collector_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:220:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:221:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:224:                collector_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:227:                input: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:228:                accumulator: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:229:                initial: ConstIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:230:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:231:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:234:                iterator_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:235:                accumulator: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:236:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:237:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:240:                accumulator: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:243:                max_attempts: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:244:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:245:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:248:                attempt_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:249:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:250:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:253:                attempt_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:254:                done: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:257:                result: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:260:                deadline_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:263:                event: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:264:                timeout_slot: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:265:                    Some(SlotIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:271:                prompt: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:272:                timeout_slot: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:273:                    Some(SlotIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:279:                answer: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:282:                policy_slot: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:283:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:284:                exhausted: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:287:                body: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:288:                handler: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:289:                error_slot: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:290:                    Some(SlotIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:296:                target: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:299:                result: SlotIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:305:impl kani::Arbitrary for CompiledNode {
+crates/vb_core/src/kani_workflow_arbitrary.rs:307:        let id = StepIdx::new(kani::any());
+crates/vb_core/src/kani_workflow_arbitrary.rs:310:            output: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:311:                Some(SlotIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:315:            next: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:316:                Some(StepIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:320:            on_error: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:321:                Some(StepIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:325:            error_slot: if kani::any::<bool>() {
+crates/vb_core/src/kani_workflow_arbitrary.rs:326:                Some(SlotIdx::new(kani::any()))
+crates/vb_core/src/kani_workflow_arbitrary.rs:330:            kind: kani::any::<CompiledNodeKind>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:335:impl kani::Arbitrary for ResourceContract {
+crates/vb_core/src/kani_workflow_arbitrary.rs:338:            max_steps: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:339:            max_slots: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:340:            max_constants: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:341:            max_accessors: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:342:            max_expressions: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:343:            max_expr_stack: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:344:            max_step_budget_per_tick: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:345:            max_transitions_per_tick: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:346:            max_input_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:347:            max_output_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:348:            max_blob_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:349:            max_ipc_payload_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:350:            max_retry_attempts: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:351:            max_fanout: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:352:            max_collect_items: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:353:            max_queue_depth: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:354:            max_journal_batch_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:355:            allows_secret_results: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:360:impl kani::Arbitrary for WorkflowParts {
+crates/vb_core/src/kani_workflow_arbitrary.rs:362:        let node_count: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:363:        kani::assume(node_count <= 8);
+crates/vb_core/src/kani_workflow_arbitrary.rs:367:            nodes.push(kani::any::<CompiledNode>());
+crates/vb_core/src/kani_workflow_arbitrary.rs:370:        let expr_count: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:371:        kani::assume(expr_count <= 4);
+crates/vb_core/src/kani_workflow_arbitrary.rs:375:            expressions.push(kani::any::<ExprProgram>());
+crates/vb_core/src/kani_workflow_arbitrary.rs:378:        let const_count: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:379:        kani::assume(const_count <= 4);
+crates/vb_core/src/kani_workflow_arbitrary.rs:383:            constants.push(kani::any::<ConstValue>());
+crates/vb_core/src/kani_workflow_arbitrary.rs:386:        let step_name_count: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:387:        kani::assume(step_name_count <= 4);
+crates/vb_core/src/kani_workflow_arbitrary.rs:396:            digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:401:            slot_count: kani::any::<u16>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:402:            symbols_count: kani::any::<u32>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:403:            entry: StepIdx::new(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:404:            resource_contract: kani::any::<ResourceContract>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:413:        1 => Box::new([kani::any::<PathSegment>()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:414:        2 => Box::new([kani::any::<PathSegment>(), kani::any::<PathSegment>()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:416:            kani::any::<PathSegment>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:417:            kani::any::<PathSegment>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:418:            kani::any::<PathSegment>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:426:        1 => Box::new([kani::any::<AccessorProgram>()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:428:            kani::any::<AccessorProgram>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:429:            kani::any::<AccessorProgram>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:432:            kani::any::<AccessorProgram>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:433:            kani::any::<AccessorProgram>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:434:            kani::any::<AccessorProgram>(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:442:        1 => Box::new([kani::any::<ExprBranch>()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:443:        _ => Box::new([kani::any(), kani::any()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:450:        1 => Box::new([kani::any::<SlotBranch>()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:451:        _ => Box::new([kani::any(), kani::any()]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:458:        1 => Box::new([StepIdx::new(kani::any())]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:459:        _ => Box::new([StepIdx::new(kani::any()), StepIdx::new(kani::any())]),
+crates/vb_core/src/kani_workflow_arbitrary.rs:464:    let len: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:465:    kani::assume(len <= 3);
+crates/vb_core/src/kani_workflow_arbitrary.rs:470:    let len: u8 = kani::any();
+crates/vb_core/src/kani_workflow_arbitrary.rs:471:    kani::assume(len <= 2);
+crates/vb_core/src/kani_workflow_arbitrary.rs:479:impl kani::Arbitrary for Taint {
+crates/vb_core/src/kani_workflow_arbitrary.rs:481:        match kani::any::<u8>() % 5 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:491:impl kani::Arbitrary for SlotValue {
+crates/vb_core/src/kani_workflow_arbitrary.rs:493:        match kani::any::<u8>() % 8 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:495:            1 => SlotValue::Bool(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:496:            2 => SlotValue::I64(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:497:            3 => SlotValue::F64(kani::any()),
+crates/vb_core/src/kani_workflow_arbitrary.rs:498:            4 => SlotValue::Symbol(SymbolId::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:499:            5 => SlotValue::List(ListId::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:500:            6 => SlotValue::Object(ObjectId::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:501:            _ => SlotValue::Blob(BlobId::new(kani::any())),
+crates/vb_core/src/kani_workflow_arbitrary.rs:510:impl kani::Arbitrary for Idempotency {
+crates/vb_core/src/kani_workflow_arbitrary.rs:512:        match kani::any::<u8>() % 3 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:520:impl kani::Arbitrary for SideEffect {
+crates/vb_core/src/kani_workflow_arbitrary.rs:522:        match kani::any::<u8>() % 5 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:532:impl kani::Arbitrary for RetrySafety {
+crates/vb_core/src/kani_workflow_arbitrary.rs:534:        match kani::any::<u8>() % 3 {
+crates/vb_core/src/kani_workflow_arbitrary.rs:542:impl kani::Arbitrary for Capability {
+crates/vb_core/src/kani_workflow_arbitrary.rs:546:            format!("cap_{}", kani::any::<u8>().wrapping_rem(16)).into_boxed_str(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:547:            kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:552:impl kani::Arbitrary for ActionContract {
+crates/vb_core/src/kani_workflow_arbitrary.rs:555:        let cap_count = kani::any::<u8>() % 4;
+crates/vb_core/src/kani_workflow_arbitrary.rs:559:            caps.push(kani::any::<Capability>());
+crates/vb_core/src/kani_workflow_arbitrary.rs:566:            id: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:567:            input_slot_count: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:568:            output_slot_count: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:569:            max_input_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:570:            max_output_bytes: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:571:            timeout_ms: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:572:            idempotency: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:573:            side_effect: kani::any(),
+crates/vb_core/src/kani_workflow_arbitrary.rs:574:            retry_safety: kani::any(),
+crates/vb_core/src/ids/kani_id_bounds.rs:12:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:14:    let id = StepIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:18:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:20:    let id = SlotIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:24:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:26:    let id = ExprIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:30:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:32:    let id = AccessorIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:36:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:38:    let id = ConstIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:42:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:44:    let limit = FanoutLimit::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:48:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:50:    let idx = BranchIdx::new(kani::any());
+crates/vb_core/src/ids/kani_id_bounds.rs:54:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:56:    let inner = kani::any::<u16>();
+crates/vb_core/src/ids/kani_id_bounds.rs:59:    kani::assert(
+crates/vb_core/src/ids/kani_id_bounds.rs:65:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:67:    let inner = kani::any::<u16>();
+crates/vb_core/src/ids/kani_id_bounds.rs:70:    kani::assert(
+crates/vb_core/src/ids/kani_id_bounds.rs:76:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:78:    let inner = kani::any::<u16>();
+crates/vb_core/src/ids/kani_id_bounds.rs:81:    kani::assert(
+crates/vb_core/src/ids/kani_id_bounds.rs:87:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:89:    let inner = kani::any::<u16>();
+crates/vb_core/src/ids/kani_id_bounds.rs:92:    kani::assert(
+crates/vb_core/src/ids/kani_id_bounds.rs:98:#[kani::proof]
+crates/vb_core/src/ids/kani_id_bounds.rs:100:    let inner = kani::any::<u16>();
+crates/vb_core/src/ids/kani_id_bounds.rs:103:    kani::assert(
+crates/vb_core/src/ids/kani_id_arbitrary.rs:10:impl kani::Arbitrary for RunId {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:12:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:16:impl kani::Arbitrary for SeqNo {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:18:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:22:impl kani::Arbitrary for EventSeq {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:24:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:28:impl kani::Arbitrary for StepIdx {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:30:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:34:impl kani::Arbitrary for SlotIdx {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:36:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:40:impl kani::Arbitrary for ExprIdx {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:42:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:46:impl kani::Arbitrary for AccessorIdx {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:48:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:52:impl kani::Arbitrary for ConstIdx {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:54:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:58:impl kani::Arbitrary for ActionId {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:60:        Self::new(kani::any())
+crates/vb_core/src/ids/kani_id_arbitrary.rs:64:impl kani::Arbitrary for WorkflowDigest {
+crates/vb_core/src/ids/kani_id_arbitrary.rs:66:        Self::from_bytes(kani::any())
+crates/vb_validate/src/kani_idempotency_contract.rs:17:#[kani::proof]
+crates/vb_validate/src/kani_idempotency_contract.rs:18:#[kani::unwind(8)]
+crates/vb_validate/src/kani_idempotency_contract.rs:64:                kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:87:#[kani::proof]
+crates/vb_validate/src/kani_idempotency_contract.rs:88:#[kani::unwind(8)]
+crates/vb_validate/src/kani_idempotency_contract.rs:123:            kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:169:            kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:192:#[kani::proof]
+crates/vb_validate/src/kani_idempotency_contract.rs:193:#[kani::unwind(40)]
+crates/vb_validate/src/kani_idempotency_contract.rs:228:            kani::assert(result.is_err(), "side_effect!=None with Unsafe must be Err");
+crates/vb_validate/src/kani_idempotency_contract.rs:232:                kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:258:#[kani::proof]
+crates/vb_validate/src/kani_idempotency_contract.rs:259:#[kani::unwind(40)]
+crates/vb_validate/src/kani_idempotency_contract.rs:290:            kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:296:                kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:324:#[kani::proof]
+crates/vb_validate/src/kani_idempotency_contract.rs:325:#[kani::unwind(55)]
+crates/vb_validate/src/kani_idempotency_contract.rs:356:            kani::assert(
+crates/vb_validate/src/kani_idempotency_contract.rs:362:                kani::assert(
+crates/vb_validate/src/kani_gate_08_structural.rs:25:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:26:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:28:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:29:    kani::assume(parts.slot_count > 0);
+crates/vb_validate/src/kani_gate_08_structural.rs:30:    kani::assume(parts.slot_count <= 256);
+crates/vb_validate/src/kani_gate_08_structural.rs:31:    kani::assume(parts.symbols_count > 0);
+crates/vb_validate/src/kani_gate_08_structural.rs:32:    kani::assume(parts.symbols_count <= 1024);
+crates/vb_validate/src/kani_gate_08_structural.rs:36:        kani::assume(accessor.root.as_usize() < usize::from(parts.slot_count));
+crates/vb_validate/src/kani_gate_08_structural.rs:40:                    kani::assume(symbol.get() < parts.symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:42:                PathSegment::Index(index) => kani::assume(*index != u32::MAX),
+crates/vb_validate/src/kani_gate_08_structural.rs:43:                _ => kani::assume(false),
+crates/vb_validate/src/kani_gate_08_structural.rs:49:    kani::assert(result.is_ok(), "arbitrary valid accessors pass Gate 8");
+crates/vb_validate/src/kani_gate_08_structural.rs:56:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:57:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:59:    let mut parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:60:    kani::assume(parts.slot_count > 0);
+crates/vb_validate/src/kani_gate_08_structural.rs:61:    kani::assume(parts.slot_count <= 8);
+crates/vb_validate/src/kani_gate_08_structural.rs:70:    kani::assert(
+crates/vb_validate/src/kani_gate_08_structural.rs:78:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:79:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:81:    let mut parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:82:    kani::assume(parts.symbols_count > 0);
+crates/vb_validate/src/kani_gate_08_structural.rs:83:    kani::assume(parts.symbols_count <= 64);
+crates/vb_validate/src/kani_gate_08_structural.rs:96:    kani::assert(
+crates/vb_validate/src/kani_gate_08_structural.rs:107:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:108:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:110:    let mut parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:123:    kani::assert(
+crates/vb_validate/src/kani_gate_08_structural.rs:133:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:134:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:136:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:144:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:146:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:147:    kani::assume(parts.slot_count <= 256);
+crates/vb_validate/src/kani_gate_08_structural.rs:148:    kani::assume(parts.symbols_count <= 1024);
+crates/vb_validate/src/kani_gate_08_structural.rs:150:    kani::cover(parts.nodes.is_empty(), "empty nodes covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:151:    kani::cover(!parts.nodes.is_empty(), "non-empty nodes covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:152:    kani::cover(parts.expressions.is_empty(), "empty expressions covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:153:    kani::cover(
+crates/vb_validate/src/kani_gate_08_structural.rs:157:    kani::cover(parts.constants.is_empty(), "empty constants covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:158:    kani::cover(!parts.constants.is_empty(), "non-empty constants covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:159:    kani::cover(parts.step_names.is_empty(), "empty step_names covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:160:    kani::cover(!parts.step_names.is_empty(), "non-empty step_names covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:161:    kani::cover(parts.accessors.is_empty(), "zero accessors covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:162:    kani::cover(parts.accessors.len() >= 2, "multiple accessors covered");
+crates/vb_validate/src/kani_gate_08_structural.rs:163:    kani::cover(
+crates/vb_validate/src/kani_gate_08_structural.rs:173:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:174:#[kani::unwind(3)]
+crates/vb_validate/src/kani_gate_08_structural.rs:176:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:177:    kani::assume(parts.slot_count > 0);
+crates/vb_validate/src/kani_gate_08_structural.rs:178:    kani::assume(parts.slot_count <= 16);
+crates/vb_validate/src/kani_gate_08_structural.rs:189:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:190:#[kani::unwind(3)]
+crates/vb_validate/src/kani_gate_08_structural.rs:192:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:200:/// GOD RULE fix: replaced hardcoded WorkflowParts with kani::any() + structural constraints.
+crates/vb_validate/src/kani_gate_08_structural.rs:202:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:203:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:205:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:208:    kani::assume(parts.nodes.is_empty());
+crates/vb_validate/src/kani_gate_08_structural.rs:219:    kani::assume(has_valid_accessor);
+crates/vb_validate/src/kani_gate_08_structural.rs:222:    kani::assert(
+crates/vb_validate/src/kani_gate_08_structural.rs:231:/// GOD RULE fix: replaced hardcoded indices with kani::any().
+crates/vb_validate/src/kani_gate_08_structural.rs:232:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:233:#[kani::unwind(3)]
+crates/vb_validate/src/kani_gate_08_structural.rs:236:    let expr_idx: vb_core::ids::ExprIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:237:    let acc_idx: vb_core::ids::AccessorIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:238:    let sym0: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:239:    let sym1: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:240:    let slot0: SlotIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:241:    let step0: StepIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:242:    let step1: StepIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:245:    let slot_count: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:246:    let symbols_count: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:247:    kani::assume(slot_count >= 2);
+crates/vb_validate/src/kani_gate_08_structural.rs:248:    kani::assume(symbols_count >= 2);
+crates/vb_validate/src/kani_gate_08_structural.rs:250:    kani::assume(slot0.get() < slot_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:251:    kani::assume(step0.get() < u16::MAX); // step indices are u16
+crates/vb_validate/src/kani_gate_08_structural.rs:252:    kani::assume(step1.get() < u16::MAX);
+crates/vb_validate/src/kani_gate_08_structural.rs:253:    kani::assume(sym0.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:254:    kani::assume(sym1.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:255:    kani::assume(acc_idx.get() < 2); // We have 2 accessors
+crates/vb_validate/src/kani_gate_08_structural.rs:304:    kani::assert(result.is_ok(), "expressions with accessor refs pass Gate 8");
+crates/vb_validate/src/kani_gate_08_structural.rs:310:/// GOD RULE fix: replaced hardcoded indices with kani::any().
+crates/vb_validate/src/kani_gate_08_structural.rs:311:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:312:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:315:    let sym0: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:316:    let sym1: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:317:    let idx0: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:318:    let idx1: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:319:    let idx2: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:320:    let idx3: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:321:    let idx4: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:322:    let idx100: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:325:    let slot_count: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:326:    let symbols_count: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:327:    kani::assume(slot_count >= 3); // Need at least 3 slots for the accessor roots
+crates/vb_validate/src/kani_gate_08_structural.rs:328:    kani::assume(symbols_count >= 2); // Need at least 2 symbols
+crates/vb_validate/src/kani_gate_08_structural.rs:329:    kani::assume(sym0.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:330:    kani::assume(sym1.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:332:    kani::assume(
+crates/vb_validate/src/kani_gate_08_structural.rs:400:    kani::assert(result.is_ok(), "mixed accessor paths pass Gate 8");
+crates/vb_validate/src/kani_gate_08_structural.rs:404:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:405:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_structural.rs:407:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:416:/// GOD RULE fix: replaced hardcoded indices with kani::any().
+crates/vb_validate/src/kani_gate_08_structural.rs:417:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:418:#[kani::unwind(3)]
+crates/vb_validate/src/kani_gate_08_structural.rs:421:    let const_idx: vb_core::ids::ConstIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:422:    let sym0: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:423:    let slot0: SlotIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:424:    let step0: StepIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:425:    let step1: StepIdx = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:428:    let slot_count: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:429:    let symbols_count: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:430:    kani::assume(slot_count >= 1);
+crates/vb_validate/src/kani_gate_08_structural.rs:431:    kani::assume(symbols_count >= 1);
+crates/vb_validate/src/kani_gate_08_structural.rs:432:    kani::assume(sym0.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:433:    kani::assume(slot0.get() < slot_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:434:    kani::assume(step0.get() < u16::MAX);
+crates/vb_validate/src/kani_gate_08_structural.rs:435:    kani::assume(step1.get() < u16::MAX);
+crates/vb_validate/src/kani_gate_08_structural.rs:477:    kani::assert(result.is_ok(), "constants with symbols pass Gate 8");
+crates/vb_validate/src/kani_gate_08_structural.rs:483:/// GOD RULE fix: replaced hardcoded indices with kani::any().
+crates/vb_validate/src/kani_gate_08_structural.rs:484:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_structural.rs:485:#[kani::unwind(10)]
+crates/vb_validate/src/kani_gate_08_structural.rs:488:    let sym0: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:489:    let sym1: SymbolId = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:490:    let idx0: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:491:    let idx1: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:492:    let idx2: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:493:    let idx3: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:494:    let idx4: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:495:    let idx100: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:498:    let slot_count: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:499:    let symbols_count: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_structural.rs:500:    kani::assume(slot_count >= 3); // Need at least 3 slots for accessor roots
+crates/vb_validate/src/kani_gate_08_structural.rs:501:    kani::assume(symbols_count >= 2); // Need at least 2 symbols
+crates/vb_validate/src/kani_gate_08_structural.rs:502:    kani::assume(sym0.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:503:    kani::assume(sym1.get() < symbols_count);
+crates/vb_validate/src/kani_gate_08_structural.rs:505:    kani::assume(
+crates/vb_validate/src/kani_gate_08_structural.rs:573:    kani::assert(
+crates/vb_validate/src/kani_gate_08_accessor.rs:16:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:17:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_accessor.rs:19:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:20:    kani::assume(parts.slot_count > 0);
+crates/vb_validate/src/kani_gate_08_accessor.rs:21:    kani::assume(parts.slot_count <= 256);
+crates/vb_validate/src/kani_gate_08_accessor.rs:22:    kani::assume(parts.symbols_count > 0);
+crates/vb_validate/src/kani_gate_08_accessor.rs:23:    kani::assume(parts.symbols_count <= 1024);
+crates/vb_validate/src/kani_gate_08_accessor.rs:26:        kani::assume(accessor.root.get() < parts.slot_count);
+crates/vb_validate/src/kani_gate_08_accessor.rs:29:                PathSegment::Field(symbol) => kani::assume(symbol.get() < parts.symbols_count),
+crates/vb_validate/src/kani_gate_08_accessor.rs:30:                PathSegment::Index(index) => kani::assume(*index != u32::MAX),
+crates/vb_validate/src/kani_gate_08_accessor.rs:31:                _ => kani::assume(false),
+crates/vb_validate/src/kani_gate_08_accessor.rs:37:    kani::assert(result.is_ok(), "bounded valid accessors pass Gate 8");
+crates/vb_validate/src/kani_gate_08_accessor.rs:41:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:46:    kani::assert(result.is_ok(), "zero accessors pass Gate 8");
+crates/vb_validate/src/kani_gate_08_accessor.rs:49:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:51:    let index: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:52:    kani::assume(index != u32::MAX);
+crates/vb_validate/src/kani_gate_08_accessor.rs:64:    kani::assert(
+crates/vb_validate/src/kani_gate_08_accessor.rs:70:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:71:#[kani::unwind(5)]
+crates/vb_validate/src/kani_gate_08_accessor.rs:73:    let parts: WorkflowParts = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:74:    kani::assume(parts.slot_count <= 256);
+crates/vb_validate/src/kani_gate_08_accessor.rs:75:    kani::assume(parts.symbols_count <= 1024);
+crates/vb_validate/src/kani_gate_08_accessor.rs:77:    kani::cover(parts.accessors.is_empty(), "zero accessors covered");
+crates/vb_validate/src/kani_gate_08_accessor.rs:78:    kani::cover(parts.accessors.len() == 3, "three accessors covered");
+crates/vb_validate/src/kani_gate_08_accessor.rs:79:    kani::cover(
+crates/vb_validate/src/kani_gate_08_accessor.rs:91:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:110:    kani::assert(
+crates/vb_validate/src/kani_gate_08_accessor.rs:119:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:131:    kani::assert(
+crates/vb_validate/src/kani_gate_08_accessor.rs:137:#[kani::proof]
+crates/vb_validate/src/kani_gate_08_accessor.rs:139:    let slot_count: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:140:    let root: u16 = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:141:    kani::assume(slot_count <= 8);
+crates/vb_validate/src/kani_gate_08_accessor.rs:142:    kani::assume(root >= slot_count);
+crates/vb_validate/src/kani_gate_08_accessor.rs:143:    kani::assume(root <= 10);
+crates/vb_validate/src/kani_gate_08_accessor.rs:155:    kani::assert(
+crates/vb_validate/src/kani_gate_08_accessor.rs:162:    let value: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:163:    kani::assume(value <= 1024);
+crates/vb_validate/src/kani_gate_08_accessor.rs:168:    let value: u32 = kani::any();
+crates/vb_validate/src/kani_gate_08_accessor.rs:169:    kani::assume(value <= 4);
+crates/vb_validate/src/gate_08_accessor.rs:522:        #[kani::proof]
+crates/vb_validate/src/gate_08_accessor.rs:524:            let symbols_count: u32 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:525:            let field_id: u32 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:526:            kani::assume(symbols_count <= 8);
+crates/vb_validate/src/gate_08_accessor.rs:527:            kani::assume(field_id <= 8);
+crates/vb_validate/src/gate_08_accessor.rs:541:        #[kani::proof]
+crates/vb_validate/src/gate_08_accessor.rs:543:            let slot_count: u16 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:544:            let root: u16 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:545:            kani::assume(slot_count <= 8);
+crates/vb_validate/src/gate_08_accessor.rs:546:            kani::assume(root <= 10);
+crates/vb_validate/src/gate_08_accessor.rs:559:        #[kani::proof]
+crates/vb_validate/src/gate_08_accessor.rs:561:            let index: u32 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:570:        #[kani::proof]
+crates/vb_validate/src/gate_08_accessor.rs:572:            let slot_count: u16 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:573:            let root: u16 = kani::any();
+crates/vb_validate/src/gate_08_accessor.rs:574:            kani::assume(slot_count <= 4);
+crates/vb_validate/src/gate_08_accessor.rs:575:            kani::assume(root > slot_count);
+crates/vb_validate/src/gate_08_accessor.rs:576:            kani::assume(root <= 8);

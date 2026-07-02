@@ -1,0 +1,30 @@
+=== proof-to-implementation agent session ===
+invocation_id: vb-vzcuf-state7-proof-to-implementation-attempt1
+skill: proof-to-implementation
+state: 7
+bead: vb-vzcuf
+workspace: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-vzcuf
+
+=== Bridge Mapping Summary ===
+45 proof obligations mapped from proof-obligations.planned.jsonl to 45 rust-refinement-obligation/v1 rows.
+All 9 proof seeds (PS-001 through PS-009) mapped across 5 verifiers (Verus, Kani, Flux-rs, proptest, cargo-fuzz).
+
+=== Key Findings ===
+1. GOD RULE 2 GAP: 9 Verus obligations have standalone spec models without requires/ensures on production exec fn. Deferred to State 11.
+2. LETHAL FINDING 3: PS-003 (local ErrorVariant) and PS-008 (local Guard) are tautological. Must be replaced at State 11.
+3. LETHAL FINDING 4: Production code lacks staged_bytes, byte_limit, AccumulatedBytesExceeded. State 11 implementation adds these.
+4. C9 Observability Gap: No dedicated proof obligation for staged_bytes accessor.
+5. All 45 mappings are planned (State 7 allows planned; State 12 requires materialized/verified).
+
+=== Validator Result ===
+STATUS: FAIL (pre-existing errors from states 5-6)
+- E_MISSING_ARTIFACT proof-to-rust-review.md (owned by proof-reviewer, not bridge agent)
+- E_INVOCATION_LEDGER_FORGED (seq 6-8, pre-existing hash mismatches from state 6 artifact modifications)
+- E_STATUS_NOT_APPROVED proof-review.md (REJECTED at State 6 for GOD RULE 2)
+- All bridge-specific errors (source_ref_shape, disjointness, contract mismatch, matrix) RESOLVED.
+
+=== Output Artifacts ===
+- proof-to-rust-map.md (sha256: e6c418e2...)
+- rust-refinement-obligations.jsonl (sha256: 68da4e39...) — 45 rows
+- agent-invocation-ledger.jsonl (seq 10 appended)
+- transcript-state7.txt (this file)

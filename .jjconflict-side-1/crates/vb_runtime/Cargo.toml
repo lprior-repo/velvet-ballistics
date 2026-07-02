@@ -1,0 +1,45 @@
+[package]
+name = "vb_runtime"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+blake3.workspace = true
+chrono.workspace = true
+crossbeam-queue.workspace = true
+indexmap.workspace = true
+rtrb.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+vb_storage = { path = "../vb_storage" }
+postcard.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile.workspace = true
+vb_core = { path = "../vb_core", features = ["test-util"] }
+loom = "0.7"
+
+[features]
+default = []
+kani-admission-store = []
+kani-capability-harnesses = []
+kani-engine-yaml-admission = []
+kani-shard-command-queue = []
+kani-trace-ring = []
+kani-vt2f-runtime-facade = []
+kani-vt2f-shard-lower-semantics = []
+kani-yaml-e2e-admission-matrix = []
+kani-sxkz6-shard-for-run = []
+kani-sxkz6-answer-ask = []
+kani-sxkz6-list-events = []
+kani-sxkz6-take-inspect = []
+kani-sxkz6-capture-timer = []
+kani-sxkz6-timer-fired = []
+vb-y9d3v-attempt-fence = []
+vb-y9d3v-flux-refinements = []
+
+[lints]
+workspace = true

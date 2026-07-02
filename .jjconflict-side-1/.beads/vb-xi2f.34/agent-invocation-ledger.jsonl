@@ -1,0 +1,3 @@
+{"timestamp":"2026-05-25T03:18:02Z","agent":"femdation","bead_id":"vb-xi2f.34","state":1,"action":"setup"}
+{"timestamp":"2026-05-25T04:00:00Z","agent":"proof-writer","bead_id":"vb-xi2f.34","state":5,"action":"write-harnesses-repair2","invocation_id":"proof-writer-vb-xi2f.34-20260525-repair2","parent_review":"proof-reviewer-vb-xi2f.34-20260525"}
+{"timestamp":"2026-05-25T05:00:00Z","agent":"proof-reviewer","bead_id":"vb-xi2f.34","state":6,"action":"review-repair","invocation_id":"proof-reviewer-vb-xi2f.34-20260525-p6","parent_review":"proof-reviewer-vb-xi2f.34-20260525","result":"APPROVED"}

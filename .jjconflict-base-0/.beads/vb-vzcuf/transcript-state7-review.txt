@@ -1,0 +1,30 @@
+=== Proof-Reviewer State 7 Bridge Review: vb-vzcuf ===
+Invocation: vb-vzcuf-state7-proof-reviewer-attempt1
+Started: 2026-05-30T06:00:00Z
+Completed: 2026-05-30T06:15:00Z
+Status: APPROVED
+
+=== Review Steps ===
+1. Loaded proof-reviewer skill from /home/lewis/.opencode/skill/proof-reviewer/SKILL.md
+2. Read bridge artifacts: proof-to-rust-map.md and rust-refinement-obligations.jsonl (45 RRO rows)
+3. Adversarially verified all 15 production source refs against /home/lewis/src/velvet-ballistics
+4. Confirmed source refs exist (path::symbol format) in production code
+5. Verified missing production elements (staged_bytes, byte_limit, AccumulatedBytesExceeded) honestly documented
+6. Checked behavior test independence: all 45 RROs have separate behavior_test_refs and refinement_harness_refs
+7. Scanned waiver-candidates.jsonl: W-NONE-001 confirmed no behavior waivers
+8. Verified GOD RULE 2 deferral honesty across map.md and all 9 affected RROs
+9. Identified 2 MEDIUM findings: evidence_workdir mismatch, map.md overlap inconsistency
+10. Wrote proof-to-rust-review.md with STATUS: APPROVED
+11. Updated agent-invocation-ledger.jsonl with seq 11 entry
+
+=== Source Ref Verification Results ===
+- 15 production symbols verified existing in source checkout
+- 4 production symbols confirmed missing (honestly documented)
+- 0 Verus requires/ensures annotations found in production code (verified with grep)
+- All 9 proptest behavior tests: exist in workspace, NOT in source checkout
+- All 27 verification harnesses: exist in workspace, NOT in source checkout
+- All 9 fuzz targets: exist in workspace, NOT in source checkout
+- 2 workspace_tests integration files: exist in both workspace and source checkout
+
+=== Validator Result ===
+FAIL - see validator output for details (pre-existing hash mismatches in entries 6-9, missing transcript fields in entry 10)

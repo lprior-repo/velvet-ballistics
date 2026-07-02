@@ -1,0 +1,13 @@
+State 4 proof-planner attempt 1 for bead vb-vzcuf.
+
+Loaded proof-planner skill. Read contract, proof seeds, traceability, codebase map, delivery scope, domain model, type contracts, workflow model, boundary map, error taxonomy, hazard analysis, and proof-planner/go-skill references. Planned verifier coverage only; no production code, tests, proof artifacts, dependencies, or CI were written.
+
+Artifacts written: proof-strategy.md, verifier-lane-matrix.md, verifier-lane-decisions.jsonl, proof-coverage-matrix.md, proof-obligations.planned.jsonl, trusted-base-plan.md, waiver-candidates.jsonl, proof-to-implementation-input.md, transcript-state4-proof-planner-attempt1.txt, and ledger update pending hash calculation.
+
+State 4 validator command:
+`/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace "/home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-vzcuf" --bead vb-vzcuf --state 4 --source-checkout "/home/lewis/src/velvet-ballistics" --skill-root "/home/lewis/.agents/skills/go-skill" --mirror-root "/home/lewis/.opencode/skill/go-skill"`
+
+Raw validator output summary:
+`STATUS: FAIL`
+
+Primary expected controller/reviewer-owned failures: missing `verifier-lane-review.jsonl`, missing `proof-plan-review.md`; planner did not write those because proof-plan-reviewer owns them. Validator also reported planner-artifact lane/obligation mismatch diagnostics and missing non-empty waiver-candidates sentinel; those are raw validator findings for femdation review.

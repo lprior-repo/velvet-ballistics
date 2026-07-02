@@ -1,0 +1,12 @@
+name: primitive-types
+version: "1.0"
+config:
+  string_val: "hello"
+  int_val: 42
+  float_val: 3.14
+  bool_val: true
+  null_val: null
+  list_val: [1, "two", 3.0]
+  map_val:
+    key1: value1
+    key2: 2

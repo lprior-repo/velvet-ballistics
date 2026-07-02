@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-njju",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-review.md",
+    ".beads/vb-njju/proof-findings.jsonl",
+    ".beads/vb-njju/proof-repair-guide.md"
+  ],
+  "attempt": "1-of-7",
+  "reason": "Review State 5 proof artifacts and adjudicate blocked/compensated PO-004, PO-008, and PO-010 evidence before test planning."
+}

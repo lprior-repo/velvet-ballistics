@@ -1,0 +1,5 @@
+{"id":"VB-IUCS-G8-KANI","command":"recovered Gate 8 Kani harness suite","status":"PASS","evidence":".beads/vb-qi37.8/formal-verification-report.md","classification":"PASS"}
+{"id":"VB-IUCS-STEP-KANI","command":"cargo kani -p vb_core --harness kani_step_state_transition_matches_contract --output-format=regular","status":"PASS","evidence":"/home/lewis/.local/share/opencode/tool-output/tool_e34fbcc37001x2PAzA97hgWznY","classification":"PASS"}
+{"id":"VB-IUCS-STEP-VERUS","command":"verus verification/verus/step_state_machine.rs","status":"PASS","evidence":".beads/vb-qi37.8/evidence/verus-step-state-machine.out","classification":"PASS"}
+{"id":"VB-IUCS-BUDGET-TLA","command":"tlc -config specs/tla/BudgetArithmetic.cfg specs/tla/BudgetArithmetic.tla","status":"PASS","evidence":".beads/vb-qi37.8/evidence/tlc-budget-arithmetic.out","classification":"PASS"}
+{"id":"VB-IUCS-PO030","command":"evidence review","status":"DEFERRED_GLOBAL","evidence":".beads/vb-qi37.8/final-evidence-decision.md","classification":"DEFERRED_GLOBAL"}

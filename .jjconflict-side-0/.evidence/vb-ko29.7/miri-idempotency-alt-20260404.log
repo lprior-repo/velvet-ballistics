@@ -1,0 +1,170 @@
+Preparing a sysroot for Miri (target: x86_64-unknown-linux-gnu)... done
+WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling once_cell v1.21.4
+   Compiling semver v1.0.28
+   Compiling serde_core v1.0.228
+   Compiling crossbeam-utils v0.8.21
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v1.3.0
+   Compiling rustix v1.1.4
+   Compiling log v0.4.29
+   Compiling getrandom v0.4.2
+   Compiling serde v1.0.228
+   Compiling scopeguard v1.2.0
+   Compiling linux-raw-sys v0.12.1
+   Compiling autocfg v1.5.1
+   Compiling bitflags v2.11.1
+   Compiling smallvec v1.15.1
+   Compiling getrandom v0.3.4
+   Compiling equivalent v1.0.2
+   Compiling fastrand v2.4.1
+   Compiling thiserror v2.0.18
+   Compiling parking_lot_core v0.9.12
+   Compiling rustversion v1.0.22
+   Compiling byteorder v1.5.0
+   Compiling compare v0.0.6
+   Compiling twox-hash v2.1.2
+   Compiling regex-syntax v0.8.10
+   Compiling hashbrown v0.16.1
+   Compiling byteorder-lite v0.1.0
+   Compiling lock_api v0.4.14
+   Compiling zerocopy v0.8.48
+   Compiling xxhash-rust v0.8.15
+   Compiling cc v1.2.62
+   Compiling lz4_flex v0.13.1
+   Compiling tracing-core v0.1.36
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling interval-heap v0.0.5
+   Compiling stable_deref_trait v1.2.1
+   Compiling varint-rs v2.2.0
+   Compiling spin v0.9.8
+   Compiling hashbrown v0.17.1
+   Compiling self_cell v1.2.2
+   Compiling sfa v1.0.0
+   Compiling hashbrown v0.14.5
+   Compiling iana-time-zone v0.1.65
+   Compiling rustc-hash v2.1.2
+   Compiling byteview v0.10.1
+   Compiling arrayref v0.3.9
+   Compiling lazy_static v1.5.0
+   Compiling cpufeatures v0.3.0
+   Compiling flume v0.12.0
+   Compiling pin-project-lite v0.2.17
+   Compiling arrayvec v0.7.6
+   Compiling constant_time_eq v0.4.2
+   Compiling vb_proof_kernels v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_proof_kernels)
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.8.0
+   Compiling quick-error v1.2.3
+   Compiling sharded-slab v0.1.7
+   Compiling rtrb v0.3.4
+   Compiling scoped-tls v1.0.1
+   Compiling unarray v0.1.4
+   Compiling quick_cache v0.6.22
+   Compiling tracing v0.1.44
+   Compiling tracing-log v0.2.0
+   Compiling heapless v0.7.17
+   Compiling crc32c v0.6.8
+   Compiling num-traits v0.2.19
+   Compiling bit-set v0.8.0
+   Compiling indexmap v2.14.0
+   Compiling crossbeam-epoch v0.9.18
+   Compiling crossbeam-queue v0.3.12
+   Compiling syn v2.0.117
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling blake3 v1.8.5
+   Compiling generator v0.8.8
+   Compiling errno v0.3.14
+   Compiling wait-timeout v0.2.1
+   Compiling dashmap v6.2.1
+   Compiling rand_core v0.9.5
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling regex-automata v0.4.14
+   Compiling tempfile v3.27.0
+   Compiling rusty-fork v0.3.1
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling enum_dispatch v0.3.13
+   Compiling matchers v0.2.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling tracing-subscriber v0.3.23
+   Compiling rand_chacha v0.9.0
+   Compiling proptest v1.11.0
+   Compiling lsm-tree v3.1.4
+   Compiling cobs v0.3.0
+   Compiling loom v0.7.2
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling fjall v3.1.4
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_storage)
+warning: unused imports: `RECORD_HEADER_BYTES`, `records::RecordKind`, and `types::EventSeq`
+  --> crates/vb_storage/src/codec_miri_tests.rs:13:71
+   |
+13 |     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES},
+   |                                                                       ^^^^^^^^^^^^^^^^^^^
+14 |     error::JournalError,
+15 |     records::RecordKind,
+   |     ^^^^^^^^^^^^^^^^^^^
+16 |     types::EventSeq,
+   |     ^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates/vb_storage/src/lib.rs:27:1
+   |
+27 | pub mod codec_miri_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `RunId` and `WorkflowDigest`
+  --> crates/vb_storage/src/codec_miri_tests.rs:18:15
+   |
+18 | use vb_core::{RunId, WorkflowDigest};
+   |               ^^^^^  ^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates/vb_storage/src/lib.rs:27:1
+   |
+27 | pub mod codec_miri_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `panic_free_decode_header` is never used
+  --> crates/vb_storage/src/codec_miri_tests.rs:20:4
+   |
+20 | fn panic_free_decode_header(input: &[u8]) -> Result<(), JournalError> {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `panic_free_decode_record` is never used
+  --> crates/vb_storage/src/codec_miri_tests.rs:33:4
+   |
+33 | fn panic_free_decode_record(input: &[u8]) -> Result<(), JournalError> {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `panic_free_verify_digest` is never used
+  --> crates/vb_storage/src/codec_miri_tests.rs:46:4
+   |
+46 | fn panic_free_verify_digest(payload: &[u8], digest: [u8; 32]) -> Result<(), JournalError> {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_runtime)
+warning: `vb_storage` (lib) generated 5 warnings (run `cargo fix --lib -p vb_storage` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.78s
+     Running tests/vb_ko29_7_idempotency_miri.rs (target/miri/x86_64-unknown-linux-gnu/debug/deps/vb_ko29_7_idempotency_miri-c9e04c671ee4a3d4)
+
+running 1 test
+test miri_idempotency_tracker_retry_collision_and_eviction_paths_no_ub ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+

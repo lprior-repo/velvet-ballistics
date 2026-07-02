@@ -1,0 +1,994 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: unused import: `crate::errors::CoreError`
+    --> crates/vb_core/src/frame.rs:1992:25
+     |
+1992 |                     use crate::errors::CoreError;
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1948:25
+     |
+1948 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:25
+     |
+1963 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1981:25
+     |
+1981 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2000:29
+     |
+2000 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2010:29
+     |
+2010 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2023:29
+     |
+2023 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2044:25
+     |
+2044 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2065:25
+     |
+2065 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:76:9
+   |
+76 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:93:9
+   |
+93 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:115:9
+    |
+115 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1621:21
+     |
+1621 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0432]: unresolved import `crate::recovery::replay::summary::recover_runtime_summary_from_events`
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:234:9
+    |
+234 |     use crate::recovery::replay::summary::recover_runtime_summary_from_events;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------
+    |         |                                 |
+    |         |                                 help: a similar name exists in the module: `recover_runtime_frame_seed_from_events`
+    |         no `recover_runtime_summary_from_events` in `recovery::replay::summary`
+
+warning: unused import: `crate::types::RecordHeader`
+  --> crates/vb_storage/src/kani_record_magic.rs:13:5
+   |
+13 | use crate::types::RecordHeader;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::records::RecordKind`
+  --> crates/vb_storage/src/kani_record_kind.rs:14:5
+   |
+14 | use crate::records::RecordKind;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `submit_artifact`
+  --> crates/vb_storage/src/kani_proof_flags_gap.rs:12:43
+   |
+12 | use crate::admission::{VerificationProof, submit_artifact};
+   |                                           ^^^^^^^^^^^^^^^
+
+warning: unused imports: `ActionId`, `SlotIdx`, `SlotValue`, `StepIdx`, and `Taint`
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:14:15
+   |
+14 | use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+   |               ^^^^^^^^         ^^^^^^^  ^^^^^^^^^  ^^^^^^^  ^^^^^
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:20:18
+   |
+20 |             seq: kani::any(),
+   |                  ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:34:22
+   |
+34 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:39:22
+   |
+39 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::CapabilitySet: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:41:39
+   |
+41 |                 granted_capabilities: kani::any(),
+   |                                       ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::CapabilitySet`
+   |
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::RuntimePolicy: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:42:25
+   |
+42 |                 policy: kani::any(),
+   |                         ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::RuntimePolicy`
+   |
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:46:22
+   |
+46 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:52:22
+   |
+52 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:58:22
+   |
+58 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:65:22
+   |
+65 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:72:22
+   |
+72 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:79:22
+   |
+79 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:87:22
+   |
+87 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:93:22
+   |
+93 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_recovery_hydrate.rs:99:22
+   |
+99 |                 seq: kani::any(),
+   |                      ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+  --> crates/vb_storage/src/types.rs:73:1
+   |
+73 | pub struct EventSeq(u64);
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:105:22
+    |
+105 |                 seq: kani::any(),
+    |                      ^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:111:22
+    |
+111 |                 seq: kani::any(),
+    |                      ^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:117:22
+    |
+117 |                 seq: kani::any(),
+    |                      ^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `types::EventSeq: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:123:22
+    |
+123 |                 seq: kani::any(),
+    |                      ^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `types::EventSeq`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0063]: missing field `seq` in initializer of `events::JournalEvent`
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:126:19
+    |
+126 |             15 => JournalEvent::RunResumed {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ missing `seq`
+
+error[E0277]: the trait bound `chrono::DateTime<chrono::Utc>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:128:28
+    |
+128 |                 timestamp: kani::any(),
+    |                            ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `chrono::DateTime<chrono::Utc>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0063]: missing field `seq` in initializer of `events::JournalEvent`
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:130:19
+    |
+130 |             16 => JournalEvent::RunRetried {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ missing `seq`
+
+error[E0277]: the trait bound `chrono::DateTime<chrono::Utc>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:132:28
+    |
+132 |                 timestamp: kani::any(),
+    |                            ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `chrono::DateTime<chrono::Utc>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0063]: missing field `seq` in initializer of `events::JournalEvent`
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:134:19
+    |
+134 |             17 => JournalEvent::RunAnswered {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `seq`
+
+error[E0277]: the trait bound `chrono::DateTime<chrono::Utc>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:138:28
+    |
+138 |                 timestamp: kani::any(),
+    |                            ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `chrono::DateTime<chrono::Utc>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::vec::Vec<events::JournalEvent>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:149:42
+    |
+149 |     let tail_events: Vec<JournalEvent> = kani::any();
+    |                                          ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `std::vec::Vec<events::JournalEvent>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::vec::Vec<events::JournalEvent>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:166:42
+    |
+166 |     let tail_events: Vec<JournalEvent> = kani::any();
+    |                                          ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `std::vec::Vec<events::JournalEvent>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::vec::Vec<events::JournalEvent>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:194:46
+    |
+194 |     let mut tail_events: Vec<JournalEvent> = kani::any();
+    |                                              ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `std::vec::Vec<events::JournalEvent>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:198:20
+    |
+198 |     snapshot.seq = vb_core::EventSeq::new(100);
+    |     ------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `types::EventSeq`, found `vb_core::EventSeq`
+    |     |
+    |     expected due to the type of this binding
+    |
+note: there are multiple different versions of crate `vb_storage` in the dependency graph
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^ this is the expected type
+    |
+   ::: /home/lewis/src/velvet-ballistics/crates/vb_core/src/ids/mod.rs:66:1
+    |
+ 66 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- this is the found type
+    = help: you can use `cargo tree` to explore your dependency tree
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:203:20
+    |
+203 |             *seq = vb_core::EventSeq::new(50);
+    |             ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `types::EventSeq`, found `vb_core::EventSeq`
+    |             |
+    |             expected due to the type of this binding
+    |
+note: there are multiple different versions of crate `vb_storage` in the dependency graph
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^ this is the expected type
+    |
+   ::: /home/lewis/src/velvet-ballistics/crates/vb_core/src/ids/mod.rs:66:1
+    |
+ 66 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- this is the found type
+    = help: you can use `cargo tree` to explore your dependency tree
+
+error[E0277]: the trait bound `std::vec::Vec<events::JournalEvent>: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_recovery_hydrate.rs:236:37
+    |
+236 |     let events: Vec<JournalEvent> = kani::any();
+    |                                     ^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `std::vec::Vec<events::JournalEvent>`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::RuntimePolicy: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_admission.rs:86:30
+   |
+86 |     let policy = kani::any::<vb_core::RuntimePolicy>();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::RuntimePolicy`
+   |
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `journal::core::FjallJournal: kani::Arbitrary` is not satisfied
+  --> crates/vb_storage/src/kani_admission.rs:92:42
+   |
+92 |     let _ = submit_artifact(&kani::any::<crate::FjallJournal>(), &workflow, policy);
+   |                                          ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `kani::Arbitrary` is not implemented for `journal::core::FjallJournal`
+  --> crates/vb_storage/src/journal/core.rs:22:1
+   |
+22 | pub struct FjallJournal {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `kani::Arbitrary`:
+             ()
+             (A, B)
+             (A, B, C)
+             (A, B, C, D)
+             (A, B, C, D, E)
+             (A, B, C, D, E, F)
+             (A, B, C, D, E, F, G)
+             (A, B, C, D, E, F, G, H)
+           and 79 others
+note: required by a bound in `kani::any`
+  --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+   = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `vb_core::RuntimePolicy: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_admission.rs:103:30
+    |
+103 |     let policy = kani::any::<vb_core::RuntimePolicy>();
+    |                              ^^^^^^^^^^^^^^^^^^^^^^ the trait `kani::Arbitrary` is not implemented for `vb_core::RuntimePolicy`
+    |
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `journal::core::FjallJournal: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_admission.rs:106:22
+    |
+106 |         &kani::any::<crate::FjallJournal>(),
+    |                      ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `journal::core::FjallJournal`
+   --> crates/vb_storage/src/journal/core.rs:22:1
+    |
+ 22 | pub struct FjallJournal {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `journal::core::FjallJournal: kani::Arbitrary` is not satisfied
+   --> crates/vb_storage/src/kani_admission.rs:133:50
+    |
+133 |     let _ = admit_compiled_artifact(&kani::any::<crate::FjallJournal>(), &workflow);
+    |                                                  ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `kani::Arbitrary` is not implemented for `journal::core::FjallJournal`
+   --> crates/vb_storage/src/journal/core.rs:22:1
+    |
+ 22 | pub struct FjallJournal {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `kani::Arbitrary`:
+              ()
+              (A, B)
+              (A, B, C)
+              (A, B, C, D)
+              (A, B, C, D, E)
+              (A, B, C, D, E, F)
+              (A, B, C, D, E, F, G)
+              (A, B, C, D, E, F, G, H)
+            and 79 others
+note: required by a bound in `kani::any`
+   --> /home/runner/work/kani/kani/library/kani/src/lib.rs:57:0
+    = note: this error originates in the macro `kani_core::kani_intrinsics` which comes from the expansion of the macro `kani_core::kani_lib` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `header_len`
+  --> crates/vb_storage/src/kani_codec.rs:18:23
+   |
+18 | fn harness_for_length(header_len: usize) {
+   |                       ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_header_len`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `correct_crc`
+  --> crates/vb_storage/src/kani_record_crc.rs:81:9
+   |
+81 |     let correct_crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+   |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_correct_crc`
+
+Some errors have detailed explanations: E0063, E0277, E0308, E0432.
+For more information about an error, try `rustc --explain E0063`.
+error: Failed to execute cargo (exit status: 101). Found 36 compilation errors.

@@ -1,0 +1,11 @@
+rustc 1.96.0-nightly (e0e95a718 2026-04-04)
+binary: rustc
+commit-hash: e0e95a71872dfe9e15d22bddea9ac45c85ddda1a
+commit-date: 2026-04-04
+host: x86_64-unknown-linux-gnu
+release: 1.96.0-nightly
+LLVM version: 22.1.2
+miri 0.1.0 (e0e95a7187 2026-04-04)
+Running `"rustup" "component" "add" "rust-src"` to install the `rust-src` component for the selected toolchain.
+info: component rust-src is up to date
+fatal error: given Rust source directory `/home/lewis/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library` does not exist.

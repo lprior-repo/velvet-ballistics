@@ -1,0 +1,2 @@
+{"id": "SC-OBL-1", "result": "PASS", "evidence": "moon run :supply-chain PASS; target/supply-chain logs", "owner_state": 11, "rerun_from": 11}
+{"id": "SC-OBL-2", "result": "DEFERRED_GLOBAL", "evidence": "moon run :verify-standard failed on pre-existing vb-ybi5 ignored-fallible-results", "owner_state": 11, "rerun_from": 11}

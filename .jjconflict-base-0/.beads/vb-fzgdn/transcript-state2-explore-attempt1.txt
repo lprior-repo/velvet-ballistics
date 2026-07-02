@@ -1,0 +1,7 @@
+State 2 explore transcript summary
+- Loaded explore skill.
+- Read vb-fzgdn STATE/baseline/global readiness/seed delivery-scope.
+- Read prior capped vb-nru0 codebase-map, delivery-scope, proof-review as context only.
+- Mapped runtime timer APIs, PendingTimer/TimerFired authority, await_timer Instant::now seam, handle_timer validation-before-mutation, helper functions, TimerWheel, runtime errors, workflow timer nodes, tests, Kani and TLA design smoke.
+- Wrote codebase-map.md and delivery-scope.jsonl.
+- Did not edit production Rust, tests, proofs, configs, or bead state outside requested discovery artifacts/ledger/transcript.

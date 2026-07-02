@@ -1,0 +1,19 @@
+○ vb-rud5 · P0: backfill vb-jpq7 closure evidence manifest rows   [● P0 · OPEN]
+Owner: Lewis · Type: task
+Created: 2026-05-23 · Updated: 2026-05-23
+
+DESCRIPTION
+The fail-closed vb-jpq7 closure checker is implemented and correctly rejects closed child beads without manifest evidence. Backfill or reopen/supersede stale closed vb-jpq7 child beads listed by .evidence/vb-jpq7.48/live-checker.log so the live checker can pass.
+
+NOTES
+vb-jpq7.48 live checker scan in JJ workspace /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55 exits 1 because .beads/vb-jpq7/closure-evidence-manifest.jsonl is missing and closed children lack rows: vb-jpq7.52, .50, .51, .45, .46, .41, .42, .43, .37, .29, .25, .20, .22, .16, .17, .18, .19, .14, .15, .10, .11, .12, .6, .7, .1, .2. Command: python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir /home/lewis/src/velvet-ballistics; EXIT_CODE:1. This is the manifest backfill/follow-up evidence required before vb-jpq7.48 closure.
+
+ACCEPTANCE CRITERIA
+Every closed vb-jpq7.* child has a docs/vb-jpq7-closure-evidence-manifest.jsonl row with command cwd commit SHA tool version timestamp raw log path stdout/stderr summaries and exit code, and each close_reason cites the row ID or raw log path; python3 scripts/check-vb-jpq7-closure-evidence.py exits 0.
+
+LABELS: anti-laundering, evidence, release-blocker, truth-serum
+
+DISCOVERED FROM
+  ◊ ○ vb-jpq7.48: P0: make blocker closure evidence machine-checkable ● P0
+
+Warning: auto-backup failed: register backup remote: add backup backup_export: Error 1105 (HY000): backup 'backup_export' already exists

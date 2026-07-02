@@ -1,0 +1,31 @@
+command: bd show vb-jpq7.24
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T12:00:00Z
+exit_code: 0
+--- bd show output follows ---
+✓ vb-jpq7.24 [BUG] · P0: repair Verus evidence binding   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Downgraded mirror-model + proof-to-Rust bridge accepted by independent proof-review. External proof-reviewer recheck returned vb-jpq7.24 APPROVED as downgraded mirror-model + proof-to-Rust bridge evidence, not direct Verus proof of production Rust bodies. Evidence paths: /home/lewis/src/vb-jpq7-24-verus-binding-gpt55/.evidence/vb-jpq7.24/proof-to-rust-bridge.md, /home/lewis/src/vb-jpq7-24-verus-binding-gpt55/.evidence/vb-jpq7.24/proof-review.md, /home/lewis/src/vb-jpq7-24-verus-binding-gpt55/.evidence/vb-jpq7.24/raw-logs.md. Commands: cwd /home/lewis/src/vb-jpq7-24-verus-binding-gpt55; verus verification/verus/vb_jpq724_events_for_run_production.rs exit 0; verusfmt --check verification/verus/vb_jpq724_events_for_run_production.rs exit 0; trust marker scan exit 0 with no assume/external/axiom markers; rtk cargo test -p vb_storage events_for_run -- --nocapture exit 0.
+
+DESCRIPTION
+Split from vb-jpq7.5. Fix non-parsing Verus artifacts and remove or downgrade vacuous proofs not bound to production executable functions.
+
+NOTES
+Reopened after external proof-review rejection. Patched in /home/lewis/src/vb-jpq7-24-verus-binding-gpt55: Verus artifact is downgraded to mirror-model evidence only; no production-bound PASS claim remains. Added .evidence/vb-jpq7.24/proof-to-rust-bridge.md and bead-scoped proof-review.md; self-audit marked SUPERSEDED/self-review only. Reran Verus/verusfmt/trust scan/scoped vb_storage events_for_run tests, all exit 0. Residual blocker: independent proof-review approval required before closure; child bead vb-ivy4 created.
+
+ACCEPTANCE CRITERIA
+All Verus PASS evidence parses on current toolchain; each counted proof binds to production exec functions with meaningful requires/ensures; detached model-only proofs are labeled non-evidence; raw logs include command cwd SHA tool version timestamp and exit code.
+
+LABELS: backend-dod, evidence, formal, master-gap, release-blocker, truth-serum, verus
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ○ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+
+DISCOVERED
+  ◊ ✓ vb-ivy4: Independent proof-review for vb-jpq7.24 downgraded Verus bridge ● P0
+

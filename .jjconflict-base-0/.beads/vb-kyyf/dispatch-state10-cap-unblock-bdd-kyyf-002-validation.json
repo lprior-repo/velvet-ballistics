@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 10,
+  "sublane": "owner-authorized-cap-unblock-bdd-kyyf-002-implementation-validation",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/dispatch-state8-cap-unblock-bdd-kyyf-002-cli-hardening.json",
+    ".beads/vb-kyyf/dispatch-state9-cap-unblock-bdd-kyyf-002-review.json",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md",
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".evidence/vb-kyyf/storage-replay-resume.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/implementation.md",
+    ".evidence/vb-kyyf/storage-replay-resume.md"
+  ],
+  "attempt": "owner-authorized-cap-unblock-1",
+  "expected_result": "No production code change required if focused BDD and checks pass honestly after State 8 hardening; update implementation.md with evidence and route to State 11."
+}

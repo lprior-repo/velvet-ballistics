@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 8,
+  "sublane": "test-suite-repair-after-state9-rejection-attempt2",
+  "delegate": "test-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-writer-report.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 8 repair after State 9 suite rejection attempt 2"
+}

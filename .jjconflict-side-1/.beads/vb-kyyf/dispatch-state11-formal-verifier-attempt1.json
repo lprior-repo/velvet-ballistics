@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "formal-verifier-after-state10-public-determinism-evidence-implementation",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/machine-gate-report.md"
+  ],
+  "attempt": 1,
+  "repair_route": "State 11 after State 10 implementation PASS_LOCAL"
+}

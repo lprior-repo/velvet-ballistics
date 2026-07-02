@@ -1,0 +1,26 @@
+command: bd show vb-jpq7.36
+cwd: /home/lewis/src/jj-workspaces/velvet-ballistics-gpt55-batch10-20260623
+timestamp: 2026-06-23T17:12:17Z
+exit_code: 0
+--- output ---
+✓ vb-jpq7.36 · P0: fuzz ipc_frame decoder preallocation surface   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Fuzz target ipc_frame implemented and verified: registered in fuzz/Cargo.toml, builds with RUSTFLAGS=--cfg fuzzing, runs 9.5M+ invocations with no crashes, typed decode errors confirmed, corpus seeds present in fuzz/corpus/ipc_frame/
+
+DESCRIPTION
+Split from vb-jpq7.6. Register and execute ipc_frame fuzz target for IPC frame decode and preallocation behavior.
+
+ACCEPTANCE CRITERIA
+fuzz/Cargo.toml registers bin ipc_frame; hostile frames cannot allocate unbounded memory or panic; typed decode/backpressure errors are asserted; corpus/seed/run evidence is recorded.
+
+LABELS: backend-dod, decode, fuzz, ipc, master-gap, preallocation, release-blocker, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ✓ vb-k8ut.1: P0: validate IPC magic before live socket buffer growth ● P0
+  ← ✓ vb-481r.8: P0: make fuzz-smoke run exact Section 37 target names ● P0
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+

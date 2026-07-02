@@ -1,0 +1,28 @@
+✓ vb-jpq7.28 · P0: enforce parser validator exact diagnostics   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Completed in JJ workspace /home/lewis/src/vb-jpq7-28-30-parser-props-gpt55: exact parser diagnostics tests pass; generic is_err removed from contract-critical parser integration paths.
+
+DESCRIPTION
+Split from vb-jpq7.6. Replace broad parser/validator is_err checks with exact diagnostic assertions for contract-critical YAML/workflow errors.
+
+NOTES
+BLOCKER: while integrating /home/lewis/src/vb-jpq7-28-parser-diagnostics-gpt55, the main workspace changed underneath this session (crates/workspace_tests/tests disappeared from filesystem; previously integrated parser diagnostics and vb-jpq7.30 parity test file vanished). Cannot safely close without overwriting unrelated concurrent changes. Targeted commands before workspace churn: integration_validate_yaml_parsing 29 passed; vb_compile references 45 passed; vb-jpq7.30 parity test 5 passed before file disappeared.
+
+ACCEPTANCE CRITERIA
+Duplicate keys merge keys anchors/aliases unknown fields invalid versions HTTP trigger rejection multiple primitives and forward refs assert exact code/path/span/message/repair where applicable; no generic is_err remains on contract-critical parser paths.
+
+LABELS: backend-dod, diagnostics, master-gap, parser, release-blocker, tests, truth-serum, validator
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ✓ vb-jpq7.30: P0: add expression and compiler parity properties ● P0
+  ← ○ vb-jpq7.31: P0: add digest layout and artifact stability properties ● P0
+
+COMMENTS
+  2026-05-23 03:52 Lewis
+    JJ workspace /home/lewis/src/vb-jpq7-28-parser-diagnostics-gpt55 (workspace vb-jpq7-28-parser-diagnostics-gpt55) implements exact parser/validator diagnostics tests; targeted cargo gates passed. Left in_progress pending review/merge per no-merge instruction.
+

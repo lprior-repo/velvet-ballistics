@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 11,
+  "sublane": "formal-verification",
+  "delegate": "formal-verifier",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 10 implementation completed and focused gates passed; execute approved proof/test obligations and ledger",
+  "input_artifacts": [".beads/vb-vt2f/delivery-scope.jsonl", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/implementation.md", ".beads/vb-vt2f/test-plan-review.md", ".beads/vb-vt2f/test-suite-review.md"],
+  "output_artifacts": [".beads/vb-vt2f/formal-verification-report.md", ".beads/vb-vt2f/verification-ledger.jsonl", ".beads/vb-vt2f/formal-waivers.jsonl"],
+  "status": "QUEUED"
+}

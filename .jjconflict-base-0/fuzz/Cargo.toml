@@ -1,0 +1,712 @@
+[package]
+name = "velvet-ballistics-fuzz"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+autobins = false
+
+[workspace]
+
+[package.metadata]
+# NOTE: cargo-fuzz requires `cargo-fuzz = true` here for manifest detection.
+# The `[package.metadata.cargo-fuzz]` subtable is the documented place for
+# libfuzzer options, but Cargo's TOML parser rejects both `[package.metadata]`
+# with a `cargo-fuzz` key AND `[package.metadata.cargo-fuzz]` as a subtable.
+# Minimization config (sancov_timeout, libfuzzer_options) is applied via
+# the `fuzz-smoke` Moon task and `scripts/fuzz-minimization.sh` instead.
+cargo-fuzz = true
+
+[features]
+fuzz = []
+test-util = []
+
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+[dependencies]
+libfuzzer-sys = "0.4"
+postcard = { version = "1", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
+blake3 = "1"
+bytes = { version = "1", features = ["serde"] }
+tempfile = "3"
+vb_core = { path = "../crates/vb_core" }
+vb_storage = { path = "../crates/vb_storage" }
+vb_runtime = { path = "../crates/vb_runtime" }
+vb_validate = { path = "../crates/vb_validate" }
+vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
+vb_ipc = { path = "../crates/vb_ipc" }
+
+xtask = { path = "../xtask" }
+crc32c = "0.6"
+
+[dev-dependencies]
+proptest = "1"
+
+[lib]
+name = "fuzz_lib"
+path = "src/lib.rs"
+
+[package.metadata.cargo-machete]
+ignored = ["bytes"]
+
+# === Fuzz profile (Phase 0) ===
+[profile.fuzz]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = "off"
+opt-level = 2
+codegen-units = 1
+incremental = false
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "accessor_traversal"
+path = "stdin_smoke/accessor_traversal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "action_tracker"
+path = "stdin_smoke/action_tracker.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_flow"
+path = "stdin_smoke/admission_flow.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_fuzz"
+path = "stdin_smoke/admission_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "binary_payload_fuzz_boundary"
+path = "stdin_smoke/binary_payload_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "budget_compute"
+path = "stdin_smoke/budget_compute.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_bytecode"
+path = "stdin_smoke/expr_bytecode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_eval"
+path = "stdin_smoke/expr_eval.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "external_input_adapter_fuzz"
+path = "stdin_smoke/external_input_adapter_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extract_terminal"
+path = "stdin_smoke/extract_terminal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_decode"
+path = "stdin_smoke/ipc_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz_boundary"
+path = "stdin_smoke/ipc_frame_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recovery_decode"
+path = "stdin_smoke/recovery_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "replay_events"
+path = "stdin_smoke/replay_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "resource_budget"
+path = "stdin_smoke/resource_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "slot_value_roundtrip"
+path = "stdin_smoke/slot_value_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "step_budget_new"
+path = "stdin_smoke/step_budget_new.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_envelope_fuzz_boundary"
+path = "stdin_smoke/storage_envelope_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "strict_yaml_profile"
+path = "stdin_smoke/strict_yaml_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "taint_propagation"
+path = "stdin_smoke/taint_propagation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "verifier_gates"
+path = "stdin_smoke/verifier_gates.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_artifact_budget"
+path = "stdin_smoke/aggregate_artifact_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_workflow_budget"
+path = "stdin_smoke/aggregate_workflow_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_evidence_reference"
+path = "stdin_smoke/boundary_evidence_reference.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_inventory_parser"
+path = "stdin_smoke/boundary_inventory_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_metadata"
+path = "stdin_smoke/boundary_metadata.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recover_runtime_frame_seed_contract"
+path = "stdin_smoke/recover_runtime_frame_seed_contract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "structured_status_render_hostile"
+path = "stdin_smoke/structured_status_render_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_argv_hostile"
+path = "stdin_smoke/xtask_parse_argv_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_options_hostile"
+path = "stdin_smoke/xtask_parse_options_hostile.rs"
+test = false
+doc = false
+bench = false
+
+# === fuzz_targets/ (active libFuzzer harnesses with mutation + corpus) ===
+# These are the real fuzz targets. Each uses `#![no_main]` and
+# `libfuzzer_sys::fuzz_target!`. CI MUST distinguish these from the
+# stdin_smoke wrappers above; only these count as fuzz coverage evidence.
+
+[[bin]]
+name = "lex_expr"
+path = "fuzz_targets/lex_expr.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
+path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compile_source_ast_marks"
+path = "fuzz_targets/compile_source_ast_marks.rs"
+test = false
+doc = false
+bench = false
+
+# === fuzz_targets/ (restored and wired) ===
+
+[[bin]]
+name = "canonical_digest_ask"
+path = "fuzz_targets/canonical_digest_ask.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "choose_lowering_fuzzer"
+path = "fuzz_targets/choose_lowering_fuzzer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_for_each_lowering"
+path = "fuzz_targets/fuzz_for_each_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_collect_lowering"
+path = "fuzz_targets/fuzz_collect_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_wait_lowering"
+path = "fuzz_targets/fuzz_wait_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_set_lowering"
+path = "fuzz_targets/fuzz_set_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_finish_lowering"
+path = "fuzz_targets/fuzz_finish_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compile_workflow_fuzz"
+path = "fuzz_targets/compile_workflow_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compiled_ir_fuzz"
+path = "fuzz_targets/compiled_ir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_record"
+path = "fuzz_targets/decode_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diagnostic_code_from_str_fuzz"
+path = "fuzz_targets/diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diagnostic_from_error_fuzz"
+path = "fuzz_targets/diagnostic_from_error.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_eval_fuzz"
+path = "fuzz_targets/expr_eval.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expression_fuzz"
+path = "fuzz_targets/expression.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_depth"
+path = "fuzz_targets/fuzz_choose_depth.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_when_parse"
+path = "fuzz_targets/fuzz_choose_when_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_diagnostic_code_from_str"
+path = "fuzz_targets/fuzz_diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_digest_compile"
+path = "fuzz_targets/fuzz_digest_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_finish_digest_encoding"
+path = "fuzz_targets/fuzz_finish_digest_encoding.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_postcard_codec"
+path = "fuzz_targets/fuzz_retry_postcard_codec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_normalize_ticket"
+path = "fuzz_targets/fuzz_retry_normalize_ticket.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_record_attempt"
+path = "fuzz_targets/fuzz_retry_record_attempt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_validate_completion"
+path = "fuzz_targets/fuzz_retry_validate_completion.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz"
+path = "fuzz_targets/ipc_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "journal_decode"
+path = "fuzz_targets/journal_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "journal_event_fuzz"
+path = "fuzz_targets/journal_event.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kind_validation"
+path = "fuzz_targets/kind_validation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_workflow_source_fuzz"
+path = "fuzz_targets/parse_workflow_source_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "span_bridge_fuzz"
+path = "fuzz_targets/span_bridge_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_flux_check_selector"
+path = "fuzz_targets/tooling_flux_check_selector.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_guard_zero_parser"
+path = "fuzz_targets/tooling_guard_zero_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_kani_list_args"
+path = "fuzz_targets/tooling_kani_list_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_loom_list_xtask"
+path = "fuzz_targets/tooling_loom_list_xtask.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_f04l_yaml_compiler_compile"
+path = "fuzz_targets/vb_f04l_yaml_compiler_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_events_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_snapshot_tail_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_replay_events_fuzz"
+path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_seed_dimensions_fuzz"
+path = "fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_roundtrip"
+path = "fuzz_targets/fuzz_storage_codec_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_header"
+path = "fuzz_targets/fuzz_storage_codec_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_payload_corruption"
+path = "fuzz_targets/fuzz_storage_codec_payload_corruption.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_kind_family"
+path = "fuzz_targets/fuzz_storage_codec_kind_family.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_schema_version"
+path = "fuzz_targets/fuzz_storage_codec_schema_version.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_digest"
+path = "fuzz_targets/fuzz_storage_codec_digest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_001"
+path = "fuzz_targets/vb_vzcuf_PS_001.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_002"
+path = "fuzz_targets/vb_vzcuf_PS_002.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_003"
+path = "fuzz_targets/vb_vzcuf_PS_003.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_004"
+path = "fuzz_targets/vb_vzcuf_PS_004.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_005"
+path = "fuzz_targets/vb_vzcuf_PS_005.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_006"
+path = "fuzz_targets/vb_vzcuf_PS_006.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_007"
+path = "fuzz_targets/vb_vzcuf_PS_007.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_008"
+path = "fuzz_targets/vb_vzcuf_PS_008.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_009"
+path = "fuzz_targets/vb_vzcuf_PS_009.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_digest_exhaustive_collision"
+path = "fuzz_targets/wait_digest_exhaustive_collision.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_digest_sensitivity"
+path = "fuzz_targets/wait_digest_sensitivity.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_sentinel_collision"
+path = "fuzz_targets/wait_sentinel_collision.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "yaml_events"
+path = "fuzz_targets/yaml_events.rs"
+test = false
+doc = false
+bench = false
+
+# === src/bin/ orphans (declared 2026-05-24 Phase 0) ===
+

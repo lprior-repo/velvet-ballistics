@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-njju",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md",
+    "target/test-output/PO-004-temp-clean-preflight.log",
+    "target/test-output/PO-004-cargo-mutants-admission.log",
+    "target/test-output/po-004-mutants/BLOCK_LOCAL_RELEASE.txt"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-review.md",
+    ".beads/vb-njju/proof-findings.jsonl",
+    ".beads/vb-njju/proof-repair-guide.md"
+  ],
+  "attempt": "repair-4-of-7",
+  "reason": "Classify repeated PO-004 disk quota failure after safe cleanup/preflight."
+}

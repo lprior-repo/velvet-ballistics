@@ -1,0 +1,14 @@
+/home/lewis/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc
+cargo-x86_64-unknown-linux-gnu
+clippy-x86_64-unknown-linux-gnu
+llvm-tools-x86_64-unknown-linux-gnu
+miri-x86_64-unknown-linux-gnu
+rust-analyzer-x86_64-unknown-linux-gnu
+rust-docs-x86_64-unknown-linux-gnu
+rust-src
+rust-std-wasm32-unknown-unknown
+rust-std-x86_64-unknown-linux-gnu
+rust-std-x86_64-unknown-linux-musl
+rustc-x86_64-unknown-linux-gnu
+rustfmt-x86_64-unknown-linux-gnu
+info: component rust-src is up to date

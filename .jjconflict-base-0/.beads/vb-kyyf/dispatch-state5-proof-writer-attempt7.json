@@ -1,0 +1,30 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 5,
+  "sublane": "final-proof-repair-or-blocker",
+  "delegate": "proof-writer",
+  "attempt": 7,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "reason": "attempt 6 repaired local counterexample but TLC timed out at 18M states and Verus remains not implementation-bound; final attempt must produce pass or blocker packet",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/verification-layers.md",
+    ".beads/vb-kyyf/proof-obligations.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/proof-repair-guide.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/proof-writer-report.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    "verification/tla/VbKyyfReplayDeterminism.tla",
+    "verification/tla/VbKyyfReplayDeterminism.cfg",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-writer-report.md",
+    ".beads/vb-kyyf/proof-evidence.md"
+  ],
+  "status": "QUEUED"
+}

@@ -1,0 +1,5 @@
+{"id":"PO-SSEI-001","result":"PASS","evidence":"rtk cargo test -p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance -- --nocapture => 4 passed","owner_state":11,"rerun_from":8}
+{"id":"PO-SSEI-002","result":"PASS","evidence":"rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog -- --nocapture => 6 passed","owner_state":11,"rerun_from":8}
+{"id":"GATE-SSEI-FMT","result":"PASS","evidence":"rtk cargo fmt -p velvet-ballistics-workspace-tests -- --check => exit 0 no output","owner_state":11,"rerun_from":10}
+{"id":"GATE-SSEI-CHECK","result":"PASS","evidence":"rtk cargo check -p velvet-ballistics-workspace-tests => cargo build (21 crates compiled)","owner_state":11,"rerun_from":10}
+{"id":"GLOBAL-MOON-CI","result":"DEFERRED_GLOBAL","evidence":"moon ci failed fmt/check in unrelated vb_codegen/vb_storage files outside touched scope","owner_state":11,"rerun_from":11}

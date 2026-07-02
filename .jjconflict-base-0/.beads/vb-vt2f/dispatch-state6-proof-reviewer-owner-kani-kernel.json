@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review-owner-authorized-kani-kernel",
+  "delegate": "proof-reviewer",
+  "attempt": 6,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Review owner-authorized replacement Kani proof kernels clearing prior Kani timeout blocker",
+  "input_artifacts": [".beads/vb-vt2f/proof-architecture-report.md", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/blocker-report.md", ".beads/vb-vt2f/proof-obligations.jsonl", "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs", "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs"],
+  "output_artifacts": [".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/proof-findings.jsonl", ".beads/vb-vt2f/proof-repair-guide.md"],
+  "status": "QUEUED"
+}

@@ -1,0 +1,33 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 8,
+  "sublane": "black-hat-defect-test-suite-hardening",
+  "delegate": "test-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-writer-report.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+    "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
+  ],
+  "attempt": 6,
+  "reroute_source": "State 12 black-hat attempt 1 rejection",
+  "defects": [
+    "DEFECT-001 static marker evidence accepted instead of emitted durable scenario evidence",
+    "DEFECT-002 CLI replay/events/inspect determinism not compared",
+    "DEFECT-003 corrupt replay scenarios one-shot in-memory calls",
+    "DEFECT-004 non-replay-safe action recovery not repeated",
+    "DEFECT-005 generated/IR parity observation synthetic/incomplete",
+    "DEFECT-006 BDD-KYYF-007 catalog target points to wrong evidence path"
+  ]
+}

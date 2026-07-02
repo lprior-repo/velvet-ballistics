@@ -1,0 +1,8 @@
+rustc 1.96.0-nightly (2972b5e59 2026-04-03)
+binary: rustc
+commit-hash: 2972b5e59f1c5529b6ba770437812fd83ab4ebd4
+commit-date: 2026-04-03
+host: x86_64-unknown-linux-gnu
+release: 1.96.0-nightly
+LLVM version: 22.1.2
+miri 0.1.0 (2972b5e59f 2026-04-03)

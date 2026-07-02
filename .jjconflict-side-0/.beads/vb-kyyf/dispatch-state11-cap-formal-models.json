@@ -1,0 +1,20 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "cap-unblock-tla-verus-formal-models",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/state11-cap-formal-models-report.md",
+    ".beads/vb-kyyf/tla-report.md",
+    ".beads/vb-kyyf/verus-report.md",
+    ".beads/vb-kyyf/verification-ledger-cap-formal-models.jsonl"
+  ],
+  "attempt": "owner-authorized-cap-unblock-1"
+}

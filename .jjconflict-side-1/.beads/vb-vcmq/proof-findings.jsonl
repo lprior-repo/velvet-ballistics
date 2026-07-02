@@ -1,0 +1,2 @@
+{"id":"PF-001","severity":"info","status":"APPROVED","finding":"No vacuous formal proof claimed for tooling-only bead."}
+{"id":"PF-002","severity":"info","status":"APPROVED","finding":"Unsupported workspace command is preserved as raw failure evidence and waived, not hidden."}

@@ -1,0 +1,9 @@
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/src/kani_gate_08_structural.rs:13:
+ //! vb_compile idempotency parity harness is selected, because Cargo compiles the
+ //! dependent vb_validate crate under cfg(kani) first.
+ 
+[31m-use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
+(B[m[32m+use crate::{gates::validate_gate_08_accessor_path_segments, ValidationError};
+(B[m use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+ use vb_core::workflow::{
+     AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,

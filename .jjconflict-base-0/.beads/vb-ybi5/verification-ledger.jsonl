@@ -1,0 +1,3 @@
+{"id":"PO-vb-ybi5-001","result":"PASS","evidence":"scripts/check-ignored-fallible-results.sh -> NoViolationFound","owner_state":11,"rerun_from":10}
+{"id":"PO-vb-ybi5-002","result":"PASS","evidence":"moon run :verify-standard -> All standard checks passed","owner_state":11,"rerun_from":10}
+{"id":"GLOBAL-MOON-CI","result":"DEFERRED_GLOBAL","evidence":"moon ci failed on unrelated fmt/check debt outside touched harness","owner_state":11,"rerun_from":11}

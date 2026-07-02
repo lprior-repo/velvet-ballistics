@@ -1,0 +1,7 @@
+2026-05-23T14:15:47Z
+/home/lewis/src/vb-jpq7-24-verus-binding-gpt55
+COMMAND=rtk grep -n trust markers scoped files
+vtsmnwnxqpunpozwsoxoupvwxyuwqxtz ef74f15b903f4ed86dfcb47b2526f1180809a495 vb-jpq7.24 bind Verus evidence to production exec
+0 matches for 'assume\(|#\[verifier::external_body\]|#\[verifier::external\]|axiom'
+RAW_EXIT_CODE=1
+EXIT_CODE=0 (no trust markers found)

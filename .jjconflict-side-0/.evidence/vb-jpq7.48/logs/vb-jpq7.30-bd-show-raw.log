@@ -1,0 +1,31 @@
+command: bd show vb-jpq7.30
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T12:05:00Z
+exit_code: 0
+--- bd show output follows ---
+✓ vb-jpq7.30 · P0: add expression and compiler parity properties   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Completed in JJ workspace /home/lewis/src/vb-jpq7-28-30-parser-props-gpt55 after vb-jpq7.28 satisfaction: compiler/expression parity properties pass with recorded proptest seed.
+
+DESCRIPTION
+Split from vb-jpq7.6. Add semantic properties for expression/compiler parity instead of no-panic smoke checks.
+
+NOTES
+BLOCKER: main workspace concurrently changed and removed/changed crates/workspace_tests/tests during execution; property test integration could not be preserved safely. Do not close until workspace is stable or isolated integration is provided. Targeted parity test passed 5 tests before file disappeared; extended 10000-case run could not run because test target vanished.
+
+ACCEPTANCE CRITERIA
+Properties cover constant folding parity bytecode/AST parity expression evaluation equivalence and compiler lowering consistency; assertions compare exact semantic results/errors; seeds and shrunk counterexamples are recorded.
+
+LABELS: backend-dod, compiler, expression, master-gap, property, proptest, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.28: P0: enforce parser validator exact diagnostics ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ○ vb-jpq7.38: P0: triage mutation survivors with release-grade scope ● P0
+

@@ -1,0 +1,41 @@
+# Transcript — vb-y9d3v State 4 proof-planner
+
+## Invocation: vb-y9d3v-state4-proof-planner-attempt1
+## Skill: proof-planner
+## State: 4
+## Date: 2026-05-29T20:00:00Z
+
+### Actions Performed
+1. Loaded proof-planner skill from /home/lewis/.opencode/skill/proof-planner/SKILL.md
+2. Read all State 3 artifacts: contract.md, proof-seeds.jsonl, traceability-matrix.jsonl, codebase-map.md, delivery-scope.jsonl, domain-model.md, type-contracts.md, workflow-model.md, error-taxonomy.md, boundary-map.md, hazard-analysis.md
+3. Produced State 4 artifacts:
+   - proof-strategy.md
+   - verifier-lane-matrix.md
+   - verifier-lane-decisions.jsonl (96 lane decisions)
+   - proof-coverage-matrix.md
+   - proof-obligations.planned.jsonl (46 obligations)
+   - trusted-base-plan.md
+   - waiver-candidates.jsonl (0 candidates)
+   - proof-to-implementation-input.md
+4. Created stub reviewer artifacts (proof-plan-review.md, verifier-lane-review.jsonl) pending proof-plan-reviewer dispatch
+5. Updated agent-invocation-ledger.jsonl with row 4
+
+### Key Decisions
+- Default Rust lanes (Verus, Kani, Flux-rs, proptest) applied to all 11 rust-local seeds
+- Loom: not_applicable (synchronous shard boundary, no concurrency in authority path)
+- Miri: not_applicable (all in-scope files enforce `#![forbid(unsafe_code)]`)
+- cargo-fuzz: required for seed 011 (codec boundary), not_applicable for others
+- TLA+: required for seed 012 (temporal model), not_applicable for others
+- Implemented fix: contract_clause in lane decisions matches proof seeds exactly
+- Implemented fix: one obligation per seed per required verifier (46 total)
+
+### Errors Encountered During Validation
+- Initial run: contract_clause mismatches, unknown verifier "tla-plus", missing transcript
+- Fixed: regenerated lane decisions and obligations programmatically, renamed "tla-plus" to "tla", added transcript
+
+### Artifact Counts
+- Proof seeds: 12
+- Lane decisions: 96 (46 required, 50 not_applicable, 0 blocked_tooling)
+- Obligations: 46
+- Trusted base items: 8
+- Waiver candidates: 0

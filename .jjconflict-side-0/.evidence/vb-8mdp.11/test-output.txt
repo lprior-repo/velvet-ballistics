@@ -1,0 +1,53 @@
+=== vb-8mdp.11 — restate_doctor_key_decode_tests ===
+Result: 48 passed, 0 failed
+Duration: 0.00s
+
+Test list (derived from source):
+  1. preview_config_accepts_valid_limits
+  2. preview_config_rejects_zero_max_records
+  3. preview_config_returns_exact_max_records
+  4. preview_config_returns_exact_max_bytes
+  5. preview_config_zero_max_bytes_is_valid
+  6. preview_config_max_bytes_u32_max_is_valid
+  7. preview_config_max_records_one
+  8. try_key_prefix_returns_known_prefix_for_each_valid_byte
+  9. try_key_prefix_rejects_empty_input
+ 10. try_key_prefix_rejects_all_247_unknown_bytes
+ 11. try_key_prefix_longer_input_uses_first_byte
+ 12. try_key_prefix_prefix_u8_roundtrip
+ 13. decode_workflow_source_key
+ 14. decode_compiled_ir_key
+ 15. decode_run_header_key
+ 16. decode_run_header_key_max_run_id
+ 17. decode_run_event_key
+ 18. decode_run_event_key_large_values
+ 19. decode_run_snapshot_key
+ 20. decode_blob_key
+ 21. decode_index_status_key
+ 22. decode_index_status_key_other_state
+ 23. decode_index_workflow_key
+ 24. decode_index_action_key
+ 25. encode_then_decode_roundtrip_all_key_variants
+ 26. decode_storage_key_returns_empty_key_error_for_empty_slice
+ 27. decode_storage_key_returns_unknown_prefix_for_invalid_first_byte
+ 28. decode_storage_key_returns_unknown_prefix_for_zero_byte
+ 29. decode_storage_key_returns_length_mismatch_for_short_key
+ 30. decode_storage_key_returns_length_mismatch_for_oversized_key
+ 31. decode_storage_key_returns_invalid_run_id_for_zero_run_header
+ 32. decode_storage_key_returns_invalid_run_id_for_zero_run_event
+ 33. decode_storage_key_returns_invalid_run_id_for_zero_index_status_run
+ 34. decode_storage_key_returns_reserved_seq_sentinel_for_max_seq
+ 35. decode_storage_key_returns_length_mismatch_for_each_prefix_variant
+ 36. decode_storage_key_key_decode_error_is_debug_and_partial_eq
+ 37. readonly_journal_is_debug
+ 38. readonly_journal_declared_keyspaces_returns_nine
+ 39. readonly_journal_read_methods_are_accessible
+ 40. readonly_journal_does_not_expose_write_methods
+ 41. decoded_preview_struct_fields_are_cold_path
+ 42. preview_payload_is_raw_variant_only
+ 43. preview_config_max_records_nonzero_usize
+ 44. key_prefix_to_u8_roundtrip_with_try_key_prefix
+ 45. preview_keyspace_bounded_by_max_records
+ 46. preview_keyspace_bounded_by_max_bytes
+ 47. preview_keyspace_empty_entries
+ 48. preview_keyspace_skips_corrupt_keys_silently

@@ -1,0 +1,29 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 3,
+  "sublane": "contract-traceability-repair",
+  "delegate": "rust-contract",
+  "attempt": 2,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 6 contract-verification rejected untraced clauses, missing TLA waiver coverage for POST-012/ERR-002, and non-executable STATIC-VT2F-001",
+  "input_artifacts": [
+    ".beads/vb-vt2f/STATE.md",
+    ".beads/vb-vt2f/baseline-report.md",
+    ".beads/vb-vt2f/codebase-map.md",
+    ".beads/vb-vt2f/delivery-scope.jsonl",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-findings.jsonl",
+    ".beads/vb-vt2f/contract-verification-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/domain-model-review.md",
+    ".beads/vb-vt2f/tla-spec.md",
+    ".beads/vb-vt2f/lean-contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl"
+  ],
+  "status": "QUEUED"
+}

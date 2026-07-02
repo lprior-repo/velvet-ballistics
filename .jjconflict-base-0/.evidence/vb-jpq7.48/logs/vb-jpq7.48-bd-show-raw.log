@@ -1,0 +1,46 @@
+command: bd show vb-jpq7.48
+cwd: /home/lewis/src/velvet-ballistics
+commit_sha: 829d8bcd1b3ff89a26dc70de415dc7e24078fb11
+tool_version: bd version 1.0.0 (dev);
+timestamp: 2026-05-23T18:18:43Z
+stdout:
+✓ vb-jpq7.48 · P0: make blocker closure evidence machine-checkable   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: External final review approved vb-jpq7.48; live checker passed against authoritative bd workdir with closed_children=34; live Moon blocker task passed; manifest policy enforced with PASS rows for current closed children and split_followup rationale for historical debt; evidence workspace /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered.
+
+DESCRIPTION
+Split from vb-jpq7.8. Add a fail-closed evidence manifest/checker for every vb-jpq7 blocker closure so pasted summaries cannot masquerade as proof.
+
+NOTES
+Attempted implementation of fail-closed vb-jpq7 closure manifest checker. Blocked by concurrent workspace mutation: newly added checker/docs under scripts/ and docs/ were repeatedly deleted between apply_patch and verification, and tracked scripts/check-workspace-assertions.py edits were reverted while commands were running. Raw logs: .evidence/vb-jpq7.48/checker-selftest.log and .evidence/vb-jpq7.48/live-checker.log. Follow-up split bead vb-rud5 created for manifest backfill; implementation must be reapplied in isolated/locked workspace before closure.
+Implementation reapplied in dedicated JJ workspace /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55 change uwooqotu/7536a86a. Added fail-closed checker scripts/check-vb-jpq7-closure-evidence.py, schema, docs, and Moon task wiring. Self-test PASS: PYTHONPYCACHEPREFIX=/tmp/opencode/vb-jpq7-48-pycache python scripts/check-vb-jpq7-closure-evidence.py --self-test EXIT_CODE:0. Syntax PASS: py_compile EXIT_CODE:0. Live scan FAIL as intended until historical backfill: manifest missing and closed children lack rows; details recorded on follow-up vb-rud5. Not closing vb-jpq7.48 because live AC remains blocked by vb-rud5 backfill.
+Reviewer repair complete in JJ workspace /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55. Patched runInCI true, removed --allow-missing-raw-logs production bypass, expanded self-tests for required fields/bad SHA/non-integer exit/invalid timestamp/missing raw log/invalid JSON/no matching closed child/rejected marker cases, split self-test helpers, and added .beads/vb-jpq7 manifest rows linking historical unresolved closure-evidence failures to split bead vb-rud5. Evidence: py_compile exit 0; self-test SELF_TEST_PASS exit 0; live checker PASS closed_children=30 exit 0; VB_JPQ7_BD_WORKDIR=/home/lewis/src/velvet-ballistics moon run :blocker-closure-evidence PASS exit 0.
+Second-review repair patched in /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55: raw logs now require non-empty provenance bindings for command/cwd/timestamp/exit_code; status/evidence_kind required; UTC timestamp requires trailing Z; nonexistent cwd rejected; Moon task supports explicit fixture env while defaulting to live authoritative bd workdir. Evidence: py_compile exit 0; self-test PASS exit 0; fixture checker PASS exit 0; fixture Moon task PASS exit 0; live checker initially found vb-jpq7.48 closed without row, so bead reopened pending external review.
+Recovered workspace repair complete at /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered. Live/default checker path is authoritative; Moon blocker task no longer accepts fixture env. Nonzero rows require resolution_kind plus resolution_rationale and duplicate split/rationale is rejected. Manifest regenerated from live bd children: PASS rows added for vb-jpq7.24, vb-jpq7.44, vb-jpq7.28, vb-jpq7.30 with workspace-local raw logs under .evidence/vb-jpq7.48/logs; remaining historical debts use per-bead split_followup rationales to vb-rud5 and are not passing evidence. Evidence: py_compile exit 0; self-test PASS exit 0; live checker PASS closed_children=30 exit 0; live Moon blocker task PASS exit 0. Bead left open for external re-review.
+Recovered workspace follow-up: live checker remains PASS after manifest regeneration from live bd children (closed_children=30). PASS rows are limited to vb-jpq7.24/.28/.30/.44 with raw logs; remaining nonzero rows have explicit split_followup resolution_kind and per-bead rationale to vb-rud5. Direct py_compile/self-test/live checker passed. Moon blocker task could not run after JJ stale workspace refresh because unrelated .moon/tasks/kani.yml parse error blocks Moon config loading; direct command path for blocker task passed live. Bead remains open.
+Final-review repair applied in recovered workspace. Enforced resolution_kind/resolution_rationale in checker, removed children-json/VB_JPQ7_CHILDREN_JSON CI bypass, fixed Moon v2 parse errors by removing invalid language fields from kani/tlc/verus task files, and regenerated live manifest with PASS rows only for vb-jpq7.24/.28/.30/.44 plus per-bead split_followup debt rows. Evidence: py_compile exit 0; self-test PASS exit 0; live checker PASS closed_children=31 exit 0; moon run :blocker-closure-evidence PASS exit 0. Bead intentionally left open for external final re-review.
+Final manifest miss patched in recovered workspace. Added raw PASS evidence logs and manifest rows for newly closed vb-jpq7.27; live scan also revealed newly closed vb-jpq7.40 and vb-jpq7.5, so added PASS logs/rows for those too. Evidence: py_compile exit 0; self-test PASS exit 0; live checker PASS closed_children=34 exit 0; live Moon blocker task PASS closed_children=34 exit 0. Bead remains open pending external re-review.
+
+ACCEPTANCE CRITERIA
+Each blocker closure cites a manifest row with command cwd commit SHA tool version timestamp raw log path stdout/stderr summary and exit code; checker fails if any closed vb-jpq7 child lacks manifest evidence; summary-only cached-only skipped-only or subagent-only evidence is rejected; unresolved failures link to waiver or split bead.
+
+LABELS: anti-laundering, backend-dod, beads, evidence, master-gap, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ◐ vb-jpq7.49: P0: block proof and evidence laundering ● P0
+
+DISCOVERED
+  ◊ ○ vb-rud5: P0: backfill vb-jpq7 closure evidence manifest rows ● P0
+
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	110trp62gtc79p06mupvnu7j19kbvs89
+}
+
+stderr:
+stderr captured inline with combined redirection; see stdout section for warnings/errors emitted by bd
+exit_code: 0

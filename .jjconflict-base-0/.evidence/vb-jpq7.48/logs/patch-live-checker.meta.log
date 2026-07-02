@@ -1,0 +1,8 @@
+command: PYTHONPYCACHEPREFIX=.evidence/vb-jpq7.48/scratch/pycache python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir /home/lewis/src/velvet-ballistics
+cwd: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered
+commit_sha: 6404b75690efd9c64f046cd9f9e09c8b550a9fb4
+tool_version: Python 3.14.5; Warning: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.beads has permissions 0755 (recommended: 0700). Run: chmod 700 /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.beads;bd version 1.0.0 (dev);
+timestamp: 2026-05-23T18:42:19Z
+stdout_log_path: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.evidence/vb-jpq7.48/logs/patch-live-checker.stdout.log
+stderr_log_path: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.evidence/vb-jpq7.48/logs/patch-live-checker.stderr.log
+exit_code: 0

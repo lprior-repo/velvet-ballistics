@@ -1,0 +1,472 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:16:27
+   |
+16 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2151:20
+     |
+2151 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2152:21
+     |
+2152 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+             - simd_reduce_all (1)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+warning: Kani currently does not support concurrency. The following constructs will be treated as sequential operations:
+             - atomic_load (6)
+             - atomic_store (3)
+             - atomic_xchg (5)
+             - thread local (replaced by static variable) (1)
+             - atomic_cxchgweak (15)
+         
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 22.43s
+
+Contracts:
+No contracts or contract harnesses found.
+
+Standard Harnesses (#[kani::proof]):
++-------+---------+-------------------------------------------------------------------------------------------------------+
+|       | Crate   | Harness                                                                                               |
++=========================================================================================================================+
+|       | vb_core | budget::kani_harnesses::add_dim_max_plus_max_overflow                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::add_dim_no_panic                                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::add_dim_non_overflow                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::add_dim_one_plus_max_overflow                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::add_dim_zero_plus_zero                                                        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::aggregate_usage_fits_within_rejects_over_capacity_fields                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::aggregate_usage_try_add_budget_no_overflow_symbolic                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::aggregate_usage_try_add_budget_overflow_symbolic                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::sub_dim_hundred_minus_fifty                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::sub_dim_no_panic                                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::sub_dim_non_underflow                                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | budget::kani_harnesses::sub_dim_zero_minus_one_underflow                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_div_zero::kani_div_by_nonzero_succeeds                                        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_div_zero::kani_div_by_zero_returns_error                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_div_zero::kani_div_i64_min_neg_one                                            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_new_invalid_capacity                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_new_valid_capacity                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_pop_empty_returns_underflow                                    |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_pop_pair_underflow                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_pop_with_items                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_push_overflow_returns_error                                    |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_push_pop_roundtrip                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_push_to_capacity_then_overflow                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | engine::expr_eval::kani_stack::harness_push_with_room                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::increment_executed_no_panic                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::read_slot_no_panic                                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::set_pc_no_panic                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::set_pc_rejects_out_of_bounds                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::validate_transition_exhaustive_64                                        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::validate_transition_idempotent                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::validate_transition_no_panic_random                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::validate_transition_running_to_all_valid_targets                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::validate_transition_terminal_blocks_all                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::frame_kani_harnesses::write_slot_no_panic                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::parallel_in_flight_kani::add_parallel_in_flight_no_panic                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | frame::parallel_in_flight_kani::sub_parallel_in_flight_no_panic                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::accessor_idx_as_usize_never_panics                                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::accessor_idx_as_usize_returns_usize_from_u16                                     |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::branch_idx_get_never_panics                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::const_idx_as_usize_never_panics                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::const_idx_as_usize_returns_usize_from_u16                                        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::expr_idx_as_usize_never_panics                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::expr_idx_as_usize_returns_usize_from_u16                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::fanout_limit_as_usize_never_panics                                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::slot_idx_as_usize_never_panics                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::slot_idx_as_usize_returns_usize_from_u16                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::step_idx_as_usize_never_panics                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | ids::kani_id_bounds::step_idx_as_usize_returns_usize_from_u16                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_budget_arithmetic_refinement::tla_word_order_matches_rust_u64_order                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_action_mismatch_rejected        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_empty_grant_rejected            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_grants_exact_match_case         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_grants_harness                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_grants_non_prefix_rejected      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_grants_partial_segment_rejected |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_capability_harnesses::kani_capability_harnesses::capability_name_rejects_prefix_dot_case         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_all_binary_ops_valid                                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_all_unary_ops_valid                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_appendif_tracks_depth_correctly                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_binary_op_tracks_depth_correctly                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_checked_sub_underflow_detection                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_complex_expression_correct                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_empty_ops_returns_zero                                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_multiple_loads_max_correct                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_nested_binary_ops_tracks_max_depth                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_no_overflow_within_capacity                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_single_loadaccessor_returns_one                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_single_loadconst_returns_one                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_single_loadslot_returns_one                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_expr_bound::harness_unary_op_tracks_depth_correctly                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::idempotency_divergent_digest_symbolic_certificate_rejected                    |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::validate_action_outcome_certificate_conflict_oob                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::validate_action_outcome_symbolic_completion_matrix                            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_boundary_key_lengths_pass_clean_frame                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_duplicate_failure_tainted_key                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_duplicate_invocation_is_stable                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_duplicate_success_clean_key                                |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_frame_slot_bounds_no_panic                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_missing_key_symbolic_contract_no_frame_write               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_required_taint_variants_have_witnesses                     |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_retry_policy_matrix_is_total                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_retry_policy_matrix_no_frame_write                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_idempotency_gates::verify_idempotency_symbolic_key_taints_are_classified                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_multiple_slots_sequential                                                     |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_read_slot_in_bounds                                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_read_slot_out_of_bounds                                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_slot_idx_valid                                                                |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_step_idx_valid                                                                |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_write_slot_in_bounds                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_index_access::kani_write_slot_out_of_bounds                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_resource_budget_bounded::kani_resource_add_max_values                                            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_resource_budget_bounded::kani_resource_add_overflow                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_resource_budget_bounded::kani_resource_add_small_values                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_resource_budget_bounded::kani_resource_sub_exact_match                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_resource_budget_bounded::kani_resource_sub_underflow                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_add_dim_half_plus_half_no_overflow                                             |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_add_dim_max_minus_one_plus_one                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_add_dim_max_plus_max_overflow                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_add_dim_max_plus_one_overflow                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_checked_add_boundaries                                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_checked_mul_boundaries                                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_sub_dim_max_minus_max                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_sub_dim_max_minus_max_minus_one                                                |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget::kani_sub_dim_zero_minus_one_underflow                                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_aggregate_usage_one_step                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_add_one_plus_max_overflow                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_add_one_plus_one                                                    |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_add_one_plus_zero                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_add_zero_plus_one                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_sub_one_minus_one                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_sub_one_minus_two_underflow                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_one::kani_budget_sub_one_minus_zero                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_zero::kani_aggregate_usage_zero                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_zero::kani_budget_add_dim_zero                                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_zero::kani_budget_sub_dim_zero                                                       |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_budget_zero::kani_try_add_budget_zero_current                                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::step_once_bounds_harness                                                         |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::step_once_error_harness                                                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::step_once_pc_bounds_harness                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::step_once_slot_init_harness                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::step_once_state_mapping_harness                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_harnesses::taint_validity_harness                                                           |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_step_state_transition::kani_step_state_transition_matches_contract                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_clean_is_lattice_bottom                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_associative                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_commutative                                                   |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_ge_first_arg                                                  |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_ge_second_arg                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_idempotent                                                    |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_join_taint_monotonic                                                     |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_random_below_time_dependent                                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_read_taint_no_panic                                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_taint_lattice_transitive                                                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_time_dependent_is_lattice_top                                            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_taint_propagation::kani_write_taint_no_panic                                                     |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_workflow_budget_harnesses::kani_harness_boundedness_policy_validate                              |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_workflow_budget_harnesses::kani_harness_fits_within_exact                                        |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_workflow_budget_harnesses::kani_harness_step_budget_consume                                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_workflow_budget_harnesses::kani_harness_try_add_budget_no_overflow                               |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | kani_workflow_budget_harnesses::kani_harness_whole_workflow_budget_compute                            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | replay::kani_harnesses::verification::verify_choose_slot_output_in_input_set                          |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | replay::kani_harnesses::verification::verify_replay_choose_slot_two_branches_no_panic                 |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | replay::kani_harnesses::verification::verify_replay_deterministic_for_same_input                      |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+|       | vb_core | value_store::kani_harnesses::value_store_cap_rejects_insert_with_budget_exceeded_max_slots            |
+|-------+---------+-------------------------------------------------------------------------------------------------------|
+| Total |         | 150                                                                                                   |
++-------+---------+-------------------------------------------------------------------------------------------------------+
+
+EXIT_CODE=0

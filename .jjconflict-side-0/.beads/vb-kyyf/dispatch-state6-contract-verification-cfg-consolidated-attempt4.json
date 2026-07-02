@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 6,
+  "sublane": "contract-verification-after-shared-macro-cfg-consolidation",
+  "delegate": "contract-verification-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/verification-layers.md",
+    ".beads/vb-kyyf/proof-obligations.jsonl",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/traceability-matrix.jsonl",
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/proof-evidence.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/contract-verification-review.md"
+  ],
+  "attempt": 4
+}

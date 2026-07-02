@@ -1,0 +1,26 @@
+name: hostile-nesting
+version: "1.0"
+steps:
+  - id: deep
+steps:
+steps:
+steps:
+steps:
+steps:
+steps:
+steps:
+steps:
+steps:
+  - id: deep
+    nested:
+      level1:
+        level2:
+          level3:
+            level4:
+              level5:
+                level6:
+                  level7:
+                    level8:
+                      level9:
+                        level10:
+                          value: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

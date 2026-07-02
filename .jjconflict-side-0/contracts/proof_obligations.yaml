@@ -1,0 +1,1229 @@
+# Proof Obligation Registry for velvet-ballistics
+# Source of truth for all formal verification requirements
+# Each obligation maps to: section references, proof level, required commands, evidence artifact
+
+proof_levels:
+  L0:
+    name: "Mechanical scan"
+    description: "Lint / CI evidence / forbidden token scan"
+    tools: ["cargo clippy", "cargo fmt", "forbidden-scan", "hotpath-scan"]
+  L1:
+    name: "Unit + property tests"
+    description: "Unit tests, property tests, differential tests"
+    tools: ["cargo nextest", "proptest", "differential-test"]
+  L2:
+    name: "Fuzz / mutation / crash-lab"
+    description: "Fuzzing, mutation testing, crash-lab fault injection"
+    tools: ["cargo fuzz", "cargo mutants", "crash-lab"]
+  L3:
+    name: "Bounded model checking"
+    description: "Kani model checker, bounded harness verification"
+    tools: ["cargo kani"]
+  L4:
+    name: "Deductive Rust proof"
+    description: "Verus formal verification of functional properties"
+    tools: ["verus"]
+  L5:
+    name: "Proof assistant"
+    description: "Lean via Aeneas for tiny pure kernels"
+    tools: ["aeneas", "lean"]
+  L6:
+    name: "Operational evidence"
+    description: "Benchmark, replay, recovery, supply-chain artifacts"
+    tools: ["hyperfine", "replay-lab", "cargo audit"]
+
+obligations:
+
+  # ============================================================
+  # CORE TAINT LATTICE (Section 47)
+  # ============================================================
+  - id: VB-CORE-TAINT-001
+    section: [47]
+    statement: |
+      join_taint is associative: join(join(a, b), c) == join(a, join(b, c))
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+    required:
+      verus: verification/verus/taint_lattice.rs
+      tests: [taint_join_associative, taint_join_commutative, taint_join_idempotent]
+    commands:
+      - cargo nextest run -p vb_core taint_join
+      - verus verification/verus/taint_lattice.rs
+    verified:
+      taint_lattice: deductively_verified
+
+  - id: VB-CORE-TAINT-002
+    section: [47]
+    statement: |
+      join_taint is commutative: join(a, b) == join(b, a)
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+    required:
+      verus: verification/verus/taint_lattice.rs
+    commands:
+      - verus verification/verus/taint_lattice.rs
+
+  - id: VB-CORE-TAINT-003
+    section: [47]
+    statement: |
+      join_taint is idempotent: join(a, a) == a
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+    required:
+      verus: verification/verus/taint_lattice.rs
+    commands:
+      - verus verification/verus/taint_lattice.rs
+
+  - id: VB-CORE-TAINT-004
+    section: [47]
+    statement: |
+      Secret never downgrades: join(Clean, Secret) == Secret
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+    required:
+      verus: verification/verus/taint_lattice.rs
+      kani: kani_taint_lattice.rs
+    commands:
+      - verus verification/verus/taint_lattice.rs
+      - cargo kani --harness kani_taint_lattice
+
+  - id: VB-CORE-TAINT-005
+    section: [47]
+    statement: |
+      DerivedFromSecret never downgrades to Clean: join(Clean, DerivedFromSecret) == DerivedFromSecret
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+    required:
+      verus: verification/verus/taint_lattice.rs
+    commands:
+      - verus verification/verus/taint_lattice.rs
+
+  - id: VB-CORE-TAINT-006
+    section: [47, 68]
+    statement: |
+      Taint joins correctly on EvalExpr, BuildObject, BuildList (legacy spec claimed Always Clean;
+      corrected spec requires join from source operands)
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/eval.rs
+    required:
+      kani: kani_taint_propagation.rs
+      tests: [taint_eval_expr_join, taint_build_object_join, taint_build_list_join]
+    commands:
+      - cargo kani --harness kani_taint_propagation
+      - cargo nextest run -p vb_core taint_
+    note: "Spec contradiction DRIFT-SECTION-68 - legacy sections claimed Always Clean"
+
+  # ============================================================
+  # STEP STATE MACHINE (Section 45)
+  # ============================================================
+  - id: VB-CORE-STATE-001
+    section: [45]
+    statement: |
+      Valid transitions only:
+      Pending → Running, Succeeded, Failed, Cancelled, Skipped
+      Running → Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
+      Waiting → Running
+      Asking → Running
+      Terminal states (Succeeded, Failed, Cancelled, Skipped) → only themselves
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/frame.rs
+    required:
+      verus: verification/verus/step_state_machine.rs
+      kani: kani_step_state.rs
+      tests: [step_state_valid_transitions, step_state_invalid_transitions_rejected]
+    commands:
+      - verus verification/verus/step_state_machine.rs
+      - cargo kani --harness kani_step_state
+      - cargo nextest run -p vb_core step_state
+
+  - id: VB-CORE-STATE-002
+    section: [45]
+    statement: |
+      Idempotent re-mark (state == next) is valid
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/frame.rs
+    required:
+      kani: kani_step_state.rs
+    commands:
+      - cargo kani --harness kani_step_state
+
+  - id: VB-CORE-STATE-003
+    section: [45]
+    statement: |
+      Invalid transitions return InternalInvariantViolation { reason: "invalid_state_transition" }
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/frame.rs
+    required:
+      tests: [step_state_invalid_transition_error]
+    commands:
+      - cargo nextest run -p vb_core step_state_invalid
+
+  # ============================================================
+  # STEP BUDGET (Section 15, 45)
+  # ============================================================
+  - id: VB-CORE-BUDGET-001
+    section: [15, 45]
+    statement: |
+      budget 0 executes zero transitions and returns StepBudgetExhausted immediately
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/engine.rs
+    required:
+      kani: kani_step_budget.rs
+      tests: [step_budget_zero_no_transitions]
+    commands:
+      - cargo kani --harness kani_step_budget_zero
+
+  - id: VB-CORE-BUDGET-002
+    section: [15, 45]
+    statement: |
+      budget 1 executes exactly one transition
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/engine.rs
+    required:
+      kani: kani_step_budget.rs
+      tests: [step_budget_one_single_transition]
+    commands:
+      - cargo kani --harness kani_step_budget_one
+
+  - id: VB-CORE-BUDGET-003
+    section: [15, 45]
+    statement: |
+      try_take never underflows; remaining is monotonically non-increasing
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/engine.rs
+    required:
+      verus: verification/verus/step_budget.rs
+      kani: kani_step_budget.rs
+    commands:
+      - verus verification/verus/step_budget.rs
+      - cargo kani --harness kani_step_budget
+
+  # ============================================================
+  # CHECKED ID INDEXING (Section 9, 15)
+  # ============================================================
+  - id: VB-CORE-IDX-001
+    section: [9, 15]
+    statement: |
+      All StepIdx, SlotIdx, ExprIdx, ConstIdx, AccessorIdx access goes through checked functions.
+      Raw index conversion exists only inside checked access helpers.
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/ids.rs
+    required:
+      kani: kani_index_access.rs
+      tests: [checked_index_validates_bounds]
+    commands:
+      - cargo kani --harness kani_index_access
+      - cargo nextest run -p vb_core checked_index
+
+  - id: VB-CORE-IDX-002
+    section: [9, 15]
+    statement: |
+      Hot/runtime code never calls as_usize() then indexes directly
+    proof_level: L0
+    crate: vb_core
+    files:
+      - crates/vb_core/src/**/*.rs
+    required:
+      forbidden_patterns: ["as_usize.*index", "as_usize.*get"]
+    commands:
+      - cargo xtask forbidden-scan --pattern as_usize_index --crate vb_core
+
+  # ============================================================
+  # ENGINE SIGNAL (Section 15, 45)
+  # ============================================================
+  - id: VB-CORE-SIGNAL-001
+    section: [15, 45]
+    statement: |
+      EngineSignal::Finished carries (SlotValue, Taint) - canonical form
+      Spec contradiction: older sections say Finished(SlotValue), later says Finished(SlotValue, Taint)
+    proof_level: L2
+    crate: vb_core
+    files:
+      - crates/vb_core/src/engine.rs
+    required:
+      tests: [finish_signal_carries_taint]
+      fuzz: [expr_eval_finish_taint]
+    commands:
+      - cargo nextest run -p vb_core finish_signal
+      - cargo fuzz run expr_eval
+    note: "Spec contradiction DRIFT-SIGNAL - canonicalize to Finished(SlotValue, Taint)"
+
+  # ============================================================
+  # RESOURCE BUDGET ARITHMETIC (Section 64)
+  # ============================================================
+  # NOTE: VB-CORE-RESOURCE-001/002/003 previously referenced
+  # `verification/verus/resource_budget.rs`, which bound to the
+  # 12-field proof-kernel shadow in
+  # `crates/vb_core/src/proof_kernels/resource_budget.rs` rather
+  # than to the actual production `WholeWorkflowBudget` (24 fields)
+  # in `crates/vb_core/src/budget.rs`. The proof-kernel `Budget`
+  # was a separate verification-only abstraction (Verus/Aeneas
+  # Lean extraction target) and is NOT production. The canonical
+  # production binding for `WholeWorkflowBudget` lives in
+  # `verification/verus/extern_budget_bounded.rs` /
+  # `verification/verus/budget_bounded.rs`. The 12-field shadow
+  # spec was rejected by proof-review.md (4 empty bodies,
+  # vacuous proofs, structurally disconnected from production).
+  # These obligations are redirected to the canonical production-
+  # bound files.
+
+  - id: VB-CORE-RESOURCE-001
+    section: [64]
+    statement: |
+      Nested bounds do not overflow; sequential composition sums safely
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+    required:
+      verus: verification/verus/budget_bounded.rs
+      tests: [whole_workflow_budget_within_policy, budget_bounded_default]
+    commands:
+      - verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
+
+  - id: VB-CORE-RESOURCE-002
+    section: [64]
+    statement: |
+      Branch composition takes max safely (BoundednessPolicy::validate max checks)
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+    required:
+      verus: verification/verus/budget_bounded.rs
+    commands:
+      - verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
+
+  - id: VB-CORE-RESOURCE-003
+    section: [64]
+    statement: |
+      Loop composition multiplies safely without overflow
+      (CollectStart/ForEachStart body multiplication via checked_mul)
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+    required:
+      verus: verification/verus/budget_computation.rs
+    commands:
+      - verus --crate-type=lib verification/verus/budget_computation.rs
+
+  - id: VB-CORE-RESOURCE-004
+    section: [64]
+    statement: |
+      Computed budget <= BoundednessPolicy limits
+    proof_level: L3
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+      - crates/vb_core/src/kani_resource_budget_bounded.rs
+    required:
+      kani: kani_resource_budget_bounded.rs
+      property_tests: [whole_workflow_budget_within_policy]
+    commands:
+      - cargo kani --harness kani_resource_budget_bounded
+
+  # ============================================================
+  # IPC DECODER (Section 18, 21, 50)
+  # ============================================================
+  - id: VB-IPC-DECODE-001
+    section: [18, 21, 50]
+    statement: |
+      Decoder validates magic and payload length before allocating payload bytes.
+      Reject oversized payload before allocation (denial of service prevention)
+    proof_level: L3
+    crate: vb_ipc
+    files:
+      - crates/vb_ipc/src/frame.rs
+    required:
+      kani: kani_ipc_header_rejects_oversize.rs
+      fuzz: [ipc_frame]
+      tests: [bad_magic_rejected_before_allocation, oversized_payload_rejected]
+    commands:
+      - cargo kani --harness kani_ipc_header_rejects_oversize
+      - cargo fuzz run ipc_frame
+      - cargo nextest run -p vb_ipc ipc_decode
+
+  - id: VB-IPC-DECODE-002
+    section: [18, 21, 50]
+    statement: |
+      IPC envelope header_len == 60 before payload allocation
+    proof_level: L3
+    crate: vb_ipc
+    files:
+      - crates/vb_ipc/src/frame.rs
+    required:
+      kani: kani_ipc_header.rs
+      tests: [header_len_validation]
+    commands:
+      - cargo kani --harness kani_ipc_header
+      - cargo nextest run -p vb_ipc header
+
+  - id: VB-IPC-DECODE-003
+    section: [18, 21, 50]
+    statement: |
+      IPC frame format unified: transport header + envelope payload
+      Spec contradiction: Section 18 envelope and Section 21 IPC header differ
+    proof_level: L2
+    crate: vb_ipc
+    files:
+      - crates/vb_ipc/src/frame.rs
+    required:
+      fuzz: [ipc_frame]
+      tests: [envelope_header_unified]
+    commands:
+      - cargo fuzz run ipc_frame
+      - cargo nextest run -p vb_ipc ipc_format
+    note: "Spec contradiction DRIFT-IPC-FORMAT - Section 18 vs Section 21"
+
+  # ============================================================
+  # RECORD ENVELOPE DECODE (Section 18, 49)
+  # ============================================================
+  - id: VB-STORAGE-DECODE-001
+    section: [18, 49]
+    statement: |
+      magic validated before payload allocation
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_magic.rs
+      tests: [magic_validated_before_alloc]
+    commands:
+      - cargo kani --harness kani_record_magic
+      - cargo nextest run -p vb_storage magic
+
+  - id: VB-STORAGE-DECODE-002
+    section: [18, 49]
+    statement: |
+      schema validated before payload allocation
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_schema.rs
+    commands:
+      - cargo kani --harness kani_record_schema
+
+  - id: VB-STORAGE-DECODE-003
+    section: [18, 49]
+    statement: |
+      kind-family match validated before payload allocation
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_kind.rs
+    commands:
+      - cargo kani --harness kani_record_kind
+
+  - id: VB-STORAGE-DECODE-004
+    section: [18, 49]
+    statement: |
+      payload_len <= max validated before allocation
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_payload_len.rs
+      fuzz: [decode_record]
+    commands:
+      - cargo kani --harness kani_record_payload_len
+      - cargo fuzz run decode_record
+
+  - id: VB-STORAGE-DECODE-005
+    section: [18, 49]
+    statement: |
+      CRC validated before Postcard decode result is trusted
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_crc.rs
+      tests: [crc_validated_before_decode]
+    commands:
+      - cargo kani --harness kani_record_crc
+      - cargo nextest run -p vb_storage crc
+
+  - id: VB-STORAGE-DECODE-006
+    section: [18, 49]
+    statement: |
+      BLAKE3 digest validated before Postcard decode result is trusted
+    proof_level: L3
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/record.rs
+    required:
+      kani: kani_record_digest.rs
+      tests: [digest_validated_before_decode]
+    commands:
+      - cargo kani --harness kani_record_digest
+      - cargo nextest run -p vb_storage digest
+
+  # ============================================================
+  # REPLAY SEAMS (Section 49, 68) - vb-jpq7.24
+  # ============================================================
+  - id: VB-STORAGE-REPLAY-001
+    section: [49, 68]
+    statement: |
+      events_for_run and events_for_run_from maintain run identity and sequence contiguity:
+      - events_for_run(run): all returned events have run_id == run, sequences contiguous from snapshot
+      - events_for_run_from(run, start_seq): all returned events have run_id == run, seq >= start_seq, strictly increasing by 1
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/journal/replay.rs
+    required:
+      verus: verification/verus/vb_jpq724_events_for_run_production.rs
+    commands:
+      - verus verification/verus/vb_jpq724_events_for_run_production.rs
+    verified:
+      events_for_run_seams: deductively_verified
+    note: "Production-bound Verus contracts for journal replay seams; proof binds to exec functions"
+
+  # ============================================================
+  # REPLAY / JOURNAL SAFETY (Section 49, 68)
+  # ============================================================
+  - id: VB-REPLAY-001
+    section: [49, 68]
+    statement: |
+      Journal-before-dispatch: ActionScheduled committed before action dispatched
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/journal.rs
+      - crates/vb_runtime/src/engine/action.rs
+    required:
+      tla: JournalBeforeDispatch.tla
+      tests: [journal_before_dispatch]
+      crash_lab: [action_dispatch_crash_points]
+    commands:
+      - tla2tools JournalBeforeDispatch.tla
+      - cargo nextest run -p vb_runtime journal_before
+      - cargo xtask crash-lab --workflow minimal --crash-at action_dispatch
+
+  # ============================================================
+  # ACTION DISPATCHER DETERMINISM (Section 49) - production-bound
+  # Verus contracts for vb_runtime::engine::action::execute_do and the
+  # six sibling exec wrappers. Pure projections of every public fn in
+  # crates/vb_runtime/src/engine/action.rs are bound via
+  # assume_specification; outcome-kind validity and discriminant-set
+  # closure are proved non-vacuously.
+  # ============================================================
+  - id: VB-RUNTIME-EXEC-DO-001
+    section: [49]
+    statement: |
+      vb_runtime::engine::action::execute_do is deterministic and
+      outcome-kind valid. All seven public exec wrappers in
+      crates/vb_runtime/src/engine/action.rs (execute_do,
+      execute_do_without_contract, execute_retry_check,
+      execute_error_handler, resume_action_outcome,
+      compute_idempotency_key, resolve_contract) are production-bound
+      via assume_specification bridges to pure projections.
+    proof_level: L4
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/engine/action.rs
+    required:
+      verus: verification/verus/vb_runtime_execute_do_spec.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_runtime_execute_do_spec.rs
+    verified:
+      execute_do_decision_deterministic: deductively_verified
+      outcome_kind_validity: deductively_verified
+      action_outcome_discriminant_closed: deductively_verified
+      execute_do_without_contract_deterministic: deductively_verified
+      execute_retry_check_branch: deductively_verified
+      execute_error_handler_branch: deductively_verified
+      resume_action_outcome_deterministic: deductively_verified
+      compute_idempotency_key_deterministic: deductively_verified
+      resolve_contract_deterministic: deductively_verified
+    note: "Production-bound Verus contracts for vb_runtime action dispatcher; pure projections bound via assume_specification"
+
+  - id: VB-REPLAY-002
+    section: [49, 68]
+    statement: |
+      No duplicate non-idempotent effect during replay
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/idempotency.rs
+    required:
+      tla: RecoveryReplay.tla
+      tests: [no_duplicate_effect_replay]
+    commands:
+      - tla2tools RecoveryReplay.tla
+      - cargo nextest run -p vb_runtime idempotency
+
+  - id: VB-REPLAY-003
+    section: [49, 68]
+    statement: |
+      Stale ActionCompleted event cannot mutate latest attempt
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/engine/action.rs
+    required:
+      tla: AttemptTracking.tla
+      tests: [stale_completion_rejected]
+    commands:
+      - tla2tools AttemptTracking.tla
+      - cargo nextest run -p vb_runtime stale_completion
+
+  - id: VB-REPLAY-004
+    section: [49, 68]
+    statement: |
+      Run has exactly one shard owner
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/mod.rs
+    required:
+      tla: ShardOwnership.tla
+      tests: [single_shard_owner]
+    commands:
+      - tla2tools ShardOwnership.tla
+      - cargo nextest run -p vb_runtime shard_owner
+
+  - id: VB-REPLAY-005
+    section: [49, 68]
+    statement: |
+      A run is not admitted unless resources are reserved
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/admission.rs
+    required:
+      tla: BoundedAdmission.tla
+      tests: [admission_requires_resource_reservation]
+    commands:
+      - tla2tools BoundedAdmission.tla
+      - cargo nextest run -p vb_runtime admission
+
+  - id: VB-REPLAY-006
+    section: [49, 68]
+    statement: |
+      Terminal run never becomes running again
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/transitions.rs
+    required:
+      kani: kani_terminal_state.rs
+      tests: [terminal_state_immutable]
+    commands:
+      - cargo kani --harness kani_terminal_state
+      - cargo nextest run -p vb_runtime terminal
+
+  - id: VB-REPLAY-007
+    section: [49, 68]
+    statement: |
+      Snapshot + tail replay == full journal replay
+    proof_level: L2
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/recovery.rs
+    required:
+      tests: [snapshot_tail_equals_full]
+      diff_test: [replay_suite]
+    commands:
+      - cargo nextest run -p vb_runtime snapshot_tail
+      - cargo xtask diff-test --suite replay
+
+  # ============================================================
+  # FJALL DURABILITY (Section 52)
+  # ============================================================
+  - id: VB-STORAGE-FJALL-001
+    section: [52]
+    statement: |
+      Fjall fsync correctness treated as external dependency assumption
+      with strict fsync boundary enforced
+    proof_level: L6
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/fjall.rs
+    required:
+      supply_chain: [cargo_vet_audit]
+      tests: [fjall_fsync_boundary]
+    commands:
+      - cargo vet
+      - cargo nextest run -p vb_storage fjall_sync
+    note: "Externally assumed - Fjall fsync correctness is a trusted external dependency"
+
+  # ============================================================
+  # EXPRESSION EVALUATOR (Section 46)
+  # ============================================================
+  - id: VB-EXPR-001
+    section: [46]
+    statement: |
+      Bytecode eval == AST eval (semantic equivalence)
+    proof_level: L2
+    crate: vb_expr
+    files:
+      - crates/vb_expr/src/eval.rs
+      - crates/vb_expr/src/bytecode.rs
+    required:
+      differential_tests: [bytecode_vs_ast]
+      fuzz: [expr_bytecode]
+    commands:
+      - cargo nextest run -p vb_expr bytecode_ast_equiv
+      - cargo fuzz run expr_bytecode
+
+  - id: VB-EXPR-002
+    section: [46]
+    statement: |
+      Expression stack depth ≤ 64, expression ops ≤ 256 (bounded)
+    proof_level: L3
+    crate: vb_expr
+    files:
+      - crates/vb_expr/src/stack.rs
+    required:
+      kani: kani_expr_stack.rs
+      property_tests: [expr_stack_bounds]
+    commands:
+      - cargo kani --harness kani_expr_stack
+      - cargo nextest run -p vb_expr stack
+
+  - id: VB-EXPR-003
+    section: [46]
+    statement: |
+      F64 arithmetic/literals fully implemented or rejected at typecheck
+      Spec contradiction: F64 typechecker accepts but evaluator lacks F64 support
+    proof_level: L2
+    crate: vb_expr
+    files:
+      - crates/vb_expr/src/eval.rs
+      - crates/vb_expr/src/typecheck.rs
+    required:
+      tests: [f64_rejected_or_implemented]
+      fuzz: [expr_eval]
+    commands:
+      - cargo nextest run -p vb_expr f64
+      - cargo fuzz run expr_eval
+    note: "Spec contradiction DRIFT-F64 - implement or reject at typecheck"
+
+  # ============================================================
+  # COMPILE DIGEST / PRIMITIVE COVERAGE (Section 21)
+  # Covers canonical_digest completeness per StepPrimitive variant.
+  # Bead: vb-xi2f.31 (Repeat digest coverage).
+  # ============================================================
+  - id: VB-COMPILE-DIGEST-REPEAT-001
+    section: [21]
+    statement: |
+      digest_step_primitive consumes Repeat.max_attempts (u16, little-endian)
+      in the blake3 hasher state. Different max_attempts produce different
+      intermediate hasher states.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_max_attempts_consumed
+      tests: [test_repeat_max_attempts_changes_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_max_attempts_consumed
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_max_attempts_changes_digest -- --nocapture
+    note: "Kani harness compiles but verification blocked by BLOCKER-BLAKE3-INLINEASM (blake3 InlineAsm not supported by Kani 0.67). Compensated by unit tests, integration tests, and proptest."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-002
+    section: [21]
+    statement: |
+      digest_step_primitive recursively consumes all Repeat.body step IDs
+      and primitive names in the blake3 hasher state. Different body steps
+      produce different intermediate hasher states.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_body_consumed
+      tests: [test_repeat_body_changes_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_body_consumed
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_body_changes_digest -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Body depth bounded to 2 in Kani harness; proptest provides deeper coverage."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-003
+    section: [21]
+    statement: |
+      Different Repeat configurations produce different canonical_digest outputs.
+      canonical_digest(WF1) != canonical_digest(WF2) when WF1 and WF2 differ
+      only in Repeat max_attempts or body steps.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_different_params_different_digest
+      proptest: v1_primitive_lowering.rs (repeat cases)
+      tests: [test_repeat_digest_cross_path_equivalent, test_repeat_different_params_different_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_different_params_different_digest
+      - cargo test --package vb_compile --test v1_primitive_lowering proptest_repeat -- --nocapture
+      - cargo test --package vb_compile --test repeat_digest_integration -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Proptest (64 cases) + integration tests (7 cases) = compensating evidence."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-004
+    section: [21]
+    statement: |
+      Both duplicate implementations of digest_step_primitive produce identical
+      hasher state for the same Repeat input. Only the reachable implementation
+      (part_05.rs) is verified; the compile/mod.rs copy is dead code (not in
+      module tree) and is verified only via cross-path integration test equivalence.
+    proof_level: L2
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      tests: [test_repeat_digest_cross_path_equivalent, test_repeat_same_config_same_digest_cross_path]
+    commands:
+      - cargo test --package vb_compile --test repeat_digest_integration test_repeat_digest_cross_path_equivalent -- --nocapture
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_same_config_same_digest_cross_path -- --nocapture
+    note: "compile/mod.rs is dead code (no mod declaration in lib.rs). Cross-path equivalence tests prove compile_workflow and compile_source produce identical digests. Kani harness kani_repeat_both_impls_equivalent is BLOCKED because compile/mod.rs is unreachable from module tree."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-005
+    section: [21]
+    statement: |
+      Existing Set and Finish primitive hashing behavior is preserved after
+      Repeat fix. Same non-repeat inputs produce same digests as before the fix.
+      Idempotency property: same config → same digest.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_finish_set_digest_unchanged
+      proptest: v1_primitive_lowering.rs (idempotency)
+      tests: [test_repeat_same_config_same_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_finish_set_digest_unchanged
+      - cargo test --package vb_compile --test v1_primitive_lowering proptest_equal_primitive_sources_compile_to_equal_digest_and_ir -- --nocapture
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_same_config -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Full vb_compile crate test suite (306 tests) passes, confirming no regression."
+
+  # ============================================================
+  # GENERATED RUST PARITY (Section 17)
+  # ============================================================
+  - id: VB-CODEGEN-001
+    section: [17]
+    statement: |
+      Generated Rust == IR interpreter on terminal results, taint, journal, errors
+    proof_level: L2
+    crate: vb_codegen
+    files:
+      - crates/vb_codegen/src/**/*.rs
+    required:
+      differential_tests: [generated_vs_ir]
+      trybuild: [generated_no_forbidden_tokens]
+    commands:
+      - cargo nextest run -p vb_codegen parity
+      - cargo nextest run -p vb_codegen --test trybuild
+
+  # ============================================================
+
+  # REFERENCE MODEL CORRECTNESS
+  # ============================================================
+  - id: VB-REF-001
+    section: [17, 45, 47]
+    statement: |
+      Reference engine == optimized engine on all defined inputs
+    proof_level: L2
+    crate: reference
+    files:
+      - reference/engine_model.rs
+    required:
+      differential_tests: [engine_vs_reference]
+    commands:
+      - cargo nextest run reference engine_vs_reference
+
+  - id: VB-REF-002
+    section: [47]
+    statement: |
+      Taint model matches reference taint lattice
+    proof_level: L2
+    crate: reference
+    files:
+      - reference/taint_model.rs
+    required:
+      differential_tests: [taint_vs_reference]
+    commands:
+      - cargo nextest run reference taint_vs_reference
+
+  # ============================================================
+  # CONCURRENCY SEAMS (Loom)
+  # ============================================================
+  - id: VB-CONC-001
+    section: [49]
+    statement: |
+      Journal writer queue: ordered write before flush
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/journal/writer.rs
+    required:
+      loom: journal_writer_queue
+    commands:
+      - cargo xtask loom --model journal_writer_queue
+
+  - id: VB-CONC-002
+    section: [49]
+    statement: |
+      Action completion vs cancel race: proper ordering
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/engine/action.rs
+    required:
+      loom: action_completion_cancel
+    commands:
+      - cargo xtask loom --model action_completion_cancel
+
+  - id: VB-CONC-003
+    section: [49]
+    statement: |
+      Timer fired vs cancel: proper ordering
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/timer_wheel.rs
+    required:
+      loom: timer_fired_cancel
+    commands:
+      - cargo xtask loom --model timer_fired_cancel
+
+  - id: VB-CONC-004
+    section: [49]
+    statement: |
+      Shutdown drain: graceful shutdown ordering
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/lifecycle.rs
+    required:
+      loom: shutdown_drain
+    commands:
+      - cargo xtask loom --model shutdown_drain
+
+  - id: VB-CONC-005
+    section: [49]
+    statement: |
+      Bounded queue wrapper: enqueue/dequeue invariants
+    proof_level: L3
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/frame_pool.rs
+    required:
+      loom: bounded_queue
+    commands:
+      - cargo xtask loom --model bounded_queue
+
+# ============================================================
+# VERUS SPEC REGISTRY (STRONG PRODUCTION BINDING)
+# ============================================================
+# Compact registration index of every STRONG-bound Verus spec file
+# under verification/verus/ that establishes an auditable production
+# binding via the extern_*.rs mirror + #[path] mechanism (GOD RULE 2).
+# Each entry maps a spec file to its primary production source. The
+# detailed obligation entries above (VB-*) cite these files where
+# relevant; this section is the canonical lookup for which production
+# source each Verus spec file is bound to.
+#
+# Trust boundary: every extern mirror wraps production exec bodies in
+# #[verifier::external] so Verus verifies only structural resolution,
+# discriminant-set closure, and contract well-formedness — not the
+# production body semantics. Drift between the mirror and the
+# production source is the explicit drift-detection mechanism.
+# ============================================================
+verus_registry:
+
+  # --- vb_core safety kernels ------------------------------------------
+  - id: PO-VERUS-001
+    description: "WholeWorkflowBudget boundedness: sequential, nested, branch, aggregate, diagnostic totals stay within BoundednessPolicy limits (no u64 overflow on composition)."
+    verus: verification/verus/budget_bounded.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-002
+    description: "WholeWorkflowBudget::compute arithmetic: max_total_steps/slots/fanout/depth computed from IR traversal; CollectStart budget arithmetic bound to production (PO-024)."
+    verus: verification/verus/budget_computation.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-003
+    description: "WholeWorkflowBudget monotonicity: identical (nodes, entry, contract) inputs produce identical computed dimensions across recomputation (INV-005)."
+    verus: verification/verus/budget_monotonic.rs
+    production: crates/vb_core/src/budget.rs
+
+  - id: PO-VERUS-004
+    description: "RunFrame construction and reinitialization invariants: PRE-001, POST-001, INV-007 (VB-CORE-RUNFRAME-001..003)."
+    verus: verification/verus/run_frame_invariant.rs
+    production: crates/vb_core/src/frame.rs
+
+  - id: PO-VERUS-005
+    description: "ValueStore arena cap enforcement: spec_value_store_cap + proof_arena_cap_enforced (INV-002)."
+    verus: verification/verus/value_store_invariant.rs
+    production: crates/vb_core/src/value_store.rs
+
+  - id: PO-VERUS-006
+    description: "StepBudget remaining <= MAX_STEP_BUDGET invariant (INV-001)."
+    verus: verification/verus/signals_invariant.rs
+    production: crates/vb_core/src/engine/signals.rs
+
+  - id: PO-VERUS-007
+    description: "StepBudget::try_take monotonicity: remaining is monotonically non-increasing; never underflows (INV-006)."
+    verus: verification/verus/signals_try_take.rs
+    production: crates/vb_core/src/engine/signals.rs
+
+  - id: PO-VERUS-008
+    description: "StepIdx::checked_add arithmetic bound to production; checked_step_offset bounds checking (PO-015, PO-027)."
+    verus: verification/verus/step_offset.rs
+    production: crates/vb_core/src/ids/mod.rs
+
+  - id: PO-VERUS-009
+    description: "CompiledWorkflow::try_from_parts validation: validate_parts and validate_budget bound to production decision surface (PO-021)."
+    verus: verification/verus/try_from_parts.rs
+    production: crates/vb_core/src/workflow/mod.rs
+
+  # --- vb_runtime / vb_storage admission gates -------------------------
+  - id: PO-VERUS-010
+    description: "Accepted-artifact admission: WorkflowDigest, VerificationProof, AcceptedArtifact, ADMISSION_GATE_COUNT = 15, is_strict_admission_valid (vb-qi37.4)."
+    verus: verification/verus/admission_artifact_model.rs
+    production: crates/vb_storage/src/admission.rs
+
+  - id: PO-VERUS-011
+    description: "Accepted-artifact capability proof: exact capability name/action matching, runtime cardinality, certificate profile count (VERUS-CAP-001, VERUS-CARD-003, VERUS-CERT-007)."
+    verus: verification/verus/capability_artifact_model.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-012
+    description: "Accepted-artifact admission decision lattice: ArtifactCase/AdmissionError mapped to Rust ArtifactEnvelopeError variants (PO-004)."
+    verus: verification/verus/accepted_artifact_admission_decision.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-013
+    description: "Atomic accepted-run admission: required families, coherent inputs, accepted_at_seq non-sentinel, strict compiled payloads, required index preconditions (VERUS-PRE-001..006)."
+    verus: verification/verus/accepted_run_atomic_admission.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-014
+    description: "Accepted-envelope v1 admission: canonical gate count, durable non-stale evidence, accepted proof flags, supported schema/status (VERUS-ENV-006 / PO-006)."
+    verus: verification/verus/accepted_envelope_model.rs
+    production: crates/vb_storage/src/admission.rs
+
+  - id: PO-VERUS-015
+    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production admission.rs:711-725 (VERUS-CLI-DIGEST-002 / PO-002)."
+    verus: verification/verus/accepted_cli_digest_binding.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-016
+    description: "Strict admission witness: REQUIRED_GATE_COUNT = 15 invariant; model-level strict admission failure classification (PO-003)."
+    verus: verification/verus/strict_admission_witness.rs
+    production: crates/vb_runtime/src/admission.rs
+
+  - id: PO-VERUS-017
+    description: "Idempotency decision table: 5 idempotency decision fns (vb-ko29.2) bound to production admission.rs:531-545 and vb_validate/src/idempotency_contract.rs:140-187 (VERUS-DECISION-001..005, VERUS-PARITY-003)."
+    verus: verification/verus/idempotency_decision.rs
+    production: crates/vb_storage/src/admission.rs
+
+  # --- Recovery kernels -------------------------------------------------
+  - id: PO-VERUS-018
+    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029)."
+    verus: verification/verus/recovery_verification.rs
+    production: crates/vb_storage/src/recovery/types.rs
+
+  # PO-VERUS-019 (Recovery hydration contracts) DELETED:
+  #   The Verus spec `verification/verus/recovery_hydration_contracts.rs`
+  #   and its companion `extern_recovery_hydration_contracts.rs` and
+  #   `production_inner/recovery_hydration_contracts_production.rs`
+  #   were a vacuum proof. The spec's `recovery_decision_pure` exec
+  #   wrapper took a fabricated `SpecRecoveryInput` (16-field struct)
+  #   with no single production counterpart. The actual production
+  #   hydration decision is split across
+  #   `crates/vb_storage/src/recovery/hydrate.rs`
+  #   (hydrate_run_frame, hydrate_run_frame_from_events,
+  #   hydrate_snapshot_tail_preconditions, validate_*_metadata,
+  #   validate_recovery_data_present) and
+  #   `crates/vb_storage/src/recovery/recover.rs`
+  #   (recover_runtime_summary, recover_runtime_frame_seed,
+  #   check_workflow_source_digest, check_compiled_ir_digest), each
+  #   with a signature that cannot be reduced to
+  #   `(SpecRecoveryInput) -> Result<SpecRecoverySuccess, SpecRecoveryError>`.
+  #   Per GOD RULE 2, the file was deleted (not bound).
+
+  - id: PO-VERUS-020
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production types.rs:666-852 verbatim (VERUS-REPLAY-004)."
+    verus: verification/verus/idempotency_replay_tracker.rs
+    production: crates/vb_storage/src/recovery/types.rs
+
+  # --- IPC kernels ------------------------------------------------------
+  - id: PO-VERUS-021
+    description: "IPC capacity bounds: QueueCapacity::new, MaxPayloadBytes arithmetic bound to production bounded.rs (REFINE-IPC-002 / PO-002)."
+    verus: verification/verus/ipc_capacity_bounds.rs
+    production: crates/vb_ipc/src/bounded.rs
+
+  - id: PO-VERUS-022
+    description: "IPC runtime state-machine transitions: RuntimeState, RuntimeEvent transitions bound to production ipc_refinement.rs (REFINE-IPC-003..005; VERUS-IPC-003..005)."
+    verus: verification/verus/ipc_runtime_transitions.rs
+    production: crates/vb_runtime/src/ipc_refinement.rs
+
+  - id: PO-VERUS-023
+    description: "IPC strict-admission gate: 3-boolean production surface collapsed to 2-boolean spec surface at ipc_refinement.rs:21-37,123-134 (REFINE-IPC-001 / VERUS-IPC-001)."
+    verus: verification/verus/ipc_strict_admission.rs
+    production: crates/vb_runtime/src/ipc_refinement.rs
+
+  # --- Compile kernels --------------------------------------------------
+  - id: PO-VERUS-024
+    description: "lower_canonical_collect emission invariants: SpecCompileError::StepFieldShape match; StepIdx/SlotIdx checked bounds (PO-011)."
+    verus: verification/verus/collect_lowering.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
+
+  - id: PO-VERUS-025
+    description: "lower_canonical_collect IR struct field refinement: CompiledCollect IR field shapes match production surface (PO-012)."
+    verus: verification/verus/collect_ir_structure.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
+
+  - id: PO-VERUS-026
+    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production part_04.rs:213-297 (PO-006, PO-009, PO-018)."
+    verus: verification/verus/emit_single_body_set.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+
+  - id: PO-VERUS-027
+    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production part_04.rs:213-297 + part_05_digest.rs:6-22 (PO-030)."
+    verus: verification/verus/error_parity.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+
+  - id: PO-VERUS-028
+    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005)."
+    verus: verification/verus/v1_primitive_lowering.rs
+    production: crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
+
+  - id: PO-VERUS-029
+    description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=8; schema version invariant (INV-001, INV-005)."
+    verus: verification/verus/diagnostic_envelope_verus.rs
+    production: crates/vb_cli/src/exit_code.rs
+
+  - id: PO-VERUS-030
+    description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at chunk_002.rs:127-174 (PO-VERUS-001..003)."
+    verus: verification/verus/cancel_kill_lattice.rs
+    production: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+
+  - id: PO-VERUS-031
+    description: "vb-6da68 append_strict commit contract: a failed batch.strict().commit() surfaces as Err(JournalError::Fjall) (NOT Ok or DuplicateEvent); the staged event is NOT visible after the failure (events keyspace unchanged — Fjall OwnedWriteBatch atomicity); a retry append_strict of the same event returns Ok(()) (idempotent-retry). Supersedes the vb-vzcuf-PS-004 commit-bridge for the append_strict surface (POB-vb-vzcuf-013 coverage of the commit-failure mode). Single localized trusted axiom: Fjall OwnedWriteBatch atomicity on Err (TBP-008 + vb-o6qcf.3 LIVE test compensating evidence)."
+    verus: verification/verus/vb-6da68-append-strict-commit.rs
+    production: crates/vb_storage/src/journal/append.rs
+
+# ============================================================
+# EVIDENCE FORMAT
+# ============================================================
+evidence_schema:
+  kind: ProofEvidence
+  bead: string
+  commit: string
+  obligations:
+    - id: string
+      status: pass | fail | waived | deferred
+      level: L0 | L1 | L2 | L3 | L4 | L5 | L6
+      commands:
+        - string
+      log: string
+  remaining_assumptions:
+    - string
+  verified:
+    taint_lattice: deductively_verified | property_tested | fuzzed | externally_assumed
+    step_state: deductively_verified | bounded_model_checked | property_tested
+    resource_budget: deductively_verified | bounded_model_checked | property_tested
+    ipc_decoder: fuzzed_and_bounded_model_checked | bounded_model_checked | fuzzed
+    generated_parity: differentially_tested | property_tested
+    replay_safety: model_checked_and_crash_lab_evidenced | model_checked | fuzzed
+    fjall_durability: externally_assumed_with_strict_fsync_boundary | operationally_evidenced
+
+# ============================================================
+# PROOF LEVEL ASSIGNMENTS BY CRATE
+# ============================================================
+proof_matrix:
+  vb_core::ids:
+    proof_strategy: "Kani + Verus. Prove checked conversion, checked indexing, no unchecked arithmetic/casts."
+    primary_level: L3
+    secondary_level: L4
+  vb_core::value:
+    proof_strategy: "Verus/Kani for taint lattice, ConstValue total mapping, handle validity. Tests for FiniteF64."
+    primary_level: L4
+    secondary_level: L3
+  vb_core::frame:
+    proof_strategy: "Verus for step-state transitions and slot bounds. Kani for StepBudget."
+    primary_level: L4
+    secondary_level: L3
+  vb_core::engine:
+    proof_strategy: "Reference model + differential tests first. Verus only for small nodes: Nop, SetConst, Copy, Finish, ChooseSlot."
+    primary_level: L2
+    secondary_level: L4
+  vb_expr:
+    proof_strategy: "Property tests and differential tests: AST interpreter vs bytecode. Kani for stack-depth arithmetic and overflow. Fuzz arbitrary expression bytes."
+    primary_level: L2
+    secondary_level: L3
+  vb_yaml:
+    proof_strategy: "Fuzz + golden diagnostics. Do not try full formal parser proof. Prove 'no panic, typed failure, no forbidden YAML accepted'."
+    primary_level: L2
+    secondary_level: L1
+  vb_validate:
+    proof_strategy: "Property tests over generated ASTs. Verus for small validators if extracted into pure kernels."
+    primary_level: L1
+    secondary_level: L4
+  vb_compile:
+    proof_strategy: "Differential tests: YAML → AST → IR → reference model. Verus/Kani for WholeWorkflowBudget arithmetic."
+    primary_level: L2
+    secondary_level: L4
+  vb_storage:
+    proof_strategy: "Kani for envelope header decode, length checks, sequence arithmetic. Fuzz records. Crash-lab for journal/recovery semantics."
+    primary_level: L3
+    secondary_level: L2
+  vb_runtime:
+    proof_strategy: "TLA+/PlusCal model for journal/recovery/action ordering. Loom for shard queue/cancel/action-completion races. Differential tests against reference engine."
+    primary_level: L3
+    secondary_level: L2
+  vb_ipc:
+    proof_strategy: "Kani + fuzz. The key property is 'reject before allocation'."
+    primary_level: L3
+    secondary_level: L2
+  vb_ui_model:
+    proof_strategy: "Schema tests, redaction tests, bounded-list tests."
+    primary_level: L1
+    secondary_level: L0
+  vb_ui_makepad:
+    proof_strategy: "Snapshot, overlap, redaction, no-runtime-core dependency gates. Formal proof is not worth it here."
+    primary_level: L0
+    secondary_level: L1
+  supply_chain:
+    proof_strategy: "cargo audit, cargo deny, cargo vet, cargo geiger, dependency-scope beads."
+    primary_level: L0
+    secondary_level: L6

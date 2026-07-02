@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 4,
+  "sublane": "proof-plan-command-repair-after-state11-package-name-failures",
+  "delegate": "proof-planner",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-plan-review-input.md",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-plan-review-input.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl"
+  ],
+  "attempt": 3,
+  "repair_route": "State 4 command repair for invalid workspace_tests package commands after State 11 rejection"
+}

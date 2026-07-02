@@ -1,0 +1,32 @@
+[package]
+name = "vb_storage"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+arrayvec.workspace = true
+blake3.workspace = true
+chrono.workspace = true
+crc32c.workspace = true
+fjall.workspace = true
+postcard.workspace = true
+rustix.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile.workspace = true
+
+[features]
+default = []
+legacy-kani = []
+kani-recovery = []
+kani-typed-partitioned-ids = []
+kani-vb-u8gi-decode-taxonomy = []
+kani-vb-vzcuf = []
+
+[lints]
+workspace = true

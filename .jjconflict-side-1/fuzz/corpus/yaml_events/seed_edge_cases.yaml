@@ -1,0 +1,13 @@
+name: edge-cases
+version: "1.0"
+steps:
+  - id: empty-string-test
+    expr: '""'
+  - id: unicode-test
+    expr: '"こんにちは"'
+  - id: multiline-string
+    expr: |
+      line1
+      line2
+  - id: special-chars
+    expr: '"\n\t\r\\\""

@@ -1,0 +1,31 @@
+{"id":"TLA-PRE-001","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-PRE-002","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-PRE-003","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"VERUS-PRE-004","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"TLA-POST-001","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-POST-002","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-POST-004","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-POST-007","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-INV-001","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-INV-004","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"TLA-INV-006","result":"PASS","evidence":"TLC RecoveryHydration exit 0"}
+{"id":"VERUS-PRE-005","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-POST-003","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-POST-005","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-INV-002","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-INV-003","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-INV-005","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"VERUS-DIGEST-001","result":"PASS","evidence":"Verus recovery_verification 17 verified, 0 errors"}
+{"id":"ERR-001","result":"PASS","evidence":"rtk cargo test -p vb_storage recovery::tests:: passed 77 tests"}
+{"id":"ERR-002","result":"PASS","evidence":"Verus recovery_verification 17 verified plus vb_storage recovery tests"}
+{"id":"ERR-003","result":"PASS","evidence":"Verus recovery_verification 17 verified plus vb_storage recovery tests"}
+{"id":"ERR-004","result":"WAIVED","evidence":"approved optional downstream waiver"}
+{"id":"ERR-005","result":"WAIVED","evidence":"approved optional downstream waiver"}
+{"id":"ERR-006","result":"PASS","evidence":"TLC RecoveryHydration exit 0 plus vb_storage recovery tests"}
+{"id":"ERR-007","result":"PASS","evidence":"TLC RecoveryHydration exit 0 plus vb_storage recovery tests"}
+{"id":"ERR-008","result":"PASS","evidence":"rtk cargo test -p vb_storage recovery::tests:: passed 77 tests"}
+{"id":"ERR-009","result":"PASS","evidence":"TLC RecoveryHydration exit 0 plus vb_storage recovery tests"}
+{"id":"ERR-010","result":"PASS","evidence":"Verus recovery_verification 17 verified plus vb_storage recovery tests"}
+{"id":"ERR-011","result":"PASS","evidence":"Verus recovery_verification 17 verified plus vb_runtime recovery tests"}
+{"id":"ERR-012","result":"PASS","evidence":"Verus recovery_verification 17 verified plus vb_runtime recovery tests"}
+{"id":"STATIC-SCAN-001","result":"PASS","evidence":"moon run :fmt/:lint-src/:check/:source-length/:test/:bench-build passed"}

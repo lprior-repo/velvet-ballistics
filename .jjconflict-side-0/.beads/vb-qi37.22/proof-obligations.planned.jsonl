@@ -1,0 +1,3 @@
+{"id":"PO-DEP-CLOSED","command":"bd show vb-6f02 vb-kkvb vb-ypnk vb-qi37 --json | jq '[.[] | {id,title,status,closed_at,close_reason,notes}]'","required":true,"owner_state":11,"rerun_from":11,"expected_evidence":"closed dependency statuses","status":"PASS"}
+{"id":"PO-XTASK-SURFACE","command":"/home/lewis/src/velvet-ballistics/target/debug/xtask --help","required":true,"owner_state":11,"rerun_from":11,"expected_evidence":"required command families listed","status":"PASS"}
+{"id":"PO-CONTRACTS-DATA","command":"cue vet contract schemas and instances","required":true,"owner_state":11,"rerun_from":11,"expected_evidence":"exit status 0 for targeted CUE validations","status":"PASS"}

@@ -1,0 +1,6 @@
+{"state":6,"gate":"implementation","status":"PASS","evidence":"source/test/config repairs applied in isolated workspace"}
+{"state":7,"gate":"fmt","command":"rtk cargo fmt --all -- --check","status":"PASS","exit_code":0}
+{"state":8,"gate":"vb_storage_check","command":"rtk cargo check -p vb_storage --test recovery_bdd_tests","status":"PASS","exit_code":0}
+{"state":9,"gate":"xtask_all_targets_clippy","command":"rtk cargo clippy -p xtask --all-targets -- -D warnings","status":"FAIL_TEST_LINT_DEBT","exit_code":101,"note":"canonical moon lint-src passed; broad test allowlist intentionally not added"}
+{"state":10,"gate":"vb_cli_all_targets_clippy","command":"rtk cargo clippy -p vb_cli --all-targets -- -D warnings","status":"FAIL_TEST_LINT_DEBT","exit_code":101,"note":"canonical moon lint-src passed; broad test allowlist intentionally not added"}
+{"state":11,"gate":"moon_ci_forced","command":"moon ci --base HEAD --head HEAD --force","status":"PASS","exit_code":0,"log":"/tmp/vb-wg64-moon-final.log"}

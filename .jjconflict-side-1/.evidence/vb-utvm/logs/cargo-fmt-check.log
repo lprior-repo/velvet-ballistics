@@ -1,0 +1,4023 @@
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/api_tests.rs:917:
+     let result = discover_boundaries(workspace);
+     assert!(result.is_ok());
+     let candidates = result.unwrap();
+[31m-    assert!(
+(B[m[31m-        candidates
+(B[m[31m-            .iter()
+(B[m[31m-            .any(|c| c.marker == "ipc-frame-boundary")
+(B[m[31m-    );
+(B[m[32m+    assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/api_tests.rs:1285:
+         ),
+         "write surfaces file with decoder marker",
+     );
+[31m-    let marker_file = temp_dir
+(B[m[31m-        .path()
+(B[m[31m-        .join("crates/vb_core/src/lib.rs");
+(B[m[32m+    let marker_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
+(B[m     assert_io_ok(
+         fs::create_dir_all(marker_file.parent().unwrap()),
+         "create parent",
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/error_tests.rs:236:
+     let result: Result<(), BoundaryInventoryError> =
+         Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
+     assert!(result.is_err());
+[31m-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+(B[m[32m+    assert_eq!(
+(B[m[32m+        result.unwrap_err(),
+(B[m[32m+        BoundaryInventoryError::WorkspaceNotDiscoverable
+(B[m[32m+    );
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/error_tests.rs:244:
+     let result: Result<(), BoundaryInventoryError> =
+         Err(BoundaryInventoryError::InventoryParseFailure);
+     assert!(result.is_err());
+[31m-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+(B[m[32m+    assert_eq!(
+(B[m[32m+        result.unwrap_err(),
+(B[m[32m+        BoundaryInventoryError::InventoryParseFailure
+(B[m[32m+    );
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/error_tests.rs:284:
+ 
+ #[test]
+ fn error_hash_collision_free_across_13_variants() {
+[31m-    use std::collections::hash_map::DefaultHasher;
+(B[m     use std::collections::HashSet;
+[32m+    use std::collections::hash_map::DefaultHasher;
+(B[m     use std::hash::{Hash, Hasher};
+     let variants: [BoundaryInventoryError; 13] = [
+         BoundaryInventoryError::WorkspaceNotDiscoverable,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/parser_tests.rs:568:
+ 
+ #[test]
+ fn parse_inventory_schema_version_u32_max_rejected() {
+[31m-    let json = format!(
+(B[m[31m-        r#"{{"schema_version": {}, "boundaries": []}}"#,
+(B[m[31m-        u32::MAX
+(B[m[31m-    );
+(B[m[32m+    let json = format!(r#"{{"schema_version": {}, "boundaries": []}}"#, u32::MAX);
+(B[m     let result = parse_inventory(json.as_bytes());
+     assert_eq!(
+         result.unwrap_err(),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_boundary_inventory/src/tests/property_tests.rs:6:
+ 
+ use crate::boundary_inventory::{
+     BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRecord, BoundaryRecordDraft,
+[31m-    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput,
+(B[m[31m-    EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus,
+(B[m[31m-    ThreatStatement, ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
+(B[m[32m+    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind,
+(B[m[32m+    EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus, ThreatStatement,
+(B[m[32m+    ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
+(B[m };
+ use proptest::prelude::*;
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/agent_context/tests/unit.rs:55:
+         .get("binary_aliases")
+         .and_then(Value::as_array)
+         .expect("binary_aliases must be an array");
+[31m-    assert!(aliases
+(B[m[31m-        .iter()
+(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballistics")));
+(B[m[32m+    assert!(
+(B[m[32m+        aliases
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballistics"))
+(B[m[32m+    );
+(B[m     assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:537:
+ 
+     #[test]
+     fn event_name_returns_all_variants() {
+[31m-        assert_eq!(event_name(&JournalEvent::StepStarted { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "StepStarted");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::ActionCompletedEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1 }), "ActionCompleted");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::ActionFailedEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1 }), "ActionFailed");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::AskScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "AskScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::AskAnsweredEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "AskAnswered");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::RetryScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "RetryScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::WaitScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "WaitScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::SlotWrittenEvent { run: mk_run(1), seq: mk_seq(1), slot: mk_slot(1), value: None, extra: None, attempt: 1 }), "SlotWritten");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::StepStarted {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "StepStarted"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::ActionCompletedEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "ActionCompleted"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::ActionFailedEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "ActionFailed"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::AskScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "AskScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::AskAnsweredEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "AskAnswered"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::RetryScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "RetryScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::WaitScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "WaitScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::SlotWrittenEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                slot: mk_slot(1),
+(B[m[32m+                value: None,
+(B[m[32m+                extra: None,
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "SlotWritten"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:551:
+     fn events_differ_returns_false_for_identical_step_succeeded() {
+         let a = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(!events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:561:
+     #[test]
+     fn events_differ_returns_true_for_different_step_in_step_succeeded() {
+         let a = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(2), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(2),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:572:
+     #[test]
+     fn events_differ_returns_true_for_different_event_types() {
+         let a = JournalEvent::StepStarted {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:583:
+     #[test]
+     fn events_differ_compares_action_scheduled_by_step_and_action() {
+         let a = JournalEvent::ActionScheduled {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            action: mk_action(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::ActionScheduled {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(2), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            action: mk_action(2),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:594:
+     #[test]
+     fn events_differ_compares_slot_written_by_slot_and_value() {
+         let a = JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(1),
+(B[m[31m-            value: Some(vec![1]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(1),
+(B[m[32m+            value: Some(vec![1]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(vec![1]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(vec![1]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:607:
+     #[test]
+     fn events_differ_compares_run_finished_by_result() {
+         let a = JournalEvent::RunFinished {
+[31m-            run: mk_run(1), seq: mk_seq(1), result: mk_slot(0), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            result: mk_slot(0),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::RunFinished {
+[31m-            run: mk_run(1), seq: mk_seq(1), result: mk_slot(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            result: mk_slot(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:624:
+     #[test]
+     fn collect_step_outcomes_ignores_non_step_relevant_events() {
+         let events = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         assert!(collect_step_outcomes(&events).is_empty());
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:633:
+     #[test]
+     fn collect_step_outcomes_records_step_succeeded_with_output() {
+         let events = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(5), output: mk_slot(3),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(5),
+(B[m[32m+            output: mk_slot(3),
+(B[m         }];
+         let outcomes = collect_step_outcomes(&events);
+         assert_eq!(outcomes.get(&5).unwrap(), "succeeded(output=3)");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:642:
+     #[test]
+     fn collect_step_outcomes_records_action_failed_with_action() {
+         let events = vec![JournalEvent::ActionFailedEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(2), action: mk_action(7), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(2),
+(B[m[32m+            action: mk_action(7),
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let outcomes = collect_step_outcomes(&events);
+         assert_eq!(outcomes.get(&2).unwrap(), "failed(action=7)");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:652:
+     fn collect_step_outcomes_last_occurrence_wins_for_same_step() {
+         let events = vec![
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+             JournalEvent::ActionFailedEvent {
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(1), action: mk_action(4), attempt: 1,
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(4),
+(B[m[32m+                attempt: 1,
+(B[m             },
+         ];
+         let outcomes = collect_step_outcomes(&events);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:667:
+         let val = mk_slot_value(42);
+         let bytes = postcard::to_allocvec(&val).unwrap();
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(bytes), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(bytes),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&2).unwrap(), "42");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:677:
+     #[test]
+     fn collect_slot_values_displays_none_for_absent_value() {
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(3),
+(B[m[31m-            value: None, extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(3),
+(B[m[32m+            value: None,
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&3).unwrap(), "none");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:687:
+     #[test]
+     fn collect_slot_values_shows_byte_count_for_undecodable_bytes() {
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(5),
+(B[m[31m-            value: Some(vec![0xFF; 3]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(5),
+(B[m[32m+            value: Some(vec![0xFF; 3]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&5).unwrap(), "[3 bytes]");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:705:
+     #[test]
+     fn compute_diff_reports_only_in_a_when_b_is_shorter() {
+         let a = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&a, &[]);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:717:
+     #[test]
+     fn compute_diff_reports_only_in_b_when_a_is_shorter() {
+         let b = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&[], &b);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:727:
+     #[test]
+     fn compute_diff_reports_no_diff_for_identical_events() {
+         let a = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let b = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let result = compute_diff(&a, &b);
+         assert_eq!(result.diffs.len(), 0);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:740:
+     fn compute_diff_detects_step_missing_in_b() {
+         let a = vec![
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(2), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(2),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+         ];
+         let b = vec![JournalEvent::StepSucceeded {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:750:
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let result = compute_diff(&a, &b);
+[31m-        let has_missing = result.diffs.iter().any(|d| d["kind"].as_str() == Some("step_missing_in_b"));
+(B[m[32m+        let has_missing = result
+(B[m[32m+            .diffs
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|d| d["kind"].as_str() == Some("step_missing_in_b"));
+(B[m         assert!(has_missing);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:759:
+         let val_a = postcard::to_allocvec(&mk_slot_value(10)).unwrap();
+         let val_b = postcard::to_allocvec(&mk_slot_value(20)).unwrap();
+         let a = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(val_a), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(val_a),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let b = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(2), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(val_b), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(val_b),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let result = compute_diff(&a, &b);
+[31m-        let has_slot_diff = result.diffs.iter().any(|d| d["kind"].as_str() == Some("slot_value_differs"));
+(B[m[32m+        let has_slot_diff = result
+(B[m[32m+            .diffs
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|d| d["kind"].as_str() == Some("slot_value_differs"));
+(B[m         assert!(has_slot_diff);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:775:
+     fn compute_diff_correctly_reports_event_counts() {
+         let a = vec![
+             JournalEvent::RunAccepted {
+[31m-                run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m                 workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+             },
+             JournalEvent::StepStarted {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:782:
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(1), attempt: 1,
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1,
+(B[m             },
+         ];
+         let b = vec![JournalEvent::RunAccepted {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:786:
+[31m-            run: mk_run(2), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&a, &b);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:73:
+ 
+     #[test]
+     fn exact_exception_matches_repository_path() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::RepositoryPath { path: "src/old.rs".into() },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::RepositoryPath {
+(B[m[32m+            path: "src/old.rs".into(),
+(B[m[32m+        }]);
+(B[m         let ex = exact_exception("src/old.rs", &cfg).unwrap();
+[31m-        assert_eq!(ex, LegacyException::RepositoryPath { path: "src/old.rs".into() });
+(B[m[32m+        assert_eq!(
+(B[m[32m+            ex,
+(B[m[32m+            LegacyException::RepositoryPath {
+(B[m[32m+                path: "src/old.rs".into()
+(B[m[32m+            }
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:84:
+     fn exact_exception_matches_master_filename() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::MasterFilename { filename: "legacy.md".into() },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::MasterFilename {
+(B[m[32m+            filename: "legacy.md".into(),
+(B[m[32m+        }]);
+(B[m         let ex = exact_exception("legacy.md", &cfg).unwrap();
+[31m-        assert_eq!(ex, LegacyException::MasterFilename { filename: "legacy.md".into() });
+(B[m[32m+        assert_eq!(
+(B[m[32m+            ex,
+(B[m[32m+            LegacyException::MasterFilename {
+(B[m[32m+                filename: "legacy.md".into()
+(B[m[32m+            }
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:93:
+     fn exact_exception_matches_migration_reference() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::MigrationReference {
+(B[m[31m-                label: "mig1".into(),
+(B[m[31m-                artifact: "file.toml".into(),
+(B[m[31m-                legacy_text: "old-name".into(),
+(B[m[31m-            },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::MigrationReference {
+(B[m[32m+            label: "mig1".into(),
+(B[m[32m+            artifact: "file.toml".into(),
+(B[m[32m+            legacy_text: "old-name".into(),
+(B[m[32m+        }]);
+(B[m         let ex = exact_exception("mig1 file.toml old-name", &cfg).unwrap();
+         match ex {
+[31m-            LegacyException::MigrationReference { label, artifact, legacy_text } => {
+(B[m[32m+            LegacyException::MigrationReference {
+(B[m[32m+                label,
+(B[m[32m+                artifact,
+(B[m[32m+                legacy_text,
+(B[m[32m+            } => {
+(B[m                 assert_eq!(label, "mig1");
+                 assert_eq!(artifact, "file.toml");
+                 assert_eq!(legacy_text, "old-name");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:111:
+ 
+     #[test]
+     fn exact_exception_returns_none_for_mismatched_repository_path() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::RepositoryPath { path: "src/old.rs".into() },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::RepositoryPath {
+(B[m[32m+            path: "src/old.rs".into(),
+(B[m[32m+        }]);
+(B[m         assert!(exact_exception("src/new.rs", &cfg).is_none());
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:120:
+     #[test]
+     fn exact_exception_returns_none_for_wildcard_rule() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::Wildcard { pattern: "*".into() },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::Wildcard {
+(B[m[32m+            pattern: "*".into(),
+(B[m[32m+        }]);
+(B[m         assert!(exact_exception("anything", &cfg).is_none());
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/allowlist.rs:128:
+     #[test]
+     fn exact_exception_returns_none_for_prefix_only_rule() {
+[31m-        let cfg = config_with_rules(vec![
+(B[m[31m-            LegacyAllowRule::PrefixOnly { prefix: "old-".into() },
+(B[m[31m-        ]);
+(B[m[32m+        let cfg = config_with_rules(vec![LegacyAllowRule::PrefixOnly {
+(B[m[32m+            prefix: "old-".into(),
+(B[m[32m+        }]);
+(B[m         assert!(exact_exception("old-name", &cfg).is_none());
+     }
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:88:
+     #[test]
+     fn classify_occurrence_returns_no_occurrence_for_empty_text() {
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test"), LineNumber::new(1), ColumnNumber::new(1), "", &test_config(),
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            "",
+(B[m[32m+            &test_config(),
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         assert_eq!(result, OccurrenceClass::NoOccurrence);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:96:
+     #[test]
+     fn classify_occurrence_returns_canonical_for_product_spelling() {
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            CANONICAL_HYPHEN, &test_config(),
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            CANONICAL_HYPHEN,
+(B[m[32m+            &test_config(),
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         match result {
+             OccurrenceClass::CanonicalProduct { canonical, .. } => {
+                 assert_eq!(canonical, CANONICAL_HYPHEN);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:110:
+     #[test]
+     fn classify_occurrence_returns_canonical_for_crate_module_spelling() {
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            CANONICAL_UNDERSCORE, &test_config(),
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            CANONICAL_UNDERSCORE,
+(B[m[32m+            &test_config(),
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         match result {
+             OccurrenceClass::CanonicalCrateModule { canonical, .. } => {
+                 assert_eq!(canonical, CANONICAL_UNDERSCORE);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:124:
+     #[test]
+     fn classify_occurrence_returns_canonical_for_language_version_spelling() {
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            CANONICAL_LANGUAGE_VERSION, &test_config(),
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            CANONICAL_LANGUAGE_VERSION,
+(B[m[32m+            &test_config(),
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         match result {
+             OccurrenceClass::CanonicalLanguageVersion { canonical, .. } => {
+                 assert_eq!(canonical, CANONICAL_LANGUAGE_VERSION);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:138:
+     #[test]
+     fn classify_occurrence_returns_allowed_legacy_for_exact_exception() {
+         let mut cfg = test_config();
+[31m-        cfg.allowlist_policy = AllowlistPolicy::Exact(vec![
+(B[m[31m-            LegacyAllowRule::RepositoryPath { path: "velvet-ballistics".into() },
+(B[m[31m-        ]);
+(B[m[32m+        cfg.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
+(B[m[32m+            path: "velvet-ballistics".into(),
+(B[m[32m+        }]);
+(B[m         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            "velvet-ballistics", &cfg,
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            "velvet-ballistics",
+(B[m[32m+            &cfg,
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         match result {
+             OccurrenceClass::AllowedLegacy { .. } => {}
+             _ => panic!("expected AllowedLegacy"),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:155:
+     fn classify_occurrence_returns_invalid_legacy_for_unrecognized_legacy_text() {
+         let cfg = test_config();
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            "velvet-ballistics is bad", &cfg,
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            "velvet-ballistics is bad",
+(B[m[32m+            &cfg,
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         match result {
+             OccurrenceClass::InvalidLegacy { .. } => {}
+             _ => panic!("expected InvalidLegacy"),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/classify.rs:168:
+     fn classify_occurrence_returns_no_occurrence_for_unrelated_text() {
+         let cfg = test_config();
+         let result = classify_occurrence(
+[31m-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
+(B[m[31m-            "completely unrelated text", &cfg,
+(B[m[31m-        ).unwrap();
+(B[m[32m+            RepoPath::new("test.rs"),
+(B[m[32m+            LineNumber::new(1),
+(B[m[32m+            ColumnNumber::new(1),
+(B[m[32m+            "completely unrelated text",
+(B[m[32m+            &cfg,
+(B[m[32m+        )
+(B[m[32m+        .unwrap();
+(B[m         assert_eq!(result, OccurrenceClass::NoOccurrence);
+     }
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:185:
+             CanonicalEntry::new(CanonicalNameKind::BeadRig, CANONICAL_HYPHEN),
+             CanonicalEntry::new(CanonicalNameKind::CrateModule, CANONICAL_UNDERSCORE),
+             CanonicalEntry::new(CanonicalNameKind::BeadDatabase, CANONICAL_UNDERSCORE),
+[31m-            CanonicalEntry::new(CanonicalNameKind::LanguageVersion, CANONICAL_LANGUAGE_VERSION),
+(B[m[32m+            CanonicalEntry::new(
+(B[m[32m+                CanonicalNameKind::LanguageVersion,
+(B[m[32m+                CANONICAL_LANGUAGE_VERSION,
+(B[m[32m+            ),
+(B[m         ]
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:216:
+     #[test]
+     fn validate_scan_config_rejects_wildcard_allowlist() {
+         let mut raw = valid_config();
+[31m-        raw.legacy_allowlist = vec![LegacyAllowRule::Wildcard { pattern: "*".into() }];
+(B[m[32m+        raw.legacy_allowlist = vec![LegacyAllowRule::Wildcard {
+(B[m[32m+            pattern: "*".into(),
+(B[m[32m+        }];
+(B[m         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:225:
+     fn validate_scan_config_rejects_prefix_only_allowlist() {
+         let mut raw = valid_config();
+[31m-        raw.legacy_allowlist = vec![LegacyAllowRule::PrefixOnly { prefix: "old".into() }];
+(B[m[32m+        raw.legacy_allowlist = vec![LegacyAllowRule::PrefixOnly {
+(B[m[32m+            prefix: "old".into(),
+(B[m[32m+        }];
+(B[m         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:233:
+     fn validate_scan_config_rejects_substring_allowlist() {
+         let mut raw = valid_config();
+[31m-        raw.legacy_allowlist = vec![LegacyAllowRule::Substring { needle: "bad".into() }];
+(B[m[32m+        raw.legacy_allowlist = vec![LegacyAllowRule::Substring {
+(B[m[32m+            needle: "bad".into(),
+(B[m[32m+        }];
+(B[m         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:241:
+     fn validate_scan_config_accepts_repository_path_allowlist() {
+         let mut raw = valid_config();
+[31m-        raw.legacy_allowlist = vec![LegacyAllowRule::RepositoryPath { path: "src/main.rs".into() }];
+(B[m[32m+        raw.legacy_allowlist = vec![LegacyAllowRule::RepositoryPath {
+(B[m[32m+            path: "src/main.rs".into(),
+(B[m[32m+        }];
+(B[m         let result = validate_scan_config(raw);
+         assert!(result.is_ok());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:249:
+     fn validate_scan_config_accepts_migration_reference_allowlist() {
+         let mut raw = valid_config();
+         raw.legacy_allowlist = vec![LegacyAllowRule::MigrationReference {
+[31m-            label: "mig".into(), artifact: "file".into(), legacy_text: "old".into(),
+(B[m[32m+            label: "mig".into(),
+(B[m[32m+            artifact: "file".into(),
+(B[m[32m+            legacy_text: "old".into(),
+(B[m         }];
+         let result = validate_scan_config(raw);
+         assert!(result.is_ok());
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:260:
+         let mut raw = valid_config();
+         raw.scan_patterns = vec!["[abc".into()];
+         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::PatternCompilationFailed { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::PatternCompilationFailed { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:276:
+         let mut raw = valid_config();
+         raw.canonical_entries[0] = CanonicalEntry::new(CanonicalNameKind::Product, "wrong-name");
+         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:287:
+             CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
+         ];
+         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:294:
+     fn validate_scan_config_rejects_missing_kind() {
+         let mut raw = valid_config();
+[31m-        raw.canonical_entries = vec![
+(B[m[31m-            CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
+(B[m[31m-        ];
+(B[m[32m+        raw.canonical_entries = vec![CanonicalEntry::new(
+(B[m[32m+            CanonicalNameKind::Product,
+(B[m[32m+            CANONICAL_HYPHEN,
+(B[m[32m+        )];
+(B[m         let result = validate_scan_config(raw);
+[31m-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+(B[m[32m+        assert!(matches!(
+(B[m[32m+            result.unwrap_err(),
+(B[m[32m+            NamingScanError::InvalidConfiguration { .. }
+(B[m[32m+        ));
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/config.rs:308:
+     #[test]
+     fn fingerprint_for_destination_yields_maximum_when_some() {
+         let dst = PathBuf::from("/tmp/report.txt");
+[31m-        assert_eq!(fingerprint_for_destination(Some(&dst)), "vb-37lc-maximum-bounded-config");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            fingerprint_for_destination(Some(&dst)),
+(B[m[32m+            "vb-37lc-maximum-bounded-config"
+(B[m[32m+        );
+(B[m     }
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/legacy.rs:71:
+     fn class_for_text_returns_legacy_crate_module_spelling() {
+         let result = class_for_text("velvet_ballistics is wrong");
+         match result {
+[31m-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+(B[m[32m+            OccurrenceClass::InvalidLegacy {
+(B[m[32m+                spelling_class,
+(B[m[32m+                remediation,
+(B[m[32m+            } => {
+(B[m                 assert_eq!(spelling_class, SpellingClass::LegacyCrateModuleSpelling);
+                 assert_eq!(remediation, CANONICAL_UNDERSCORE);
+             }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/legacy.rs:83:
+     fn class_for_text_returns_legacy_language_version_spelling() {
+         let result = class_for_text("use velvet-ballistics/v1 here");
+         match result {
+[31m-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+(B[m[32m+            OccurrenceClass::InvalidLegacy {
+(B[m[32m+                spelling_class,
+(B[m[32m+                remediation,
+(B[m[32m+            } => {
+(B[m                 assert_eq!(spelling_class, SpellingClass::LegacyLanguageVersionSpelling);
+                 assert_eq!(remediation, CANONICAL_LANGUAGE_VERSION);
+             }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/legacy.rs:95:
+     fn class_for_text_returns_legacy_project_spelling() {
+         let result = class_for_text("velvet-ballistics is the old name");
+         match result {
+[31m-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+(B[m[32m+            OccurrenceClass::InvalidLegacy {
+(B[m[32m+                spelling_class,
+(B[m[32m+                remediation,
+(B[m[32m+            } => {
+(B[m                 assert_eq!(spelling_class, SpellingClass::LegacyProjectSpelling);
+                 assert_eq!(remediation, CANONICAL_HYPHEN);
+             }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/naming_scan/types.rs:418:
+ 
+     #[test]
+     fn naming_scan_error_equality() {
+[31m-        let a = NamingScanError::InvalidConfiguration { reason: "test".into() };
+(B[m[31m-        let b = NamingScanError::InvalidConfiguration { reason: "test".into() };
+(B[m[32m+        let a = NamingScanError::InvalidConfiguration {
+(B[m[32m+            reason: "test".into(),
+(B[m[32m+        };
+(B[m[32m+        let b = NamingScanError::InvalidConfiguration {
+(B[m[32m+            reason: "test".into(),
+(B[m[32m+        };
+(B[m         assert_eq!(a, b);
+     }
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/agent_context/tests/unit.rs:55:
+         .get("binary_aliases")
+         .and_then(Value::as_array)
+         .expect("binary_aliases must be an array");
+[31m-    assert!(aliases
+(B[m[31m-        .iter()
+(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballistics")));
+(B[m[32m+    assert!(
+(B[m[32m+        aliases
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballistics"))
+(B[m[32m+    );
+(B[m     assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/action.rs:131:
+ 
+ #[test]
+ fn parse_action_list_rejects_unknown_flag() {
+[31m-    let parsed = parse_args(&args(&[
+(B[m[31m-        "velvet-ballistics",
+(B[m[31m-        "action",
+(B[m[31m-        "list",
+(B[m[31m-        "--bogus",
+(B[m[31m-    ]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--bogus"]));
+(B[m     assert!(matches!(
+         parsed,
+         Err(ParseError::UnknownActionListFlag(ref f)) if f == "--bogus"
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/action.rs:145:
+ 
+ #[test]
+ fn parse_action_list_rejects_positional_argument() {
+[31m-    let parsed = parse_args(&args(&[
+(B[m[31m-        "velvet-ballistics",
+(B[m[31m-        "action",
+(B[m[31m-        "list",
+(B[m[31m-        "extra",
+(B[m[31m-    ]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "extra"]));
+(B[m     assert!(matches!(
+         parsed,
+         Err(ParseError::UnexpectedActionListArgument(ref a)) if a == "extra"
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/action.rs:211:
+ 
+ #[test]
+ fn parse_action_inspect_rejects_non_numeric_action_id() {
+[31m-    let parsed = parse_args(&args(&[
+(B[m[31m-        "velvet-ballistics",
+(B[m[31m-        "action",
+(B[m[31m-        "inspect",
+(B[m[31m-        "abc",
+(B[m[31m-    ]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "abc"]));
+(B[m     assert!(matches!(parsed, Err(ParseError::InvalidActionId(_))));
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/cancel.rs:128:
+ #[test]
+ fn parse_cancel_rejects_missing_run_id() {
+     let parsed = parse_args(&args(&["velvet-ballistics", "cancel"]));
+[31m-    assert!(matches!(
+(B[m[31m-        parsed,
+(B[m[31m-        Err(ParseError::MissingArgument("run_id"))
+(B[m[31m-    ));
+(B[m[32m+    assert!(matches!(parsed, Err(ParseError::MissingArgument("run_id"))));
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/cancel.rs:146:
+     ]));
+     assert!(matches!(
+         parsed,
+[31m-        Err(ParseError::UnknownFlag { command: "cancel", .. })
+(B[m[32m+        Err(ParseError::UnknownFlag {
+(B[m[32m+            command: "cancel",
+(B[m[32m+            ..
+(B[m[32m+        })
+(B[m     ));
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/journal.rs:154:
+         "--db",
+         "test-db",
+     ]));
+[31m-    if let Ok(Command::Replay {
+(B[m[31m-        run_id,
+(B[m[31m-        db,
+(B[m[31m-        output,
+(B[m[31m-    }) = parsed
+(B[m[31m-    {
+(B[m[32m+    if let Ok(Command::Replay { run_id, db, output }) = parsed {
+(B[m         assert_eq!(run_id, "99");
+         assert_eq!(db, PathBuf::from("test-db"));
+         assert_eq!(output, OutputFormat::Text);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/journal.rs:288:
+         "--db",
+         "test-db",
+     ]));
+[31m-    if let Ok(Command::Retry {
+(B[m[31m-        run_id,
+(B[m[31m-        db,
+(B[m[31m-        output,
+(B[m[31m-    }) = parsed
+(B[m[31m-    {
+(B[m[32m+    if let Ok(Command::Retry { run_id, db, output }) = parsed {
+(B[m         assert_eq!(run_id, "123");
+         assert_eq!(db, PathBuf::from("test-db"));
+         assert_eq!(output, OutputFormat::Text);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/journal.rs:311:
+         "--db",
+         "test-db",
+     ]));
+[31m-    if let Ok(Command::Resume {
+(B[m[31m-        run_id,
+(B[m[31m-        db,
+(B[m[31m-        output,
+(B[m[31m-    }) = parsed
+(B[m[31m-    {
+(B[m[32m+    if let Ok(Command::Resume { run_id, db, output }) = parsed {
+(B[m         assert_eq!(run_id, "456");
+         assert_eq!(db, PathBuf::from("test-db"));
+         assert_eq!(output, OutputFormat::Text);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/journal.rs:334:
+         "--db",
+         "test-db",
+     ]));
+[31m-    if let Ok(Command::Incident {
+(B[m[31m-        run_id,
+(B[m[31m-        db,
+(B[m[31m-        output,
+(B[m[31m-    }) = parsed
+(B[m[31m-    {
+(B[m[32m+    if let Ok(Command::Incident { run_id, db, output }) = parsed {
+(B[m         assert_eq!(run_id, "7");
+         assert_eq!(db, PathBuf::from("test-db"));
+         assert_eq!(output, OutputFormat::Text);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/run.rs:293:
+         "--db",
+         "journal-db",
+     ]));
+[31m-    if let Ok(Command::RunCompiled {
+(B[m[31m-        durability, db, ..
+(B[m[31m-    }) = parsed
+(B[m[31m-    {
+(B[m[32m+    if let Ok(Command::RunCompiled { durability, db, .. }) = parsed {
+(B[m         assert_eq!(durability, DurabilityMode::Journaled);
+         assert_eq!(db, Some(PathBuf::from("journal-db")));
+     } else {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/status.rs:182:
+ 
+ #[test]
+ fn parse_status_rejects_unknown_emit_mode() {
+[31m-    let parsed = parse_args(&args(&[
+(B[m[31m-        "velvet-ballistics",
+(B[m[31m-        "status",
+(B[m[31m-        "--emit",
+(B[m[31m-        "binary",
+(B[m[31m-    ]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "status", "--emit", "binary"]));
+(B[m     assert!(
+         matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown emit mode binary"),
+         "expected InvalidStatusArgument, got {parsed:?}"
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/workflow.rs:56:
+     ]));
+     assert!(matches!(
+         parsed,
+[31m-        Err(ParseError::UnknownFlag { command: "validate", .. })
+(B[m[32m+        Err(ParseError::UnknownFlag {
+(B[m[32m+            command: "validate",
+(B[m[32m+            ..
+(B[m[32m+        })
+(B[m     ));
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/workflow.rs:230:
+         "--out",
+         "output.vbir",
+     ]));
+[31m-    assert!(matches!(
+(B[m[31m-        parsed,
+(B[m[31m-        Err(ParseError::MissingArgument("--emit"))
+(B[m[31m-    ));
+(B[m[32m+    assert!(matches!(parsed, Err(ParseError::MissingArgument("--emit"))));
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/workflow.rs:457:
+         "workflow.yaml",
+     ]));
+     if let Ok(Command::Verify {
+[31m-        workflow,
+(B[m[31m-        profile,
+(B[m[31m-        ..
+(B[m[32m+        workflow, profile, ..
+(B[m     }) = parsed
+     {
+         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:537:
+ 
+     #[test]
+     fn event_name_returns_all_variants() {
+[31m-        assert_eq!(event_name(&JournalEvent::StepStarted { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "StepStarted");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::ActionCompletedEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1 }), "ActionCompleted");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::ActionFailedEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1 }), "ActionFailed");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::AskScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "AskScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::AskAnsweredEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "AskAnswered");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::RetryScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "RetryScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::WaitScheduledEvent { run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1 }), "WaitScheduled");
+(B[m[31m-        assert_eq!(event_name(&JournalEvent::SlotWrittenEvent { run: mk_run(1), seq: mk_seq(1), slot: mk_slot(1), value: None, extra: None, attempt: 1 }), "SlotWritten");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::StepStarted {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "StepStarted"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::ActionCompletedEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "ActionCompleted"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::ActionFailedEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "ActionFailed"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::AskScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "AskScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::AskAnsweredEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "AskAnswered"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::RetryScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "RetryScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::WaitScheduledEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "WaitScheduled"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            event_name(&JournalEvent::SlotWrittenEvent {
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                slot: mk_slot(1),
+(B[m[32m+                value: None,
+(B[m[32m+                extra: None,
+(B[m[32m+                attempt: 1
+(B[m[32m+            }),
+(B[m[32m+            "SlotWritten"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:551:
+     fn events_differ_returns_false_for_identical_step_succeeded() {
+         let a = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(!events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:561:
+     #[test]
+     fn events_differ_returns_true_for_different_step_in_step_succeeded() {
+         let a = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(2), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(2),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:572:
+     #[test]
+     fn events_differ_returns_true_for_different_event_types() {
+         let a = JournalEvent::StepStarted {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:583:
+     #[test]
+     fn events_differ_compares_action_scheduled_by_step_and_action() {
+         let a = JournalEvent::ActionScheduled {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            action: mk_action(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::ActionScheduled {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), action: mk_action(2), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            action: mk_action(2),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:594:
+     #[test]
+     fn events_differ_compares_slot_written_by_slot_and_value() {
+         let a = JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(1),
+(B[m[31m-            value: Some(vec![1]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(1),
+(B[m[32m+            value: Some(vec![1]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(vec![1]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(vec![1]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:607:
+     #[test]
+     fn events_differ_compares_run_finished_by_result() {
+         let a = JournalEvent::RunFinished {
+[31m-            run: mk_run(1), seq: mk_seq(1), result: mk_slot(0), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            result: mk_slot(0),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         let b = JournalEvent::RunFinished {
+[31m-            run: mk_run(1), seq: mk_seq(1), result: mk_slot(1), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            result: mk_slot(1),
+(B[m[32m+            attempt: 1,
+(B[m         };
+         assert!(events_differ(&a, &b));
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:624:
+     #[test]
+     fn collect_step_outcomes_ignores_non_step_relevant_events() {
+         let events = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         assert!(collect_step_outcomes(&events).is_empty());
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:633:
+     #[test]
+     fn collect_step_outcomes_records_step_succeeded_with_output() {
+         let events = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(5), output: mk_slot(3),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(5),
+(B[m[32m+            output: mk_slot(3),
+(B[m         }];
+         let outcomes = collect_step_outcomes(&events);
+         assert_eq!(outcomes.get(&5).unwrap(), "succeeded(output=3)");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:642:
+     #[test]
+     fn collect_step_outcomes_records_action_failed_with_action() {
+         let events = vec![JournalEvent::ActionFailedEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(2), action: mk_action(7), attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(2),
+(B[m[32m+            action: mk_action(7),
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let outcomes = collect_step_outcomes(&events);
+         assert_eq!(outcomes.get(&2).unwrap(), "failed(action=7)");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:652:
+     fn collect_step_outcomes_last_occurrence_wins_for_same_step() {
+         let events = vec![
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+             JournalEvent::ActionFailedEvent {
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(1), action: mk_action(4), attempt: 1,
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                action: mk_action(4),
+(B[m[32m+                attempt: 1,
+(B[m             },
+         ];
+         let outcomes = collect_step_outcomes(&events);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:667:
+         let val = mk_slot_value(42);
+         let bytes = postcard::to_allocvec(&val).unwrap();
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(bytes), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(bytes),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&2).unwrap(), "42");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:677:
+     #[test]
+     fn collect_slot_values_displays_none_for_absent_value() {
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(3),
+(B[m[31m-            value: None, extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(3),
+(B[m[32m+            value: None,
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&3).unwrap(), "none");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:687:
+     #[test]
+     fn collect_slot_values_shows_byte_count_for_undecodable_bytes() {
+         let events = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(5),
+(B[m[31m-            value: Some(vec![0xFF; 3]), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(5),
+(B[m[32m+            value: Some(vec![0xFF; 3]),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let slots = collect_slot_values(&events);
+         assert_eq!(slots.get(&5).unwrap(), "[3 bytes]");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:705:
+     #[test]
+     fn compute_diff_reports_only_in_a_when_b_is_shorter() {
+         let a = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&a, &[]);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:717:
+     #[test]
+     fn compute_diff_reports_only_in_b_when_a_is_shorter() {
+         let b = vec![JournalEvent::RunAccepted {
+[31m-            run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&[], &b);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:727:
+     #[test]
+     fn compute_diff_reports_no_diff_for_identical_events() {
+         let a = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let b = vec![JournalEvent::StepSucceeded {
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let result = compute_diff(&a, &b);
+         assert_eq!(result.diffs.len(), 0);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:740:
+     fn compute_diff_detects_step_missing_in_b() {
+         let a = vec![
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(1), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+             JournalEvent::StepSucceeded {
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(2), output: mk_slot(0),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(2),
+(B[m[32m+                output: mk_slot(0),
+(B[m             },
+         ];
+         let b = vec![JournalEvent::StepSucceeded {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:750:
+[31m-            run: mk_run(2), seq: mk_seq(99), step: mk_step(1), output: mk_slot(0),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(99),
+(B[m[32m+            step: mk_step(1),
+(B[m[32m+            output: mk_slot(0),
+(B[m         }];
+         let result = compute_diff(&a, &b);
+[31m-        let has_missing = result.diffs.iter().any(|d| d["kind"].as_str() == Some("step_missing_in_b"));
+(B[m[32m+        let has_missing = result
+(B[m[32m+            .diffs
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|d| d["kind"].as_str() == Some("step_missing_in_b"));
+(B[m         assert!(has_missing);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:759:
+         let val_a = postcard::to_allocvec(&mk_slot_value(10)).unwrap();
+         let val_b = postcard::to_allocvec(&mk_slot_value(20)).unwrap();
+         let a = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(1), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(val_a), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(1),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(val_a),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let b = vec![JournalEvent::SlotWrittenEvent {
+[31m-            run: mk_run(2), seq: mk_seq(1), slot: mk_slot(2),
+(B[m[31m-            value: Some(val_b), extra: None, attempt: 1,
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(1),
+(B[m[32m+            slot: mk_slot(2),
+(B[m[32m+            value: Some(val_b),
+(B[m[32m+            extra: None,
+(B[m[32m+            attempt: 1,
+(B[m         }];
+         let result = compute_diff(&a, &b);
+[31m-        let has_slot_diff = result.diffs.iter().any(|d| d["kind"].as_str() == Some("slot_value_differs"));
+(B[m[32m+        let has_slot_diff = result
+(B[m[32m+            .diffs
+(B[m[32m+            .iter()
+(B[m[32m+            .any(|d| d["kind"].as_str() == Some("slot_value_differs"));
+(B[m         assert!(has_slot_diff);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:775:
+     fn compute_diff_correctly_reports_event_counts() {
+         let a = vec![
+             JournalEvent::RunAccepted {
+[31m-                run: mk_run(1), seq: mk_seq(1),
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(1),
+(B[m                 workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+             },
+             JournalEvent::StepStarted {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:782:
+[31m-                run: mk_run(1), seq: mk_seq(2), step: mk_step(1), attempt: 1,
+(B[m[32m+                run: mk_run(1),
+(B[m[32m+                seq: mk_seq(2),
+(B[m[32m+                step: mk_step(1),
+(B[m[32m+                attempt: 1,
+(B[m             },
+         ];
+         let b = vec![JournalEvent::RunAccepted {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_diff.rs:786:
+[31m-            run: mk_run(2), seq: mk_seq(1),
+(B[m[32m+            run: mk_run(2),
+(B[m[32m+            seq: mk_seq(1),
+(B[m             workflow: vb_core::WorkflowDigest::from_bytes([0; 32]),
+         }];
+         let result = compute_diff(&a, &b);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:358:
+ 
+     #[test]
+     fn node_kind_label_returns_set_const() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::SetConst { value: vb_core::ConstIdx::new(0) }), "set_const");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::SetConst {
+(B[m[32m+                value: vb_core::ConstIdx::new(0)
+(B[m[32m+            }),
+(B[m[32m+            "set_const"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:365:
+     fn node_kind_label_returns_copy() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::Copy { source: vb_core::SlotIdx::new(0) }), "copy");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::Copy {
+(B[m[32m+                source: vb_core::SlotIdx::new(0)
+(B[m[32m+            }),
+(B[m[32m+            "copy"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:370:
+     fn node_kind_label_returns_do() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: vb_core::SlotIdx::new(0) }), "do");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::Do {
+(B[m[32m+                action: vb_core::ActionId::new(1),
+(B[m[32m+                input: vb_core::SlotIdx::new(0)
+(B[m[32m+            }),
+(B[m[32m+            "do"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:375:
+     fn node_kind_label_returns_finish() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::Finish { result: vb_core::SlotIdx::new(0) }), "finish");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::Finish {
+(B[m[32m+                result: vb_core::SlotIdx::new(0)
+(B[m[32m+            }),
+(B[m[32m+            "finish"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:380:
+     fn node_kind_label_returns_ask() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::Ask { prompt: vb_core::SlotIdx::new(0), timeout_slot: None }), "ask");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::Ask {
+(B[m[32m+                prompt: vb_core::SlotIdx::new(0),
+(B[m[32m+                timeout_slot: None
+(B[m[32m+            }),
+(B[m[32m+            "ask"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:385:
+     fn node_kind_label_returns_wait_until() {
+[31m-        assert_eq!(node_kind_label(&CompiledNodeKind::WaitUntil { deadline_slot: vb_core::SlotIdx::new(0) }), "wait_until");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            node_kind_label(&CompiledNodeKind::WaitUntil {
+(B[m[32m+                deadline_slot: vb_core::SlotIdx::new(0)
+(B[m[32m+            }),
+(B[m[32m+            "wait_until"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:398:
+     fn describe_node_for_simulate_increments_action_count_for_do() {
+         let mut ac = 0usize;
+         let mut bc = 0usize;
+[31m-        let _ = describe_node_for_simulate(&CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: vb_core::SlotIdx::new(0) }, &mut ac, &mut bc);
+(B[m[32m+        let _ = describe_node_for_simulate(
+(B[m[32m+            &CompiledNodeKind::Do {
+(B[m[32m+                action: vb_core::ActionId::new(1),
+(B[m[32m+                input: vb_core::SlotIdx::new(0),
+(B[m[32m+            },
+(B[m[32m+            &mut ac,
+(B[m[32m+            &mut bc,
+(B[m[32m+        );
+(B[m         assert_eq!(ac, 1);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:407:
+         let mut ac = 0usize;
+         let mut bc = 0usize;
+         let branches: Box<[vb_core::ExprBranch]> = Box::new([
+[31m-            vb_core::ExprBranch { condition: vb_core::ExprIdx::new(0), target: vb_core::StepIdx::new(2) },
+(B[m[31m-            vb_core::ExprBranch { condition: vb_core::ExprIdx::new(0), target: vb_core::StepIdx::new(3) },
+(B[m[32m+            vb_core::ExprBranch {
+(B[m[32m+                condition: vb_core::ExprIdx::new(0),
+(B[m[32m+                target: vb_core::StepIdx::new(2),
+(B[m[32m+            },
+(B[m[32m+            vb_core::ExprBranch {
+(B[m[32m+                condition: vb_core::ExprIdx::new(0),
+(B[m[32m+                target: vb_core::StepIdx::new(3),
+(B[m[32m+            },
+(B[m         ]);
+[31m-        let _ = describe_node_for_simulate(&CompiledNodeKind::Choose { branches, otherwise: None }, &mut ac, &mut bc);
+(B[m[32m+        let _ = describe_node_for_simulate(
+(B[m[32m+            &CompiledNodeKind::Choose {
+(B[m[32m+                branches,
+(B[m[32m+                otherwise: None,
+(B[m[32m+            },
+(B[m[32m+            &mut ac,
+(B[m[32m+            &mut bc,
+(B[m[32m+        );
+(B[m         assert_eq!(bc, 2);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:417:
+     #[test]
+     fn dot_graph_fields_are_accessible() {
+[31m-        let graph = DotGraph { node_count: 5, edge_count: 3, dot: "digraph {}".into() };
+(B[m[32m+        let graph = DotGraph {
+(B[m[32m+            node_count: 5,
+(B[m[32m+            edge_count: 3,
+(B[m[32m+            dot: "digraph {}".into(),
+(B[m[32m+        };
+(B[m         assert_eq!(graph.node_count, 5);
+         assert_eq!(graph.edge_count, 3);
+         assert_eq!(graph.dot, "digraph {}");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:424:
+ 
+     #[test]
+     fn simulation_step_fields_are_accessible() {
+[31m-        let step = SimulationStep { index: 0, kind_label: "nop".into(), description: "Entry".into() };
+(B[m[32m+        let step = SimulationStep {
+(B[m[32m+            index: 0,
+(B[m[32m+            kind_label: "nop".into(),
+(B[m[32m+            description: "Entry".into(),
+(B[m[32m+        };
+(B[m         assert_eq!(step.index, 0);
+         assert_eq!(step.kind_label, "nop");
+         assert_eq!(step.description, "Entry");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/commands_workflow.rs:432:
+ 
+     #[test]
+     fn simulation_result_fields_are_accessible() {
+[31m-        let result = SimulationResult { steps: vec![], total_steps: 0, action_count: 0, branch_count: 0 };
+(B[m[32m+        let result = SimulationResult {
+(B[m[32m+            steps: vec![],
+(B[m[32m+            total_steps: 0,
+(B[m[32m+            action_count: 0,
+(B[m[32m+            branch_count: 0,
+(B[m[32m+        };
+(B[m         assert_eq!(result.total_steps, 0);
+         assert!(result.steps.is_empty());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:98:
+ 
+     #[test]
+     fn command_mode_returns_pure_for_validate() {
+[31m-        let cmd = Command::Validate { workflow: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Validate {
+(B[m[32m+            workflow: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Pure);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:105:
+     #[test]
+     fn command_mode_returns_pure_for_verify() {
+[31m-        let cmd = Command::Verify { workflow: dummy_path(), profile: VerifyProfile::Quick, output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Verify {
+(B[m[32m+            workflow: dummy_path(),
+(B[m[32m+            profile: VerifyProfile::Quick,
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Pure);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:111:
+     #[test]
+     fn command_mode_returns_pure_for_explain() {
+[31m-        let cmd = Command::Explain { workflow: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Explain {
+(B[m[32m+            workflow: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Pure);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:117:
+     #[test]
+     fn command_mode_returns_pure_for_compile() {
+[31m-        let cmd = Command::Compile { workflow: dummy_path(), emit: EmitTarget::Ir, out: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Compile {
+(B[m[32m+            workflow: dummy_path(),
+(B[m[32m+            emit: EmitTarget::Ir,
+(B[m[32m+            out: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Pure);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:123:
+     #[test]
+     fn command_mode_returns_pure_for_graph() {
+[31m-        let cmd = Command::Graph { workflow: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Graph {
+(B[m[32m+            workflow: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Pure);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:151:
+ 
+     #[test]
+     fn command_mode_returns_storage_for_inspect() {
+[31m-        let cmd = Command::Inspect { run_id: "1".into(), db: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Inspect {
+(B[m[32m+            run_id: "1".into(),
+(B[m[32m+            db: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Storage);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:158:
+     #[test]
+     fn command_mode_returns_storage_for_cancel() {
+[31m-        let cmd = Command::Cancel { run_id: "1".into(), reason: None, db: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Cancel {
+(B[m[32m+            run_id: "1".into(),
+(B[m[32m+            reason: None,
+(B[m[32m+            db: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Storage);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:164:
+     #[test]
+     fn command_mode_returns_storage_for_diff() {
+[31m-        let cmd = Command::Diff { run_a: "1".into(), run_b: "2".into(), db: dummy_path(), output: OutputFormat::Text };
+(B[m[32m+        let cmd = Command::Diff {
+(B[m[32m+            run_a: "1".into(),
+(B[m[32m+            run_b: "2".into(),
+(B[m[32m+            db: dummy_path(),
+(B[m[32m+            output: OutputFormat::Text,
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Storage);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:170:
+     #[test]
+     fn command_mode_returns_runtime_for_ipc_serve() {
+[31m-        let cmd = Command::IpcServe { socket: dummy_path(), db: dummy_path() };
+(B[m[32m+        let cmd = Command::IpcServe {
+(B[m[32m+            socket: dummy_path(),
+(B[m[32m+            db: dummy_path(),
+(B[m[32m+        };
+(B[m         assert_eq!(command_mode(&cmd), CommandMode::Runtime);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:180:
+ 
+     #[test]
+     fn mode_error_display_storage_init_failed() {
+[31m-        let err = ModeError::StorageInitFailed { path: PathBuf::from("/tmp/db"), cause: "disk full".into() };
+(B[m[32m+        let err = ModeError::StorageInitFailed {
+(B[m[32m+            path: PathBuf::from("/tmp/db"),
+(B[m[32m+            cause: "disk full".into(),
+(B[m[32m+        };
+(B[m         assert_eq!(err.to_string(), "storage init failed at /tmp/db: disk full");
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:187:
+     #[test]
+     fn mode_error_display_runtime_init_failed() {
+[31m-        let err = ModeError::RuntimeInitFailed { cause: "no shards".into() };
+(B[m[32m+        let err = ModeError::RuntimeInitFailed {
+(B[m[32m+            cause: "no shards".into(),
+(B[m[32m+        };
+(B[m         assert_eq!(err.to_string(), "runtime init failed: no shards");
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:193:
+     #[test]
+     fn mode_error_display_pure_command_storage_access() {
+[31m-        let err = ModeError::PureCommandStorageAccessAttempted { command: "validate".into() };
+(B[m[31m-        assert_eq!(err.to_string(), "pure command attempted storage access: validate");
+(B[m[32m+        let err = ModeError::PureCommandStorageAccessAttempted {
+(B[m[32m+            command: "validate".into(),
+(B[m[32m+        };
+(B[m[32m+        assert_eq!(
+(B[m[32m+            err.to_string(),
+(B[m[32m+            "pure command attempted storage access: validate"
+(B[m[32m+        );
+(B[m     }
+ 
+     #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:204:
+ 
+     #[test]
+     fn mode_error_converts_to_cli_exit_code_storage_init_failed() {
+[31m-        let err = ModeError::StorageInitFailed { path: dummy_path(), cause: "err".into() };
+(B[m[32m+        let err = ModeError::StorageInitFailed {
+(B[m[32m+            path: dummy_path(),
+(B[m[32m+            cause: "err".into(),
+(B[m[32m+        };
+(B[m         let code: CliExitCode = err.into();
+         assert_eq!(code, CliExitCode::StorageError);
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:211:
+ 
+     #[test]
+     fn mode_error_converts_to_cli_exit_code_runtime_init_failed() {
+[31m-        let err = ModeError::RuntimeInitFailed { cause: "err".into() };
+(B[m[32m+        let err = ModeError::RuntimeInitFailed {
+(B[m[32m+            cause: "err".into(),
+(B[m[32m+        };
+(B[m         let code: CliExitCode = err.into();
+         assert_eq!(code, CliExitCode::RuntimeFailed);
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:218:
+ 
+     #[test]
+     fn mode_error_converts_to_cli_exit_code_ui_init_failed() {
+[31m-        let err = ModeError::UiInitFailed { cause: "err".into() };
+(B[m[32m+        let err = ModeError::UiInitFailed {
+(B[m[32m+            cause: "err".into(),
+(B[m[32m+        };
+(B[m         let code: CliExitCode = err.into();
+         assert_eq!(code, CliExitCode::ActionPolicyError);
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/mode_error.rs:225:
+ 
+     #[test]
+     fn mode_error_converts_to_cli_exit_code_pure_command_storage_access() {
+[31m-        let err = ModeError::PureCommandStorageAccessAttempted { command: "validate".into() };
+(B[m[32m+        let err = ModeError::PureCommandStorageAccessAttempted {
+(B[m[32m+            command: "validate".into(),
+(B[m[32m+        };
+(B[m         let code: CliExitCode = err.into();
+         assert_eq!(code, CliExitCode::StorageError);
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/tests/cli_integration.rs:3792:
+         }
+     };
+     assert!(
+[31m-        packet.get("schema_version").is_some()
+(B[m[31m-            || packet.get("run_id").is_some(),
+(B[m[32m+        packet.get("schema_version").is_some() || packet.get("run_id").is_some(),
+(B[m         "expected schema_version or run_id: {stdout}"
+     );
+     assert!(packet.get("run_id").is_some(), "run_id missing: {stdout}");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/tests/cli_integration.rs:3842:
+ fn cli_validate_nonexistent_file_fails_with_diagnostic() {
+     let nonexistent_path = std::path::PathBuf::from("/tmp/vb-nonexistent-validate-test.yaml");
+ 
+[31m-    let output = match run_cli(&[std::ffi::OsStr::new("validate"), nonexistent_path.as_os_str()]) {
+(B[m[32m+    let output = match run_cli(&[
+(B[m[32m+        std::ffi::OsStr::new("validate"),
+(B[m[32m+        nonexistent_path.as_os_str(),
+(B[m[32m+    ]) {
+(B[m         Some(output) => output,
+         None => return,
+     };
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/tests/cli_integration.rs:4103:
+     let ir_bytes = match std::fs::read(&ir_path) {
+         Ok(bytes) => bytes,
+         Err(err) => {
+[31m-            assert!(forced_assertion_failure(), "failed to read compiled IR: {err}");
+(B[m[32m+            assert!(
+(B[m[32m+                forced_assertion_failure(),
+(B[m[32m+                "failed to read compiled IR: {err}"
+(B[m[32m+            );
+(B[m             return;
+         }
+     };
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/tests/error_chain_integration.rs:343:
+     let workflow_error = vb_core::workflow::WorkflowError::from(core_error);
+     let compile_error: vb_compile::CompileError = workflow_error.into();
+     assert!(
+[31m-        compile_error.to_string().contains("compiled workflow IR failed validation"),
+(B[m[32m+        compile_error
+(B[m[32m+            .to_string()
+(B[m[32m+            .contains("compiled workflow IR failed validation"),
+(B[m         "compile error should wrap workflow error: {compile_error}"
+     );
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:764:
+         ExprOp::LoadConst(ConstIdx::new(0)),
+         ExprOp::Eq,
+     ];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(42)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(true));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:798:
+         ExprOp::LoadConst(ConstIdx::new(0)),
+         ExprOp::Eq,
+     ];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::Bool(true)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(true)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(true));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1206:
+ fn not_true_returns_false() -> Result<(), EngineError> {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::Bool(true)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(true)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(false));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1219:
+ fn not_false_returns_true() -> Result<(), EngineError> {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::Bool(false)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(false)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(true));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1263:
+         ExprOp::LoadConst(ConstIdx::new(1)),
+         ExprOp::Mul,
+     ];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(1), ConstValue::Null],
+(B[m[31m-        &mut store,
+(B[m[31m-    );
+(B[m[32m+    let result =
+(B[m[32m+        eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1), ConstValue::Null], &mut store);
+(B[m     assert_eq!(
+         result,
+         Err(EngineError::TypeMismatch {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1328:
+ fn not_type_mismatch_operand_not_bool_returns_type_error() -> Result<(), EngineError> {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(42)],
+(B[m[31m-        &mut store,
+(B[m[31m-    );
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store);
+(B[m     assert_eq!(
+         result,
+         Err(EngineError::TypeMismatch {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1351:
+ fn stack_underflow_single_operand_for_add_rejected_at_construction() {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Add];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(1)],
+(B[m[31m-        &mut store,
+(B[m[31m-    );
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store);
+(B[m     assert_eq!(
+         result,
+         Err(EngineError::InvalidCompiledWorkflow {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1368:
+ fn stack_underflow_single_operand_for_sub_rejected_at_construction() {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Sub];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(1)],
+(B[m[31m-        &mut store,
+(B[m[31m-    );
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store);
+(B[m     assert_eq!(
+         result,
+         Err(EngineError::InvalidCompiledWorkflow {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1389:
+ fn single_load_const_returns_pushed_value() -> Result<(), EngineError> {
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(42)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::I64(42));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1415:
+         ExprOp::LoadConst(ConstIdx::new(0)),
+         ExprOp::Eq,
+     ];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::Null],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Null], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(true));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1432:
+         ExprOp::LoadConst(ConstIdx::new(1)),
+         ExprOp::Eq,
+     ];
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::Null, ConstValue::I64(0)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result =
+(B[m[32m+        eval_expr_ops_with_constants(&ops, vec![ConstValue::Null, ConstValue::I64(0)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::Bool(false));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1446:
+     let mut store = ValueStore::new();
+     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))];
+     let result = eval_expr_ops_with_store(&ops, vec![], vec![], &mut store);
+[31m-    assert_eq!(result, Err(EngineError::SlotUninitialized { slot: SlotIdx::new(0) }));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        result,
+(B[m[32m+        Err(EngineError::SlotUninitialized {
+(B[m[32m+            slot: SlotIdx::new(0)
+(B[m[32m+        })
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1544:
+     for _ in 0..31 {
+         ops.push(ExprOp::Add);
+     }
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(1)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::I64(32));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1563:
+     for _ in 0..19 {
+         ops.push(ExprOp::Add);
+     }
+[31m-    let result = eval_expr_ops_with_constants(
+(B[m[31m-        &ops,
+(B[m[31m-        vec![ConstValue::I64(2)],
+(B[m[31m-        &mut store,
+(B[m[31m-    )?;
+(B[m[32m+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(2)], &mut store)?;
+(B[m     assert_eq!(result, SlotValue::I64(40));
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1578:
+ 
+ #[cfg(test)]
+ mod proptests {
+[31m-    use proptest::prelude::*;
+(B[m[32m+    use super::super::eval_expr_with_store;
+(B[m     use crate::errors::EngineError;
+     use crate::ids::{ConstIdx, ExprIdx, RunId, StepIdx, WorkflowDigest};
+[32m+    use crate::limits::MAX_EXPRESSION_STACK;
+(B[m     use crate::value::{ConstValue, SlotValue};
+     use crate::value_store::ValueStore;
+     use crate::workflow::{
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1587:
+         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+         WorkflowParts, check_expr_stack_bound,
+     };
+[31m-    use crate::limits::MAX_EXPRESSION_STACK;
+(B[m[31m-    use super::super::eval_expr_with_store;
+(B[m[32m+    use proptest::prelude::*;
+(B[m 
+     fn eval_ops_with_constants(
+         ops: &[ExprOp],
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1595:
+         constants: Vec<ConstValue>,
+     ) -> Result<SlotValue, EngineError> {
+         let max_stack = check_expr_stack_bound(ops, MAX_EXPRESSION_STACK).map_err(|_| {
+[31m-            EngineError::InvalidCompiledWorkflow { reason: "stack check" }
+(B[m[32m+            EngineError::InvalidCompiledWorkflow {
+(B[m[32m+                reason: "stack check",
+(B[m[32m+            }
+(B[m         })?;
+         let expr = ExprProgram::try_from_parts(ops.into(), max_stack).map_err(|_| {
+[31m-            EngineError::InvalidCompiledWorkflow { reason: "expr parts" }
+(B[m[32m+            EngineError::InvalidCompiledWorkflow {
+(B[m[32m+                reason: "expr parts",
+(B[m[32m+            }
+(B[m         })?;
+         let plan = CompiledWorkflow::try_from_parts(WorkflowParts {
+             name: "proptest".into(),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/expr_eval/tests.rs:1621:
+             resource_contract: ResourceContract::DEFAULT,
+             step_names: Box::new([]),
+         })
+[31m-        .map_err(|_| EngineError::InvalidCompiledWorkflow { reason: "workflow parts" })?;
+(B[m[32m+        .map_err(|_| EngineError::InvalidCompiledWorkflow {
+(B[m[32m+            reason: "workflow parts",
+(B[m[32m+        })?;
+(B[m         let run = crate::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 8)?;
+         let mut store = ValueStore::new();
+         let (value, _) = eval_expr_with_store(&plan, &run, &mut store, ExprIdx::new(0))?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1:
+ #![forbid(unsafe_code)]
+ //! Integration tests for accessor evaluation.
+ 
+[32m+use crate::RunFrame;
+(B[m use crate::errors::EngineError;
+ use crate::ids::{
+     AccessorIdx, BlobId, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:12:
+     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
+     PathSegment, WorkflowParts,
+ };
+[31m-use crate::RunFrame;
+(B[m 
+ use crate::engine::{
+     EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, new_run_frame,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:375:
+     let workflow = accessor_workflow(Box::new([])).map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(54), &workflow)?;
+     let mut store = test_store();
+[31m-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(3)), Taint::Clean)
+(B[m[31m-        .map_err(|e| e.to_string())?;
+(B[m[32m+    run.write_slot_with_taint(
+(B[m[32m+        SlotIdx::new(0),
+(B[m[32m+        SlotValue::Blob(BlobId::new(3)),
+(B[m[32m+        Taint::Clean,
+(B[m[32m+    )
+(B[m[32m+    .map_err(|e| e.to_string())?;
+(B[m     let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+         .map_err(|e| e.to_string())?;
+     ensure_equal(value, SlotValue::Blob(BlobId::new(3)))
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:388:
+     let mut run = test_frame(RunId::new(55), &workflow)?;
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Null, Taint::Clean)
+         .map_err(|e| e.to_string())?;
+[31m-    let value =
+(B[m[31m-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m[32m+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m     ensure_equal(value, SlotValue::Null)
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:403:
+         Taint::Clean,
+     )
+     .map_err(|e| e.to_string())?;
+[31m-    let value =
+(B[m[31m-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m[32m+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m     ensure_equal(value, SlotValue::Symbol(SymbolId::new(5)))
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:412:
+ fn eval_accessor_empty_path_returns_root_blob_without_store() -> Result<(), String> {
+     let workflow = accessor_workflow(Box::new([])).map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(57), &workflow)?;
+[31m-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(9)), Taint::Clean)
+(B[m[31m-        .map_err(|e| e.to_string())?;
+(B[m[31m-    let value =
+(B[m[31m-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m[32m+    run.write_slot_with_taint(
+(B[m[32m+        SlotIdx::new(0),
+(B[m[32m+        SlotValue::Blob(BlobId::new(9)),
+(B[m[32m+        Taint::Clean,
+(B[m[32m+    )
+(B[m[32m+    .map_err(|e| e.to_string())?;
+(B[m[32m+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+(B[m     ensure_equal(value, SlotValue::Blob(BlobId::new(9)))
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:581:
+ #[test]
+ fn eval_accessor_field_then_index_traversal() -> Result<(), String> {
+     let workflow = accessor_workflow(
+[31m-        vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(1)]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[32m+        vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(1)].into_boxed_slice(),
+(B[m     )
+     .map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(64), &workflow)?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:590:
+ 
+     let inner_list = store
+         .insert_list(
+[31m-            vec![
+(B[m[31m-                SlotValue::I64(10),
+(B[m[31m-                SlotValue::I64(20),
+(B[m[31m-                SlotValue::I64(30),
+(B[m[31m-            ]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[32m+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+     let obj = store
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:619:
+ #[test]
+ fn eval_accessor_index_then_field_traversal() -> Result<(), String> {
+     let workflow = accessor_workflow(
+[31m-        vec![PathSegment::Index(0), PathSegment::Field(SymbolId::new(3))]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[32m+        vec![PathSegment::Index(0), PathSegment::Field(SymbolId::new(3))].into_boxed_slice(),
+(B[m     )
+     .map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(65), &workflow)?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:697:
+         .map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(68), &workflow)?;
+     let mut store = test_store();
+[31m-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(1)), Taint::Clean)
+(B[m[31m-        .map_err(|e| e.to_string())?;
+(B[m[32m+    run.write_slot_with_taint(
+(B[m[32m+        SlotIdx::new(0),
+(B[m[32m+        SlotValue::Blob(BlobId::new(1)),
+(B[m[32m+        Taint::Clean,
+(B[m[32m+    )
+(B[m[32m+    .map_err(|e| e.to_string())?;
+(B[m 
+     match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+         Err(EngineError::UnsupportedAccessorTraversal {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:755:
+         .map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(71), &workflow)?;
+     let mut store = test_store();
+[31m-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(2)), Taint::Clean)
+(B[m[31m-        .map_err(|e| e.to_string())?;
+(B[m[32m+    run.write_slot_with_taint(
+(B[m[32m+        SlotIdx::new(0),
+(B[m[32m+        SlotValue::Blob(BlobId::new(2)),
+(B[m[32m+        Taint::Clean,
+(B[m[32m+    )
+(B[m[32m+    .map_err(|e| e.to_string())?;
+(B[m 
+     match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
+         Err(EngineError::UnsupportedAccessorTraversal {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:816:
+ #[test]
+ fn eval_accessor_oob_index_in_nested_list_returns_error() -> Result<(), String> {
+     let workflow = accessor_workflow(
+[31m-        vec![PathSegment::Field(SymbolId::new(1)), PathSegment::Index(5)]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[32m+        vec![PathSegment::Field(SymbolId::new(1)), PathSegment::Index(5)].into_boxed_slice(),
+(B[m     )
+     .map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(73), &workflow)?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:936:
+         )
+         .map_err(|e| e.to_string())?;
+     let mut run2 = test_frame(RunId::new(77), &workflow)?;
+[31m-    run2
+(B[m[31m-        .write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj2), Taint::Clean)
+(B[m[32m+    run2.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj2), Taint::Clean)
+(B[m         .map_err(|e| e.to_string())?;
+ 
+     let r1 = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1027:
+         return Err("expected object".into());
+     };
+ 
+[31m-    let path: Vec<PathSegment> = field_ids
+(B[m[31m-        .into_iter()
+(B[m[31m-        .map(PathSegment::Field)
+(B[m[31m-        .collect();
+(B[m[32m+    let path: Vec<PathSegment> = field_ids.into_iter().map(PathSegment::Field).collect();
+(B[m     let workflow = accessor_workflow(path.into_boxed_slice()).map_err(|e| e.to_string())?;
+     let mut run = test_frame(RunId::new(80), &workflow)?;
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(root_obj), Taint::Clean)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1065:
+ 
+ #[test]
+ fn eval_accessor_two_indexes_in_a_row() -> Result<(), String> {
+[31m-    let workflow = accessor_workflow(
+(B[m[31m-        vec![PathSegment::Index(1), PathSegment::Index(0)]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[31m-    )
+(B[m[31m-    .map_err(|e| e.to_string())?;
+(B[m[32m+    let workflow =
+(B[m[32m+        accessor_workflow(vec![PathSegment::Index(1), PathSegment::Index(0)].into_boxed_slice())
+(B[m[32m+            .map_err(|e| e.to_string())?;
+(B[m     let mut run = test_frame(RunId::new(81), &workflow)?;
+     let mut store = test_store();
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1076:
+     let inner_list = store
+         .insert_list(
+[31m-            vec![SlotValue::I64(100), SlotValue::I64(200), SlotValue::I64(300)]
+(B[m[31m-                .into_boxed_slice(),
+(B[m[32m+            vec![
+(B[m[32m+                SlotValue::I64(100),
+(B[m[32m+                SlotValue::I64(200),
+(B[m[32m+                SlotValue::I64(300),
+(B[m[32m+            ]
+(B[m[32m+            .into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+     let outer_list = store
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1083:
+         .insert_list(
+[31m-            vec![SlotValue::I64(10), SlotValue::List(inner_list), SlotValue::I64(30)]
+(B[m[31m-                .into_boxed_slice(),
+(B[m[32m+            vec![
+(B[m[32m+                SlotValue::I64(10),
+(B[m[32m+                SlotValue::List(inner_list),
+(B[m[32m+                SlotValue::I64(30),
+(B[m[32m+            ]
+(B[m[32m+            .into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(outer_list), Taint::Clean)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1095:
+ 
+ #[test]
+ fn eval_accessor_two_indexes_index_0_then_index_1() -> Result<(), String> {
+[31m-    let workflow = accessor_workflow(
+(B[m[31m-        vec![PathSegment::Index(0), PathSegment::Index(1)]
+(B[m[31m-            .into_boxed_slice(),
+(B[m[31m-    )
+(B[m[31m-    .map_err(|e| e.to_string())?;
+(B[m[32m+    let workflow =
+(B[m[32m+        accessor_workflow(vec![PathSegment::Index(0), PathSegment::Index(1)].into_boxed_slice())
+(B[m[32m+            .map_err(|e| e.to_string())?;
+(B[m     let mut run = test_frame(RunId::new(82), &workflow)?;
+     let mut store = test_store();
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1106:
+     let inner_list = store
+         .insert_list(
+[31m-            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+(B[m[31m-                .into_boxed_slice(),
+(B[m[32m+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+     let outer_list = store
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1155:
+     let mut run = test_frame(RunId::new(84), &workflow)?;
+     let mut store = test_store();
+     let list = store
+[31m-        .insert_list(
+(B[m[31m-            vec![SlotValue::Null, SlotValue::I64(1)].into_boxed_slice(),
+(B[m[31m-        )
+(B[m[32m+        .insert_list(vec![SlotValue::Null, SlotValue::I64(1)].into_boxed_slice())
+(B[m         .map_err(|e| e.to_string())?;
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+         .map_err(|e| e.to_string())?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1215:
+ #[test]
+ fn eval_accessor_root_slot_out_of_bounds_returns_error() -> Result<(), String> {
+     // Root slot 10 with slot_count 10 is OOB at workflow construction time.
+[31m-    let workflow_result =
+(B[m[31m-        accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+(B[m[32m+    let workflow_result = accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+(B[m     match workflow_result {
+         Err(e) => {
+             let msg = e.to_string();
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1237:
+ 
+ #[test]
+ fn eval_accessor_with_store_root_slot_out_of_bounds_returns_error() -> Result<(), String> {
+[31m-    let workflow_result =
+(B[m[31m-        accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+(B[m[32m+    let workflow_result = accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+(B[m     match workflow_result {
+         Err(e) => {
+             let msg = e.to_string();
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_accessor.rs:1295:
+     let mut store = test_store();
+     let list = store
+         .insert_list(
+[31m-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
+(B[m[31m-                .into_boxed_slice(),
+(B[m[32m+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:1625:
+     // After reinitialize, slot is uninitialized
+     match run.read_taint(SlotIdx::ZERO) {
+         Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
+[31m-        other => Err(format!("expected SlotUninitialized after reinit, got: {other:?}")),
+(B[m[32m+        other => Err(format!(
+(B[m[32m+            "expected SlotUninitialized after reinit, got: {other:?}"
+(B[m[32m+        )),
+(B[m     }
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:1839:
+ 
+ // C-031: eval_expr_with_store returns TimeDependent when any loaded slot is TimeDependent
+ #[test]
+[31m-fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String>
+(B[m[31m-{
+(B[m[32m+fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String> {
+(B[m     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
+ 
+     let slots = vec![(SlotValue::I64(42), Taint::TimeDependent)];
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:1998:
+ 
+ // C-051: build_list_with_taint returns TimeDependent when any item is TimeDependent
+ #[test]
+[31m-fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent()
+(B[m[31m--> Result<(), String> {
+(B[m[32m+fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent() -> Result<(), String>
+(B[m[32m+{
+(B[m     let mut store = ValueStore::new();
+     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2059:
+     let items = vec![SlotIdx::ZERO];
+ 
+     use crate::engine::object_list::build_list_with_taint;
+[31m-    let (list, _) =
+(B[m[31m-        build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+(B[m[32m+    let (list, _) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+(B[m 
+     let (_, item_taint) = store
+         .list_item_with_taint(list, 0)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2111:
+             for c in all {
+                 let ab_c = join_taint(join_taint(a, b), c);
+                 let a_bc = join_taint(a, join_taint(b, c));
+[31m-                assert_eq!(
+(B[m[31m-                    ab_c, a_bc,
+(B[m[31m-                    "associativity failed for ({a:?}, {b:?}, {c:?})"
+(B[m[31m-                );
+(B[m[32m+                assert_eq!(ab_c, a_bc, "associativity failed for ({a:?}, {b:?}, {c:?})");
+(B[m             }
+         }
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2359:
+             Taint::TimeDependent => seen[4] = true,
+         }
+     }
+[31m-    assert!(seen.iter().all(|s| *s), "all five taint variants must appear");
+(B[m[32m+    assert!(
+(B[m[32m+        seen.iter().all(|s| *s),
+(B[m[32m+        "all five taint variants must appear"
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2388:
+     for a in all {
+         for b in all {
+             let max_input = join_taint(a, b);
+[31m-            let slots = vec![
+(B[m[31m-                (SlotValue::I64(1), a),
+(B[m[31m-                (SlotValue::I64(1), b),
+(B[m[31m-            ];
+(B[m[32m+            let slots = vec![(SlotValue::I64(1), a), (SlotValue::I64(1), b)];
+(B[m             let (_, out_taint) =
+                 eval_workflow_with_slots(ops.clone(), slots, vec![]).map_err(|e| e.to_string())?;
+             assert_eq!(
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2466:
+     // Build inner list with Secret taint
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Secret)
+         .map_err(|e| e.to_string())?;
+[31m-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::DerivedFromSecret)
+(B[m[31m-        .map_err(|e| e.to_string())?;
+(B[m[32m+    run.write_slot_with_taint(
+(B[m[32m+        SlotIdx::new(1),
+(B[m[32m+        SlotValue::I64(20),
+(B[m[32m+        Taint::DerivedFromSecret,
+(B[m[32m+    )
+(B[m[32m+    .map_err(|e| e.to_string())?;
+(B[m 
+     let inner_items = vec![SlotIdx::new(0), SlotIdx::new(1)];
+     let (inner_list, inner_taint) =
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/tests/integration_taint_propagation.rs:2534:
+ #[test]
+ fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
+     let mut store = ValueStore::new();
+[31m-    let mut run =
+(B[m[31m-        RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 8).map_err(|e| e.to_string())?;
+(B[m[32m+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 8).map_err(|e| e.to_string())?;
+(B[m 
+     // Level 0: Write a Secret-tagged value
+     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs:4:
+ #![forbid(unsafe_code)]
+ 
+ use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+[31m-use crate::limits::{
+(B[m[31m-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
+(B[m[31m-};
+(B[m[32m+use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
+(B[m use crate::value::ConstValue;
+ use crate::workflow::{
+     CompiledNode, CompiledNodeKind, ExprBranch, ExprProgram, ResourceContract, SlotBranch,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/engine/validate.rs:1159:
+     }
+ 
+     // RED PHASE: additional resource contract tests
+[31m-    mod red_phase_tests;
+(B[m     mod red_phase_behavior_tests;
+[32m+    mod red_phase_tests;
+(B[m }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/kani_taint_propagation.rs:167:
+     let b_lte_c = bc == c;
+     kani::assume(a_lte_b && b_lte_c);
+     let ac = join_taint(a, c);
+[31m-    kani::assert(ac == c, "transitivity: if a <= b and b <= c then join(a,c) == c");
+(B[m[32m+    kani::assert(
+(B[m[32m+        ac == c,
+(B[m[32m+        "transitivity: if a <= b and b <= c then join(a,c) == c",
+(B[m[32m+    );
+(B[m }
+ 
+ /// VB-CORE-TAINT-006-KANI H9: join_taint never returns a result lower than either input
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/kani_taint_propagation.rs:208:
+     let a_raw = kani::any::<u8>();
+     let a = taint_from_u8(a_raw);
+     let result = join_taint(a, Taint::Clean);
+[31m-    kani::assert(
+(B[m[31m-        result == a,
+(B[m[31m-        "Clean is identity for join_taint",
+(B[m[31m-    );
+(B[m[32m+    kani::assert(result == a, "Clean is identity for join_taint");
+(B[m }
+ 
+ /// VB-CORE-TAINT-006-KANI H12: join_taint result ranks Random below TimeDependent
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/kani_harnesses.rs:9:
+ use crate::ids::{RunId, SlotIdx, StepIdx};
+ use crate::value::{ConstValue, SlotValue};
+ use crate::value_store::ValueStore;
+[31m-use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts};
+(B[m[32m+use crate::workflow::{
+(B[m[32m+    CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
+(B[m[32m+};
+(B[m 
+ use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/kani_harnesses.rs:115:
+             .expect("write slot b failed");
+ 
+         let mut store = ValueStore::new();
+[31m-        let node = plan
+(B[m[31m-            .node(StepIdx::new(0))
+(B[m[31m-            .expect("node 0 missing");
+(B[m[32m+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+(B[m         let _result = replay_step(node, &mut run, &mut store, &plan);
+ 
+         if !slot_a && !slot_b && !has_otherwise {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/kani_harnesses.rs:197:
+             .expect("write slot b failed");
+ 
+         let mut store = ValueStore::new();
+[31m-        let node = plan
+(B[m[31m-            .node(StepIdx::new(0))
+(B[m[31m-            .expect("node 0 missing");
+(B[m[32m+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+(B[m         let result = replay_step(node, &mut run, &mut store, &plan);
+ 
+         match result {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/kani_harnesses.rs:264:
+ 
+         let step_count = plan.node_count();
+         let slot_count = plan.slot_count();
+[31m-        let node = plan
+(B[m[31m-            .node(StepIdx::new(0))
+(B[m[31m-            .expect("node 0 missing");
+(B[m[32m+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+(B[m 
+         let mut run_a = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
+             .expect("frame a failed");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:15:
+ use crate::ids::ActionId;
+ use crate::value::Taint;
+ 
+[31m-use super::{ReplayEngine, ReplayError, SuspensionKind};
+(B[m use super::step::ReplayAction;
+[32m+use super::{ReplayEngine, ReplayError, SuspensionKind};
+(B[m 
+ #[test]
+ fn suspension_kind_names_are_stable() {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:2400:
+             ConstValue::Bool(false),
+             ConstValue::I64(0),
+         ],
+[31m-        vec![expr_true.clone(), ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into())?],
+(B[m[32m+        vec![
+(B[m[32m+            expr_true.clone(),
+(B[m[32m+            ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into())?,
+(B[m[32m+        ],
+(B[m     )?;
+ 
+     let mut store = ValueStore::new();
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:3682:
+ 
+     assert_eq!(step_run.pc(), full_frame.pc());
+     for slot in 0..3u16 {
+[31m-        let step_val = *step_run
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+        let step_val = *step_run.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "step frame read error",
+[31m-            })?;
+(B[m[31m-        let full_val = *full_frame
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m[32m+        let full_val = *full_frame.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "full frame read error",
+[31m-            })?;
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m         assert_eq!(step_val, full_val, "slot {slot} mismatch");
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:3748:
+ 
+     assert_eq!(frame_a.pc(), frame_b.pc());
+     for slot in 0..2u16 {
+[31m-        let val_a = *frame_a
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+        let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "frame_a read error",
+[31m-            })?;
+(B[m[31m-        let val_b = *frame_b
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m[32m+        let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "frame_b read error",
+[31m-            })?;
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m         assert_eq!(val_a, val_b, "slot {slot} mismatch between idempotent runs");
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:3826:
+ 
+     assert_eq!(frame_a.pc(), frame_b.pc());
+     for slot in 0..3u16 {
+[31m-        let val_a = *frame_a
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+        let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "frame_a read error",
+[31m-            })?;
+(B[m[31m-        let val_b = *frame_b
+(B[m[31m-            .read_slot(SlotIdx::new(slot))
+(B[m[31m-            .map_err(|_| CoreError::InternalInvariantViolation {
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m[32m+        let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
+(B[m[32m+            CoreError::InternalInvariantViolation {
+(B[m                 reason: "frame_b read error",
+[31m-            })?;
+(B[m[32m+            }
+(B[m[32m+        })?;
+(B[m         assert_eq!(val_a, val_b, "independent runs slot {slot} mismatch");
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:3911:
+     let step_count = plan.node_count();
+     let slot_count = plan.slot_count();
+     let mut resume_store = ValueStore::new();
+[31m-    let mut resume_run = RunFrame::new(
+(B[m[31m-        RunId::new(0),
+(B[m[31m-        snap_frame.pc(),
+(B[m[31m-        step_count,
+(B[m[31m-        slot_count,
+(B[m[31m-    )?;
+(B[m[32m+    let mut resume_run = RunFrame::new(RunId::new(0), snap_frame.pc(), step_count, slot_count)?;
+(B[m     resume_run.write_slot(SlotIdx::new(0), SlotValue::I64(10))?;
+     resume_run.write_slot(SlotIdx::new(1), SlotValue::I64(20))?;
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:3928:
+     super::step::replay_step(node, &mut resume_run, &mut resume_store, &plan)
+         .map_err(replay_err_to_core)?;
+ 
+[32m+    assert_eq!(*resume_run.read_slot(SlotIdx::new(2))?, SlotValue::I64(30));
+(B[m     assert_eq!(
+         *resume_run.read_slot(SlotIdx::new(2))?,
+[31m-        SlotValue::I64(30)
+(B[m[31m-    );
+(B[m[31m-    assert_eq!(
+(B[m[31m-        *resume_run.read_slot(SlotIdx::new(2))?,
+(B[m         *frame_full.read_slot(SlotIdx::new(2))?,
+         "intermediate snapshot ran ahead of full replay"
+     );
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:4154:
+         .replay_frame_through(StepIdx::new(0), &mut store)
+         .map_err(replay_err_to_core)?;
+ 
+[31m-    assert_eq!(
+(B[m[31m-        *frame.read_slot(SlotIdx::new(0))?,
+(B[m[31m-        SlotValue::I64(i64::MAX)
+(B[m[31m-    );
+(B[m[32m+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(i64::MAX));
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:4195:
+         .replay_frame_through(StepIdx::new(0), &mut store)
+         .map_err(replay_err_to_core)?;
+ 
+[31m-    assert_eq!(
+(B[m[31m-        *frame.read_slot(SlotIdx::new(0))?,
+(B[m[31m-        SlotValue::I64(i64::MIN)
+(B[m[31m-    );
+(B[m[32m+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(i64::MIN));
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/replay/tests.rs:4236:
+         .replay_frame_through(StepIdx::new(0), &mut store)
+         .map_err(replay_err_to_core)?;
+ 
+[31m-    assert_eq!(
+(B[m[31m-        *frame.read_slot(SlotIdx::new(0))?,
+(B[m[31m-        SlotValue::I64(0)
+(B[m[31m-    );
+(B[m[32m+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(0));
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:41:
+     if id0.get() != 0 || id1.get() != 1 || id2.get() != 2 {
+         return Err(format!(
+             "expected monotonic ids 0,1,2 got {},{},{}",
+[31m-            id0.get(), id1.get(), id2.get()
+(B[m[32m+            id0.get(),
+(B[m[32m+            id1.get(),
+(B[m[32m+            id2.get()
+(B[m         ));
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:79:
+         return Err("id1 payload mismatch".into());
+     }
+     if store.symbol_count() != 2 {
+[31m-        return Err(format!("expected symbol_count=2, got {}", store.symbol_count()));
+(B[m[32m+        return Err(format!(
+(B[m[32m+            "expected symbol_count=2, got {}",
+(B[m[32m+            store.symbol_count()
+(B[m[32m+        ));
+(B[m     }
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:214:
+             .into_boxed_slice(),
+         )
+         .map_err(|e| e.to_string())?;
+[31m-    if store.object_field(obj_id, key_a).map_err(|e| e.to_string())? != SlotValue::I64(100) {
+(B[m[32m+    if store
+(B[m[32m+        .object_field(obj_id, key_a)
+(B[m[32m+        .map_err(|e| e.to_string())?
+(B[m[32m+        != SlotValue::I64(100)
+(B[m[32m+    {
+(B[m         return Err("key_a must resolve to 100".into());
+     }
+[31m-    if store.object_field(obj_id, key_b).map_err(|e| e.to_string())? != SlotValue::I64(200) {
+(B[m[32m+    if store
+(B[m[32m+        .object_field(obj_id, key_b)
+(B[m[32m+        .map_err(|e| e.to_string())?
+(B[m[32m+        != SlotValue::I64(200)
+(B[m[32m+    {
+(B[m         return Err("key_b must resolve to 200".into());
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:298:
+             .into_boxed_slice(),
+         )
+         .map_err(|e| e.to_string())?;
+[31m-    if store.object_field(obj_id, dup_key).map_err(|e| e.to_string())? != SlotValue::I64(1) {
+(B[m[32m+    if store
+(B[m[32m+        .object_field(obj_id, dup_key)
+(B[m[32m+        .map_err(|e| e.to_string())?
+(B[m[32m+        != SlotValue::I64(1)
+(B[m[32m+    {
+(B[m         return Err("duplicate key must resolve to first value".into());
+     }
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:759:
+         .insert_symbol(Box::<str>::from("b"))
+         .map_err(|e| e.to_string())?;
+     if store.symbol_count() != 2 {
+[31m-        return Err(format!("expected symbol_count=2, got {}", store.symbol_count()));
+(B[m[32m+        return Err(format!(
+(B[m[32m+            "expected symbol_count=2, got {}",
+(B[m[32m+            store.symbol_count()
+(B[m[32m+        ));
+(B[m     }
+     store
+         .insert_list(vec![SlotValue::Null].into_boxed_slice())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:832:
+             .map_err(|e| e.to_string())?;
+     }
+     if store.total_arena_count() != 100 {
+[31m-        return Err(format!(
+(B[m[31m-            "expected 100, got {}",
+(B[m[31m-            store.total_arena_count()
+(B[m[31m-        ));
+(B[m[32m+        return Err(format!("expected 100, got {}", store.total_arena_count()));
+(B[m     }
+     Ok(())
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:984:
+     let id = store
+         .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+         .map_err(|e| e.to_string())?;
+[31m-    let (_, taint0) = store.list_item_with_taint(id, 0).map_err(|e| e.to_string())?;
+(B[m[31m-    let (_, taint1) = store.list_item_with_taint(id, 1).map_err(|e| e.to_string())?;
+(B[m[32m+    let (_, taint0) = store
+(B[m[32m+        .list_item_with_taint(id, 0)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m[32m+    let (_, taint1) = store
+(B[m[32m+        .list_item_with_taint(id, 1)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m     if taint0 != Taint::Clean || taint1 != Taint::Clean {
+         return Err("default taint must be Clean".into());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:1000:
+     let id = store
+         .insert_list_with_taint(values, taints)
+         .map_err(|e| e.to_string())?;
+[31m-    let (v0, t0) = store.list_item_with_taint(id, 0).map_err(|e| e.to_string())?;
+(B[m[31m-    let (v1, t1) = store.list_item_with_taint(id, 1).map_err(|e| e.to_string())?;
+(B[m[32m+    let (v0, t0) = store
+(B[m[32m+        .list_item_with_taint(id, 0)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m[32m+    let (v1, t1) = store
+(B[m[32m+        .list_item_with_taint(id, 1)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m     if v0 != SlotValue::I64(10) || t0 != Taint::Secret {
+         return Err("taint item 0 mismatch".into());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:1038:
+     let key = SymbolId::new(1);
+     let obj_id = store
+         .insert_object(
+[31m-            vec![ObjectField::with_taint(key, SlotValue::I64(42), Taint::Secret)]
+(B[m[31m-                .into_boxed_slice(),
+(B[m[32m+            vec![ObjectField::with_taint(
+(B[m[32m+                key,
+(B[m[32m+                SlotValue::I64(42),
+(B[m[32m+                Taint::Secret,
+(B[m[32m+            )]
+(B[m[32m+            .into_boxed_slice(),
+(B[m         )
+         .map_err(|e| e.to_string())?;
+[31m-    let (val, taint) = store.object_field_with_taint(obj_id, key).map_err(|e| e.to_string())?;
+(B[m[32m+    let (val, taint) = store
+(B[m[32m+        .object_field_with_taint(obj_id, key)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m     if val != SlotValue::I64(42) || taint != Taint::Secret {
+         return Err("object taint mismatch".into());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/value_store/extended_tests.rs:1062:
+             .into_boxed_slice(),
+         )
+         .map_err(|e| e.to_string())?;
+[31m-    let (val, taint) = store.object_field_with_taint(obj_id, key).map_err(|e| e.to_string())?;
+(B[m[32m+    let (val, taint) = store
+(B[m[32m+        .object_field_with_taint(obj_id, key)
+(B[m[32m+        .map_err(|e| e.to_string())?;
+(B[m     if val != SlotValue::I64(1) || taint != Taint::Secret {
+         return Err("duplicate key first-wins must apply to taint".into());
+     }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/workflow/tests.rs:9:
+     use crate::value::ConstValue;
+     #[cfg(test)]
+     use crate::{
+[31m-        check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+(B[m[31m-        CoreError, ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch,
+(B[m[31m-        WorkflowError, WorkflowParts,
+(B[m[32m+        AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch,
+(B[m[32m+        ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
+(B[m[32m+        WorkflowParts, check_expr_stack_bound,
+(B[m     };
+     use std::fmt::Debug;
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/workflow/tests.rs:1123:
+     // --- Resource contract max_steps set to 0 with 1 node ---
+ 
+     #[test]
+[31m-    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded(
+(B[m[31m-    ) -> Result<(), String> {
+(B[m[32m+    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded()
+(B[m[32m+    -> Result<(), String> {
+(B[m         let parts = WorkflowParts {
+             name: Box::<str>::from("zero_max_steps"),
+             digest: WorkflowDigest::from_bytes([2; 32]),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/workflow/tests.rs:1182:
+     // --- TogetherStart with out-of-bounds branch target ---
+ 
+     #[test]
+[31m-    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
+(B[m[31m-    ) -> Result<(), String> {
+(B[m[32m+    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
+(B[m[32m+    -> Result<(), String> {
+(B[m         let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
+         parts.nodes = vec![
+             CompiledNode {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/workflow/tests.rs:5198:
+             resource_contract: resource_contract(1, 1, 1, 0, 0),
+             step_names: Box::new([]),
+         };
+[31m-        let workflow =
+(B[m[31m-            CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+(B[m[32m+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+(B[m         let node = workflow
+             .node(StepIdx::new(0))
+             .ok_or_else(|| String::from("missing node"))?;
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_core/src/workflow/tests.rs:5579:
+     }
+ 
+     #[test]
+[31m-    fn postcard_roundtrip_compiled_workflow_parts_roundtrip_preserves_all_data(
+(B[m[31m-    ) -> Result<(), String> {
+(B[m[32m+    fn postcard_roundtrip_compiled_workflow_parts_roundtrip_preserves_all_data()
+(B[m[32m+    -> Result<(), String> {
+(B[m         let expression = ExprProgram::try_from_ops(vec![load(0)].into_boxed_slice())
+             .map_err(|e| e.to_string())?;
+         let accessor = AccessorProgram {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/bytecode/tests/adversarial.rs:590:
+         )),
+     };
+     let folded = const_fold_expr(&ast);
+[31m-    assert_eq!(folded, None, "BC-ADV-002: i64::MIN * -1 should not fold (overflow)");
+(B[m[32m+    assert_eq!(
+(B[m[32m+        folded, None,
+(B[m[32m+        "BC-ADV-002: i64::MIN * -1 should not fold (overflow)"
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/bytecode/tests/adversarial.rs:647:
+         )),
+     };
+     let folded = const_fold_expr(&ast);
+[31m-    assert_eq!(
+(B[m[31m-        folded, None,
+(B[m[31m-        "BC-ADV-007: i64::MIN * -1 should not fold"
+(B[m[31m-    );
+(B[m[32m+    assert_eq!(folded, None, "BC-ADV-007: i64::MIN * -1 should not fold");
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/bytecode/tests/adversarial.rs:691:
+     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
+     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
+     let r = eval_binary_op(BinaryOp::Add, val, zero)?;
+[31m-    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        r,
+(B[m[32m+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/bytecode/tests/adversarial.rs:706:
+     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
+     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
+     let r = eval_binary_op(BinaryOp::Sub, val, zero)?;
+[31m-    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        r,
+(B[m[32m+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests/adversarial.rs:423:
+         let _ = right;
+     }
+     let (op_last, _l, _r) = as_binary(cur)?;
+[31m-    assert!(matches!(op_last, BinaryOp::Lt | BinaryOp::Lte | BinaryOp::Gt
+(B[m[31m-        | BinaryOp::Gte | BinaryOp::Eq | BinaryOp::NotEq));
+(B[m[32m+    assert!(matches!(
+(B[m[32m+        op_last,
+(B[m[32m+        BinaryOp::Lt
+(B[m[32m+            | BinaryOp::Lte
+(B[m[32m+            | BinaryOp::Gt
+(B[m[32m+            | BinaryOp::Gte
+(B[m[32m+            | BinaryOp::Eq
+(B[m[32m+            | BinaryOp::NotEq
+(B[m[32m+    ));
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests/adversarial.rs:475:
+     let (op, left, right) = as_binary(&expr)?;
+     assert_eq!(op, BinaryOp::Eq);
+     assert_eq!(*left, ExprAst::Literal(ExprLiteral::Text(Box::from("abc"))));
+[31m-    assert_eq!(*right, ExprAst::Literal(ExprLiteral::Text(Box::from("abc"))));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        *right,
+(B[m[32m+        ExprAst::Literal(ExprLiteral::Text(Box::from("abc")))
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests/adversarial.rs:533:
+ #[test]
+ fn parse_expr_max_i64() -> crate::ExprResult<()> {
+     let expr = parse("9223372036854775807")?;
+[31m-    assert_eq!(expr, ExprAst::Literal(ExprLiteral::I64(9223372036854775807)));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        expr,
+(B[m[32m+        ExprAst::Literal(ExprLiteral::I64(9223372036854775807))
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests/adversarial.rs:543:
+     let expr = parse("-9223372036854775807")?;
+     let (op, inner) = as_unary(&expr)?;
+     assert_eq!(op, UnaryOp::Neg);
+[31m-    assert_eq!(*inner, ExprAst::Literal(ExprLiteral::I64(9223372036854775807)));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        *inner,
+(B[m[32m+        ExprAst::Literal(ExprLiteral::I64(9223372036854775807))
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests/adversarial.rs:628:
+ fn blackhat_pa_009_too_many_helper_args_at_boundary() {
+     let result = parse("contains(1, 2, 3, 4, 5, 6, 7, 8, 9)");
+     assert!(
+[31m-        matches!(
+(B[m[31m-            result,
+(B[m[31m-            Err(ExprError::TooManyHelperArgs { len: 9, max: 8 })
+(B[m[31m-        ),
+(B[m[32m+        matches!(result, Err(ExprError::TooManyHelperArgs { len: 9, max: 8 })),
+(B[m         "BH-PA-009: 9 args should hit TooManyHelperArgs"
+     );
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests.rs:218:
+ #[test]
+ fn parse_expr_parses_text_literal() -> crate::ExprResult<()> {
+     let expr = parse("\"hello world\"")?;
+[31m-    assert_eq!(expr, ExprAst::Literal(ExprLiteral::Text(Box::from("hello world"))));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        expr,
+(B[m[32m+        ExprAst::Literal(ExprLiteral::Text(Box::from("hello world")))
+(B[m[32m+    );
+(B[m     Ok(())
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/parser/tests.rs:609:
+ #[test]
+ fn parse_expr_rejects_bare_identifier_without_parens() {
+     let result = parse("foobar");
+[31m-    assert!(matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier")));
+(B[m[32m+    assert!(
+(B[m[32m+        matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier"))
+(B[m[32m+    );
+(B[m }
+ 
+ #[test]
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_expr/src/typecheck/tests.rs:511:
+ }
+ 
+ #[test]
+[31m-fn typecheck_expr_allows_helper_with_mismatched_arg_types_at_typecheck_level() -> crate::ExprResult<()> {
+(B[m[32m+fn typecheck_expr_allows_helper_with_mismatched_arg_types_at_typecheck_level()
+(B[m[32m+-> crate::ExprResult<()> {
+(B[m     let ty = check("sum(true)")?;
+     assert_eq!(ty, ExprType::I64);
+     Ok(())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:182:
+         .max_preemptions(3)
+         .max_branches(1000)
+         .check(|| {
+[31m-        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-        let event = captured_fire();
+(B[m[32m+            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+            let event = captured_fire();
+(B[m 
+[31m-        let cancel_state = state.clone();
+(B[m[31m-        let cancel = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&cancel_state);
+(B[m[31m-            locked.pending = None;
+(B[m[31m-        });
+(B[m[32m+            let cancel_state = state.clone();
+(B[m[32m+            let cancel = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&cancel_state);
+(B[m[32m+                locked.pending = None;
+(B[m[32m+            });
+(B[m 
+[31m-        let deliver_state = state.clone();
+(B[m[31m-        let delivery = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&deliver_state);
+(B[m[31m-            deliver(&mut locked, event)
+(B[m[31m-        });
+(B[m[32m+            let deliver_state = state.clone();
+(B[m[32m+            let delivery = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&deliver_state);
+(B[m[32m+                deliver(&mut locked, event)
+(B[m[32m+            });
+(B[m 
+[31m-        assert!(cancel.join().is_ok(), "cancel thread should complete");
+(B[m[31m-        let delivery_result = delivery.join();
+(B[m[31m-        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-        let Ok(outcome) = delivery_result else {
+(B[m[31m-            return;
+(B[m[31m-        };
+(B[m[32m+            assert!(cancel.join().is_ok(), "cancel thread should complete");
+(B[m[32m+            let delivery_result = delivery.join();
+(B[m[32m+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+            let Ok(outcome) = delivery_result else {
+(B[m[32m+                return;
+(B[m[32m+            };
+(B[m 
+[31m-        let locked = lock_state(&state);
+(B[m[31m-        assert!(
+(B[m[31m-            matches!(
+(B[m[31m-                outcome,
+(B[m[31m-                FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
+(B[m[31m-            ),
+(B[m[31m-            "cancel race must resolve only to valid delivery or stale-after-cancel"
+(B[m[31m-        );
+(B[m[31m-        assert_lattice(&locked, outcome);
+(B[m[31m-    });
+(B[m[32m+            let locked = lock_state(&state);
+(B[m[32m+            assert!(
+(B[m[32m+                matches!(
+(B[m[32m+                    outcome,
+(B[m[32m+                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
+(B[m[32m+                ),
+(B[m[32m+                "cancel race must resolve only to valid delivery or stale-after-cancel"
+(B[m[32m+            );
+(B[m[32m+            assert_lattice(&locked, outcome);
+(B[m[32m+        });
+(B[m }
+ 
+ /// Captured fired event versus replacement: either the captured event wins
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:224:
+         .max_preemptions(3)
+         .max_branches(1000)
+         .check(|| {
+[31m-        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-        let event = captured_fire();
+(B[m[32m+            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+            let event = captured_fire();
+(B[m 
+[31m-        let replace_state = state.clone();
+(B[m[31m-        let replace = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&replace_state);
+(B[m[31m-            locked.pending = Some(PendingTimer {
+(B[m[31m-                generation: 2,
+(B[m[31m-                deadline: 11,
+(B[m[31m-                kind: TimerKind::Ask,
+(B[m[32m+            let replace_state = state.clone();
+(B[m[32m+            let replace = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&replace_state);
+(B[m[32m+                locked.pending = Some(PendingTimer {
+(B[m[32m+                    generation: 2,
+(B[m[32m+                    deadline: 11,
+(B[m[32m+                    kind: TimerKind::Ask,
+(B[m[32m+                });
+(B[m             });
+[31m-        });
+(B[m 
+[31m-        let deliver_state = state.clone();
+(B[m[31m-        let delivery = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&deliver_state);
+(B[m[31m-            deliver(&mut locked, event)
+(B[m[31m-        });
+(B[m[32m+            let deliver_state = state.clone();
+(B[m[32m+            let delivery = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&deliver_state);
+(B[m[32m+                deliver(&mut locked, event)
+(B[m[32m+            });
+(B[m 
+[31m-        assert!(replace.join().is_ok(), "replace thread should complete");
+(B[m[31m-        let delivery_result = delivery.join();
+(B[m[31m-        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-        let Ok(outcome) = delivery_result else {
+(B[m[31m-            return;
+(B[m[31m-        };
+(B[m[32m+            assert!(replace.join().is_ok(), "replace thread should complete");
+(B[m[32m+            let delivery_result = delivery.join();
+(B[m[32m+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+            let Ok(outcome) = delivery_result else {
+(B[m[32m+                return;
+(B[m[32m+            };
+(B[m 
+[31m-        let locked = lock_state(&state);
+(B[m[31m-        assert!(
+(B[m[31m-            matches!(
+(B[m[31m-                outcome,
+(B[m[31m-                FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
+(B[m[31m-            ),
+(B[m[31m-            "replace race must resolve only to valid delivery or stale-after-replace"
+(B[m[31m-        );
+(B[m[31m-        assert_lattice(&locked, outcome);
+(B[m[31m-    });
+(B[m[32m+            let locked = lock_state(&state);
+(B[m[32m+            assert!(
+(B[m[32m+                matches!(
+(B[m[32m+                    outcome,
+(B[m[32m+                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
+(B[m[32m+                ),
+(B[m[32m+                "replace race must resolve only to valid delivery or stale-after-replace"
+(B[m[32m+            );
+(B[m[32m+            assert_lattice(&locked, outcome);
+(B[m[32m+        });
+(B[m }
+ 
+ /// Captured fired event versus terminal lifecycle transition: either delivery
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:271:
+         .max_preemptions(3)
+         .max_branches(1000)
+         .check(|| {
+[31m-        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-        let event = captured_fire();
+(B[m[32m+            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+            let event = captured_fire();
+(B[m 
+[31m-        let terminal_state = state.clone();
+(B[m[31m-        let terminal = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&terminal_state);
+(B[m[31m-            locked.terminal = true;
+(B[m[31m-            locked.pending = None;
+(B[m[31m-        });
+(B[m[32m+            let terminal_state = state.clone();
+(B[m[32m+            let terminal = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&terminal_state);
+(B[m[32m+                locked.terminal = true;
+(B[m[32m+                locked.pending = None;
+(B[m[32m+            });
+(B[m 
+[31m-        let deliver_state = state.clone();
+(B[m[31m-        let delivery = loom::thread::spawn(move || {
+(B[m[31m-            let mut locked = lock_state(&deliver_state);
+(B[m[31m-            deliver(&mut locked, event)
+(B[m[31m-        });
+(B[m[32m+            let deliver_state = state.clone();
+(B[m[32m+            let delivery = loom::thread::spawn(move || {
+(B[m[32m+                let mut locked = lock_state(&deliver_state);
+(B[m[32m+                deliver(&mut locked, event)
+(B[m[32m+            });
+(B[m 
+[31m-        assert!(terminal.join().is_ok(), "terminal thread should complete");
+(B[m[31m-        let delivery_result = delivery.join();
+(B[m[31m-        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-        let Ok(outcome) = delivery_result else {
+(B[m[31m-            return;
+(B[m[31m-        };
+(B[m[32m+            assert!(terminal.join().is_ok(), "terminal thread should complete");
+(B[m[32m+            let delivery_result = delivery.join();
+(B[m[32m+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+            let Ok(outcome) = delivery_result else {
+(B[m[32m+                return;
+(B[m[32m+            };
+(B[m 
+[31m-        let locked = lock_state(&state);
+(B[m[31m-        assert!(
+(B[m[31m-            matches!(
+(B[m[31m-                outcome,
+(B[m[31m-                FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
+(B[m[31m-            ),
+(B[m[31m-            "terminal race must resolve only to valid delivery or terminal rejection"
+(B[m[31m-        );
+(B[m[31m-        assert_lattice(&locked, outcome);
+(B[m[31m-    });
+(B[m[32m+            let locked = lock_state(&state);
+(B[m[32m+            assert!(
+(B[m[32m+                matches!(
+(B[m[32m+                    outcome,
+(B[m[32m+                    FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
+(B[m[32m+                ),
+(B[m[32m+                "terminal race must resolve only to valid delivery or terminal rejection"
+(B[m[32m+            );
+(B[m[32m+            assert_lattice(&locked, outcome);
+(B[m[32m+        });
+(B[m }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/mod.rs:5:
+ 
+ #[cfg(loom)]
+ pub mod sync;
+[32m+
+(B[mDiff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/sync.rs:4:
+ 
+ #[cfg(loom)]
+ pub mod sync {
+[31m-    pub use loom::sync::{Arc, Mutex, MutexGuard};
+(B[m     pub use loom::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+[32m+    pub use loom::sync::{Arc, Mutex, MutexGuard};
+(B[m     pub use loom::thread;
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/src/models/sync.rs:12:
+ #[cfg(not(loom))]
+ pub mod sync {
+[31m-    pub use std::sync::{Arc, Mutex, MutexGuard};
+(B[m     pub use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+[32m+    pub use std::sync::{Arc, Mutex, MutexGuard};
+(B[m     pub use std::thread;
+ }
+[32m+
+(B[mDiff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:17:
+     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
+     WorkflowDigest,
+ };
+[32m+use vb_runtime::recovery::RuntimeRecoveryBoundary;
+(B[m use vb_storage::recovery::{
+     ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
+     RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:23:
+[31m-    RunSnapshot, recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary,
+(B[m[31m-    recover_runtime_summary_with_expected, hydrate_run_frame, hydrate_run_frame_from_events,
+(B[m[32m+    RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
+(B[m[32m+    recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
+(B[m     verify_digests,
+ };
+[31m-use vb_runtime::recovery::RuntimeRecoveryBoundary;
+(B[m use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
+ 
+ fn test_digest(byte: u8) -> WorkflowDigest {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:44:
+     }
+ }
+ 
+[31m-fn test_admission_event(
+(B[m[31m-    run: RunId,
+(B[m[31m-    seq: EventSeq,
+(B[m[31m-    digest: WorkflowDigest,
+(B[m[31m-) -> JournalEvent {
+(B[m[32m+fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+(B[m     JournalEvent::RunAdmission {
+         run,
+         seq,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:58:
+     }
+ }
+ 
+[31m-fn build_two_step_finished_run(
+(B[m[31m-    run: RunId,
+(B[m[31m-    digest: WorkflowDigest,
+(B[m[31m-) -> Vec<JournalEvent> {
+(B[m[32m+fn build_two_step_finished_run(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
+(B[m     let mut seq = 0u64;
+     let mut events = Vec::new();
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:85:
+         seq: EventSeq::new(seq),
+         slot: SlotIdx::new(0),
+         value: Some(
+[31m-            postcard::to_allocvec(&SlotValue::I64(42))
+(B[m[31m-                .expect("value encoding should succeed"),
+(B[m[32m+            postcard::to_allocvec(&SlotValue::I64(42)).expect("value encoding should succeed"),
+(B[m         ),
+         extra: None,
+         attempt: 1,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:114:
+         seq: EventSeq::new(seq),
+         slot: SlotIdx::new(1),
+         value: Some(
+[31m-            postcard::to_allocvec(&SlotValue::I64(99))
+(B[m[31m-                .expect("value encoding should succeed"),
+(B[m[32m+            postcard::to_allocvec(&SlotValue::I64(99)).expect("value encoding should succeed"),
+(B[m         ),
+         extra: None,
+         attempt: 1,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:409:
+     ];
+ 
+     let result = hydrate_run_frame_from_events(&events, run);
+[31m-    assert!(
+(B[m[31m-        result.is_ok(),
+(B[m[31m-        "hydration should succeed: {result:?}"
+(B[m[31m-    );
+(B[m[32m+    assert!(result.is_ok(), "hydration should succeed: {result:?}");
+(B[m 
+     let frame = result.unwrap();
+     assert_eq!(frame.run_id(), run);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:447:
+             seq: EventSeq::new(2),
+             slot: SlotIdx::new(0),
+             value: Some(
+[31m-                postcard::to_allocvec(&SlotValue::I64(77))
+(B[m[31m-                    .expect("value encoding should succeed"),
+(B[m[32m+                postcard::to_allocvec(&SlotValue::I64(77)).expect("value encoding should succeed"),
+(B[m             ),
+             extra: None,
+             attempt: 1,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:461:
+     }
+ 
+     let journal = open_journal(&dir);
+[31m-    let seed = recover_runtime_frame_seed(&journal, run)
+(B[m[31m-        .expect("frame seed recovery should succeed");
+(B[m[32m+    let seed =
+(B[m[32m+        recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+(B[m 
+     let slot = seed
+         .slots
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:471:
+         .expect("slot 0 must be in recovered slots");
+     assert_eq!(slot.value, SlotValue::I64(77));
+ 
+[31m-    let boundary =
+(B[m[31m-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m[32m+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m     let frame = boundary
+         .hydrate_run_frame()
+         .expect("boundary hydration should succeed");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:526:
+     }
+ 
+     let journal = open_journal(&dir);
+[31m-    let seed = recover_runtime_frame_seed(&journal, run)
+(B[m[31m-        .expect("frame seed recovery should succeed");
+(B[m[32m+    let seed =
+(B[m[32m+        recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+(B[m 
+     let step0 = seed
+         .steps
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:543:
+         .expect("step 1 must be in recovered steps");
+     assert_eq!(step1.state, RecoveredStepState::Asking);
+ 
+[31m-    let boundary =
+(B[m[31m-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m[32m+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m     let frame = boundary
+         .hydrate_run_frame()
+         .expect("boundary hydration should succeed");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:965:
+     let replay_a = {
+         let j = open_journal(&dir);
+         let mut tracker = ActionReplayTracker::new();
+[31m-        recover_full_journal(&j, run, &mut tracker, &[], &[])
+(B[m[31m-            .expect("first replay should succeed")
+(B[m[32m+        recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("first replay should succeed")
+(B[m     };
+ 
+     let replay_b = {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:973:
+         let j = open_journal(&dir);
+         let mut tracker = ActionReplayTracker::new();
+[31m-        recover_full_journal(&j, run, &mut tracker, &[], &[])
+(B[m[31m-            .expect("second replay should succeed")
+(B[m[32m+        recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("second replay should succeed")
+(B[m     };
+ 
+     assert_eq!(replay_a, replay_b);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1160:
+     assert_eq!(
+         recovered.len(),
+         events.len(),
+[31m-        "all {n} events should be recoverable", n = events.len()
+(B[m[32m+        "all {n} events should be recoverable",
+(B[m[32m+        n = events.len()
+(B[m     );
+     for (i, (orig, rec)) in events.iter().zip(recovered.iter()).enumerate() {
+         assert_eq!(orig, rec, "event {i} must match");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1337:
+         step: found_step,
+     }) = result
+     else {
+[31m-        panic!(
+(B[m[31m-            "expected NonIdempotentActionBlocked, got: {result:?}"
+(B[m[31m-        );
+(B[m[32m+        panic!("expected NonIdempotentActionBlocked, got: {result:?}");
+(B[m     };
+     assert_eq!(found_action, action);
+     assert_eq!(found_step, StepIdx::ZERO);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1379:
+         .expect("summary recovery should succeed")
+         .summary();
+ 
+[31m-    assert_eq!(
+(B[m[31m-        summary.terminal,
+(B[m[31m-        Some(RecoveryTerminalState::Cancelled)
+(B[m[31m-    );
+(B[m[32m+    assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+(B[m }
+ 
+ /// Given events with RunAdmission events
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1520:
+             result: SlotIdx::ZERO,
+         },
+     );
+[31m-    let Err(RecoveryError::TerminalStateMismatch {
+(B[m[31m-        expected,
+(B[m[31m-        found,
+(B[m[31m-    }) = result
+(B[m[31m-    else {
+(B[m[31m-        panic!(
+(B[m[31m-            "expected TerminalStateMismatch, got: {result:?}"
+(B[m[31m-        );
+(B[m[32m+    let Err(RecoveryError::TerminalStateMismatch { expected, found }) = result else {
+(B[m[32m+        panic!("expected TerminalStateMismatch, got: {result:?}");
+(B[m     };
+     assert_eq!(expected.as_str(), "Finished");
+     assert_eq!(found.as_str(), "Cancelled");
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1676:
+         test_digest(0x25),
+         DigestCheck::WorkflowAndIr,
+     );
+[31m-    let Err(RecoveryError::CompiledIrDigestMismatch {
+(B[m[31m-        expected,
+(B[m[31m-        found,
+(B[m[31m-    }) = result
+(B[m[31m-    else {
+(B[m[31m-        panic!(
+(B[m[31m-            "expected CompiledIrDigestMismatch, got: {result:?}"
+(B[m[31m-        );
+(B[m[32m+    let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+(B[m[32m+        panic!("expected CompiledIrDigestMismatch, got: {result:?}");
+(B[m     };
+     assert_eq!(expected, test_digest(0x24));
+     assert_eq!(found, test_digest(0x25));
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:1728:
+         unsupported: vb_storage::recovery::UnsupportedRecoveryState::pending_actions_unsupported(),
+     };
+ 
+[31m-    let boundary =
+(B[m[31m-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m[32m+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+(B[m     let result = boundary.hydrate_run_frame();
+     let Err(vb_runtime::RuntimeError::InvalidRecoveryHydration) = result else {
+         panic!(
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:2037:
+         let action_id: u64 = kani::any();
+         let step_idx: u16 = kani::any();
+ 
+[31m-        let resolved = tracker.is_resolved(
+(B[m[31m-            ActionId::new(action_id),
+(B[m[31m-            StepIdx::new(step_idx),
+(B[m[31m-        );
+(B[m[32m+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
+(B[m         assert!(!resolved);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:2053:
+         let mut tracker = ActionReplayTracker::new();
+         tracker.mark_completed(ActionId::new(action_id), StepIdx::new(step_idx));
+ 
+[31m-        let resolved = tracker.is_resolved(
+(B[m[31m-            ActionId::new(action_id),
+(B[m[31m-            StepIdx::new(step_idx),
+(B[m[31m-        );
+(B[m[32m+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
+(B[m         assert!(resolved);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:2068:
+         let mut tracker = ActionReplayTracker::new();
+         tracker.mark_failed(ActionId::new(action_id), StepIdx::new(step_idx));
+ 
+[31m-        let resolved = tracker.is_resolved(
+(B[m[31m-            ActionId::new(action_id),
+(B[m[31m-            StepIdx::new(step_idx),
+(B[m[31m-        );
+(B[m[32m+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
+(B[m         assert!(resolved);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:2098:
+             attempt: 1,
+         }];
+ 
+[31m-        let result = hydrate_run_frame(
+(B[m[31m-            &snapshot,
+(B[m[31m-            &tail,
+(B[m[31m-            RunId::new(correct_run_id),
+(B[m[31m-        );
+(B[m[32m+        let result = hydrate_run_frame(&snapshot, &tail, RunId::new(correct_run_id));
+(B[m         assert!(result.is_err());
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/recovery_hydration_tests.rs:2122:
+ 
+     #[kani::proof]
+     fn verify_no_recovery_data_for_empty_journal() {
+[31m-        let result =
+(B[m[31m-            hydrate_run_frame_from_events(&[], RunId::new(1));
+(B[m[32m+        let result = hydrate_run_frame_from_events(&[], RunId::new(1));
+(B[m         match result {
+             Err(RecoveryError::NoRecoveryData { run: _ }) => {}
+             _ => panic!("empty events must produce NoRecoveryData"),
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:16:
+ 
+ use std::time::{Duration, Instant};
+ 
+[32m+use vb_runtime::shard::RunId;
+(B[m use vb_runtime::shard::timer_wheel::TimerWheel;
+ use vb_runtime::shard::types::PendingTimerKind;
+[31m-use vb_runtime::shard::RunId;
+(B[m 
+ // ---------------------------------------------------------------------------
+ // helpers
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:177:
+ fn cancel_removes_active_timer_and_returns_true() {
+     let mut wheel = TimerWheel::new();
+     let deadline = deadline_at(500);
+[31m-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m     let removed = wheel.cancel(run(1));
+     assert!(removed);
+     assert!(wheel.is_empty());
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:193:
+ fn cancel_returns_false_after_previous_cancellation() {
+     let mut wheel = TimerWheel::new();
+     let deadline = deadline_at(500);
+[31m-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m     assert!(wheel.cancel(run(1)));
+     assert!(!wheel.cancel(run(1)));
+ }
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:230:
+ 
+     let d2 = deadline_at(200);
+     assert_eq!(wheel.insert(run(1), d2, PendingTimerKind::Ask), Ok(()));
+[31m-    let entry = wheel.get_entry(run(1)).expect("entry should exist after re-insert");
+(B[m[32m+    let entry = wheel
+(B[m[32m+        .get_entry(run(1))
+(B[m[32m+        .expect("entry should exist after re-insert");
+(B[m     assert_eq!(entry.generation, 1);
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:285:
+ fn exact_deadline_boundary_is_inclusive() {
+     let mut wheel = TimerWheel::new();
+     let deadline = Instant::now();
+[31m-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Ask), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline, PendingTimerKind::Ask),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m     let fired = wheel.fire_expired(deadline);
+     assert_eq!(fired.len(), 1);
+     assert_eq!(fired[0].kind, PendingTimerKind::Ask);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:330:
+     let mut wheel = TimerWheel::new();
+     let deadline = deadline_at(100);
+ 
+[31m-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[31m-    assert_eq!(wheel.insert(run(2), deadline, PendingTimerKind::Ask), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(2), deadline, PendingTimerKind::Ask),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m     assert_eq!(wheel.next_deadline(), Some(deadline));
+ 
+     wheel.cancel(run(1));
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:389:
+     let mut wheel = TimerWheel::new();
+     for cycle in 1u64..=5 {
+         let deadline = deadline_at(cycle as i64 * 100);
+[31m-        assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+        assert_eq!(
+(B[m[32m+            wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+(B[m[32m+            Ok(())
+(B[m[32m+        );
+(B[m         assert_eq!(wheel.next_deadline(), Some(deadline));
+         let fired = wheel.fire_expired(deadline);
+         assert_eq!(fired.len(), 1);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:413:
+     assert_eq!(fired[0].run, run(1));
+ 
+     let d1_again = d1 + Duration::from_millis(10);
+[31m-    assert_eq!(wheel.insert(run(1), d1_again, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), d1_again, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m 
+     let fired2 = wheel.fire_expired(d2);
+     assert_eq!(fired2.len(), 2);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:436:
+ 
+     let d2 = deadline_at(200);
+     assert_eq!(wheel.insert(run(1), d2, PendingTimerKind::Ask), Ok(()));
+[31m-    assert_eq!(wheel.get_entry(run(1)).expect("second insert").generation, 2);
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.get_entry(run(1)).expect("second insert").generation,
+(B[m[32m+        2
+(B[m[32m+    );
+(B[m 
+     let d3 = deadline_at(300);
+     assert_eq!(wheel.insert(run(1), d3, PendingTimerKind::Wait), Ok(()));
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:474:
+     let base = Instant::now();
+     for i in 0..count {
+         let deadline = base + Duration::from_micros(i);
+[31m-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+        assert_eq!(
+(B[m[32m+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+(B[m[32m+            Ok(())
+(B[m[32m+        );
+(B[m     }
+     assert_eq!(wheel.len(), count as usize);
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:489:
+     let mut wheel = TimerWheel::new();
+     let deadline = Instant::now();
+     for i in 0..50u64 {
+[31m-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+        assert_eq!(
+(B[m[32m+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+(B[m[32m+            Ok(())
+(B[m[32m+        );
+(B[m     }
+     let fired = wheel.fire_expired(deadline);
+     assert_eq!(fired.len(), 50);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:505:
+     let base = Instant::now();
+     for i in 0..count {
+         let deadline = base + Duration::from_millis(i);
+[31m-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+        assert_eq!(
+(B[m[32m+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+(B[m[32m+            Ok(())
+(B[m[32m+        );
+(B[m     }
+ 
+     for i in (0..count).step_by(2) {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:579:
+ fn precision_identical_timestamps_returned_in_any_order() {
+     let mut wheel = TimerWheel::new();
+     let deadline = Instant::now();
+[31m-    assert_eq!(wheel.insert(run(10), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[31m-    assert_eq!(wheel.insert(run(20), deadline, PendingTimerKind::Ask), Ok(()));
+(B[m[31m-    assert_eq!(wheel.insert(run(30), deadline, PendingTimerKind::Wait), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(10), deadline, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(20), deadline, PendingTimerKind::Ask),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(30), deadline, PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m 
+     let fired = wheel.fire_expired(deadline);
+     assert_eq!(fired.len(), 3);
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:608:
+     let mut wheel = TimerWheel::new();
+     let deadline = deadline_at(500);
+ 
+[31m-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Ask), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline, PendingTimerKind::Ask),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m 
+     let entry = wheel.get_entry(run(1)).expect("entry should exist");
+     assert_eq!(entry.run, run(1));
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:627:
+ fn is_empty_returns_false_after_insert() {
+     let mut wheel = TimerWheel::new();
+     assert!(wheel.is_empty());
+[31m-    assert_eq!(wheel.insert(run(1), deadline_at(100), PendingTimerKind::Wait), Ok(()));
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.insert(run(1), deadline_at(100), PendingTimerKind::Wait),
+(B[m[32m+        Ok(())
+(B[m[32m+    );
+(B[m     assert!(!wheel.is_empty());
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:637:
+     assert_eq!(wheel.len(), 0);
+ 
+     for i in 0u64..5 {
+[31m-        assert_eq!(wheel.insert(run(i), deadline_at((i + 1) as i64 * 100), PendingTimerKind::Wait), Ok(()));
+(B[m[32m+        assert_eq!(
+(B[m[32m+            wheel.insert(
+(B[m[32m+                run(i),
+(B[m[32m+                deadline_at((i + 1) as i64 * 100),
+(B[m[32m+                PendingTimerKind::Wait
+(B[m[32m+            ),
+(B[m[32m+            Ok(())
+(B[m[32m+        );
+(B[m         assert_eq!(wheel.len(), (i + 1) as usize);
+     }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_runtime/tests/timer_wheel_behavior_tests.rs:659:
+     let fired = wheel.fire_expired(Instant::now());
+     assert_eq!(fired.len(), 0);
+     assert_eq!(wheel.len(), 1);
+[31m-    assert_eq!(wheel.get_entry(run(1)).expect("replaced entry").kind, PendingTimerKind::Ask);
+(B[m[32m+    assert_eq!(
+(B[m[32m+        wheel.get_entry(run(1)).expect("replaced entry").kind,
+(B[m[32m+        PendingTimerKind::Ask
+(B[m[32m+    );
+(B[m }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:4:
+ use std::collections::HashSet;
+ 
+ use proptest::prelude::*;
+[32m+use vb_validate::ValidationError;
+(B[m use vb_validate::schema::{
+     FieldValue, StepDoc, WorkflowDoc, validate_single_primitive, validate_step_fields,
+     validate_trigger, validate_version, validate_workflow_schema,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:10:
+ };
+[31m-use vb_validate::ValidationError;
+(B[m 
+ fn make_doc(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
+     WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:301:
+ mod kani_harnesses {
+     use super::*;
+ 
+[32m+    use vb_validate::ValidationError;
+(B[m     use vb_validate::schema::{
+         FieldValue, StepDoc, WorkflowDoc, validate_ids, validate_single_primitive,
+         validate_step_fields, validate_trigger, validate_version, validate_workflow_schema,
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:307:
+     };
+[31m-    use vb_validate::ValidationError;
+(B[m 
+     #[kani::proof]
+     fn capability_name_length_boundary_is_ordered() {
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:510:
+         kani::assume(name.len() <= 64);
+         let doc = make_doc(vec![("name", FieldValue::String(name))]);
+         kani::assert(doc.has_field("name"), "has_field true for present field");
+[31m-        kani::assert(!doc.has_field("missing"), "has_field false for absent field");
+(B[m[32m+        kani::assert(
+(B[m[32m+            !doc.has_field("missing"),
+(B[m[32m+            "has_field false for absent field",
+(B[m[32m+        );
+(B[m     }
+ }
+ 
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:575:
+ 
+ #[test]
+ fn kani_integration_http_trigger_is_rejected() {
+[31m-    let doc = make_doc(vec![("when", FieldValue::Mapping(vec![(
+(B[m[31m-        "http".to_owned(),
+(B[m[31m-        FieldValue::Empty,
+(B[m[31m-    )]))]);
+(B[m[32m+    let doc = make_doc(vec![(
+(B[m[32m+        "when",
+(B[m[32m+        FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
+(B[m[32m+    )]);
+(B[m     assert_eq!(
+         validate_trigger(&doc),
+         Err(ValidationError::HttpTriggerOutOfCore)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_validate/tests/capability_schema_kani.rs:619:
+ 
+ #[test]
+ fn kani_integration_missing_primitive_caught() {
+[31m-    let step = make_step(vec![(
+(B[m[31m-        "id",
+(B[m[31m-        FieldValue::String("bare_step".to_owned()),
+(B[m[31m-    )]);
+(B[m[32m+    let step = make_step(vec![("id", FieldValue::String("bare_step".to_owned()))]);
+(B[m     assert_eq!(
+         validate_single_primitive(&step),
+         Err(ValidationError::MissingStepPrimitive)
+Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs:12:
+ //!   where `record.digest == workflow.digest()`.
+ 
+ use proptest::prelude::*;
+[31m-use rand::rngs::StdRng;
+(B[m use rand::SeedableRng;
+[32m+use rand::rngs::StdRng;
+(B[m use vb_core::value::ConstValue;
+ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+ use vb_core::{CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};

@@ -1,0 +1,11 @@
+{
+  "loaded_skill_name": "go-skill",
+  "loaded_skill_version": "10.0.0",
+  "loaded_state_range": "1..16",
+  "runtime": "femdation-controller",
+  "controller_version": "2.0.0",
+  "skill_root": "/home/lewis/.agents/skills/go-skill",
+  "mirror_root": "/home/lewis/.opencode/skill/go-skill",
+  "validator": "go-skill-v9-validate",
+  "validated_at": "2026-05-24T20:00:00Z"
+}

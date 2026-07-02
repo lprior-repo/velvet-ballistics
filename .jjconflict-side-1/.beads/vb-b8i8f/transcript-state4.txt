@@ -1,0 +1,42 @@
+State 4 proof-planner transcript summary for vb-b8i8f.
+
+Inputs read from .beads/vb-b8i8f/:
+- contract.md
+- proof-seeds.jsonl (5 seeds)
+- traceability-matrix.jsonl (6 requirements)
+- delivery-scope.jsonl (10 entries)
+- codebase-map.md
+- domain-model.md
+- type-contracts.md
+- workflow-model.md
+- error-taxonomy.md
+- boundary-map.md
+- hazard-analysis.md
+
+Production sources examined:
+- crates/vb_runtime/src/runtime.rs (Runtime::cancel_run, missing kill_run)
+- crates/vb_runtime/src/shard/lifecycle/chunk_002.rs (handle_cancel, handle_kill, handle_timer, handle_ask_answer)
+- crates/vb_runtime/src/journal/chunk_002.rs (run_storage_event mapping to JournalEvent::RunKilled)
+- crates/vb_storage/src/codec/validation.rs (is_known_record_kind missing 28; validate_kind_family range 10..=27 must become 10..=28)
+- crates/vb_storage/src/records.rs (RecordKind::RunKilled = 28)
+- crates/vb_storage/src/events.rs (JournalEvent::RunKilled { run, seq, attempt })
+
+Actions:
+- Loaded proof-planner skill.
+- Read all 11 State 3 contract/domain artifacts.
+- Classified 5 proof seeds against 7 verifier lanes (Verus, Kani, Flux-rs, proptest, Loom, Miri, cargo-fuzz).
+- Loom: not_applicable for all seeds (single-threaded shard processing, no concurrency).
+- Miri: not_applicable for all seeds (#![forbid(unsafe_code)] everywhere, zero unsafe blocks).
+- Wrote 35 lane decisions (VLD-001 through VLD-035): 22 required, 13 not_applicable.
+- Planned 22 proof obligations (5 Verus, 5 Kani, 5 Flux-rs, 5 proptest, 2 cargo-fuzz).
+- Created trusted-base plan with 13 entries (6 external bodies, 4 assumptions, 2 stubs, 1 extern spec).
+- No behavior-affecting waivers; 1 non-behavior waiver candidate.
+- Prepared proof-to-implementation bridge input with source mappings and code change instructions.
+- Updated agent-invocation-ledger with State 4 entry.
+
+Key findings for downstream states:
+- Storage codec must extend is_known_record_kind (add 28) and validate_kind_family (extend 10..=27 to 10..=28).
+- Public Runtime::kill_run must be added.
+- Cancel/kill handlers must return Err for missing/already-terminal runs instead of Ok(()).
+- Existing proptest range 10u16..=27u16 in postcard_envelope_wire_tests.rs must become 10u16..=28u16.
+- TLA+ globally removed per mandate; not included.

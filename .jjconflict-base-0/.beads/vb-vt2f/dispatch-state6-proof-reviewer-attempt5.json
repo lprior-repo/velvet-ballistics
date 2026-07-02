@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "attempt": 5,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Review State 5 attempt 6: TLA lifecycle repaired; Kani wired/codegen pass but full commands timeout and remain BLOCKED_TOOLING",
+  "input_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-writer-report.md", ".beads/vb-vt2f/proof-evidence.md", "verification/tla/Vt2fRuntimeLifecycle.tla", "verification/tla/Vt2fStrictAdmission.tla", "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs", "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs"],
+  "output_artifacts": [".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/proof-findings.jsonl", ".beads/vb-vt2f/proof-repair-guide.md"],
+  "status": "QUEUED"
+}

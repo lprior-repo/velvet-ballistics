@@ -1,0 +1,15 @@
+{
+  "schema_version": "runtime-skill-provenance/v1",
+  "bead_id": "vb-xi2f.38",
+  "loaded": "go-skill@10.0.0",
+  "loaded_skill_name": "go-skill",
+  "loaded_skill_version": "10.0.0",
+  "observed_state_range": "1..16",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "source_commit": "2619b8ae711e9263f33b93fdfa5aee6846648392",
+  "source_author": "Lewis",
+  "source_timestamp": "1779677496",
+  "source_message": "fix: add hardened build profile",
+  "isolated_workdir": "/home/lewis/src/vb-xi2f.38-ws",
+  "runtime_timestamp": "2026-05-24T22:00:04-05:00"
+}

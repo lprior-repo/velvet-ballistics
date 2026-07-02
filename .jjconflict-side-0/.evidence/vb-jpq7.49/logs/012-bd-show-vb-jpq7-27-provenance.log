@@ -1,0 +1,43 @@
+command: bd show vb-jpq7.27
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T18:06:16Z
+commit_sha: 829d8bcd1b3ff89a26dc70de415dc7e24078fb11
+tool_version: bd version 1.0.0 (dev)
+✓ vb-jpq7.27 · P0: rebuild proof obligation ledger with raw evidence   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Closed after external proof-review APPROVED for /home/lewis/src/vb-jpq7-27-proof-ledger-gpt55. Canonical ledger: /home/lewis/src/vb-jpq7-27-proof-ledger-gpt55/.evidence/vb-jpq7.27/proof-obligation-ledger.jsonl. Ledger checker passed: python3 .evidence/vb-jpq7.27/check-ledger.py exit 0. Unresolved failures are tracked as child beads vb-rga1, vb-2tpu, and vb-utvm.
+
+DESCRIPTION
+Split from vb-jpq7.5/vb-jpq7.8. Rebuild the formal proof ledger so no PASS row points at non-parsing files placeholders hardcoded shapes stale summaries or too-weak models.
+
+NOTES
+Ledger rebuilt in JJ workspace /home/lewis/src/vb-jpq7-27-proof-ledger-gpt55. Canonical ledger: .evidence/vb-jpq7.27/proof-obligation-ledger.jsonl. Validator: python3 .evidence/vb-jpq7.27/check-ledger.py exit 0; raw log .evidence/vb-jpq7.27/logs/ledger-check.txt. Child beads created for unresolved failures: vb-utvm (vb_validate Kani discovery compile failure), vb-rga1 (verusfmt failure), vb-2tpu (RecoveryReplayFull TLC timeout). Bead intentionally left open pending external proof-review; self-check at .evidence/vb-jpq7.27/proof-reviewer-self-check.md is REJECTED_PENDING_EXTERNAL_REVIEW.
+
+ACCEPTANCE CRITERIA
+Every obligation row maps to artifact path command cwd commit SHA tool version timestamp raw log path exit code and scope; PASS rows exclude non-evidence artifacts; unresolved proof failures create child beads instead of summary laundering.
+
+LABELS: anti-laundering, backend-dod, evidence, formal, ledger, master-gap, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.24: P0: repair Verus evidence binding ● P0
+  → ✓ vb-jpq7.25: P0: repair Kani harness discovery and generators ● P0
+  → ✓ vb-jpq7.26: P0: repair TLA bounded overflow models ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ◐ vb-jpq7.49: P0: block proof and evidence laundering ● P0
+
+DISCOVERED
+  ◊ ○ vb-2tpu: (BUG) P0: bound or split RecoveryReplayFull TLC model for ledger evidence ● P0
+  ◊ ○ vb-rga1: (BUG) P1: format repaired vb_jpq724 Verus artifact for ledger closure ● P1
+  ◊ ○ vb-utvm: (BUG) P0: fix vb-jpq7.27 ledger-discovered vb_validate Kani discovery compile failure ● P0
+
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	rk5vcndm074i3tnt9bv3qor79kdfi854
+}
+
+exit_code: 0

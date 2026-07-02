@@ -1,0 +1,70 @@
+#![forbid(unsafe_code)]
+//! Default-implemented trait that enforces envelope kind / payload parity after decoding.
+//!
+//! `decode_record` requires its `T: DeserializeOwned` bound to additionally
+//! implement [`EnforceKindParity`]. The trait's default implementation is a
+//! no-op, suitable for record types whose payload does not carry a
+//! record-kind discriminant (workflow source, compiled IR, blob, run snapshot,
+//! run header, and any external test payload). For [`crate::JournalEvent`],
+//! parity is mandatory: the override verifies that the envelope record kind
+//! exactly matches the decoded payload variant and that the event passes
+//! `JournalEvent::is_valid()`.
+//!
+//! External types that decode through `decode_record` only need to add a
+//! trivial `impl EnforceKindParity for MyType {}` line. Because the default
+//! does no validation, this cannot smuggle a JournalEvent past the parity
+//! check — the only path that enforces parity is the explicit override on
+//! `JournalEvent` itself, and Rust's coherence rules prevent a downstream
+//! crate from providing a different impl for `JournalEvent`.
+
+use crate::{
+    JournalError,
+    records::{BlobRecord, CompiledIrRecord, RunHeaderRecord, WorkflowSourceRecord},
+    recovery::RunSnapshot,
+    types::RecordEnvelope,
+};
+
+/// Validates envelope/payload parity after a record decode.
+///
+/// `decode_record` calls this immediately after postcard deserialization.
+/// The default implementation is a no-op and is appropriate for record
+/// types whose payload does not embed a record-kind discriminant.
+///
+/// Override the method when the payload carries a variant discriminant
+/// that must match the envelope record kind. The only override in this
+/// crate is for [`crate::JournalEvent`], which is the only variant-bearing
+/// record type the storage contract admits.
+pub trait EnforceKindParity {
+    /// Verifies that the decoded value is consistent with the envelope
+    /// metadata. Returns `Err` if the value must be rejected.
+    ///
+    /// The default implementation accepts every value, which is correct
+    /// for record types that do not carry a record-kind discriminant in
+    /// the payload.
+    fn enforce_kind_parity(envelope: &RecordEnvelope, value: &Self) -> Result<(), JournalError> {
+        let _ = (envelope, value);
+        Ok(())
+    }
+}
+
+impl EnforceKindParity for crate::JournalEvent {
+    fn enforce_kind_parity(envelope: &RecordEnvelope, value: &Self) -> Result<(), JournalError> {
+        let payload_kind = value.record_kind().id();
+        if envelope.record_kind != payload_kind {
+            return Err(JournalError::RecordKindPayloadMismatch {
+                envelope_kind: envelope.record_kind,
+                payload_kind,
+            });
+        }
+        if !value.is_valid() {
+            return Err(JournalError::InvalidEvent);
+        }
+        Ok(())
+    }
+}
+
+impl EnforceKindParity for WorkflowSourceRecord {}
+impl EnforceKindParity for CompiledIrRecord {}
+impl EnforceKindParity for BlobRecord {}
+impl EnforceKindParity for RunSnapshot {}
+impl EnforceKindParity for RunHeaderRecord {}

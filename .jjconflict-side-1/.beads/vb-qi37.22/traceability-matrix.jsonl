@@ -1,0 +1,4 @@
+{"requirement_id":"R1","proof_obligation":"PO-XTASK-SURFACE","test_or_command":"xtask --help; xtask ai-context; xtask definitely-unknown-command","evidence":"machine-gate-report.md","review":"black-hat-review.md","status":"PASS"}
+{"requirement_id":"R2","proof_obligation":"PO-CONTRACTS-DATA","test_or_command":"cue vet contracts/cli_envelope_instance.cue contracts/cli_envelope.cue; cue vet contracts/ui_tokens_instance.cue contracts/ui_tokens.cue; standalone schema loop","evidence":"machine-gate-report.md","review":"black-hat-review.md","status":"PASS"}
+{"requirement_id":"R3","proof_obligation":"PO-DEP-CLOSED","test_or_command":"bd show vb-ypnk --json; file evidence under xtask/src/evidence/**","evidence":"assurance-bundle.md","review":"black-hat-review.md","status":"PASS"}
+{"requirement_id":"R4","proof_obligation":"PO-DEP-CLOSED","test_or_command":"bd show dependencies","evidence":"machine-gate-report.md","review":"black-hat-review.md","status":"PASS"}

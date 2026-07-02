@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 2,
+  "sublane": "explore-scope",
+  "delegate": "explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-vt2f-bdd",
+  "inputs": [
+    "bd show vb-vt2f --json",
+    "velvet-ballistics-MASTER.md",
+    "existing tests and crate surfaces"
+  ],
+  "outputs": [
+    ".beads/vb-vt2f/codebase-map.md",
+    ".beads/vb-vt2f/delivery-scope.jsonl"
+  ],
+  "attempt": 1
+}

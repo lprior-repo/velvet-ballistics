@@ -1,0 +1,29 @@
+{
+  "bead_id": "GLOBAL-main-gate-for-vb-vt2f-landing",
+  "state": 14,
+  "sublane": "serial-global-landing-gate-repair",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/global-gate-repair-report.md"
+  ],
+  "attempt": 1,
+  "blockers": [
+    "format crates/vb_codegen/src/tests.rs",
+    "format crates/vb_storage/src/kani_recovery_hydrate.rs",
+    "format crates/vb_storage/src/recovery/recover.rs",
+    "format crates/vb_storage/src/recovery/recovery_unit_tests.rs",
+    "remove or use unused import super::* in crates/vb_storage/src/recovery/recovery_unit_tests.rs",
+    "remove or use unused functions finite_f64 and encoded_slot_value"
+  ],
+  "required_gates": [
+    "rtk cargo fmt --check",
+    "rtk cargo check -p vb_storage --all-targets",
+    "moon ci if scoped gates pass and time/resources allow"
+  ],
+  "serial_section": "Global landing gate repair may mutate shared non-bead-local files; no other landing or shared repair runs concurrently."
+}

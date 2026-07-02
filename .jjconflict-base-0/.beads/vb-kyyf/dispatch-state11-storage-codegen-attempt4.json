@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "storage-codegen-obligations",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/state11-storage-codegen-report.md",
+    ".beads/vb-kyyf/verification-ledger-storage-codegen.jsonl"
+  ],
+  "attempt": 4
+}

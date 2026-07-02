@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 9,
+  "sublane": "test-review-after-state8-real-evidence-surface-repair",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+    "crates/workspace_tests/Cargo.toml"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 9 rerun after State 8 real evidence surface repair"
+}
