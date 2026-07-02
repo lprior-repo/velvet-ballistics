@@ -72,7 +72,18 @@ fn compiled_ir_key_preserves_digest_bytes() -> Result<(), JournalError> {
 #[test]
 fn run_header_key_has_correct_prefix() -> Result<(), JournalError> {
     let run = RunId::new(0);
-    let key = run_header_key(run)?;
+    // PO-cn2v4-001: zero RunId is reserved as "no run"; encoders
+    // must reject it with a typed `InvalidRunId` instead of emitting
+    // a key with all-zero run bytes (which would collide with the
+    // no-row sentinel). Use RunId::new(1) below to verify the
+    // prefix byte for non-zero runs.
+    let result = run_header_key(run);
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "zero RunId must be rejected as InvalidRunId, got {:?}",
+        result
+    );
+    let key = run_header_key(RunId::new(1))?;
     assert_eq!(key[0], PREFIX_RUN_HEADER, "prefix byte must be 0x10");
     Ok(())
 }
@@ -122,7 +133,16 @@ fn run_event_key_encodes_run_and_seq_big_endian() -> Result<(), JournalError> {
 
 #[test]
 fn run_event_key_length() -> Result<(), JournalError> {
-    let key = run_event_key(RunId::new(0), EventSeq::new(0))?;
+    // PO-cn2v4-001: zero RunId is reserved; the encoder rejects it
+    // before checking seq, so a (run=0, seq=0) call surfaces
+    // InvalidRunId, not a 17-byte success.
+    let result = run_event_key(RunId::new(0), EventSeq::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "zero RunId must be rejected as InvalidRunId, got {:?}",
+        result
+    );
+    let key = run_event_key(RunId::new(1), EventSeq::new(0))?;
     assert_eq!(key.len(), JOURNAL_KEY_BYTES);
     Ok(())
 }
@@ -189,7 +209,10 @@ fn blob_key_preserves_digest_bytes() -> Result<(), JournalError> {
 
 #[test]
 fn index_status_key_has_correct_prefix() -> Result<(), JournalError> {
-    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
+    // PO-cn2v4-001: zero RunId is reserved; use a non-zero run to
+    // verify the prefix byte. The zero-RunId rejection is covered by
+    // `run_header_key_rejects_zero_run_id` and the unit tests below.
+    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(1))?;
     assert_eq!(key[0], PREFIX_INDEX_STATUS, "prefix byte must be 0x30");
     Ok(())
 }
@@ -213,7 +236,15 @@ fn index_status_key_encodes_state_timestamp_run() -> Result<(), JournalError> {
 
 #[test]
 fn index_status_key_length() -> Result<(), JournalError> {
-    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
+    // PO-cn2v4-001: zero RunId is reserved; encoder must reject it
+    // with `InvalidRunId` instead of encoding an 18-byte key.
+    let result = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "zero RunId must be rejected as InvalidRunId, got {:?}",
+        result
+    );
+    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(1))?;
     assert_eq!(key.len(), INDEX_STATUS_KEY_BYTES);
     Ok(())
 }
@@ -245,7 +276,16 @@ fn index_workflow_key_encodes_workflow_and_run() -> Result<(), JournalError> {
 
 #[test]
 fn index_workflow_key_length() -> Result<(), JournalError> {
-    let key = index_workflow_key(WorkflowId::new(0), RunId::new(0))?;
+    // PO-cn2v4-001: zero RunId is reserved; the encoder must
+    // surface `InvalidRunId` rather than emitting a 13-byte key
+    // with all-zero run bytes.
+    let result = index_workflow_key(WorkflowId::new(0), RunId::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "zero RunId must be rejected as InvalidRunId, got {:?}",
+        result
+    );
+    let key = index_workflow_key(WorkflowId::new(0), RunId::new(1))?;
     assert_eq!(key.len(), INDEX_WORKFLOW_KEY_BYTES);
     Ok(())
 }
@@ -283,7 +323,15 @@ fn index_action_key_encodes_action_run_step() -> Result<(), JournalError> {
 
 #[test]
 fn index_action_key_length() -> Result<(), JournalError> {
-    let key = index_action_key(ActionId::new(0), RunId::new(0), vb_core::StepIdx::new(0))?;
+    // PO-cn2v4-001: zero RunId is reserved; encoder must reject it
+    // with `InvalidRunId` rather than emitting a 13-byte key.
+    let result = index_action_key(ActionId::new(0), RunId::new(0), vb_core::StepIdx::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "zero RunId must be rejected as InvalidRunId, got {:?}",
+        result
+    );
+    let key = index_action_key(ActionId::new(0), RunId::new(1), vb_core::StepIdx::new(0))?;
     assert_eq!(key.len(), INDEX_ACTION_KEY_BYTES);
     Ok(())
 }
@@ -465,11 +513,30 @@ fn key_encoding_is_deterministic() -> Result<(), JournalError> {
 // Boundary: zero and max values
 // =========================================================================
 
+// PO-cn2v4-001 / SC-001: a zero `RunId` is reserved as "no run"
+// and the encoder must reject it. The decoder in `decode_storage_key`
+// was already producing `KeyDecodeError::InvalidRunId` for this case
+// (keys.rs:373); this test now pins the matching encoder behaviour.
+// Replace the previous "zero encodes to all-zero bytes" expectation
+// with a typed-error expectation.
 #[test]
 fn run_header_key_with_zero_run_id() -> Result<(), JournalError> {
-    let key = run_header_key(RunId::new(0))?;
+    let result = run_header_key(RunId::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "run_header_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn run_header_key_accepts_nonzero_run_id() -> Result<(), JournalError> {
+    // Companion to `run_header_key_with_zero_run_id` to keep the
+    // prefix byte round-trip covered (was previously asserted by the
+    // zero-run test which we just converted to an error expectation).
+    let key = run_header_key(RunId::new(1))?;
     assert_eq!(key[0], PREFIX_RUN_HEADER);
-    assert_eq!(&key[1..], &0u64.to_be_bytes());
     Ok(())
 }
 
@@ -504,12 +571,30 @@ fn run_event_key_rejects_event_seq_max_sentinel() {
     );
 }
 
+// PO-cn2v4-001: zero `RunId` is reserved and the encoder must reject
+// it. The previous test encoded (state=Submitted, ts=0, run=0) into an
+// 18-byte key with all-zero run bytes — that conflicts with the
+// decoder's rejection of the same shape. The encoder now returns
+// `InvalidRunId` first, mirroring the decoder ordering.
 #[test]
 fn index_status_key_with_zero_values() -> Result<(), JournalError> {
-    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
+    let result = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "index_status_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn index_status_key_with_zero_state_and_timestamp_nonzero_run() -> Result<(), JournalError> {
+    // Companion that pins the (state, ts=0, run=nonzero) zero-timestamp
+    // byte layout the previous test used to cover.
+    let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(1))?;
     assert_eq!(key[1], 0);
     assert_eq!(&key[2..10], &0u64.to_be_bytes());
-    assert_eq!(&key[10..18], &0u64.to_be_bytes());
+    assert_eq!(&key[10..18], &1u64.to_be_bytes());
     Ok(())
 }
 
@@ -584,10 +669,25 @@ fn run_prefix_key_encodes_run_id() -> Result<(), JournalError> {
     Ok(())
 }
 
+// PO-cn2v4-001: `run_prefix_key` is `pub(crate)` and is used by
+// FjallJournal scan iteration over the run-event keyspace. It must
+// reject zero RunId so scan callers can never accidentally ask for
+// the reserved "no-run" prefix key.
 #[test]
 fn run_prefix_key_is_9_bytes() -> Result<(), JournalError> {
-    let prefix = run_prefix_key(RunId::new(0))?;
+    let prefix = run_prefix_key(RunId::new(1))?;
     assert_eq!(prefix.len(), RUN_ONLY_KEY_BYTES);
+    Ok(())
+}
+
+#[test]
+fn run_prefix_key_rejects_zero_run_id() -> Result<(), JournalError> {
+    let result = run_prefix_key(RunId::new(0));
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "run_prefix_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
     Ok(())
 }
 
@@ -674,9 +774,21 @@ fn run_event_key_output_length_is_17_bytes() -> Result<(), JournalError> {
 // silently emitting a collision byte (SC-001 / vb-f1xkn).
 // ---------------------------------------------------------------------------
 
+// PO-cn2v4-001 + VB-NOORE: the collision-range rejection is
+// downstream of the zero-RunId rejection. With both checks present,
+// `index_status_key(Other(c), 0, RunId::new(0))` surfaces the FIRST
+// failure: `InvalidRunId`. To exercise the collision rejection we
+// must pass a non-zero RunId.
 #[test]
 fn index_status_key_rejects_other_state_in_collision_range() {
     let err = index_status_key(IndexStatusState::Other(0), 0, RunId::new(0))
+        .expect_err("RunId 0 must be rejected before the state check");
+    assert!(
+        matches!(err, JournalError::InvalidRunId { run: r } if r == RunId::new(0)),
+        "zero RunId must be rejected first; got {err:?}"
+    );
+
+    let err = index_status_key(IndexStatusState::Other(0), 0, RunId::new(1))
         .expect_err("Other(0) collides with Submitted");
     match err {
         JournalError::IndexStatusStateCollision { byte, min } => {
@@ -686,7 +798,7 @@ fn index_status_key_rejects_other_state_in_collision_range() {
         other => panic!("expected IndexStatusStateCollision, got {other:?}"),
     }
 
-    let err = index_status_key(IndexStatusState::Other(1), 0, RunId::new(0))
+    let err = index_status_key(IndexStatusState::Other(1), 0, RunId::new(1))
         .expect_err("Other(1) collides with Active");
     match err {
         JournalError::IndexStatusStateCollision { byte, min } => {
@@ -696,7 +808,7 @@ fn index_status_key_rejects_other_state_in_collision_range() {
         other => panic!("expected IndexStatusStateCollision, got {other:?}"),
     }
 
-    let err = index_status_key(IndexStatusState::Other(2), 0, RunId::new(0))
+    let err = index_status_key(IndexStatusState::Other(2), 0, RunId::new(1))
         .expect_err("Other(2) collides with Completed");
     match err {
         JournalError::IndexStatusStateCollision { byte, min } => {
@@ -707,10 +819,12 @@ fn index_status_key_rejects_other_state_in_collision_range() {
     }
 }
 
+// PO-cn2v4-001: zero RunId is reserved; the byte-roundtrip loop now
+// uses RunId::new(1) so each valid Other(byte) can be exercised.
 #[test]
 fn index_status_key_accepts_other_state_above_collision_range() -> Result<(), JournalError> {
     for byte in MIN_OTHER_STATUS_BYTE..=u8::MAX {
-        let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(0))?;
+        let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(1))?;
         assert_eq!(key[1], byte, "byte {byte} must round-trip");
     }
     Ok(())

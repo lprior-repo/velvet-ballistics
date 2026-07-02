@@ -103,6 +103,14 @@ pub fn index_status_key(
     timestamp: u64,
     run: RunId,
 ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
+    // PO-cn2v4-001: a zero `RunId` is reserved as "no run" per the
+    // storage contract. Reject it before any byte writing so the typed
+    // error surfaces exactly once at the encoder boundary (the
+    // decoder in `decode_storage_key` mirrors this check). This is
+    // checked BEFORE the IndexStatusState collision check so the
+    // encoder ordering matches what the decoder reports when both
+    // conditions hold.
+    require_non_zero_run(run)?;
     // VB-NOORE (wildcard elimination): use `to_u8_checked` so an
     // `Other(v)` whose byte is in the collision range
     // `0..MIN_OTHER_STATUS_BYTE` is rejected with a typed
@@ -126,6 +134,9 @@ pub fn index_workflow_key(
     workflow: WorkflowId,
     run: RunId,
 ) -> Result<[u8; INDEX_WORKFLOW_KEY_BYTES], JournalError> {
+    // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+    // encoder (see `index_status_key` rationale).
+    require_non_zero_run(run)?;
     let mut key = ArrayVec::<u8, INDEX_WORKFLOW_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_WORKFLOW)
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -142,6 +153,9 @@ pub fn index_action_key(
     run: RunId,
     step: vb_core::StepIdx,
 ) -> Result<[u8; INDEX_ACTION_KEY_BYTES], JournalError> {
+    // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+    // encoder (see `index_status_key` rationale).
+    require_non_zero_run(run)?;
     let mut key = ArrayVec::<u8, INDEX_ACTION_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_ACTION)
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -482,6 +496,12 @@ fn sequenced_run_key(
     run: RunId,
     seq: EventSeq,
 ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+    // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+    // it before any byte writing. The order matters: run validation
+    // runs first so the encoder matches the decoder ordering for
+    // the (run=0, seq=MAX) case (this surfaces `SequenceOverflow` is
+    // NOT possible for zero runs, only `InvalidRunId`).
+    require_non_zero_run(run)?;
     if seq.get() == u64::MAX {
         return Err(JournalError::SequenceOverflow);
     }
@@ -512,12 +532,36 @@ fn digest_key(
 }
 
 fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
+    // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+    // it before any byte writing. Covers `run_header_key`,
+    // `run_prefix_key`, and the `run_prefix` scan helper used by
+    // journal replay/trimming paths.
+    require_non_zero_run(run)?;
     let mut key = ArrayVec::<u8, RUN_ONLY_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&run.get().to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+}
+
+/// Validates that `run` is non-zero.
+///
+/// Zero is reserved as the "no run" sentinel and must not be encoded
+/// into any storage key. The decoder in `decode_storage_key` already
+/// rejects this on the read path; the encoders mirror the same rule
+/// so storage never silently accepts a zero run id at write time
+/// and a later decode would surface a different key shape.
+///
+/// PO-cn2v4-001: zero `RunId` rejection at every storage-key encoder
+/// boundary; defence-in-depth against accidental all-zero run
+/// encoding that would collide with no-row sentinel keys.
+#[inline]
+fn require_non_zero_run(run: RunId) -> Result<(), JournalError> {
+    if run.get() == 0 {
+        return Err(JournalError::InvalidRunId { run });
+    }
+    Ok(())
 }
 
 // Re-export run_prefix for use by FjallJournal

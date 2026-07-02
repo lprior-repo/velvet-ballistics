@@ -53,6 +53,32 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
     let action = ActionId::new(action_value);
     let step = StepIdx::new(step_value);
 
+    // PO-cn2v4-001: zero `RunId` is reserved as "no run"; every
+    // storage-key encoder rejects it with `InvalidRunId`. The main
+    // happy-path contract is verified under `kani::assume(run_value != 0)`.
+    // The zero branch is verified by the separate split harness
+    // `vb_eepg_typed_partitioned_ids_zero_run_rejection` below.
+    if run_value == 0 {
+        let r0 = RunId::new(0);
+        assert!(matches!(
+            keys::run_header_key(r0),
+            Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+        ));
+        assert!(matches!(
+            keys::run_event_key(r0, seq),
+            Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+        ));
+        assert!(matches!(
+            keys::index_workflow_key(workflow, r0),
+            Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+        ));
+        assert!(matches!(
+            keys::index_action_key(action, r0, step),
+            Err(crate::JournalError::InvalidRunId { run }) if run.get() == 0
+        ));
+        return;
+    }
+
     match keys::run_header_key(run) {
         Ok(key) => {
             assert!(key[0] == PREFIX_RUN_HEADER);
@@ -92,6 +118,30 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
     }
 }
 
+#[kani::proof]
+fn vb_eepg_typed_partitioned_ids() {
+    let inputs: SymbolicKeyInputs = kani::any();
+    // PO-cn2v4-001: zero RunId is rejected by the encoders; assume
+    // it away here so the happy-path contracts are bounded to the
+    // supported input domain. The zero branch is covered by
+    // `vb_eepg_typed_partitioned_ids_zero_run_rejection`.
+    kani::assume(run_raw(inputs) != 0);
+    assert_key_contracts(inputs);
+}
+
+#[kani::proof]
+fn vb_eepg_typed_partitioned_ids_zero_run_rejection() {
+    // PO-cn2v4-001: the zero-RunId rejection contract. The harness
+    // is dedicated to the boundary input; every encoder that embeds
+    // RunId must return `JournalError::InvalidRunId { run }`.
+    let mut inputs: SymbolicKeyInputs = kani::any();
+    // Force run_value == 0 by zeroing the run halves; everything
+    // else stays symbolic so we exercise the cross-key interactions.
+    inputs.run_hi = 0;
+    inputs.run_lo = 0;
+    assert_key_contracts(inputs);
+}
+
 fn assert_record_kind_contract(input: SymbolicRecordKindInput) {
     let kind = u16::from(input.record_kind_raw);
     assert!(is_known_record_kind(kind) != unknown_record_kind(kind));
@@ -106,12 +156,6 @@ fn assert_record_kind_contract(input: SymbolicRecordKindInput) {
     assert!(RecordKind::Snapshot.id() == 30);
     assert!(RecordKind::Blob.id() == 40);
     assert!(RecordKind::IndexUpdate.id() == 50);
-}
-
-#[kani::proof]
-fn vb_eepg_typed_partitioned_ids() {
-    let inputs: SymbolicKeyInputs = kani::any();
-    assert_key_contracts(inputs);
 }
 
 #[kani::proof]

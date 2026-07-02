@@ -90,8 +90,8 @@ mod run_id_roundtrip {
 
     #[test]
     fn run_header_key_prefix_is_0x10() -> Result<(), JournalError> {
-        // Given: a RunId with value 0
-        let run_id = RunId::new(0);
+        // Given: a non-zero RunId (PO-cn2v4-001: zero is reserved)
+        let run_id = RunId::new(1);
 
         // When: run_header_key is called
         let key = keys::run_header_key(run_id)?;
@@ -112,15 +112,20 @@ mod run_id_roundtrip {
         let run_id = RunId::new(0);
 
         // When: run_header_key is called
-        let key = keys::run_header_key(run_id)?;
+        let result = keys::run_header_key(run_id);
 
-        // Then: key[1..9] equals 0u64.to_be_bytes()
-        assert_eq!(
-            &key[1..9],
-            0u64.to_be_bytes(),
-            "zero run_id must encode as all-zero bytes"
-        );
-        assert_eq!(key.len(), 9, "run_header_key must be 9 bytes");
+        // Then: the encoder rejects RunId::new(0) with
+        // `JournalError::InvalidRunId { run: RunId::new(0) }` because
+        // zero is reserved as the "no run" sentinel (PO-cn2v4-001).
+        match result {
+            Err(JournalError::InvalidRunId { run }) => {
+                assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+            }
+            other => panic!(
+                "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+                other
+            ),
+        }
         Ok(())
     }
 
@@ -209,10 +214,33 @@ mod workflow_id_roundtrip {
         let run_id = RunId::new(0);
 
         // When: index_workflow_key is called
-        let key = keys::index_workflow_key(workflow_id, run_id)?;
+        let result = keys::index_workflow_key(workflow_id, run_id);
 
-        // Then: key[1..5] equals 0u32.to_be_bytes()
-        // And: key[5..13] equals 0u64.to_be_bytes()
+        // Then: the encoder rejects RunId::new(0) with
+        // `JournalError::InvalidRunId { run: RunId::new(0) }` because
+        // zero RunId is reserved (PO-cn2v4-001). The previous
+        // expectation that zero bytes round-trip is no longer valid;
+        // see `index_workflow_key_zero_workflow_id` for the
+        // zero-workflow-but-non-zero-run coverage.
+        match result {
+            Err(JournalError::InvalidRunId { run }) => {
+                assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+            }
+            other => panic!(
+                "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+                other
+            ),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn index_workflow_key_zero_workflow_id() -> Result<(), JournalError> {
+        // Companion that pins the (workflow=0, run=nonzero) byte
+        // layout the previous test used to cover.
+        let workflow_id = WorkflowId::new(0);
+        let run_id = RunId::new(1);
+        let key = keys::index_workflow_key(workflow_id, run_id)?;
         assert_eq!(
             &key[1..5],
             0u32.to_be_bytes(),
@@ -220,8 +248,8 @@ mod workflow_id_roundtrip {
         );
         assert_eq!(
             &key[5..13],
-            0u64.to_be_bytes(),
-            "zero run_id must encode as all-zero bytes"
+            1u64.to_be_bytes(),
+            "non-zero run_id bytes must encode as big-endian u64"
         );
         assert_eq!(key.len(), 13, "index_workflow_key must be 13 bytes");
         Ok(())
@@ -701,12 +729,33 @@ mod min_max_numeric_id_roundtrip {
         // Given: RunId::new(0)
         let run_id = RunId::new(0);
 
-        // When: run_header_key is called then decoded
-        let key = keys::run_header_key(run_id)?;
+        // When: run_header_key is called
+        let result = keys::run_header_key(run_id);
 
-        // Then: the decoded RunId equals the original
+        // Then: the encoder rejects RunId::new(0) per the
+        // `InvalidRunId` contract (PO-cn2v4-001). The original
+        // roundtrip expectation is no longer valid because zero is
+        // a reserved sentinel on both the encode and decode paths.
+        match result {
+            Err(JournalError::InvalidRunId { run }) => {
+                assert_eq!(run, RunId::new(0));
+            }
+            other => panic!(
+                "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+                other
+            ),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn run_id_nonzero_roundtrip() -> Result<(), JournalError> {
+        // Companion to `run_id_zero_roundtrip` that covers the
+        // big-endian 8-byte layout for a non-zero RunId.
+        let run_id = RunId::new(42);
+        let key = keys::run_header_key(run_id)?;
         let decoded = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
-        assert_eq!(decoded, run_id, "zero RunId must roundtrip correctly");
+        assert_eq!(decoded, run_id, "non-zero RunId must roundtrip correctly");
         Ok(())
     }
 

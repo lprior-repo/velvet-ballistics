@@ -1222,7 +1222,15 @@ mod parse_decode_error_tests {
     }
 
     /// T8-PE-05: Missing required arg: verify that get_event_bytes with
-    /// an empty or invalid key safely returns None.
+    /// a non-existent (but valid) run id safely returns None.
+    ///
+    /// PO-cn2v4-001: a zero `RunId` is reserved as the "no run"
+    /// sentinel; the encoder now rejects it with `InvalidRunId`
+    /// before any keyspace lookup. This test therefore uses a
+    /// non-zero `RunId` that simply has no row in the empty
+    /// journal — the original "empty key is safe" contract is
+    /// preserved by typing it as `Err(InvalidRunId)` for the
+    /// reserved value and `Ok(None)` for a missing-but-valid row.
     #[test]
     fn parse_decode_error_missing_get_key_safe() -> Result<(), JournalError> {
         // Given: an empty journal
@@ -1230,10 +1238,38 @@ mod parse_decode_error_tests {
         let journal = FjallJournal::open(dir.path(), None)?;
 
         // When: getting event bytes for a nonexistent run/seq
-        let result = journal.get_event_bytes(RunId::new(0), EventSeq::new(0))?;
+        let result = journal.get_event_bytes(RunId::new(1), EventSeq::new(0))?;
 
         // Then: returns None safely (no crash)
         assert!(result.is_none());
+        Ok(())
+    }
+
+    /// PO-cn2v4-001: companion to `parse_decode_error_missing_get_key_safe`
+    /// that pins the typed-error contract for the reserved zero-RunId
+    /// sentinel at the storage keyspace lookup boundary.
+    #[test]
+    fn parse_decode_error_zero_run_id_is_typed_error() -> Result<(), JournalError> {
+        // Given: an empty journal
+        let dir = temp_dir();
+        let journal = FjallJournal::open(dir.path(), None)?;
+
+        // When: getting event bytes for the reserved zero RunId
+        let result = journal.get_event_bytes(RunId::new(0), EventSeq::new(0));
+
+        // Then: returns the typed `InvalidRunId` error rather than
+        // a silent Ok(None) for a non-existent row. The decoder
+        // already rejected zero on the read path; the encoder
+        // boundary now mirrors that contract.
+        match result {
+            Err(JournalError::InvalidRunId { run }) => {
+                assert_eq!(run, RunId::new(0));
+            }
+            other => panic!(
+                "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+                other
+            ),
+        }
         Ok(())
     }
 

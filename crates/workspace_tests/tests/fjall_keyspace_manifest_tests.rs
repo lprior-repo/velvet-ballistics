@@ -130,6 +130,12 @@ proptest! {
         r2 in any::<u64>(),
         s2 in 0u64..u64::MAX,
     ) {
+        // PO-cn2v4-001: zero RunId is reserved; encoders reject it
+        // with `InvalidRunId`. Skip the property test pairs where
+        // either run is zero so we exercise the ordering contract on
+        // the supported input domain without surprising an `unwrap`.
+        prop_assume!(r1 != 0, "r1 must be non-zero (zero RunId is reserved)");
+        prop_assume!(r2 != 0, "r2 must be non-zero (zero RunId is reserved)");
         let key1 = run_event_key(RunId::new(r1), vb_storage::types::EventSeq::new(s1)).unwrap();
         let key2 = run_event_key(RunId::new(r2), vb_storage::types::EventSeq::new(s2)).unwrap();
 
@@ -292,6 +298,10 @@ proptest! {
         digest2: [u8; 32],
         run: u64,
     ) {
+        // PO-cn2v4-001: zero RunId is reserved and rejected by the
+        // encoders; skip pairs that would otherwise unwrap a typed
+        // `InvalidRunId` error.
+        prop_assume!(run != 0, "run must be non-zero (zero RunId is reserved)");
         let run_id = RunId::new(run);
         let key_workflow = workflow_source_key(digest1).unwrap();
         let key_compiled = compiled_ir_key(digest1).unwrap();
@@ -337,9 +347,17 @@ fn encode_exact_length_compiled_ir() {
     );
 }
 
+// PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
 #[test]
 fn encode_exact_length_run_header() {
-    let key = run_header_key(RunId::new(0)).unwrap();
+    let result = run_header_key(RunId::new(0));
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "run_header_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
+    // Sanity: non-zero runs still produce a 9-byte key.
+    let key = run_header_key(RunId::new(1)).unwrap();
     assert_eq!(
         key.len(),
         RUN_ONLY_KEY_BYTES,
@@ -347,9 +365,16 @@ fn encode_exact_length_run_header() {
     );
 }
 
+// PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
 #[test]
 fn encode_exact_length_run_event() {
-    let key = run_event_key(RunId::new(0), vb_storage::types::EventSeq::new(0)).unwrap();
+    let result = run_event_key(RunId::new(0), vb_storage::types::EventSeq::new(0));
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "run_event_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
+    let key = run_event_key(RunId::new(1), vb_storage::types::EventSeq::new(0)).unwrap();
     assert_eq!(
         key.len(),
         JOURNAL_KEY_BYTES,
@@ -363,9 +388,16 @@ fn encode_exact_length_blob() {
     assert_eq!(key.len(), DIGEST_KEY_BYTES, "blob key must be 33 bytes");
 }
 
+// PO-cn2v4-001: zero RunId is reserved and rejected by the encoder.
 #[test]
 fn encode_exact_length_index_action() {
-    let key = index_action_key(ActionId::new(0), RunId::new(0), StepIdx::new(0)).unwrap();
+    let result = index_action_key(ActionId::new(0), RunId::new(0), StepIdx::new(0));
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::InvalidRunId { run: r }) if r == RunId::new(0)),
+        "index_action_key must reject zero RunId as InvalidRunId, got {:?}",
+        result
+    );
+    let key = index_action_key(ActionId::new(0), RunId::new(1), StepIdx::new(0)).unwrap();
     assert_eq!(
         key.len(),
         INDEX_ACTION_KEY_BYTES,
@@ -382,6 +414,11 @@ proptest! {
     /// iff (a1 < a2) or (a1 == a2 and r1 < r2) or (a1 == a2 and r1 == r2 and s1 < s2).
     #[test]
     fn index_action_ordering(a1: u16, r1: u64, s1: u16, a2: u16, r2: u64, s2: u16) {
+        // PO-cn2v4-001: zero RunId is reserved; encoders reject it.
+        // Skip pairs where either run is zero so the property test
+        // never unwraps a typed `InvalidRunId` error.
+        prop_assume!(r1 != 0, "r1 must be non-zero (zero RunId is reserved)");
+        prop_assume!(r2 != 0, "r2 must be non-zero (zero RunId is reserved)");
         let key1 = index_action_key(ActionId::new(a1), RunId::new(r1), StepIdx::new(s1)).unwrap();
         let key2 = index_action_key(ActionId::new(a2), RunId::new(r2), StepIdx::new(s2)).unwrap();
 
