@@ -6,7 +6,7 @@ fn shard_rejects_active_run_capacity_overflow() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -40,7 +40,7 @@ fn inspect_command_stores_retrievable_snapshot() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -78,7 +78,7 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     assert_eq!(shard.is_shutting_down(), false);
@@ -114,7 +114,7 @@ fn counters_reflect_submitted_after_submit_tick() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -140,7 +140,7 @@ fn inspect_nonexistent_run_returns_not_found() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     assert_eq!(

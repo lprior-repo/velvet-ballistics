@@ -6,7 +6,7 @@ fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Re
         trace_capacity: 16,
         step_budget_per_tick: 1,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
@@ -243,7 +243,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), Strin
         trace_capacity: 0,
         step_budget_per_tick: 4,
         max_active_runs: 2,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
@@ -279,7 +279,7 @@ fn shard_command_queue_len_increments_on_enqueue() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_len(), 0);

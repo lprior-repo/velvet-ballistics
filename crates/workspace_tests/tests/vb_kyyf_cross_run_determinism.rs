@@ -381,6 +381,7 @@ fn runtime_config() -> ShardConfig {
         step_budget_per_tick: 8,
         max_active_runs: 4,
         policy: RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
     }
 }
 

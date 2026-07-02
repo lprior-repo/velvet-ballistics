@@ -9,6 +9,25 @@ impl ShardConfig {
         max_active_runs: usize,
         policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
+        Self::new_with_clock(
+            command_queue_capacity,
+            trace_capacity,
+            step_budget_per_tick,
+            max_active_runs,
+            policy,
+            crate::shard::types::ShardClockConfig::default(),
+        )
+    }
+
+    /// Creates a new ShardConfig with an explicit clock configuration.
+    pub fn new_with_clock(
+        command_queue_capacity: usize,
+        trace_capacity: usize,
+        step_budget_per_tick: u64,
+        max_active_runs: usize,
+        policy: vb_core::policy::RuntimePolicy,
+        clock: crate::shard::types::ShardClockConfig,
+    ) -> RuntimeResult<Self> {
         if !is_valid_command_queue_capacity(command_queue_capacity) {
             return Err(RuntimeError::CommandQueueCapacityExceeded {
                 capacity: command_queue_capacity,
@@ -34,6 +53,7 @@ impl ShardConfig {
             step_budget_per_tick,
             max_active_runs,
             policy,
+            clock,
         })
     }
 }

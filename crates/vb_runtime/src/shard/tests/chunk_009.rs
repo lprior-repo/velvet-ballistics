@@ -201,7 +201,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
         trace_capacity: 2,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     // When submitting and completing multiple runs (producing >2 trace events)

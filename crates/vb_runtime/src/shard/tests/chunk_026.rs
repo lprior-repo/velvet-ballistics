@@ -6,7 +6,7 @@ fn vb1u88_queue_full_at_capacity_boundary() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -258,7 +258,7 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
                 step: vb_core::ids::StepIdx::new(1),
                 kind: PendingTimerKind::Wait,
                 generation: 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)

@@ -95,7 +95,7 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     // When filling the queue exactly
@@ -169,7 +169,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
         trace_capacity: 4,
         step_budget_per_tick: 0,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {

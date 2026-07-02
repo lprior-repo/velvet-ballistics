@@ -27,7 +27,7 @@ fn shard_created_with_custom_config_has_custom_properties() {
         trace_capacity: 128,
         step_budget_per_tick: 500,
         max_active_runs: 16,
-        policy: vb_core::policy::RuntimePolicy::Strict,
+        policy: vb_core::policy::RuntimePolicy::Strict, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 64);
@@ -231,7 +231,7 @@ fn shard_remaining_capacity_decreases_after_each_enqueue() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     let initial = shard.remaining_capacity();
@@ -289,7 +289,7 @@ fn shard_command_queue_initial_capacity_matches_config() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 256);
@@ -314,7 +314,7 @@ fn shard_trace_ring_capacity_matches_config() {
         trace_capacity: 32,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     let status = shard.status();
@@ -381,7 +381,7 @@ fn shard_enqueue_rejects_when_queue_is_full() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     let cancel_cmd = ShardCommand::Cancel {
@@ -401,7 +401,7 @@ fn shard_is_queue_full_returns_false_when_below_capacity() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.is_queue_full(), false);
@@ -420,7 +420,7 @@ fn shard_max_active_runs_rejects_excess_submissions() {
         trace_capacity: 16,
         step_budget_per_tick: 16,
         max_active_runs: 2,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -470,7 +470,7 @@ fn shard_command_queue_capacity_match_is_exact_after_construction() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     let status = shard.status();
@@ -486,7 +486,7 @@ fn shard_queue_is_empty_and_full_are_mutually_consistent() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_len(), 0);
@@ -774,7 +774,7 @@ mod kani_proofs {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         let shard = Shard::new(config);
         assert_eq!(shard.command_queue_capacity(), capacity);
@@ -793,7 +793,7 @@ mod kani_proofs {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         });
         let rem = shard.remaining_capacity();
         assert!(rem <= capacity);
@@ -809,7 +809,7 @@ mod kani_proofs {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         });
         let len = shard.command_queue_len();
         let is_full = shard.is_queue_full();
@@ -927,7 +927,7 @@ mod kani_proofs {
             step: vb_core::ids::StepIdx::new(0),
             kind,
             generation,
-            deadline: kani_deadline,
+            deadline: kani_deadline, ..Default::default()
         };
         assert!(timer.matches_authority(generation, kani_deadline, kind));
         if generation > 0 {

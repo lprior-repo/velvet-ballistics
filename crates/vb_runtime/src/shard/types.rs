@@ -33,15 +33,57 @@ pub enum PendingTimerKind {
     Ask,
 }
 
+/// Logical-clock deadline for deterministic mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LogicalDeadline(pub u64);
+
+impl LogicalDeadline {
+    #[must_use]
+    pub const fn new(tick: u64) -> Self {
+        Self(tick)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+/// Clock configuration for the shard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub enum ShardClockConfig {
+    /// Production wall-clock mode.
+    #[default]
+    Wall,
+    /// Deterministic logical-clock mode.
+    Logical,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PendingTimer {
     pub step: StepIdx,
     pub kind: PendingTimerKind,
     pub generation: u64,
     pub deadline: Instant,
+    /// Logical deadline captured when the timer was emitted.
+    pub logical_deadline: Option<LogicalDeadline>,
+}
+
+impl Default for PendingTimer {
+    fn default() -> Self {
+        Self {
+            step: StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 0,
+            deadline: Instant::now(),
+            logical_deadline: None,
+        }
+    }
 }
 
 impl PendingTimer {
+    /// Wall-clock authority comparison (legacy).
     #[must_use]
     pub fn matches_authority(
         self,
@@ -49,7 +91,26 @@ impl PendingTimer {
         deadline: Instant,
         kind: PendingTimerKind,
     ) -> bool {
-        self.generation == generation && self.deadline == deadline && self.kind == kind
+        self.generation == generation && self.kind == kind && self.deadline == deadline
+    }
+
+    /// Full authority comparison including logical deadline.
+    #[must_use]
+    pub fn matches_authority_full(
+        self,
+        generation: u64,
+        deadline: Instant,
+        kind: PendingTimerKind,
+        logical: Option<LogicalDeadline>,
+    ) -> bool {
+        if self.generation != generation || self.kind != kind {
+            return false;
+        }
+        match (self.logical_deadline, logical) {
+            (Some(a), Some(b)) => a == b,
+            (None, None) => self.deadline == deadline,
+            (Some(_), None) | (None, Some(_)) => false,
+        }
     }
 }
 
@@ -156,6 +217,8 @@ pub enum ShardCommand {
         generation: u64,
         /// Deadline captured when the timer was emitted.
         deadline: Instant,
+        /// Logical deadline captured when the timer was emitted.
+        logical_deadline: Option<LogicalDeadline>,
         /// Timer kind captured when the timer was emitted.
         kind: PendingTimerKind,
     },
@@ -682,6 +745,9 @@ pub struct Shard {
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
+    /// Stable `Instant` origin captured at shard construction.
+    pub(crate) logical_origin: Instant,
+    pub(crate) clock: ShardClockConfig,
     pub(crate) journal: SharedRuntimeJournal,
 }
 
@@ -735,6 +801,8 @@ pub struct ShardConfig {
     pub max_active_runs: usize,
     /// Admission policy governing artifact verification.
     pub policy: vb_core::policy::RuntimePolicy,
+    /// Clock configuration governing timer authority.
+    pub clock: ShardClockConfig,
 }
 
 /// Returns true when a trace ring capacity can retain at least one trace event.
@@ -757,6 +825,7 @@ impl Default for ShardConfig {
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
             policy: vb_core::policy::RuntimePolicy::Strict,
+            clock: ShardClockConfig::default(),
         }
     }
 }
@@ -1036,6 +1105,7 @@ mod tests {
             kind: PendingTimerKind::Ask,
             generation: 42,
             deadline,
+            ..Default::default()
         };
         assert_eq!(timer.step, vb_core::ids::StepIdx::new(3));
         assert_eq!(timer.kind, PendingTimerKind::Ask);
@@ -1051,6 +1121,7 @@ mod tests {
             kind: PendingTimerKind::Wait,
             generation: 5,
             deadline,
+            ..Default::default()
         };
         assert!(timer.matches_authority(5, deadline, PendingTimerKind::Wait));
     }
@@ -1062,6 +1133,7 @@ mod tests {
             kind: PendingTimerKind::Wait,
             generation: 5,
             deadline: Instant::now(),
+            ..Default::default()
         };
         assert!(!timer.matches_authority(6, timer.deadline, PendingTimerKind::Wait));
     }
@@ -1073,6 +1145,7 @@ mod tests {
             kind: PendingTimerKind::Wait,
             generation: 3,
             deadline: Instant::now(),
+            ..Default::default()
         };
         assert!(!timer.matches_authority(3, timer.deadline, PendingTimerKind::Ask));
     }
@@ -1084,11 +1157,48 @@ mod tests {
             kind: PendingTimerKind::Ask,
             generation: 7,
             deadline: Instant::now(),
+            ..Default::default()
         };
         let t2 = t1;
         assert_eq!(t1.generation, t2.generation);
         assert_eq!(t1.step, t2.step);
         assert_eq!(t1.kind, t2.kind);
+    }
+
+    #[test]
+    fn pending_timer_logical_authority_matches_when_logical_deadline_matches() {
+        let deadline = Instant::now();
+        let timer = PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline,
+            logical_deadline: Some(LogicalDeadline::new(42)),
+        };
+        assert!(timer.matches_authority_full(
+            1,
+            deadline,
+            PendingTimerKind::Wait,
+            Some(LogicalDeadline::new(42)),
+        ));
+    }
+
+    #[test]
+    fn pending_timer_logical_authority_rejects_mismatched_logical_deadline() {
+        let deadline = Instant::now();
+        let timer = PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline,
+            logical_deadline: Some(LogicalDeadline::new(42)),
+        };
+        assert!(!timer.matches_authority_full(
+            1,
+            deadline,
+            PendingTimerKind::Wait,
+            Some(LogicalDeadline::new(43)),
+        ));
     }
 
     // ---- PendingTimerKind ----

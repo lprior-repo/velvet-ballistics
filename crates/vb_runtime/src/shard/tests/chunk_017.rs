@@ -147,7 +147,7 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
         trace_capacity: 8,
         step_budget_per_tick: 4,
         max_active_runs: 8,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -243,7 +243,7 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
                     step: vb_core::ids::StepIdx::new(99),
                     kind: super::types::PendingTimerKind::Ask,
                     generation: 2,
-                    deadline: std::time::Instant::now(),
+                    deadline: std::time::Instant::now(), ..Default::default()
                 },
             ),
             Ok(Some(_))

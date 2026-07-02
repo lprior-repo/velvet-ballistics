@@ -311,7 +311,7 @@ impl Shard {
             return Ok(ResumeResult {
                 run_id: run,
                 status: ResumeStatus::AlreadyRunning,
-                timestamp: current_timestamp(),
+                timestamp: current_timestamp(self),
             });
         }
         if current_state != RuntimeState::Resumable {
@@ -444,7 +444,7 @@ impl Shard {
         }
         self.apply(run, RuntimeEvent::Resume)
             .map_err(ResumeError::journal_append_failed_with_source)?;
-        let timestamp = current_timestamp();
+        let timestamp = current_timestamp(self);
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
         if let Err(source) = self.append_journal_event(resumed_event) {
             self.apply(run, RuntimeEvent::ResumeRollback)

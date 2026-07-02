@@ -81,6 +81,7 @@ fn make_timer_entry(run: RunId) -> TimerEntry {
         run,
         generation: 0,
         deadline: std::time::Instant::now(),
+        logical_deadline: None,
         kind: PendingTimerKind::Ask,
     }
 }

@@ -124,7 +124,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 2,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -156,7 +156,7 @@ fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     for _ in 0..3 {
@@ -176,7 +176,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
         trace_capacity: 32,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {

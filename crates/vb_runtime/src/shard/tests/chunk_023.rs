@@ -36,13 +36,13 @@ fn shard_command_timer_fired_equality() {
         run: super::RunId::new(1),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(1),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     assert_eq!(a, b);
 }
@@ -54,13 +54,13 @@ fn shard_command_timer_fired_inequality() {
         run: super::RunId::new(1),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(2),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     assert_ne!(a, b);
 }
@@ -259,7 +259,7 @@ fn shard_command_variants_cross_inequality() {
         run: super::RunId::new(1),
         generation: 1,
         deadline: std::time::Instant::now(),
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     let shutdown = ShardCommand::Shutdown;
     assert_ne!(cancel, resume);

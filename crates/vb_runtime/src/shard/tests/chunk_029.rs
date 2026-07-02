@@ -25,13 +25,13 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
         run,
         generation: old_timer.generation,
         deadline: old_timer.deadline,
-        kind: old_timer.kind,
+        kind: old_timer.kind, logical_deadline: None,
     };
     let replacement_timer = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(99),
         kind: PendingTimerKind::Ask,
         generation: old_timer.generation.checked_add(1).unwrap_or(u64::MAX),
-        deadline: std::time::Instant::now(),
+        deadline: std::time::Instant::now(), ..Default::default()
     };
     assert_ne!(old_timer, replacement_timer);
     assert_eq!(
@@ -107,7 +107,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
         run,
         generation: active_timer.generation,
         deadline: active_timer.deadline,
-        kind: active_timer.kind,
+        kind: active_timer.kind, logical_deadline: None,
     };
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
@@ -150,7 +150,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
         run,
         generation: terminal_timer.generation,
         deadline: terminal_timer.deadline,
-        kind: terminal_timer.kind,
+        kind: terminal_timer.kind, logical_deadline: None,
     };
     assert_eq!(shard.enqueue(terminal_command.clone()), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
@@ -180,6 +180,7 @@ fn timer_fired_command_exposes_generation_deadline_and_kind_authority_metadata()
         run,
         generation,
         deadline,
+        logical_deadline: None,
         kind,
     };
 
@@ -189,7 +190,7 @@ fn timer_fired_command_exposes_generation_deadline_and_kind_authority_metadata()
             run: actual_run,
             generation: actual_generation,
             deadline: actual_deadline,
-            kind: actual_kind,
+            kind: actual_kind, logical_deadline: None,
         } => {
             assert_eq!(actual_run, run);
             assert_eq!(actual_generation, generation);
@@ -451,7 +452,7 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
             run,
             generation: u64::MAX,
             deadline: active_timer.deadline,
-            kind: active_timer.kind,
+            kind: active_timer.kind, logical_deadline: None,
         }),
         Ok(())
     );
@@ -492,7 +493,7 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
             run,
             generation: active_timer.generation,
             deadline: wrong_deadline,
-            kind: active_timer.kind,
+            kind: active_timer.kind, logical_deadline: None,
         }),
         Ok(())
     );
@@ -532,7 +533,7 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
             run,
             generation: active_timer.generation,
             deadline: active_timer.deadline,
-            kind: PendingTimerKind::Ask,
+            kind: PendingTimerKind::Ask, logical_deadline: None,
         }),
         Ok(())
     );

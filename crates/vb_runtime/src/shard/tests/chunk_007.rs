@@ -6,13 +6,13 @@ fn shard_command_equality_timer_fired() {
         run: super::RunId::new(1),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(1),
         generation: 1,
         deadline,
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     };
     assert_eq!(a, b);
 }

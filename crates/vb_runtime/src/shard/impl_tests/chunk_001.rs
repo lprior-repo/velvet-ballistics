@@ -51,6 +51,7 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         }
     }
 
@@ -66,7 +67,7 @@
             trace_capacity: 1,
             step_budget_per_tick: 1,
             max_active_runs: 1,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         assert_eq!(result, Ok(expected));
     }
@@ -116,7 +117,7 @@
             trace_capacity: 1,
             step_budget_per_tick: 1,
             max_active_runs: 1,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         assert_eq!(result, Ok(expected));
     }
@@ -131,7 +132,7 @@
                 trace_capacity: 128,
                 step_budget_per_tick: 256,
                 max_active_runs: 32,
-                policy: vb_core::policy::RuntimePolicy::Relaxed,
+                policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
             })
         );
     }
@@ -160,7 +161,7 @@
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         let shard = Shard::new(config);
         assert_eq!(shard.command_queue_capacity(), 4);
@@ -178,7 +179,7 @@
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         let shard = Shard::new(config);
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -228,7 +229,7 @@
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         let mut shard = Shard::new(config);
         let Some(wf) = finished_workflow() else {
@@ -255,7 +256,7 @@
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         };
         let mut shard = Shard::new(config);
         assert_eq!(

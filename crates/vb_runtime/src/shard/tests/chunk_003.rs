@@ -76,6 +76,7 @@ fn small_config() -> ShardConfig {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+        ..Default::default()
     }
 }
 
@@ -241,7 +242,7 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let shard = Shard::new(config);
     // When enqueuing more commands than capacity allows

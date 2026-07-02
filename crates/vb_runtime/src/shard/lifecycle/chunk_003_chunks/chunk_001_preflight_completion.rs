@@ -18,13 +18,23 @@ use crate::{RuntimeError, RuntimeResult};
 use crate::primitives::collect::CollectStates;
 use crate::shard::types::{
     AskAnswer, PendingTimer, PendingTimerKind, ResumeError, ResumeResult, ResumeStatus, RunState,
-    RuntimeEvent, RuntimeState, Shard,
+    RuntimeEvent, RuntimeState, Shard, ShardClockConfig,
 };
 
-fn current_timestamp() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_secs())
+fn current_timestamp(shard: &Shard) -> u64 {
+    match shard.clock_config() {
+        ShardClockConfig::Wall => std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0u64, |duration| duration.as_secs()),
+        ShardClockConfig::Logical => {
+            let origin = shard.logical_origin();
+            let elapsed = origin.elapsed();
+            std::time::SystemTime::now()
+                .checked_sub(elapsed)
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0u64, |duration| duration.as_secs())
+        }
+    }
 }
 
 /// Absolute runtime ceiling for the encoded byte length of a single action

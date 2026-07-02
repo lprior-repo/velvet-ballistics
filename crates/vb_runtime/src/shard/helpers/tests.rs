@@ -138,6 +138,7 @@ fn advance_after_timer_fire_rejects_wait_until_without_next() {
         kind: PendingTimerKind::Wait,
         generation: 1,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     let result = advance_after_timer_fire(&mut state, timer);
     assert_eq!(result, Err(RuntimeError::InvalidTimerFire));

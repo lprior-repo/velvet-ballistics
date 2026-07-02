@@ -45,6 +45,7 @@ fn pending_timer_implements_copy_and_eq() {
         kind: PendingTimerKind::Wait,
         generation: 1,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     let t2 = t1;
     assert_eq!(t1, t2); // Eq + Copy work
@@ -68,6 +69,7 @@ fn shard_command_timer_fired_variant_is_constructable() {
         generation: 1,
         deadline: std::time::Instant::now(),
         kind: PendingTimerKind::Wait,
+        logical_deadline: None,
     };
     // Verify the variant can be pattern-matched
     match cmd {

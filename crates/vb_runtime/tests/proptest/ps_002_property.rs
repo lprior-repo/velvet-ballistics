@@ -20,7 +20,7 @@ proptest! {
             step: StepIdx::new(step),
             kind,
             generation: gen,
-            deadline: Instant::now(),
+            deadline: Instant::now(), ..Default::default()
         };
         prop_assert!(timer.matches_authority(gen, timer.deadline, kind));
     }
@@ -35,7 +35,7 @@ proptest! {
             step: StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
             generation: gen,
-            deadline: Instant::now(),
+            deadline: Instant::now(), ..Default::default()
         };
         prop_assert!(!timer.matches_authority(wrong_gen, timer.deadline, PendingTimerKind::Wait));
     }
@@ -48,7 +48,7 @@ proptest! {
             step: StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
             generation: gen,
-            deadline: Instant::now(),
+            deadline: Instant::now(), ..Default::default()
         };
         prop_assert!(!timer.matches_authority(gen, timer.deadline, PendingTimerKind::Ask));
     }
@@ -60,7 +60,7 @@ proptest! {
     ) {
         let kind = PendingTimerKind::Wait;
         let deadline = Instant::now();
-        let timer = PendingTimer { step: StepIdx::new(step), kind, generation: gen, deadline };
+        let timer = PendingTimer { step: StepIdx::new(step), kind, generation: gen, deadline, ..Default::default() };
         prop_assert_eq!(timer.step, StepIdx::new(step));
         prop_assert_eq!(timer.generation, gen);
         prop_assert_eq!(timer.kind, kind);

@@ -1,4 +1,15 @@
-use crate::shard::types::RuntimeState;
+use crate::shard::types::{LogicalDeadline, RuntimeState, ShardClockConfig};
+use std::time::Instant;
+
+/// Stable `Instant` adapter for logical-clock mode.
+#[must_use]
+pub fn logical_origin_plus(origin: Instant, tick: u64) -> Instant {
+    let nanos = tick;
+    match std::time::Duration::from_nanos(nanos).checked_add(origin.duration_since(origin)) {
+        Some(delta) => origin.checked_add(delta).unwrap_or(origin),
+        None => origin,
+    }
+}
 
 impl Shard {
     /// Creates a new shard with the given configuration.
@@ -16,6 +27,7 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
+        let logical_origin = Instant::now();
         Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
@@ -35,6 +47,8 @@ impl Shard {
             inspect_response: None,
             shutting_down: false,
             current_tick: TimerTick::new(0),
+            logical_origin,
+            clock: config.clock,
             journal,
         }
     }
@@ -469,13 +483,6 @@ impl Shard {
     }
 
     /// Advances the deterministic clock to the given tick.
-    ///
-    /// The new tick must be >= the current tick. Returns an error if
-    /// the supplied tick is in the past, preventing backward clock jumps.
-    ///
-    /// This operates the numeric timer seam alongside the existing
-    /// wall-clock `Instant`-based timers; it does not modify or affect
-    /// `Instant`-derived deadlines.
     pub fn advance_clock_to(&mut self, new_tick: TimerTick) -> RuntimeResult<()> {
         if new_tick < self.current_tick {
             return Err(RuntimeError::InvalidTimerFire);
@@ -488,6 +495,44 @@ impl Shard {
     #[must_use]
     pub fn current_tick(&self) -> TimerTick {
         self.current_tick
+    }
+
+    /// Returns the configured clock mode for this shard.
+    #[must_use]
+    pub const fn clock_config(&self) -> ShardClockConfig {
+        self.clock
+    }
+
+    /// Returns true if this shard is in logical-clock mode.
+    #[must_use]
+    pub const fn is_logical_clock(&self) -> bool {
+        matches!(self.clock, ShardClockConfig::Logical)
+    }
+
+    /// Returns the stable `Instant` origin captured at shard construction.
+    #[must_use]
+    pub const fn logical_origin(&self) -> Instant {
+        self.logical_origin
+    }
+
+    /// Derives the public `Instant`-typed deadline field for a fresh pending timer.
+    #[must_use]
+    pub fn pending_timer_deadline(&self) -> Instant {
+        match self.clock {
+            ShardClockConfig::Wall => Instant::now(),
+            ShardClockConfig::Logical => {
+                logical_origin_plus(self.logical_origin, self.current_tick.get())
+            }
+        }
+    }
+
+    /// Captures the logical deadline for a fresh pending timer.
+    #[must_use]
+    pub fn pending_timer_logical_deadline(&self) -> Option<LogicalDeadline> {
+        match self.clock {
+            ShardClockConfig::Wall => None,
+            ShardClockConfig::Logical => Some(LogicalDeadline::new(self.current_tick.get())),
+        }
     }
 
     /// Returns the next freshness generation for a run's pending timer.
@@ -583,8 +628,9 @@ impl Shard {
                 run,
                 generation,
                 deadline,
+                logical_deadline,
                 kind,
-            } => self.handle_timer(run, generation, deadline, kind)?,
+            } => self.handle_timer(run, generation, deadline, kind, logical_deadline)?,
             ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
             ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
             ShardCommand::Inspect { run, correlation } => {
@@ -620,10 +666,18 @@ impl Shard {
     /// Builds a fail-closed legacy timer-fired command without fabricating authority.
     #[must_use]
     pub fn timer_fired_command(&self, run: RunId) -> ShardCommand {
+        let (deadline, logical_deadline) = match self.clock {
+            ShardClockConfig::Wall => (Instant::now(), None),
+            ShardClockConfig::Logical => (
+                logical_origin_plus(self.logical_origin, self.current_tick.get()),
+                Some(LogicalDeadline::new(self.current_tick.get())),
+            ),
+        };
         ShardCommand::TimerFired {
             run,
             generation: 0,
-            deadline: std::time::Instant::now(),
+            deadline,
+            logical_deadline,
             kind: PendingTimerKind::Wait,
         }
     }
@@ -636,6 +690,7 @@ impl Shard {
                 run,
                 generation: timer.generation,
                 deadline: timer.deadline,
+                logical_deadline: timer.logical_deadline,
                 kind: timer.kind,
             })
     }

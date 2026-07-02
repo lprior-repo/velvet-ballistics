@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use vb_core::ids::RunId;
 
-use super::types::PendingTimerKind;
+use super::types::{LogicalDeadline, PendingTimerKind};
 
 /// A single timer entry keyed by its deadline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,8 +25,22 @@ pub struct TimerEntry {
     pub generation: u64,
     /// The deadline that keyed this entry.
     pub deadline: Instant,
+    /// Logical deadline captured when the timer was emitted.
+    pub logical_deadline: Option<LogicalDeadline>,
     /// The kind of timer (Wait or Ask).
     pub kind: PendingTimerKind,
+}
+
+impl Default for TimerEntry {
+    fn default() -> Self {
+        Self {
+            run: RunId::ZERO,
+            generation: 0,
+            deadline: Instant::now(),
+            logical_deadline: None,
+            kind: PendingTimerKind::Wait,
+        }
+    }
 }
 
 /// Timer wheel mutation error.
@@ -64,12 +78,24 @@ impl TimerWheel {
         deadline: Instant,
         kind: PendingTimerKind,
     ) -> Result<(), TimerWheelError> {
+        self.insert_with_logical(run, deadline, None, kind)
+    }
+
+    /// Inserts a timer with an optional logical deadline.
+    pub fn insert_with_logical(
+        &mut self,
+        run: RunId,
+        deadline: Instant,
+        logical_deadline: Option<LogicalDeadline>,
+        kind: PendingTimerKind,
+    ) -> Result<(), TimerWheelError> {
         let generation = self.next_generation(run)?;
         self.cancel(run);
         let entry = TimerEntry {
             run,
             generation,
             deadline,
+            logical_deadline,
             kind,
         };
         self.by_deadline.entry(deadline).or_default().push(entry);
@@ -327,6 +353,7 @@ mod tests {
             run: run(1),
             generation: u64::MAX,
             deadline,
+            logical_deadline: None,
             kind: PendingTimerKind::Wait,
         };
         wheel.by_deadline.entry(deadline).or_default().push(entry);

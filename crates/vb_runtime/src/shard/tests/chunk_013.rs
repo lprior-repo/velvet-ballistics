@@ -143,7 +143,7 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static s
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let wf1 = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;

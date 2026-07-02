@@ -104,6 +104,7 @@ fn pending_timer_generation_is_u64() {
         kind: PendingTimerKind::Wait,
         generation: 42u64,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.generation, 42u64);
 }
@@ -115,6 +116,7 @@ fn pending_timer_generation_starts_at_one_for_new_timer() {
         kind: PendingTimerKind::Ask,
         generation: 1,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.generation, 1);
 }
@@ -126,6 +128,7 @@ fn pending_timer_generation_can_be_zero() {
         kind: PendingTimerKind::Wait,
         generation: 0,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.generation, 0);
 }
@@ -137,6 +140,7 @@ fn pending_timer_generation_can_be_max() {
         kind: PendingTimerKind::Ask,
         generation: u64::MAX,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.generation, u64::MAX);
 }
@@ -150,6 +154,7 @@ fn pending_timer_step_is_step_idx() {
         kind: PendingTimerKind::Wait,
         generation: 5,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.step, StepIdx::new(15));
 }
@@ -161,6 +166,7 @@ fn pending_timer_step_can_be_zero() {
         kind: PendingTimerKind::Ask,
         generation: 1,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.step, StepIdx::ZERO);
 }
@@ -174,6 +180,7 @@ fn pending_timer_kind_wait_roundtrips() {
         kind: PendingTimerKind::Wait,
         generation: 1,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.kind, PendingTimerKind::Wait);
 }
@@ -185,6 +192,7 @@ fn pending_timer_kind_ask_roundtrips() {
         kind: PendingTimerKind::Ask,
         generation: 2,
         deadline: std::time::Instant::now(),
+        ..Default::default()
     };
     assert_eq!(timer.kind, PendingTimerKind::Ask);
 }

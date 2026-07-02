@@ -719,6 +719,7 @@ fn small_config() -> ShardConfig {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+        ..Default::default()
     }
 }
 

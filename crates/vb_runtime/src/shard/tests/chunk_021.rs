@@ -121,7 +121,7 @@ fn shard_config_new_accepts_max_step_budget() {
             trace_capacity: 1,
             step_budget_per_tick: u64::MAX,
             max_active_runs: 1,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+            policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
         })
     );
 }
@@ -165,13 +165,13 @@ fn pending_timer_equality_same_fields() {
         step: vb_core::ids::StepIdx::new(3),
         kind: super::types::PendingTimerKind::Wait,
         generation: 1,
-        deadline,
+        deadline, ..Default::default()
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
         kind: super::types::PendingTimerKind::Wait,
         generation: 1,
-        deadline,
+        deadline, ..Default::default()
     };
     assert_eq!(a, b);
 }
@@ -182,13 +182,13 @@ fn pending_timer_inequality_different_step() {
         step: vb_core::ids::StepIdx::new(1),
         kind: super::types::PendingTimerKind::Ask,
         generation: 1,
-        deadline: std::time::Instant::now(),
+        deadline: std::time::Instant::now(), ..Default::default()
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(2),
         kind: super::types::PendingTimerKind::Ask,
         generation: 1,
-        deadline: a.deadline,
+        deadline: a.deadline, ..Default::default()
     };
     assert_ne!(a, b);
 }
@@ -199,13 +199,13 @@ fn pending_timer_inequality_different_kind() {
         step: vb_core::ids::StepIdx::new(5),
         kind: super::types::PendingTimerKind::Wait,
         generation: 1,
-        deadline: std::time::Instant::now(),
+        deadline: std::time::Instant::now(), ..Default::default()
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
         kind: super::types::PendingTimerKind::Ask,
         generation: 1,
-        deadline: a.deadline,
+        deadline: a.deadline, ..Default::default()
     };
     assert_ne!(a, b);
 }

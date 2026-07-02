@@ -189,13 +189,27 @@ impl Shard {
                 self.run_state_insert(run, state)?;
                 return Err(error);
             }
+            // Timer authority routes through the shard's clock configuration.
+            let (deadline, logical_deadline) = match self.clock {
+                crate::shard::types::ShardClockConfig::Wall => (Instant::now(), None),
+                crate::shard::types::ShardClockConfig::Logical => (
+                    crate::shard::impl_::logical_origin_plus(
+                        self.logical_origin,
+                        self.current_tick.get(),
+                    ),
+                    Some(crate::shard::types::LogicalDeadline::new(
+                        self.current_tick.get(),
+                    )),
+                ),
+            };
             self.pending_timer_insert(
                 run,
                 PendingTimer {
                     step,
                     kind,
                     generation,
-                    deadline: Instant::now(),
+                    deadline,
+                    logical_deadline,
                 },
             )?;
         }

@@ -26,7 +26,7 @@
             run: entry.run,
             generation: entry.generation,
             deadline: entry.deadline,
-            kind: entry.kind,
+            kind: entry.kind, logical_deadline: None,
         }
     }
 
@@ -35,7 +35,7 @@
             run,
             generation: 0,
             deadline: std::time::Instant::now(),
-            kind: PendingTimerKind::Wait,
+            kind: PendingTimerKind::Wait, logical_deadline: None,
         }
     }
 

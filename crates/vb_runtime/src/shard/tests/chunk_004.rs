@@ -7,7 +7,7 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
     let Some(wf) = suspended_workflow() else {

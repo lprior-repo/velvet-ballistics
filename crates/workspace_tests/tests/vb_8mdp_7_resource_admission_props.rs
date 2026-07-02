@@ -65,6 +65,7 @@ fn new_shard_config(queue_capacity: usize) -> ShardConfig {
         step_budget_per_tick: 100,
         max_active_runs: 16,
         policy: RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
     }
 }
 
@@ -316,6 +317,7 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         step_budget_per_tick: 100,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
     });
 
     shard
@@ -359,6 +361,7 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
         step_budget_per_tick: 100,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
     });
 
     // Get initial pool metrics (pool may be lazily created)
@@ -439,12 +442,13 @@ fn frame_pool_count_exactly_preserved_after_duplicate_rejection() {
 ///   3. Multiple accept-reject cycles don't degrade pool state
 #[test]
 fn staged_frame_release_integration_accept_then_reject() {
-    let mut shard = Shard::new(ShardConfig {
-        command_queue_capacity: 16,
+let mut shard = Shard::new(ShardConfig {
+        command_queue_capacity: 8,
         trace_capacity: 64,
         step_budget_per_tick: 100,
-        max_active_runs: 4,
+        max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
     });
 
     // Initial state: no frame pool (lazy creation), no runs
@@ -735,12 +739,13 @@ proptest! {
         let run_count = (run_count as usize).min(capacity);
         let dup_idx = (dup_idx as usize).min(run_count.saturating_sub(1));
 
-        let mut shard = Shard::new(ShardConfig {
+let mut shard = Shard::new(ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 64,
             step_budget_per_tick: 100,
             max_active_runs: capacity,
             policy: RuntimePolicy::Relaxed,
+            ..ShardConfig::default()
         });
 
         // Submit unique runs

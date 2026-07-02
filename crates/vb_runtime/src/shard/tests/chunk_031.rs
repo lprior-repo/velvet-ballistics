@@ -99,7 +99,7 @@ fn current_tick_starts_at_zero_for_custom_config() {
         trace_capacity: 128,
         step_budget_per_tick: 100,
         max_active_runs: 16,
-        policy: vb_core::policy::RuntimePolicy::Strict,
+        policy: vb_core::policy::RuntimePolicy::Strict, ..Default::default()
     };
     let shard = Shard::new(config);
     assert_eq!(shard.current_tick(), TimerTick::new(0));
@@ -153,7 +153,7 @@ fn next_pending_timer_generation_increments_for_existing_timer() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: 5,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -172,7 +172,7 @@ fn next_pending_timer_generation_increments_from_one_to_two() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Ask,
                 generation: 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -191,7 +191,7 @@ fn next_pending_timer_generation_returns_none_at_max_u64() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: u64::MAX,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -210,7 +210,7 @@ fn next_pending_timer_generation_does_not_mutate_on_overflow_check() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: u64::MAX,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -234,7 +234,7 @@ fn next_pending_timer_generation_is_independent_per_run() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: 3,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -246,7 +246,7 @@ fn next_pending_timer_generation_is_independent_per_run() {
                 step: vb_core::ids::StepIdx::new(1),
                 kind: PendingTimerKind::Ask,
                 generation: 7,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -269,7 +269,7 @@ fn next_pending_timer_generation_at_max_minus_one_returns_max() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: u64::MAX - 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -298,7 +298,7 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -311,7 +311,7 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
                 step: vb_core::ids::StepIdx::new(1),
                 kind: PendingTimerKind::Ask,
                 generation: 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)
@@ -334,7 +334,7 @@ fn advance_clock_to_does_not_affect_pending_timers() {
                 step: vb_core::ids::StepIdx::ZERO,
                 kind: PendingTimerKind::Wait,
                 generation: 1,
-                deadline: std::time::Instant::now(),
+                deadline: std::time::Instant::now(), ..Default::default()
             },
         ),
         Ok(None)

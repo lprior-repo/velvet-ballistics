@@ -646,6 +646,7 @@ impl Runtime {
             run: entry.run,
             generation: entry.generation,
             deadline: entry.deadline,
+            logical_deadline: entry.logical_deadline,
             kind: entry.kind,
         })
     }

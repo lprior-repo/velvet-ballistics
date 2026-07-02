@@ -57,7 +57,7 @@ fn shard_submit_after_full_cancel_resets_capacity() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 1,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        policy: vb_core::policy::RuntimePolicy::Relaxed, ..Default::default()
     };
     let mut shard = Shard::new(config);
 

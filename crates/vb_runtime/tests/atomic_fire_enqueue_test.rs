@@ -104,6 +104,7 @@ fn matches_authority_gate_prevents_fire_on_stale_generation() {
         kind: PendingTimerKind::Wait,
         generation: 5,
         deadline: Instant::now(),
+        ..Default::default()
     };
 
     // Stale generation (4 != 5) — should NOT match

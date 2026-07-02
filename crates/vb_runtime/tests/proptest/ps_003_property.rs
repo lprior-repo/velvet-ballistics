@@ -17,7 +17,7 @@ proptest! {
             step: vb_core::ids::StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
             generation: gen,
-            deadline: std::time::Instant::now(),
+            deadline: std::time::Instant::now(), ..Default::default()
         };
         prop_assert!(!timer.matches_authority(auth_gen, timer.deadline, PendingTimerKind::Wait),
             "generation {} should not match authority {}", gen, auth_gen);
@@ -31,7 +31,7 @@ proptest! {
             step: vb_core::ids::StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
             generation: gen,
-            deadline: std::time::Instant::now(),
+            deadline: std::time::Instant::now(), ..Default::default()
         };
         prop_assert!(!timer.matches_authority(gen, timer.deadline, PendingTimerKind::Ask));
         // Symmetric: Ask timer won't match Wait authority
@@ -39,7 +39,7 @@ proptest! {
             step: vb_core::ids::StepIdx::ZERO,
             kind: PendingTimerKind::Ask,
             generation: gen,
-            deadline: std::time::Instant::now(),
+            deadline: std::time::Instant::now(), ..Default::default()
         };
         prop_assert!(!ask_timer.matches_authority(gen, ask_timer.deadline, PendingTimerKind::Wait));
     }
@@ -53,7 +53,7 @@ proptest! {
             step: vb_core::ids::StepIdx::new(step),
             kind: PendingTimerKind::Ask,
             generation: gen,
-            deadline: std::time::Instant::now(),
+            deadline: std::time::Instant::now(), ..Default::default()
         };
         prop_assert!(timer.matches_authority(gen, timer.deadline, PendingTimerKind::Ask));
     }

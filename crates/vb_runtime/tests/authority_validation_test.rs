@@ -32,6 +32,7 @@ fn make_timer(generation: u64, kind: PendingTimerKind) -> PendingTimer {
         kind,
         generation,
         deadline,
+        ..Default::default()
     }
 }
 
@@ -45,6 +46,7 @@ fn make_timer_with_deadline(
         kind,
         generation,
         deadline,
+        ..Default::default()
     }
 }
 

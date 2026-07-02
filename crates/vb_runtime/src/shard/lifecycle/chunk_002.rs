@@ -117,11 +117,16 @@ impl Shard {
         generation: u64,
         deadline: std::time::Instant,
         kind: PendingTimerKind,
+        logical_deadline: Option<crate::shard::types::LogicalDeadline>,
     ) -> RuntimeResult<()> {
         let Some(current_timer) = self.pending_timer_get(run) else {
             return Err(RuntimeError::InvalidTimerFire);
         };
-        if !current_timer.matches_authority(generation, deadline, kind) {
+        if current_timer.logical_deadline.is_some() || logical_deadline.is_some() {
+            if !current_timer.matches_authority_full(generation, deadline, kind, logical_deadline) {
+                return Err(RuntimeError::InvalidTimerFire);
+            }
+        } else if !current_timer.matches_authority(generation, deadline, kind) {
             return Err(RuntimeError::InvalidTimerFire);
         }
         let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
@@ -391,11 +396,27 @@ impl Shard {
                 PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
             };
             Self::push_drive_journal_event(&mut journal_events, event)?;
+            // Timer authority routes through the shard's clock configuration.
+            let (deadline, logical_deadline) = match self.clock {
+                crate::shard::types::ShardClockConfig::Wall => {
+                    (std::time::Instant::now(), None)
+                }
+                crate::shard::types::ShardClockConfig::Logical => (
+                    crate::shard::impl_::logical_origin_plus(
+                        self.logical_origin,
+                        self.current_tick.get(),
+                    ),
+                    Some(crate::shard::types::LogicalDeadline::new(
+                        self.current_tick.get(),
+                    )),
+                ),
+            };
             timer = Some(PendingTimer {
                 step,
                 kind,
                 generation,
-                deadline: std::time::Instant::now(),
+                deadline,
+                logical_deadline,
             });
         }
         Ok((journal_events, trace_events, state, timer))

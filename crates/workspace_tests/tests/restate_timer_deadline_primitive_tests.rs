@@ -1923,12 +1923,14 @@ mod value_semantics {
             generation: 5,
             deadline: now,
             kind: PendingTimerKind::Wait,
+            ..TimerEntry::default()
         };
         let b = TimerEntry {
             run: make_run(1),
             generation: 5,
             deadline: now,
             kind: PendingTimerKind::Wait,
+            ..TimerEntry::default()
         };
         assert_eq!(a, b);
     }
@@ -1941,12 +1943,14 @@ mod value_semantics {
             generation: 5,
             deadline: now,
             kind: PendingTimerKind::Wait,
+            ..TimerEntry::default()
         };
         let b = TimerEntry {
             run: make_run(1),
             generation: 6,
             deadline: now,
             kind: PendingTimerKind::Wait,
+            ..TimerEntry::default()
         };
         assert_ne!(a, b);
     }
@@ -1959,12 +1963,14 @@ mod value_semantics {
             generation: 1,
             deadline: now,
             kind: PendingTimerKind::Wait,
+            ..TimerEntry::default()
         };
         let b = TimerEntry {
             run: make_run(1),
             generation: 1,
             deadline: now,
             kind: PendingTimerKind::Ask,
+            ..TimerEntry::default()
         };
         assert_ne!(a, b);
     }

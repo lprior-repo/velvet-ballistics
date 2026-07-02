@@ -153,6 +153,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         }
     }
 
@@ -421,6 +422,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
         let first = runtime.list_events(vb_core::ids::RunId::new(1));
@@ -1298,6 +1300,7 @@ mod tests {
             generation: 0,
             deadline: std::time::Instant::now(),
             kind: PendingTimerKind::Ask,
+            ..Default::default()
         };
         // Then timer_entry_fired returns Ok (post-fix scans all shards).
         let result = runtime.timer_entry_fired(entry);
@@ -1385,6 +1388,7 @@ mod tests {
             generation: 0,
             deadline: std::time::Instant::now(),
             kind: PendingTimerKind::Ask,
+            ..Default::default()
         };
         assert_eq!(
             runtime.timer_entry_fired(entry),
@@ -1494,6 +1498,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -1742,6 +1747,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -1794,6 +1800,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -2045,6 +2052,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -2099,6 +2107,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -2485,6 +2494,7 @@ mod tests {
             step_budget_per_tick: 100,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
@@ -2622,6 +2632,7 @@ mod tests {
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: RuntimePolicy::Relaxed,
+            ..Default::default()
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;

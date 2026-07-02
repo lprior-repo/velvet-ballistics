@@ -21,7 +21,7 @@ fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
         run: entry.run,
         generation: entry.generation,
         deadline: entry.deadline,
-        kind: entry.kind,
+        kind: entry.kind, logical_deadline: None,
     })
 }
 
@@ -30,7 +30,7 @@ fn invalid_timer_command(run: super::RunId) -> ShardCommand {
         run,
         generation: 0,
         deadline: std::time::Instant::now(),
-        kind: PendingTimerKind::Wait,
+        kind: PendingTimerKind::Wait, logical_deadline: None,
     }
 }
 

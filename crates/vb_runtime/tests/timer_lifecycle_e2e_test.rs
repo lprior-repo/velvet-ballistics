@@ -169,6 +169,7 @@ fn authority_validation_prevents_mismatched_timer_from_firing() {
         kind: PendingTimerKind::Wait,
         generation: 7,
         deadline: Instant::now(),
+        ..Default::default()
     };
 
     // Correct authority — should match
