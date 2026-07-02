@@ -1,6 +1,0 @@
-time="2026-07-01T15:24:40-05:00" level=warning msg="persisted system variable tls_key was not loaded since its definition does not exist."
-Starting server with Config HP="127.0.0.1:33005"|T="28800000"|R="false"|L="warning"
-time="2026-07-01T15:24:40-05:00" level=warning msg="persisted system variable tls_key was not loaded since its definition does not exist."
-time="2026-07-01T15:24:41-05:00" level=warning msg="secure_file_priv is set to \"\", which is insecure."
-time="2026-07-01T15:24:41-05:00" level=warning msg="Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read."
-time="2026-07-01T15:24:41-05:00" level=warning msg="Please consider restarting the server with secure_file_priv set to a safe (or non-existent) directory."
