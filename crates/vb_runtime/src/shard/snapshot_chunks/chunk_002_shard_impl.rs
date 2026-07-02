@@ -1,4 +1,28 @@
 impl Shard {
+    /// Returns a read-only snapshot of this shard's pending boundary state.
+    ///
+    /// Mirrors the read-only contract documented on
+    /// [`crate::runtime::Runtime::pending_boundary_snapshot`]: `&self` is
+    /// required and the returned value is a tree of immutable slices plus
+    /// plain integers, so handing the snapshot to a separate observer
+    /// cannot leak mutable state back into the shard.
+    ///
+    /// `max_items` is applied per collection (active runs, pending timers,
+    /// pending actions, pending asks) and the per-collection sort is stable
+    /// (by `run_id`, then `ask_step` for asks), so two consecutive calls
+    /// with the same shard state and the same `max_items` produce bit-equal
+    /// snapshots. The per-collection item count is the **untruncated** count
+    /// (e.g. `pending_ask_count` is the full count of asking steps across
+    /// all active runs), while the boxed-slice payload is truncated to
+    /// `max_items`. The `truncated` flag is `true` when any of the four
+    /// collections was truncated.
+    ///
+    /// Pending asks are derived from the run-state scheduler (every step
+    /// whose `StepState` is `Asking`), not from the timer wheel, so an
+    /// `Ask` node declared with `timeout_slot = None` shows up in
+    /// `pending_asks` with `timeout() == None`. The associated
+    /// `PendingAskTimeoutBoundarySnapshot` is only populated when a matching
+    /// `PendingTimerKind::Ask` entry is registered for `(run_id, ask_step)`.
     #[must_use]
     pub fn pending_boundary_snapshot(
         &self,

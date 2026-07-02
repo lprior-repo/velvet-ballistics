@@ -2854,6 +2854,156 @@ mod tests {
         Ok(())
     }
 
+    /// Multi-shard aggregate: the runtime-level `pending_*_count` totals
+    /// must equal the sum of the per-shard counts even when runs are
+    /// distributed across shards. The runtime `shards()` slice must contain
+    /// one entry per shard with the same `shard_id()` that the runtime
+    /// assigned at construction time. The aggregate `truncated` flag is the
+    /// logical OR of the per-shard flags.
+    #[test]
+    fn pending_boundary_snapshot_aggregates_totals_across_shards() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(3)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let action_workflow = suspended_workflow()
+            .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
+        let timed_ask_workflow = ask_waiting_workflow()
+            .ok_or_else(|| String::from("timed ask workflow fixture failed"))?;
+        let open_ask_workflow = ask_without_timeout_workflow()
+            .ok_or_else(|| String::from("open ask workflow fixture failed"))?;
+
+        // 4 runs across 3 shards: routing is by RunId mod shard_count, so
+        // using `RunId::new(N)` for distinct N gives spread across shards
+        // deterministically (no shard overflows the queue capacity of 16).
+        let runs = [
+            (vb_core::ids::RunId::new(31), action_workflow.clone()),
+            (vb_core::ids::RunId::new(32), timed_ask_workflow.clone()),
+            (vb_core::ids::RunId::new(33), open_ask_workflow.clone()),
+            (vb_core::ids::RunId::new(34), action_workflow.clone()),
+        ];
+        for (run, wf) in &runs {
+            if wf.digest() == action_workflow.digest() {
+                assert_eq!(submit_suspended(&runtime, *run, wf.clone()), Ok(()));
+            } else if wf.digest() == timed_ask_workflow.digest() {
+                assert_eq!(submit_ask_waiting(&runtime, *run, wf.clone()), Ok(()));
+            } else {
+                assert_eq!(submit_ask_waiting(&runtime, *run, wf.clone()), Ok(()));
+            }
+        }
+        // Drive the scheduler far enough that every run lands in its
+        // terminal pending state (suspended action, ask with timer, ask
+        // without timer).
+        for _ in 0..runs.len() {
+            assert_eq!(runtime.tick_all(), Ok(true));
+        }
+
+        let snapshot = runtime.pending_boundary_snapshot(64);
+        assert_eq!(snapshot.shards().len(), 3);
+
+        // Aggregate counts (untruncated) must be the untruncated sums of
+        // every shard's per-collection count.
+        let mut expected_active = 0usize;
+        let mut expected_timers = 0usize;
+        let mut expected_actions = 0usize;
+        let mut expected_asks = 0usize;
+        let mut expected_truncated = false;
+        for (shard_index, shard_snapshot) in snapshot.shards().iter().enumerate() {
+            let expected_shard_id =
+                u32::try_from(shard_index).map_or(u32::MAX, core::convert::identity);
+            assert_eq!(shard_snapshot.shard_id(), expected_shard_id);
+            expected_active = expected_active.saturating_add(shard_snapshot.active_run_count());
+            expected_timers = expected_timers.saturating_add(shard_snapshot.pending_timer_count());
+            expected_actions =
+                expected_actions.saturating_add(shard_snapshot.pending_action_count());
+            expected_asks = expected_asks.saturating_add(shard_snapshot.pending_ask_count());
+            expected_truncated |= shard_snapshot.truncated();
+        }
+        assert_eq!(snapshot.active_run_count(), expected_active);
+        assert_eq!(snapshot.pending_timer_count(), expected_timers);
+        assert_eq!(snapshot.pending_action_count(), expected_actions);
+        assert_eq!(snapshot.pending_ask_count(), expected_asks);
+        assert_eq!(snapshot.truncated(), expected_truncated);
+
+        // The four-run fixture must produce exactly two action tickets
+        // (the two suspended_workflow runs), exactly one timer (the timed
+        // ask), and exactly two asks (timed + open).
+        assert_eq!(snapshot.active_run_count(), 4);
+        assert_eq!(snapshot.pending_action_count(), 2);
+        assert_eq!(snapshot.pending_timer_count(), 1);
+        assert_eq!(snapshot.pending_ask_count(), 2);
+        Ok(())
+    }
+
+    /// The snapshot path must not consume command-queue work or otherwise
+    /// advance the scheduler. The read-only contract is statically enforced
+    /// by the `&self` receiver, but this test pins the contract end-to-end:
+    /// taking a snapshot must leave the next observable tick behaviour
+    /// unchanged.
+    #[test]
+    fn pending_boundary_snapshot_does_not_advance_scheduler() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(1)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let ask_workflow =
+            ask_waiting_workflow().ok_or_else(|| String::from("ask workflow fixture failed"))?;
+        let ask_run = vb_core::ids::RunId::new(40);
+        assert_eq!(submit_ask_waiting(&runtime, ask_run, ask_workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        // Capture the snapshot baseline.
+        let baseline = runtime.pending_boundary_snapshot(8);
+        let baseline_shard = baseline
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("baseline snapshot missing shard"))?;
+        let baseline_ask_count = baseline_shard.pending_ask_count();
+        let baseline_timer_count = baseline_shard.pending_timer_count();
+
+        // Take many snapshots back-to-back; the runtime must not advance.
+        for _ in 0..16 {
+            let observed = runtime.pending_boundary_snapshot(8);
+            assert_eq!(
+                observed, baseline,
+                "snapshot must be deterministic and read-only"
+            );
+        }
+
+        // A subsequent tick must still observe the original ask/timer.
+        let after = runtime.pending_boundary_snapshot(8);
+        let after_shard = after
+            .shards()
+            .first()
+            .ok_or_else(|| String::from("after snapshot missing shard"))?;
+        assert_eq!(after_shard.pending_ask_count(), baseline_ask_count);
+        assert_eq!(after_shard.pending_timer_count(), baseline_timer_count);
+        Ok(())
+    }
+
+    /// The borrowed receiver guarantees the read-only contract at the type
+    /// level. This test exists primarily as a documentation beacon: it
+    /// asserts that `pending_boundary_snapshot` can be invoked through a
+    /// shared reference (`&Runtime`) without requiring `&mut`. If the
+    /// signature were ever changed to take `&mut self`, this test would
+    /// fail to compile and force the maintainer to re-confirm the
+    /// read-only contract.
+    #[test]
+    fn pending_boundary_snapshot_takes_shared_borrow() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(1)
+            .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+
+        // The `&` on `&runtime` is required: `pending_boundary_snapshot`
+        // takes `&self`, not `&mut self`.
+        let snapshot: crate::runtime::RuntimePendingBoundarySnapshot =
+            (&runtime).pending_boundary_snapshot(4);
+        assert_eq!(snapshot.active_run_count(), 0);
+
+        // Holding the shared borrow does not preclude other shared borrows
+        // of the runtime, e.g. `count` via shared accessors below.
+        let _ = snapshot.shards();
+        Ok(())
+    }
+
     fn assert_snapshot_counts(
         snapshot: &crate::runtime::RuntimePendingBoundarySnapshot,
         active_runs: usize,

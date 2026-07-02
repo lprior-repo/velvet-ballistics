@@ -397,6 +397,34 @@ impl Runtime {
         Ok(shard.snapshot_run(run, correlation))
     }
 
+    /// Returns a read-only snapshot of every shard's pending boundary state.
+    ///
+    /// This is the public, side-effect-free observability surface for the
+    /// autonomous scheduler and antithesis replay harness. The method takes
+    /// `&self`, so the borrow checker statically prevents any mutation of the
+    /// runtime, the shards, the journal, or any run state while the snapshot
+    /// is being collected. The returned `RuntimePendingBoundarySnapshot` is
+    /// an owned value tree of immutable boxed slices plus plain integers;
+    /// no `Cell`, `RefCell`, `Mutex`, or other interior-mutability primitive
+    /// is reachable through it, so handing the snapshot to a separate
+    /// observer (replay recorder, replay diff, telemetry exporter) cannot
+    /// leak mutable state back into the runtime.
+    ///
+    /// The `max_items_per_shard` argument caps the per-shard collection
+    /// length (active runs, pending timers, pending actions, pending asks).
+    /// Truncation is **deterministic** for a fixed runtime state: items are
+    /// sorted by `run_id` (and `ask_step` for asks) before truncation is
+    /// applied, so two consecutive calls with the same state and the same
+    /// `max_items_per_shard` produce bit-equal snapshots. When any shard
+    /// truncates, the runtime-level `truncated` flag is `true`; aggregate
+    /// counts (`pending_timer_count`, `pending_action_count`,
+    /// `pending_ask_count`, `active_run_count`) are the **untruncated** sums.
+    ///
+    /// Pending asks without an associated timer entry (e.g. `Ask` nodes
+    /// declared with `timeout_slot = None`) are visible in `pending_asks`
+    /// with `timeout() == None`; the snapshot iterates the run-state
+    /// scheduler, not the timer wheel, so no ask is silently dropped for
+    /// lacking a deadline.
     #[must_use]
     pub fn pending_boundary_snapshot(
         &self,
