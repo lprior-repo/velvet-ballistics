@@ -169,6 +169,8 @@ impl FrameSeedAccumulator {
                 slot, value, extra, ..
             } => record_slot_write(self, *slot, value, extra),
             JournalEvent::RunFinished { result, .. } => Ok(self.record_slot(*result)),
+            JournalEvent::ActionAbandoned { ticket, .. } => self.record_action_abandoned(*ticket),
+            JournalEvent::RunCancelled { .. } => Ok(self),
             _ => Ok(self),
         }
     }
