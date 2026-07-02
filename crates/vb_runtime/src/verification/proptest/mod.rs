@@ -6,6 +6,11 @@ mod proptest_attempt_fence;
 #[cfg(test)]
 mod sxkz6_proptest;
 
+// vb-p5pfb: Runtime::shard_index property suite (proof-writer
+// execution of vb-puvkn / vb-xm7j7).
+#[cfg(test)]
+mod runtime_facade_shard_index_proptest;
+
 #[cfg(test)]
 mod proptest_idempotency {
     use proptest::prelude::*;

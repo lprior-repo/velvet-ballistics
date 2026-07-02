@@ -21,6 +21,10 @@ pub(crate) mod kani_attempt_fence_harnesses;
 #[cfg(feature = "kani-sxkz6-shard-for-run")]
 pub(crate) mod kani_sxkz6_shard_for_run;
 
+// vb-p5pfb: Runtime::shard_index boundary group (proof-writer
+// execution of vb-puvkn / vb-xm7j7).
+// Declared in lib.rs as a top-level kani module.
+
 // vb-282my TLA bridge harnesses (admission / ask-answer / resume FSM).
 pub(crate) mod kani_admission_ordering;
 pub(crate) mod kani_ask_answer_lifecycle;

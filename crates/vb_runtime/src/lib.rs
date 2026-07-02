@@ -73,6 +73,8 @@ pub mod kani_vb_edvbj_storage_event_no_fabricate;
 
 #[cfg(kani)]
 pub mod kani_vb_edvbj_propagation_strict_gate;
+#[cfg(all(kani, feature = "kani-p5pfb-shard-index"))]
+pub mod kani_vb_p5pfb_shard_index;
 #[cfg(all(kani, feature = "kani-vt2f-runtime-facade"))]
 pub mod kani_vt2f_runtime_facade;
 #[cfg(all(kani, feature = "kani-vt2f-shard-lower-semantics"))]
