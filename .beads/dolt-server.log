@@ -4,3 +4,109 @@ time="2026-07-01T15:24:40-05:00" level=warning msg="persisted system variable tl
 time="2026-07-01T15:24:41-05:00" level=warning msg="secure_file_priv is set to \"\", which is insecure."
 time="2026-07-01T15:24:41-05:00" level=warning msg="Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read."
 time="2026-07-01T15:24:41-05:00" level=warning msg="Please consider restarting the server with secure_file_priv set to a safe (or non-existent) directory."
+time="2026-07-02T09:19:03-05:00" level=warning msg="persisted system variable tls_key was not loaded since its definition does not exist."
+Starting server with Config HP="127.0.0.1:40807"|T="28800000"|R="false"|L="warning"
+time="2026-07-02T09:19:03-05:00" level=warning msg="persisted system variable tls_key was not loaded since its definition does not exist."
+time="2026-07-02T09:19:03-05:00" level=warning msg="secure_file_priv is set to \"\", which is insecure."
+time="2026-07-02T09:19:03-05:00" level=warning msg="Any user with GRANT FILE privileges will be able to read any file which the sql-server process can read."
+time="2026-07-02T09:19:03-05:00" level=warning msg="Please consider restarting the server with secure_file_priv set to a safe (or non-existent) directory."
+time="2026-07-02T09:19:51-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:19:51.446913422 -0500 CDT m=+47.721475715" connectionID=5 error="table not found: issues" queryTime="2026-07-02 09:19:51.447393998 -0500 CDT m=+47.721956281"
+time="2026-07-02T09:19:51-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:19:51.446913422 -0500 CDT m=+47.721475715" connectionID=5 error="table not found: metadata" queryTime="2026-07-02 09:19:51.447530497 -0500 CDT m=+47.722092790"
+time="2026-07-02T09:21:31-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:21:31.223884782 -0500 CDT m=+147.498447075" connectionID=7 error="table not found: issues" queryTime="2026-07-02 09:21:31.224315039 -0500 CDT m=+147.498877332"
+time="2026-07-02T09:21:31-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:21:31.223884782 -0500 CDT m=+147.498447075" connectionID=7 error="table not found: metadata" queryTime="2026-07-02 09:21:31.224455268 -0500 CDT m=+147.499017561"
+Retrieving remote information.
+[1A[J0 of 1,053 chunks complete. 0 chunks being downloaded currently.
+[1A[J0 of 1,053 chunks complete. 14 chunks being downloaded currently.
+[1A[J0 of 1,053 chunks complete. 33 chunks being downloaded currently.
+[1A[J0 of 1,053 chunks complete. 42 chunks being downloaded currently.
+[1A[J19 of 1,053 chunks complete. 23 chunks being downloaded currently.
+[1A[J19 of 1,053 chunks complete. 29 chunks being downloaded currently.
+[1A[J33 of 1,053 chunks complete. 15 chunks being downloaded currently.
+[1A[J33 of 1,053 chunks complete. 25 chunks being downloaded currently.
+[1A[J42 of 1,053 chunks complete. 16 chunks being downloaded currently.
+[1A[J42 of 1,053 chunks complete. 122 chunks being downloaded currently.
+[1A[J48 of 1,053 chunks complete. 116 chunks being downloaded currently.
+[1A[J48 of 1,053 chunks complete. 118 chunks being downloaded currently.
+[1A[J58 of 1,053 chunks complete. 108 chunks being downloaded currently.
+[1A[J58 of 1,053 chunks complete. 135 chunks being downloaded currently.
+[1A[J164 of 1,053 chunks complete. 29 chunks being downloaded currently.
+[1A[J164 of 1,053 chunks complete. 128 chunks being downloaded currently.
+[1A[J166 of 1,053 chunks complete. 126 chunks being downloaded currently.
+[1A[J166 of 1,053 chunks complete. 128 chunks being downloaded currently.
+[1A[J193 of 1,053 chunks complete. 101 chunks being downloaded currently.
+[1A[J193 of 1,053 chunks complete. 103 chunks being downloaded currently.
+[1A[J292 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J292 of 1,053 chunks complete. 217 chunks being downloaded currently.
+[1A[J294 of 1,053 chunks complete. 215 chunks being downloaded currently.
+[1A[J294 of 1,053 chunks complete. 217 chunks being downloaded currently.
+[1A[J296 of 1,053 chunks complete. 215 chunks being downloaded currently.
+[1A[J296 of 1,053 chunks complete. 217 chunks being downloaded currently.
+[1A[J298 of 1,053 chunks complete. 215 chunks being downloaded currently.
+[1A[J298 of 1,053 chunks complete. 353 chunks being downloaded currently.
+[1A[J300 of 1,053 chunks complete. 351 chunks being downloaded currently.
+[1A[J300 of 1,053 chunks complete. 379 chunks being downloaded currently.
+[1A[J513 of 1,053 chunks complete. 166 chunks being downloaded currently.
+[1A[J513 of 1,053 chunks complete. 168 chunks being downloaded currently.
+[1A[J651 of 1,053 chunks complete. 30 chunks being downloaded currently.
+[1A[J651 of 1,053 chunks complete. 32 chunks being downloaded currently.
+[1A[J653 of 1,053 chunks complete. 30 chunks being downloaded currently.
+[1A[J653 of 1,053 chunks complete. 41 chunks being downloaded currently.
+[1A[J681 of 1,053 chunks complete. 13 chunks being downloaded currently.
+[1A[J681 of 1,053 chunks complete. 15 chunks being downloaded currently.
+[1A[J683 of 1,053 chunks complete. 13 chunks being downloaded currently.
+[1A[J683 of 1,053 chunks complete. 32 chunks being downloaded currently.
+[1A[J685 of 1,053 chunks complete. 30 chunks being downloaded currently.
+[1A[J685 of 1,053 chunks complete. 32 chunks being downloaded currently.
+[1A[J696 of 1,053 chunks complete. 21 chunks being downloaded currently.
+[1A[J696 of 1,053 chunks complete. 23 chunks being downloaded currently.
+[1A[J715 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J715 of 1,053 chunks complete. 6 chunks being downloaded currently.
+[1A[J717 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J717 of 1,053 chunks complete. 6 chunks being downloaded currently.
+[1A[J719 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J719 of 1,053 chunks complete. 7 chunks being downloaded currently.
+[1A[J721 of 1,053 chunks complete. 5 chunks being downloaded currently.
+[1A[J721 of 1,053 chunks complete. 7 chunks being downloaded currently.
+[1A[J723 of 1,053 chunks complete. 5 chunks being downloaded currently.
+[1A[J723 of 1,053 chunks complete. 38 chunks being downloaded currently.
+[1A[J726 of 1,053 chunks complete. 35 chunks being downloaded currently.
+[1A[J726 of 1,053 chunks complete. 37 chunks being downloaded currently.
+[1A[J728 of 1,053 chunks complete. 35 chunks being downloaded currently.
+[1A[J728 of 1,053 chunks complete. 37 chunks being downloaded currently.
+[1A[J730 of 1,053 chunks complete. 35 chunks being downloaded currently.
+[1A[J730 of 1,053 chunks complete. 58 chunks being downloaded currently.
+[1A[J763 of 1,053 chunks complete. 25 chunks being downloaded currently.
+[1A[J763 of 1,053 chunks complete. 28 chunks being downloaded currently.
+[1A[J765 of 1,053 chunks complete. 26 chunks being downloaded currently.
+[1A[J765 of 1,053 chunks complete. 68 chunks being downloaded currently.
+[1A[J788 of 1,053 chunks complete. 45 chunks being downloaded currently.
+[1A[J788 of 1,053 chunks complete. 98 chunks being downloaded currently.
+[1A[J791 of 1,053 chunks complete. 95 chunks being downloaded currently.
+[1A[J791 of 1,053 chunks complete. 159 chunks being downloaded currently.
+[1A[J833 of 1,053 chunks complete. 117 chunks being downloaded currently.
+[1A[J833 of 1,053 chunks complete. 131 chunks being downloaded currently.
+[1A[J886 of 1,053 chunks complete. 78 chunks being downloaded currently.
+[1A[J886 of 1,053 chunks complete. 132 chunks being downloaded currently.
+[1A[J950 of 1,053 chunks complete. 68 chunks being downloaded currently.
+[1A[J950 of 1,053 chunks complete. 94 chunks being downloaded currently.
+[1A[J964 of 1,053 chunks complete. 80 chunks being downloaded currently.
+[1A[J964 of 1,053 chunks complete. 83 chunks being downloaded currently.
+[1A[J1,018 of 1,053 chunks complete. 29 chunks being downloaded currently.
+[1A[J1,018 of 1,053 chunks complete. 31 chunks being downloaded currently.
+[1A[J1,044 of 1,053 chunks complete. 5 chunks being downloaded currently.
+[1A[J1,044 of 1,053 chunks complete. 7 chunks being downloaded currently.
+[1A[J1,047 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J1,047 of 1,053 chunks complete. 6 chunks being downloaded currently.
+[1A[J1,049 of 1,053 chunks complete. 4 chunks being downloaded currently.
+[1A[J1,051 of 1,053 chunks complete. 2 chunks being downloaded currently.
+[1A[J1,053 of 1,053 chunks complete. 0 chunks being downloaded currently.
+[1A[J1,053 of 1,053 chunks complete.
+time="2026-07-02T09:21:32-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:21:32.227413185 -0500 CDT m=+148.501975478" connectionDb=velvet-ballistics connectionID=12 error="table not found: wisps" queryTime="2026-07-02 09:21:32.493700076 -0500 CDT m=+148.768262359"
+time="2026-07-02T09:22:22-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:22:22.959096155 -0500 CDT m=+199.233658438" connectionDb=velvet-ballistics connectionID=15 error="table not found: wisps" queryTime="2026-07-02 09:22:22.961539722 -0500 CDT m=+199.236102015"
+time="2026-07-02T09:22:22-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:22:22.959096155 -0500 CDT m=+199.233658438" connectionDb=velvet-ballistics connectionID=15 error="table not found: wisps" queryTime="2026-07-02 09:22:22.962782056 -0500 CDT m=+199.237344349"
+time="2026-07-02T09:22:22-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:22:22.959096155 -0500 CDT m=+199.233658438" connectionDb=velvet-ballistics connectionID=15 error="table not found: wisps" queryTime="2026-07-02 09:22:22.963661732 -0500 CDT m=+199.238224025"
+time="2026-07-02T09:22:22-05:00" level=error msg="unable to prepare query: table not found: wisps" query="SELECT id, content_hash, title, description, design, acceptance_criteria, notes,\n\t       status, priority, issue_type, assignee, estimated_minutes,\n\t       created_at, created_by, owner, updated_at, started_at, closed_at, external_ref, spec_id,\n\t       compaction_level, compacted_at, compacted_at_commit, original_size, source_repo, close_reason,\n\t       sender, ephemeral, no_history, wisp_type, pinned, is_template,\n\t       await_type, await_id, timeout_ns, waiters,\n\t       mol_type,\n\t       event_kind, actor, target, payload,\n\t       due_at, defer_until,\n\t       work_type, source_system, metadata FROM wisps WHERE (LOWER(title) LIKE ? OR id LIKE ?) AND ephemeral = 1 ORDER BY priority ASC, created_at DESC, id ASC "
+time="2026-07-02T09:22:22-05:00" level=error msg="unable to prepare query: table not found: wisps (errno 1146) (sqlstate HY000)"
+time="2026-07-02T09:25:06-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:25:06.418289229 -0500 CDT m=+362.692851522" connectionDb=velvet-ballistics connectionID=18 error="table not found: wisps" queryTime="2026-07-02 09:25:06.420688285 -0500 CDT m=+362.695250568"
+time="2026-07-02T09:25:06-05:00" level=warning msg="error running query" connectTime="2026-07-02 09:25:06.418289229 -0500 CDT m=+362.692851522" connectionDb=velvet-ballistics connectionID=18 error="backup 'backup_export' not found" queryTime="2026-07-02 09:25:06.422691074 -0500 CDT m=+362.697253367"
+
