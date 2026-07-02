@@ -862,6 +862,96 @@ mod tests {
 
         Ok(())
     }
+
+    /// P0 regression (vb-ujujr): assert that
+    /// `crates/vb_core/src/frame/parts/kani_helpers.rs` parses as a balanced Rust
+    /// module. The original P0 was an unclosed `mod frame_kani_harnesses {` wrapper
+    /// on line 1 of that file (origin/bead/vb-6dhl7, commit `1f533ae5e`) which
+    /// blocked every `cargo kani`/`vb_core` verification lane with
+    /// `error: this file contains an unclosed delimiter`. This test fails on any
+    /// `{` / `}` imbalance in `kani_helpers.rs`, including a regression of the
+    /// original symptom, while staying cheap (no `cargo kani` invocation, no
+    /// syn/proc-macro2 dependency).
+    #[test]
+    fn kani_helpers_file_has_balanced_braces() {
+        use std::path::PathBuf;
+
+        let path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "src",
+            "frame",
+            "parts",
+            "kani_helpers.rs",
+        ]
+        .iter()
+        .collect();
+
+        assert!(
+            path.is_file(),
+            "kani_helpers.rs missing at {} (regression source file was moved)",
+            path.display()
+        );
+
+        let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            panic!("read {}: {e}", path.display());
+        });
+
+        let (opens, closes) = count_braces_ignoring_strings_and_comments(&source);
+        assert_eq!(
+            opens, closes,
+            "kani_helpers.rs has unbalanced braces (regression of vb-ujujr P0): \
+             {opens} `{{` vs {closes} `}}`\n--- file contents ---\n{source}",
+        );
+    }
+
+    /// Count `{` and `}` in `source`, skipping characters that appear inside Rust
+    /// line comments (`// ...`), block comments (`/* ... */`), and string literals
+    /// (`"..."` with `\\` escapes). Returns `(opens, closes)`.
+    fn count_braces_ignoring_strings_and_comments(source: &str) -> (u32, u32) {
+        let mut opens: u32 = 0;
+        let mut closes: u32 = 0;
+        let mut chars = source.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '/' => match chars.peek().copied() {
+                    Some('/') => {
+                        chars.next();
+                        for next in chars.by_ref() {
+                            if next == '\n' {
+                                break;
+                            }
+                        }
+                    }
+                    Some('*') => {
+                        chars.next();
+                        let mut prev_was_star = false;
+                        for next in chars.by_ref() {
+                            if prev_was_star && next == '/' {
+                                break;
+                            }
+                            prev_was_star = next == '*';
+                        }
+                    }
+                    _ => {}
+                },
+                '"' => {
+                    while let Some(next) = chars.next() {
+                        if next == '\\' {
+                            chars.next();
+                            continue;
+                        }
+                        if next == '"' {
+                            break;
+                        }
+                    }
+                }
+                '{' => opens += 1,
+                '}' => closes += 1,
+                _ => {}
+            }
+        }
+        (opens, closes)
+    }
 }
 
 // Kani harnesses for PO-RUST-001-FRAME-KANI: validate_transition 64-pair proof.
