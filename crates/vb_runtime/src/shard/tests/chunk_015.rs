@@ -281,6 +281,33 @@ impl crate::journal::RuntimeJournal for CancelAppendFailsJournal {
     }
 }
 
+#[derive(Debug)]
+struct TerminalAppendFailsJournal;
+
+impl crate::journal::RuntimeJournal for TerminalAppendFailsJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+        self.append_sequenced(event, vb_storage::EventSeq::ZERO)
+    }
+
+    fn append_sequenced(
+        &self,
+        event: RuntimeJournalEvent,
+        _seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        if matches!(
+            event,
+            RuntimeJournalEvent::RunFailed { .. } | RuntimeJournalEvent::RunFinished { .. }
+        ) {
+            return Err(RuntimeError::JournalPoisoned);
+        }
+        Ok(())
+    }
+
+    fn probe(&self) -> crate::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
 #[test]
 fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(CancelAppendFailsJournal);
@@ -310,6 +337,47 @@ fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result
     assert_eq!(shard.run_state_contains(run), true);
     assert_eq!(shard.terminal_runs_contains(run), false);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
+}
+
+#[test]
+fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Result<(), String> {
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(TerminalAppendFailsJournal);
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    shard.max_active_runs = 0;
+    let run = super::RunId::new(763);
+    let workflow =
+        suspended_workflow().ok_or_else(|| "suspended workflow fixture must build".to_owned())?;
+    let frame = vb_core::frame::RunFrame::new(run, vb_core::ids::StepIdx::ZERO, 1, 1)
+        .map_err(|error| error.to_string())?;
+    let state = RunState {
+        frame,
+        workflow,
+        store: vb_core::value_store::ValueStore::new(),
+        action_attempts: super::new_action_attempts(1),
+        admission: None,
+        collect_states: crate::primitives::collect::CollectStates::new(),
+        action_contracts: Box::new([]),
+    };
+
+    let result = shard.fail_run_state(run, state);
+
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::RunStateRollbackFailed {
+                run: observed_run,
+                ref original,
+                ref rollback,
+            }) if observed_run == run
+                && matches!(original.as_ref(), RuntimeError::JournalPoisoned)
+                && matches!(
+                    rollback.as_ref(),
+                    RuntimeError::ActiveRunCapacityExceeded { capacity: 0 }
+                )
+        ),
+        "expected rollback failure to preserve original and rollback errors, got {result:?}"
+    );
     Ok(())
 }
 

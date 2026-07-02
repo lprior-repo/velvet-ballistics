@@ -38,54 +38,57 @@ impl StorageRuntimeJournal {
         result.map_err(RuntimeError::from)
     }
 
-    fn run_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
+    fn run_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<Option<JournalEvent>> {
         match event {
             RuntimeJournalEvent::RunSubmitted { run, workflow } => {
-                Some(JournalEvent::RunAccepted { run, seq, workflow })
+                Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
             }
-            RuntimeJournalEvent::RunAdmission { admission } => Some(JournalEvent::RunAdmission {
+            RuntimeJournalEvent::RunAdmission { admission } => Ok(Some(JournalEvent::RunAdmission {
                 run: admission.run_id(),
                 seq,
                 artifact_digest: admission.artifact_digest(),
                 granted_capabilities: admission.granted_capabilities().clone(),
                 policy: admission.policy(),
-            }),
-            RuntimeJournalEvent::RunFinished { run, result } => Some(JournalEvent::RunFinished {
+            })),
+            RuntimeJournalEvent::RunFinished { run, result } => Ok(Some(JournalEvent::RunFinished {
                 run,
                 seq,
                 result,
                 attempt: 1,
-            }),
-            RuntimeJournalEvent::RunFailed { run } => Some(JournalEvent::RunFailedEvent {
+            })),
+            RuntimeJournalEvent::RunFailed { run } => Ok(Some(JournalEvent::RunFailedEvent {
                 run,
                 seq,
                 attempt: 1,
-            }),
-            RuntimeJournalEvent::RunCancelled { run, reason } => Some(JournalEvent::RunCancelled {
+            })),
+            RuntimeJournalEvent::RunCancelled { run, reason } => Ok(Some(JournalEvent::RunCancelled {
                 run,
                 seq,
                 attempt: 1,
                 reason,
-            }),
-            RuntimeJournalEvent::RunKilled { run } => Some(JournalEvent::RunKilled {
+            })),
+            RuntimeJournalEvent::RunKilled { run } => Ok(Some(JournalEvent::RunKilled {
                 run,
                 seq,
                 attempt: 1,
-            }),
-            RuntimeJournalEvent::StepStarted { run, step } => Some(JournalEvent::StepStarted {
+            })),
+            RuntimeJournalEvent::Resumed { run, timestamp } => {
+                resumed_storage_event(run, seq, timestamp).map(Some)
+            }
+            RuntimeJournalEvent::StepStarted { run, step } => Ok(Some(JournalEvent::StepStarted {
                 run,
                 seq,
                 step,
                 attempt: 1,
-            }),
+            })),
             RuntimeJournalEvent::StepSucceeded {
                 run, step, output, ..
-            } => Some(JournalEvent::StepSucceeded {
+            } => Ok(Some(JournalEvent::StepSucceeded {
                 run,
                 seq,
                 step,
                 output,
-            }),
+            })),
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionScheduledTicket { .. }
@@ -97,8 +100,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
             | RuntimeJournalEvent::AskTimedOut { .. }
-            | RuntimeJournalEvent::SlotWritten { .. }
-            | RuntimeJournalEvent::Resumed { .. } => None,
+            | RuntimeJournalEvent::SlotWritten { .. } => Ok(None),
         }
     }
 
@@ -278,9 +280,10 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::RunKilled { .. }
+            | RuntimeJournalEvent::Resumed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. } => {
-                Ok(Self::run_storage_event(clone_for_dispatch(&event), seq))
+                Self::run_storage_event(clone_for_dispatch(&event), seq)
             }
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
@@ -295,12 +298,30 @@ impl StorageRuntimeJournal {
         if let Some(storage_event) = result {
             return Ok(storage_event);
         }
-        Ok(JournalEvent::RunFailedEvent {
-            run: event.run_id(),
-            seq,
-            attempt: 1,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "unmapped_runtime_journal_event",
         })
     }
+}
+
+fn resumed_storage_event(
+    run: vb_core::ids::RunId,
+    seq: EventSeq,
+    timestamp: u64,
+) -> RuntimeResult<JournalEvent> {
+    let seconds = i64::try_from(timestamp).map_err(|_| RuntimeError::UnsupportedOperation {
+        operation: "invalid_resumed_timestamp",
+    })?;
+    let timestamp = DateTime::<Utc>::from_timestamp(seconds, 0).ok_or(
+        RuntimeError::UnsupportedOperation {
+            operation: "invalid_resumed_timestamp",
+        },
+    )?;
+    Ok(JournalEvent::RunResumed {
+        run,
+        seq,
+        timestamp,
+    })
 }
 
 /// Counts the number of times `clone_for_dispatch` is invoked. Used by the

@@ -195,6 +195,130 @@ fn re_009_wait_resolved_maps_to_dedicated_journal_event() {
 }
 
 #[test]
+fn resumed_runtime_event_maps_to_run_resumed_storage_event() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = RunId::new(4_601);
+    let timestamp: u64 = 1_700_000_000;
+    let expected_seconds = i64::try_from(timestamp)
+        .map_err(|_| "test timestamp must fit in i64".to_owned())?;
+    let Some(expected_timestamp) =
+        chrono::DateTime::<chrono::Utc>::from_timestamp(expected_seconds, 0)
+    else {
+        return Err("test timestamp must be representable".to_owned());
+    };
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::Resumed { run, timestamp },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(events.len(), 1);
+    assert_eq!(
+        events.first(),
+        Some(&JournalEvent::RunResumed {
+            run,
+            seq: EventSeq::new(0),
+            timestamp: expected_timestamp,
+        })
+    );
+    assert_eq!(
+        events.first().map(JournalEvent::record_kind),
+        Some(vb_storage::RecordKind::RunResumed)
+    );
+    Ok(())
+}
+
+#[test]
+fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> Result<(), String>
+{
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = RunId::new(4_602);
+
+    assert!(matches!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::Resumed {
+                run,
+                timestamp: u64::MAX,
+            },
+            EventSeq::new(0),
+        ),
+        Err(crate::RuntimeError::UnsupportedOperation {
+            operation: "invalid_resumed_timestamp"
+        })
+    ));
+
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert!(events.is_empty());
+    Ok(())
+}
+
+#[test]
+fn boundary_runtime_event_does_not_synthesize_run_failed_fallback() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = RunId::new(4_603);
+    let slot = SlotIdx::new(2);
+    let value = Vec::from([0x2A]);
+    let expected_extra = vb_storage::encode_slot_written_extra(Taint::Clean, None)
+        .map_err(|_| "slot extra encoding failed".to_owned())?;
+
+    assert_eq!(
+        StorageRuntimeJournal::run_storage_event(
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value: value.clone(),
+                taint: Taint::Clean,
+                extra: None,
+            },
+            EventSeq::new(0),
+        ),
+        Ok(None),
+        "SlotWritten is not a run-domain event and must not map to RunFailedEvent there"
+    );
+
+    assert_eq!(
+        adapter.append_sequenced(
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value: value.clone(),
+                taint: Taint::Clean,
+                extra: None,
+            },
+            EventSeq::new(0),
+        ),
+        Ok(())
+    );
+
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        events,
+        vec![JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(0),
+            slot,
+            value: Some(value),
+            extra: Some(expected_extra),
+            attempt: 1,
+        }]
+    );
+    Ok(())
+}
+
+#[test]
 fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;

@@ -18,10 +18,6 @@ pub struct AskTicketId(u64);
 impl AskTicketId {
     /// Creates an ask ticket ID from a raw wire value.
     ///
-    /// # Panics
-    ///
-    /// Panics if the lower 16 bits exceed `u16::MAX` (which is impossible for
-    /// a valid 64-bit integer, but validates the encoding invariant).
     #[must_use]
     pub const fn from_wire(raw: u64) -> Self {
         // Invariant: lower 16 bits always fit in u16 for any u64 value.
@@ -36,13 +32,13 @@ impl AskTicketId {
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
     ///
-    /// The lower 16 bits are masked before conversion, so the value always
-    /// fits in `u16`; `try_from` cannot fail. We avoid the lossy `as u16`
-    /// conversion per the lint policy (see bead vb-af1hu).
+    /// Uses the low two little-endian bytes instead of a lossy cast or a
+    /// panic-capable conversion. These bytes are exactly the lower 16 bits of
+    /// the wire value.
     #[must_use]
-    pub fn step_idx(self) -> u16 {
-        let masked = self.0 & 0xFFFF;
-        u16::try_from(masked).expect("mask guarantees value fits in u16")
+    pub const fn step_idx(self) -> u16 {
+        let [lo, hi, _, _, _, _, _, _] = self.0.to_le_bytes();
+        u16::from_le_bytes([lo, hi])
     }
 }
 
@@ -57,10 +53,6 @@ pub struct ActionTicketId(u64);
 impl ActionTicketId {
     /// Creates an action ticket ID from a raw wire value.
     ///
-    /// # Panics
-    ///
-    /// Panics if the lower 16 bits exceed `u16::MAX` (which is impossible for
-    /// a valid 64-bit integer, but validates the encoding invariant).
     #[must_use]
     pub const fn from_wire(raw: u64) -> Self {
         // Invariant: lower 16 bits always fit in u16 for any u64 value.
@@ -75,13 +67,13 @@ impl ActionTicketId {
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
     ///
-    /// The lower 16 bits are masked before conversion, so the value always
-    /// fits in `u16`; `try_from` cannot fail. We avoid the lossy `as u16`
-    /// conversion per the lint policy (see bead vb-af1hu).
+    /// Uses the low two little-endian bytes instead of a lossy cast or a
+    /// panic-capable conversion. These bytes are exactly the lower 16 bits of
+    /// the wire value.
     #[must_use]
-    pub fn step_idx(self) -> u16 {
-        let masked = self.0 & 0xFFFF;
-        u16::try_from(masked).expect("mask guarantees value fits in u16")
+    pub const fn step_idx(self) -> u16 {
+        let [lo, hi, _, _, _, _, _, _] = self.0.to_le_bytes();
+        u16::from_le_bytes([lo, hi])
     }
 }
 

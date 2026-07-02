@@ -45,7 +45,10 @@ mod tests {
 
     #[test]
     fn wire_ticket_step_returns_step_for_max_u16() {
-        assert_eq!(wire_ticket_step(u16::MAX as u64), Some(StepIdx::new(u16::MAX)));
+        assert_eq!(
+            wire_ticket_step(u16::MAX as u64),
+            Some(StepIdx::new(u16::MAX))
+        );
     }
 
     #[test]

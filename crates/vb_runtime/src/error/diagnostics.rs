@@ -55,6 +55,7 @@ impl RuntimeError {
             Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
             Self::JournalFull { .. } => Self::JOURNAL_FULL_CODE,
             Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::RunStateRollbackFailed { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
             Self::AdmissionHeaderPersistenceFailed { .. } => {
                 Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE
             }
@@ -118,6 +119,7 @@ impl RuntimeError {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)
             }
             Self::StorageJournalAppend { .. } => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            Self::RunStateRollbackFailed { .. } => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
             Self::AdmissionHeaderPersistenceFailed { .. } => {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
@@ -180,9 +182,9 @@ impl RuntimeError {
 
     fn legacy_unregistered_symbolic_code(&self) -> Option<SymbolicCode> {
         match self {
-            Self::StorageJournalAppend { .. } | Self::Core { .. } => {
-                Some(Self::storage_append_symbolic_code())
-            }
+            Self::StorageJournalAppend { .. }
+            | Self::RunStateRollbackFailed { .. }
+            | Self::Core { .. } => Some(Self::storage_append_symbolic_code()),
             // NOTE: #[non_exhaustive] - new RuntimeError variants return None for symbolic code.
             // Add explicit match arms for new variants.
             _ => None,

@@ -83,7 +83,6 @@ impl Shard {
     }
 
     /// Marks a run as finished, releases its frame, and updates counters.
-    #[allow(clippy::let_underscore_must_use)]
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         let result = match crate::shard::helpers::result_slot_for_finished_run(&state) {
             Some(slot) => slot,
@@ -94,11 +93,7 @@ impl Shard {
         if let Err(error) =
             self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })
         {
-            // Best-effort rollback; the original `error` from the journal
-            // append is the one to surface. The rollback result is dropped
-            // intentionally via `let _` (see the `#[allow]` on this fn).
-            let _ = self.run_state_insert(run, state);
-            return Err(error);
+            return self.rollback_run_state_preserving_error(run, state, error);
         }
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run)?;
@@ -196,11 +191,9 @@ impl Shard {
 
     /// Marks a run as failed, releases its frame, and updates counters.
     /// Runtime state mutation is applied after the durable failure event is persisted.
-    #[allow(clippy::let_underscore_must_use)]
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed { run }) {
-            let _ = self.run_state_insert(run, state);
-            return Err(error);
+            return self.rollback_run_state_preserving_error(run, state, error);
         }
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run)?;
@@ -211,5 +204,21 @@ impl Shard {
         self.discard_journal_sequence(run);
         self.clear_executed_step_accounting(run);
         Ok(())
+    }
+
+    fn rollback_run_state_preserving_error(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        original: RuntimeError,
+    ) -> RuntimeResult<()> {
+        match self.run_state_insert(run, state) {
+            Ok(_) => Err(original),
+            Err(rollback) => Err(RuntimeError::RunStateRollbackFailed {
+                run,
+                original: Box::new(original),
+                rollback: Box::new(rollback),
+            }),
+        }
     }
 }
