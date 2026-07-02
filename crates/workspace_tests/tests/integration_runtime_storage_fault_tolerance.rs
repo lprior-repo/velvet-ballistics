@@ -5,6 +5,7 @@
 //! without mocking the storage layer at a deep level.
 
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_runtime::RuntimeError;
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
     ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
@@ -72,11 +73,22 @@ fn recovery_from_corrupt_snapshot_sequence_is_detected() {
     };
 
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-    // Hydration should succeed because the seed itself is valid (corrupt snapshot
-    // is a storage-layer concern; the boundary only validates the seed shape).
+    // The frame seed cannot resume without the missing full-RunState
+    // components (workflow, store, action attempts, admission, collect
+    // states, action contracts, action ABI digests), so
+    // `cannot_resume_state().is_resumable()` returns false and hydration
+    // fails closed with `RuntimeError::InvalidRecoveryHydration`.
+    // The boundary is NOT permissive on empty seeds: every durable frame
+    // seed is classified as cannot-resume because the seed type alone
+    // never carries the full runtime boundary state required for live
+    // execution (see `RuntimeRecoveryBoundary::resume_status` and
+    // `RecoveryCannotResumeState::from_seed`).
     let result = boundary.hydrate_run_frame();
-    // A seed with step_count=0 and no workflow may still be a valid empty-run seed.
-    assert!(result.is_ok() || result.is_err()); // boundary is permissive on empty seed
+    assert_eq!(
+        result,
+        Err(RuntimeError::InvalidRecoveryHydration),
+        "durable frame hydration must reject any frame seed"
+    );
 }
 
 /// UnsupportedRecoveryState union of two unsupported flags.
