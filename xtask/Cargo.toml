@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 # vb_ui_snapshot is removed from current workspace scope.
 vb_validate = { path = "../crates/vb_validate" }
+vb_core = { path = "../crates/vb_core" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
@@ -23,6 +24,7 @@ cargo_metadata = "0.19"
 crossbeam-channel = { workspace = true }
 chrono = { workspace = true }
 postcard = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 serde-saphyr = { workspace = true, features = ["serialize"] }

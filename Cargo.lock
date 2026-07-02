@@ -2412,7 +2412,9 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tempfile",
+ "thiserror",
  "toml",
+ "vb_core",
  "vb_validate",
 ]
 

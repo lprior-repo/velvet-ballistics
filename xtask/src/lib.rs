@@ -40,3 +40,6 @@ pub mod profiles;
 pub mod proof_orchestrator;
 pub mod scheduler;
 pub mod summary;
+
+// vb-wy33p.12: deterministic runtime/journal fault injection engine.
+pub mod fault_inject;
