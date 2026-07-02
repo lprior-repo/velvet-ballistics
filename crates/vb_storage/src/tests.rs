@@ -410,6 +410,11 @@ mod tests {
 
     #[test]
     fn append_strict_batch_rejects_duplicate_within_batch() {
+        // vb-r8oso: the next-sequence-at-write guard (slot 3 in C6
+        // precedence) fires before the same-batch duplicate guard
+        // (slot 4). Two events in a batch with the same `(run, seq=0)`
+        // are rejected on the second call with `SequenceMismatch`
+        // because the staged seq=0 raises the expected to 1.
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
@@ -422,14 +427,13 @@ mod tests {
         let events = vec![event.clone(), event.clone()];
 
         let result = journal.append_strict_batch(&events);
-        // vb-1rqz7.18 / vb-byk3q: same-batch duplicates are now rejected
-        // with the typed `DuplicateStagedKey` (not `DuplicateEvent`).
-        // The batch is NOT aborted — `DuplicateStagedKey` is recoverable
-        // so the caller can skip the duplicate and commit the prior
-        // staged events. See `batch_append_event_rejects_same_batch_*`.
         assert!(
-            matches!(result, Err(JournalError::DuplicateStagedKey { .. })),
-            "expected DuplicateStagedKey for in-batch duplicate, got {:?}",
+            matches!(
+                result,
+                Err(JournalError::SequenceMismatch { .. })
+                    | Err(JournalError::DuplicateStagedKey { .. })
+            ),
+            "expected SequenceMismatch or DuplicateStagedKey for in-batch duplicate, got {:?}",
             result
         );
     }
@@ -835,6 +839,11 @@ mod tests {
 
     #[test]
     fn duplicate_event_append_is_rejected() {
+        // vb-r8oso: a same-seq retry now hits the next-sequence-at-write
+        // guard (expected=1, actual=0) before the durable duplicate
+        // check fires. The test widens its assertion to accept either
+        // typed error — both reject the duplicate — and the durable
+        // log is unchanged either way.
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let event = JournalEvent::RunAccepted {
@@ -847,7 +856,15 @@ mod tests {
         let second = journal.append_journaled(&event);
 
         first.expect("action must succeed");
-        assert!(matches!(second, Err(JournalError::DuplicateEvent { .. })));
+        assert!(
+            matches!(
+                second,
+                Err(JournalError::SequenceMismatch { .. })
+                    | Err(JournalError::DuplicateEvent { .. })
+            ),
+            "duplicate event must be rejected (SequenceMismatch or DuplicateEvent), got {:?}",
+            second
+        );
     }
 
     #[test]
@@ -1296,9 +1313,11 @@ mod tests {
 
     #[test]
     fn validate_replayed_event_returns_sequence_gap_when_seq_out_of_order() {
-        // Given a journal with seq 0 then seq 2 for the same run
-        // When events_for_run replays
-        // Then it returns SequenceGap with expected=1, actual=2
+        // vb-r8oso: the next-sequence-at-write guard rejects the
+        // seq=2 append at write time. `events_for_run` then observes
+        // only the seq=0 event (no gap created by the rejected
+        // append). The test now exercises the write-time rejection
+        // directly.
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
@@ -1312,23 +1331,29 @@ mod tests {
             .append_journaled(&event0)
             .expect("journal.append_journaled must succeed");
 
-        // Manually insert an event at seq 2 (skipping seq 1)
+        // Attempt an out-of-order append at seq 2 (skipping seq 1).
         let event2 = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
             attempt: 1,
         };
-        journal
-            .append_journaled(&event2)
-            .expect("journal.append_journaled must succeed");
-
-        let result = journal.events_for_run(run);
-        let Err(JournalError::SequenceGap { expected, actual }) = result else {
-            panic!("expected SequenceGap, got {:?}", result);
+        let Err(JournalError::SequenceMismatch {
+            expected,
+            actual,
+            ..
+        }) = journal.append_journaled(&event2)
+        else {
+            panic!("expected SequenceMismatch, got Ok or wrong variant");
         };
         assert_eq!(expected, EventSeq::new(1));
         assert_eq!(actual, EventSeq::new(2));
+
+        // Replay now observes only the seq=0 event.
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed");
+        assert_eq!(events.len(), 1, "durable log must contain only seq=0");
     }
 
     #[test]
@@ -1343,9 +1368,12 @@ mod tests {
 
     #[test]
     fn duplicate_event_returns_exact_run_and_seq() {
-        // Given a journal with a RunAccepted event for run 42, seq 7
-        // When the same event is appended again
-        // Then DuplicateEvent is returned with run=42, seq=7
+        // vb-r8oso: a fresh run must start at seq=0; the seq=7 first
+        // append is rejected by the next-sequence-at-write guard
+        // (expected=0, actual=7). The test now exercises the
+        // write-time rejection directly and asserts the run/seq
+        // fields are reported on `SequenceMismatch` (the same fields
+        // the durable duplicate check would have reported).
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
@@ -1354,16 +1382,13 @@ mod tests {
             seq: EventSeq::new(7),
             workflow: WorkflowDigest::from_bytes([3; 32]),
         };
-        journal
-            .append_journaled(&event)
-            .expect("journal.append_journaled must succeed");
-
         let result = journal.append_journaled(&event);
-        let Err(JournalError::DuplicateEvent { run, seq }) = result else {
-            panic!("expected DuplicateEvent, got {:?}", result);
+        let Err(JournalError::SequenceMismatch { run, expected, actual }) = result else {
+            panic!("expected SequenceMismatch, got {:?}", result);
         };
         assert_eq!(run, RunId::new(42));
-        assert_eq!(seq, EventSeq::new(7));
+        assert_eq!(expected, EventSeq::new(0));
+        assert_eq!(actual, EventSeq::new(7));
     }
 
     #[test]
@@ -1650,13 +1675,24 @@ mod tests {
 
     #[test]
     fn public_wrappers_delegate_to_journal_storage_paths() {
+        // vb-r8oso: the next-sequence-at-write guard requires the
+        // first event for a fresh run to carry seq=0 and that all
+        // events be contiguous. The snapshot at seq=0 covers
+        // events 0..=0; the post-snapshot event at seq=1 is what
+        // `read_run_events` should return.
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let run = RunId::new(70);
-        let event = JournalEvent::RunAccepted {
+        let event0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([7; 32]),
+        };
+        let event1 = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(1),
-            workflow: WorkflowDigest::from_bytes([7; 32]),
+            step: StepIdx::new(0),
+            attempt: 1,
         };
         let blob_bytes = vec![1, 2, 3];
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
@@ -1672,16 +1708,17 @@ mod tests {
             taint: Vec::new(),
         };
 
-        append_journal_event(&journal, &event).expect("append_journal_event must succeed");
+        append_journal_event(&journal, &event0).expect("append_journal_event must succeed");
+        append_journal_event(&journal, &event1).expect("second append must succeed");
         journal
             .put_blob(&blob)
             .expect("journal.put_blob must succeed");
         write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
 
-        // Snapshot at seq 0 covers events 0..0; event at seq 1 is after snapshot
+        // Snapshot at seq 0 covers events 0..=0; event at seq 1 is after snapshot.
         let events = read_run_events(&journal, run);
         let events = events.expect("read_run_events should succeed");
-        assert_eq!(events, vec![event.clone()]);
+        assert_eq!(events, vec![event1.clone()]);
         let loaded_blob = read_blob(&journal, blob.digest);
         let loaded_blob = loaded_blob.expect("read_blob should succeed");
         assert_eq!(loaded_blob, Some(blob));
@@ -1737,7 +1774,9 @@ mod tests {
     fn append_strict_rejects_out_of_order_sequence() {
         // Given an open journal with a seq-0 event
         // When append_strict is called with seq 2 (skipping seq 1)
-        // Then events_for_run returns SequenceGap
+        // Then the append is rejected with SequenceMismatch
+        // (vb-r8oso: write-time guard; the durable log is unchanged so
+        //  events_for_run afterwards observes only the seq-0 event).
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
@@ -1757,16 +1796,23 @@ mod tests {
             step: StepIdx::new(0),
             attempt: 1,
         };
-        journal
-            .append_strict(&event2)
-            .expect("journal.append_strict must succeed");
-
-        let result = journal.events_for_run(run);
-        let Err(JournalError::SequenceGap { expected, actual }) = result else {
-            panic!("expected SequenceGap, got {:?}", result);
+        let Err(JournalError::SequenceMismatch {
+            run: r,
+            expected,
+            actual,
+        }) = journal.append_strict(&event2)
+        else {
+            panic!("expected SequenceMismatch, got {:?}", journal.append_strict(&event2));
         };
+        assert_eq!(r, run);
         assert_eq!(expected, EventSeq::new(1));
         assert_eq!(actual, EventSeq::new(2));
+
+        // The durable log is unchanged: only the seq=0 event is visible.
+        let replayed = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed after rejected append");
+        assert_eq!(replayed, vec![event0]);
     }
 
     #[test]
@@ -2674,9 +2720,10 @@ mod tests {
 
     #[test]
     fn append_strict_rejects_duplicate_sequence() {
-        // Given an open journal with an event at seq 0 for run 50
-        // When the same event is appended again
-        // Then DuplicateEvent is returned with exact run and seq
+        // vb-r8oso: a same-seq retry after a successful append is now
+        // rejected by the next-sequence-at-write guard
+        // (expected=1, actual=0). The original `DuplicateEvent` arm is
+        // retained as a fallback for older builds without the guard.
         let (_guard, journal) = open_journal();
         let run = RunId::new(50);
         let event = JournalEvent::RunAccepted {
@@ -2689,15 +2736,28 @@ mod tests {
             .expect("journal.append_strict must succeed");
 
         let result = journal.append_strict(&event);
-        let Err(JournalError::DuplicateEvent {
-            run: dup_run,
-            seq: dup_seq,
-        }) = result
-        else {
-            panic!("expected DuplicateEvent, got {:?}", result);
+        let Err(e) = result else {
+            panic!("expected DuplicateEvent or SequenceMismatch, got Ok");
         };
-        assert_eq!(dup_run, run);
-        assert_eq!(dup_seq, EventSeq::new(0));
+        match e {
+            JournalError::DuplicateEvent {
+                run: dup_run,
+                seq: dup_seq,
+            } => {
+                assert_eq!(dup_run, run);
+                assert_eq!(dup_seq, EventSeq::new(0));
+            }
+            JournalError::SequenceMismatch {
+                run: dup_run,
+                expected,
+                actual,
+            } => {
+                assert_eq!(dup_run, run);
+                assert_eq!(expected, EventSeq::new(1));
+                assert_eq!(actual, EventSeq::new(0));
+            }
+            other => panic!("expected DuplicateEvent or SequenceMismatch, got {other:?}"),
+        }
     }
 
     #[test]
@@ -4583,6 +4643,11 @@ mod tests {
 
     #[test]
     fn adversarial_append_duplicate_sequence_rejected_with_exact_fields() {
+        // vb-r8oso: the next-sequence-at-write guard fires before the
+        // durable duplicate check. A retry of `seq=0` after a
+        // successful `seq=0` write is rejected with `SequenceMismatch`
+        // (the expected next seq is `1`, the actual is `0`) — not
+        // `DuplicateEvent`. The durable log is unchanged.
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
         let run = RunId::new(50);
@@ -4601,15 +4666,28 @@ mod tests {
             step: StepIdx::new(0),
             attempt: 1,
         });
-        let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
-            panic!("expected DuplicateEvent, got {:?}", result)
+        let Err(JournalError::SequenceMismatch {
+            run: r,
+            expected,
+            actual,
+        }) = result
+        else {
+            panic!("expected SequenceMismatch, got {:?}", result)
         };
         assert_eq!(r, run);
-        assert_eq!(s, EventSeq::new(0));
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(0));
     }
 
     #[test]
     fn adversarial_read_events_with_sequence_gap_returns_exact_gap() {
+        // vb-r8oso: the write-time guard moves gap detection from
+        // `events_for_run` (read-time) to the append path itself. The
+        // seq=5 append is rejected with `SequenceMismatch` because
+        // `next_sequence_at_write(run)` returns `EventSeq::new(1)` at
+        // the moment of the offending write. The durable log is left
+        // with only the seq=0 event; `events_for_run` does not observe
+        // a gap because no out-of-order event was ever committed.
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("opens");
         let run = RunId::new(777);
@@ -4622,22 +4700,29 @@ mod tests {
                 })
                 .is_ok()
         );
-        assert!(
-            journal
-                .append_journaled(&JournalEvent::RunFinished {
-                    run,
-                    seq: EventSeq::new(5),
-                    result: vb_core::SlotIdx::new(0),
-                    attempt: 1,
-                })
-                .is_ok()
-        );
-        let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run)
-        else {
-            panic!("expected SequenceGap")
+        let Err(JournalError::SequenceMismatch {
+            run: r,
+            expected,
+            actual,
+        }) = journal.append_journaled(&JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(5),
+            result: vb_core::SlotIdx::new(0),
+            attempt: 1,
+        }) else {
+            panic!("expected SequenceMismatch, got run-state post-append")
         };
+        assert_eq!(r, run);
         assert_eq!(expected, EventSeq::new(1));
         assert_eq!(actual, EventSeq::new(5));
+
+        // The durable log is unchanged: only the seq=0 event is visible,
+        // and `events_for_run` succeeds without raising `SequenceGap`.
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run should succeed after rejected append");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].seq(), EventSeq::new(0));
     }
 
     // =========================================================================
@@ -7062,6 +7147,10 @@ mod tests {
 
     #[test]
     fn adversarial_double_append_same_run_seq_returns_duplicate_error() {
+        // vb-r8oso: a same-seq retry after a successful append is now
+        // rejected by the next-sequence-at-write guard
+        // (expected=1, actual=0). The original `DuplicateEvent` arm is
+        // retained as a fallback for older builds without the guard.
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(9005);
@@ -7073,8 +7162,13 @@ mod tests {
         journal.append_strict(&event).expect("first append");
         let result = journal.append_strict(&event);
         assert!(
-            matches!(result, Err(JournalError::DuplicateEvent { .. })),
-            "duplicate append must return DuplicateEvent"
+            matches!(
+                result,
+                Err(JournalError::DuplicateEvent { .. })
+                    | Err(JournalError::SequenceMismatch { .. })
+            ),
+            "duplicate append must return DuplicateEvent or SequenceMismatch, got {:?}",
+            result
         );
     }
 
@@ -7645,6 +7739,7 @@ mod tests {
                 JournalError::ReplayEnvelopeSequenceMismatch { .. } => {
                     "replay_envelope_sequence_mismatch"
                 }
+                JournalError::SequenceMismatch { .. } => "sequence_mismatch_at_write",
                 JournalError::SequenceGap { .. } => "sequence_gap",
                 JournalError::SequenceOverflow => "sequence_overflow",
                 JournalError::BadMagic { .. } => "bad_magic",

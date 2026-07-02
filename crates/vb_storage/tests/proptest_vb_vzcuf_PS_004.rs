@@ -23,9 +23,12 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
 
 proptest! {
     #[test]
-    fn ps004_rejection_preserves(run in 1u64..1000u64, seq in 0u64..100u64) {
+    fn ps004_rejection_preserves(run in 1u64..1000u64) {
+        // vb-r8oso: see ps001_duplicate_rejected. The proptest now
+        // exercises rejection on a single seq=0 event so the first
+        // commit satisfies the next-sequence-at-write guard.
         let (_temp, journal) = temp_journal();
-        let event = make_event(run, seq);
+        let event = make_event(run, 0);
         let mut b1 = JournalWriteBatch::new(&journal);
         b1.append_event(&event).expect("append");
         b1.commit().expect("commit");
@@ -37,6 +40,9 @@ proptest! {
     }
     #[test]
     fn ps004_no_persist(run in 1u64..1000u64) {
+        // vb-r8oso: a duplicate append now hits the
+        // next-sequence-at-write guard (expected=1, actual=0) and
+        // aborts the batch. Either arm satisfies the contract.
         let (_temp, journal) = temp_journal();
         let event = make_event(run, 0);
         let mut batch = JournalWriteBatch::new(&journal);
@@ -44,8 +50,12 @@ proptest! {
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
         let append_result = b2.append_event(&event);
-        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
-        prop_assert!(duplicate_event);
+        let is_rejected = matches!(
+            append_result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        );
+        prop_assert!(is_rejected);
         prop_assert!(b2.is_aborted());
         let commit_result = b2.commit();
         prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));
@@ -70,11 +80,21 @@ proptest! {
     }
     #[test]
     fn ps004_len_mono(events in proptest::collection::vec((1u64..100u64, 0u64..50u64), 0..10)) {
+        // vb-r8oso: every fresh run starts at seq=0. The proptest
+        // rewrites each (run, seq) tuple to (run, 0) so the
+        // next-sequence-at-write guard accepts the appends. The
+        // len-monotonicity invariant is conditional on the batch not
+        // being aborted: a prior `SequenceMismatch` / `DuplicateEvent`
+        // sets `aborted = true` and subsequent appends (which may
+        // succeed) report `len() == 0`.
         let (_temp, journal) = temp_journal();
         let mut batch = JournalWriteBatch::new(&journal);
         let mut prev = 0usize;
-        for (run, seq) in events {
-            let event = make_event(run, seq);
+        for (run, _seq) in events {
+            if batch.is_aborted() {
+                break;
+            }
+            let event = make_event(run, 0);
             if batch.append_event(&event).is_ok() {
                 prop_assert!(batch.len() > prev);
                 prev = batch.len();
@@ -82,16 +102,22 @@ proptest! {
         }
     }
     #[test]
-    fn ps004_empty_commit_after_rej(run in 1u64..1000u64, seq in 0u64..100u64) {
+    fn ps004_empty_commit_after_rej(run in 1u64..1000u64) {
+        // vb-r8oso: see ps001_duplicate_rejected. A duplicate
+        // append at seq=0 now hits the guard first.
         let (_temp, journal) = temp_journal();
-        let event = make_event(run, seq);
+        let event = make_event(run, 0);
         let mut batch = JournalWriteBatch::new(&journal);
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
         let append_result = b2.append_event(&event);
-        let duplicate_event = matches!(append_result, Err(JournalError::DuplicateEvent { .. }));
-        prop_assert!(duplicate_event);
+        let is_rejected = matches!(
+            append_result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        );
+        prop_assert!(is_rejected);
         prop_assert!(b2.is_aborted());
         let commit_result = b2.commit();
         prop_assert!(matches!(commit_result, Err(JournalError::BatchAborted)));

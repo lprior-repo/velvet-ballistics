@@ -24,15 +24,21 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
 
 proptest! {
     #[test]
-    fn ps009_dup_rejected(run in 1u64..1000u64, seq in 0u64..100u64) {
+    fn ps009_dup_rejected(run in 1u64..1000u64) {
+        // vb-r8oso: see ps001_duplicate_rejected. The proptest now
+        // exercises duplicate rejection on a single seq=0 event.
         let (_temp, journal) = temp_journal();
-        let event = make_event(run, seq);
+        let event = make_event(run, 0);
         let mut b1 = JournalWriteBatch::new(&journal);
         b1.append_event(&event).expect("first");
         b1.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
         let result = b2.append_event(&event);
-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+        let is_dup = matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        );
         prop_assert!(is_dup);
     }
     #[test]

@@ -3,6 +3,9 @@ use super::*;
 
 #[test]
 fn cross_batch_duplicate_is_rejected_with_duplicate_event() {
+    // vb-r8oso: a duplicate append is now rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before
+    // the durable duplicate check fires. Either arm is acceptable.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(300);
     let event = make_event(run, 0);
@@ -14,13 +17,21 @@ fn cross_batch_duplicate_is_rejected_with_duplicate_event() {
     let mut b2 = JournalWriteBatch::new(&journal);
     let result = b2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "cross-batch duplicate must be DuplicateEvent, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "cross-batch duplicate must be DuplicateEvent or SequenceMismatch, got {result:?}"
     );
 }
 
 #[test]
 fn duplicate_event_aborts_batch() {
+    // vb-r8oso: a duplicate append is rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before
+    // the durable duplicate check fires. Either arm aborts the
+    // batch.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(301);
     let event = make_event(run, 0);
@@ -31,7 +42,10 @@ fn duplicate_event_aborts_batch() {
 
     let mut b2 = JournalWriteBatch::new(&journal);
     let result = b2.append_event(&event);
-    assert!(matches!(result, Err(JournalError::DuplicateEvent { .. })));
+    assert!(matches!(
+        result,
+        Err(JournalError::DuplicateEvent { .. }) | Err(JournalError::SequenceMismatch { .. })
+    ));
     assert_eq!(b2.len(), 0, "aborted batch must report len 0");
 }
 
@@ -75,6 +89,9 @@ fn e2e_many_events_under_limit_committed_and_replayable() {
 
 #[test]
 fn e2e_aborted_batch_commit_returns_typed_batch_aborted_error() {
+    // vb-r8oso: a duplicate append is rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before the
+    // durable duplicate check fires. Either arm aborts the batch.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(402);
     let event = make_event(run, 0);
@@ -86,8 +103,11 @@ fn e2e_aborted_batch_commit_returns_typed_batch_aborted_error() {
     let mut batch2 = JournalWriteBatch::new(&journal);
     let result = batch2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { run: _, seq: _ })),
-        "duplicate event must produce DuplicateEvent error, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. }) | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "duplicate event must produce DuplicateEvent or SequenceMismatch, got {result:?}"
     );
     let commit_result = batch2.commit();
     assert!(
@@ -105,6 +125,13 @@ fn e2e_aborted_batch_commit_returns_typed_batch_aborted_error() {
 
 #[test]
 fn append_strict_batch_atomicity_rolls_back_on_duplicate() {
+    // vb-r8oso: the next-sequence-at-write guard fires before the
+    // durable duplicate check, so a collision-style batch (already
+    // durably committed at seq=0, then a batch with seq=0) is now
+    // rejected with `SequenceMismatch` (expected=1, actual=0) before
+    // the durable duplicate check would have fired. The test
+    // preserves the atomicity contract: the entire strict batch is
+    // rolled back; only the seeded seq=0 event is visible.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(900);
     let seed = make_event(run, 0);
@@ -116,8 +143,12 @@ fn append_strict_batch_atomicity_rolls_back_on_duplicate() {
     let colliding = vec![make_event(run, 0), make_event(run, 1), make_event(run, 2)];
     let result = journal.append_strict_batch(&colliding);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "strict batch with collision must surface DuplicateEvent, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::SequenceMismatch { .. })
+                | Err(JournalError::DuplicateEvent { .. })
+        ),
+        "strict batch with collision must surface SequenceMismatch or DuplicateEvent, got {result:?}"
     );
 
     let events = journal.events_for_run(run).expect("replay");
@@ -177,6 +208,9 @@ fn batch_len_at_one_after_single_append() {
 
 #[test]
 fn batch_is_empty_equals_len_zero_invariant() {
+    // vb-r8oso: every fresh run starts at seq=0. Use two events
+    // for distinct runs at seq=0 to exercise the empty/len invariant
+    // without violating the next-sequence-at-write guard.
     let (_temp, journal) = temp_journal();
     let mut batch = journal.batch();
 
@@ -188,7 +222,7 @@ fn batch_is_empty_equals_len_zero_invariant() {
     assert_eq!(batch.is_empty(), batch.len() == 0);
 
     batch
-        .append_event(&make_event(RunId::new(502), 1))
+        .append_event(&make_event(RunId::new(502), 0))
         .expect("append");
     assert_eq!(batch.is_empty(), batch.len() == 0);
 }

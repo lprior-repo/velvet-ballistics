@@ -38,6 +38,16 @@ impl FjallJournal {
     /// force-flushed to stable storage.  Callers that require strict
     /// durability must invoke `persist_strict` after staging.
     ///
+    /// # Next-sequence-at-write guard (vb-r8oso)
+    ///
+    /// Before staging, the caller's `event.seq()` is verified to equal
+    /// `next_sequence_at_write(event.run_id())` observed under the
+    /// write lock. A mismatch is rejected with
+    /// `JournalError::SequenceMismatch { run, expected, actual }` and
+    /// the durable log is left untouched. The guard sits between
+    /// `event.is_valid()` and the durable-duplicate check so the
+    /// stored keyspace cannot be polluted with out-of-order seqs.
+    ///
     /// vb-3wn7x: the runtime journal path uses this entry point for
     /// direct appends. To keep the `index_action` keyspace consistent
     /// with the durable event log, the action-lifecycle index mutation
@@ -55,6 +65,19 @@ impl FjallJournal {
         let key = run_event_key(event.run_id(), event.seq())?;
         if !event.is_valid() {
             return Err(JournalError::InvalidEvent);
+        }
+        // vb-r8oso: next-sequence-at-write guard. The expected seq is
+        // recomputed inside the write lock so the lookup and the
+        // subsequent insert share one durable snapshot. A mismatch is
+        // rejected with `SequenceMismatch`; the durable log is left
+        // untouched. No silent rewrite of `event.seq()` is performed.
+        let expected = self.next_sequence_at_write(event.run_id())?;
+        if event.seq() != expected {
+            return Err(JournalError::SequenceMismatch {
+                run: event.run_id(),
+                expected,
+                actual: event.seq(),
+            });
         }
         if self.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {

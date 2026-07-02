@@ -83,6 +83,10 @@ fn duplicate_event_fields_are_accurate() {
 
 #[test]
 fn rejected_duplicate_event_not_staged_in_batch() {
+    // vb-r8oso: a duplicate append is rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before the
+    // durable duplicate check fires. Either arm leaves the batch len
+    // unchanged.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(100);
     let event = make_event(run, 0);
@@ -95,8 +99,12 @@ fn rejected_duplicate_event_not_staged_in_batch() {
     let initial_len = batch2.len();
     let result = batch2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "must be DuplicateEvent, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "must be DuplicateEvent or SequenceMismatch, got {result:?}"
     );
     assert_eq!(
         batch2.len(),

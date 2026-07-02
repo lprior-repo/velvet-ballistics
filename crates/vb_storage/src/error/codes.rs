@@ -79,6 +79,11 @@ impl JournalError {
     /// Diagnostic code for replay envelope/payload sequence mismatch
     /// (`JournalError::ReplayEnvelopeSequenceMismatch`).
     pub const REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4041);
+    /// Diagnostic code for write-time sequence mismatch
+    /// (`JournalError::SequenceMismatch`). Emitted when the
+    /// `next_sequence_at_write` guard rejects an append whose `event.seq()`
+    /// does not equal the next expected sequence for the run.
+    pub const SEQUENCE_MISMATCH_AT_WRITE_CODE: DiagnosticCode = DiagnosticCode::new(0x4042);
 
     /// Diagnostic code for invalid configuration supplied to journal open.
     pub const INVALID_CONFIG_CODE: DiagnosticCode = DiagnosticCode::new(0x4033);
@@ -113,6 +118,7 @@ impl JournalError {
             Self::ReplayEnvelopeSequenceMismatch { .. } => {
                 Self::REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE
             }
+            Self::SequenceMismatch { .. } => Self::SEQUENCE_MISMATCH_AT_WRITE_CODE,
             Self::SequenceOverflow => Self::SEQUENCE_OVERFLOW_CODE,
             Self::BadMagic { .. } => Self::BAD_MAGIC_CODE,
             Self::UnsupportedSchemaVersion { .. } => Self::UNSUPPORTED_SCHEMA_VERSION_CODE,
@@ -204,6 +210,7 @@ impl JournalError {
             Self::SequenceGap { .. } => "JOURNAL_SEQUENCE_GAP",
             Self::ReplayKeyMismatch { .. } => "REPLAY_KEY_PAYLOAD_MISMATCH",
             Self::ReplayEnvelopeSequenceMismatch { .. } => "REPLAY_ENVELOPE_SEQUENCE_MISMATCH",
+            Self::SequenceMismatch { .. } => "JOURNAL_SEQUENCE_MISMATCH_AT_WRITE",
             Self::SequenceOverflow => "SEQUENCE_OVERFLOW",
             Self::BadMagic { .. } => "BAD_MAGIC",
             Self::UnsupportedSchemaVersion { .. } => "UNSUPPORTED_SCHEMA_VERSION",

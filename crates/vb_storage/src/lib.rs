@@ -96,6 +96,9 @@ pub mod kani_vb_vzcuf_ps009;
 #[cfg(kani)]
 pub mod kani_vbjpq733_proofs;
 
+#[cfg(all(kani, feature = "kani-sequence-at-write"))]
+pub mod kani_sequence_at_write;
+
 pub mod keys;
 pub mod preview;
 pub mod process_lock;

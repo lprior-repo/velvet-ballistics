@@ -1133,12 +1133,18 @@ mod durability_gate_tests {
     /// TEST: event_replay_fails_on_sequence_gap
     ///
     /// Contract §3.7: Sequence gap → typed error (not panic).
+    ///
+    /// vb-r8oso: the next-sequence-at-write guard rejects the
+    /// out-of-order append at write time. `events_for_run` then
+    /// observes only the seq=0 event (no gap created by the rejected
+    /// append). The test now exercises the write-time rejection
+    /// directly to keep the contract observable.
     #[test]
     fn event_replay_fails_on_sequence_gap() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let run = RunId::new(400);
 
-        // Write seq 0 and seq 2 (gap at seq 1)
+        // Write seq 0; seq=2 is rejected by the guard.
         let e0 = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1153,14 +1159,22 @@ mod durability_gate_tests {
         journal
             .append_unfsynced(&e0)
             .map_err(|e| format!("append 0: {e}"))?;
-        journal
-            .append_unfsynced(&e2)
-            .map_err(|e| format!("append 2: {e}"))?;
+        let result = journal.append_unfsynced(&e2);
+        let Err(JournalError::SequenceMismatch { expected, actual, .. }) = result else {
+            panic!("expected SequenceMismatch, got {result:?}");
+        };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(2));
 
         let result = journal.events_for_run(run);
-        assert!(
-            matches!(result, Err(JournalError::SequenceGap { .. })),
-            "sequence gap must yield SequenceGap error"
+        // vb-r8oso: the out-of-order append was rejected at write
+        // time, so the durable log is left with only the seq=0 event
+        // and `events_for_run` succeeds (no gap created).
+        let events = result.expect("events_for_run should succeed");
+        assert_eq!(
+            events.len(),
+            1,
+            "only the seq=0 event must be visible after the rejected append"
         );
         Ok(())
     }
@@ -1919,6 +1933,10 @@ mod durability_gate_tests {
     /// BDD Scenario: Sequence gap in event replay causes typed error
     #[test]
     fn bdd_sequence_gap_causes_typed_error() -> Result<(), String> {
+        // vb-r8oso: the next-sequence-at-write guard rejects the
+        // out-of-order append at write time. The BDD scenario
+        // validates that the write-time error is the typed
+        // `SequenceMismatch` (not a panic and not a silent accept).
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let run = RunId::new(400);
 
@@ -1936,15 +1954,12 @@ mod durability_gate_tests {
         journal
             .append_unfsynced(&e0)
             .map_err(|e| format!("append 0: {e}"))?;
-        journal
-            .append_unfsynced(&e2)
-            .map_err(|e| format!("append 2: {e}"))?;
-
-        let result = journal.events_for_run(run);
-        assert!(
-            matches!(result, Err(JournalError::SequenceGap { .. })),
-            "sequence gap must yield SequenceGap error"
-        );
+        let result = journal.append_unfsynced(&e2);
+        let Err(JournalError::SequenceMismatch { expected, actual, .. }) = result else {
+            panic!("expected SequenceMismatch, got {result:?}");
+        };
+        assert_eq!(expected, EventSeq::new(1));
+        assert_eq!(actual, EventSeq::new(2));
 
         Ok(())
     }

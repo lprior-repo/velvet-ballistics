@@ -24,6 +24,7 @@ tempfile.workspace = true
 default = []
 legacy-kani = []
 kani-recovery = []
+kani-sequence-at-write = []
 kani-typed-partitioned-ids = []
 kani-vb-u8gi-decode-taxonomy = []
 kani-vb-vzcuf = []

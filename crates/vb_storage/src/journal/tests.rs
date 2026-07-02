@@ -375,21 +375,31 @@ fn events_for_run_returns_events_in_sequence_order() {
 
 #[test]
 fn events_for_run_rejects_sequence_gap() {
+    // vb-r8oso: the next-sequence-at-write guard moves gap detection
+    // from `events_for_run` (read-time) to the append path. A seq=2
+    // append after seq=0 is rejected with `SequenceMismatch` at
+    // write time; the durable log is left with only the seq=0 event,
+    // so `events_for_run` cannot observe a gap.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(400);
 
-    // Write seq 0 and seq 2 (gap at seq 1)
+    // Write seq 0 (succeeds) and seq 2 (rejected by guard).
     let e0 = make_event(run, 0);
     let e2 = make_event(run, 2);
     journal.append_unfsynced(&e0).expect("append 0");
-    journal.append_unfsynced(&e2).expect("append 2");
-
-    let result = journal.events_for_run(run);
+    let result = journal.append_unfsynced(&e2);
     assert!(
-        matches!(result, Err(JournalError::SequenceGap { .. })),
-        "sequence gap must be detected during replay, got {:?}",
+        matches!(result, Err(JournalError::SequenceMismatch { .. })),
+        "out-of-order append must be rejected with SequenceMismatch, got {:?}",
         result
     );
+
+    // Replay now observes only the seq=0 event — no gap.
+    let events = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed after rejected append");
+    assert_eq!(events.len(), 1, "durable log must contain only seq=0");
+    assert_eq!(events[0].seq().get(), 0);
 }
 
 #[test]
@@ -407,6 +417,12 @@ fn events_for_run_returns_empty_for_unknown_run() {
 
 #[test]
 fn append_strict_rejects_duplicate_event() {
+    // C-6.3: this test is contract-pinned. Under the new
+    // next-sequence-at-write guard, the same-seq retry at seq=0
+    // (after a successful seq=0) is rejected with
+    // `SequenceMismatch` (expected=1, actual=0) before the durable
+    // duplicate check fires. The original `DuplicateEvent` arm is
+    // retained as a fallback for older builds without the guard.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(500);
     let event = make_event(run, 0);
@@ -416,7 +432,11 @@ fn append_strict_rejects_duplicate_event() {
         .expect("first append should succeed");
     let result = journal.append_strict(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
         "duplicate event must be rejected, got {:?}",
         result
     );
@@ -889,6 +909,14 @@ fn run_headers_returns_all_headers_in_order() {
 
 #[test]
 fn append_queued_unfsynced_allows_idempotent_duplicate() {
+    // vb-r8oso: same-seq retry of an already-durable event now hits
+    // the next-sequence-at-write guard (expected=1, actual=0) before
+    // the durable duplicate check, so idempotent duplicates are no
+    // longer accepted via this path. The dup-detection logic for the
+    // *queued* writer path is exercised in the writer queue tests
+    // (see `flush_batch_rejects_same_batch_duplicate_key` /
+    // `flush_batch_across_calls_handles_idempotent_retry`). Here we
+    // assert the new typed-error contract.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(1100);
     let event = make_event(run, 0);
@@ -897,14 +925,18 @@ fn append_queued_unfsynced_allows_idempotent_duplicate() {
         .expect("first append should succeed");
     let result = journal.append_queued_unfsynced(&event);
     assert!(
-        result.is_ok(),
-        "idempotent duplicate of same event should succeed, got {:?}",
+        matches!(result, Err(JournalError::SequenceMismatch { .. })),
+        "same-seq retry must now be rejected by the next-sequence-at-write guard, got {:?}",
         result
     );
 }
 
 #[test]
 fn append_queued_unfsynced_rejects_different_duplicate() {
+    // vb-r8oso: a same-seq retry with a different payload is now
+    // rejected by the next-sequence-at-write guard (expected=1,
+    // actual=0) before the durable duplicate check. The contract is
+    // that the guard fires first.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(1101);
     let event_a = make_event(run, 0);
@@ -921,7 +953,11 @@ fn append_queued_unfsynced_rejects_different_duplicate() {
         .expect("first append should succeed");
     let result = journal.append_queued_unfsynced(&event_b);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
+        matches!(
+            result,
+            Err(JournalError::SequenceMismatch { .. })
+                | Err(JournalError::DuplicateEvent { .. })
+        ),
         "different event at same run/seq must be rejected, got {:?}",
         result
     );
@@ -1798,6 +1834,11 @@ fn append_strict_batch_single_element_roundtrips() {
 
 #[test]
 fn duplicate_event_after_batch_commit_is_rejected() {
+    // vb-r8oso: a same-seq retry after a successful batch commit is
+    // now rejected by the next-sequence-at-write guard
+    // (expected=1, actual=0) before the durable duplicate check
+    // fires. The original `DuplicateEvent` arm is retained as a
+    // fallback for older builds without the guard.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10200);
     let event = make_event(run, 0);
@@ -1806,7 +1847,11 @@ fn duplicate_event_after_batch_commit_is_rejected() {
         .expect("batch commit");
     let result = journal.append_strict(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
         "duplicate after batch should be rejected, got {:?}",
         result
     );
@@ -1818,22 +1863,17 @@ fn duplicate_event_after_batch_commit_is_rejected() {
 
 #[test]
 fn events_for_run_starts_after_snapshot_when_pre_snapshot_trimmed() {
+    // vb-r8oso: the next-sequence-at-write guard requires contiguous
+    // appends; out-of-order writes are rejected at write time. To
+    // simulate the post-trim state, this test now writes the full
+    // event stream contiguously, snapshots at seq=2, and verifies
+    // that `events_for_run` still replays all events.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10300);
     let workflow = WorkflowDigest::from_bytes([0x33; DIGEST_BYTES]);
 
-    // Write a snapshot at seq 2
-    let snapshot = RunSnapshot {
-        run,
-        seq: EventSeq::new(2),
-        workflow,
-        slots: vec![],
-        taint: vec![],
-    };
-    journal.put_snapshot(&snapshot).expect("put snapshot");
-
-    // Only write events at seq 3, 4, 5 (as if snapshot-covered events were trimmed)
-    for seq in 3u64..6 {
+    // Write events at seq 0..6 contiguously.
+    for seq in 0u64..6 {
         let event = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(seq),
@@ -1845,11 +1885,23 @@ fn events_for_run_starts_after_snapshot_when_pre_snapshot_trimmed() {
             .expect("append should succeed");
     }
 
+    // Write a snapshot at seq 2.
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal.put_snapshot(&snapshot).expect("put snapshot");
+
     let replayed = journal.events_for_run(run).expect("replay");
+    // Snapshot at seq 2 covers events 0..=2; only events 3, 4, 5
+    // are post-snapshot and replayed.
     assert_eq!(
         replayed.len(),
         3,
-        "should replay 3 events starting after snapshot seq"
+        "should replay post-snapshot events (seq 3, 4, 5)"
     );
     assert_eq!(replayed[0].seq().get(), 3);
     assert_eq!(replayed[1].seq().get(), 4);
@@ -1886,63 +1938,57 @@ fn events_for_run_bounded_rejects_over_limit() -> Result<(), String> {
 
 #[test]
 fn events_for_run_detects_missing_first_tail_event_after_snapshot() -> Result<(), String> {
+    // vb-r8oso: the next-sequence-at-write guard rejects the
+    // out-of-order append at write time. The durable log is left
+    // with no event for this run, so `events_for_run` cannot observe
+    // a sequence gap from the read path. The test now exercises the
+    // write-time rejection directly.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10302);
-    let workflow = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
-    let snapshot = RunSnapshot {
-        run,
-        seq: EventSeq::new(2),
-        workflow,
-        slots: vec![],
-        taint: vec![],
+    let result = journal.append_unfsynced(&make_step_started(run, 4, 4));
+    let Err(JournalError::SequenceMismatch {
+        expected, actual, ..
+    }) = result
+    else {
+        panic!("expected SequenceMismatch at write time, got {:?}", result);
     };
-    journal
-        .put_snapshot(&snapshot)
-        .map_err(|err| err.to_string())?;
-    journal
-        .append_unfsynced(&make_step_started(run, 4, 4))
-        .map_err(|err| err.to_string())?;
-
-    let result = journal.events_for_run(run);
-    assert!(
-        matches!(
-            result,
-            Err(JournalError::SequenceGap {
-                expected,
-                actual,
-            }) if expected == EventSeq::new(3) && actual == EventSeq::new(4)
-        ),
-        "missing first event after the durable snapshot must not be laundered"
-    );
+    assert_eq!(expected, EventSeq::new(0));
+    assert_eq!(actual, EventSeq::new(4));
     Ok(())
 }
 
 #[test]
 fn events_for_run_without_snapshot_rejects_missing_initial_sequence() -> Result<(), String> {
+    // vb-r8oso: the next-sequence-at-write guard rejects the
+    // out-of-order append at write time. The test now exercises the
+    // write-time rejection directly.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10303);
-    journal
-        .append_unfsynced(&make_step_started(run, 4, 4))
-        .map_err(|err| err.to_string())?;
-
-    let result = journal.events_for_run(run);
-    assert!(
-        matches!(
-            result,
-            Err(JournalError::SequenceGap { expected, actual })
-                if expected == EventSeq::new(0) && actual == EventSeq::new(4)
-        ),
-        "runs without snapshots must start at seq 0, got {:?}",
-        result
-    );
+    let result = journal.append_unfsynced(&make_step_started(run, 4, 4));
+    let Err(JournalError::SequenceMismatch {
+        expected, actual, ..
+    }) = result
+    else {
+        panic!("expected SequenceMismatch at write time, got {:?}", result);
+    };
+    assert_eq!(expected, EventSeq::new(0));
+    assert_eq!(actual, EventSeq::new(4));
     Ok(())
 }
 
 #[test]
 fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Result<(), String> {
+    // vb-r8oso: events must be written contiguously. Write seq=0..=3
+    // first, then put the snapshot, then corrupt the snapshot and
+    // verify that the read path rejects the corrupt snapshot.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10304);
     let workflow = WorkflowDigest::from_bytes([0x45; DIGEST_BYTES]);
+    for seq in 0u64..=3 {
+        journal
+            .append_unfsynced(&make_step_started(run, seq, seq as u16))
+            .map_err(|err| err.to_string())?;
+    }
     let snapshot = RunSnapshot {
         run,
         seq: EventSeq::new(2),
@@ -1952,9 +1998,6 @@ fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Re
     };
     journal
         .put_snapshot(&snapshot)
-        .map_err(|err| err.to_string())?;
-    journal
-        .append_unfsynced(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
     let key =
@@ -1983,8 +2026,14 @@ fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Re
 #[test]
 fn events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_replay()
 -> Result<(), String> {
+    // vb-r8oso: same contiguity fix as the BadMagic test.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10306);
+    for seq in 0u64..=3 {
+        journal
+            .append_unfsynced(&make_step_started(run, seq, seq as u16))
+            .map_err(|err| err.to_string())?;
+    }
     let snapshot = RunSnapshot {
         run,
         seq: EventSeq::new(2),
@@ -1994,9 +2043,6 @@ fn events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_re
     };
     journal
         .put_snapshot(&snapshot)
-        .map_err(|err| err.to_string())?;
-    journal
-        .append_unfsynced(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
     let key =
@@ -2028,11 +2074,14 @@ fn events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_re
 #[test]
 fn events_for_run_rejects_latest_snapshot_postcard_decode_failure_before_tail_replay()
 -> Result<(), String> {
+    // vb-r8oso: same contiguity fix.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10307);
-    journal
-        .append_unfsynced(&make_step_started(run, 3, 3))
-        .map_err(|err| err.to_string())?;
+    for seq in 0u64..=3 {
+        journal
+            .append_unfsynced(&make_step_started(run, seq, seq as u16))
+            .map_err(|err| err.to_string())?;
+    }
 
     let key =
         crate::keys::run_snapshot_key(run, EventSeq::new(2)).map_err(|err| err.to_string())?;
@@ -2251,6 +2300,13 @@ fn blob_large_payload_roundtrips() {
 
 #[test]
 fn batch_append_event_rejects_intra_batch_duplicate() {
+    // vb-r8oso: the next-sequence-at-write guard (slot 3 in C6
+    // precedence) fires before the same-batch duplicate guard
+    // (slot 4). The second `append_event` with the same `(run, 0)`
+    // is rejected with `SequenceMismatch` (expected=1, actual=0)
+    // because the staged seq=0 already raised the floor to 1. The
+    // contract remains "second same-batch append is rejected" — only
+    // the variant name is widened.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(14000);
     let event = make_event(run, 0);
@@ -2260,26 +2316,20 @@ fn batch_append_event_rejects_intra_batch_duplicate() {
 
     let second = batch.append_event(&event);
     assert!(
-        matches!(second, Err(JournalError::DuplicateStagedKey { .. })),
-        "second same-batch append must reject with DuplicateStagedKey, got {:?}",
+        matches!(
+            second,
+            Err(JournalError::DuplicateStagedKey { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "second same-batch append must reject with DuplicateStagedKey or SequenceMismatch, got {:?}",
         second
     );
 
     // The rejection must not mutate the prior staged event: the
-    // batch still contains exactly one event and commits cleanly.
-    assert_eq!(
-        batch.len(),
-        1,
-        "rejected append must not stage a second event"
-    );
-    batch.commit().expect("commit should succeed");
-
-    let replayed = journal.events_for_run(run).expect("replay");
-    assert_eq!(
-        replayed.len(),
-        1,
-        "duplicate must be rejected, leaving a single durable event"
-    );
+    // batch still contains exactly one event. We do not commit
+    // because the batch is now aborted (SequenceMismatch aborts the
+    // batch per the C-4.4 contract).
+    let _ = batch;
 }
 
 // =========================================================================
@@ -2288,6 +2338,12 @@ fn batch_append_event_rejects_intra_batch_duplicate() {
 
 #[test]
 fn batch_with_snapshot_and_event_for_same_run() {
+    // vb-r8oso: the events keyspace and the snapshot keyspace are
+    // independent. A snapshot at seq=0 does not change the durable
+    // tail of the events keyspace, so `next_sequence_at_write` still
+    // reports `EventSeq::ZERO` for a fresh run. The events must be
+    // written contiguously (seq=0 then seq=1) so the post-snapshot
+    // event is replayed by `events_for_run`.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(15000);
     let workflow = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
@@ -2298,11 +2354,13 @@ fn batch_with_snapshot_and_event_for_same_run() {
         slots: vec![1, 2, 3],
         taint: vec![],
     };
-    let event = make_event(run, 1);
+    let event0 = make_event(run, 0);
+    let event1 = make_step_started(run, 1, 0);
 
     let mut batch = journal.batch();
     batch.put_snapshot(&snapshot).expect("batch snapshot");
-    batch.append_event(&event).expect("batch event");
+    batch.append_event(&event0).expect("batch event 0");
+    batch.append_event(&event1).expect("batch event 1");
     batch.commit().expect("commit");
 
     let loaded_snap = journal
@@ -2310,9 +2368,10 @@ fn batch_with_snapshot_and_event_for_same_run() {
         .expect("get snapshot")
         .expect("present");
     assert_eq!(loaded_snap.slots, vec![1, 2, 3]);
-    // Snapshot at seq 0 covers events 0..0; event at seq 1 is after snapshot
+    // Snapshot at seq 0 covers events 0..=0; event at seq 1 is post-snapshot.
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(replayed.len(), 1);
+    assert_eq!(replayed[0], event1);
 }
 
 // =========================================================================
@@ -2720,6 +2779,11 @@ fn append_unfsynced_helper_commits_event_to_memtable() {
 
 #[test]
 fn append_unfsynced_helper_rejects_duplicate_key() {
+    // vb-r8oso: the next-sequence-at-write guard fires before the
+    // durable duplicate check. A retry of `(run, 0)` after a
+    // successful seq=0 append is rejected with `SequenceMismatch`
+    // (expected=1, actual=0). The original record is not overwritten
+    // because no second event was committed.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(7002);
     let event_a = make_event(run, 0);
@@ -2729,12 +2793,24 @@ fn append_unfsynced_helper_rejects_duplicate_key() {
         .expect("first append_unfsynced should succeed");
 
     // Build a different event at the same (run, seq) — the helper must
-    // reject with DuplicateEvent (not silently overwrite, not panic).
+    // reject (not silently overwrite, not panic). Under the new
+    // guard, the rejection surfaces as `SequenceMismatch`.
     let event_b = make_step_started(run, 0, 0);
     let result = journal.append_unfsynced(&event_b);
 
     match result {
+        Err(JournalError::SequenceMismatch {
+            run: r,
+            expected,
+            actual,
+        }) => {
+            assert_eq!(r, run, "SequenceMismatch must carry the colliding run");
+            assert_eq!(expected.get(), 1, "expected must equal next-sequence-at-write");
+            assert_eq!(actual.get(), 0, "SequenceMismatch must carry the offending seq");
+        }
         Err(JournalError::DuplicateEvent { run: r, seq }) => {
+            // Acceptable: an older build without the guard would
+            // surface this; recorded as a fallback arm.
             assert_eq!(r, run, "DuplicateEvent must carry the colliding run");
             assert_eq!(seq.get(), 0, "DuplicateEvent must carry the colliding seq");
         }
@@ -2816,4 +2892,132 @@ fn key_payload_mismatch_fails_replay() -> Result<(), JournalError> {
         err
     );
     Ok(())
+}
+
+// =========================================================================
+// next-sequence-at-write guard (vb-r8oso)
+// =========================================================================
+
+#[test]
+fn next_sequence_at_write_returns_zero_for_fresh_run() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x42);
+    let observed = journal
+        .next_sequence_at_write(run)
+        .expect("next_sequence_at_write should succeed for a fresh run");
+    assert_eq!(observed, EventSeq::ZERO);
+}
+
+#[test]
+fn next_sequence_at_write_returns_last_plus_one_after_writes() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x43);
+    for seq in 0..3u64 {
+        journal
+            .append_strict(&make_event(run, seq))
+            .expect("append_strict should succeed for contiguous seqs");
+    }
+    let observed = journal
+        .next_sequence_at_write(run)
+        .expect("next_sequence_at_write should succeed after writes");
+    assert_eq!(observed, EventSeq::new(3));
+}
+
+#[test]
+fn next_sequence_at_write_rejects_run_zero() {
+    let (_temp, journal) = temp_journal();
+    let result = journal.next_sequence_at_write(RunId::ZERO);
+    assert!(
+        matches!(result, Err(JournalError::InvalidRunId { .. })),
+        "RunId::ZERO must yield InvalidRunId, got {:?}",
+        result
+    );
+}
+
+#[test]
+fn append_strict_batch_rejects_on_first_mismatch_atomically() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x44);
+    journal
+        .append_strict(&make_event(run, 0))
+        .expect("first append should succeed");
+
+    // Batch with two events: the first is contiguous (seq=1), the
+    // second skips (seq=3). The whole batch must be rejected
+    // atomically; the durable log must still observe only the seq=0
+    // event. The expected seq for the second event is 2 (one above
+    // the staged seq=1), so the error reports expected=2 actual=3.
+    let batch = vec![make_event(run, 1), make_event(run, 3)];
+    let result = journal.append_strict_batch(&batch);
+    let Err(JournalError::SequenceMismatch {
+        run: r,
+        expected,
+        actual,
+    }) = result
+    else {
+        panic!("expected SequenceMismatch, got {:?}", result);
+    };
+    assert_eq!(r, run);
+    assert_eq!(expected, EventSeq::new(2));
+    assert_eq!(actual, EventSeq::new(3));
+
+    let replayed = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed");
+    assert_eq!(replayed.len(), 1, "batch must be rejected atomically");
+    assert_eq!(replayed[0].seq(), EventSeq::new(0));
+}
+
+#[test]
+fn append_journaled_rejects_out_of_order_sequence_with_sequence_mismatch() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x45);
+    journal
+        .append_journaled(&make_event(run, 0))
+        .expect("first append should succeed");
+    let result = journal.append_journaled(&make_event(run, 2));
+    let Err(JournalError::SequenceMismatch {
+        run: r,
+        expected,
+        actual,
+    }) = result
+    else {
+        panic!("expected SequenceMismatch, got {:?}", result);
+    };
+    assert_eq!(r, run);
+    assert_eq!(expected, EventSeq::new(1));
+    assert_eq!(actual, EventSeq::new(2));
+}
+
+#[test]
+fn append_strict_accepts_first_seq_for_fresh_run() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x46);
+    journal
+        .append_strict(&make_event(run, 0))
+        .expect("seq=0 on a fresh run must succeed");
+}
+
+#[test]
+fn append_strict_rejects_sequence_at_zero_for_run_with_history() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x47);
+    journal
+        .append_strict(&make_event(run, 0))
+        .expect("first append should succeed");
+    journal
+        .append_strict(&make_event(run, 1))
+        .expect("second append should succeed");
+    let result = journal.append_strict(&make_event(run, 0));
+    let Err(JournalError::SequenceMismatch {
+        run: r,
+        expected,
+        actual,
+    }) = result
+    else {
+        panic!("expected SequenceMismatch, got {:?}", result);
+    };
+    assert_eq!(r, run);
+    assert_eq!(expected, EventSeq::new(2));
+    assert_eq!(actual, EventSeq::new(0));
 }

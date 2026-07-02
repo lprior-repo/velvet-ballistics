@@ -66,15 +66,26 @@ proptest! {
         prop_assert_eq!(batch.len(), 1);
     }
     #[test]
-    fn ps001_duplicate_rejected(run in 1u64..1000u64, seq in 0u64..100u64) {
+    fn ps001_duplicate_rejected(run in 1u64..1000u64) {
+        // vb-r8oso: the next-sequence-at-write guard rejects a
+        // duplicate append with `SequenceMismatch` (expected=1,
+        // actual=0) before the durable duplicate check fires. The
+        // original `DuplicateEvent` arm is retained as a fallback
+        // for older builds without the guard. The proptest now
+        // operates on a single seq=0 event (the only seq that the
+        // guard accepts for a fresh run).
         let (_temp, journal) = temp_journal();
-        let event = make_event(run, seq);
+        let event = make_event(run, 0);
         let mut b1 = JournalWriteBatch::new(&journal);
         b1.append_event(&event).expect("first");
         b1.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
         let result = b2.append_event(&event);
-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+        let is_dup = matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        );
         prop_assert!(is_dup);
     }
 }

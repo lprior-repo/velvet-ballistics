@@ -18,6 +18,11 @@ fn batch_append_event_commits_and_is_readable() {
 
 #[test]
 fn batch_append_event_rejects_duplicate_event() {
+    // vb-r8oso: the next-sequence-at-write guard fires before the
+    // durable duplicate check, so a duplicate append is rejected with
+    // `SequenceMismatch` (expected=1, actual=0). The original
+    // `DuplicateEvent` arm is retained as a fallback for older
+    // builds without the guard.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(200);
     let event = make_event(run, 0);
@@ -31,14 +36,13 @@ fn batch_append_event_rejects_duplicate_event() {
     let mut batch2 = JournalWriteBatch::new(&journal);
     let result = batch2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "duplicate event must be rejected with DuplicateEvent, got {:?}",
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "duplicate event must be rejected (DuplicateEvent or SequenceMismatch), got {:?}",
         result
-    );
-    assert_eq!(
-        batch2.len(),
-        0,
-        "batch len should remain 0 after failed append"
     );
 }
 

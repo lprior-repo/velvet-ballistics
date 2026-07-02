@@ -4,6 +4,14 @@ use crate::{
 
 impl FjallJournal {
     /// Appends one event without forcing a durability barrier.
+    ///
+    /// # Next-sequence-at-write guard (vb-r8oso)
+    ///
+    /// Delegates to [`FjallJournal::append_unfsynced`], which enforces
+    /// `event.seq() == next_sequence_at_write(event.run_id())` before
+    /// staging. A mismatch is rejected with
+    /// `JournalError::SequenceMismatch { run, expected, actual }` and
+    /// the durable log is unchanged.
     pub fn append_journaled(&self, event: &JournalEvent) -> Result<(), JournalError> {
         self.append_unfsynced(event)
     }
@@ -32,11 +40,34 @@ impl FjallJournal {
     /// commit was rejected. A retry re-stages and re-commits cleanly
     /// (returning `Ok`) — no `DuplicateEvent` from a previously-visible
     /// but undelivered state.
+    ///
+    /// # Next-sequence-at-write guard (vb-r8oso)
+    ///
+    /// `event.seq()` must equal `next_sequence_at_write(event.run_id())`
+    /// at the moment of write. The check is performed inside
+    /// `JournalWriteBatch::append_event` so the comparison and the
+    /// durable insert share one batch boundary. A mismatch is rejected
+    /// with `JournalError::SequenceMismatch { run, expected, actual }`
+    /// and no state is mutated.
     pub fn append_strict(&self, event: &JournalEvent) -> Result<(), JournalError> {
         // Validate first so an invalid event is rejected before any
         // allocation; `append_event` repeats this check defensively.
         if !event.is_valid() {
             return Err(JournalError::InvalidEvent);
+        }
+        // vb-r8oso: next-sequence-at-write guard fires before the
+        // durable duplicate pre-check. A retry whose seq no longer
+        // matches the expected next seq is rejected with
+        // `SequenceMismatch` (a typed caller-fix error) before the
+        // `DuplicateEvent` path can fire. This aligns `append_strict`
+        // with the C-4.2 guard precedence.
+        let expected = self.next_sequence_at_write(event.run_id())?;
+        if event.seq() != expected {
+            return Err(JournalError::SequenceMismatch {
+                run: event.run_id(),
+                expected,
+                actual: event.seq(),
+            });
         }
         // Pre-check the durable duplicate key so a retry after a
         // StrictDurabilityFailed does not race against a partially
@@ -66,6 +97,17 @@ impl FjallJournal {
     /// partial, durable-visible record set. Master §49 Crash-Consistency
     /// Rule requires this single-barrier semantic; the previous
     /// per-event `append_unfsynced` loop violated it.
+    ///
+    /// # Next-sequence-at-write guard (vb-r8oso)
+    ///
+    /// Each event in `events` is required to satisfy
+    /// `event.seq() == next_sequence_at_write(event.run_id())` at the
+    /// moment its `append_event` runs. The first element whose seq
+    /// diverges is rejected with
+    /// `JournalError::SequenceMismatch { run, expected, actual }` and
+    /// the batch is aborted (`self.aborted = true`) so subsequent
+    /// `append_event` calls return `BatchAborted`. The whole batch
+    /// must be retried; no partial durable commit is performed.
     pub fn append_strict_batch(&self, events: &[JournalEvent]) -> Result<(), JournalError> {
         if events.is_empty() {
             return Ok(());

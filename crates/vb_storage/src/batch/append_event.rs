@@ -5,6 +5,8 @@ use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_P
 use crate::error::JournalError;
 use crate::events::JournalEvent;
 use crate::keys::run_event_key;
+use crate::types::EventSeq;
+use vb_core::RunId;
 
 impl<'j> JournalWriteBatch<'j> {
     /// Appends a journal event into the batch.
@@ -18,21 +20,32 @@ impl<'j> JournalWriteBatch<'j> {
     /// # Guard Precedence (C6)
     /// 1. Key construction
     /// 2. Semantic event validation
-    /// 3. Same-batch duplicate check (HashSet guard)
-    /// 4. Durable duplicate check → aborts batch
-    /// 5. Count capacity check (QueueFull)
-    /// 6. Per-record encoding / payload size check (PayloadTooLarge)
-    /// 7. Accumulated byte admission check (JournalBatchBytesExceeded)
-    /// 8. Insert into inner OwnedWriteBatch
+    /// 3. **Next-sequence-at-write guard** (vb-r8oso NEW) — verifies
+    ///    `event.seq() == next_sequence_at_write(event.run_id())`
+    ///    before the same-batch or durable duplicate check. A
+    ///    mismatch is rejected with `SequenceMismatch { run, expected,
+    ///    actual }` and the batch is aborted so subsequent
+    ///    `append_event` calls surface `BatchAborted`.
+    /// 4. Same-batch duplicate check (HashSet guard)
+    /// 5. Durable duplicate check → aborts batch
+    /// 6. Count capacity check (QueueFull)
+    /// 7. Per-record encoding / payload size check (PayloadTooLarge)
+    /// 8. Accumulated byte admission check (JournalBatchBytesExceeded)
+    /// 9. Insert into inner OwnedWriteBatch
     ///
     /// # Preconditions (requires)
     /// - The batch is not already aborted.
     /// - `event.run_id()` and `event.seq()` form a valid key.
     /// - `event` payload is bounded by `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`.
+    /// - `event.seq() == next_sequence_at_write(event.run_id())` at the
+    ///   moment this function runs.
     ///
     /// # Postconditions (ensures)
     /// - On success: the event is staged in `inner`, `staged_bytes` is
     ///   incremented by the full encoded record length.
+    /// - On `SequenceMismatch`: batch is aborted (`aborted = true`),
+    ///   no state mutated. Callers must re-build the batch with the
+    ///   correct expected seq.
     /// - On `DuplicateStagedKey`: no state mutated, batch remains open.
     /// - On `DuplicateEvent`: batch is aborted, no state mutated.
     /// - On `QueueFull`: no state mutated, batch remains open.
@@ -43,6 +56,27 @@ impl<'j> JournalWriteBatch<'j> {
         let key = run_event_key(event.run_id(), event.seq())?;
         if !event.is_valid() {
             return Err(JournalError::InvalidEvent);
+        }
+        // vb-r8oso: next-sequence-at-write guard. The expected seq
+        // combines the durable keyspace answer (via
+        // `FjallJournal::next_sequence_at_write`) with the
+        // `staged_event_keys` accumulated earlier in the *same*
+        // batch. A multi-event batch must see its previously-staged
+        // entries reflected in the expected seq; otherwise the
+        // second event in a fresh batch would always mismatch
+        // (durable keyspace still empty, staged keyspace has seq=0).
+        // A mismatch aborts the batch so `append_strict_batch` and
+        // the strict append path reject the entire batch atomically
+        // (no partial durable commit). The event's `seq` is NEVER
+        // rewritten.
+        let expected = self.next_expected_seq_for(event.run_id())?;
+        if event.seq() != expected {
+            self.aborted = true;
+            return Err(JournalError::SequenceMismatch {
+                run: event.run_id(),
+                expected,
+                actual: event.seq(),
+            });
         }
         // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
         //
@@ -118,5 +152,72 @@ impl<'j> JournalWriteBatch<'j> {
         // duplicate guard above before the durable lookup.
         self.staged_event_keys.insert(key);
         Ok(())
+    }
+
+    /// Returns the next expected `EventSeq` for `run` considering both
+    /// the durable keyspace and the events already staged in this
+    /// batch. Backs the [`Self::append_event`] next-sequence-at-write
+    /// guard (vb-r8oso).
+    ///
+    /// Implementation: starts with
+    /// `self.journal.next_sequence_at_write(run)` (durable keyspace
+    /// answer), then walks `staged_event_keys` for any keys with a
+    /// matching run prefix and raises the floor to
+    /// `max_staged_seq_for_run + 1`. The walk is bounded by
+    /// `MAX_BATCH_COUNT` (a static bound), so the loop has a fixed
+    /// upper bound.
+    fn next_expected_seq_for(&self, run: RunId) -> Result<EventSeq, JournalError> {
+        let mut expected = self.journal.next_sequence_at_write(run)?;
+        // Walk staged keys (bounded by MAX_BATCH_COUNT) and raise the
+        // expected seq if any prior staged event for the same run has
+        // a higher seq. The loop is a static upper bound by
+        // construction (HashSet has at most MAX_BATCH_COUNT entries).
+        for staged_key in &self.staged_event_keys {
+            // Skip keys for a different run (prefix + run_id).
+            if staged_key.len() != crate::constants::JOURNAL_KEY_BYTES {
+                continue;
+            }
+            if staged_key[0] != crate::constants::PREFIX_RUN_EVENT {
+                continue;
+            }
+            let staged_run_bytes: [u8; 8] = staged_key
+                .get(1..9)
+                .and_then(|s| s.try_into().ok())
+                .ok_or(JournalError::MalformedKeyspaceRow {
+                    prefix: crate::constants::PREFIX_RUN_EVENT,
+                    expected_len: crate::constants::JOURNAL_KEY_BYTES,
+                    actual_len: staged_key.len(),
+                })?;
+            let staged_run = RunId::new(u64::from_be_bytes(staged_run_bytes));
+            if staged_run != run {
+                continue;
+            }
+            let staged_seq_bytes: [u8; 8] = staged_key
+                .get(9..17)
+                .and_then(|s| s.try_into().ok())
+                .ok_or(JournalError::MalformedKeyspaceRow {
+                    prefix: crate::constants::PREFIX_RUN_EVENT,
+                    expected_len: crate::constants::JOURNAL_KEY_BYTES,
+                    actual_len: staged_key.len(),
+                })?;
+            let staged_seq = u64::from_be_bytes(staged_seq_bytes);
+            let candidate = match crate::codec::next_seq(EventSeq::new(staged_seq)) {
+                Ok(s) => s,
+                Err(JournalError::SequenceOverflow) => {
+                    // The staged seq is already at MAX; the only legal
+                    // next seq is the overflow error itself, which
+                    // surfaces to the caller as `SequenceMismatch` with
+                    // `expected == EventSeq::MAX` (which never matches
+                    // any caller-supplied `event.seq()`, since the
+                    // codec reserves MAX as the saturation sentinel).
+                    return Err(JournalError::SequenceOverflow);
+                }
+                Err(other) => return Err(other),
+            };
+            if candidate.get() > expected.get() {
+                expected = candidate;
+            }
+        }
+        Ok(expected)
     }
 }

@@ -5,7 +5,8 @@ use crate::journal::FjallJournal;
 use crate::queue::JournalWriterQueue;
 use crate::records::{BlobRecord, CompiledIrRecord, RunHeaderRecord, WorkflowSourceRecord};
 use crate::recovery::{self, ActionReplayTracker, RunSnapshot};
-use crate::types::JournalWriterFlushReport;
+use crate::types::{EventSeq, JournalWriterFlushReport};
+use vb_core::RunId;
 
 // ============================================================================
 // Convenience wrapper functions
@@ -52,6 +53,17 @@ pub fn append_journal_event(
     event: &JournalEvent,
 ) -> Result<(), JournalError> {
     journal.append_journaled(event)
+}
+
+/// Returns the sequence value that the next successful append for `run`
+/// must carry. See [`FjallJournal::next_sequence_at_write`] for the
+/// full contract. Re-exported as a free function for downstream crates
+/// that prefer the wrapper style.
+pub fn next_sequence_at_write(
+    journal: &FjallJournal,
+    run: RunId,
+) -> Result<EventSeq, JournalError> {
+    journal.next_sequence_at_write(run)
 }
 
 /// Stores immutable workflow source bytes by digest.

@@ -3,6 +3,9 @@ use super::*;
 
 #[test]
 fn duplicate_detection_fires_before_count_check() {
+    // vb-r8oso: a duplicate append is now rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before
+    // the durable duplicate check fires. Either arm is acceptable.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(200);
     let event = make_event(run, 0);
@@ -14,8 +17,12 @@ fn duplicate_detection_fires_before_count_check() {
     let mut batch2 = JournalWriteBatch::new(&journal);
     let result = batch2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "duplicate must fire before QueueFull, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "duplicate must fire (DuplicateEvent or SequenceMismatch), got {result:?}"
     );
 }
 
@@ -53,6 +60,9 @@ fn queue_full_fires_before_any_possible_encoding_guard_for_new_events() {
 
 #[test]
 fn duplicate_and_queue_full_conflict_duplicate_wins() {
+    // vb-r8oso: a duplicate append is rejected by the
+    // next-sequence-at-write guard (expected=1, actual=0) before
+    // the durable duplicate check fires. Either arm is acceptable.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(204);
     let event = make_event(run, 0);
@@ -64,8 +74,12 @@ fn duplicate_and_queue_full_conflict_duplicate_wins() {
     let mut batch2 = JournalWriteBatch::new(&journal);
     let result = batch2.append_event(&event);
     assert!(
-        matches!(result, Err(JournalError::DuplicateEvent { .. })),
-        "DuplicateEvent must win over other guards, got {result:?}"
+        matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        ),
+        "duplicate must win over other guards (DuplicateEvent or SequenceMismatch), got {result:?}"
     );
 }
 

@@ -9,6 +9,7 @@ pub(crate) mod batch;
 pub mod incident;
 pub(crate) mod injection;
 pub(crate) mod internal;
+pub(crate) mod next_sequence_at_write;
 pub mod parse;
 pub mod readonly;
 pub(crate) mod replay;

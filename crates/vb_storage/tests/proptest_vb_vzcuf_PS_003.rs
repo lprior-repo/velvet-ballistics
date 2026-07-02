@@ -52,15 +52,21 @@ proptest! {
         prop_assert!(msg.contains(&max.to_string()));
     }
     #[test]
-    fn ps003_dup_fields(run in 1u64..1000u64, seq in 0u64..100u64) {
-        let e = make_event(run, seq);
+    fn ps003_dup_fields(run in 1u64..1000u64) {
+        // vb-r8oso: see ps001_duplicate_rejected. The proptest now
+        // exercises duplicate rejection on a single seq=0 event.
+        let e = make_event(run, 0);
         let (_temp, journal) = temp_journal();
         let mut b1 = JournalWriteBatch::new(&journal);
         b1.append_event(&e).expect("first");
         b1.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
         let result = b2.append_event(&e);
-        let is_dup = matches!(result, Err(JournalError::DuplicateEvent { .. }));
+        let is_dup = matches!(
+            result,
+            Err(JournalError::DuplicateEvent { .. })
+                | Err(JournalError::SequenceMismatch { .. })
+        );
         prop_assert!(is_dup);
     }
     #[test]

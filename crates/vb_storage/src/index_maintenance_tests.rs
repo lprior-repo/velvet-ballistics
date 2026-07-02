@@ -574,8 +574,10 @@ mod tests {
         assert!(has_index_entry(&journal, action, run, step));
 
         // Duplicate at the journal-event layer is rejected, so the
-        // index is not asked to update twice. Direct path surfaces
-        // JournalError::DuplicateEvent.
+        // index is not asked to update twice. The next-sequence-at-write
+        // guard fires first (expected=1, actual=0); the durable
+        // duplicate check would have fired second. Either arm is
+        // acceptable.
         let duplicate_result = journal.append_journaled(&JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(0),
@@ -584,8 +586,12 @@ mod tests {
             attempt: 1,
         });
         assert!(
-            matches!(duplicate_result, Err(JournalError::DuplicateEvent { .. })),
-            "duplicate ActionScheduled at same seq must be rejected, got {:?}",
+            matches!(
+                duplicate_result,
+                Err(JournalError::DuplicateEvent { .. })
+                    | Err(JournalError::SequenceMismatch { .. })
+            ),
+            "duplicate ActionScheduled at same seq must be rejected (DuplicateEvent or SequenceMismatch), got {:?}",
             duplicate_result,
         );
         assert!(

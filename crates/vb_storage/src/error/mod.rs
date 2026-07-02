@@ -159,6 +159,18 @@ pub enum JournalError {
         limit: usize,
         observed: usize,
     },
+    /// Write-time typed error: the supplied event.seq() did not match
+    /// `FjallJournal::next_sequence_at_write(run)`. The event was NOT
+    /// durably committed.
+    #[error(
+        "journal append sequence mismatch for run {run:?}: \
+         expected {expected:?}, actual {actual:?}"
+    )]
+    SequenceMismatch {
+        run: RunId,
+        expected: EventSeq,
+        actual: EventSeq,
+    },
     #[error("journal replay allocation failed for run {run:?}: requested {requested} events")]
     ReplayAllocationFailed { run: RunId, requested: usize },
     #[error("admission clock unavailable")]
