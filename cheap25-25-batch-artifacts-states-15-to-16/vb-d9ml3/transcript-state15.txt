@@ -1,0 +1,14 @@
+landing-skill: p15-landing-skill — vb-d9ml3 storage trim/snapshot key length cap
+Bead: vb-d9ml3 (P1)
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+Source checkout: /home/lewis/src/velvet-ballistics
+Operator: landing-skill (direct child of femdation, combined p15-16)
+Quality gates re-run at landing:
+  cargo test -p vb_storage --lib trimming  -> 42 passed, 1492 filtered out, exit 0
+  cargo test -p vb_storage --lib snapshot_tests  -> 10 passed, 1524 filtered out, exit 0
+  cargo test -p vb_storage --lib --verbose -- (4 new + 3 regression)  -> 7 passed, 1527 filtered out, exit 0
+  cargo clippy -p vb_storage --lib --bins --examples --all-features --no-deps  -> No issues found, exit 0
+  cargo fmt -p vb_storage --check  -> exit 0 (no diff)
+  rg -n "key\.len\(\) != 17" crates/vb_storage/src/  -> 0 matches
+Decision: READY_TO_CLOSE
+Next: cleanup-orchestrator at state 16

@@ -1,0 +1,27 @@
+State 4 (proof-planner) for vb-09aaz via proof-planner subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-09aaz
+started_at=2026-07-01T17:30:00Z
+completed_at=2026-07-01T19:30:00Z
+invocation_id=proof-planner-vb-09aaz-state4
+parent_invocation_id=rust-contract-vb-09aaz-state3
+skill=proof-planner
+loaded_skill_version=10.1.0
+inputs:
+  contract.md (sha256=7e17756e0abe25ed3f616645189a7d99ca69a97d4e8ab9de69ae5d94b648a372)
+  type-contracts.md (sha256=4249051c07e43037115674b9c01655b5c008e833b568dc98d8371d10b74d28a9)
+  domain-model.md (sha256=ad99d400ac58cb5204e272d3b3b90c33c66fc25b997fa2822121de9112d90eb4)
+  workflow-model.md (sha256=517e93d308c05ffca0da019c8d6fe90d0d11c5ae6f733b70ce0fa53aa36824a0)
+  error-taxonomy.md (sha256=eeb5e9687fe91d83a712a3baac2c4aa068284ca248987c2e29efada418bcf127)
+  boundary-map.md (sha256=73a601d3e2dc05f9fe3b0fafd79bd170aa7931bfd0b934f0c0513eebf58adaee)
+  hazard-analysis.md (sha256=b6ae3a4be1002a84f411d53f5d38c0e49dab50e1564d216b896eddf6a9bae9d0)
+  proof-seeds.jsonl (sha256=bfc17005960c4a0f85c106921898024283200c14082be700a1a1e7d945acdcc5)
+  traceability-matrix.jsonl (sha256=e4d01492c5806b569383328e350d7bc04695c3dc23212e0ae38744bb3a002378)
+outputs:
+  proof-strategy.md (sha256=869bca6508bc96ca1d105dd0fe437480c0bd73597405177887fa9f0812f21e8a)
+  verifier-lane-decisions.jsonl (sha256=1d8426c0530d259d06e2f9238608ebe12dd77a8ca5fd79517b9dbdfc5a896777)
+  proof-obligations.planned.jsonl (sha256=c3c6a7654dd83810bc90af31e963c835d16584e5abf7c95f5768de11b687d278)
+  trusted-base-plan.md (sha256=79cdb2a478f2bc6116849c3c82b3999780e2be5a31c4977aea20d8f52a7ba0d8)
+  waiver-candidates.jsonl (sha256=bbc2283f7174b41ebd706928e580536ee86af14ba0e9072ff8cb40bdd78e6539)
+  proof-coverage-matrix.md (sha256=a59d33eaafd58e9dca2306dd4256450fa92379f6f7dbc704d7b2411af21f3414)
+  verifier-lane-matrix.md (sha256=e6787c70f62cec2715abd7d1c76d701a45c0fd00093bc70f6032e335667ffe26)
+notes: 7 planning artifacts emitted per go-skill State 4 contract; 5 proof obligations (PO-09aaz-001..PO-09aaz-005) across verus/rust-local/proptest/persistence lanes; 16 lane decisions; 9 waiver candidates; trusted-base-plan enumerates 7 trusted surfaces. Schema for proof-obligations.planned.jsonl flagged as drift by reviewer (this transcript records the initial emission; reviewer request to repair is captured by reviewer-ledger row at state 4b).

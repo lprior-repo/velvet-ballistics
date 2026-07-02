@@ -1,0 +1,43 @@
+bead: vb-cib14
+source_checkout: /home/lewis/src/velvet-ballistics
+invocation_id: femdation-p15-landing-vb-cib14
+started_at: 2026-07-02T05:16:00Z
+completed_at: 2026-07-02T05:18:18Z
+============================================================
+STEP 1 — bd close vb-cib14
+============================================================
+$ bd close vb-cib14 --reason "Resumed → RunResumed mapping wired in boundary_storage_event; timestamp overflow typed error added; storage_event_clones_the_event_exactly_once_per_dispatch preserved; 1812 cargo tests pass (default + vb-cib14 feature). STRONG-coupled with vb-edvbj."
+
+✓ Closed vb-cib14 — Runtime: map RuntimeJournalEvent Resumed to a real resume event: Resumed → RunResumed mapping wired in boundary_storage_event; timestamp overflow typed error added; storage_event_clones_the_event_exactly_once_per_dispatch preserved; 1812 cargo tests pass (default + vb-cib14 feature). STRONG-coupled with vb-edvbj.
+
+exit_status: 0
+
+============================================================
+STEP 2 — bd show vb-cib14 (post-close confirmation)
+============================================================
+$ bd show vb-cib14 --json
+
+status=closed
+priority=0
+closed_at=2026-07-02T05:18:18Z
+close_reason: Resumed → RunResumed mapping wired in boundary_storage_event; timestamp overflow typed error added; storage_event_clones_the_event_exactly_once_per_dispatch preserved; 1812 cargo tests pass (default + vb-cib14 feature). STRONG-coupled with vb-edvbj.
+
+exit_status: 0
+
+============================================================
+STEP 3 — bd dolt push
+============================================================
+$ bd dolt push
+
+Pushing to Dolt remote...
+Push complete.
+
+exit_status: 0
+
+============================================================
+SUMMARY
+============================================================
+bead_status: closed
+dolt_push: success
+source_checkout_clean: yes
+coupled_bead: vb-edvbj (STRONG release coupling — catch-all RunFailedEvent removal)

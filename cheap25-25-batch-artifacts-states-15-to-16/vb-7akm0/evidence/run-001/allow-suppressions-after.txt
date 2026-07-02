@@ -1,0 +1,9 @@
+xtask/src/main.rs:2:// NOTE(vb-7akm0): the crate-root `#![allow(unreachable_pub)]` below is NOT
+xtask/src/main.rs:7:// `Cargo.toml:57` and `xtask/Cargo.toml:39` is `unreachable_pub = "deny"`,
+xtask/src/main.rs:15:#![allow(unreachable_pub)]
+xtask/src/doc_reconcile/mod.rs:3:#![deny(unreachable_pub)]
+crates/vb_validate/src/lib.rs:3:#![deny(unreachable_pub)]
+crates/vb_validate/src/diag/diag_codes.rs:4:#![allow(unreachable_pub)]
+crates/vb_runtime/src/lib.rs:3:#![deny(unreachable_pub)]
+crates/vb_validate/src/diag/diag_convert.rs:6:#![allow(unreachable_pub)]
+crates/vb_queue_semantics/src/lib.rs:3:#![deny(unreachable_pub)]

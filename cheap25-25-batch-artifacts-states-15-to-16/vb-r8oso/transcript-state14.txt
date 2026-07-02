@@ -1,0 +1,44 @@
+[transcript-state14.txt]
+evidence-packaging + truth-serum + final-decision session for vb-r8oso (2026-07-01T22:10:00Z to 2026-07-01T22:15:00Z)
+
+Inputs:
+- formal-verification-report.md (State 12)
+- verification-ledger.jsonl (7 rows: 5 PASS, 2 BLOCKED_TOOLING)
+- formal-waivers.jsonl (empty)
+- black-hat-review.md (STATUS: APPROVED, 8 attack vectors, 0 defects)
+- defects.md (empty)
+- implementation.md (State 11)
+- contract.md (C-1..C-12)
+- evidence/downstream-caller-audit.md (126 lines)
+- 9 raw evidence logs in evidence/
+
+Actions:
+1. Wrote assurance-bundle.md (13.6K) with:
+   - Evidence Index (40+ artifacts)
+   - Raw Gate Evidence (9 machine gates)
+   - Contract Coverage Matrix (C-1..C-12)
+   - POB Disposition (5 PASS + 2 BLOCKED_TOOLING)
+   - Trust Marker Disposition (8 markers)
+   - Global Debt (4 items, none vb-r8oso regressions)
+   - Cross-Stage Hand-Off
+2. Wrote truth-serum-report.md (11.1K) with STATUS: APPROVED:
+   - 11 claim categories audited
+   - 0 false claims
+   - Cross-claim coherence verified
+3. Wrote final-evidence-decision.md (5.8K) with STATUS: APPROVED:
+   - Required Raw Evidence (9 commands)
+   - POB Disposition
+   - Contract Coverage
+   - Global Gate Note (Kani + BLOCK_GLOBAL)
+   - Action: APPROVED for landing-skill hand-off
+
+Verdict: STATUS: APPROVED for State 14 closure. No false claims. No behavior-affecting waivers. No proof laundered as a pass. The 2 Kani BLOCKED_TOOLING rows are pre-existing toolchain failures documented with root-cause evidence (kani_helpers.rs unclosed-delimiter in vb_core parent commit 1d6c017f).
+
+Outputs:
+- assurance-bundle.md (13.6K)
+- truth-serum-report.md (11.1K)
+- final-evidence-decision.md (5.8K)
+- STATE.md (3.6K, updated to state 14, status: state-14-approved)
+- agent-invocation-ledger.jsonl (13.2K, 7 rows with consistent hash chain)
+
+Hand-off to landing-skill: rebase onto main or cherry-pick kani_helpers.rs + 93d1d9026 before merging to main.

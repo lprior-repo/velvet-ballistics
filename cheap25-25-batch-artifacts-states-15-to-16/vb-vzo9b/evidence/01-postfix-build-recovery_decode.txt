@@ -1,0 +1,2 @@
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s

@@ -1,0 +1,194 @@
+
+=== verification/verus/production_inner/action_replay_tracker_production.rs ===
+DRIFT: production identifiers in crates/vb_storage/src/recovery/types.rs missing from mirror:
+  - Asking
+  - CANNOT_RESUME_REASONS
+  - Failed
+  - MissingRunStateComponents
+  - RecoveredStepState
+  - RecoveryCannotResumeState
+  - RecoveryFrameSeed
+  - RESUMABLE
+  - Running
+  - Succeeded
+  - UnsupportedRecoveryState
+  - Waiting
+
+=== verification/verus/production_inner/replay_invariants_production.rs ===
+DRIFT: production identifiers in crates/vb_storage/src/recovery/types.rs missing from mirror:
+  - RecoveredStepState
+
+=== verification/verus/production_inner/unsupported_recovery_state_production.rs ===
+DRIFT: production identifiers in crates/vb_storage/src/recovery/types.rs missing from mirror:
+  - CapabilitySet
+  - RunId
+  - RuntimePolicy
+  - WorkflowDigest
+
+=== verification/verus/production_inner/unsupported_recovery_state_production.rs ===
+DRIFT: production identifiers in crates/vb_storage/src/recovery/types.rs missing from mirror:
+  - ActionId
+  - Asking
+  - Failed
+  - FrameSeed
+  - RecoveredPendingAction
+  - RecoveredSlotEntry
+  - RecoveredStepEntry
+  - RecoveredStepState
+  - RecoveryFrameSeed
+  - RecoveryHydration
+  - RecoveryRuntimeSummary
+  - Running
+  - SlotIdx
+  - SlotValue
+  - StepIdx
+  - Succeeded
+  - Summary
+  - Taint
+  - Waiting
+
+=== verification/verus/extern_collect_lowering.rs (BINDING LEDGER @ line 75) ===
+DRIFT: production identifier `StepIdx` (last segment `StepIdx`) not found in crates/vb_core/src/ids/mod.rs:55-55 (window 50-60)
+
+=== verification/verus/extern_collect_lowering.rs (BINDING LEDGER @ line 76) ===
+DRIFT: production identifier `StepIdx::new` (last segment `new`) not found in crates/vb_core/src/ids/mod.rs:21-21 (window 16-26)
+
+=== verification/verus/extern_collect_lowering.rs (BINDING LEDGER @ line 77) ===
+DRIFT: production identifier `StepIdx::get` (last segment `get`) not found in crates/vb_core/src/ids/mod.rs:55-55 (window 50-60)
+
+=== verification/verus/extern_collect_lowering.rs (BINDING LEDGER @ line 78) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/ids/mod.rs:303-103 (file has 103 lines)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 64) ===
+DRIFT: production identifier `ActionReplayTracker` (last segment `ActionReplayTracker`) not found in crates/vb_storage/src/recovery/types.rs:870-875 (window 865-880)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 65) ===
+DRIFT: production identifier `ActionReplayTracker::new` (last segment `new`) not found in crates/vb_storage/src/recovery/types.rs:899-908 (window 894-913)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 66) ===
+DRIFT: production identifier `ActionReplayTracker::mark_completed` (last segment `mark_completed`) not found in crates/vb_storage/src/recovery/types.rs:960-964 (window 955-969)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 67) ===
+DRIFT: production identifier `ActionReplayTracker::mark_failed` (last segment `mark_failed`) not found in crates/vb_storage/src/recovery/types.rs:1024-1027 (window 1019-1032)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 68) ===
+DRIFT: production identifier `ActionReplayTracker::has_completed` (last segment `has_completed`) not found in crates/vb_storage/src/recovery/types.rs:1029-1033 (window 1024-1038)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 69) ===
+DRIFT: production identifier `ActionReplayTracker::has_failed` (last segment `has_failed`) not found in crates/vb_storage/src/recovery/types.rs:1035-1039 (window 1030-1044)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 70) ===
+DRIFT: production identifier `ActionReplayTracker::is_resolved` (last segment `is_resolved`) not found in crates/vb_storage/src/recovery/types.rs:1041-1046 (window 1036-1051)
+
+=== verification/verus/extern_idempotency_replay_tracker.rs (BINDING LEDGER @ line 71) ===
+DRIFT: production identifier `ActionReplayTracker::default` (last segment `default`) not found in crates/vb_storage/src/recovery/types.rs:1049-1053 (window 1044-1058)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 58) ===
+DRIFT: claimed range is empty after clamping: crates/vb_runtime/src/admission.rs:82-56 (file has 56 lines)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 80) ===
+DRIFT: production identifier `RecoveryFrameSeed` (last segment `RecoveryFrameSeed`) not found in crates/vb_storage/src/recovery/types.rs:653-672 (window 648-677)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 81) ===
+DRIFT: production identifier `RecoveryCannotResumeState` (last segment `RecoveryCannotResumeState`) not found in crates/vb_storage/src/recovery/types.rs:680-834 (window 675-839)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 82) ===
+DRIFT: production identifier `RecoveredStepState` (last segment `RecoveredStepState`) not found in crates/vb_storage/src/recovery/types.rs:533-544 (window 528-549)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 83) ===
+DRIFT: production identifier `RecoveredStepEntry` (last segment `RecoveredStepEntry`) not found in crates/vb_storage/src/recovery/types.rs:548-553 (window 543-558)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 84) ===
+DRIFT: production identifier `RecoveredSlotEntry` (last segment `RecoveredSlotEntry`) not found in crates/vb_storage/src/recovery/types.rs:557-564 (window 552-569)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 85) ===
+DRIFT: production identifier `RecoveredPendingAction` (last segment `RecoveredPendingAction`) not found in crates/vb_storage/src/recovery/types.rs:568-573 (window 563-578)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 86) ===
+DRIFT: production identifier `RecoveryTerminalState` (last segment `RecoveryTerminalState`) not found in crates/vb_storage/src/recovery/types.rs:454-466 (window 449-471)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 87) ===
+DRIFT: production identifier `RecoveryRuntimeSummary` (last segment `RecoveryRuntimeSummary`) not found in crates/vb_storage/src/recovery/types.rs:470-493 (window 465-498)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 88) ===
+DRIFT: production identifier `RecoveryHydration` (last segment `RecoveryHydration`) not found in crates/vb_storage/src/recovery/types.rs:512-528 (window 507-533)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 89) ===
+DRIFT: production identifier `DigestPair` (last segment `DigestPair`) not found in crates/vb_storage/src/recovery/types.rs:269-282 (window 264-287)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 90) ===
+DRIFT: production identifier `ActionAbiDigestComparison` (last segment `ActionAbiDigestComparison`) not found in crates/vb_storage/src/recovery/types.rs:286-302 (window 281-307)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 91) ===
+DRIFT: production identifier `PolicyDigestComparison` (last segment `PolicyDigestComparison`) not found in crates/vb_storage/src/recovery/types.rs:306-322 (window 301-327)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 92) ===
+DRIFT: production identifier `FullDigestEvidence` (last segment `FullDigestEvidence`) not found in crates/vb_storage/src/recovery/types.rs:326-379 (window 321-384)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 93) ===
+DRIFT: production identifier `DigestVerificationRequest` (last segment `DigestVerificationRequest`) not found in crates/vb_storage/src/recovery/types.rs:383-449 (window 378-454)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 94) ===
+DRIFT: production identifier `DigestCheck` (last segment `DigestCheck`) not found in crates/vb_storage/src/recovery/types.rs:1058-1065 (window 1053-1070)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 25) ===
+DRIFT: production identifier `RunFrame` (last segment `RunFrame`) not found in crates/vb_core/src/frame.rs:65-78 (window 60-83)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 26) ===
+DRIFT: production identifier `StepState` (last segment `StepState`) not found in crates/vb_core/src/frame.rs:10-29 (window 5-34)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 29) ===
+DRIFT: production identifier `RunFrame::reinitialize` (last segment `reinitialize`) not found in crates/vb_core/src/frame.rs:113-141 (window 108-141)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 30) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:158-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 31) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:170-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 32) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:176-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 33) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:226-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 34) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:264-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 35) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:304-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 36) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:292-141 (file has 141 lines)
+
+=== verification/verus/extern_run_frame_invariant.rs (BINDING LEDGER @ line 37) ===
+DRIFT: claimed range is empty after clamping: crates/vb_core/src/frame.rs:298-141 (file has 141 lines)
+
+=== verification/verus/extern_storage_kind_family.rs (BINDING LEDGER @ line 68) ===
+DRIFT: production identifier `next_seq` (last segment `next_seq`) not found in crates/vb_storage/src/codec/mod.rs:142-142 (window 137-147)
+
+=== verification/verus/extern_storage_kind_family.rs (BINDING LEDGER @ line 70) ===
+DRIFT: production identifier `validate_replayed_event` (last segment `validate_replayed_event`) not found in crates/vb_storage/src/codec/mod.rs:149-149 (window 144-154)
+
+=== verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs (BINDING LEDGER @ line 71) ===
+DRIFT: production identifier `RunId` (last segment `RunId`) not found in crates/vb_core/src/ids/mod.rs:65-65 (window 60-70)
+
+=== verification/verus/extern_vb_jpq724_events_for_run_production.rs (BINDING LEDGER @ line 111) ===
+DRIFT: production identifier `next_seq` (last segment `next_seq`) not found in crates/vb_storage/src/codec/mod.rs:142-147 (window 137-152)
+
+=== verification/verus/extern_vb_rpch_seed_dimensions.rs (BINDING LEDGER @ line 66) ===
+DRIFT: production identifier `RunId` (last segment `RunId`) not found in crates/vb_core/src/ids/mod.rs:65-65 (window 60-70)
+
+=== verification/verus/extern_vb_rpch_seed_dimensions.rs (BINDING LEDGER @ line 68) ===
+DRIFT: production identifier `MirrorRecoveryError::FrameDimensionOverflow` (last segment `FrameDimensionOverflow`) not found in crates/vb_storage/src/recovery/types.rs:139-144 (window 134-149)
+
+=== verification/verus/extern_vb_rpch_seed_dimensions.rs (BINDING LEDGER @ line 70) ===
+DRIFT: production identifier `MirrorRecoveryFrameSeed` (last segment `MirrorRecoveryFrameSeed`) not found in crates/vb_storage/src/recovery/types.rs:629-649 (window 624-654)
+
+=== Summary ===
+Mirror files checked:  60
+Extern files scanned:  73
+Drift findings:        12
+Log:                   target/verus-drift/drift.log
+
+PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log

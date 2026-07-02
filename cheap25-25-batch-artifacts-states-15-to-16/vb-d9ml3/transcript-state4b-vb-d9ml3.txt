@@ -1,0 +1,10 @@
+proof-plan-reviewer-vb-d9ml3-state4b-001
+bead_id: vb-d9ml3
+state: 4b
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+parent_invocation_id: proof-planner-vb-d9ml3-state4
+inputs_read: proof-strategy.md, verifier-lane-decisions.jsonl, proof-obligations.planned.jsonl, trusted-base-plan.md, waiver-candidates.jsonl, proof-coverage-matrix.md, contract.md, proof-seeds.jsonl, traceability-matrix.jsonl
+outputs_written: verifier-lane-review.jsonl (10 rows), proof-plan-review.md, proof-plan-findings.jsonl (5 findings)
+disposition: APPROVED
+captured: 2026-07-01T21:58:00Z
+summary: 10 lane decisions reviewed (5 required accepted + 5 not_applicable accepted); 5 obligations accepted; 5 findings (4 observation + 1 minor, all non-blocker); trust marker TB-CAP-001 paired; production-binding gate N/A (no Verus obligations); no behavior-affecting waivers; bridge plan implicit via 5 non-behavior obligations.

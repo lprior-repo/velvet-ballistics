@@ -1,0 +1,2 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-edvbj/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.24s

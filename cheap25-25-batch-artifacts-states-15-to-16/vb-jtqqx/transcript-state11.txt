@@ -1,0 +1,81 @@
+State 11 transcript — bead vb-jtqqx — holzman-rust implementation
+
+Agent: holzman-rust (direct child of femdation)
+Bead: vb-jtqqx
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Workspace status: jj workspace `cheap25-vb-jtqqx` on parent rsvywymk
+
+Skills invoked at entry:
+- /home/lewis/.opencode/skill/holzman-rust/SKILL.md (OpenCode activation bridge)
+- /home/lewis/.agents/skills/holzman-rust/SKILL.md (canonical doctrine)
+
+Inputs read:
+- .beads/vb-jtqqx/STATE.md
+- .beads/vb-jtqqx/contract.md (SIDEX-MAL-001..018)
+- .beads/vb-jtqqx/error-taxonomy.md
+- .beads/vb-jtqqx/delivery-scope.jsonl
+- .beads/vb-jtqqx/baseline-report.md
+- .beads/vb-jtqqx/global-readiness-report.md
+- .beads/vb-jtqqx/proof-coverage-matrix.md
+- .beads/vb-jtqqx/proof-strategy.md
+- crates/vb_storage/src/keys.rs (decoder at lines 346-434, read-only)
+- crates/vb_storage/src/constants.rs (prefix/length constants at lines 38-43, read-only)
+- crates/vb_storage/src/error/key_decode.rs (KeyDecodeError enum)
+- crates/workspace_tests/tests/journal_side_index_contracts.rs (target file, modified)
+
+Reference files read:
+- /home/lewis/.opencode/skill/holzman-rust/SKILL.md
+- /home/lewis/.agents/skills/holzman-rust/SKILL.md
+- /home/lewis/.agents/skills/holzman-rust/references/nasa-jpl-standards.md
+
+Changes made:
+- crates/workspace_tests/tests/journal_side_index_contracts.rs: +217, -26
+  (1) Added `KeyDecodeError` to the `use vb_storage::{...}` import list.
+  (2) Strengthened `index_action_key_decode_error_on_short_input` (4 shapes):
+      truncated, run==0, within-family prefix mismatch (0x30), empty slice.
+  (3) Strengthened `index_status_key_decode_error_on_wrong_length` (4 shapes):
+      overlong, literal 24-byte overlong, run==0, within-family prefix
+      mismatch (0x32).
+  (4) Strengthened `index_workflow_key_decode_error_on_wrong_length` (4 shapes):
+      overlong, literal 11-byte truncated, run==0, unknown prefix (0xFF).
+  (5) Narrowed the `_extra_bytes` strategy bound from `0u8..=10u8` to
+      `1u8..=10u8` so the overlong slice is always strictly greater than
+      the canonical 18/13 bytes.
+  (6) Updated the file-section docstring (lines 198-209) and per-test
+      docstrings to document the new shapes and SIDEX-MAL clause mapping.
+
+Commands run:
+- rtk cargo test -p velvet-ballistics-workspace-tests --test journal_side_index_contracts → 11 passed (0.38s)
+- rtk cargo test ... index_action_key_decode_error_on_short_input → 1 passed, 10 filtered (0.00s)
+- rtk cargo test ... index_status_key_decode_error_on_wrong_length → 1 passed, 10 filtered (0.00s)
+- rtk cargo test ... index_workflow_key_decode_error_on_wrong_length → 1 passed, 10 filtered (0.00s)
+- PROPTEST_CASES=128 rtk cargo test ... journal_side_index_contracts → 11 passed (1.12s)
+- rtk cargo test ... --release → 11 passed (0.10s)
+- rtk cargo check --workspace --all-targets --all-features → clean
+- rtk cargo clippy -p velvet-ballistics-workspace-tests --tests --all-features → 0 new warnings on journal_side_index_contracts.rs
+- rtk cargo build --workspace --all-targets --all-features --tests → clean
+
+Forbidden constructs in PO-008 block: 0 (no unsafe, unwrap, expect, panic, todo, unimplemented, dbg!, ignored Result, lossy as, production assert, or unchecked indexing).
+
+Power-of-Ten rules affected: Rule 1 (simple control flow), Rule 5 (assertion density), Rule 7 (checked returns). All satisfied.
+
+Performance layer: no performance claim made. Decoder invocation count per test
+case: 4 for action, 4 for status, 4 for workflow. With JOURNAL_KEY_PROPTEST_CASES = 128
+the suite completes in 0.38s dev / 0.10s release.
+
+Second-ring evidence: not applicable (no assembly/IR/API/provenance claim).
+
+Skipped gates: moon ci not run because the canonical cargo gate covers
+the target test file. moon ci may be run by the dispatcher/lane driver.
+
+Residual risks:
+- BLOCK_GLOBAL: `vb_qi37_4_2_strict_runtime_admission` test failure (pre-existing,
+  unrelated). Parent repo also has a pre-existing recovery/types.rs compile
+  error blocking the same test from compiling. Out of scope for this P1
+  test-only repair; not a regression caused by this bead.
+- Pre-existing clippy style warnings at lines 655, 818, 837 in
+  journal_side_index_contracts.rs (unrelated to this bead; not introduced).
+
+Ledger row appended: holzman-rust-vb-jtqqx-state11 (sequence 4 of 4).
+
+Status: COMPLETE.

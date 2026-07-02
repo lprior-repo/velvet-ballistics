@@ -1,0 +1,116 @@
+State 12 formal-verifier transcript — vb-rz9ey — Cargo self-reference fix (P0)
+
+[2026-07-01T21:50:00Z] State 12 formal-verifier started
+  - skill: formal-verifier
+  - workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-rz9ey
+  - inputs: proof-obligations.planned.jsonl (2 rows), rust-refinement-obligations.jsonl (0 rows),
+            verifier-lane-decisions.jsonl (14 rows), trusted-base-ledger.jsonl (0 rows),
+            proof-review.md (APPROVED), proof-to-rust-map.md (NO_RUST_REFINEMENT),
+            proof-to-rust-review.md (APPROVED), agent-invocation-ledger.jsonl (8 prior rows)
+  - reviewed_artifacts_existed_before_start: true
+
+[2026-07-01T21:50:30Z] Pre-execution audit
+  - Schema validation: proof-obligations.planned.jsonl PASS (2/2 rows parse)
+  - Schema validation: rust-refinement-obligations.jsonl PASS (0 rows, empty file valid)
+  - Schema validation: verifier-lane-decisions.jsonl PASS (14/14 rows parse)
+  - Schema validation: trusted-base-ledger.jsonl PASS (0 rows, empty file valid)
+  - Schema validation: waiver-candidates.jsonl PASS
+  - Schema validation: agent-invocation-ledger.jsonl PASS (8/8 prior rows parse; chain valid)
+  - Reviewer provenance: 6 prior review steps (states 4, 5, 6, 7, 7-bridge, 11) all approved
+  - Waiver validation: no behavior-affecting waivers; formal-waivers.jsonl will be empty
+  - Mapping-status check: 2 obligations at "planned" (State 7) -> must be "verified" at State 12
+  - Trusted-base disposition: 0 pending (NO_PROOF_WORK disposition)
+  - Verus production-binding pre-check: N/A (no Verus specs exist for this bead)
+  - Mirror drift pre-check: N/A (no production_inner mirrors exist)
+
+[2026-07-01T21:51:00Z] cargo build -p vb_compile --tests --message-format=human
+  - exit: 0
+  - stderr E0432 count: 0
+  - stderr E0624 count: 0
+  - tail: "Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.27s"
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_build_vb_compile_tests.log
+  - sha256: 6de3d7aa7d0a650ffc08fa55d738e78719ff7f7a08ac1eb702709c03e7706690
+  - PO-001 evidence collected.
+
+[2026-07-01T21:52:00Z] cargo test -p vb_compile --no-fail-fast --message-format=human
+  - exit: 0
+  - summary: "cargo test: 1743 passed, 5 ignored (38 suites, 8.11s)"
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_test_vb_compile.log
+  - sha256: ada3c3801f4bcf73a60b1c0a17ac26274e90ffe891ed11d496461bdc5a7f0a47
+  - PO-001 sub-evidence (test execution).
+
+[2026-07-01T21:53:00Z] cargo build -p velvet-ballistics --message-format=human
+  - exit: 0
+  - tail: "Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.23s"
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_build_velvet_ballistics.log
+  - sha256: c08c17eb3ac49089cf1e634eba4316bdb2b7c9b21c3c538fb63d6dc2c3a4f504
+  - PO-002 evidence (downstream CLI binary+library).
+
+[2026-07-01T21:53:30Z] cargo build -p velvet-ballistics-workspace-tests --message-format=human
+  - exit: 0
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_build_workspace_tests.log
+  - sha256: bb101a017ee14c88f3f9b74899818ab6e66b1b80bc251733b49238b92d30a6db
+  - PO-002 evidence (downstream integration tests crate, bare build).
+
+[2026-07-01T21:54:00Z] cargo build -p velvet-ballistics-workspace-tests --tests --message-format=human
+  - exit: 0
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_build_workspace_tests_tests.log
+  - sha256: efbad186f221cb06fe536f89657b21e41ffa5e71d8b7ed7dcd294c4068626aad
+  - PO-002 evidence (downstream integration tests crate, --tests build).
+
+[2026-07-01T21:54:30Z] cargo doc -p vb_compile --no-deps --message-format=human
+  - exit: 0
+  - WorkflowSourceParts grep count on stdout/stderr: 0
+  - Recursive grep target/doc/vb_compile/** for WorkflowSourceParts: 0 matches
+  - log: .beads/vb-rz9ey/dispatch/state-12-formal-verifier/command-logs/cargo_doc_vb_compile_no_deps.log
+  - sha256: 7e6ec4cebcb4460e107899b84c70ae52fc3895037b13d789691611dd68054442
+  - PO-002 evidence (public-API doc surface excludes WorkflowSourceParts).
+
+[2026-07-01T21:55:00Z] Cargo.lock diff (pre-fix vs post-fix)
+  - pre-fix: 2449 lines (jj file show -r @- Cargo.lock)
+  - post-fix: 2450 lines (current Cargo.lock in this workdir)
+  - delta: +1 line at L1908 (the inserted line is ` "vb_compile",` inside vb_compile's dependencies array)
+  - PO-001 sub-evidence (lockfile self-reference is exactly +1).
+
+[2026-07-01T21:55:30Z] awk test-util isolation check
+  - command: awk 'BEGIN{f=0} /^\[dependencies\]/{f=1; next} /^\[/{f=0} f' crates/vb_compile/Cargo.toml | grep -c '^vb_compile'
+  - result: 0 (no vb_compile self-reference under [dependencies])
+  - PO-002 sub-evidence (test-util activation lives only under [dev-dependencies]).
+
+[2026-07-01T22:00:00Z] Layer report assembly
+  - Verus: 2 VLD rows not_applicable surface_absent -> 0 obligations
+  - Kani: 2 VLD rows not_applicable surface_absent -> 0 obligations
+  - Flux: 2 VLD rows not_applicable surface_absent -> 0 obligations
+  - Loom: 1 VLD row not_applicable surface_absent -> 0 obligations
+  - Miri: 1 VLD row not_applicable surface_absent -> 0 obligations
+  - cargo-fuzz: 5 VLD rows not_applicable surface_absent -> 0 obligations
+  - TLA+: out of scope per master governance -> 0 obligations
+  - proptest: 2 obligations (PO-001, PO-002) -> both PASS
+  - Active layers: 1 (proptest). N/A layers: 7.
+
+[2026-07-01T22:02:00Z] Verification ledger closure
+  - PO-001: PASS (exit 0, 0 E0432, 0 E0624, sub-evidence all green)
+  - PO-002: PASS (all 4 cargo invocations exit 0, doc grep returns 0)
+  - Total: 2 PASS, 0 FAIL, 0 WAIVED
+  - formal-waivers.jsonl: empty (0 rows)
+
+[2026-07-01T22:04:00Z] Proof/test/source alignment
+  - PTSA-001 (PO-001): source/test/evidence binding verified, mapping_status: verified
+  - PTSA-002 (PO-002): source/test/evidence binding verified, mapping_status: verified
+  - All source refs resolve to real files; all test refs resolve to real files;
+    all harness refs N/A (no refinement harnesses); all evidence commands executed
+    and logs captured.
+
+[2026-07-01T22:05:00Z] State 12 final disposition: PASS
+  - verification-ledger.jsonl: 2 rows, valid JSONL, both result: PASS
+  - formal-waivers.jsonl: empty, valid
+  - proof-test-source-alignment.jsonl: 2 rows, valid JSONL, both verified
+  - proof-test-source-alignment.md: exists
+  - regression-diff.md: exists (pre-fix vs post-fix; +4/-0 Cargo.toml, +1/-0 Cargo.lock)
+  - formal-verification-report.md: exists (top-level State-12 report)
+  - layer-report-summary.md: exists
+
+[2026-07-01T22:05:30Z] Handoff to State 13 black-hat-reviewer
+  - All State-12 artifacts in place
+  - No blockers; no defects found
+  - Ready for independent adversarial review.

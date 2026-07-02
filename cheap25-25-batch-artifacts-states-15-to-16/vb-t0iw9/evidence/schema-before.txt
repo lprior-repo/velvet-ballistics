@@ -1,0 +1,126 @@
+=== vb-t0iw9 evidence/schema-before.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+--- bd sql -q "DESCRIBE issues;"  (full 54-column output)
+
+Field               | Type          | Null | Key | Default           | Extra            
+--------------------+---------------+------+-----+-------------------+------------------
+id                  | varchar(255)  | NO   | PRI | <nil>             |                  
+content_hash        | varchar(64)   | YES  |     | <nil>             |                  
+title               | varchar(500)  | NO   |     | <nil>             |                  
+description         | longtext      | NO   |     | <nil>             |                  
+design              | longtext      | NO   |     | <nil>             |                  
+acceptance_criteria | longtext      | NO   |     | <nil>             |                  
+notes               | longtext      | NO   |     | <nil>             |                  
+status              | varchar(32)   | NO   | MUL | 'open'            |                  
+priority            | int           | NO   | MUL | 2                 |                  
+issue_type          | varchar(32)   | NO   | MUL | 'task'            |                  
+assignee            | varchar(255)  | YES  | MUL | <nil>             |                  
+estimated_minutes   | int           | YES  |     | <nil>             |                  
+created_at          | datetime      | NO   | MUL | CURRENT_TIMESTAMP | DEFAULT_GENERATED
+created_by          | varchar(255)  | YES  |     | ''                |                  
+owner               | varchar(255)  | YES  |     | ''                |                  
+updated_at          | datetime      | NO   |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED
+closed_at           | datetime      | YES  |     | <nil>             |                  
+closed_by_session   | varchar(255)  | YES  |     | ''                |                  
+external_ref        | varchar(255)  | YES  | MUL | <nil>             |                  
+spec_id             | varchar(1024) | YES  | MUL | <nil>             |                  
+compaction_level    | int           | YES  |     | 0                 |                  
+compacted_at        | datetime      | YES  |     | <nil>             |                  
+compacted_at_commit | varchar(64)   | YES  |     | <nil>             |                  
+original_size       | int           | YES  |     | <nil>             |                  
+sender              | varchar(255)  | YES  |     | ''                |                  
+ephemeral           | tinyint(1)    | YES  |     | 0                 |                  
+wisp_type           | varchar(32)   | YES  |     | ''                |                  
+pinned              | tinyint(1)    | YES  |     | 0                 |                  
+is_template         | tinyint(1)    | YES  |     | 0                 |                  
+mol_type            | varchar(32)   | YES  |     | ''                |                  
+work_type           | varchar(32)   | YES  |     | 'mutex'           |                  
+source_system       | varchar(255)  | YES  |     | ''                |                  
+metadata            | json          | YES  |     | (json_object())   | DEFAULT_GENERATED
+source_repo         | varchar(512)  | YES  |     | ''                |                  
+close_reason        | longtext      | YES  |     | ''                |                  
+event_kind          | varchar(32)   | YES  |     | ''                |                  
+actor               | varchar(255)  | YES  |     | ''                |                  
+target              | varchar(255)  | YES  |     | ''                |                  
+payload             | text          | YES  |     | ''                |                  
+await_type          | varchar(32)   | YES  |     | ''                |                  
+await_id            | varchar(255)  | YES  |     | ''                |                  
+timeout_ns          | bigint        | YES  |     | 0                 |                  
+waiters             | text          | YES  |     | ''                |                  
+hook_bead           | varchar(255)  | YES  |     | ''                |                  
+role_bead           | varchar(255)  | YES  |     | ''                |                  
+agent_state         | varchar(32)   | YES  |     | ''                |                  
+last_activity       | datetime      | YES  |     | <nil>             |                  
+role_type           | varchar(32)   | YES  |     | ''                |                  
+rig                 | varchar(255)  | YES  |     | ''                |                  
+due_at              | datetime      | YES  |     | <nil>             |                  
+defer_until         | datetime      | YES  |     | <nil>             |                  
+no_history          | tinyint(1)    | YES  |     | 0                 |                  
+started_at          | datetime      | YES  |     | <nil>             |                  
+is_blocked          | tinyint(1)    | NO   | MUL | 0                 |                  
+(54 rows)
+
+--- bd sql -q "DESCRIBE wisps;"  (abridged to one column per line for grep)
+
+
+varchar(255)
+varchar(64)
+varchar(500)
+text
+text
+text
+text
+varchar(32)
+int
+varchar(32)
+varchar(255)
+int
+datetime
+varchar(255)
+varchar(255)
+datetime
+datetime
+varchar(255)
+varchar(255)
+varchar(1024)
+int
+datetime
+varchar(64)
+int
+varchar(255)
+tinyint(1)
+varchar(32)
+tinyint(1)
+tinyint(1)
+varchar(32)
+varchar(32)
+varchar(255)
+json
+varchar(512)
+text
+varchar(32)
+varchar(255)
+varchar(255)
+text
+varchar(32)
+varchar(255)
+bigint
+text
+varchar(255)
+varchar(255)
+varchar(32)
+datetime
+varchar(32)
+varchar(255)
+datetime
+datetime
+tinyint(1)
+datetime
+tinyint(1)
+
+
+--- explicit grep for replacement_seq / supersed / seq
+
+$ bd sql -q "DESCRIBE issues;" | grep -iE 'replac|supersed|seq'
+(no rows == no replacement_seq column)

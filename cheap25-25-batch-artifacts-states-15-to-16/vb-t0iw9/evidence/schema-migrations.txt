@@ -1,0 +1,78 @@
+=== vb-t0iw9 evidence/schema-migrations.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+--- bd sql -q "SELECT version FROM schema_migrations ORDER BY version;"  (full 49 rows)
+
+version
+-------
+1      
+2      
+3      
+4      
+5      
+6      
+7      
+8      
+9      
+10     
+11     
+12     
+13     
+14     
+15     
+16     
+17     
+18     
+19     
+20     
+21     
+22     
+23     
+24     
+25     
+26     
+27     
+28     
+29     
+30     
+31     
+32     
+33     
+34     
+35     
+36     
+37     
+38     
+39     
+40     
+41     
+42     
+43     
+44     
+45     
+46     
+47     
+48     
+49     
+(49 rows)
+
+--- bd sql -q "SELECT version, applied_at FROM ignored_schema_migrations ORDER BY version;"
+
+version | applied_at                   
+--------+------------------------------
+1       | 2026-06-24 08:05:56 +0000 UTC
+2       | 2026-06-24 08:05:56 +0000 UTC
+3       | 2026-06-24 08:05:56 +0000 UTC
+4       | 2026-06-24 08:05:56 +0000 UTC
+5       | 2026-06-24 08:05:56 +0000 UTC
+6       | 2026-06-24 08:05:56 +0000 UTC
+7       | 2026-06-24 08:05:56 +0000 UTC
+8       | 2026-06-24 08:05:56 +0000 UTC
+(8 rows)
+
+--- bd sql -q "SELECT MAX(version) AS current_version, COUNT(*) AS migration_count FROM schema_migrations;"
+
+current_version | migration_count
+----------------+----------------
+49              | 49             
+(1 rows)

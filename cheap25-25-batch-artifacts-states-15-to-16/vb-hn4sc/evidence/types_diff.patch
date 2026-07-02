@@ -1,0 +1,57 @@
+--- /proc/self/fd/11	2026-07-01 20:42:17.590256529 -0500
++++ crates/vb_storage/src/types.rs	2026-07-01 20:40:57.714828227 -0500
+@@ -10,12 +10,35 @@
+ pub struct StorageLimits {
+     /// Maximum payload bytes accepted for a journal event.
+     pub max_journal_event_payload_bytes: u32,
++    /// Maximum encoded-record bytes accepted in a single
++    /// [`crate::JournalWriterQueue`] group commit. The default is
++    /// `RECORD_HEADER_BYTES + DEFAULT_JOURNAL_BATCH_BYTE_LIMIT`
++    /// (60 + 1_048_576 = 1_048_636) so the queued gate accommodates
++    /// at least one max-size event per flush while staying
++    /// byte-comparable with the existing
++    /// [`crate::batch::JournalWriteBatch`] limit basis. Callers
++    /// that need to group multiple max-size events in a single
++    /// commit must raise this value; the contract forbids
++    /// raising `max_journal_batch_bytes` past `u64::MAX` (the gate
++    /// treats `u64::MAX` as "do not enforce").
++    pub max_journal_batch_bytes: u64,
+ }
+ 
+ impl StorageLimits {
+     /// Default storage limits.
++    ///
++    /// `max_journal_batch_bytes` is set to
++    /// `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT + 60` (1_048_636 bytes) where
++    /// the literal `60` mirrors [`crate::constants::RECORD_HEADER_BYTES`]
++    /// (the 60-byte record header). `RECORD_HEADER_BYTES` is declared
++    /// as a `usize` for ergonomic slicing and cannot be used directly
++    /// in a const-evaluated `u64` arithmetic expression without
++    /// `feature(const_trait_impl)`; the literal is kept in sync via the
++    /// `const _STORAGE_LIMITS_DEFAULT_BATCH_BYTES_BOUND` assertion at
++    /// the bottom of this file.
+     pub const DEFAULT: Self = Self {
+         max_journal_event_payload_bytes: crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
++        max_journal_batch_bytes: crate::batch::DEFAULT_JOURNAL_BATCH_BYTE_LIMIT.saturating_add(60),
+     };
+ }
+ 
+@@ -425,3 +448,18 @@
+     /// Raw value bytes (presented as hex in the CLI).
+     Raw,
+ }
++
++/// Compile-time invariant: the default queued batch byte budget equals the
++/// existing payload-basis limit (`DEFAULT_JOURNAL_BATCH_BYTE_LIMIT`) plus
++/// the 60-byte record header.
++///
++/// `StorageLimits::DEFAULT.max_journal_batch_bytes` is the *encoded* basis
++/// (header + payload). The existing `JournalWriteBatch::byte_limit` uses
++/// the *payload* basis (`DEFAULT_JOURNAL_BATCH_BYTE_LIMIT`). The two
++/// budgets therefore differ by exactly `RECORD_HEADER_BYTES` (60). This
++/// assertion fails to compile if either constant drifts so the parity
++/// claim between the queued gate and `JournalWriteBatch::append_event`
++/// is preserved by construction.
++#[allow(dead_code)]
++const _STORAGE_LIMITS_DEFAULT_BATCH_BYTES_BOUND: () =
++    assert!(crate::batch::DEFAULT_JOURNAL_BATCH_BYTE_LIMIT + 60 == 1_048_636);

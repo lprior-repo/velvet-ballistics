@@ -1,0 +1,172 @@
+State 14 transcript — bead vb-jtqqx — evidence-packaging + truth-serum
+
+Agent: evidence-packaging (direct child of femdation; no sub-agents)
+Bead: vb-jtqqx
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Workspace status: jj workspace `cheap25-vb-jtqqx` on parent rsvywymk
+Reviewed change: rqywwymq f2aadf8a (state11 commit; +217/-26 in
+crates/workspace_tests/tests/journal_side_index_contracts.rs).
+
+Skills invoked at entry:
+- /home/lewis/.opencode/skill/evidence-packaging/SKILL.md
+- /home/lewis/.opencode/skill/evidence-packaging/references/assurance-bundle-template.md
+- /home/lewis/.opencode/skill/evidence-packaging/references/evidence-audit-checklist.md
+- /home/lewis/.agents/skills/truth-serum/SKILL.md
+
+Inputs read:
+- .beads/vb-jtqqx/STATE.md
+- .beads/vb-jtqqx/contract.md (SIDEX-MAL-001..018)
+- .beads/vb-jtqqx/proof-coverage-matrix.md
+- .beads/vb-jtqqx/verifier-lane-decisions.jsonl (24 rows)
+- .beads/vb-jtqqx/verifier-lane-review.jsonl (24 rows; all accepted)
+- .beads/vb-jtqqx/proof-obligations.planned.jsonl (2 rows)
+- .beads/vb-jtqqx/trusted-base-plan.md
+- .beads/vb-jtqqx/waiver-candidates.jsonl (6 rows; behavior_affecting=false)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl (6 prior rows)
+- .beads/vb-jtqqx/proof-plan-review.md (APPROVED)
+- .beads/vb-jtqqx/implementation.md
+- .beads/vb-jtqqx/traceability-matrix.jsonl (19 rows)
+- .beads/vb-jtqqx/formal-verification-report.md
+- .beads/vb-jtqqx/verification-ledger.jsonl
+- .beads/vb-jtqqx/formal-waivers.jsonl
+- .beads/vb-jtqqx/black-hat-review.md
+- .beads/vb-jtqqx/defects.md
+- .beads/vb-jtqqx/transcript-state11.txt
+- .beads/vb-jtqqx/transcript-state12.txt
+- .beads/vb-jtqqx/transcript-state13.txt
+- crates/workspace_tests/tests/journal_side_index_contracts.rs
+  (in-scope test file, 853 lines)
+- crates/vb_storage/src/keys.rs:281-295, 346-434 (read-only)
+- crates/vb_storage/src/error/key_decode.rs:8-31 (read-only)
+- crates/vb_storage/src/constants.rs:38-43, 77-79 (read-only)
+- crates/vb_core/src/ids/mod.rs (newtype constructors, read-only)
+
+Commands run (with exit codes and evidence refs):
+- test -s .beads/vb-jtqqx/delivery-scope.jsonl → exit 0 (exists)
+- test -s .beads/vb-jtqqx/contract.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/traceability-matrix.jsonl → exit 0 (exists)
+- test -s .beads/vb-jtqqx/proof-plan-review.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/formal-verification-report.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/verification-ledger.jsonl → exit 0 (exists)
+- test -s .beads/vb-jtqqx/black-hat-review.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/assurance-bundle.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/transcript-state12.txt → exit 0 (exists)
+- test -s .beads/vb-jtqqx/transcript-state13.txt → exit 0 (exists)
+- test -s .beads/vb-jtqqx/formal-waivers.jsonl → exit 0 (exists)
+- test -s .beads/vb-jtqqx/defects.md → exit 0 (exists)
+- test -s .beads/vb-jtqqx/implementation.md → exit 0 (exists)
+- jq -c . .beads/vb-jtqqx/delivery-scope.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/traceability-matrix.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/verification-ledger.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/formal-waivers.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/verifier-lane-decisions.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/verifier-lane-review.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/waiver-candidates.jsonl >/dev/null → exit 0
+- jq -c . .beads/vb-jtqqx/agent-invocation-ledger.jsonl >/dev/null → exit 0
+- ! rg -n '^(<<<<<<<|=======|>>>>>>>)' .beads/vb-jtqqx/ → exit 0
+  (no merge-conflict markers)
+- rg -n '^STATUS: APPROVED$|^STATUS: PASS$'
+  .beads/vb-jtqqx/proof-plan-review.md
+  .beads/vb-jtqqx/formal-verification-report.md
+  .beads/vb-jtqqx/black-hat-review.md → 4 matches
+  (proof-plan-review.md:316 STATUS: APPROVED;
+   formal-verification-report.md:432 STATUS: PASS;
+   black-hat-review.md:24 STATUS: APPROVED;
+   black-hat-review.md:188 STATUS: APPROVED)
+- rtk cargo test -p velvet-ballistics-workspace-tests
+  --test journal_side_index_contracts (active-context re-run)
+  → cargo test: 11 passed (1 suite, 0.42s); exit=0
+- rtk cargo clippy -p velvet-ballistics-workspace-tests --tests --no-deps
+  → 0 lints on in-scope file; 152 pre-existing in OTHER test files
+  (identical on parent commit rsvywymk); exit=0
+- rtk awk 'NR>=212 && NR<=448' ... | grep forbidden constructs
+  → 0 unwrap/panic/todo/unimplemented/dbg!/unsafe in PO-008 block
+  (3 "panic" matches are in doc comments; 3 .expect() on
+  valid_key encoder are pre-existing and allowed by contract)
+- rtk sha256sum on Hash Anchors → 4/4 match the on-disk artifacts
+
+Pre-existing global failures (out of scope; documented in
+formal-verification-report.md#pre-existing-global-failures and
+black-hat-review.md PHASE 5):
+1. vb_compile test compile errors (14 errors; pre-existing on parent
+   commit rsvywymk; not in scope for this P1 test-only repair).
+2. vb_core tests/aggregate_resource_budget_properties_red.rs
+   proptest_admission_with_budget_has_runtime_capacity_rejection_surface
+   (asserts on missing `ResourceCapacityExceeded` symbol in
+   crates/vb_runtime/src/admission.rs). BLOCK_GLOBAL round-9
+   carryover.
+3. workspace_tests tests/vb_qi37_4_2_strict_runtime_admission.rs
+   given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied
+   (asserts on missing `AlwaysPresentArtifactStore` symbol).
+   BLOCK_GLOBAL round-9 carryover.
+4. edge_frame_pool_rejects_mismatched_dimension_frames,
+   resource_frame_pool_take_exhausts_available_frames, and 5 more
+   runtime_resource_capacity_*/admission_* tests in
+   aggregate_resource_budget_red.rs. Round-9 carryover.
+5. moon ci 13 task failures: kani-baseline unclosed delimiter,
+   verify-verus Internal Verus Error, supply-chain unsound advisory,
+   benchmark-regression-policy git failure, etc. Pre-existing on
+   parent.
+
+Adversarial audit checklist (10/10 PASS):
+1. No ellipsis laziness in PO-008 block
+2. No hallucinated paths (all source_refs verified to exist)
+3. No deleted tests (only +217/-26 in one test file; 8 other
+   proptests preserved)
+4. Contract parity (SIDEX-MAL-001..018 all covered)
+5. Scope integrity (bounded to one test file; no Cargo.toml /
+   Cargo.lock / vb_storage/** / other test file modified)
+6. Zero runtime panic surface in PO-008 block
+   (0 unsafe, 0 unwrap, 0 panic, 0 todo, 0 unimplemented, 0 dbg!;
+   3 .expect() on valid_key encoder are pre-existing and allowed)
+7. No ignored fallible results (every decode_storage_key result
+   is match-examined)
+8. No unchecked indexing (strategy bound 1u8..=12u8 guarantees
+   truncated_len in [1, 13))
+9. No lossy as (widening u8 → usize is lossless)
+10. No production-source change (jj diff -r @- shows zero changes
+    to vb_storage/**; decoder is read-only)
+
+Outputs emitted:
+- .beads/vb-jtqqx/assurance-bundle.md
+  (STATUS: APPROVED at the bottom; requirement-to-evidence
+  mapping; 0 findings; 6 non-behavior waivers documented)
+- .beads/vb-jtqqx/truth-serum-report.md
+  (STATUS: APPROVED; 10/10 adversarial checks pass; 0 findings)
+- .beads/vb-jtqqx/final-evidence-decision.md
+  (STATUS: APPROVED; 8/8 mandatory checks pass; ready for landing)
+- .beads/vb-jtqqx/transcript-state14.txt (this file)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl seq=7
+  entry_hash: 9e19cb8a2a0bb0aeb6ba61b9b8e07187e918d9a2cde237606e8956ae586fb2b1
+
+Reviewer provenance:
+- Independent reviewer invocation: evidence-packaging-vb-jtqqx-state14
+  (this report).
+- Planner invocation: vb-jtqqx-state4-proof-planner-attempt1.
+- Plan-reviewer invocation: vb-jtqqx-state4-proof-plan-review-attempt1.
+- Implementation invocation: holzman-rust-vb-jtqqx-state11.
+- Verifier invocation: formal-verifier-vb-jtqqx-state12.
+- Black-hat invocation: black-hat-reviewer-vb-jtqqx-state13.
+- Host session: femdation-cheap25-batch.
+
+Verdict: STATUS: APPROVED. The bead is approved for landing.
+All evidence is implementation-bound; all 5 phases of black-hat
+review are PASS; the truth-serum audit ran in the active execution
+context with 0 findings; the assurance bundle maps every
+requirement to test/proof evidence and every reviewer finding to
+a canonical finding/v1.disposition (in this case, 0 findings).
+
+The 7-row agent-invocation ledger chain is now complete:
+seq 1: go-skill-vb-jtqqx-state1
+seq 2: explore-vb-jtqqx-state2
+seq 3: proof-plan-reviewer-vb-jtqqx-state4
+seq 4: holzman-rust-vb-jtqqx-state11
+seq 5: formal-verifier-vb-jtqqx-state12
+seq 6: black-hat-reviewer-vb-jtqqx-state13
+seq 7: evidence-packaging-vb-jtqqx-state14 (this entry)
+
+The bead is ready to be closed in the beads tracker and merged
+into the parent jj workspace. The 5 pre-existing global failures
+are tracked by other beads (out of scope for vb-jtqqx).
+
+State 14 (evidence-packaging) is COMPLETE.

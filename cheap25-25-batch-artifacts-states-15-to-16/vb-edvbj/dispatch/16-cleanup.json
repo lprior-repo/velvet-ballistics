@@ -1,0 +1,20 @@
+{
+  "bead_id": "vb-edvbj",
+  "state": 16,
+  "invocation_id": "cleanup-orchestrator-vb-edvbj-state16",
+  "dispatched_at": "2026-07-02T00:45:00Z",
+  "intended_skill": "landing-skill",
+  "fallback": false,
+  "inputs": [
+    ".beads/vb-edvbj/landing-report.md",
+    ".beads/vb-edvbj/STATE.md"
+  ],
+  "expected_outputs": [
+    ".beads/vb-edvbj/cleanup-report.md",
+    ".beads/vb-edvbj/STATE.md (state 16 final, closed_at set)",
+    ".beads/vb-edvbj/agent-invocation-ledger.jsonl (entry 9)",
+    "bd close vb-edvbj",
+    "bd dolt push"
+  ],
+  "evidence_root": "/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-edvbj/.beads/vb-edvbj/"
+}

@@ -1,0 +1,9 @@
+4:         .get(payload_start..payload_end)
+10:+    // ends past `payload_end`, so any overshoot is corruption or
+12:+    if bytes.len() > payload_end {
+15:+            .checked_sub(payload_end)
+17:+        return Err(JournalError::TrailingBytes { trailing });
+21:     verify_digest_match(raw_payload, header.payload_digest)?;
+30:+    /// `JournalError::TrailingBytes { trailing: N }` mirroring the
+46:+            matches!(result, Err(JournalError::TrailingBytes { trailing: 4 })),
+47:+            "trailing payload bytes must yield TrailingBytes {{ trailing: 4 }}, got {:?}",

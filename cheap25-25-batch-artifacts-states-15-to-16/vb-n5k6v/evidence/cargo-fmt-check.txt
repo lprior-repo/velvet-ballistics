@@ -1,0 +1,5 @@
+(B[m[32m+            step: StepIdx::new(2),
+(B[m[32m+            attempt: 1,
+(B[m         });
+         assert!(matches!(result_s, Err(JournalError::QueueShutdown)));
+     }

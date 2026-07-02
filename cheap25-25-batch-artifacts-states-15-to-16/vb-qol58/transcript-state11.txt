@@ -1,0 +1,50 @@
+holzman-rust: vb-qol58 state 11 attempt 1 — implementation complete.
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58
+
+Inputs read:
+- .beads/vb-qol58/proof-to-rust-map.md        (sha256: 50930fcc1f8e5ead0033c4ae352fdbd7000ef7db51eb00cae2b4c2c57d5c430e)
+- .beads/vb-qol58/proof-to-rust-review.md     (sha256: 85065a066524f773d5bf2d8d14c48e10ee9a3f3d14df0c9da4b082511f65fc9c)
+- .beads/vb-qol58/proof-strategy.md           (sha256: 518c6cb959b604bf3e1faf36e8e9c64e04e5d3319887b8d3b6fb14cf54f17029)
+- .beads/vb-qol58/proof-plan-review.md        (sha256: 864a96e8801da03c60a36aac69b75aa829fbe7bc15e89ef30a5c59db96d70d6c)
+
+Reference skill files read:
+- /home/lewis/.opencode/skill/holzman-rust/SKILL.md  (OpenCode bridge)
+- /home/lewis/.agents/skills/holzman-rust/SKILL.md   (canonical doctrine)
+
+Code edits applied (3 production-line, byte-equivalent borrow):
+1. crates/vb_ipc/src/frame_types.rs:41 — Cursor::new(&mut bytes[..]) → Cursor::new(bytes.as_mut_slice())
+2. crates/workspace_tests/src/test_util/seed.rs:23 — rng.fill(&mut bytes[..]) → rng.fill(bytes.as_mut_slice())
+3. crates/workspace_tests/src/test_util/fixture.rs:58 — rng.fill(&mut vec[..]) → rng.fill(vec.as_mut_slice())
+
+Gates executed:
+- moon run :lint-src                                                 EXIT 0
+- cargo check -p vb_ipc --all-targets --all-features                EXIT 0
+- cargo test -p velvet-ballistics-workspace-tests --lib --all-features   EXIT 0  (18 passed; 0 failed; 0 ignored)
+- rustfmt --edition 2024 --check <touched-files>                    EXIT 0  (deferred fmt-edit not in scope; pre-existing vb_core/src/lib.rs:26 drift logged separately as BLOCK_GLOBAL)
+
+Evidence captured at .evidence/vb-qol58/:
+- lint-src.log        (3572 bytes, sha256 15f6ba2e…)
+- cargo-check.log     (72 bytes,    sha256 736e2582…)
+- cargo-test.log      (133 bytes,   sha256 f303385f…)
+- fmt-check.log       (2331 bytes,  sha256 3a522615…)
+
+Outputs:
+- .beads/vb-qol58/implementation.md      (10155 bytes, sha256 19aa225e…)
+- .beads/vb-qol58/transcript-state11.txt (this file)
+- .beads/vb-qol58/agent-invocation-ledger.jsonl  (ledger_sequence 8 appended)
+
+Decisions:
+- No unsafe, no unwrap/expect/panic/todo/unimplemented, no production assert macros, no checked indexing patterns in touched sites.
+- Performance claim: NONE (borrow-syntax refactor; no allocation, layout, branch, or API change).
+- Second-ring tooling: NOT REQUIRED (no zero-cost / vectorization / bounds-check-removal claim).
+- Verus/Flux/Kani production binding: N/A (matches proof-writer-report.md NO_PROOF_WORK_DECLARED; no formal-verifier artefacts emitted; deny-list lint is a tooling-layer obligation, not implementation behaviour).
+
+Workspace + JJ verification:
+- pwd -P: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58  PASS
+- jj root: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58  PASS
+- jj workspace: cheap25-vb-qol58 (isolated from coord checkout /home/lewis/src/velvet-ballistics)
+
+Status: completed. Agent invocation id: holzman-rust-vb-qol58-state11-20260701T192500Z
+
+Next state: state-12 formal-verifier would re-run the same 3 gates and emit verification-ledger/v1 rows. Bead is implementation-complete from the holzman-rust perspective.

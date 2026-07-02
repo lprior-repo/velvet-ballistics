@@ -1,0 +1,51 @@
+--- /tmp/envelope-rktonwky.rs	2026-07-01 22:00:04.110190623 -0500
++++ crates/vb_storage/src/codec/envelope.rs	2026-07-01 19:33:16.573127986 -0500
+@@ -69,6 +69,19 @@
+         .get(payload_start..payload_end)
+         .ok_or(JournalError::UnexpectedEof)?;
+ 
++    // Cheap-before-expensive: reject trailing bytes before the BLAKE3
++    // digest. Mirrors the canonical `decode_record_payload` check
++    // (INV-CODEC-TB-004). The encoder never produces a record that
++    // ends past `payload_end`, so any overshoot is corruption or
++    // truncation that must fail closed.
++    if bytes.len() > payload_end {
++        let trailing = bytes
++            .len()
++            .checked_sub(payload_end)
++            .ok_or(JournalError::UnexpectedEof)?;
++        return Err(JournalError::TrailingBytes { trailing });
++    }
++
+     // Fail closed: envelope-only decode must still detect payload tampering.
+     verify_digest_match(raw_payload, header.payload_digest)?;
+ 
+@@ -168,4 +181,28 @@
+             result
+         );
+     }
++
++    /// vb-1wora / INV-CODEC-TB-004: `decode_envelope_only` must reject
++    /// trailing bytes past the declared payload boundary with
++    /// `JournalError::TrailingBytes { trailing: N }` mirroring the
++    /// canonical `decode_record_payload` check.
++    #[test]
++    fn decode_envelope_only_rejects_trailing_payload() {
++        let payload = b"valid payload bytes";
++        let mut record = build_valid_record(payload);
++
++        // Append four bytes past the declared payload boundary.
++        record.push(0xAA);
++        record.push(0xBB);
++        record.push(0xCC);
++        record.push(0xDD);
++
++        let result = decode_envelope_only(&record);
++
++        assert!(
++            matches!(result, Err(JournalError::TrailingBytes { trailing: 4 })),
++            "trailing payload bytes must yield TrailingBytes {{ trailing: 4 }}, got {:?}",
++            result
++        );
++    }
+ }

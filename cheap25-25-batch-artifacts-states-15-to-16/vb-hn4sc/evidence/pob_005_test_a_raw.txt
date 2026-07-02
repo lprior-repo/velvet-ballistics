@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)
+
+running 1 test
+test queue::tests::internal_tests::flush_batch_rejects_when_encoded_bytes_exceed_byte_budget ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1538 filtered out; finished in 0.01s
+

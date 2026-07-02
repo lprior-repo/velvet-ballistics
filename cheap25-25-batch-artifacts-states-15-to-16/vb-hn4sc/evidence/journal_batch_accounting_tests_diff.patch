@@ -1,0 +1,31 @@
+--- /proc/self/fd/11	2026-07-01 20:42:23.263027831 -0500
++++ crates/workspace_tests/tests/journal_batch_accounting_tests.rs	2026-07-01 20:27:10.807346249 -0500
+@@ -45,10 +45,15 @@
+ // ============================================================================
+ // B01: BudgetExceeded at byte limit
+ // ============================================================================
+-// Note: JournalWriteBatch does not enforce byte limits directly.
+-// Byte budget enforcement happens at the runtime/budget layer via
+-// BudgetError::JournalBatchBytesExceeded. The batch only enforces
+-// count limits. This test documents that behavior.
++// Note: JournalWriteBatch DOES enforce byte limits at the storage layer
++// via its `byte_limit` field (default
++// `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT = 1_048_576`; see
++// `crates/vb_storage/src/batch/append_event.rs`). The byte gate fires
++// AFTER the durable duplicate check and the count check, and BEFORE
++// the OwnedWriteBatch insert. The test below documents that a single
++// small event is well under the default limit and therefore admitted.
++// For the over-limit parity claim shared with `JournalWriterQueue`,
++// see `crates/vb_storage/src/queue/tests.rs`.
+ 
+ #[test]
+ fn batch_has_no_byte_limit_enforcement_at_storage_layer() {
+@@ -60,7 +65,7 @@
+     let result = batch.append_event(&make_event(run, 0));
+     assert!(
+         matches!(result, Ok(())),
+-        "append_event should succeed at storage layer regardless of byte budget"
++        "append_event must succeed for a small event that fits the default 1_048_576 byte limit"
+     );
+ }
+ 

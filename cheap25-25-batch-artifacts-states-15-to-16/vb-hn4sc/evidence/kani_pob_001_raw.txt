@@ -1,0 +1,13 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-hn4sc/crates/vb_core)
+error: this file contains an unclosed delimiter
+  --> crates/vb_core/src/frame/parts/kani_helpers.rs:22:7
+   |
+ 1 | mod frame_kani_harnesses {
+   |                          - unclosed delimiter
+...
+22 |     }
+   |      ^
+
+error: could not compile `vb_core` (lib) due to 1 previous error
+error: Failed to execute cargo (exit status: 101). Found 1 compilation errors.

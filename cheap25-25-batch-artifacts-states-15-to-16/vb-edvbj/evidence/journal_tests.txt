@@ -1,0 +1,20 @@
+test journal::tests::journal_sequences_are_contiguous_after_sequential_appends ... ok
+test journal::tests::storage_journal_run_admission_event_maps_to_journal_event_correctly ... ok
+test journal::tests::persist_strict_commits_to_fjall ... ok
+test journal::tests::storage_journal_strict_profile_persists_on_each_append ... ok
+test journal::tests::runtime_shutdown_graceful_drains_owned_queued_journal ... ok
+test journal::tests::check_workflow_source_digest_detects_mismatch ... ok
+test journal::tests::persist_strict_after_journaled_append_does_not_error ... ok
+test journal::tests::storage_journal_replays_events_for_run_in_sequence_order ... ok
+test journal::tests::shutdown_forces_syncall_for_journaled_events ... ok
+test journal::tests::drain_for_shutdown_empties_pending_writes_and_makes_them_durable ... ok
+test journal::tests::storage_runtime_journal_rejects_unsequenced_append ... ok
+test journal::tests::trim_eligibility_diagnostic_reports_no_runs_when_empty ... ok
+test journal::tests::storage_runtime_journal_probe_delegates_to_fjall_health ... ok
+test journal::tests::storage_runtime_journal_maps_run_admission_event ... ok
+test journal::tests::trim_events_for_run_requires_durable_snapshot ... ok
+test journal::tests::verify_digests_detects_compiled_ir_mismatch ... ok
+test journal::tests::trim_events_for_run_succeeds_after_snapshot_is_written ... ok
+
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 1735 filtered out; finished in 2.96s
+

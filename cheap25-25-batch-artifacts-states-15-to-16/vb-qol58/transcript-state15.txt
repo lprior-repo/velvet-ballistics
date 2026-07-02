@@ -1,0 +1,19 @@
+State 15 (landing-skill) transcript — vb-qol58 — 2026-07-02T00:15:00Z
+
+Operations performed:
+1. Verified isolated workspace @ / @- revisions
+2. Verified bead-internal gates at bead parent (rsvywymk 1d6c017f): moon run :lint-src PASS, cargo test -p velvet-ballistics-workspace-tests --lib --all-features 18 passed
+3. Re-applied 3-line refactor in isolated workspace (working copy @ = llrsqmwroypk a46c3723)
+4. Created bookmark bead/vb-qol58 pointing to @
+5. jj git push --bookmark bead/vb-qol58 → origin/bead/vb-qol58 @ a46c3723d
+6. From coord checkout: jj git fetch (nothing changed)
+7. jj bookmark set autoresearch/session-20260701 -r bead/vb-qol58 → autoresearch/session-20260701 @ llrsqmwr a46c3723
+8. jj edit bead/vb-qol58 → @ = llrsqmwr a46c3723
+9. jj git push --bookmark autoresearch/session-20260701 → origin/autoresearch/session-20260701 @ a46c3723d
+10. Verified on-disk: sed -n '40,42p' crates/vb_ipc/src/frame_types.rs shows the landed refactor
+11. bd close vb-qol58 --reason "3 production-line lint fixes landed; moon run :lint-src exit 0; cargo test 18+ passed; zero behavior change." → Closed
+12. bd dolt push → Pushing to Dolt remote... / Push complete.
+13. Wrote landing-report.md and updated STATE.md (current_state: 16 after this row; 15 was the previous state)
+14. Appended agent-invocation-ledger.jsonl row 12 (state 15)
+
+Result: BEAD CLOSED. Commit a46c3723d on origin/bead/vb-qol58 and origin/autoresearch/session-20260701. Diff: 3 files, 3 insertions, 3 deletions, zero behavior change. Dolt push complete.

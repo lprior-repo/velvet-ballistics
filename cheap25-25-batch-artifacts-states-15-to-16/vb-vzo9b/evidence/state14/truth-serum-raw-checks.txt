@@ -1,0 +1,33 @@
+=== truth-serum panic-surface check on touched fuzz body ===
+--- fuzz/src/journal_target/readback.rs ---
+rg exit=1
+
+=== truth-serum panic-surface check on production recovery surface ===
+rg exit=1
+
+=== truth-serum anti-verification-laundering check on touched file ===
+rg exit=1
+
+=== truth-serum production-asset-macro check on touched file ===
+97:    assert!(matches!(
+104:    assert!(!matches!(classification, ReadbackFamilySet::Unreadable));
+150:        assert_eq!(strict_result.is_ok(), relaxed_result.is_ok());
+178:        assert!(artifact.accepted_at_seq.get() > 0);
+179:        assert!(artifact.verification.gate_count > 0);
+209:                assert_eq!(run_summary, expected);
+rg exit=0
+
+=== truth-serum forbidden-pattern recheck on touched fuzz body ===
+--- pattern: assert!\([^)]+\|\| ---
+rg exit=1
+--- pattern: matches!\s*\(\s*run_summary ---
+rg exit=1
+--- pattern: let _summary ---
+rg exit=1
+--- pattern: dbg!\s*\(\s*run_summary ---
+rg exit=1
+--- pattern: \.unwrap\(\) ---
+rg exit=1
+--- pattern: \.expect\( ---
+rg exit=1
+DONE

@@ -1,0 +1,33 @@
+warning: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/fuzz/Cargo.toml: unused manifest key: profile.fuzz.bench
+warning: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/fuzz/Cargo.toml: unused manifest key: profile.fuzz.doc
+warning: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/fuzz/Cargo.toml: unused manifest key: profile.fuzz.test
+warning: method `record_action_abandoned` is never used
+   --> /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/crates/vb_storage/src/recovery/replay/summary/accumulator.rs:227:8
+    |
+ 46 | impl FrameSeedAccumulator {
+    | ------------------------- method in this implementation
+...
+227 |     fn record_action_abandoned(mut self, ticket: ActionTicket) -> RecoveryResult<Self> {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_storage` (lib) generated 1 warning
+warning: unused variable: `event`
+   --> /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/crates/vb_runtime/src/journal/chunk_001.rs:252:9
+    |
+252 |         event: RuntimeJournalEvent,
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_event`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `seq`
+   --> /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-vzo9b/crates/vb_runtime/src/journal/chunk_001.rs:253:9
+    |
+253 |         seq: EventSeq,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_seq`
+
+warning: `vb_runtime` (lib) generated 2 warnings (run `cargo fix --lib -p vb_runtime` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+build_exit=0
+build_exit=0

@@ -1,0 +1,28 @@
+$ git -C /home/lewis/src/velvet-ballistics status
+On branch autoresearch/session-20260701
+nothing to commit, working tree clean
+
+$ git -C /home/lewis/src/velvet-ballistics log --oneline -3
+fac7386c6 (HEAD -> autoresearch/session-20260701) fix: strict lint compliance - fix compilation errors, add workspace lints and clippy.toml
+44d0be4af (origin/main, origin/HEAD, main) fix: use artifact required_capabilities for recovery admission
+6e1e8b3d9 fix: implement Recover command handler and recovery artifact lookup
+
+$ jj status -R /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cib14
+Working copy changes:
+M .config/source-length-exceptions.txt
+M crates/vb_runtime/src/journal/chunk_002.rs
+M crates/vb_runtime/src/journal/tests/chunk_002.rs
+Working copy  (@) : zpmskmnz 472f01c1 (conflict) vb-cib14: p11-holzman-rust — wire Resumed → RunResumed
+Parent commit (@-): zqrxmyxz 6e1e8b3d fix: implement Recover command handler and recovery artifact lookup
+Warning: There are unresolved conflicts at these paths:
+crates/vb_runtime/src/journal/tests/chunk_002.rs 2-sided conflict
+
+exit_status: 0
+
+NOTE: bead work is intentionally NOT pushed to main per bead scope. Implementation lives in isolated
+workspace per AGENTS.md absolute workspace rule; bead closure in Dolt is the only artifact published
+to remote. The working-copy conflicts are an artifact of the cheap25 batch rebase onto main@origin
+AFTER the implementation was captured; the State 12 evidence proves the pre-rebase implementation
+passed 1812/1812 cargo tests + 27/27 Verus + 2/2 loom + 3/3 workspace-tests + 6/6 storage_event.
+Coupled release dependency: vb-edvbj owns the catch-all removal; the catch-all remains in place so
+main can compile even when vb-cib14's branch is merged.

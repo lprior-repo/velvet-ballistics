@@ -1,0 +1,28 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/vb_cli-4d7418950ef4c43f)
+
+running 21 tests
+test cli_postcard::tests::decode_postcard_json_propagates_trailing_bytes ... ok
+test cli_postcard::tests::decode_accepts_exact_length_frame ... ok
+test cli_postcard::tests::decode_rejects_corrupted_crc_before_exposure ... ok
+test cli_postcard::tests::decode_rejects_corrupted_digest_before_exposure ... ok
+test cli_postcard::tests::decode_rejects_max_plus_one_payload_before_exposure ... ok
+test cli_postcard::tests::decode_rejects_wrong_kind ... ok
+test cli_postcard::tests::decode_rejects_truncated_header ... ok
+test cli_postcard::tests::decode_rejects_trailing_bytes_after_valid_frame ... ok
+test cli_postcard::tests::decode_rejects_old_and_future_versions ... ok
+test cli_postcard::tests::test_decode_data_too_short ... ok
+test cli_postcard::tests::postcard_error_trailing_bytes_is_unit_variant_and_distinct ... ok
+test cli_postcard::tests::test_decode_invalid_header_length ... ok
+test cli_postcard::tests::test_decode_invalid_magic ... ok
+test cli_postcard::tests::test_decode_payload_too_large ... ok
+test cli_postcard::tests::test_decode_valid_postcard ... ok
+test cli_postcard::tests::test_encode_postcard ... ok
+test cli_postcard::tests::test_header_size ... ok
+test cli_postcard::tests::test_max_payload ... ok
+test cli_postcard::tests::test_postcard_header_from_bytes ... ok
+test cli_postcard::tests::test_valid_magic ... ok
+test cli_postcard::tests::test_roundtrip ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 197 filtered out; finished in 0.00s
+

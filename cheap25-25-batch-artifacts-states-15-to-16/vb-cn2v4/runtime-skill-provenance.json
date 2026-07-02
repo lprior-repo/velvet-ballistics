@@ -1,0 +1,15 @@
+{
+  "bead_id": "vb-cn2v4",
+  "bead_title": "(see bd show)",
+  "skill": "go-skill",
+  "skill_version": "10.1.0",
+  "invocation_timestamp": "2026-07-01T15:21:37Z",
+  "agent_model": "femdation-controller",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-cn2v4",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "pipeline_state": 1,
+  "state_description": "Runtime provenance captured. Bead claimed. Isolated workspace created. State 1 artifacts written.",
+  "loaded_skill_name": "go-skill",
+  "observed_state_range": "1..16",
+  "loaded_skill_version": "10.1.0"
+}

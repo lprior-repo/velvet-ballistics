@@ -1,0 +1,5 @@
+State 2 (explore) for vb-815l8 via explore subagent.
+workspace=/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-815l8
+started_at=2026-07-01T16:01:57Z
+completed_at=2026-07-01T16:02:57Z
+outputs: codebase-map.md (sha256=aa61d325fdf22e7a...), delivery-scope.jsonl (sha256=2d7769eed2965799...)

@@ -1,0 +1,5 @@
+  useless use of `vec!` (1x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_005.rs:68:22
+  `panic` should not be present in production code (1x)
+    crates/vb_storage/tests/proptest_journal_idempotency.rs:35:17
+[full output: ~/.local/share/rtk/tee/1782959959_cargo_clippy.log]

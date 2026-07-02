@@ -1,0 +1,42 @@
+bead_id: vb-tsjnz
+state: 16
+stage: cleanup
+controller: femdation (direct child dispatch)
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-tsjnz
+predecessor: state 15 (landing-skill) — bead closed at 2026-07-02T01:05Z
+
+step_01_artifact_persistence:
+  - .beads/vb-tsjnz/STATE.md (current_state: 16) — preserved
+  - .beads/vb-tsjnz/landing-report.md — preserved
+  - .beads/vb-tsjnz/cleanup-report.md — this cleanup pass
+  - .beads/vb-tsjnz/agent-invocation-ledger.jsonl — rows appended (state-15 and state-16)
+  - .beads/vb-tsjnz/transcript-state{1,2,4b,15,16}.txt — preserved
+  - .beads/vb-tsjnz/evidence/*-state15-*.log — preserved (current-timestamp cargo gates)
+  - .beads/vb-tsjnz/evidence/*-state12-*.log — preserved (state-12 verifier outputs)
+  - .beads/vb-tsjnz/evidence/{1782954609,1782954644,1782954650,1782954700,1782954800}-*.log — preserved (state-11 holzman-rust evidence)
+  - .beads/vb-tsjnz/{contract,type-contracts,domain-model,error-taxonomy,hazard-analysis,boundary-map,codebase-map,baseline-report,global-readiness-report,runtime-skill-provenance,routing-ledger,delivery-scope,proof-coverage-matrix,proof-obligations.planned.jsonl,proof-plan-review,proof-plan-findings.jsonl,proof-seeds,proof-strategy,trusted-base-plan,formal-verification-report,workflow-model,implementation,black-hat-review,truth-serum-report,assurance-bundle,final-evidence-decision,verifier-lane-matrix,verifier-lane-decisions.jsonl,verifier-lane-review.jsonl,traceability-matrix.jsonl,verification-ledger.jsonl,dispatch,defects,formal-waivers.jsonl,waiver-candidates.jsonl}.* — preserved (states 1-14 evidence)
+
+step_02_transient_jj_state_check:
+  - jj status → Working copy matches @ (xnskrsku 78b79a43); no transient edits
+  - jj evolog -r @ → 1 describe op (78b79a43 description set); 1 snapshot op (998a49cb the original commit); 1 workspace init op (5ed28a5e)
+  - no transient rebaser/orphaned commits — change is a single linear commit
+
+step_03_remote_sync:
+  - origin/main @ 44d0be4af (unchanged — coordination with cheap25 batch integration is upstream)
+  - local cheap25-vb-tsjnz bookmark @ 78b79a43 (the landed commit; not pushed to origin in this dispatch)
+  - jj git push is OUT OF SCOPE for this landing-skill pass per the user's narrow instruction (bd close + bd dolt push only)
+
+step_04_dolt_sync:
+  - bd dolt push → Pushing to Dolt remote / Push complete (state 15)
+  - Dolt remote: https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics (branch main)
+  - Backend: server mode (`.beads/metadata.json` dolt_mode = server); bd-managed Dolt SQL server is the active backend
+  - .beads/embeddeddolt/ is NOT present (no embedded-mode trap)
+
+step_05_handoff:
+  - Bead: vb-tsjnz — CLOSED
+  - Commit: xnskrsku 78b79a43 on local cheap25-vb-tsjnz bookmark
+  - Diff: crates/vb_queue_semantics/Cargo.toml (+4 lines, -1 line)
+  - Sister-crate parity: vb_queue_semantics now matches 7 sister crates (vb_cli, vb_compile, vb_core, vb_ipc, vb_runtime, vb_storage, vb_validate) on the version.workspace + [lints] workspace=true pattern
+  - Next upstream step: refinery (or equivalent) fast-forwards main to integrate this commit; or a follow-up dispatch performs `jj git push --bookmark cheap25-vb-tsjnz` if upstream landing pipeline does not auto-pull isolated-workspace bookmarks
+
+result: PASS — cleanup complete, all persistent artifacts preserved, handoff notes recorded.

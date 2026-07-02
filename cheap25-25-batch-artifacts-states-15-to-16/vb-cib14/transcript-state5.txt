@@ -1,0 +1,15 @@
+Proof-writer state 5 execution for bead vb-cib14.
+Wrote 8 verification artifacts across 4 verifiers.
+Verus smoke check: vb_cib14_resume_storage_map.rs passes (27 verified, 0 errors).
+Verus extern passes (3 verified, 0 errors).
+Verus pre-existing jnz9 spec still passes (36 verified, 0 errors).
+Verus production-binding audit: STRONG=0, WEAK=72, VACUUM=0.
+Source-lint smoke: check-panic-surface.sh reports NoViolationFound, ExitCode: 0.
+Proptest smoke (default feature off): 1/1 passed (no-op marker).
+Proptest smoke (--features vb-cib14): 3/3 passed (post-fix mapper, legacy bug, pending marker).
+Loom half: WRITTEN at crates/vb_runtime/src/models/loom/vb_cib14_resume_replay.rs (gated on cfg(loom) and feature vb-cib14); execution deferred to State 12.
+6 of 7 obligations PENDING_FORMAL_EXECUTION until the production fix lands:
+  - PO-001: VERIFIED (Verus spec fns and exec proofs all verify).
+  - PO-002/003/004/005/006/007: WRITTEN; require convert_resume_timestamp, RuntimeError::ResumeTimestampOverflow, and the post-fix Resumed mapper arm to land.
+Feature flag vb-cib14 added to crates/vb_runtime/Cargo.toml and crates/workspace_tests/Cargo.toml.
+Source-length exception added to .config/source-length-exceptions.txt for the extern file (998 lines; pre-existing 876-line baseline).

@@ -1,0 +1,27 @@
+vb-cib14 p15-landing transcript
+
+[05:16:00] pwd -P confirmed: /home/lewis/src/velvet-ballistics (coord checkout, NOT for editing per AGENTS.md)
+[05:16:01] Loaded skill /home/lewis/.agents/skills/landing-skill/SKILL.md
+[05:16:05] Read assurance-bundle.md + final-evidence-decision.md (STATUS: APPROVED for landing)
+[05:16:10] Verified all 12 ledger rows in agent-invocation-ledger.jsonl have valid hash chains
+[05:16:15] sha256sum validated for the 7 review/test/proof artifacts cited in the assurance bundle
+[05:16:30] Verified coord checkout status: clean (no source edits in coord checkout per AGENTS.md)
+[05:16:45] bd close vb-cib14 --reason "Resumed → RunResumed mapping wired in boundary_storage_event; timestamp overflow typed error added; storage_event_clones_the_event_exactly_once_per_dispatch preserved; 1812 cargo tests pass (default + vb-cib14 feature). STRONG-coupled with vb-edvbj." → exit 0, "Closed vb-cib14"
+[05:17:00] bd show vb-cib14 --json → status=closed, closed_at=2026-07-02T05:18:18Z, priority=0, close_reason populated
+[05:17:15] bd dolt push → "Pushing to Dolt remote... Push complete." exit 0
+[05:17:30] Captured raw command output to .beads/vb-cib14/evidence/state15-bd-close-and-dolt-push.txt
+[05:17:45] Captured coord/isolated status to .beads/vb-cib14/evidence/state15-git-jj-status.txt
+[05:18:00] Wrote .beads/vb-cib14/landing-report.md (8 sections, all evidence mapped to .beads/vb-cib14/evidence/ files)
+[05:18:15] Appended State 15 row to .beads/vb-cib14/agent-invocation-ledger.jsonl (sequence=13, hash validated)
+[05:18:18] Verified ledger chain integrity: 13 rows, all hashes match
+
+STATUS: bead closed in Dolt; landing-report.md written; ledger row appended.
+
+Outputs:
+- .beads/vb-cib14/landing-report.md (STATUS: LANDED)
+- .beads/vb-cib14/STATE.md (current_state: 16, status: landed_and_cleaned)
+- .beads/vb-cib14/evidence/state15-bd-close-and-dolt-push.txt
+- .beads/vb-cib14/evidence/state15-git-jj-status.txt
+- agent-invocation-ledger.jsonl (13 rows; hash chain validated)
+
+Verdict: ready for state 16 cleanup.

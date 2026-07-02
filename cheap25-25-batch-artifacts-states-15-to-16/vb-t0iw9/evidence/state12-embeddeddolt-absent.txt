@@ -1,0 +1,2 @@
+PASS: .beads/embeddeddolt/ does not exist
+ls: cannot access '.beads/embeddeddolt': No such file or directory

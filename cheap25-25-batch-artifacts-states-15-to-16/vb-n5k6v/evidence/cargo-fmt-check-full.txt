@@ -1,0 +1,50 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v/crates/vb_core/src/lib.rs:26:
+ pub mod replay;
+ pub mod shard;
+ pub mod span;
+[31m-pub mod value;
+(B[m pub mod time;
+[32m+pub mod value;
+(B[m pub mod value_store;
+ pub mod workflow;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v/crates/vb_core/src/time.rs:71:
+ }
+ 
+ impl std::error::Error for TimeError {}
+[32m+
+(B[mDiff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v/crates/vb_runtime/src/frame_pool/tests.rs:85:
+ #[test]
+ fn is_empty_returns_false_for_new_pool() {
+     let pool = new_pool(2, 1, 4);
+[31m-    assert_eq!(pool.is_empty(), false, "pool is pre-allocated with capacity frames");
+(B[m[32m+    assert_eq!(
+(B[m[32m+        pool.is_empty(),
+(B[m[32m+        false,
+(B[m[32m+        "pool is pre-allocated with capacity frames"
+(B[m[32m+    );
+(B[m     assert_eq!(pool.available(), 4);
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v/crates/vb_runtime/src/frame_pool/tests.rs:114:
+ fn frame_pool_new_preallocates_capacity_frames() {
+     let pool = new_pool(2, 1, 8);
+     assert_eq!(pool.capacity(), 8);
+[31m-    assert_eq!(pool.available(), 8, "all 8 frames pre-allocated at construction");
+(B[m[32m+    assert_eq!(
+(B[m[32m+        pool.available(),
+(B[m[32m+        8,
+(B[m[32m+        "all 8 frames pre-allocated at construction"
+(B[m[32m+    );
+(B[m     assert_eq!(pool.is_empty(), false);
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-n5k6v/crates/vb_runtime/src/frame_pool/tests.rs:139:
+     // Given a pool with capacity 2
+     let mut pool = new_pool(2, 1, 2);
+     // When taking all 2 frames without releasing
+[31m-    let _f1 = pool.take(RunId::new(1), StepIdx::new(0)).expect("first take");
+(B[m[31m-    let _f2 = pool.take(RunId::new(2), StepIdx::new(0)).expect("second take");
+(B[m[32m+    let _f1 = pool
+(B[m[32m+        .take(RunId::new(1), StepIdx::new(0))
+(B[m[32m+        .expect("first take");

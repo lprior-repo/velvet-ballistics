@@ -1,0 +1,108 @@
+transcript-state11.txt — holzman-rust implementation for vb-09aaz
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-09aaz
+Bead: vb-09aaz — Storage: abort write batch on all index key construction failures
+State: 11 (holzman-rust implementation)
+Skill: holzman-rust
+Parent: proof-plan-reviewer-vb-09aaz-state4b
+
+## Skill files read
+- /home/lewis/.opencode/skill/holzman-rust/SKILL.md
+- /home/lewis/.agents/skills/holzman-rust/SKILL.md
+- /home/lewis/.agents/skills/holzman-rust/references/nasa-jpl-standards.md
+
+## Source files read
+- crates/vb_storage/src/batch/append_event.rs (target lines 104-115)
+- crates/vb_storage/src/batch/putters.rs (canonical abort pattern, lines 1-269)
+- crates/vb_storage/src/batch/t_putters_b.rs (canonical regression test, lines 177-209)
+- crates/vb_storage/src/batch/t_append_event.rs (target: append new test)
+- crates/vb_storage/src/batch/types.rs (JournalWriteBatch fields + is_aborted())
+- crates/vb_storage/src/batch/commit.rs (commit short-circuit on aborted = true)
+- crates/vb_storage/src/batch/action_index.rs (function under guard)
+- crates/vb_storage/src/batch/tests.rs (test imports/helpers)
+- crates/vb_storage/src/keys.rs (index_action_key layout)
+- crates/vb_storage/src/constants.rs (INDEX_ACTION_KEY_BYTES = 13)
+- crates/vb_storage/src/ids/mod.rs (ActionId = u16, StepIdx = u16, RunId = u64)
+- crates/vb_storage/src/events.rs (ActionScheduled variant)
+- crates/vb_storage/src/batch/t_byte_accounting_part4.rs (related abort tests)
+
+## Plan
+
+1. Modify crates/vb_storage/src/batch/append_event.rs:
+   - At lines 104-115: in stage_pending_action_index_op Err path, set
+     self.aborted = true BEFORE propagating ?
+   - Mirror canonical pattern at batch/putters.rs (28 occurrences of
+     self.aborted = true)
+   - Update Postconditions doc to document the abort contract
+
+2. Add regression test in batch/t_append_event.rs:
+   - batch_index_key_error_aborts_commit (mirror of t_putters_b.rs:177-209)
+   - Happy-path ActionScheduled event with comment documenting why
+     IndexStatusState::Other(0)-style collision cannot be applied to
+     index_action_key (structurally infallible for valid 13-byte layout)
+
+3. NO changes to queued-writer or direct-path append_event
+   (review-only per task scope).
+
+## Execution
+
+1. Production code change in append_event.rs:
+   - Replaced `self.journal.stage_pending_action_index_op(&mut self.inner, event)?;`
+     with a `if let Err(e) = ... { self.aborted = true; return Err(e); }` block.
+   - Added a doc comment explaining why this is needed (event already staged
+     into inner by line 104; without abort, commit() would persist partial
+     batch).
+   - Added KeyCapacity postcondition to the doc block.
+
+2. Test added to t_append_event.rs:
+   - batch_index_key_error_aborts_commit
+   - Uses JournalEvent::ActionScheduled (which goes through
+     stage_pending_action_index_op)
+   - Verifies happy path: result.is_ok(), !batch.is_aborted(), batch.len() == 2
+   - Verifies commit succeeds and event is persisted exactly once
+   - Comments document why the canonical IndexStatusState::Other(0)
+     technique cannot be applied to the action index (structurally
+     infallible for fixed 1+2+8+2 byte layout)
+
+3. Bookkeeping changes (AGENTS.md, .gitignore, .beads/.gitignore,
+   .claude/settings.json) from `bd init --reinit-local` reverted to
+   keep the diff focused on the bead work.
+
+## Verification
+
+All commands run from /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-09aaz:
+
+- cargo check -p vb_storage --all-targets --all-features: PASS
+- cargo check --workspace --all-targets --all-features: PASS
+- cargo fmt -p vb_storage --check: PASS (exit 0)
+- cargo clippy -p vb_storage --lib --bins --examples --all-features
+  -- -D warnings -D unsafe_code -D clippy::unwrap_used
+  -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn
+  -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro
+  -D clippy::indexing_slicing -D clippy::string_slice
+  -D clippy::get_unwrap -D clippy::arithmetic_side_effects
+  -D clippy::as_conversions -D clippy::let_underscore_must_use
+  -D clippy::await_holding_lock: PASS (No issues found)
+- cargo test -p vb_storage --lib 'batch_index_key': PASS (2 passed)
+- cargo test -p vb_storage --lib 't_append_event': PASS (10 passed)
+- cargo test -p vb_storage --lib 't_putters_b': PASS (6 passed)
+- cargo test -p vb_storage --lib 'batch': PASS (195 passed)
+- cargo test -p vb_storage: PASS (1672 passed, 17 suites)
+
+## Outputs
+
+- .beads/vb-09aaz/implementation.md (state11 implementation report)
+- .beads/vb-09aaz/evidence/change.diff (140-line diff of the two-file change)
+- .beads/vb-09aaz/evidence/t_append_event-tests.txt
+- .beads/vb-09aaz/evidence/t_putters_b-tests.txt
+- .beads/vb-09aaz/evidence/batch_index_key-tests.txt
+- .beads/vb-09aaz/evidence/batch-all-tests.txt
+- .beads/vb-09aaz/evidence/vb_storage-full-tests.txt
+- .beads/vb-09aaz/evidence/vb_storage-clippy.txt
+- .beads/vb-09aaz/evidence/vb_storage-fmt.txt
+- .beads/vb-09aaz/evidence/vb_storage-check.txt
+- .beads/vb-09aaz/evidence/workspace-check.txt
+- .beads/vb-09aaz/agent-invocation-ledger.jsonl (appended state11 row)
+- .beads/vb-09aaz/transcript-state11.txt (this file)
+
+Status: completed

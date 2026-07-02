@@ -1,0 +1,1 @@
+State 15 (landing-skill) transcript — bead vb-rz9ey. Bead-state close + sync only. bd close + bd dolt push succeeded. Production code (Cargo.toml self-reference) already landed via per-bead jj commits in the femdation cheap25 batch (jj change qzkvwtzqxllq / commit 96358ce6 in cheap25-vb-rz9ey workspace). landing-report.md written. Handoff to state 16 (cleanup).

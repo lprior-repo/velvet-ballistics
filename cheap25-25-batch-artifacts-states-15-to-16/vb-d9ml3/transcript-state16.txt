@@ -1,0 +1,10 @@
+cleanup-orchestrator: p16-cleanup-orchestrator — vb-d9ml3 storage trim/snapshot key length cap
+Bead: vb-d9ml3 (P1)
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+Source checkout: /home/lewis/src/velvet-ballistics
+Operator: landing-skill (direct child of femdation, combined p15-16)
+Bead closure: bd close vb-d9ml3 --reason MAX_TRIM_KEY_LEN + MAX_SNAPSHOT_KEY_LEN public aliases added; magic-17 replaced; TrimError::IncompleteTrim (0x4102) reused; 42 trimming + 10 snapshot_tests pass.
+Tracker push: bd dolt push -> success (Dolt server mode 127.0.0.1:45645, branch main)
+JJ/Git push: DEFERRED to refinery (cheap25-25-batch lineage merge to origin/main)
+Orphan audit: 0 orphans introduced by this bead; coord checkout clean
+Final disposition: CLOSED at current_state=16

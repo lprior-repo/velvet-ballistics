@@ -1,0 +1,4 @@
+State 7 proof-to-implementation (bridge) — vb-7akm0
+Visibility-narrowing refactor; 6 obligations, all behavior_affecting=false.
+No formal proofs (proof-review.md §11: APPROVED — NO_PROOF_WORK).
+Produced proof-to-rust-map.md and empty rust-refinement-obligations.jsonl (no Rust refinements).

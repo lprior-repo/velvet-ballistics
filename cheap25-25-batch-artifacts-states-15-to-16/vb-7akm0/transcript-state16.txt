@@ -1,0 +1,72 @@
+# Transcript — vb-7akm0 State 16 (cleanup)
+
+bead_id: vb-7akm0
+state: 16
+skill: landing-skill (cleanup phase)
+invocation_id: cleanup-vb-7akm0-state16
+parent_invocation_id: landing-skill-vb-7akm0-state15
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+started_at: 2026-07-02T05:19:00Z
+completed_at: 2026-07-02T05:22:00Z
+status: completed
+
+## Cleanup Actions
+
+### 1. Deferred-scope backlog (from implementation.md Deviations + Residual Risks)
+
+Three documented deferrals remain as follow-up work, out of scope for
+this lint-cleanup bead. Recorded here for femdation backlog intake:
+
+- xtask inner-module unreachable_pub cleanup (~173 items). Root cause:
+  removing `xtask/src/main.rs` crate-root `#![allow(unreachable_pub)]`
+  cascades ~173 pre-existing errors in xtask inner modules. Suppression
+  RESTORED with NOTE comment. (implementation.md Deviation 1.)
+- diag_codes.rs CODE_* constants (60+ `pub const`) narrow to pub(crate).
+  Zero external consumers confirmed; deferred as a larger refactor.
+  (implementation.md Residual risk 2.)
+- diag_convert.rs suppression: file's only item is `pub(super) fn
+  all_variants`, not subject to unreachable_pub; suppression vestigial
+  but left in place per bead scope. (implementation.md §Evidence.)
+
+These are NOT regressions and NOT owned by vb-7akm0 going forward.
+
+### 2. Pre-existing global defects (separate-bead owners)
+
+- PO-TEST-001: proptest_admission_with_budget_has_runtime_capacity_rejection_surface
+  (crates/vb_core/tests/aggregate_resource_budget_properties_red.rs:73)
+  fails on parent commit too. Owned by vb_core/vb_runtime admission
+  resource-string repair bead.
+- PO-EXTERN-001: 12 production_inner drifts in verification/verus/production_inner/*.rs.
+  vb-7akm0 touches zero verification/verus/ files. Owned by production_inner
+  mirror-refresh bead.
+
+### 3. Orphan-test retirement confirmation
+
+crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs
+DELETED (646 lines) and its `.config/source-length-exceptions.txt` row
+(line 221, `vb-jpq7.47|split-or-retire-before-release`) removed. Default
+disposition RetireOrphanTest per decision-ack.md. No `[[test]]` registration
+existed for it; retirement keeps check-source-length.sh from failing on a
+phantom row.
+
+### 4. Workspace state
+
+- jj workspace: cheap25-vb-7akm0 (root /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0)
+- work commit qvlkvsyy d4476627 retained on bookmark cheap25-vb-7akm0 for
+  batch integration; NOT abandoned.
+- No temp files, no stray patch/backup artifacts introduced by states 15/16.
+- .beads/vb-7akm0/ artifact set complete; ledger extended to state 16.
+
+### 5. Bead-DB state
+
+- vb-7akm0 status: CLOSED (verified via bd show, Updated 2026-07-02).
+- dolt push to origin (dolthub priorlewis43/velvet-ballistics): complete.
+
+## Gate Status
+
+- deferred scope documented for backlog: yes
+- pre-existing defects attributed to separate beads: yes
+- orphan test + source-length row retired: yes
+- work commit preserved for integration: yes
+- STATE.md advanced to current_state 16: yes
+- ledger chain intact through state 16: yes

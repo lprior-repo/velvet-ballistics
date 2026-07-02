@@ -1,0 +1,39 @@
+[transcript-state13.txt]
+black-hat-reviewer session for vb-r8oso (2026-07-01T22:00:00Z to 2026-07-01T22:10:00Z)
+
+Inputs:
+- contract.md (C-1..C-12, 334 lines)
+- implementation.md (State 11, 333 lines)
+- formal-verification-report.md (State 12)
+- verification-ledger.jsonl (7 rows)
+- formal-waivers.jsonl (empty)
+- evidence/downstream-caller-audit.md (126 lines)
+- 9 raw evidence logs in evidence/
+
+Attack Surface:
+1. Silent rewrite of event.seq() (C-5)
+2. Variant arm omission in journal_error_match_covers_all_variants (C-3)
+3. Diagnostic code 0x4042 conflict (C-3.3)
+4. C-6 test regression
+5. Kani feature isolation (C-9 / AGENTS.md)
+6. Downstream caller breakage (C-10)
+7. No-panic contract on next_sequence_at_write (C-2.9)
+8. Key-only lookup discipline (C-2.4)
+
+Dispositions:
+- AV-1: PASS — actual: event.seq() verbatim at all 3 guard sites; no &mut event, no event.seq = expected, no set_seq
+- AV-2: PASS — SequenceMismatch arm added to exhaustive match guard at tests.rs:7742
+- AV-3: PASS — 0x4042 is the next-free entry in the 0x404x block; file compiles
+- AV-4: PASS — tests.rs:1737, 4612, 4585 updated and renamed per C-6
+- AV-5: PASS — #[cfg(all(kani, feature = "kani-sequence-at-write"))] registered
+- AV-6: PASS — downstream-caller-audit.md (126 lines) confirms no production caller writes non-contiguous seq
+- AV-7: PASS — clippy zero warnings; no panic/unwrap/expect/todo/unimplemented/dbg
+- AV-8: PASS — prefix().next_back() + decode_storage_key on 17-byte key only
+
+Defects: 0
+
+Verdict: STATUS: APPROVED
+
+Outputs:
+- black-hat-review.md (12.4K)
+- defects.md (442B, empty defects)

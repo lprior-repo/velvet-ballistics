@@ -1,0 +1,41 @@
+=== vb-t0iw9 evidence/port-drift.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+Side discovery (NOT in this bead's MUST-NOT-violating scope; recorded for follow-up).
+
+--- Three different port numbers, only one of which is the actual server.
+
+$ bd dolt status
+Dolt server: running
+  PID:  1318114
+  Port: 45645
+  Data: /home/lewis/src/velvet-ballistics/.beads/dolt
+  Logs: /home/lewis/src/velvet-ballistics/.beads/dolt-server.log
+
+$ lsof -i :45645 -i :43643 -i :43627 2>&1 | head -10
+COMMAND     PID  USER  FD   TYPE  DEVICE SIZE/OFF NODE NAME
+dolt    1318114 lewis 106u  IPv4 4333150      0t0  TCP localhost:45645 (LISTEN)
+
+$ bd config get dolt.server-port
+43643
+(= 43643, from .beads/config.yaml line 56)
+
+$ grep -E 'port' /home/lewis/src/velvet-ballistics/.beads/dolt/config.yaml | head -3
+  port: 43627
+  # require_secure_transport: false
+  # port: 8000
+(= 43627, the inner dolt config.yaml listener port; stale)
+
+$ cat /home/lewis/src/velvet-ballistics/.beads/metadata.json
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}(no dolt_server_port pin; bd uses 45645 via runtime discovery from the running server)
+
+Conclusion: bd finds the actual server (45645) via the live dolt-server process;
+.beads/config.yaml's stale 43643 and the inner .beads/dolt/config.yaml's 43627
+do not break operations, but they ARE drift that should be aligned in a follow-up bead.

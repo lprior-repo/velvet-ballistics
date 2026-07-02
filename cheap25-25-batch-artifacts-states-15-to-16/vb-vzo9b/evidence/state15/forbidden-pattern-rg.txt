@@ -1,0 +1,12 @@
+=== rg gate 1: assert!(..||..) ===
+exit=1
+=== rg gate 2: matches!(run_summary,..) ===
+exit=1
+=== rg gate 3: let _summary ===
+exit=1
+=== rg gate 4: dbg!(run_summary..) ===
+exit=1
+=== rg gate 5: .unwrap() ===
+exit=1
+=== rg gate 6: .expect( ===
+exit=1

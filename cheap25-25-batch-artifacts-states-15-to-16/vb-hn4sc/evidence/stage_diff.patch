@@ -1,0 +1,75 @@
+--- /proc/self/fd/11	2026-07-01 20:42:23.150993254 -0500
++++ crates/vb_storage/src/queue/writer/stage.rs	2026-07-01 20:39:28.759190102 -0500
+@@ -22,8 +22,20 @@
+ /// holds a value at the same `(run, seq)`, the existing bytes are
+ /// decoded and compared against the queued event. A match means an
+ /// idempotent retry — the event is silently skipped so the queue's
+-/// eventual drain remains correct. A mismatch returns `DuplicateEvent`
+-/// so the operator can diagnose the divergence.
++/// eventual drain remains correct (and `accumulated_bytes` is *not*
++/// charged because no insert occurs). A mismatch returns
++/// `DuplicateEvent` so the operator can diagnose the divergence.
++///
++/// Byte-budget gate (vb-hn4sc): after `encode_record` succeeds but
++/// before `owned_batch.insert`, the encoded length is added to
++/// `accumulated_bytes` via `checked_add` against `byte_budget`. When
++/// the next would-be insert pushes `accumulated_bytes` past
++/// `byte_budget`, the gate returns
++/// [`JournalError::JournalBatchBytesExceeded`] with `attempted` set
++/// to the rejected total (or `u64::MAX` on `checked_add` overflow).
++/// The OwnedWriteBatch is left untouched in this branch, so the
++/// caller (which commits the batch only after staging all events)
++/// never persists a partial prefix.
+ ///
+ /// vb-3wn7x: the staged write also updates the `index_action` keyspace
+ /// for action-lifecycle events so the queued path keeps the index in
+@@ -33,6 +45,8 @@
+     journal: &FjallJournal,
+     event: &JournalEvent,
+     staged_keys: &mut HashSet<[u8; crate::constants::JOURNAL_KEY_BYTES]>,
++    accumulated_bytes: &mut u64,
++    byte_budget: u64,
+ ) -> Result<(), JournalError> {
+     let key = run_event_key(event.run_id(), event.seq())?;
+     if !staged_keys.insert(key) {
+@@ -51,6 +65,8 @@
+             // Idempotent retry: the durable event already reflects the
+             // queued state, including any prior index_action update.
+             // Skip both writes so the queued + durable order matches.
++            // accumulated_bytes is intentionally not charged here: no
++            // insert happens, so no bytes flow into the durable store.
+             return Ok(());
+         }
+         return Err(JournalError::DuplicateEvent {
+@@ -65,6 +81,31 @@
+         event,
+         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+     )?;
++
++    // Byte-budget gate: per W-HN4SC-1, fires AFTER staged_keys_unique
++    // and durable_key_unique checks and BEFORE owned_batch.insert.
++    // The `usize -> u64` conversion cannot fail in practice because
++    // `value.len() <= RECORD_HEADER_BYTES + MAX_JOURNAL_EVENT_PAYLOAD_BYTES
++    // = 1_048_636`, well below `u64::MAX`. The `try_from` is mandatory
++    // per Holzman Rust.
++    let encoded_len = u64::try_from(value.len()).map_err(|_| JournalError::SequenceOverflow)?;
++    let attempted = match accumulated_bytes.checked_add(encoded_len) {
++        Some(total) => total,
++        None => {
++            return Err(JournalError::JournalBatchBytesExceeded {
++                attempted: u64::MAX,
++                limit: byte_budget,
++            });
++        }
++    };
++    if attempted > byte_budget {
++        return Err(JournalError::JournalBatchBytesExceeded {
++            attempted,
++            limit: byte_budget,
++        });
++    }
++    *accumulated_bytes = attempted;
++
+     owned_batch.insert(&journal.events, key, value);
+     // vb-3wn7x: maintain the pending action index atomically with the
+     // event. The index mutation shares the OwnedWriteBatch, so a

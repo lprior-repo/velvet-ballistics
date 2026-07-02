@@ -1,0 +1,57 @@
+bead_id: vb-d9ml3
+state: 12
+invocation_id: formal-verifier-vb-d9ml3-state12
+skill: formal-verifier
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+controller: femdation
+attempt: 1
+status: completed
+
+Inputs (read):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/contract.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-strategy.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-obligations.planned.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/waiver-candidates.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/verifier-lane-decisions.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/verifier-lane-review.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-plan-review.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/implementation.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/dispatch/11-holzman-rust.json
+
+Outputs (written):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/formal-verification-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/verification-ledger.jsonl (5 rows: VL-001..005, all PASS, all behavior_affecting=false, all exit_status=0)
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/formal-waivers.jsonl (7 rows: FW-WVR-001..007, all behavior_affecting=false, all status=approved)
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/state12/cargo_test_vb_storage_trimming_raw.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/state12/cargo_test_vb_storage_snapshot_tests_raw.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/state12/cargo_clippy_vb_storage_full.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/state12/cargo_fmt_vb_storage_full.log
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/evidence/state12/rg_magic_17_count.log
+
+Commands run:
+- cargo test -p vb_storage --lib trimming (42 passed, 0 failed, exit 0)
+- cargo test -p vb_storage --lib snapshot_tests (10 passed, 0 failed, exit 0)
+- cargo test -p vb_storage --lib cap_aliases_equal_journal_key_bytes (1 passed, exit 0)
+- cargo test -p vb_storage --lib latest_durable_snapshot_seq_rejects_overlong_snapshot_key (1 passed, exit 0)
+- cargo test -p vb_storage --lib trim_events_for_run_fails_closed_on_overlong_event_key (1 passed, exit 0)
+- cargo test -p vb_storage --lib trim_eligibility_diagnostic_fails_closed_on_overlong_event_key (1 passed, exit 0)
+- PROPTEST_CASES=1 cargo test -p vb_storage --lib journal_error_trim_wrapper_delegates_incomplete_trim_code (1 passed, exit 0)
+- cargo clippy -p vb_storage --lib --bins --examples --all-features with the full -D flag set (No issues found, exit 0)
+- cargo check -p vb_storage --lib --all-features (exit 0, 0 crates recompiled)
+- cargo check --workspace (exit 0, 0 crates recompiled)
+- cargo fmt --check -p vb_storage (exit 0, no diff)
+- rg -n 'key\.len\(\) != 17' crates/vb_storage/src/trimming/logic.rs (0 matches)
+- rg -n '\.unwrap\(\)|\.expect\(|panic!|todo!|unimplemented!|dbg!|unreachable!' crates/vb_storage/src/constants.rs crates/vb_storage/src/trimming/logic.rs (0 matches)
+- jq -c . on all 4 JSONL artifacts (all valid)
+- ! rg -n '^(<<<<<<<|=======|>>>>>>>)' .beads/vb-d9ml3/ (0 matches)
+
+Dispositions:
+- 5/5 proof obligations PASS
+- 7/7 non-behavior verifier-omission waivers APPROVED
+- 0/5 proof obligations FAIL/WAIVED at obligation level
+- 0 behavior-affecting waivers
+- 0 blockers, 0 high/medium/low findings
+
+Handoff: black-hat-reviewer at state 13.
+
+Notes: Direct command evidence from active execution context. No subagent-only summary used as proof. All raw logs captured. All SHA-256 hashes pinned.

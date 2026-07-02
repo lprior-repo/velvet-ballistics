@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-edvbj",
+  "state": 15,
+  "invocation_id": "landing-skill-vb-edvbj-state15",
+  "dispatched_at": "2026-07-02T00:40:00Z",
+  "intended_skill": "landing-skill",
+  "fallback": false,
+  "inputs": [
+    ".beads/vb-edvbj/contract.md",
+    ".beads/vb-edvbj/implementation.md",
+    ".beads/vb-edvbj/formal-verification-report.md",
+    ".beads/vb-edvbj/black-hat-review.md",
+    ".beads/vb-edvbj/final-evidence-decision.md"
+  ],
+  "expected_outputs": [
+    ".beads/vb-edvbj/landing-report.md",
+    ".beads/vb-edvbj/STATE.md (state 15 advance)",
+    ".beads/vb-edvbj/agent-invocation-ledger.jsonl (entry 8)"
+  ],
+  "evidence_root": "/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-edvbj/.beads/vb-edvbj/"
+}

@@ -1,0 +1,69 @@
+Landing Skill — State 15 Transcript for vb-edvbj
+==================================================
+
+Operator: landing-skill
+Operator invocation_id: landing-skill-vb-edvbj-state15
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-edvbj
+Started: 2026-07-02T00:40:00Z
+Completed: 2026-07-02T00:45:00Z
+Host session: femdation-cheap25-batch
+
+Inputs read:
+  1. .beads/vb-edvbj/contract.md (sha256:e1579e16ae87bda84f6e35d65cd3b0a9766c3e184453212ca5a6a9bfdebe0612)
+  2. .beads/vb-edvbj/implementation.md
+  3. .beads/vb-edvbj/formal-verification-report.md
+  4. .beads/vb-edvbj/black-hat-review.md
+  5. .beads/vb-edvbj/final-evidence-decision.md
+  6. .beads/vb-edvbj/evidence/full_test.txt
+  7. .beads/vb-edvbj/evidence/storage_event_test.txt
+  8. .beads/vb-edvbj/evidence/recovery_test.txt
+  9. .beads/vb-edvbj/evidence/journal_tests.txt
+ 10. .beads/vb-edvbj/evidence/check.txt
+ 11. .beads/vb-edvbj/evidence/clippy.txt
+ 12. .beads/vb-edvbj/evidence/fmt_vb_edvbj.txt
+
+Outputs produced:
+  1. .beads/vb-edvbj/landing-report.md
+  2. .beads/vb-edvbj/STATE.md (state advanced 14 -> 15)
+  3. .beads/vb-edvbj/agent-invocation-ledger.jsonl (entry 8 appended)
+
+Pre-landing gate evidence:
+  - cargo test -p vb_runtime --lib: 1807 passed, 0 failed, 0 ignored
+  - cargo test -p vb_runtime --lib storage_event: 1 passed
+  - cargo test -p vb_runtime --lib recovery: 13 passed
+  - cargo test -p vb_runtime --lib journal:: : 72 passed
+  - cargo check -p vb_runtime --all-targets: Finished, 0 errors
+  - cargo clippy -p vb_runtime --lib --bins --examples --all-features: Finished, 0 warnings
+  - cargo fmt -p vb_runtime --check (touched files): 0 diffs
+
+Pre-landing approval chain:
+  - State 12 (formal-verifier): 1 PASS / 9 FAIL_LOCAL (formal-verification lane CONDITIONAL)
+  - State 13 (black-hat-reviewer): STATUS: APPROVED
+  - State 14 (evidence-packaging + truth-serum): STATUS: APPROVED (implementation contract)
+  - final-evidence-decision.md: STATUS: APPROVED
+
+JJ state at landing time:
+  - HEAD: mrpqqutq (109de64272638246359f8efb5a14daa3ca3c1092)
+    "vb-edvbj: p11-holzman-rust — implement UnmappedRuntimeJournalEvent + delete fallback"
+  - Parent: rzwmqlyw (proof-writer)
+  - Grandparent: psylkkzt (proof-planner)
+  - Diffstat: 8 files changed, 116 insertions(+), 6 deletions(-)
+  - Merge to main: DEFERRED (STRONG-coupled with vb-cib14; refinery merge pending)
+
+Decision:
+  - State 15 (landing-skill): bead is approved to close at the tracker level.
+  - The 9 formal-verification FAIL_LOCALs are deferred to a follow-up bead per
+    dispatcher authorisation.
+  - JJ change `mrpqqutq` is preserved in the isolated workspace; merge to main
+    is the responsibility of the refinery.
+  - `bd close vb-edvbj` will be issued with the dispatcher-prescribed reason.
+  - `bd dolt push` will be issued to sync the tracker to the Dolt remote.
+
+Provenance:
+  - reviewer_invocation_id (this entry) is a landing-skill invocation; the
+    preceding entry is `evidence-packaging-vb-edvbj-state14` (State 14).
+  - agent-invocation-ledger.jsonl previously had 7 entries (states 1, 2, 4b,
+    11, 12, 13, 14); this landing appends State 15 entry with
+    ledger_sequence=8 and parent_invocation_id=`evidence-packaging-vb-edvbj-state14`.
+
+Final disposition: STATUS: READY_TO_CLOSE

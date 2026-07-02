@@ -1,0 +1,181 @@
+State 13 transcript — bead vb-jtqqx — black-hat-reviewer
+
+Agent: black-hat-reviewer (direct child of femdation; no sub-agents)
+Bead: vb-jtqqx
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Workspace status: jj workspace `cheap25-vb-jtqqx` on parent rsvywymk
+Reviewed change: rqywwymq f2aadf8a (state11 commit; +217/-26 in
+crates/workspace_tests/tests/journal_side_index_contracts.rs).
+
+Skills invoked at entry:
+- /home/lewis/.opencode/skill/black-hat-reviewer/SKILL.md (canonical)
+- /home/lewis/.opencode/skill/black-hat-reviewer/response-template.md
+
+Inputs read:
+- .beads/vb-jtqqx/STATE.md
+- .beads/vb-jtqqx/contract.md (SIDEX-MAL-001..018)
+- .beads/vb-jtqqx/proof-coverage-matrix.md
+- .beads/vb-jtqqx/verifier-lane-decisions.jsonl (24 rows)
+- .beads/vb-jtqqx/verifier-lane-review.jsonl (24 rows; all accepted)
+- .beads/vb-jtqqx/proof-obligations.planned.jsonl (2 rows)
+- .beads/vb-jtqqx/trusted-base-plan.md
+- .beads/vb-jtqqx/waiver-candidates.jsonl (6 rows; behavior_affecting=false)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl (5 prior rows)
+- .beads/vb-jtqqx/proof-plan-review.md (APPROVED)
+- .beads/vb-jtqqx/transcript-state11.txt, transcript-state12.txt
+- .beads/vb-jtqqx/implementation.md
+- .beads/vb-jtqqx/formal-verification-report.md
+- .beads/vb-jtqqx/verification-ledger.jsonl
+- .beads/vb-jtqqx/formal-waivers.jsonl
+- crates/workspace_tests/tests/journal_side_index_contracts.rs
+  (in-scope test file, 853 lines)
+- crates/vb_storage/src/keys.rs:281-295, 346-434 (read-only)
+- crates/vb_storage/src/error/key_decode.rs:8-31 (read-only)
+- crates/vb_storage/src/constants.rs:38-43, 77-79 (read-only)
+- crates/vb_core/src/ids/mod.rs (newtype constructors, read-only)
+
+5-Phase Review Execution:
+
+PHASE 1: Contract & Bead Parity
+- 18/18 SIDEX-MAL clauses verified against the file.
+- All 5 reachable KeyDecodeError variants (EmptyKey, UnknownPrefix,
+  KeyLengthMismatch, InvalidRunId) exercised; ReservedSeqSentinel
+  correctly NOT asserted.
+- Per-variant InvalidRunId branches at keys.rs:400-402, 412-414,
+  423-425 exercised by the 3 named proptests.
+- Production-binding discipline: no Verus/Kani/Flux/Loom/Miri/cargo-fuzz
+  spec artifacts created in this P1; the proptest bodies invoke the
+  real vb_storage::keys::decode_storage_key production function
+  directly. No shadow model. No vacuum proof.
+- scripts/check-verus-production-binding.sh is N/A (no Verus spec).
+- All 6 not_applicable lanes (verus, kani, flux-rs, loom, miri,
+  cargo-fuzz) are surface_absent / risk_out_of_scope /
+  superseded_by_other_lane_with_evidence per
+  verifier-lane-decisions.jsonl:2-7. No behavior-affecting waivers.
+
+PHASE 2: Farley Engineering Rigor
+- 0 production functions added/modified (this is a test-only P1).
+- 4 test helpers (temp_journal, make_action_scheduled,
+  make_run_accepted, journal_proptest_config) are all ≤9 lines.
+- 3 proptest bodies (67, 70, 64 lines) are over the 25-line Farley
+  limit but are TEST bodies, not production functions. Each is
+  well-structured with (a), (b), (c), (d) shape labels. Splitting
+  would WEAKEN the test by obscuring shape-to-decoder-call
+  correspondence.
+- Pure-logic / I/O separation: PO-008 block is pure (no I/O). ✅
+
+PHASE 3: Holzman Rust (The Big 6)
+- 0 unsafe (file-level forbid(unsafe_code) at line 27).
+- 0 unwrap in PO-008 block (awk scan confirms).
+- 0 expect on decoder Result in PO-008 block; every decode_storage_key
+  result is match-examined with prop_assert!(false, ...) failure arm
+  on the unexpected Ok(_) case.
+- 3 .expect() calls (238, 315, 394) are on the *valid_key encoder*
+  (precondition asserts, pre-existing in the file, NOT introduced).
+  Allowed by the contract (delivery-scope.jsonl:2: encoder read-only
+  trusted).
+- 0 panic! / todo! / unimplemented! / dbg! in PO-008 block.
+- 0 unchecked indexing: all &valid_key[..n] with n in [1, valid_key.len())
+  guaranteed by the strategy bound 1u8..=12u8.
+- 0 lossy as: truncate_len as usize and _extra_bytes as usize are
+  widening (u8 → usize), lossless.
+- 0 ignored Result: every decode_storage_key result is consumed.
+- All forbidden constructs in PO-008 block: 0 total.
+
+PHASE 4: Ruthless Simplicity & DDD
+- No Option-based state machines.
+- No boolean parameters.
+- No clever abstractions: each shape is inlined and labeled.
+- No generic handlers, no trait dispatch, no macros beyond
+  proptest::proptest!.
+- CUPID compliant: composable (each test is independently runnable),
+  Unix-philosophy (strategy + body), predictable (deterministic),
+  idiomatic (standard Rust), domain-based (KeyDecodeError variants).
+- YAGNI: no code for "future use"; covers exactly the 4 shapes
+  required by SIDEX-MAL-001..018.
+- Sniff test: painfully obvious; a junior could read and understand.
+
+PHASE 5: The Bitter Truth
+- The code is boring, correct, and complete.
+- The 4-shape test structure is the natural decomposition of
+  the 4 SIDEX-MAL clauses.
+- The match-with-other-arm pattern is the canonical Rust idiom.
+- The proptest matches! macros are the canonical proptest convention.
+- The 5 pre-existing global failures (vb_compile, vb_core admission,
+  workspace_tests strict-admission, edge_frame_pool / resource_frame_pool,
+  moon ci unrelated) are out of scope and identical on parent rsvywymk.
+- The bridge between the strengthened tests and the production decoder
+  is direct: the test bodies call vb_storage::keys::decode_storage_key
+  (the real production function) and assert on vb_storage::KeyDecodeError
+  (the real production enum). No mock, no shadow, no test-only
+  re-implementation. The proptest bodies ARE the bridge.
+
+Quality Gates Run:
+- cargo test -p velvet-ballistics-workspace-tests
+  --test journal_side_index_contracts: 11 passed (0.42s) ✅
+- cargo test ... named PO-008 (3 tests): 3 passed, 8 filtered (0.00s) ✅
+- PROPTEST_CASES=128 cargo test ... : 11 passed (0.79s) ✅
+- cargo test ... --release: 11 passed (0.11s) ✅
+- cargo check -p velvet-ballistics-workspace-tests --all-targets:
+  Finished (0.07s) ✅
+- cargo check -p velvet-ballistics-workspace-tests --all-targets
+  --all-features: Finished (0.08s) ✅
+- cargo check -p vb_storage: Finished (0.03s) ✅
+- cargo clippy ... -D warnings -D clippy::unwrap_used
+  -D clippy::expect_used -D clippy::panic (in-scope file): 0 lints ✅
+  (152 package-scope pre-existing in OTHER test files; identical on
+  parent commit rsvywymk)
+- cargo fmt -p velvet-ballistics-workspace-tests --check: exit 0 ✅
+- bash scripts/check-panic-surface.sh: NoViolationFound; exit 0 ✅
+- bash scripts/forbidden-scan.sh: PASS — no forbidden patterns ✅
+- bash scripts/check-test-integrity.sh: PASS base=@- ✅
+- bash scripts/check-source-length.sh:
+  test_top_level scanned=348 warn=6 over_limit=0 ✅
+  (journal_side_index_contracts.rs is 853 lines, under 3000-line limit)
+- bash scripts/check-workspace-assertions.sh: exit 0 ✅
+- bash scripts/check-ignored-fallible-results.sh: exit 0 ✅
+  (2 pre-existing DISCARD-006 in vb_runtime/src/shard/transitions.rs
+  are out of scope)
+- bash scripts/check-stepstate-matrix.sh: PASS ✅
+- bash scripts/check-error-exhaustiveness.sh: exit 0 ✅
+  (4 fuzz-target warnings in fuzz/** are pre-existing, out of scope)
+- bash scripts/check-hot-cold-forbidden-apis.sh:
+  ScanSummary violations=0, justified=0 ✅
+
+Findings: 0
+Required Fixes: 0
+
+Pre-existing failures (out of scope; documented in
+formal-verification-report.md):
+1. vb_compile test compile errors (14 errors; pre-existing on parent)
+2. vb_core admission proptest (BLOCK_GLOBAL round-9 carryover)
+3. workspace_tests strict-admission test (BLOCK_GLOBAL round-9
+   carryover)
+4. edge_frame_pool / resource_frame_pool / runtime_resource_capacity_*
+   (round-9 carryover)
+5. moon ci 13 task failures (pre-existing on parent)
+
+Outputs emitted:
+- .beads/vb-jtqqx/black-hat-review.md
+  (STATUS: APPROVED, 5-phase review, 0 findings)
+- .beads/vb-jtqqx/defects.md
+  (empty)
+- .beads/vb-jtqqx/transcript-state13.txt (this file)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl seq=6
+  entry_hash: 922ea5f462db8edbc6bdbd083b51486841ca74c5419538f45af055cd321643e0
+
+Reviewer provenance:
+- Independent reviewer invocation: black-hat-reviewer-vb-jtqqx-state13
+  (this report).
+- Planner invocation: vb-jtqqx-state4-proof-planner-attempt1.
+- Plan-reviewer invocation: vb-jtqqx-state4-proof-plan-review-attempt1.
+- Implementation invocation: holzman-rust-vb-jtqqx-state11.
+- Verifier invocation: formal-verifier-vb-jtqqx-state12.
+- Host session: femdation-cheap25-batch.
+
+Verdict: STATUS: APPROVED. The repair is a textbook test-only P1.
+All 5 phases pass. No findings, no required repairs. The 5
+pre-existing global failures are out of scope and identical on the
+parent commit. Bridge between proof and implementation is direct.
+
+State 13 (black-hat-reviewer) is COMPLETE.

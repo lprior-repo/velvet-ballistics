@@ -1,0 +1,16 @@
+Modified regular file crates/vb_core/src/errors.rs:
+    ...
+  39   39:     EmptyExtra,
+  40   40:     /// Extra data decoding failed.
+  41   41:     DecodeFailed,
+       42:     /// VBSE magic matched but the version byte is not recognized
+       43:     /// (vb-5bqmr). Carries the untrusted `found` byte for diagnostic
+       44:     /// reporting.
+       45:     VersionMismatch {
+       46:         /// Version byte observed on the wire.
+       47:         found: u8,
+       48:     },
+  42   49:     /// Run ID mismatch.
+  43   50:     RunMismatch {
+  44   51:         /// Expected run ID.
+    ...

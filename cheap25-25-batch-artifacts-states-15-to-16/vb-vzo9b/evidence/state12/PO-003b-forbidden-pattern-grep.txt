@@ -1,0 +1,14 @@
+=== forbidden-pattern rg gates ===
+--- assert!(..||..) ---
+rg exit=1
+--- matches!(run_summary, ..) ---
+rg exit=1
+--- let _summary ---
+rg exit=1
+--- dbg!(run_summary ...) ---
+rg exit=1
+--- .unwrap() ---
+rg exit=1
+--- .expect( ---
+rg exit=1
+DONE

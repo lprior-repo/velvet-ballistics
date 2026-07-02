@@ -1,0 +1,20 @@
+--- /tmp/payload-rktonwky.rs	2026-07-01 21:59:56.386026038 -0500
++++ crates/vb_storage/src/codec/payload.rs	2026-07-01 19:33:10.833001991 -0500
+@@ -69,6 +69,17 @@
+     let payload = bytes
+         .get(payload_start..payload_end)
+         .ok_or(JournalError::UnexpectedEof)?;
++    // Cheap-before-expensive: reject trailing bytes before the BLAKE3
++    // digest. The encoder never produces a record that ends past
++    // `payload_end`, so any overshoot is corruption or truncation that
++    // must fail closed (INV-CODEC-TB-003).
++    if bytes.len() > payload_end {
++        let trailing = bytes
++            .len()
++            .checked_sub(payload_end)
++            .ok_or(JournalError::UnexpectedEof)?;
++        return Err(JournalError::TrailingBytes { trailing });
++    }
+     verify_digest_match(payload, header.payload_digest)?;
+     Ok((
+         RecordEnvelope {

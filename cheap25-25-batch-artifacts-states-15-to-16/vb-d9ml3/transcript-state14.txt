@@ -1,0 +1,57 @@
+bead_id: vb-d9ml3
+state: 14
+invocation_id: evidence-packaging-vb-d9ml3-state14
+skill: evidence-packaging
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3
+controller: femdation
+attempt: 1
+status: completed
+
+Inputs (read):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/delivery-scope.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/contract.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/traceability-matrix.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/proof-plan-review.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/formal-verification-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/verification-ledger.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/formal-waivers.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/black-hat-review.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/defects.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/implementation.md
+
+Outputs (written):
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/assurance-bundle.md (STATUS: APPROVED)
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/truth-serum-report.md (STATUS: APPROVED)
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3/.beads/vb-d9ml3/final-evidence-decision.md (STATUS: APPROVED)
+
+Mandatory Verification Gate (per evidence-packaging/SKILL.md):
+- pwd -P: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-d9ml3 (isolated workdir) ✓
+- test -s .beads/vb-d9ml3/delivery-scope.jsonl ✓
+- test -s .beads/vb-d9ml3/contract.md ✓
+- test -s .beads/vb-d9ml3/traceability-matrix.jsonl ✓
+- test -s .beads/vb-d9ml3/proof-plan-review.md ✓
+- test -s .beads/vb-d9ml3/formal-verification-report.md ✓
+- test -s .beads/vb-d9ml3/verification-ledger.jsonl ✓
+- test -s .beads/vb-d9ml3/black-hat-review.md ✓
+- jq -c . on all 4 JSONL: all valid ✓
+- ! rg -n '^(<<<<<<<|=======|>>>>>>>)' on .beads/vb-d9ml3/: 0 matches ✓
+- rg -n 'STATUS: APPROVED|STATUS: PASS' on review artifacts: 5 lines present ✓
+
+Truth-Serum Audit (active execution context):
+- All 5 proptest obligations PASS
+- All 7 non-behavior verifier-omission waivers APPROVED
+- All 16 quality gates PASS
+- 0 adversarial findings (CRITICAL, HIGH, MEDIUM, LOW)
+- 0 behavior-affecting waivers
+- 0 blockers
+- 0 hallucinated paths
+- 0 missing raw logs
+- 0 subagent-only summaries used as proof
+- 0 verification laundering (no vacuum Verus, no hardcoded Kani shapes, no TLA+ unbounded math)
+- 2 non-blocking residual risks documented (RR-001, RR-002)
+
+Anti-Hallucination Shield: 13/13 forbidden patterns not used; 13/13 required patterns satisfied.
+
+Final Disposition: STATUS: APPROVED.
+
+Handoff: landing-skill.

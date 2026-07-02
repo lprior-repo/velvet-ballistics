@@ -1,0 +1,2 @@
+cargo build (1 crates compiled)
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.07s

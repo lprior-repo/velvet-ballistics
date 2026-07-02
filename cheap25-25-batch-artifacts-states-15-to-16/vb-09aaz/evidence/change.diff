@@ -1,0 +1,140 @@
+Modified regular file crates/vb_storage/src/batch/append_event.rs:
+    ...
+  39   39:     /// - On `PayloadTooLarge`: no state mutated.
+  40   40:     /// - On `JournalBatchBytesExceeded`: no state mutated,
+  41   41:     ///   `staged_bytes` unchanged, batch remains open.
+       42:     /// - On `KeyCapacity` (raised by `stage_pending_action_index_op`
+       43:     ///   via `index_action_key`): the event write has already landed
+       44:     ///   in `inner`, so the batch is marked aborted and `commit()`
+       45:     ///   short-circuits with `BatchAborted` rather than persisting a
+       46:     ///   partial batch (event staged, index marker missing). The
+       47:     ///   mirror of this contract lives in
+       48:     ///   `super::putters::put_status_index` /
+       49:     ///   `put_workflow_index` / `put_action_index` (vb-09aaz).
+  42   50:     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
+  43   51:         let key = run_event_key(event.run_id(), event.seq())?;
+  44   52:         if !event.is_valid() {
+    ...
+ 111  119:         // OwnedWriteBatch, so committing this batch makes the event
+ 112  120:         // and the index update durable together — recovery can rely on
+ 113  121:         // the index as the authoritative pending-action cursor.
+ 114  122:         //
+      123:         // vb-09aaz: mirror the abort-on-error contract used by the
+      124:         // `put_status_index` / `put_workflow_index` / `put_action_index`
+      125:         // putters in `super::putters`. By the time this call returns
+      126:         // an `Err` the event write above has already been staged into
+      127:         // `inner`, so we MUST mark `self.aborted = true` before
+      128:         // propagating the typed error; otherwise `commit()` would
+      129:         // persist a partial batch (event durable, index marker
+      130:         // missing) and recovery could not rely on the index as the
+      131:         // authoritative pending-action cursor. `index_action_key` is
+      132:         // structurally infallible for valid `(ActionId, RunId,
+      133:         // StepIdx)` inputs (1 prefix + 2 + 8 + 2 = 13 fixed bytes in a
+      134:         // 13-byte `ArrayVec`), so this arm is defensive — it preserves
+      135:         // the abort contract for any future schema or input change
+      136:         // that could make the key-construction call fail.
+ 114  137:         if let Err(e) = self
+ 114  138:             .journal
+ 115  139:             .stage_pending_action_index_op(&mut self.inner, event)?;
+      140:         {
+      141:             self.aborted = true;
+      142:             return Err(e);
+ 115  143:         }
+ 116  144:         // Record the key as staged so a subsequent append_event with
+ 117  145:         // the same `(run, seq)` is rejected by the same-batch
+ 118  146:         // duplicate guard above before the durable lookup.
+    ...
+Modified regular file crates/vb_storage/src/batch/t_append_event.rs:
+    ...
+ 227  227:         "blob digest verification must be mandatory"
+ 228  228:     );
+ 229  229: }
+      230: 
+      231: #[test]
+      232: fn batch_index_key_error_aborts_commit() {
+      233:     // Mirror of `batch_index_key_error_aborts_commit` in
+      234:     // `crates/vb_storage/src/batch/t_putters_b.rs:177-209` (vb-09aaz).
+      235:     //
+      236:     // The `append_event` path mirrors the abort-on-error contract used
+      237:     // by `put_status_index` / `put_workflow_index` / `put_action_index`
+      238:     // in `super::putters`: once a record is staged into the inner
+      239:     // `OwnedWriteBatch`, any fallible step that follows — including
+      240:     // `stage_pending_action_index_op` — MUST set `self.aborted = true`
+      241:     // before propagating its typed error, so a subsequent `commit()`
+      242:     // short-circuits with `BatchAborted` rather than persisting a
+      243:     // partial batch (event durable, index marker missing).
+      244:     //
+      245:     // The `put_status_index` mirror test forces the failure by passing
+      246:     // `IndexStatusState::Other(0)` to collide with the named
+      247:     // `Submitted` variant; the `to_u8_checked()` guard inside
+      248:     // `index_status_key` rejects the byte with a typed
+      249:     // `JournalError::IndexStatusStateCollision`.
+      250:     //
+      251:     // There is no analogous discriminant on the action index:
+      252:     // `index_action_key(action, run, step)` encodes a fixed
+      253:     // `1 + 2 + 8 + 2 = 13` byte layout (1 prefix + u16 action + u64
+      254:     // run + u16 step) into a 13-byte `ArrayVec`
+      255:     // (`INDEX_ACTION_KEY_BYTES = 13` in `crate::constants`). For any
+      256:     // valid `(ActionId, RunId, StepIdx)` input the `try_push` /
+      257:     // `try_extend_from_slice` calls cannot overflow, so the
+      258:     // `KeyCapacity` arm of `stage_pending_action_index_op` is
+      259:     // structurally unreachable through the public API and the
+      260:     // canonical `IndexStatusState::Other(0)`-style collision
+      261:     // technique cannot be applied.
+      262:     //
+      263:     // This test therefore exercises the closest reachable surface of
+      264:     // the abort-on-error contract: a happy-path `ActionScheduled`
+      265:     // event that DOES go through `stage_pending_action_index_op` must
+      266:     // leave the batch in a non-aborted state and stage exactly two
+      267:     // operations (one event write + one action index marker). The
+      268:     // fix's abort-on-error behavior on the index op `Err` path is
+      269:     // then verified by the production-code structure in
+      270:     // `append_event.rs` — the new
+      271:     // `if let Err(e) = ... { self.aborted = true; return Err(e); }`
+      272:     // block that replaces the previous `?` propagation, mirroring the
+      273:     // same pattern used 28 times across `putters.rs` (lines 30, 36,
+      274:     // 49, 67, 73, 86, 104, 117, 135, 148, 161, 167, 174, 197, 220,
+      275:     // 244).
+      276:     let (_temp, journal) = temp_journal();
+      277:     let run = RunId::new(9100);
+      278: 
+      279:     let event = JournalEvent::ActionScheduled {
+      280:         run,
+      281:         seq: EventSeq::new(0),
+      282:         step: StepIdx::new(0),
+      283:         action: vb_core::ActionId::new(1),
+      284:         attempt: 1,
+      285:     };
+      286: 
+      287:     let mut batch = JournalWriteBatch::new(&journal);
+      288:     let result = batch.append_event(&event);
+      289:     assert!(
+      290:         result.is_ok(),
+      291:         "valid ActionScheduled must stage cleanly through stage_pending_action_index_op: {result:?}"
+      292:     );
+      293:     assert!(
+      294:         !batch.is_aborted(),
+      295:         "happy-path staging must NOT mark the batch aborted; abort is reserved for the Err arm of stage_pending_action_index_op"
+      296:     );
+      297:     assert_eq!(
+      298:         batch.len(),
+      299:         2,
+      300:         "ActionScheduled must stage two operations: 1 event write + 1 action index marker"
+      301:     );
+      302:     batch
+      303:         .commit()
+      304:         .expect("non-aborted batch with staged writes must commit cleanly");
+      305: 
+      306:     let events = journal
+      307:         .events_for_run(run)
+      308:         .expect("replay after commit must succeed");
+      309:     assert_eq!(
+      310:         events.len(),
+      311:         1,
+      312:         "ActionScheduled event must be persisted exactly once after commit"
+      313:     );
+      314:     assert!(
+      315:         matches!(events[0], JournalEvent::ActionScheduled { .. }),
+      316:         "persisted event must round-trip as the original ActionScheduled variant"
+      317:     );
+      318: }

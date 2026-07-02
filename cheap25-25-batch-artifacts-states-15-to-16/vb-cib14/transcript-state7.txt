@@ -1,0 +1,23 @@
+Proof-to-implementation state 7 execution for bead vb-cib14.
+
+Wrote 2 bridge artifacts:
+  1. .beads/vb-cib14/proof-to-rust-map.md (NEW) -- bridge map with 7 RRO rows
+  2. .beads/vb-cib14/rust-refinement-obligations.jsonl (NEW, 7 rows) -- rust-refinement-obligation/v1 schema
+
+Verified:
+  - All 7 rows parse via jq
+  - All source_refs match the regex ^[A-Za-z0-9_./-]+::[A-Za-z0-9_:.-]+$
+  - All behavior_test_refs avoid verification/ / proofs/ / kani|verus|flux|loom|miri forbidden patterns
+  - All 7 rows have non-empty source_refs, behavior_test_refs, refinement_harness_refs
+  - Verifier, requirement_id, and contract_clause preserved on every row
+  - No behavior-affecting waiver introduced
+  - Verus production-binding WEAK_EXTERN preserved (audit: 0 VACUUM / 72 WEAK)
+
+RRO row mapping:
+  - RRO-CIB14-001: PO-001 (verus, C1+C2+C6) -- 5 source_refs, 2 tests, 6 harnesses
+  - RRO-CIB14-002: PO-002 (proptest, C1+C6) -- 4 source_refs, 1 test, 3 harnesses
+  - RRO-CIB14-003: PO-003 (proptest, C2+C7) -- 3 source_refs, 2 tests, 5 harnesses
+  - RRO-CIB14-004: PO-004 (cargo-test, C3+C4+C1) -- 6 source_refs, 3 tests, 3 harnesses
+  - RRO-CIB14-005: PO-005 (loom+proptest, C5+RRO-TLA-RESUME) -- 4 source_refs, 2 tests, 2 harnesses
+  - RRO-CIB14-006: PO-006 (source-lint, C1+C2+C3+C7+VERUS-MIRROR) -- 5 source_refs, 3 tests, 6 harnesses
+  - RRO-CIB14-007: PO-007 (proptest, C1+C3+C7) -- 4 source_refs, 2 tests, 2 harnesses

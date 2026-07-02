@@ -1,0 +1,78 @@
+# Transcript — vb-7akm0 State 15 (landing-skill)
+
+bead_id: vb-7akm0
+state: 15
+skill: landing-skill
+invocation_id: landing-skill-vb-7akm0-state15
+parent_invocation_id: evidence-packaging-vb-7akm0-state14
+workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-7akm0
+coord_checkout: /home/lewis/src/velvet-ballistics
+started_at: 2026-07-02T05:15:00Z
+completed_at: 2026-07-02T05:19:00Z
+status: completed
+
+## Landing Precondition Gate
+
+- final-evidence-decision.md STATUS: APPROVED (sha256 34f7f87f649b381dc21ab6fff63362443d4b61f4921fcfb5f94507b222186860)
+- assurance-bundle.md present (sha256 63e7ca28fbcfac288e763e1cd59fc546574853f175e0152e39022900f6468ec6)
+- truth-serum-report.md present (sha256 17282c2e2fa9729f68f83f59b45da90d1e4d2ab6afd3a9df419642f5d1dfe8c1)
+- agent-invocation-ledger.jsonl chain intact through state 14 (entry 11, hash c8578abf0ddc)
+
+## Work Commit Under Landing
+
+- jj change: qvlkvsyysksu
+- jj commit: d4476627ff28
+- description: "vb-7akm0: p11-holzman-rust — remove 24 unreachable_pub suppressions (xtask binary root excluded due to cascade)"
+- diff --stat: 25 files changed, 85 insertions(+), 755 deletions(-)
+  - 24 production/config edits (visibility narrowing + delete-allow + source-length-exceptions row removal)
+  - 1 orphan test file deleted (crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs, 646 lines)
+
+## Commands Run (coord checkout /home/lewis/src/velvet-ballistics)
+
+```bash
+bd close vb-7akm0 --reason "25 visibility-narrowing edits landed; moon run :lint-src exit 0; orphan test retired per source-length-exceptions.txt:221 plan; zero production-source regression."
+# stdout: ✓ Closed vb-7akm0 — Lint: remove allow unreachable_pub suppressions by narrowing visibility: <reason>
+# EXIT=0
+
+bd dolt push
+# stdout: Pushing to Dolt remote... / Push complete.
+# EXIT=0
+
+bd show vb-7akm0
+# status: CLOSED, Updated: 2026-07-02
+```
+
+Evidence captured under `.beads/vb-7akm0/evidence/landing-state15/`:
+- bd-close-output.log, bd-close-exit-code.txt (EXIT=0)
+- bd-dolt-push-output.log, bd-dolt-push-exit-code.txt (EXIT=0)
+- bd-show-after-close.log (status CLOSED)
+- bd-dolt-status-after.log
+- jj-diff-stat.log, jj-work-commit.log
+
+## Decisions Log
+
+### Decision 1: Bead-DB landing only; code integration owned by femdation batch
+
+Per dispatch instructions the landing-skill scope for this invocation is
+bead-DB closure (`bd close`) and dolt sync (`bd dolt push`). The code
+commit (qvlkvsyy/d4476627) remains on the isolate workspace bookmark
+`cheap25-vb-7akm0`; integration of the isolate commit into `origin/main`
+is performed by the femdation cheap25 batch orchestrator, not by this
+child invocation. This transcript records the work commit reference so
+the merge is traceable.
+
+### Decision 2: Pre-existing global defects do not block landing
+
+Two non-PASS obligations recorded in final-evidence-decision.md
+(PO-TEST-001 vb_core proptest, PO-EXTERN-001 production_inner drift) are
+verified identical on the parent commit and owned by separate beads.
+They are FAIL_REGRESSION_OVERRIDE, not regressions of vb-7akm0's 25-file
+scope. Landing proceeds.
+
+## Gate Status
+
+- final-evidence-decision APPROVED: yes
+- bd close exit 0: yes
+- bd dolt push exit 0: yes
+- bead status CLOSED: yes
+- ledger chain intact: yes (state 15 row appended, previous_entry_hash = c8578abf0ddc)

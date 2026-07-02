@@ -1,0 +1,42 @@
+=== vb-t0iw9 landing/cleanup gate evidence ===
+captured_at: 2026-07-02T06:03:54Z
+
+--- pwd -P (must equal coord checkout)
+/home/lewis/src/velvet-ballistics
+
+--- bd show vb-t0iw9 (post-close inspection; expect CLOSED)
+✓ vb-t0iw9 [BUG] · Automation: repair femdation replacement_seq schema error   [● P1 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-06-30 · Started: 2026-07-01 · Updated: 2026-07-02
+Close reason: Runbook.md documents two user actions (ALTER TABLE ADD COLUMN or bd upgrade). Bead cannot fully close without user execution; documentation complete; check-beads-server-mode.sh exit 0; dolt_mode=server preserved.
+
+DESCRIPTION
+Femdation first-wave dispatch failed immediately with: no such column: replacement_seq. This blocks broad go-skill/femdation execution for the newly-created durability/recovery backlog. Reproduce from /home/lewis/src/velvet-ballistics by dispatching femdation on ready P0 beads after bd status is healthy. Expected: femdation should read bead state and start State 1/2 lifecycle. Actual: subagent returns only schema error. Investigate bd schema/migration assumptions in the femdation agent environment and repair before running broad implementation waves.
+
+BLOCKS
+  ← ✓ vb-qryp7: test femdation replacement ● P2
+
+
+--- bd where (expect server mode, no embedded path)
+/home/lewis/src/velvet-ballistics/.beads
+  database: /home/lewis/src/velvet-ballistics/.beads/dolt
+
+--- cat .beads/metadata.json (dolt_mode MUST remain 'server')
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}
+--- bash scripts/check-beads-server-mode.sh (expect exit 0)
+beads server-mode check passed
+exit_code=0
+
+--- test ! -e .beads/embeddeddolt (MUST be absent; exit 0)
+PASS: .beads/embeddeddolt/ absent
+
+--- bd dolt push (already executed during landing; re-run idempotent)
+Pushing to Dolt remote...
+Push complete.

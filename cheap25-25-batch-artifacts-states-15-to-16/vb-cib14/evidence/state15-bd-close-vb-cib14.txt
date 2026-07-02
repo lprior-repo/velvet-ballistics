@@ -1,0 +1,3 @@
+bd close vb-cib14 --reason "Resumed → RunResumed mapping wired in boundary_storage_event; timestamp overflow typed error added; storage_event_clones_the_event_exactly_once_per_dispatch preserved; 1812 cargo tests pass (default + vb-cib14 feature). STRONG-coupled with vb-edvbj."
+bd show vb-cib14 --json | jq -r '.[0] | "status=" + .status + " closed_at=" + .closed_at + " reason=" + .close_reason'
+bd dolt push

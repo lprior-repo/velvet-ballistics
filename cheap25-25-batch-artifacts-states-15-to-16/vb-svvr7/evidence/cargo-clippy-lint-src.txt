@@ -1,0 +1,4 @@
+EXIT_CODE=0
+COMMAND=cargo clippy --quiet --workspace --lib --bins --examples --all-features -- -D warnings [full lint set]
+STDERR_TAIL=empty (--quiet + 0 warnings)
+STDOUT=empty (--quiet + 0 warnings)

@@ -1,0 +1,117 @@
+State 15 transcript — bead vb-jtqqx — landing
+
+Agent: landing-skill (direct child of femdation; no sub-agents)
+Bead: vb-jtqqx
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Source checkout: /home/lewis/src/velvet-ballistics
+Isolated workspace: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Workspace status: jj workspace `cheap25-vb-jtqqx` on parent rsvywymk
+Reviewed change: rqywwymq b1b28963 (state11 implementation; +217/-26 in
+  crates/workspace_tests/tests/journal_side_index_contracts.rs)
+
+Skills invoked at entry:
+- /home/lewis/.agents/skills/landing-skill/SKILL.md
+
+Inputs read:
+- .beads/vb-jtqqx/STATE.md
+- .beads/vb-jtqqx/final-evidence-decision.md (STATUS: APPROVED)
+- .beads/vb-jtqqx/contract.md (SIDEX-MAL-001..018)
+- .beads/vb-jtqqx/assurance-bundle.md
+- .beads/vb-jtqqx/black-hat-review.md (STATUS: APPROVED, 0 findings)
+- .beads/vb-jtqqx/truth-serum-report.md (STATUS: APPROVED, 0 findings)
+- .beads/vb-jtqqx/formal-verification-report.md (STATUS: PASS)
+- .beads/vb-jtqqx/formal-waivers.jsonl (6 rows, all behavior_affecting=false)
+- .beads/vb-jtqqx/verification-ledger.jsonl (2 rows, both PASS/closed)
+- .beads/vb-jtqqx/proof-coverage-matrix.md
+- .beads/vb-jtqqx/proof-strategy.md
+- .beads/vb-jtqqx/proof-plan-review.md (STATUS: APPROVED)
+- .beads/vb-jtqqx/proof-obligations.planned.jsonl (2 rows: PO-MAL-001/002)
+- .beads/vb-jtqqx/trusted-base-plan.md
+- .beads/vb-jtqqx/waiver-candidates.jsonl (6 rows; all behavior_affecting=false)
+- .beads/vb-jtqqx/verifier-lane-decisions.jsonl (24 rows)
+- .beads/vb-jtqqx/verifier-lane-review.jsonl (24 rows; all accepted)
+- .beads/vb-jtqqx/defects.md (empty)
+- .beads/vb-jtqqx/implementation.md
+- .beads/vb-jtqqx/delivery-scope.jsonl
+- .beads/vb-jtqqx/traceability-matrix.jsonl
+- .beads/vb-jtqqx/transcript-state11.txt
+- .beads/vb-jtqqx/transcript-state12.txt
+- .beads/vb-jtqqx/transcript-state13.txt
+- .beads/vb-jtqqx/transcript-state14.txt
+- crates/workspace_tests/tests/journal_side_index_contracts.rs
+  (in-scope test file, 853 lines, 11 tests)
+
+Quality gates re-run in active context (State 15):
+
+1. Compile / source lint:
+   $ rtk cargo check -p velvet-ballistics-workspace-tests --tests
+   cargo build (0 crates compiled)
+   Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+   exit=0
+
+2. Tests (in-scope file):
+   $ rtk cargo test -p velvet-ballistics-workspace-tests --test journal_side_index_contracts
+   cargo test: 11 passed (1 suite, 0.45s)
+   exit=0
+   Matches state 12/14 evidence (11 passed in 0.42s).
+
+3. Lint (in-scope file):
+   $ rtk cargo clippy -p velvet-ballistics-workspace-tests --tests --no-deps
+   $ rg "journal_side_index" $log
+   (no matches in clippy log; 0 warnings, 0 errors on in-scope file)
+   exit=0
+
+4. Format (in-scope file):
+   $ rtk cargo fmt --check -p velvet-ballistics-workspace-tests
+   exit=0 (clean)
+
+5. Working-copy byte-equality:
+   $ rtk md5sum /tmp/cmp_at.rs crates/workspace_tests/tests/journal_side_index_contracts.rs
+   e3724d6a53409579efc94ad3a2e20b2f  /tmp/cmp_at.rs
+   e3724d6a53409579efc94ad3a2e20b2f  crates/workspace_tests/tests/journal_side_index_contracts.rs
+   (byte-identical to jj file show -r @)
+   $ rtk md5sum /tmp/cmp_at2.txt .evidence/verus/summary.txt
+   03cdc3035312a64573dff593e2a2ca4f  /tmp/cmp_at2.txt
+   03cdc3035312a64573dff593e2a2ca4f  .evidence/verus/summary.txt
+   (byte-identical to jj file show -r @)
+
+Pre-existing global failures (out of scope; documented in
+formal-verification-report.md#pre-existing-global-failures and
+black-hat-review.md PHASE 5): identical on parent commit rsvywymk; not
+caused by the in-scope change.
+
+Outputs emitted:
+- .beads/vb-jtqqx/landing-report.md
+  (STATUS: APPROVED-FOR-CLEANUP; in-scope gates all PASS; working copy
+   byte-identical to @; no new commits required)
+- .beads/vb-jtqqx/transcript-state15.txt (this file)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl seq=8
+  entry_hash: (computed by append_vb_jtqqx_landing_ledger.py)
+
+Reviewer provenance:
+- Independent reviewer invocation: landing-skill-vb-jtqqx-state15
+  (this report; direct child of femdation; no sub-agents).
+- Planner invocation: vb-jtqqx-state4-proof-planner-attempt1.
+- Plan-reviewer invocation: vb-jtqqx-state4-proof-plan-review-attempt1.
+- Implementation invocation: holzman-rust-vb-jtqqx-state11.
+- Verifier invocation: formal-verifier-vb-jtqqx-state12.
+- Black-hat invocation: black-hat-reviewer-vb-jtqqx-state13.
+- Evidence-packaging invocation: evidence-packaging-vb-jtqqx-state14.
+- Host session: femdation-cheap25-batch.
+
+Verdict: STATUS: APPROVED-FOR-CLEANUP. The bead is ready to be
+closed in the beads tracker. State 16 will close vb-jtqqx in the
+tracker, push to the Dolt remote, verify cleanup, and append the
+state-16 ledger row.
+
+The 8-row agent-invocation ledger chain (after this state):
+seq 1: go-skill-vb-jtqqx-state1
+seq 2: explore-vb-jtqqx-state2
+seq 3: proof-plan-reviewer-vb-jtqqx-state4
+seq 4: holzman-rust-vb-jtqqx-state11
+seq 5: formal-verifier-vb-jtqqx-state12
+seq 6: black-hat-reviewer-vb-jtqqx-state13
+seq 7: evidence-packaging-vb-jtqqx-state14
+seq 8: landing-skill-vb-jtqqx-state15 (this entry)
+
+State 15 (landing) is COMPLETE.

@@ -1,0 +1,72 @@
+State 16 transcript — bead vb-jtqqx — cleanup
+
+Agent: landing-skill (direct child of femdation; no sub-agents)
+Bead: vb-jtqqx
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Source checkout: /home/lewis/src/velvet-ballistics
+Isolated workspace: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx
+Workspace status: jj workspace `cheap25-vb-jtqqx` on parent rsvywymk
+Reviewed change: rqywwymq b1b28963 (state11 implementation)
+
+Skills invoked at entry:
+- /home/lewis/.agents/skills/landing-skill/SKILL.md
+
+Inputs read:
+- .beads/vb-jtqqx/STATE.md
+- .beads/vb-jtqqx/landing-report.md (STATUS: APPROVED-FOR-CLEANUP)
+- .beads/vb-jtqqx/final-evidence-decision.md (STATUS: APPROVED)
+- .beads/vb-jtqqx/transcript-state15.txt
+- All 9 prior ledger rows (sequence 1-8)
+
+Commands run:
+
+From coord checkout /home/lewis/src/velvet-ballistics:
+- bd show vb-jtqqx → IN_PROGRESS at start; CLOSED at end
+- bd close vb-jtqqx --reason "3 side-index proptests now invoke real
+    decode_storage_key on real malformed byte sequences; 11
+    journal_side_index_contracts tests pass; no production decoder change."
+    → ✓ Closed
+- bd dolt push → Pushing to Dolt remote... Push complete.
+
+From isolated workspace /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-jtqqx:
+- jj status → working copy modifications of @ b1b28963 are
+    state-11 implementation; no new pending changes
+- md5sum verification: working copy ≡ jj file show -r @ (byte-identical)
+    for both modified paths (state 15 evidence)
+
+Outputs emitted:
+- .beads/vb-jtqqx/cleanup-report.md
+  (STATUS: COMPLETE; bead close + dolt push + chain valid)
+- .beads/vb-jtqqx/STATE.md
+  (current_state: 16; status: closed; full state chain recorded)
+- .beads/vb-jtqqx/transcript-state16.txt (this file)
+- .beads/vb-jtqqx/agent-invocation-ledger.jsonl seq=9
+  entry_hash: (computed by append script; see cleanup-report.md)
+
+Final ledger chain (9 rows, all hash_ok and chain_ok):
+seq 1: go-skill-vb-jtqqx-state1
+seq 2: explore-vb-jtqqx-state2
+seq 3: proof-plan-reviewer-vb-jtqqx-state4
+seq 4: holzman-rust-vb-jtqqx-state11
+seq 5: formal-verifier-vb-jtqqx-state12
+seq 6: black-hat-reviewer-vb-jtqqx-state13
+seq 7: evidence-packaging-vb-jtqqx-state14
+seq 8: landing-skill-vb-jtqqx-state15
+seq 9: landing-skill-vb-jtqqx-state16 (this entry)
+
+Reviewer provenance:
+- Independent reviewer invocation: landing-skill-vb-jtqqx-state16
+  (this report; direct child of femdation; no sub-agents).
+- All 8 prior invocations (states 1, 2, 4, 11, 12, 13, 14, 15) closed
+  with hash_ok=True and chain_ok=True.
+- Host session: femdation-cheap25-batch.
+
+Verdict: STATUS: COMPLETE. The bead is closed in the tracker and
+pushed to the Dolt remote. The 9-row agent-invocation ledger chain
+is valid. The isolated workspace artifacts are preserved for
+evidence retention. No follow-up work is required for this bead.
+
+The femdation pipeline (states 1 → 2 → 4 → 11 → 12 → 13 → 14 → 15 → 16)
+is complete for bead vb-jtqqx.
+
+State 16 (cleanup) is COMPLETE.

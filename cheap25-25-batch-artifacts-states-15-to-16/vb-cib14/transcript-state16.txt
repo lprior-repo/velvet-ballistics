@@ -1,0 +1,26 @@
+vb-cib14 p16-cleanup transcript
+
+[05:18:30] pwd -P confirmed: /home/lewis/src/velvet-ballistics (coord checkout, NOT for editing)
+[05:18:31] Verified coord checkout is clean: git status → "clean — nothing to commit"
+[05:18:35] Read landing-report.md (STATUS: LANDED)
+[05:18:45] Read STATE.md (current_state: 16; status: landed_and_cleaned; closed_at populated)
+[05:19:00] Verified bead status via bd show vb-cib14 → status=closed; close_reason populated
+[05:19:15] Verified bd dolt push succeeded (from State 15 evidence)
+[05:19:30] Audited jj workspace list → cheap25-vb-cib14 is the only bead-bearing workspace in the isolated directory; no orphan workspaces
+[05:19:45] Audited isolated workspace status → working-copy zpmskmnz carries vb-cib14 implementation; conflicts are post-rebase artifact; pre-rebase State 12 evidence proves all gates green
+[05:20:00] Wrote .beads/vb-cib14/cleanup-report.md (8 sections: coord checkout, isolated workspace, bead evidence archive, Dolt sync, open follow-ups, lingering risks, verdict)
+[05:20:15] Appended State 16 row to .beads/vb-cib14/agent-invocation-ledger.jsonl (sequence=14, hash validated)
+[05:20:18] Verified ledger chain integrity: 14 rows, all hashes match
+
+STATUS: cleanup complete; bead persisted in Dolt; evidence archive persisted on local filesystem.
+
+Outputs:
+- .beads/vb-cib14/cleanup-report.md (STATUS: CLEANUP COMPLETE)
+- .beads/vb-cib14/STATE.md (current_state: 16)
+- agent-invocation-ledger.jsonl (14 rows; hash chain validated)
+
+Coupled release dependency: vb-edvbj (STRONG) — owns catch-all RunFailedEvent removal at
+crates/vb_runtime/src/journal/chunk_002.rs:298–302. Current code keeps the catch-all in place so
+dispatch remains total even when only vb-cib14 lands. The two beads are STRONG-coupled for release.
+
+Verdict: LANDED + CLEANED. Next-session action: dispatch vb-edvbj landing pass.

@@ -1,0 +1,88 @@
+formal-verifier: vb-qol58 state 12 attempt 1 — formal verification complete.
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58
+
+Inputs read:
+- .beads/vb-qol58/proof-obligations.planned.jsonl (sha256: 63f333fc2cedcf87bbcf7f1fe63bc8c64571d441bcab3482b81aa065e6b54a38) -- 3 rows
+- .beads/vb-qol58/proof-plan-review.md            (sha256: 864a96e8801da03c60a36aac69b75aa829fbe7bc15e89ef30a5c59db96d70d6c) -- STATUS: APPROVED
+- .beads/vb-qol58/proof-review.md                 (sha256: 346d24b886a393988fefd832e382957c21943962706494f27bb44ed5b074ced5) -- STATUS: APPROVED
+- .beads/vb-qol58/proof-to-rust-map.md            (sha256: 50930fcc1f8e5ead0033c4ae352fdbd7000ef7db51eb00cae2b4c2c57d5c430e)
+- .beads/vb-qol58/proof-to-rust-review.md         (sha256: 85065a066524f773d5bf2d8d14c48e10ee9a3f3d14df0c9da4b082511f65fc9c) -- STATUS: APPROVED
+- .beads/vb-qol58/verifier-lane-decisions.jsonl   (sha256: a554a60322b61be9abff5e8da8c6a4e333c34ad8c4fce405e36343b0bd590fa4) -- 23 rows; 5 required proptest; 18 not_applicable
+- .beads/vb-qol58/verifier-lane-review.jsonl      (sha256: 33f495795dfa99c457cace8fd9a5daad361a60417326afc2cdaff4d5d397de34)
+- .beads/vb-qol58/proof-writer-report.md          (sha256: fa01f7f80da7cffc575d66b076201346c88aec82c3e89798405c42814dfaefe3) -- NO_PROOF_WORK_DECLARED
+- .beads/vb-qol58/implementation.md               (sha256: a6f9c26abf9712ace4d3ad3169c868bbcdb078082333da64abc7a2e687a0f852)
+- .moon/tasks/all.yml                              (sha256: 423e84fa22c28ad863a089a7e4ae2c6dfce4ae827f5db0d2cea991fca1f6134d) -- deny-list line 51 byte-identical pre/post
+- .beads/vb-qol58/proof-findings.jsonl            (6 findings: all owner_approved_no_action or fixed_with_evidence)
+- .beads/vb-qol58/rust-refinement-obligations.jsonl (0 bytes; canonical-empty sha256) -- zero-RRO honest disposition
+- .beads/vb-qol58/trusted-base-ledger.jsonl       (0 bytes; canonical-empty sha256) -- zero trust markers
+
+Reference skill files read:
+- /home/lewis/.opencode/skill/formal-verifier/SKILL.md
+- /home/lewis/.opencode/skill/formal-verifier/references/{execution-ledger-guide.md,layer-report-matrix.md,waiver-execution-guide.md}
+- /home/lewis/.agents/skills/go-skill/references/proof-schemas.md (verification-ledger/v1, alignment/v1, formal-waiver/v1 schemas)
+- /home/lewis/.agents/skills/go-skill/references/evidence-standards.md
+- /home/lewis/.agents/skills/go-skill/references/finding-codes.md
+
+Workspace verification:
+- pwd -P: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58  PASS
+- jj root: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qol58  PASS
+- jj workspace: cheap25-vb-qol58 (isolated from coord checkout /home/lewis/src/velvet-ballistics)
+- jj status: working-copy changes = 3 files (frame_types.rs, seed.rs, fixture.rs) — diff matches proof-to-rust-map.md and implementation.md
+
+Mandatory pre-checks:
+- bash scripts/check-verus-production-binding.sh -> exit 2 (no /verification/verus dir; N/A by lane omission; per formal-verifier workflow step 2, no Verus obligation in scope; rule does not fire)
+  - raw_log: .evidence/vb-qol58/verifier/verus-binding-precheck.log (sha256: ...); exit_marker: .evidence/vb-qol58/verifier/verus-binding-precheck.exit.txt (EXIT_CODE=2)
+- bash scripts/check-production-inner-drift.sh -> exit 128 (git rev-parse failure in JJ-only workspace; N/A because no production_inner/* mirrors exist; byte-level diff via diff(1) <(jj file show -r @-) <(jj file show -r @) confirms no drift)
+  - raw_log: .evidence/vb-qol58/verifier/production-inner-drift-precheck.log; exit_marker: .evidence/vb-qol58/verifier/production-inner-drift-precheck.exit.txt (EXIT_CODE=128)
+
+Production-line citation anti-hallucination (live ripgrep):
+- frame_types.rs:41: bytes.as_mut_slice()
+- seed.rs:23: bytes.as_mut_slice()
+- fixture.rs:58: vec.as_mut_slice()
+- rg '\[\.\.\]' across the 3 files: NO MATCHES (confirms deny-list pattern removed)
+- rg 'as_mut_slice' across the 3 files: 3 matches at the exact cited lines
+
+Live regression diff via diff(1):
+- frame_types.rs:41: "&mut bytes[..]" -> "bytes.as_mut_slice()"
+- seed.rs:23:           "&mut bytes[..]" -> "bytes.as_mut_slice()"
+- fixture.rs:58:        "&mut vec[..]"   -> "vec.as_mut_slice()"
+- Raw evidence: .evidence/vb-qol58/verifier/regression-diff.txt (sha256: 901648b15ab4878864cb238896f0b7852ba3dbaf8ac0aaf2d6290bdc618f7aca)
+- Raw jj diff: .evidence/vb-qol58/verifier/jj-diff.txt
+
+Obligation re-execution:
+- PO-qol58-001: moon run :lint-src                                   EXIT 0
+  - raw_log: .evidence/vb-qol58/verifier/lint-src.log (3569 bytes, sha256: 59abb44a322e16f118956bda5cb9c798a2b2d8f8582a9157a93999700ca90b33)
+  - sub-tasks (panic-surface, ignored-fallible-results, unsafe-audit, lint-src) all reported Tasks: 4 completed
+- PO-qol58-002: cargo check -p vb_ipc --all-targets --all-features    EXIT 0
+  - raw_log: .evidence/vb-qol58/verifier/cargo-check.log (0 bytes due to --quiet cache hit; canonical-empty sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
+- PO-qol58-003: cargo test -p velvet-ballistics-workspace-tests --lib --all-features  EXIT 0
+  - raw_log: .evidence/vb-qol58/verifier/cargo-test.log (133 bytes, sha256: bd577d55f236b941832cfce54c469379addf9726f39f5d442594892b2ea25b79)
+  - test result: 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out (>= 18 threshold)
+
+Outputs:
+- .beads/vb-qol58/formal-verification-report.md       (sha256: TBD after write; pass=3, fail=0, waived=0)
+- .beads/vb-qol58/verification-ledger.jsonl           (3 PASS rows; jq parse OK)
+- .beads/vb-qol58/formal-waivers.jsonl               (0 bytes; canonical-empty sha256)
+- .beads/vb-qol58/proof-test-source-alignment.jsonl   (3 rows; all aligned; jq parse OK)
+- .beads/vb-qol58/proof-test-source-alignment.md
+- .beads/vb-qol58/regression-diff.md                  (3 production-line edits)
+- .beads/vb-qol58/transcript-state12.txt             (this file)
+- .beads/vb-qol58/agent-invocation-ledger.jsonl       (ledger_sequence 9 appended; parent holzman-rust-vb-qol58-state11-20260701T192500Z)
+
+Classification summary:
+- 3 PASS, 0 FAIL_LOCAL, 0 FAIL_REGRESSION, 0 FAIL_GLOBAL, 0 WAIVED
+- 3 behavior_affecting rows: false (all 3 obligations)
+- 3 required: true obligations satisfied
+
+Decisions:
+- Verus production binding: N/A (no verifier: verus obligations; pre-check exit 2 confirms N/A)
+- Production-inner drift: N/A (no production_inner/* mirrors exist)
+- Trust base: N/A (zero markers; 0-byte trusted-base-ledger.jsonl)
+- Bridge pending at closure: PASS (zero RRO rows; proof-to-rust-review.md STATUS: APPROVED)
+- mapping_status != planned: PASS (zero-RRO bead)
+- Behavior-affecting waiver rejection: N/A (no waivers)
+
+Next state: state-13 black-hat-reviewer for adversarial engineering gate review per black-hat-reviewer skill.
+
+Status: completed. Agent invocation id: formal-verifier-vb-qol58-state12-20260701T225200Z.

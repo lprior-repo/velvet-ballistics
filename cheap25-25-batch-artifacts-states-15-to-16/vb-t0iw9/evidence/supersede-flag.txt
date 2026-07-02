@@ -1,0 +1,36 @@
+=== vb-t0iw9 evidence/supersede-flag.txt ===
+captured_at: 2026-07-01T20:25:00Z
+
+PROOF: bd --ignore-schema-skew bypasses the forward-skew guard.
+
+--- Without --ignore-schema-skew on a probe (no such column error path)
+
+$ bd sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+
+--- With --ignore-schema-skew on the same probe (same error: column absent at SQL layer)
+
+$ bd --ignore-schema-skew sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+
+--- With --ignore-schema-skew on a 'safe' show (succeeds: no replacement_seq reference on the read path)
+
+$ bd --ignore-schema-skew show vb-t0iw9 --json | head -5
+[
+  {
+    "id": "vb-t0iw9",
+    "title": "Automation: repair femdation replacement_seq schema error",
+    "description": "Femdation first-wave dispatch failed immediately with: no such column: replacement_seq. This blocks broad go-skill/femdation execution for the newly-created durability/recovery backlog. Reproduce from /home/lewis/src/velvet-ballistics by dispatching femdation on ready P0 beads after bd status is healthy. Expected: femdation should read bead state and start State 1/2 lifecycle. Actual: subagent returns only schema error. Investigate bd schema/migration assumptions in the femdation agent environment and repair before running broad implementation waves.",
+
+--- ENVIRONMENT VARIABLE CHECK (BD_IGNORE_SCHEMA_SKEW has NO effect; --ignore-schema-skew is the only path)
+
+$ BD_IGNORE_SCHEMA_SKEW=true bd sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+
+$ BEADS_IGNORE_SCHEMA_SKEW=true bd sql -q "SELECT replacement_seq FROM issues LIMIT 1;"
+Error: query error: Error 1105 (HY000): column "replacement_seq" could not be found in any table in scope
+
+--- Conclusion: --ignore-schema-skew bypasses the BD-level forward-skew guard,
+    but the column is still genuinely absent at the Dolt SQL layer.
+    Action A in runbook.md (ALTER TABLE ADD COLUMN replacement_seq) is the only
+    fix that does not require a bd binary upgrade.

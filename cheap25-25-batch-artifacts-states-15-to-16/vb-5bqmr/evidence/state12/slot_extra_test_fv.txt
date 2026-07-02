@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-14f55a898f403a08)
+
+running 8 tests
+test slot_extra::slot_extra_tests::decode_short_non_magic_is_legacy_frame_extra ... ok
+test slot_extra::slot_extra_tests::decode_magic_only_four_bytes_is_legacy_frame_extra ... ok
+test slot_extra::slot_extra_tests::decode_magic_mismatch_is_legacy_frame_extra ... ok
+test slot_extra::slot_extra_tests::version_mismatch_is_copy_round_trip ... ok
+test slot_extra::slot_extra_tests::decode_unknown_version_preserves_found_byte_across_boundary_values ... ok
+test slot_extra::slot_extra_tests::decode_unknown_version_returns_version_mismatch_with_found_byte ... ok
+test slot_extra::slot_extra_tests::decode_corrupt_v1_returns_decode_failed_not_version_mismatch ... ok
+test slot_extra::slot_extra_tests::encode_decode_v1_round_trip_preserves_taint_and_frame_extra ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1530 filtered out; finished in 0.00s
+

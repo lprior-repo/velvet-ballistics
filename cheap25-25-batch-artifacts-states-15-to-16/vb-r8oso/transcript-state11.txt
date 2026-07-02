@@ -1,0 +1,99 @@
+STATE 11 (holzman-rust) — vb-r8oso
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-r8oso
+Agent: holzman-rust
+Started: 2026-07-01T20:00:00Z
+Completed: 2026-07-01T20:30:00Z
+
+## Steps
+
+1. Read the canonical Holzman Rust doctrine (OpenCode bridge + .agents canonical)
+   and the relevant reference files (nasa-jpl-standards, latency-throughput-playbook,
+   runtime-performance-architecture, zero-cost-abstractions, simd-patterns,
+   mechanical-empathy-toolchain).
+
+2. Read the bead contract (.beads/vb-r8oso/contract.md) and supporting
+   artifacts (error-taxonomy.md, type-contracts.md, delivery-scope.jsonl,
+   proof-plan-review.md).
+
+3. Implemented the new `FjallJournal::next_sequence_at_write` method
+   (key-only Fjall prefix lookup, no value decode) at
+   `crates/vb_storage/src/journal/next_sequence_at_write.rs`. The helper
+   `last_durable_event_seq` decodes the matching key only and returns
+   `Ok(seq)` / `Err(MalformedKeyspaceRow)`.
+
+4. Added `JournalError::SequenceMismatch { run, expected, actual }` at
+   `crates/vb_storage/src/error/mod.rs` with the contract-pinned display
+   format.
+
+5. Added `JournalError::SEQUENCE_MISMATCH_AT_WRITE_CODE = 0x4042` and
+   the match arms in `diagnostic_code()` / `symbolic_code()` at
+   `crates/vb_storage/src/error/codes.rs`.
+
+6. Wired the guard into `FjallJournal::append_unfsynced`
+   (journal/internal.rs), `FjallJournal::append_strict` (journal/append.rs),
+   `FjallJournal::append_journaled` (doc-comment, journal/append.rs),
+   `FjallJournal::append_strict_batch` (doc-comment, journal/append.rs),
+   and `JournalWriteBatch::append_event` (batch/append_event.rs). The
+   batch's `next_expected_seq_for` helper combines the durable keyspace
+   answer with the events already staged in the current batch, bounded
+   by `MAX_BATCH_COUNT`.
+
+7. Added the free-function wrapper `vb_storage::next_sequence_at_write`
+   at `public_api.rs` for parity with `append_journal_event`.
+
+8. Added the `kani-sequence-at-write` Cargo feature and the gated
+   `kani_sequence_at_write` module with three harnesses:
+   - `kani_next_sequence_at_write_invalid_run_rejects`
+   - `kani_next_sequence_at_write_fresh_run_is_zero`
+   - `kani_next_sequence_at_write_succ_arithmetic`
+
+9. Updated the contract-pinned tests at tests.rs:1737 and tests.rs:4612
+   per C-6.1 / C-6.2. Reclassified `adversarial_append_duplicate_sequence_rejected_with_exact_fields`
+   (tests.rs:~4585) per C-6.4 to assert `SequenceMismatch`. Widened
+   `append_strict_rejects_duplicate_event` (journal/tests.rs:409) to
+   accept either `DuplicateEvent` or `SequenceMismatch` per the
+   "variant arm additions" clause in C-6.3.
+
+10. Updated 25+ additional tests in `tests.rs`, `journal/tests.rs`,
+    `batch/t_append_event.rs`, `batch/t_byte_accounting_part{2,3,4}.rs`,
+    `index_maintenance_tests.rs`, and `vb_2bok_durability_gate_tests.rs`
+    to either assert the new `SequenceMismatch` error at the write
+    path or write events contiguously so the existing read-path
+    snapshot/digest tests still make sense.
+
+11. Updated five proptests (PS_001, PS_003, PS_004, PS_008, PS_009) to
+    use a single seq=0 event instead of arbitrary seqs (the new guard
+    rejects arbitrary seq>0 for fresh runs).
+
+12. Performed the C-10 downstream caller audit. The only production
+    caller of the append paths in vb_runtime is
+    `StorageRuntimeJournal::append_storage_event`; its seq originates
+    from the runtime shard's `journal_sequence_for` which always
+    returns a contiguous value. Documented in
+    `.beads/vb-r8oso/evidence/downstream-caller-audit.md`.
+
+13. Captured the pre-existing `BLOCK_GLOBAL` failure in the parent
+    commit (the admission module proptest) in
+    `.beads/vb-r8oso/evidence/block-global-prerequisite.md`.
+
+## Commands Run (all passed)
+
+- `cargo check -p vb_storage --lib --all-features` — clean
+- `cargo check -p vb_storage --tests --all-features` — clean
+- `cargo check --workspace --all-targets --all-features` — clean
+- `cargo test -p vb_storage --lib --all-features` — 1537 passed
+- `cargo test -p vb_storage --tests --all-features` — 1676 passed
+- `cargo test -p vb_storage --lib --features kani-sequence-at-write` — 1537 passed
+- `cargo test -p vb_storage --test proptest_journal_error_codes` — 42 passed
+- `cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings -D unsafe_code ...` — No issues found
+
+## Decision
+
+Holzman Rust implementation complete. The new contract is wired into
+all five append paths; the typed error variant is registered; the
+public wrapper is exposed; the Kani harness group is gated behind the
+new feature; all targeted tests pass; clippy is clean. A pre-existing
+`BLOCK_GLOBAL` failure in the parent commit is documented as a
+landing-skill prerequisite repair item, not a regression introduced by
+this bead.

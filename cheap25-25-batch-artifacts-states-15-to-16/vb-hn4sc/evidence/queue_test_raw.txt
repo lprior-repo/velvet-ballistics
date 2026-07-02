@@ -1,0 +1,5 @@
+test batch::tests::t_byte_accounting_part2::batch_remains_open_after_queue_full ... ok
+test batch::tests::t_byte_accounting_part3::queue_full_fires_before_any_possible_encoding_guard_for_new_events ... ok
+
+test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 1448 filtered out; finished in 0.10s
+

@@ -1,0 +1,65 @@
+State 13 (black-hat-reviewer) — vb-qxjgx: 5-phase review
+
+Workdir: /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx
+JJ change: ttulypyvxtty
+Commit: 376c7ccc
+Started: 2026-07-01T20:30:00Z
+Completed: 2026-07-01T21:00:00Z
+
+Inputs read:
+- /home/lewis/.opencode/skill/black-hat-reviewer/SKILL.md
+- /home/lewis/.opencode/skill/black-hat-reviewer/response-template.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/formal-verification-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/verification-ledger.jsonl
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-writer-report.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/proof-to-rust-map.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/contract.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/.beads/vb-qxjgx/implementation.md
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/records.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/events.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/validation.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/kind_parity.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_storage/src/codec/mod.rs
+- /home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-qxjgx/crates/vb_runtime/src/durability_matrix.rs
+
+Commands executed:
+- cargo check -p vb_storage --all-targets → Finished `dev` profile (4.98s)
+- cargo check -p vb_runtime --all-targets → Finished `dev` profile (2.84s)
+- cargo clippy -p vb_storage --lib → No issues found
+- cargo clippy -p vb_runtime --lib → No issues found
+- cargo fmt --check -p vb_storage → clean
+- cargo fmt --check -p vb_runtime → 3 pre-existing diffs (frame_pool/tests.rs:85, 114, 139)
+- rg "(unwrap\(\)|expect\(|panic!|todo!|unimplemented!|dbg!|unsafe )" on 6 production files → 0 matches
+
+5-Phase Review:
+- PHASE 1: Contract & Bead Parity — 14 contract clauses verified; production binding STRONG; VACUUM check N/A (Verus out of scope)
+- PHASE 2: Farley Engineering Rigor — 2 functions over 25 lines (pure exhaustive matches on closed enums; acceptable)
+- PHASE 3: Holzman Rust Big 6 — Zero unsafe, zero unwrap/expect/panic/todo in production; checked arithmetic
+- PHASE 4: Ruthless Simplicity & DDD — LegacyEnvelopeBinding is 2-variant enum; not Option-based; CUPID compliant
+- PHASE 5: Bitter Truth — OR-collapse genuinely removed; CURRENT_SCHEMA_VERSION preserved; no clever tricks
+
+Findings (6 total):
+- FIND-001: TBR-001 kani_helpers.rs unclosed-delimiter (HIGH, pre-existing) → owner_approved_debt
+- FIND-002: TBR-010 check_unknown_kind_rejected (MEDIUM, pre-existing) → fixed_with_evidence (DELETED in state 11)
+- FIND-003: TBR-002 forward-looking E0599 errors (MEDIUM, expected) → fixed_with_evidence (resolved post-state-11)
+- FIND-004: aggregate_resource_budget_properties_red proptest (HIGH, pre-existing) → owner_approved_debt
+- FIND-005: vb_runtime/src/frame_pool/tests.rs cargo fmt drift (LOW, pre-existing) → owner_approved_debt
+- FIND-006: kani-list output missing the 5 new harnesses (MEDIUM, BLOCKED_TOOLING) → owner_approved_debt
+
+Quality Gates:
+- cargo test -p vb_storage --tests: ✅ 1678 passed
+- cargo test -p vb_runtime --tests: ✅ 2348 passed
+- cargo check -p vb_storage/vb_runtime --all-targets: ✅ PASS
+- cargo clippy -p vb_storage/vb_runtime --lib: ✅ No issues found
+- cargo fmt --check -p vb_storage: ✅ clean
+- cargo kani: ⚠️ BLOCKED_TOOLING (TBR-001)
+- Production panic surface: ✅ 0 matches
+- CURRENT_SCHEMA_VERSION preservation: ✅
+- Back-compat legacy envelope-12 tolerance: ✅
+- Cross-bind rejection (SlotWrittenEvent + id 33): ✅
+- Canonical id-33 round-trip: ✅
+
+Output:
+- .beads/vb-qxjgx/black-hat-review.md (STATUS: APPROVED)
+
+Status: COMPLETED

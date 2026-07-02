@@ -1,0 +1,37 @@
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/vb_edvbj_storage_event_production.rs:148:17
+    |
+148 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/vb_edvbj_storage_event_production.rs:166:17
+    |
+166 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/vb_edvbj_storage_event_production.rs:292:17
+    |
+292 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+error: duplicate specification for `vb_edvbj_storage_event::production::production::mirror_storage_event`
+   --> verification/verus/vb_edvbj_storage_event.rs:165:1
+    |
+165 | / pub assume_specification[ production::mirror_storage_event ](
+166 | |     event: &production::MirrorRuntimeJournalEvent,
+167 | |     seq: production::MirrorEventSeq,
+168 | | ) -> (r: production::MirrorRuntimeResult<production::MirrorJournalEvent>)
+    | |________________________________________________________________________^ specification declared via `assume_specification`
+    |
+   ::: verification/verus/production_inner/vb_edvbj_storage_event_production.rs:538:1
+    |
+538 | / pub fn mirror_storage_event(
+539 | |     event: &MirrorRuntimeJournalEvent,
+540 | |     seq: MirrorEventSeq,
+541 | | ) -> MirrorRuntimeResult<MirrorJournalEvent> {
+    | |____________________________________________^ declared here (and not marked as `external`)
+
+error: aborting due to 1 previous error; 3 warnings emitted
+

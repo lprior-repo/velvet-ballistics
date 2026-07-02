@@ -1,0 +1,20 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+
+running 13 tests
+test recovery::tests::recovery_boundary_factory_selects_frame_for_frame_seed_variant ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_frame_only_slot_value_and_taint ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_inconsistent_seed ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_unsupported_action_payloads ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_frame_only_minimal_state ... ok
+test recovery::tests::recovery_boundary_factory_selects_summary_for_summary_variant ... ok
+test recovery::tests::summary_recovery_boundary_exposes_summary ... ok
+test recovery::tests::summary_recovery_boundary_rejects_full_frame_hydration ... ok
+test recovery::tests::pending_actions_fail_closed_with_typed_cannot_resume_state ... ok
+test primitives::collect::tests::collect_pagination_extra_round_trips_for_recovery ... ok
+test recovery::tests::recovery_boundary_factory_frame_seed_round_trips_summary ... ok
+test shard::types::introspection_poison_regression_tests::admission_continues_after_poison_recovery ... ok
+test shard::types::introspection_poison_regression_tests::register_rejects_run_already_exists_after_poison_recovery ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1794 filtered out; finished in 0.00s
+

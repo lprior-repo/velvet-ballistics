@@ -1,0 +1,11 @@
+=== vb_storage ===
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr/crates/vb_core)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr/crates/vb_storage)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.28s
+=== vb_runtime ===
+    Blocking waiting for file lock on package cache
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.20s
+=== vb_core ===
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-cheap25-vb-5bqmr/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.42s

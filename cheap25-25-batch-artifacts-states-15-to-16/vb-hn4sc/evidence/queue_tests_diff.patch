@@ -1,0 +1,409 @@
+--- /proc/self/fd/11	2026-07-01 20:42:23.207994499 -0500
++++ crates/vb_storage/src/queue/tests.rs	2026-07-01 20:39:28.759190102 -0500
+@@ -11,10 +11,12 @@
+ mod internal_tests {
+     use super::super::*;
+     use crate::{
+-        EventSeq, FjallJournal, JournalError, JournalEvent, constants::DIGEST_BYTES,
++        EventSeq, FjallJournal, JournalBatchSize, JournalError, JournalEvent, JournalQueueCapacity,
++        JournalWriteBatch, constants::DIGEST_BYTES, constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+         types::StorageLimits,
+     };
+-    use vb_core::{RunId, WorkflowDigest};
++    use std::num::NonZeroUsize;
++    use vb_core::{RunId, SlotIdx, WorkflowDigest};
+ 
+     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
+         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+@@ -30,6 +32,47 @@
+         }
+     }
+ 
++    // Probe helper for tests that need a known encoded length.
++    //
++    // `make_event` (RunAccepted with a 32-byte zero digest) encodes to
++    // exactly 95 bytes: 60-byte header + 35-byte postcard payload. The
++    // tests below treat this value as canonical.
++    const RUN_ACCEPTED_ENCODED_LEN: u64 = 95;
++
++    // Probe helper for a near-max-size event whose encoded length is
++    // verified to fall in the band that lets us exercise the byte
++    // budget against the existing `JournalWriteBatch::byte_limit`
++    // default of `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT = 1_048_576`.
++    //
++    // `SlotWrittenEvent { value: Some(vec![0u8; 1_048_560]), extra: None,
++    // attempt: 1 }` postcard-encodes to 1_048_570 bytes (under
++    // `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`) and the full record encodes
++    // to 1_048_630 bytes (header + payload). That encoded length is
++    // 54 bytes over `1_048_576`, so `JournalWriteBatch` rejects it
++    // while a `JournalWriterQueue` with the matching custom
++    // `max_journal_batch_bytes = 1_048_576` also rejects with the
++    // identical error variant and field values.
++    const NEAR_MAX_VALUE_LEN: usize = 1_048_560;
++    const NEAR_MAX_ENCODED_LEN: u64 = 1_048_630;
++
++    fn make_near_max_event(run: RunId, seq: u64) -> JournalEvent {
++        JournalEvent::SlotWrittenEvent {
++            run,
++            seq: EventSeq::new(seq),
++            slot: SlotIdx::new(0),
++            value: Some(vec![0u8; NEAR_MAX_VALUE_LEN]),
++            extra: None,
++            attempt: 1,
++        }
++    }
++
++    fn limits_with_byte_budget(budget: u64) -> StorageLimits {
++        StorageLimits {
++            max_journal_event_payload_bytes: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
++            max_journal_batch_bytes: budget,
++        }
++    }
++
+     #[test]
+     fn new_rejects_zero_capacity() {
+         let result = JournalWriterQueue::new(0, 4, StorageLimits::DEFAULT);
+@@ -1166,4 +1209,343 @@
+             "the durable event must equal the retried payload"
+         );
+     }
++
++    // ========================================================================
++    // vb-hn4sc — byte-budget gate tests
++    // ========================================================================
++    //
++    // These tests cover the per-flush encoded-byte budget that
++    // `JournalWriterQueue::flush_batch` enforces via the previously-ignored
++    // `StorageLimits::max_journal_batch_bytes` field. The default
++    // `StorageLimits::DEFAULT.max_journal_batch_bytes == 1_048_636`
++    // accommodates exactly one max-size journal event. Tests that exercise
++    // the gate boundary use a smaller custom budget so the rejection path
++    // is reachable without staging 10k+ events.
++
++    /// Per AC-1.4: `StorageLimits::DEFAULT.max_journal_batch_bytes` equals
++    /// `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT + 60`.
++    #[test]
++    fn storage_limits_default_batch_bytes_equals_payload_basis_plus_header() {
++        assert_eq!(
++            StorageLimits::DEFAULT.max_journal_batch_bytes,
++            1_048_636,
++            "default byte budget must be payload basis (1_048_576) + 60-byte header",
++        );
++    }
++
++    /// Per B-HN4SC-8: `with_contracts` signature is preserved.
++    #[test]
++    fn with_contracts_captures_byte_budget_from_storage_limits() {
++        let limits = limits_with_byte_budget(123);
++        let queue = JournalWriterQueue::with_contracts(
++            JournalQueueCapacity::new(NonZeroUsize::new(4).expect("non-zero")),
++            JournalBatchSize::new(NonZeroUsize::new(2).expect("non-zero")),
++            limits,
++        )
++        .expect("construction with valid limits should succeed");
++        assert_eq!(
++            queue.byte_budget(),
++            123,
++            "byte_budget must mirror StorageLimits::max_journal_batch_bytes",
++        );
++    }
++
++    /// Per AC-1.1: a single event whose encoded length exceeds the
++    /// configured `byte_budget` returns `JournalBatchBytesExceeded`.
++    #[test]
++    fn flush_batch_rejects_when_encoded_bytes_exceed_byte_budget() {
++        let (_temp, journal) = temp_journal();
++        // 95-byte event + 5-byte headroom -> reject first event.
++        let queue = JournalWriterQueue::new(2, 2, limits_with_byte_budget(90))
++            .expect("queue creation should succeed");
++        // RunId < 128 -> single varint byte -> encoded length stays 95.
++        let run = RunId::new(1);
++        queue
++            .enqueue_journaled(make_event(run, 0))
++            .expect("enqueue under capacity should succeed");
++        let result = queue.flush_batch(&journal);
++        match result {
++            Err(JournalError::JournalBatchBytesExceeded { attempted, limit }) => {
++                assert_eq!(
++                    attempted, RUN_ACCEPTED_ENCODED_LEN,
++                    "attempted must equal encoded length of the staged event (95)",
++                );
++                assert_eq!(limit, 90, "limit must equal configured byte_budget (90)",);
++            }
++            other => panic!("expected JournalBatchBytesExceeded, got {:?}", other,),
++        }
++        // Per W-HN4SC-3 / M-HN4SC-1: pending queue is preserved on
++        // rejection; no partial commit reached the durable store.
++        let counts = queue
++            .pending_profile_counts()
++            .expect("counts should succeed");
++        assert_eq!(
++            counts.journaled, 1,
++            "rejected event must remain queued for the next flush",
++        );
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert!(
++            events.is_empty(),
++            "durable store must remain empty after a rejected flush",
++        );
++    }
++
++    /// Per AC-1.2: an event whose encoded length equals the configured
++    /// budget is accepted (`>` not `>=`).
++    #[test]
++    fn flush_batch_accepts_at_exact_byte_budget() {
++        let (_temp, journal) = temp_journal();
++        let queue =
++            JournalWriterQueue::new(2, 2, limits_with_byte_budget(RUN_ACCEPTED_ENCODED_LEN))
++                .expect("queue creation should succeed");
++        let run = RunId::new(2);
++        queue
++            .enqueue_journaled(make_event(run, 0))
++            .expect("enqueue should succeed");
++        let report = queue
++            .flush_batch(&journal)
++            .expect("exact-fit flush should succeed");
++        assert_eq!(report.drained, 1);
++        assert_eq!(report.written, 1);
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert_eq!(
++            events.len(),
++            1,
++            "exact-fit event must be durable after flush",
++        );
++    }
++
++    /// Per M-HN4SC-9 + AC-1.4: `StorageLimits::DEFAULT.max_journal_batch_bytes`
++    /// is 1_048_636, large enough to accept a single near-max event.
++    #[test]
++    fn flush_batch_default_accepts_single_max_size_event() {
++        let (_temp, journal) = temp_journal();
++        let queue = JournalWriterQueue::new(2, 2, StorageLimits::DEFAULT)
++            .expect("queue creation with default limits should succeed");
++        assert_eq!(
++            queue.byte_budget(),
++            1_048_636,
++            "default byte_budget must equal 1_048_636",
++        );
++        let run = RunId::new(3);
++        queue
++            .enqueue_journaled(make_near_max_event(run, 0))
++            .expect("enqueue should succeed");
++        let report = queue
++            .flush_batch(&journal)
++            .expect("default-budget flush should accept a single max event");
++        assert_eq!(report.drained, 1);
++        assert_eq!(report.written, 1);
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert_eq!(
++            events.len(),
++            1,
++            "single max-size event must be durable after default-budget flush",
++        );
++    }
++
++    /// Per M-HN4SC-1 / W-HN4SC-2: the byte-budget gate fires BEFORE any
++    /// `owned_batch.commit()`; on rejection, the durable store is
++    /// untouched even if earlier events in the same flush were staged
++    /// into the `OwnedWriteBatch`.
++    #[test]
++    fn flush_batch_byte_budget_rejection_skips_commit() {
++        let (_temp, journal) = temp_journal();
++        // budget 100 -> first event (95 bytes) fits, second event (95+95=190)
++        // exceeds and the gate must reject before commit.
++        let queue = JournalWriterQueue::new(4, 4, limits_with_byte_budget(100))
++            .expect("queue creation should succeed");
++        let run = RunId::new(4);
++        queue
++            .enqueue_journaled(make_event(run, 0))
++            .expect("first enqueue should succeed");
++        queue
++            .enqueue_journaled(make_event(run, 1))
++            .expect("second enqueue should succeed");
++        let result = queue.flush_batch(&journal);
++        match result {
++            Err(JournalError::JournalBatchBytesExceeded { attempted, limit }) => {
++                assert_eq!(
++                    attempted,
++                    RUN_ACCEPTED_ENCODED_LEN.saturating_mul(2),
++                    "attempted must equal accumulated bytes (95 + 95 = 190) at the rejecting event",
++                );
++                assert_eq!(limit, 100);
++            }
++            other => panic!(
++                "expected JournalBatchBytesExceeded on second event, got {:?}",
++                other,
++            ),
++        }
++        // Per W-HN4SC-3 + M-HN4SC-1: pending queue retains BOTH events;
++        // the durable store contains NEITHER (no commit happened).
++        let counts = queue
++            .pending_profile_counts()
++            .expect("counts should succeed");
++        assert_eq!(
++            counts.journaled, 2,
++            "both events must remain queued after a rejected flush",
++        );
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert!(
++            events.is_empty(),
++            "durable store must be empty after rejected flush, got {} events",
++            events.len(),
++        );
++    }
++
++    /// Per W-HN4SC-6: `drain_all` short-circuits on the first
++    /// `JournalBatchBytesExceeded` and surfaces the error via `?`.
++    #[test]
++    fn drain_all_short_circuits_on_byte_budget_rejection() {
++        let (_temp, journal) = temp_journal();
++        let queue = JournalWriterQueue::new(8, 8, limits_with_byte_budget(90))
++            .expect("queue creation should succeed");
++        let run = RunId::new(5);
++        for i in 0..5u64 {
++            queue
++                .enqueue_journaled(make_event(run, i))
++                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
++        }
++        let result = queue.drain_all(&journal);
++        match result {
++            Err(JournalError::JournalBatchBytesExceeded { attempted, limit }) => {
++                assert_eq!(attempted, RUN_ACCEPTED_ENCODED_LEN);
++                assert_eq!(limit, 90);
++            }
++            other => panic!(
++                "drain_all must propagate byte-budget error, got {:?}",
++                other,
++            ),
++        }
++        // Pending queue is intact; durable store is empty.
++        let counts = queue
++            .pending_profile_counts()
++            .expect("counts should succeed");
++        assert_eq!(
++            counts.journaled, 5,
++            "all 5 events must remain queued after drain_all short-circuit",
++        );
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert!(
++            events.is_empty(),
++            "durable store must be empty after drain_all short-circuit",
++        );
++    }
++
++    /// Per the gate contract: `enqueue` does NOT enforce the byte
++    /// budget; only `flush_batch` does. Capacity is the only enqueue
++    /// guard.
++    #[test]
++    fn enqueue_does_not_enforce_byte_budget_only_flush_does() {
++        let queue = JournalWriterQueue::new(8, 8, limits_with_byte_budget(90))
++            .expect("queue creation should succeed");
++        let run = RunId::new(6);
++        for i in 0..4u64 {
++            queue
++                .enqueue_journaled(make_event(run, i))
++                .unwrap_or_else(|_| panic!("enqueue {} must not consult byte budget", i));
++        }
++        let counts = queue
++            .pending_profile_counts()
++            .expect("counts should succeed");
++        assert_eq!(
++            counts.journaled, 4,
++            "all enqueues must succeed even though the total exceeds byte_budget",
++        );
++    }
++
++    /// Per AC-1.3: `JournalWriteBatch::append_event` and
++    /// `JournalWriterQueue::flush_batch` emit the IDENTICAL
++    /// `JournalBatchBytesExceeded { attempted, limit }` for the same
++    /// oversize event. This is the contract-parity lock.
++    ///
++    /// Setup: a `SlotWrittenEvent { value: Some(vec![0u8; 1_048_560]) }`
++    /// encodes to 1_048_630 bytes (60 header + 1_048_570 postcard
++    /// payload) for a small `RunId` (1..=127) — the 1-byte RunId
++    /// varint keeps the total inside `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`.
++    /// Both paths are configured with the same effective limit
++    /// (1_048_576) so the emitted error matches exactly.
++    #[test]
++    fn journal_write_batch_and_journal_writer_queue_emit_identical_byte_budget_error() {
++        // 1. `JournalWriteBatch` path (default byte_limit = 1_048_576).
++        let (_temp, journal) = temp_journal();
++        let event = make_near_max_event(RunId::new(7), 0);
++        let mut batch = JournalWriteBatch::new(&journal);
++        let batch_result = batch.append_event(&event);
++        let batch_err = batch_result
++            .err()
++            .expect("JournalWriteBatch must reject oversize event");
++        let (batch_attempted, batch_limit) = match &batch_err {
++            JournalError::JournalBatchBytesExceeded { attempted, limit } => (*attempted, *limit),
++            other => panic!(
++                "JournalWriteBatch must return JournalBatchBytesExceeded, got {:?}",
++                other,
++            ),
++        };
++
++        // 2. `JournalWriterQueue` path with custom byte_budget = 1_048_576
++        //    (matching `JournalWriteBatch`'s default).
++        let queue = JournalWriterQueue::new(2, 2, limits_with_byte_budget(1_048_576))
++            .expect("queue creation should succeed");
++        let run = RunId::new(8);
++        queue
++            .enqueue_journaled(event.clone())
++            .expect("enqueue should succeed");
++        let queue_result = queue.flush_batch(&journal);
++        let queue_err = queue_result
++            .err()
++            .expect("JournalWriterQueue must reject oversize event");
++        let (queue_attempted, queue_limit) = match &queue_err {
++            JournalError::JournalBatchBytesExceeded { attempted, limit } => (*attempted, *limit),
++            other => panic!(
++                "JournalWriterQueue must return JournalBatchBytesExceeded, got {:?}",
++                other,
++            ),
++        };
++
++        // 3. Parity: same variant shape, same `attempted` (encoded
++        //    length), same `limit` (configured budget).
++        assert_eq!(
++            batch_attempted, NEAR_MAX_ENCODED_LEN,
++            "JournalWriteBatch attempted must equal the encoded length (1_048_630)",
++        );
++        assert_eq!(
++            queue_attempted, NEAR_MAX_ENCODED_LEN,
++            "JournalWriterQueue attempted must equal the encoded length (1_048_630)",
++        );
++        assert_eq!(
++            batch_attempted, queue_attempted,
++            "parity: both paths must report identical `attempted` for the same event",
++        );
++        assert_eq!(
++            batch_limit, 1_048_576,
++            "JournalWriteBatch limit must be its default (1_048_576)",
++        );
++        assert_eq!(
++            queue_limit, 1_048_576,
++            "JournalWriterQueue limit must mirror the configured byte_budget (1_048_576)",
++        );
++        assert_eq!(
++            batch_limit, queue_limit,
++            "parity: both paths must report identical `limit` for matching configs",
++        );
++        // Belt-and-suspenders: confirm both errors are the exact same
++        // variant (the test-writer contract requires this).
++        assert!(
++            matches!(batch_err, JournalError::JournalBatchBytesExceeded { .. })
++                && matches!(queue_err, JournalError::JournalBatchBytesExceeded { .. }),
++            "parity: both errors must be exactly JournalError::JournalBatchBytesExceeded",
++        );
++
++        // 4. Neither path commits a partial prefix. JournalWriteBatch's
++        //    append never inserted; JournalWriterQueue's flush returned
++        //    Err before any owned_batch.commit().
++        let events = journal.events_for_run(run).expect("replay should succeed");
++        assert!(
++            events.is_empty(),
++            "durable store must be empty after parity-test rejections, got {} events",
++            events.len(),
++        );
++    }
+ }
