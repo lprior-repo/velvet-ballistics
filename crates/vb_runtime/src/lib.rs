@@ -67,6 +67,12 @@ pub mod kani_engine_yaml_admission;
 pub mod kani_shard_command_queue;
 #[cfg(all(kani, feature = "kani-trace-ring"))]
 pub mod kani_trace_ring;
+
+#[cfg(kani)]
+pub mod kani_vb_edvbj_storage_event_no_fabricate;
+
+#[cfg(kani)]
+pub mod kani_vb_edvbj_propagation_strict_gate;
 #[cfg(all(kani, feature = "kani-vt2f-runtime-facade"))]
 pub mod kani_vt2f_runtime_facade;
 #[cfg(all(kani, feature = "kani-vt2f-shard-lower-semantics"))]
