@@ -479,6 +479,57 @@ fn latest_durable_snapshot_seq_does_not_decode_snapshot_value() {
     );
 }
 
+#[test]
+fn latest_durable_snapshot_seq_rejects_overlong_snapshot_key() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x904);
+    let digest = WorkflowDigest::from_bytes([0x72; DIGEST_BYTES]);
+
+    let good_snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(7),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&good_snapshot)
+        .expect("put_snapshot should succeed");
+
+    let mut overlong_key = crate::keys::run_snapshot_key(run, EventSeq::new(42))
+        .expect("run_snapshot_key should succeed")
+        .to_vec();
+    overlong_key.push(0xAA);
+    journal
+        .run_snapshot
+        .insert(overlong_key.clone(), vec![0xDE, 0xAD, 0xBE, 0xEF])
+        .expect("overlong snapshot key insert should succeed");
+
+    let err = journal
+        .latest_durable_snapshot_seq(run)
+        .expect_err("overlong snapshot key must fail closed");
+    assert!(
+        matches!(err, TrimError::IncompleteTrim { deleted_count: 0 }),
+        "overlong snapshot key must surface IncompleteTrim with deleted_count=0, got {err:?}"
+    );
+    let loaded_good_snapshot = journal
+        .snapshot(run, EventSeq::new(7))
+        .expect("good snapshot lookup should succeed after failed trim lookup")
+        .expect("good snapshot must remain after failed trim lookup");
+    assert_eq!(
+        loaded_good_snapshot, good_snapshot,
+        "failed trim lookup must not alter the existing durable snapshot"
+    );
+    let poisoned_snapshot = journal
+        .run_snapshot
+        .get(overlong_key.as_slice())
+        .expect("overlong snapshot key lookup should succeed after failed trim lookup");
+    assert!(
+        poisoned_snapshot.is_some(),
+        "failed trim lookup must not mutate the overlong snapshot key"
+    );
+}
+
 // =========================================================================
 // vb-1rqz7.30 / SC-005 — batch trim computes retention in a single pass
 // =========================================================================
@@ -899,6 +950,14 @@ fn trim_events_for_run_fails_closed_on_malformed_event_key() {
     journal
         .append_journaled(&event)
         .expect("append real event should succeed");
+    let event_key =
+        crate::keys::run_event_key(run, EventSeq::new(0)).expect("event key encode should succeed");
+    let before_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup before failed trim should succeed")
+        .expect("event must exist before failed trim")
+        .to_vec();
 
     // Plant a corrupted key (shorter than the 17-byte run-event contract)
     // directly under the same run-event prefix so the trim scan encounters it.
@@ -918,7 +977,7 @@ fn trim_events_for_run_fails_closed_on_malformed_event_key() {
     .expect("event record encode");
     journal
         .events
-        .insert(short_key.to_vec(), real_value)
+        .insert(short_key.to_vec(), real_value.clone())
         .expect("malformed short key insert");
 
     let policy = TrimPolicy::default();
@@ -926,8 +985,107 @@ fn trim_events_for_run_fails_closed_on_malformed_event_key() {
         .trim_events_for_run(run, policy)
         .expect_err("short key must fail closed");
     assert!(
-        matches!(err, TrimError::IncompleteTrim { .. }),
-        "short event key must surface as IncompleteTrim, got {err:?}"
+        matches!(err, TrimError::IncompleteTrim { deleted_count: 0 }),
+        "short event key must surface IncompleteTrim with deleted_count=0, got {err:?}"
+    );
+    let after_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup after failed trim should succeed")
+        .expect("event must remain after failed trim")
+        .to_vec();
+    assert_eq!(
+        after_event_bytes, before_event_bytes,
+        "failed trim must not delete or rewrite the existing event"
+    );
+    let after_short_key = journal
+        .events
+        .get(short_key.as_slice())
+        .expect("short key lookup after failed trim should succeed")
+        .expect("short key must remain after failed trim")
+        .to_vec();
+    assert_eq!(
+        after_short_key, real_value,
+        "failed trim must leave the malformed short key bytes unchanged"
+    );
+}
+
+#[test]
+fn trim_events_for_run_fails_closed_on_overlong_event_key() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x7A11);
+
+    let digest = WorkflowDigest::from_bytes([0x79; DIGEST_BYTES]);
+    write_header(&journal, run, digest);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(3),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal.put_snapshot(&snapshot).expect("snapshot put");
+
+    let event = make_event(run, 0);
+    journal
+        .append_journaled(&event)
+        .expect("append real event should succeed");
+    let event_key =
+        crate::keys::run_event_key(run, EventSeq::new(0)).expect("event key encode should succeed");
+    let before_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup before failed trim should succeed")
+        .expect("event must exist before failed trim")
+        .to_vec();
+
+    let mut overlong_key = crate::keys::run_event_key(run, EventSeq::new(1))
+        .expect("run_event_key should succeed")
+        .to_vec();
+    overlong_key.push(0xAA);
+    let real_value = crate::codec::encode_record(
+        crate::constants::MAGIC_JOURNAL_EVENT,
+        crate::records::RecordKind::RunAccepted,
+        1,
+        &make_event(run, 1),
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .expect("event record encode");
+    journal
+        .events
+        .insert(overlong_key.clone(), real_value.clone())
+        .expect("overlong event key insert should succeed");
+
+    let policy = TrimPolicy {
+        skip_noop_runs: true,
+        retain_last_n_terminal: 0,
+    };
+    let err = journal
+        .trim_events_for_run(run, policy)
+        .expect_err("overlong key must fail closed");
+    assert!(
+        matches!(err, TrimError::IncompleteTrim { deleted_count: 1 }),
+        "overlong event key must surface IncompleteTrim with deleted_count=1, got {err:?}"
+    );
+    let after_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup after failed trim should succeed")
+        .expect("event must remain after failed trim")
+        .to_vec();
+    assert_eq!(
+        after_event_bytes, before_event_bytes,
+        "failed trim must not commit queued deletion of the existing event"
+    );
+    let after_overlong_key = journal
+        .events
+        .get(overlong_key.as_slice())
+        .expect("overlong key lookup after failed trim should succeed")
+        .expect("overlong key must remain after failed trim")
+        .to_vec();
+    assert_eq!(
+        after_overlong_key, real_value,
+        "failed trim must leave the malformed overlong key bytes unchanged"
     );
 }
 
@@ -955,6 +1113,14 @@ fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
 
     let event = make_event(run, 0);
     journal.append_journaled(&event).expect("append event");
+    let event_key =
+        crate::keys::run_event_key(run, EventSeq::new(0)).expect("event key encode should succeed");
+    let before_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup before diagnostic should succeed")
+        .expect("event must exist before diagnostic")
+        .to_vec();
 
     let mut short_key = [0u8; 9];
     short_key[0] = PREFIX_RUN_EVENT;
@@ -969,7 +1135,7 @@ fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
     .expect("event record encode");
     journal
         .events
-        .insert(short_key.to_vec(), real_value)
+        .insert(short_key.to_vec(), real_value.clone())
         .expect("malformed short key insert");
 
     let policy = TrimPolicy::default();
@@ -981,8 +1147,28 @@ fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
         other => panic!("trim diagnostic must wrap as JournalError::Trim, got {other:?}"),
     };
     assert!(
-        matches!(converted, TrimError::IncompleteTrim { .. }),
-        "trim diagnostic must surface IncompleteTrim, got {converted:?}"
+        matches!(converted, TrimError::IncompleteTrim { deleted_count: 0 }),
+        "trim diagnostic must surface IncompleteTrim with deleted_count=0, got {converted:?}"
+    );
+    let after_event_bytes = journal
+        .events
+        .get(event_key.as_slice())
+        .expect("event lookup after diagnostic should succeed")
+        .expect("event must remain after failed diagnostic")
+        .to_vec();
+    assert_eq!(
+        after_event_bytes, before_event_bytes,
+        "failed trim diagnostic must not mutate existing event bytes"
+    );
+    let after_short_key = journal
+        .events
+        .get(short_key.as_slice())
+        .expect("short key lookup after diagnostic should succeed")
+        .expect("short key must remain after failed diagnostic")
+        .to_vec();
+    assert_eq!(
+        after_short_key, real_value,
+        "failed trim diagnostic must leave malformed key bytes unchanged"
     );
 }
 

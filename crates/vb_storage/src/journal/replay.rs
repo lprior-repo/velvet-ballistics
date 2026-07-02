@@ -4,7 +4,7 @@ use crate::{
     error::JournalError,
     events::JournalEvent,
     journal::{EventReplayLimit, FjallJournal},
-    keys::{run_event_key, run_prefix_key},
+    keys::{decode_run_event_key, run_event_key, run_prefix_key},
     types::EventSeq,
 };
 use fjall::Readable;
@@ -144,21 +144,39 @@ impl FjallJournal {
         // linearly skips pre-snapshot events. The prefix check terminates at the
         // first lexicographic key for another run in this keyspace.
         for item in snap.range(&self.events, start_key..) {
-            let (_, value) = item.into_inner_if(|key| key.as_ref().starts_with(&run_prefix))?;
+            let (key, value) = item.into_inner_if(|key| key.as_ref().starts_with(&run_prefix))?;
             let Some(value) = value else {
                 break;
             };
-            let (_, event) = decode_journal_event(
+            let (_, key_seq) = decode_run_event_key(key.as_ref(), run)?;
+            let (envelope, event) = decode_journal_event(
                 value.as_ref(),
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )?;
+            validate_replay_key_sequence(run, key_seq, envelope.sequence, &event)?;
             validate_replay_sequence(run, &mut expected, &event)?;
             push_replay_event(&mut replay, run, limit, event)?;
         }
 
         Ok(replay)
     }
+}
+
+fn validate_replay_key_sequence(
+    run: vb_core::RunId,
+    key_seq: EventSeq,
+    envelope_seq: u64,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    if key_seq.get() == envelope_seq && key_seq == event.seq() {
+        return Ok(());
+    }
+    Err(JournalError::ReplayKeyMismatch {
+        run,
+        key_seq: key_seq.get(),
+        payload_seq: event.seq().get(),
+    })
 }
 
 fn validate_replay_sequence(

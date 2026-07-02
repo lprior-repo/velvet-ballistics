@@ -2811,9 +2811,59 @@ fn key_payload_mismatch_fails_replay() -> Result<(), JournalError> {
         .events_for_run(run)
         .expect_err("replay must reject envelope/payload sequence mismatch");
     assert!(
-        matches!(err, JournalError::ReplayEnvelopeSequenceMismatch { .. }),
-        "expected ReplayEnvelopeSequenceMismatch, got {:?}",
+        matches!(
+            err,
+            JournalError::ReplayEnvelopeSequenceMismatch {
+                run: actual_run,
+                envelope_seq: 99,
+                payload_seq: 42,
+            } if actual_run == run
+        ),
+        "expected ReplayEnvelopeSequenceMismatch for run={run:?}, envelope_seq=99, payload_seq=42, got {:?}",
         err
+    );
+    Ok(())
+}
+
+#[test]
+fn replay_rejects_key_payload_sequence_mismatch() -> Result<(), JournalError> {
+    let (_temp, journal) = temp_journal();
+    let run = vb_core::RunId::new(8);
+    let key_seq = EventSeq::new(0);
+    let payload_seq = EventSeq::new(1);
+
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: payload_seq,
+        workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
+    };
+    let encoded = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::records::RecordKind::RunAccepted,
+        payload_seq.get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let key = crate::keys::run_event_key(run, key_seq)?;
+    journal
+        .events
+        .insert(key.to_vec(), encoded)
+        .map_err(JournalError::Fjall)?;
+
+    let err = journal
+        .events_for_run(run)
+        .expect_err("replay must reject key/payload sequence mismatch");
+    assert!(
+        matches!(
+            err,
+            JournalError::ReplayKeyMismatch {
+                run: actual_run,
+                key_seq: 0,
+                payload_seq: 1,
+            } if actual_run == run
+        ),
+        "expected ReplayKeyMismatch for key seq 0 and payload seq 1, got {err:?}"
     );
     Ok(())
 }
