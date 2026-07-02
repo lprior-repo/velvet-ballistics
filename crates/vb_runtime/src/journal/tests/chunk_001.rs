@@ -7,7 +7,7 @@ use crate::shard::ShardConfig;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 use vb_core::value::Taint;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
@@ -70,6 +70,11 @@ fn require_ok<T>(result: Result<T, String>, context: &'static str) -> Option<T> 
     }
 }
 
+fn fabricated_workflow_id_from_digest_for_test(digest: WorkflowDigest) -> WorkflowId {
+    let [b0, b1, b2, b3, ..] = digest.as_bytes();
+    WorkflowId::new(u32::from_be_bytes([b0, b1, b2, b3]))
+}
+
 #[test]
 fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
@@ -121,6 +126,51 @@ fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
             },
         ]
     );
+}
+
+#[test]
+fn queued_runtime_admission_flush_does_not_fabricate_recovery_indexes() -> Result<(), String> {
+    let (_dir, journal) = temp_journal()?;
+    let queue = journal_queue(4, 2)?;
+    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
+    let run = RunId::new(41_010);
+    let workflow = WorkflowDigest::from_bytes([0x12; 32]);
+    let seq = EventSeq::new(7);
+
+    assert_eq!(
+        adapter.append_sequenced(RuntimeJournalEvent::RunSubmitted { run, workflow }, seq),
+        Ok(())
+    );
+    assert!(matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1));
+
+    assert_eq!(
+        journal.run_header(run).map_err(|error| error.to_string())?,
+        None,
+        "RunAccepted flush must not fabricate a run header from digest/seq"
+    );
+
+    let workflow_id = fabricated_workflow_id_from_digest_for_test(workflow);
+    let status_key = vb_storage::keys::index_status_key(
+        vb_storage::IndexStatusState::Submitted,
+        seq.get(),
+        run,
+    )
+    .map_err(|error| error.to_string())?;
+    let workflow_key = vb_storage::keys::index_workflow_key(workflow_id, run)
+        .map_err(|error| error.to_string())?;
+    assert!(
+        !journal
+            .has_status_index_entry(status_key)
+            .map_err(|error| error.to_string())?,
+        "RunAccepted flush must not fabricate a status index timestamp from seq"
+    );
+    assert!(
+        !journal
+            .has_workflow_index_entry(workflow_key)
+            .map_err(|error| error.to_string())?,
+        "RunAccepted flush must not fabricate a workflow id from digest bytes"
+    );
+    Ok(())
 }
 
 #[test]

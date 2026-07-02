@@ -38,15 +38,12 @@ impl FjallJournal {
     /// force-flushed to stable storage.  Callers that require strict
     /// durability must invoke `persist_strict` after staging.
     ///
-    /// vb-3wn7x: the runtime journal path uses this entry point for
-    /// direct appends. To keep the `index_action` keyspace consistent
-    /// with the durable event log, the action-lifecycle index mutation
-    /// (insert for `ActionScheduled` / `ActionScheduledTicket`,
-    /// tombstone for completion / failure / abandonment, no-op for
-    /// every other variant) is staged into the SAME
+    /// The runtime journal path uses this entry point for direct appends.
+    /// To keep recovery scans consistent with the durable event log,
+    /// derived index mutations are staged into the SAME
     /// `fjall::OwnedWriteBatch` as the event write and committed
-    /// atomically. A process crash between the event insert and the
-    /// index mutation is impossible — they share one fsync'd batch.
+    /// atomically. A process crash between the event insert and an index
+    /// mutation is impossible because they share one batch.
     pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
         let _guard = self
             .write_lock
@@ -69,11 +66,11 @@ impl FjallJournal {
             event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
-        // Stage event + pending-action-index update on one batch so the
+        // Stage event + recovery indexes on one batch so each derived
         // index mutation succeeds or fails with the event write.
         let mut batch = self.database.batch();
+        self.stage_recovery_index_ops(&mut batch, event)?;
         batch.insert(&self.events, key, value);
-        self.stage_pending_action_index_op(&mut batch, event)?;
         batch.commit()?;
         Ok(())
     }

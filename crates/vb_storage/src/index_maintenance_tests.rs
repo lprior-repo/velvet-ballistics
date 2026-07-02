@@ -42,13 +42,13 @@
 )]
 mod tests {
     use crate::{
-        DurableActionOutcome, EventSeq, FjallJournal, JournalError, JournalEvent,
+        DurableActionOutcome, EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent,
         JournalWriteBatch, JournalWriterQueue, StorageLimits,
     };
     use std::sync::Arc;
     use vb_core::{
         ActionId, ActionTicket, RunId, SeqNo, SlotIdx, StepIdx as CoreStepIdx, Taint,
-        WorkflowDigest, ids::StepIdx,
+        WorkflowDigest, WorkflowId, ids::StepIdx,
     };
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -93,6 +93,11 @@ mod tests {
             idempotency_key: 0,
             capacity: 1,
         }
+    }
+
+    fn fabricated_workflow_id_from_digest_for_negative_check(digest: WorkflowDigest) -> WorkflowId {
+        let [b0, b1, b2, b3, ..] = digest.as_bytes();
+        WorkflowId::new(u32::from_be_bytes([b0, b1, b2, b3]))
     }
 
     // -----------------------------------------------------------------
@@ -434,6 +439,46 @@ mod tests {
             count_action_index_entries(&journal),
             0,
             "non-action events must not introduce spurious index entries",
+        );
+    }
+
+    #[test]
+    fn batch_append_event_run_accepted_does_not_fabricate_admission_indexes() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(10_001);
+        let seq = EventSeq::new(55);
+        let workflow = WorkflowDigest::from_bytes([0xEF; 32]);
+
+        let mut batch = JournalWriteBatch::new(&journal);
+        batch
+            .append_event(&JournalEvent::RunAccepted { run, seq, workflow })
+            .expect("RunAccepted append_event must succeed");
+        batch.commit().expect("commit must succeed");
+
+        assert_eq!(
+            journal
+                .run_header(run)
+                .expect("run_header lookup must succeed"),
+            None,
+            "RunAccepted event alone must not synthesize a run header",
+        );
+        let fabricated_workflow_id =
+            fabricated_workflow_id_from_digest_for_negative_check(workflow);
+        let status_key = crate::keys::index_status_key(IndexStatusState::Submitted, seq.get(), run)
+            .expect("status key construction must succeed");
+        let workflow_key = crate::keys::index_workflow_key(fabricated_workflow_id, run)
+            .expect("workflow key construction must succeed");
+        assert!(
+            !journal
+                .has_status_index_entry(status_key)
+                .expect("status index lookup must succeed"),
+            "RunAccepted event alone must not use seq as an admission timestamp",
+        );
+        assert!(
+            !journal
+                .has_workflow_index_entry(workflow_key)
+                .expect("workflow index lookup must succeed"),
+            "RunAccepted event alone must not derive WorkflowId from digest bytes",
         );
     }
 
