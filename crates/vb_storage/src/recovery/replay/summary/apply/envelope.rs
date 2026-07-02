@@ -39,13 +39,14 @@ impl FrameSeedAccumulator {
             envelope.value_digest,
         )?;
         self.action_tracker
-            .require_scheduled_ticket(envelope.ticket, envelope.output)?;
+            .require_scheduled_ticket(envelope.ticket, envelope.output, envelope.action_abi_digest)?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
             envelope.ticket,
             envelope.output,
             envelope.encoded_len,
             envelope.taint,
             verified_digest,
+            envelope.action_abi_digest,
         )?;
         if effect == ActionReplayEffect::Duplicate {
             return Ok(self);

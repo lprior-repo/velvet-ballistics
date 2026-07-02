@@ -210,10 +210,9 @@ pub enum RuntimeError {
         reason: String,
     },
     /// Durable storage recovery failed.
-    /// Wraps the underlying `vb_storage::RecoveryError` for diagnostics.
     Recovery {
-        /// Preserved storage recovery error source.
-        error: Box<vb_storage::RecoveryError>,
+        /// Human-readable error description.
+        error: String,
     },
 }
 

@@ -137,6 +137,13 @@ pub enum RecoveryError {
         /// Canonical reason string for the cannot-resume classification.
         reason: String,
     },
+    /// Artifact was not found in the store during recovery.
+    ArtifactNotFound {
+        /// Digest that was looked up.
+        digest: WorkflowDigest,
+    },
+    /// Artifact IR bytes could not be decoded to WorkflowParts.
+    ArtifactDecodeFailed,
 }
 
 impl core::fmt::Display for RecoveryError {
@@ -202,6 +209,12 @@ impl core::fmt::Display for RecoveryError {
                     "recovery frame seed is not resumable for run {run:?}: {reason}"
                 )
             }
+            Self::ArtifactNotFound { digest } => {
+                write!(f, "artifact not found for recovery: {digest:?}")
+            }
+            Self::ArtifactDecodeFailed => {
+                write!(f, "artifact decode failed during recovery")
+            }
         }
     }
 }
@@ -223,7 +236,9 @@ impl std::error::Error for RecoveryError {
             | Self::MissingSnapshot { .. }
             | Self::TerminalStateMismatch { .. }
             | Self::FrameDimensionOverflow { .. }
-            | Self::UnsupportedFrameSeed { .. } => None,
+            | Self::UnsupportedFrameSeed { .. }
+            | Self::ArtifactNotFound { .. }
+            | Self::ArtifactDecodeFailed => None,
         }
     }
 }
@@ -331,6 +346,11 @@ impl PartialEq for RecoveryError {
                     reason: rd,
                 },
             ) => lr == rr && ld == rd,
+            (
+                Self::ArtifactNotFound { digest: ld },
+                Self::ArtifactNotFound { digest: rd },
+            ) => ld == rd,
+            (Self::ArtifactDecodeFailed, Self::ArtifactDecodeFailed) => true,
             _ => false,
         }
     }

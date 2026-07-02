@@ -16,8 +16,7 @@ use crate::recovery::types::{
     RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot,
 };
 use std::collections::BTreeSet;
-use vb_core::{RunId, StepIdx};
-
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 /// Production proof surface for snapshot-plus-tail run identity.
 #[must_use]
 pub fn hydrate_snapshot_tail_run_matches(
@@ -235,7 +234,7 @@ pub fn hydrate_run_frame(
 
     let mut tracker = ActionReplayTracker::new();
     let executed = apply_tail_events(&mut frame, tail_events, &mut tracker, &[]);
-    increment_executed(&mut frame, run_id, executed)?;
+    increment_executed(&mut frame, run_id, executed?)?;
     Ok(frame)
 }
 
@@ -564,7 +563,7 @@ pub fn hydrate_run_frame_from_events(
     apply_seed_step_states(&mut frame, &seed.steps)?;
     apply_seed_slots(&mut frame, &seed.slots)?;
     apply_seed_pc(&mut frame, seed.pc)?;
-    let executed = apply_replay_accounting(&mut frame, events, run_id)?;
+    let executed = apply_replay_accounting(&mut frame, events, run_id, &[])?;
     increment_executed(&mut frame, run_id, executed)?;
 
     Ok(frame)
@@ -702,6 +701,7 @@ fn apply_action_scheduled_ticket_event(
     frame: &mut vb_core::RunFrame,
     tracker: &mut ActionReplayTracker,
     event: &JournalEvent,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
 ) -> RecoveryResult<bool> {
     let JournalEvent::ActionScheduledTicket {
         run,
@@ -715,6 +715,7 @@ fn apply_action_scheduled_ticket_event(
         return Ok(false);
     };
     verify_action_ticket_event(*run, *ticket)?;
+    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Apply {
         add_replay_parallel_in_flight(frame, ticket.step)?;
@@ -726,6 +727,7 @@ fn apply_action_completed_envelope_event(
     frame: &mut vb_core::RunFrame,
     tracker: &mut ActionReplayTracker,
     event: &JournalEvent,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
 ) -> RecoveryResult<bool> {
     let JournalEvent::ActionCompletedEnvelope {
         run,
@@ -751,6 +753,7 @@ fn apply_action_completed_envelope_event(
         *value_digest,
     )?;
     tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
+    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,
@@ -764,7 +767,6 @@ fn apply_action_completed_envelope_event(
     }
     Ok(effect == ActionReplayEffect::Apply)
 }
-
 // VB-NOORE (wildcard elimination): explicit arms for every
 // JournalEvent variant so adding a new variant forces a
 // compile-time failure. The dispatcher routes action events
@@ -831,6 +833,22 @@ fn reject_resolved_action(
 ) -> RecoveryResult<()> {
     if tracker.is_resolved(action, step) {
         return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+    }
+    Ok(())
+}
+/// Checks whether the found action ABI digest matches any of the expected digests.
+fn check_action_abi_digest_against_expected(
+    action_id: ActionId,
+    found: WorkflowDigest,
+    expected: &[(ActionId, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    for (exp_action_id, exp_digest) in expected {
+        if *exp_action_id == action_id {
+            if *exp_digest != found {
+                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
+            }
+            return Ok(());
+        }
     }
     Ok(())
 }

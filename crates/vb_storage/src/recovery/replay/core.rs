@@ -146,9 +146,10 @@ fn replay_action_event(
             input,
             output,
             action_abi_digest,
+            ..
         } => {
             verify_action_ticket_event(*run, *ticket)?;
-            check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+            check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
             tracker
                 .mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)
                 .map(|_| ())
@@ -202,7 +203,7 @@ fn replay_action_completed_envelope_event(
     if require_schedule {
         tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
     }
-    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     tracker.mark_completed_envelope(*ticket, *output, *encoded_len, *taint, verified_digest, *action_abi_digest)
 }
 /// Reject the event when the (action, step) pair has already been resolved

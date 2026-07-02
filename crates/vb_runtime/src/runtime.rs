@@ -316,7 +316,7 @@ impl Runtime {
     /// journal is not storage-backed (noop or volatile journals cannot
     /// be replayed for crash recovery).
     ///
-    /// Returns `RuntimeError::Recovery` wrapping a `RecoveryError` when
+    /// Returns `RuntimeError::Recovery` when the recovery operation fails
     /// the journal replay fails (missing data, corrupt snapshot, digest
     /// mismatch, or unsupported recovery state).
     pub fn recover_and_resume(
@@ -331,32 +331,34 @@ impl Runtime {
         let hydration =
             vb_storage::recovery::recover_runtime_frame_seed(&fjall_journal, run).map_err(|e| {
                 RuntimeError::Recovery {
-                    error: Box::new(e),
+                    error: e.to_string(),
                 }
             })?;
 
-        let boundary = crate::recovery::recovery_boundary_from_hydration(hydration);
+        let boundary = crate::recovery::recovery_boundary_from_hydration(
+            vb_storage::recovery::RecoveryHydration::FrameSeed(hydration),
+        );
 
-        match boundary.resume_status() {
-            crate::recovery::RecoveryResumeStatus::CannotResume(_) => {
-                return Err(RuntimeError::RecoveryCannotResume {
-                    reason: boundary.summary().run.to_string(),
-                });
-            }
-            crate::recovery::RecoveryResumeStatus::SummaryOnly => {
-                return Err(RuntimeError::RecoveryCannotResume {
-                    reason: String::from("only_summary_data_available"),
-                });
-            }
-            crate::recovery::RecoveryResumeStatus::Resumable => {
-                // proceed to hydrate and recover
-            }
-        }
+        // Extract the workflow digest from the recovery summary so the
+        // shard can reconstruct the compiled workflow from the artifact store.
+        let workflow_digest = boundary
+            .summary()
+            .workflow
+            .ok_or(RuntimeError::RecoveryCannotResume {
+                reason: String::from("workflow_digest_missing_from_recovery_summary"),
+            })?;
 
+        // Both CannotResume and SummaryOnly are handled by the boundary
+        // itself (they already failed earlier in hydration); FrameSeed
+        // boundaries proceed here to hydrate the run frame.
         let frame = boundary.hydrate_run_frame()?;
 
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Recover { run, frame })
+        shard.enqueue(ShardCommand::Recover {
+            run,
+            frame,
+            workflow_digest,
+        })
     }
 
     /// Inspects run state.

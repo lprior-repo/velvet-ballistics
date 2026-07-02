@@ -145,6 +145,7 @@ fn apply_summary_event_checked(
             input,
             output,
             action_abi_digest,
+            ..
         } => {
             verify_action_ticket_event(*run, *ticket)?;
             let effect = tracker
@@ -176,6 +177,7 @@ fn apply_summary_event_checked(
             taint,
             value_digest,
             action_abi_digest,
+            ..
         } => {
             let verified_digest =
                 crate::recovery::hydrate_support::verified_action_envelope_digest(

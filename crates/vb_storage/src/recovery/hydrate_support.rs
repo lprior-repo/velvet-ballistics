@@ -4,6 +4,7 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
+pub(crate) use crate::recovery::replay::core::check_action_abi_digest_against_expected;
 use std::collections::HashMap;
 
 use crate::recovery::types::{
@@ -373,7 +374,7 @@ fn apply_action_scheduled_ticket(
         return Ok(ApplyOutcome::NotApplicable);
     };
     verify_action_ticket_event(*run, *ticket)?;
-    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Duplicate {
         return Ok(ApplyOutcome::Skipped);
@@ -435,7 +436,7 @@ fn apply_action_completed_envelope(
         *encoded_len,
         *value_digest,
     )?;
-    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,
@@ -626,22 +627,6 @@ fn ensure_step_running(
                 step,
                 detail: format!("mark_running before {context} failed"),
             })?;
-    }
-    Ok(())
-}
-/// Checks whether the found action ABI digest matches any of the expected digests.
-fn check_action_abi_digest_against_expected(
-    action_id: ActionId,
-    found: WorkflowDigest,
-    expected: &[(ActionId, WorkflowDigest)],
-) -> RecoveryResult<()> {
-    for (exp_action_id, exp_digest) in expected {
-        if *exp_action_id == action_id {
-            if *exp_digest != found {
-                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
-            }
-            return Ok(());
-        }
     }
     Ok(())
 }

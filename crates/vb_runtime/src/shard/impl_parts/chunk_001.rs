@@ -532,6 +532,11 @@ impl Shard {
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
             }
+            ShardCommand::Recover {
+                run,
+                frame,
+                workflow_digest,
+            } => self.handle_recover(run, frame, workflow_digest)?,
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);
@@ -716,7 +721,7 @@ impl Shard {
             shard.advance_journal_sequence(run, seq)?;
 
             // Convert evidence event to RuntimeJournalEvent, then to storage event.
-            let runtime_event = Self::evidence_to_runtime_event(event, run);
+            let runtime_event = Self::evidence_to_runtime_event(event, run)?;
             let storage_event = shard.journal.convert_to_storage_event(runtime_event, seq)?;
 
             batch.append_event(&storage_event).map_err(RuntimeError::from)?;
@@ -737,31 +742,31 @@ impl Shard {
     }
 
     /// Converts an evidence event into its corresponding `RuntimeJournalEvent`.
-    fn evidence_to_runtime_event(event: EvidenceEvent, run: RunId) -> RuntimeJournalEvent {
+    fn evidence_to_runtime_event(event: EvidenceEvent, run: RunId) -> RuntimeResult<RuntimeJournalEvent> {
         match event {
             EvidenceEvent::StepStarted { step } => {
-                RuntimeJournalEvent::StepStarted { run, step }
+                Ok(RuntimeJournalEvent::StepStarted { run, step })
             }
             EvidenceEvent::StepSucceeded { step, output } => {
-                RuntimeJournalEvent::StepSucceeded {
+                Ok(RuntimeJournalEvent::StepSucceeded {
                     run,
                     step,
                     output: output.unwrap_or(SlotIdx::ZERO),
                     attempt: 1,
-                }
+                })
             }
             EvidenceEvent::SlotWritten {
                 slot,
                 value,
                 taint,
                 extra,
-            } => RuntimeJournalEvent::SlotWritten {
+            } => Ok(RuntimeJournalEvent::SlotWritten {
                 run,
                 slot,
-                value,
+                value: postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?,
                 taint,
                 extra: extra.map(|state| postcard::to_allocvec(&state).unwrap_or_default()),
-            },
+            }),
         }
     }
 

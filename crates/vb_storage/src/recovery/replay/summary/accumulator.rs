@@ -122,10 +122,11 @@ impl FrameSeedAccumulator {
                 ticket,
                 input,
                 output,
+                action_abi_digest,
                 ..
             } => {
                 verify_action_ticket_event(*run, *ticket)?;
-                self.record_action_scheduled_ticket(*ticket, *input, *output)
+                self.record_action_scheduled_ticket(*ticket, *input, *output, *action_abi_digest)
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 self.record_action_completed(*action, *step)
@@ -133,7 +134,6 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 self.record_action_failed(*action, *step)
             }
-            JournalEvent::ActionAbandoned { ticket, .. } => self.record_action_abandoned(*ticket),
             JournalEvent::ActionCompletedEnvelope {
                 run,
                 ticket,
@@ -143,6 +143,7 @@ impl FrameSeedAccumulator {
                 encoded_len,
                 taint,
                 value_digest,
+                action_abi_digest,
                 ..
             } => self.record_action_completion_envelope(ActionCompletionEnvelopeApply {
                 run: *run,
@@ -153,6 +154,7 @@ impl FrameSeedAccumulator {
                 encoded_len: *encoded_len,
                 taint: *taint,
                 value_digest: *value_digest,
+                action_abi_digest: *action_abi_digest,
             }),
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))
@@ -197,10 +199,11 @@ impl FrameSeedAccumulator {
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
+        action_abi_digest: vb_core::WorkflowDigest,
     ) -> RecoveryResult<Self> {
         let effect = self
             .action_tracker
-            .mark_scheduled_ticket_effect(ticket, input, output)?;
+            .mark_scheduled_ticket_effect(ticket, input, output, action_abi_digest)?;
         if effect == ActionReplayEffect::Apply {
             self.summary.actions_scheduled = self.summary.actions_scheduled.saturating_add(1);
             self.pending_actions.insert((ticket.action, ticket.step));

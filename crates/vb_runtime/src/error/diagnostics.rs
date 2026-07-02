@@ -96,6 +96,9 @@ impl RuntimeError {
             Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
             Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
             Self::IntrospectionEpochExhausted => Self::INTROSPECTION_EPOCH_EXHAUSTED_CODE,
+            Self::RecoveryNotAvailable => Self::INVALID_RECOVERY_HYDRATION_CODE,
+            Self::RecoveryCannotResume { .. } => Self::INVALID_RECOVERY_HYDRATION_CODE,
+            Self::Recovery { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
             // VB-NOORE: typed profile-mismatch error. No dedicated
             // diagnostic code; routed to INTERNAL_INVARIANT.
             Self::UnsupportedDurabilityProfile { .. } => {
@@ -159,7 +162,10 @@ impl RuntimeError {
             | Self::ShardNotFound { .. }
             | Self::MigrateSelf
             | Self::IntrospectionEpochExhausted
-            | Self::UnsupportedDurabilityProfile { .. } => None,
+            | Self::UnsupportedDurabilityProfile { .. }
+            | Self::RecoveryNotAvailable
+            | Self::RecoveryCannotResume { .. }
+            | Self::Recovery { .. } => None,
         }
     }
 

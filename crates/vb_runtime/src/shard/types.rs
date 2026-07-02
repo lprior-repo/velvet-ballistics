@@ -7,7 +7,7 @@ use std::time::Instant;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
@@ -186,11 +186,15 @@ pub enum ShardCommand {
     ///
     /// The runtime has already reconstructed a `RunFrame` from the journal
     /// replay and is injecting it directly into the shard's frame pool.
+    /// The `workflow_digest` is used to look up the compiled workflow
+    /// from the artifact store before driving the run.
     Recover {
         /// Run identifier being recovered.
         run: RunId,
         /// Hydrated run frame from journal replay.
         frame: RunFrame,
+        /// Workflow digest for artifact store lookup during recovery.
+        workflow_digest: WorkflowDigest,
     },
 }
 

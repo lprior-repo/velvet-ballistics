@@ -330,6 +330,98 @@ impl Shard {
         })
     }
 
+    /// Recovers a run from a pre-hydrated `RunFrame` by loading the
+    /// compiled workflow from the artifact store and constructing a full
+    /// `RunState`.
+    ///
+    /// The workflow digest comes from the journal recovery summary and is
+    /// used to look up the `AcceptedArtifact` whose `ir` field contains the
+    /// postcard-encoded `WorkflowParts`. The parts are deserialized and
+    /// validated via `CompiledWorkflow::try_from_parts`.
+    ///
+    /// Recovery differs from submit in three ways:
+    /// - No `prepare_run_slots` / `take_frame_for` — the frame is pre-hydrated.
+    /// - The artifact store is queried by digest rather than the workflow being
+    ///   passed directly.
+    /// - Admission is built with empty capabilities (caps are not persisted
+    ///   per-run in the journal; runs requiring non-empty caps will fail
+    ///   admission during recovery, which is the correct fail-closed behavior).
+    pub(crate) fn handle_recover(
+        &mut self,
+        run: RunId,
+        frame: vb_core::frame::RunFrame,
+        workflow_digest: vb_core::ids::WorkflowDigest,
+    ) -> RuntimeResult<()> {
+        // Load the accepted artifact from the shard's artifact store.
+        let artifact = self
+            .artifact_store
+            .load_accepted_artifact(workflow_digest)
+            .map_err(|e| match e {
+                crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+                    RuntimeError::Recovery {
+                        error: format!("artifact not found during recovery: {digest:?}"),
+                    }
+                }
+                _ => RuntimeError::Recovery {
+                    error: "artifact decode failed during recovery".to_string(),
+                },
+            })?;
+
+        // Deserialize the postcard-encoded WorkflowParts from the artifact IR.
+        let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)
+            .map_err(|_| RuntimeError::Recovery {
+                error: "artifact IR decode failed".to_string(),
+            })?;
+
+        // Validate and reconstruct the compiled workflow.
+        // Workflow compilation failure means the recovered parts are invalid;
+        // this maps to UnsupportedFrameSeed since the frame cannot be resumed.
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .map_err(|e| RuntimeError::Recovery {
+                error: format!("workflow compile failed: {e}"),
+            })?;
+
+        // Build admission from the artifact (same as submit path).
+        // Empty capabilities: caps are not journaled per-run; runs requiring
+        // non-empty caps will fail admission, which is correct fail-closed.
+        let admission = self.build_admission(run, workflow.digest(), CapabilitySet::empty())?;
+
+        // Prepare the run's value store and action attempts from frame dimensions.
+        let frame_step_count = frame.step_count();
+        let max_slots = workflow.resource_contract().max_slots;
+
+        // Construct the full RunState with all required fields.
+        let state = crate::shard::types::RunState {
+            frame,
+            workflow,
+            store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+            action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+            admission,
+            collect_states: crate::primitives::collect::CollectStates::new(),
+            action_contracts: Box::new([]),
+        };
+
+        self.terminal_runs_remove(run);
+        self.run_state_insert(run, state)?;
+
+        // Do not increment submitted counter — recovery is not a submit.
+        // The counters tracking active runs will be updated by drive_run.
+
+        match self.drive_run(run) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                // Do NOT discard journal sequence on recovery failure.
+                // The journal sequence is the recovered state; discarding it
+                // would destroy evidence that the recovery attempt produced.
+                if !self.run_state_contains(run) {
+                    // Only discard if run_state_insert failed (no state to drive).
+                    self.discard_journal_sequence(run);
+                }
+                Err(error)
+            }
+        }
+    }
+
     fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
         if !self.run_state_contains(run) {
             return Err(ResumeError::RunIdNotFound { run_id: run });
