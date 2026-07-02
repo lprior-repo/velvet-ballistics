@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Action-completion envelope summary application.
 
+use vb_core::WorkflowDigest;
 use crate::recovery::types::{
     ActionReplayEffect, RecoveredStepState, RecoveryError, RecoveryResult,
 };
@@ -19,6 +20,7 @@ pub(crate) struct ActionCompletionEnvelopeApply<'a> {
     pub(crate) encoded_len: u32,
     pub(crate) taint: Taint,
     pub(crate) value_digest: [u8; 32],
+    pub(crate) action_abi_digest: WorkflowDigest,
 }
 
 impl FrameSeedAccumulator {

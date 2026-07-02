@@ -10,8 +10,7 @@ use crate::recovery::types::{
     ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
 };
 use crate::{DurableActionOutcome, EventSeq, JournalEvent};
-use vb_core::{ActionTicket, RunId};
-
+use vb_core::{ActionId, ActionTicket, RunId, WorkflowDigest};
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintReadObservation {
@@ -273,6 +272,7 @@ pub(super) fn apply_tail_events(
     frame: &mut vb_core::RunFrame,
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<u64> {
     frame.set_max_parallel_in_flight(0);
     let mut executed = 0u64;
@@ -283,13 +283,13 @@ pub(super) fn apply_tail_events(
             }
             JournalEvent::ActionScheduled { .. } => apply_action_scheduled(frame, event, tracker)?,
             JournalEvent::ActionScheduledTicket { .. } => {
-                apply_action_scheduled_ticket(frame, event, tracker)?
+                apply_action_scheduled_ticket(frame, event, tracker, expected_action_abi_digests)?
             }
             JournalEvent::ActionCompletedEvent { .. } => {
                 apply_action_completed_event(frame, event, tracker)?
             }
             JournalEvent::ActionCompletedEnvelope { .. } => {
-                apply_action_completed_envelope(frame, event, tracker)?
+                apply_action_completed_envelope(frame, event, tracker, expected_action_abi_digests)?
             }
             JournalEvent::ActionFailedEvent { .. } => apply_action_failed(frame, event, tracker)?,
             JournalEvent::SlotWrittenEvent { .. } => apply_slot_written(frame, event)?,
@@ -359,6 +359,7 @@ fn apply_action_scheduled_ticket(
     frame: &mut vb_core::RunFrame,
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
 ) -> RecoveryResult<ApplyOutcome> {
     let JournalEvent::ActionScheduledTicket {
         run,
@@ -366,11 +367,13 @@ fn apply_action_scheduled_ticket(
         input,
         output,
         action_abi_digest,
+        ..
     } = event
     else {
         return Ok(ApplyOutcome::NotApplicable);
     };
     verify_action_ticket_event(*run, *ticket)?;
+    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Duplicate {
         return Ok(ApplyOutcome::Skipped);
@@ -407,6 +410,7 @@ fn apply_action_completed_envelope(
     frame: &mut vb_core::RunFrame,
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
 ) -> RecoveryResult<ApplyOutcome> {
     let JournalEvent::ActionCompletedEnvelope {
         run,
@@ -418,6 +422,7 @@ fn apply_action_completed_envelope(
         taint,
         value_digest,
         action_abi_digest,
+        ..
     } = event
     else {
         return Ok(ApplyOutcome::NotApplicable);
@@ -430,6 +435,7 @@ fn apply_action_completed_envelope(
         *encoded_len,
         *value_digest,
     )?;
+    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,
@@ -620,6 +626,22 @@ fn ensure_step_running(
                 step,
                 detail: format!("mark_running before {context} failed"),
             })?;
+    }
+    Ok(())
+}
+/// Checks whether the found action ABI digest matches any of the expected digests.
+fn check_action_abi_digest_against_expected(
+    action_id: ActionId,
+    found: WorkflowDigest,
+    expected: &[(ActionId, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    for (exp_action_id, exp_digest) in expected {
+        if *exp_action_id == action_id {
+            if *exp_digest != found {
+                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
+            }
+            return Ok(());
+        }
     }
     Ok(())
 }

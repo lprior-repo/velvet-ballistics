@@ -116,7 +116,7 @@ fn replay_step_started_event(
 /// - The action is in the expected list and the digests match.
 /// Returns `ActionAbiMismatch` when the action is in the expected list
 /// but the digests differ.
-fn check_action_abi_digest_against_expected(
+pub(crate) fn check_action_abi_digest_against_expected(
     action_id: ActionId,
     found: WorkflowDigest,
     expected: &[(ActionId, WorkflowDigest)],

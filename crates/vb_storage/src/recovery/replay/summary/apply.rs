@@ -144,10 +144,11 @@ fn apply_summary_event_checked(
             ticket,
             input,
             output,
-            ..
+            action_abi_digest,
         } => {
             verify_action_ticket_event(*run, *ticket)?;
-            let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+            let effect = tracker
+                .mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
             if effect == ActionReplayEffect::Apply {
                 apply_summary_event(summary, event);
             }
@@ -174,7 +175,7 @@ fn apply_summary_event_checked(
             encoded_len,
             taint,
             value_digest,
-            ..
+            action_abi_digest,
         } => {
             let verified_digest =
                 crate::recovery::hydrate_support::verified_action_envelope_digest(
@@ -185,13 +186,15 @@ fn apply_summary_event_checked(
                     *encoded_len,
                     *value_digest,
                 )?;
-            tracker.require_scheduled_ticket(*ticket, *output)?;
+            tracker
+                .require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
                 *output,
                 *encoded_len,
                 *taint,
                 verified_digest,
+                *action_abi_digest,
             )?;
             if effect == ActionReplayEffect::Apply {
                 apply_summary_event(summary, event);

@@ -85,8 +85,8 @@ pub fn recover_snapshot_plus_tail(
     snapshot: &crate::recovery::types::RunSnapshot,
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
-    // Verify snapshot consistency
     let snapshot_seq = snapshot.seq;
     for event in tail_events {
         if event.seq() <= snapshot_seq {
@@ -100,10 +100,8 @@ pub fn recover_snapshot_plus_tail(
             });
         }
     }
-
-    replay_events_with_schedule_requirement(tail_events, tracker, false)
+    replay_events_with_schedule_requirement(tail_events, tracker, false, expected_action_abi_digests)
 }
-
 /// Checks whether a run has reached a terminal state.
 ///
 /// The set of terminal variants matches every variant of
