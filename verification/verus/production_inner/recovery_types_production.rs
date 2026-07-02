@@ -223,8 +223,10 @@ impl RecoveryHydrationStub {
     /// Mirror of `RecoveryHydration::summary` at
     /// `crates/vb_storage/src/recovery/types.rs:597-604`. Production
     /// body: `Summary(s) -> *s, FrameSeed(seed) -> seed.summary`.
-    /// Body is `#[verifier::external]` so Verus skips body verification.
-    #[verifier::external]
+    /// Marked `#[verifier::exec]` so the method can be called from
+    /// both spec and exec contexts. Body is verified by Verus (no
+    /// `#[verifier::external]`).
+    #[verifier::exec]
     pub fn summary(self) -> RecoveryRuntimeSummaryStub {
         match self {
             Self::Summary(s) => s,
@@ -344,5 +346,23 @@ fn prod_items_drift_check(
     let _ap1 = unsup_a.action_payloads;
     let _pa1 = unsup_a.pending_actions;
 }
+
+// ---------------------------------------------------------------------------
+// Convenience re-exports — strip the `Stub` suffix so spec proofs can
+// refer to `production::RecoveryTerminalState` etc. instead of needing
+// to qualify through the bridge's outer `pub use` block.
+// ---------------------------------------------------------------------------
+
+pub use RecoveryFrameSeedStub as RecoveryFrameSeed;
+pub use RecoveryHydrationStub as RecoveryHydration;
+pub use RecoveryRuntimeSummaryStub as RecoveryRuntimeSummary;
+pub use RecoveryTerminalStateStub as RecoveryTerminalState;
+pub use RecoveredStepStateStub as RecoveredStepState;
+pub use UnsupportedRecoveryStateStub as UnsupportedRecoveryState;
+pub use StubEventSeq as EventSeq;
+pub use StubRunId as RunId;
+pub use StubSlotIdx as SlotIdx;
+pub use StubStepIdx as StepIdx;
+pub use StubWorkflowDigest as WorkflowDigest;
 
 } // verus!
