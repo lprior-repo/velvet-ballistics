@@ -305,6 +305,59 @@ impl Runtime {
         let shard = self.shard_for(run)?;
         shard.enqueue(ShardCommand::Resume { run })
     }
+    /// Recovers a run from durable Fjall journal evidence and enqueues it for resumption.
+    ///
+    /// This is the end-to-end recovery entry point: it reads the journal,
+    /// replays events to reconstruct a `RecoveryFrameSeed`, checks whether
+    /// the reconstructed state is resumable, hydrates a live `RunFrame`,
+    /// and enqueues `ShardCommand::Recover` on the owning shard.
+    ///
+    /// Returns `RuntimeError::RecoveryNotAvailable` when the runtime's
+    /// journal is not storage-backed (noop or volatile journals cannot
+    /// be replayed for crash recovery).
+    ///
+    /// Returns `RuntimeError::Recovery` wrapping a `RecoveryError` when
+    /// the journal replay fails (missing data, corrupt snapshot, digest
+    /// mismatch, or unsupported recovery state).
+    pub fn recover_and_resume(
+        &self,
+        run: RunId,
+    ) -> RuntimeResult<()> {
+        let fjall_journal = self
+            .journal
+            .storage_journal()
+            .ok_or(RuntimeError::RecoveryNotAvailable)?;
+
+        let hydration =
+            vb_storage::recovery::recover_runtime_frame_seed(&fjall_journal, run).map_err(|e| {
+                RuntimeError::Recovery {
+                    error: Box::new(e),
+                }
+            })?;
+
+        let boundary = crate::recovery::recovery_boundary_from_hydration(hydration);
+
+        match boundary.resume_status() {
+            crate::recovery::RecoveryResumeStatus::CannotResume(_) => {
+                return Err(RuntimeError::RecoveryCannotResume {
+                    reason: boundary.summary().run.to_string(),
+                });
+            }
+            crate::recovery::RecoveryResumeStatus::SummaryOnly => {
+                return Err(RuntimeError::RecoveryCannotResume {
+                    reason: String::from("only_summary_data_available"),
+                });
+            }
+            crate::recovery::RecoveryResumeStatus::Resumable => {
+                // proceed to hydrate and recover
+            }
+        }
+
+        let frame = boundary.hydrate_run_frame()?;
+
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::Recover { run, frame })
+    }
 
     /// Inspects run state.
     pub fn inspect_run(&self, run: RunId, correlation: u64) -> RuntimeResult<()> {

@@ -42,4 +42,11 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
         Some(self.journal.clone())
     }
+    fn convert_to_storage_event(
+        &self,
+        event: RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<vb_storage::JournalEvent> {
+        StorageRuntimeJournal::storage_event(event, seq)
+    }
 }

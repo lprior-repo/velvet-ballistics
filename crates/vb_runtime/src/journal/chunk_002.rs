@@ -344,6 +344,13 @@ impl RuntimeJournal for StorageRuntimeJournal {
         self.append_storage_event(&storage_event)?;
         Ok(())
     }
+    fn convert_to_storage_event(
+        &self,
+        event: RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<vb_storage::JournalEvent> {
+        Self::storage_event(event, seq)
+    }
 
     fn probe(&self) -> RuntimeResult<()> {
         self.journal.probe_health().map_err(RuntimeError::from)

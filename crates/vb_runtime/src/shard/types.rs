@@ -182,6 +182,16 @@ pub enum ShardCommand {
     },
     /// Shut down the shard gracefully.
     Shutdown,
+    /// Recover a run from durable Fjall journal evidence.
+    ///
+    /// The runtime has already reconstructed a `RunFrame` from the journal
+    /// replay and is injecting it directly into the shard's frame pool.
+    Recover {
+        /// Run identifier being recovered.
+        run: RunId,
+        /// Hydrated run frame from journal replay.
+        frame: RunFrame,
+    },
 }
 
 /// Ticket identifying where an ask answer must resume execution.

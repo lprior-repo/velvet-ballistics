@@ -1243,6 +1243,7 @@ struct ActionScheduleEvidence {
     ticket: ActionTicket,
     input: SlotIdx,
     output: SlotIdx,
+    action_abi_digest: WorkflowDigest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1252,6 +1253,7 @@ struct ActionCompletionEvidence {
     encoded_len: u32,
     taint: Taint,
     value_digest: [u8; 32],
+    action_abi_digest: WorkflowDigest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1276,6 +1278,7 @@ impl ActionReplayTracker {
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
         if self.is_resolved(ticket.action, ticket.step) {
@@ -1288,6 +1291,7 @@ impl ActionReplayTracker {
             ticket,
             input,
             output,
+            action_abi_digest,
         };
         match self.scheduled_tickets.get(&key).copied() {
             Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
@@ -1306,10 +1310,17 @@ impl ActionReplayTracker {
         &self,
         ticket: ActionTicket,
         output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
         let key = (ticket.action, ticket.step);
         match self.scheduled_tickets.get(&key).copied() {
-            Some(existing) if existing.ticket == ticket && existing.output == output => Ok(()),
+            Some(existing)
+                if existing.ticket == ticket
+                    && existing.output == output
+                    && existing.action_abi_digest == action_abi_digest =>
+            {
+                Ok(())
+            }
             Some(_) => Err(RecoveryError::ReplayDivergence {
                 step: ticket.step,
                 detail: String::from("action completion envelope does not match schedule ticket"),
@@ -1326,7 +1337,6 @@ impl ActionReplayTracker {
     pub fn mark_completed(&mut self, action: ActionId, step: StepIdx) {
         self.completed.insert((action, step));
     }
-
     pub(crate) fn mark_completed_envelope_effect(
         &mut self,
         ticket: ActionTicket,
@@ -1334,6 +1344,7 @@ impl ActionReplayTracker {
         encoded_len: u32,
         taint: Taint,
         value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
         let evidence = ActionCompletionEvidence {
@@ -1342,6 +1353,7 @@ impl ActionReplayTracker {
             encoded_len,
             taint,
             value_digest,
+            action_abi_digest,
         };
         if let Some(schedule) = self.scheduled_tickets.get(&key).copied()
             && (schedule.ticket != ticket || schedule.output != output)
@@ -1371,8 +1383,6 @@ impl ActionReplayTracker {
         }
     }
 
-    /// Records a full durable completion envelope and rejects duplicates whose
-    /// ticket or output evidence diverges from the first completed envelope.
     pub fn mark_completed_envelope(
         &mut self,
         ticket: ActionTicket,
@@ -1380,8 +1390,9 @@ impl ActionReplayTracker {
         encoded_len: u32,
         taint: Taint,
         value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
-        self.mark_completed_envelope_effect(ticket, output, encoded_len, taint, value_digest)
+        self.mark_completed_envelope_effect(ticket, output, encoded_len, taint, value_digest, action_abi_digest)
             .map(|_| ())
     }
 

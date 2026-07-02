@@ -73,6 +73,9 @@ impl Shard {
     /// For submit variants, validates journal health before enqueueing
     /// because handle_submit writes to journal before returning.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        if self.shutting_down {
+            return Err(RuntimeError::ShutdownInProgress);
+        }
         match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::SubmitPrePersisted { .. }

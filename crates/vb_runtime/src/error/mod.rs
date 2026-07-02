@@ -200,6 +200,21 @@ pub enum RuntimeError {
     /// arithmetic silently re-issued `u64::MAX` to subsequent
     /// registrations, allowing a stale handle to drop the live handle.
     IntrospectionEpochExhausted,
+    /// The runtime journal is not storage-backed (noop or volatile),
+    /// so durable crash recovery via journal replay is unavailable.
+    RecoveryNotAvailable,
+    /// Durable recovery evidence is insufficient to resume execution.
+    /// The `reason` field contains the typed cannot-resume reason string.
+    RecoveryCannotResume {
+        /// Human-readable reason why resume is impossible.
+        reason: String,
+    },
+    /// Durable storage recovery failed.
+    /// Wraps the underlying `vb_storage::RecoveryError` for diagnostics.
+    Recovery {
+        /// Preserved storage recovery error source.
+        error: Box<vb_storage::RecoveryError>,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

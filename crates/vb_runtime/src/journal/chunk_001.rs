@@ -243,6 +243,19 @@ pub trait RuntimeJournal: Send + Sync {
     fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> RuntimeResult<()> {
         self.append(event)
     }
+    /// Converts a `RuntimeJournalEvent` into a storage `JournalEvent` with the
+    /// given sequence. Only `StorageRuntimeJournal` and `QueuedStorageRuntimeJournal`
+    /// can perform this conversion; noop/volatile journals return
+    /// `UnsupportedOperation` since they lack a storage event format.
+    fn convert_to_storage_event(
+        &self,
+        event: RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<vb_storage::JournalEvent> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "storage_event_conversion",
+        })
+    }
 
     /// Probes journal health without side effects.
     /// Returns `JournalPoisoned` if the underlying storage is unavailable.

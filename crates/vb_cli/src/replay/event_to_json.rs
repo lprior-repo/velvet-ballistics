@@ -166,6 +166,68 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
                 "timestamp": timestamp.to_rfc3339()
             })
         }
-        _ => serde_json::json!({"type": "Unknown"}),
+        vb_storage::JournalEvent::ActionScheduledTicket {
+            seq, run, step, ticket, input, output, action_abi_digest,
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionScheduledTicket",
+                "run": run.get(),
+                "step": step.get(),
+                "ticket": format!("{ticket:?}"),
+                "input": input.get(),
+                "output": output.get(),
+                "action_abi_digest": format!("{action_abi_digest:?}")
+            })
+        }
+        vb_storage::JournalEvent::ActionCompletedEnvelope {
+            seq, run, step, ticket, output, outcome, value, encoded_len, taint, value_digest, action_abi_digest,
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionCompletedEnvelope",
+                "run": run.get(),
+                "step": step.get(),
+                "ticket": format!("{ticket:?}"),
+                "output": output.get(),
+                "outcome": format!("{outcome:?}"),
+                "encoded_len": encoded_len,
+                "taint": format!("{taint:?}"),
+                "value_digest": format!("{value_digest:?}"),
+                "action_abi_digest": format!("{action_abi_digest:?}")
+            })
+        }
+        vb_storage::JournalEvent::ActionAbandoned { seq, run, ticket } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "ActionAbandoned",
+                "run": run.get(),
+                "ticket": format!("{ticket:?}")
+            })
+        }
+        vb_storage::JournalEvent::WaitResolvedEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "WaitResolved",
+                "step": step.get()
+            })
+        }
+        vb_storage::JournalEvent::RunKilled { seq, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunKilled"
+            })
+        }
+        vb_storage::JournalEvent::AskTimedOutEvent { seq, step, .. } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "AskTimedOut",
+                "step": step.get()
+            })
+        }
+        _ => serde_json::json!({
+            "type": "Unknown",
+            "note": "future non-exhaustive variant — add explicit match arm"
+        }),
     }
 }
