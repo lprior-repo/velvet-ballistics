@@ -249,8 +249,8 @@ pub trait RuntimeJournal: Send + Sync {
     /// `UnsupportedOperation` since they lack a storage event format.
     fn convert_to_storage_event(
         &self,
-        event: RuntimeJournalEvent,
-        seq: EventSeq,
+        _event: RuntimeJournalEvent,
+        _seq: EventSeq,
     ) -> RuntimeResult<vb_storage::JournalEvent> {
         Err(RuntimeError::UnsupportedOperation {
             operation: "storage_event_conversion",

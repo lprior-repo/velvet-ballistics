@@ -52,6 +52,7 @@ enum HelperResponse {
 enum HelperOutcome {
     Committed { count: u32, last_seq: u64 },
     Replayed { count: u32, last_seq: u64 },
+    #[allow(dead_code)]
     HelperMissing,
     HelperFailed(String),
 }
