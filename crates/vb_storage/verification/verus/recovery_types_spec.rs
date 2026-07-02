@@ -139,6 +139,18 @@ pub enum SpecRecoveryHydration {
         pc: int,
         unsupported: SpecUnsupportedRecoveryState,
     },
+    FullRunState {
+        summary: SpecRecoveryRuntimeSummary,
+        first_step: int,
+        step_count: int,
+        slot_count: int,
+        pc: int,
+        unsupported: SpecUnsupportedRecoveryState,
+        workflow: int,
+        store: int,
+        action_attempts: int,
+        action_contracts: int,
+    },
 }
 
 // PO-VB-NEW: Hydration summary accessor
@@ -146,6 +158,7 @@ pub open spec fn spec_hydration_summary(h: SpecRecoveryHydration) -> SpecRecover
     match h {
         SpecRecoveryHydration::Summary(s) => s,
         SpecRecoveryHydration::FrameSeed { summary, .. } => summary,
+        SpecRecoveryHydration::FullRunState { summary, .. } => summary,
     }
 }
 

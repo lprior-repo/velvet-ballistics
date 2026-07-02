@@ -8,8 +8,8 @@
 
 use crate::{EventSeq, JournalError};
 use vb_core::{
-    ActionId, ActionTicket, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx,
-    Taint, WorkflowDigest,
+    ActionContract, ActionId, ActionTicket, CapabilitySet, CompiledWorkflow, RunFrame,
+    RuntimePolicy, RunId, SlotIdx, SlotValue, StepIdx, Taint, ValueStore, WorkflowDigest,
 };
 
 #[cfg(kani)]
@@ -601,6 +601,30 @@ pub struct RecoveredRunAdmission {
     /// Admission policy that governed this admission decision.
     pub policy: RuntimePolicy,
 }
+/// Storage-layer evidence required to reconstruct a full resumable
+/// `RunState` in the runtime boundary.
+///
+/// This struct carries only the fields that storage can produce from
+/// durable events; runtime-only fields (admission, collect_states) are
+/// layered in by `vb_runtime::recovery::FullRunState` during boundary
+/// construction. Per MASTER.md §44, the boundary does not yet expose
+/// `Resumable` for this path—full resume is gated until storage
+/// evidence contracts close.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullRunStateStorageEvidence {
+    /// Runtime summary for the same event set.
+    pub summary: RecoveryRuntimeSummary,
+    /// Hydrated run frame (steps, slots, PC).
+    pub frame: RunFrame,
+    /// Compiled workflow recovered from the accepted artifact store.
+    pub workflow: CompiledWorkflow,
+    /// Cold value store reconstructed from slot evidence.
+    pub store: ValueStore,
+    /// Per-step attempt counters recovered from snapshot or events.
+    pub action_attempts: Box<[u16]>,
+    /// Action contracts recovered from the accepted artifact.
+    pub action_contracts: Box<[ActionContract]>,
+}
 
 /// Explicit recovery product. Supports summary-only or full live-frame seed
 /// recovery from durable journal events.
@@ -611,6 +635,8 @@ pub enum RecoveryHydration {
     Summary(RecoveryRuntimeSummary),
     /// Full live-frame seed recovered from durable events.
     FrameSeed(RecoveryFrameSeed),
+    /// Full resumable run state evidence from durable events.
+    FullRunState(FullRunStateStorageEvidence),
 }
 
 impl RecoveryHydration {
@@ -620,6 +646,7 @@ impl RecoveryHydration {
         match self {
             Self::Summary(summary) => *summary,
             Self::FrameSeed(seed) => seed.summary,
+            Self::FullRunState(evidence) => evidence.summary,
         }
     }
 }

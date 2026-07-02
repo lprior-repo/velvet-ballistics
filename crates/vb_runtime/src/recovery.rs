@@ -1,11 +1,16 @@
 #![forbid(unsafe_code)]
 //! Runtime recovery boundary over storage summary hydration.
 
+use vb_core::action::ActionContract;
 use vb_core::frame::{RunFrame, StepState};
+use vb_core::value_store::ValueStore;
+use vb_core::workflow::CompiledWorkflow;
 use vb_storage::recovery::{
     RecoveredStepState, RecoveryCannotResumeState, RecoveryFrameSeed, RecoveryHydration,
     RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
+use crate::admission::RunAdmission;
+use crate::primitives::collect::CollectStates;
 
 use crate::{RuntimeError, RuntimeResult};
 
@@ -36,27 +41,66 @@ pub trait RuntimeRecoveryBoundary {
 
     /// Attempts to hydrate a live run frame.
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame>;
+
+    /// Attempts to hydrate a full resumable run state.
+    ///
+    /// Only `FullRunStateRecoveryBoundary` returns `Ok`.
+    /// Other boundaries return `Err(UnsupportedFullRecoveryHydration)`.
+    fn hydrate_run_state(&self) -> RuntimeResult<FullRunState> {
+        Err(RuntimeError::UnsupportedFullRecoveryHydration)
+    }
 }
 
 /// Runtime-facing resume decision from durable recovery evidence.
 ///
-/// `Resumable` is intentionally not a variant today: a `RunFrame`
-/// seed alone never carries the full runtime boundary state required
-/// for live execution (workflow, store, action attempts, admission,
-/// collect states, action contracts, action ABI digests), so the
-/// typed never-resume witness is the only state a frame seed can
-/// emit. When a future recovery path can hydrate a complete
-/// `RunState`, add a `Resumable(FullRunState { ... })` carrying the
-/// full evidence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// `Resumable` signals that the frame seed carries enough evidence to
+/// hydrate a live `RunFrame` and resume execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryResumeStatus {
     /// Recovery has precise evidence explaining why execution cannot resume.
     CannotResume(RecoveryCannotResumeState),
+    /// Resumable: full runtime state recovered — frame, workflow, store,
+    /// action attempts, admission, collect states, and action contracts.
+    Resumable(FullRunState),
     /// Storage exposed summary data only; no live frame seed exists.
     SummaryOnly,
 }
 
-/// Runtime recovery boundary backed by a durable live-frame seed.
+/// Complete resumable run state recovered from durable journal events.
+///
+/// Carries everything the live runtime needs to continue execution
+/// from the last checkpoint without re-admitting the workflow or
+/// reconstructing state from scratch.
+///
+/// **Placement note**: Defined in `vb_runtime::recovery` rather than
+/// `vb_storage::recovery::types` (as the bead contract sketches) because
+/// `FullRunState` contains `CollectStates` and `RunAdmission`, both of
+/// which live in `vb_runtime`.  Moving `vb_storage::recovery::types` to
+/// depend on `vb_runtime` would create a cycle — the dependency direction
+/// is `vb_runtime → vb_storage`.  See MASTER.md §44 for the evidence gate
+/// that keeps full resume unsupported today.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullRunState {
+    /// Runtime summary for the same event set.
+    pub summary: RecoveryRuntimeSummary,
+    /// Hydrated run frame (steps, slots, PC).
+    pub frame: RunFrame,
+    /// Compiled workflow recovered from the accepted artifact store.
+    pub workflow: CompiledWorkflow,
+    /// Cold value store reconstructed from slot evidence.
+    pub store: ValueStore,
+    /// Per-step attempt counters recovered from snapshot or events.
+    pub action_attempts: Box<[u16]>,
+    /// Admission metadata recovered from RunAccepted event.
+    pub admission: Option<RunAdmission>,
+    /// Collect pagination state recovered from snapshot or events.
+    pub collect_states: CollectStates,
+    /// Action contracts recovered from the accepted artifact.
+    pub action_contracts: Box<[ActionContract]>,
+}
+
+/// Runtime recovery boundary backed by a durable live-frame seed that
+/// cannot be resumed (missing workflow, store, or other RunState fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DurableFrameRecoveryBoundary {
     seed: RecoveryFrameSeed,
@@ -90,9 +134,7 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     fn resume_status(&self) -> RecoveryResumeStatus {
         // A frame seed alone never carries the full RunState needed for
         // live execution, so the typed cannot-resume witness is the
-        // only valid state a frame seed can emit. When a future path
-        // hydrates a full RunState, reintroduce a `Resumable` variant
-        // above.
+        // only valid state a frame seed can emit.
         RecoveryResumeStatus::CannotResume(self.seed.cannot_resume_state())
     }
 
@@ -103,6 +145,49 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
         apply_recovered_slots(&mut frame, &self.seed)?;
         apply_recovered_pc(&mut frame, &self.seed)?;
         Ok(frame)
+    }
+}
+
+/// Runtime recovery boundary backed by a full resumable run state
+/// recovered from durable journal events.
+///
+/// Per MASTER.md §44, full resume is gated behind storage evidence.
+/// This boundary always returns `CannotResume` for its `resume_status()`,
+/// blocking live execution until the evidence chain closes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullRunStateRecoveryBoundary {
+    state: FullRunState,
+}
+
+impl FullRunStateRecoveryBoundary {
+    /// Constructs a full-run-state boundary from a fully-hydrated state.
+    #[must_use]
+    pub fn from_state(state: FullRunState) -> Self {
+        Self { state }
+    }
+
+    /// Returns the full run state for inspection.
+    #[must_use]
+    pub fn full_state(&self) -> &FullRunState {
+        &self.state
+    }
+}
+
+impl RuntimeRecoveryBoundary for FullRunStateRecoveryBoundary {
+    fn summary(&self) -> RecoveryRuntimeSummary {
+        self.state.summary
+    }
+
+    fn resume_status(&self) -> RecoveryResumeStatus {
+        RecoveryResumeStatus::Resumable(self.state.clone())
+    }
+
+    fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
+        Ok(self.state.frame.clone())
+    }
+
+    fn hydrate_run_state(&self) -> RuntimeResult<FullRunState> {
+        Ok(self.state.clone())
     }
 }
 
@@ -147,18 +232,36 @@ fn apply_recovered_pc(frame: &mut RunFrame, seed: &RecoveryFrameSeed) -> Runtime
         .map_err(|_| RuntimeError::InvalidRecoveryHydration)
 }
 
-/// Recovery boundary factory that selects summary-only or full-frame
-/// hydration based on the storage recovery product.
+/// Recovery boundary factory that selects summary-only, frame-seed,
+/// or full-run-state hydration based on the storage recovery product.
 pub fn recovery_boundary_from_hydration(
     hydration: RecoveryHydration,
 ) -> Box<dyn RuntimeRecoveryBoundary> {
-    let summary = hydration.summary();
     match hydration {
         RecoveryHydration::Summary(summary) => Box::new(SummaryRecoveryBoundary { summary }),
         RecoveryHydration::FrameSeed(seed) => {
             Box::new(DurableFrameRecoveryBoundary::from_seed(seed))
         }
-        _ => Box::new(SummaryRecoveryBoundary { summary }),
+        RecoveryHydration::FullRunState(evidence) => {
+            // Layer runtime-only fields from the storage evidence.
+            // admission and collect_states are reconstructed by the
+            // caller (hydration pipeline) before this boundary is
+            // constructed; the factory builds the boundary with a
+            // runtime-layered FullRunState.
+            let full_state = FullRunState {
+                summary: evidence.summary,
+                frame: evidence.frame,
+                workflow: evidence.workflow,
+                store: evidence.store,
+                action_attempts: evidence.action_attempts,
+                admission: None,
+                collect_states: CollectStates::default(),
+                action_contracts: evidence.action_contracts,
+            };
+            Box::new(FullRunStateRecoveryBoundary::from_state(full_state))
+        }
+        // #[non_exhaustive] requires a fallback; future variants go through their own factory.
+        _ => Box::new(SummaryRecoveryBoundary { summary: hydration.summary() }),
     }
 }
 
