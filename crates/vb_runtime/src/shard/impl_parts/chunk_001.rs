@@ -639,15 +639,130 @@ impl Shard {
     /// journal and trace ring. This satisfies the Phase 40/44 evidence
     /// chain requirement: StepStarted before SlotWritten for every step,
     /// followed by StepSucceeded.
+    ///
+    /// TBP-001 (vb-3kmre): All evidence events for a single `drive_run`
+    /// iteration are batched into one `JournalWriteBatch` and committed
+    /// atomically via `PersistMode::SyncAll`. A crash mid-flush leaves
+    /// either zero or all events durable — never a partial chain.
+    /// Non-storage journals (noop/volatile) fall back to per-event flush.
     pub(crate) fn flush_evidence(
         &mut self,
         run: RunId,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<()> {
-        evidence
-            .drain()
+        let events = evidence.drain();
+        if events.is_empty() {
+            return Ok(());
+        }
+
+        // Push trace ring events first (in-memory, non-durable).
+        for event in &events {
+            match event {
+                EvidenceEvent::StepStarted { step } => {
+                    self.trace_ring
+                        .push(TraceEvent::StepStarted { run, step: *step });
+                }
+                EvidenceEvent::SlotWritten { slot, value, .. } => {
+                    let encoded =
+                        postcard::to_allocvec(value).map_err(|_| RuntimeError::EncodeFailed)?;
+                    self.trace_ring.push(TraceEvent::SlotWritten {
+                        run,
+                        slot: *slot,
+                        value: encoded,
+                    });
+                }
+                EvidenceEvent::StepSucceeded { .. } => {}
+            }
+        }
+
+        // Try batched flush via FjallJournal (atomic, Master §49 Crash-Consistency Rule).
+        if let Some(fjall_journal) = self.journal.storage_journal() {
+            return Self::flush_evidence_batched(
+                self,
+                run,
+                events,
+                &fjall_journal,
+            );
+        }
+
+        // Fallback: per-event flush for noop/volatile journals.
+        events
             .into_iter()
             .try_for_each(|event| self.flush_evidence_event(run, event))
+    }
+
+    /// Batches all evidence events into one `JournalWriteBatch` and commits
+    /// atomically. On success all events are durable; on failure zero events
+    /// are persisted and the shard sequence is rolled back.
+    fn flush_evidence_batched(
+        shard: &mut Shard,
+        run: RunId,
+        events: Vec<EvidenceEvent>,
+        fjall_journal: &vb_storage::FjallJournal,
+    ) -> RuntimeResult<()> {
+        use vb_storage::batch::JournalWriteBatch;
+
+        // Capture initial sequence for rollback on batch failure.
+        let initial_seq_value = shard
+            .journal_sequence_for(run)
+            .get();
+
+        // Stage all events into a batch.
+        let mut batch = JournalWriteBatch::new(fjall_journal);
+
+        for event in events {
+            // Get current sequence and advance it.
+            let seq = shard.journal_sequence_for(run);
+            shard.advance_journal_sequence(run, seq)?;
+
+            // Convert evidence event to RuntimeJournalEvent, then to storage event.
+            let runtime_event = Self::evidence_to_runtime_event(event, run);
+            let storage_event = shard.journal.convert_to_storage_event(runtime_event, seq)?;
+
+            batch.append_event(&storage_event).map_err(RuntimeError::from)?;
+        }
+
+        // Commit atomically with strict durability.
+        // On failure: rollback the shard sequence so the next flush
+        // doesn't skip sequence numbers that were never persisted.
+        match batch.strict().commit() {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                shard
+                    .journal_sequences
+                    .insert(run, vb_storage::EventSeq::new(initial_seq_value));
+                Err(RuntimeError::from(e))
+            }
+        }
+    }
+
+    /// Converts an evidence event into its corresponding `RuntimeJournalEvent`.
+    fn evidence_to_runtime_event(event: EvidenceEvent, run: RunId) -> RuntimeJournalEvent {
+        match event {
+            EvidenceEvent::StepStarted { step } => {
+                RuntimeJournalEvent::StepStarted { run, step }
+            }
+            EvidenceEvent::StepSucceeded { step, output } => {
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step,
+                    output: output.unwrap_or(SlotIdx::ZERO),
+                    attempt: 1,
+                }
+            }
+            EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                taint,
+                extra,
+            } => RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value,
+                taint,
+                extra: extra.map(|state| postcard::to_allocvec(&state).unwrap_or_default()),
+            },
+        }
     }
 
     fn flush_evidence_event(&mut self, run: RunId, event: EvidenceEvent) -> RuntimeResult<()> {

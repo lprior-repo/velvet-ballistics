@@ -365,13 +365,13 @@ fn apply_action_scheduled_ticket(
         ticket,
         input,
         output,
-        ..
+        action_abi_digest,
     } = event
     else {
         return Ok(ApplyOutcome::NotApplicable);
     };
     verify_action_ticket_event(*run, *ticket)?;
-    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Duplicate {
         return Ok(ApplyOutcome::Skipped);
     }
@@ -417,7 +417,7 @@ fn apply_action_completed_envelope(
         encoded_len,
         taint,
         value_digest,
-        ..
+        action_abi_digest,
     } = event
     else {
         return Ok(ApplyOutcome::NotApplicable);
@@ -430,8 +430,14 @@ fn apply_action_completed_envelope(
         *encoded_len,
         *value_digest,
     )?;
-    let effect =
-        tracker.mark_completed_envelope_effect(*ticket, *output, *encoded_len, *taint, verified)?;
+    let effect = tracker.mark_completed_envelope_effect(
+        *ticket,
+        *output,
+        *encoded_len,
+        *taint,
+        verified,
+        *action_abi_digest,
+    )?;
     if effect == ActionReplayEffect::Duplicate {
         return Ok(ApplyOutcome::Skipped);
     }

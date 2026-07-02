@@ -44,18 +44,18 @@ fn replay_events_with_schedule_requirement(
     events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
     require_schedule: bool,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
     validate_contiguous_sequences(events)?;
     let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
     let mut last_step: Option<StepIdx> = None;
     for event in events {
-        // PRE-001: skip state-affecting events from older attempts
         if replay_attempt_is_stale(event.attempt(), max_attempt) {
             replayed.push(event.clone());
             continue;
         }
-        last_step = dispatch_replay_event(event, tracker, require_schedule, last_step)?;
+        last_step = dispatch_replay_event(event, tracker, require_schedule, last_step, expected_action_abi_digests)?;
         replayed.push(event.clone());
     }
     Ok(replayed)
@@ -69,18 +69,19 @@ fn dispatch_replay_event(
     tracker: &mut ActionReplayTracker,
     require_schedule: bool,
     last_step: Option<StepIdx>,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Option<StepIdx>> {
     match event {
         JournalEvent::StepStarted { step, .. } => replay_step_started_event(*step, last_step),
         JournalEvent::ActionCompletedEnvelope { .. } => {
-            replay_action_completed_envelope_event(event, tracker, require_schedule)?;
+            replay_action_completed_envelope_event(event, tracker, require_schedule, expected_action_abi_digests)?;
             Ok(last_step)
         }
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }
         | JournalEvent::ActionFailedEvent { .. } => {
-            replay_action_event(event, tracker)?;
+            replay_action_event(event, tracker, expected_action_abi_digests)?;
             Ok(last_step)
         }
         _ => Ok(last_step),
@@ -108,11 +109,32 @@ fn replay_step_started_event(
     }
     Ok(Some(step))
 }
-
-/// Dispatch the four non-envelope action variants.
+/// Checks whether the found action ABI digest matches any of the expected digests.
+///
+/// Returns `Ok(())` when:
+/// - No expected digests are provided (empty list).
+/// - The action is in the expected list and the digests match.
+/// Returns `ActionAbiMismatch` when the action is in the expected list
+/// but the digests differ.
+fn check_action_abi_digest_against_expected(
+    action_id: ActionId,
+    found: WorkflowDigest,
+    expected: &[(ActionId, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    for (exp_action_id, exp_digest) in expected {
+        if *exp_action_id == action_id {
+            if *exp_digest != found {
+                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
+            }
+            return Ok(());
+        }
+    }
+    Ok(())
+}
 fn replay_action_event(
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<()> {
     match event {
         JournalEvent::ActionScheduled { action, step, .. } => {
@@ -123,11 +145,12 @@ fn replay_action_event(
             ticket,
             input,
             output,
-            ..
+            action_abi_digest,
         } => {
             verify_action_ticket_event(*run, *ticket)?;
+            check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
             tracker
-                .mark_scheduled_ticket_effect(*ticket, *input, *output)
+                .mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)
                 .map(|_| ())
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
@@ -151,6 +174,7 @@ fn replay_action_completed_envelope_event(
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
     require_schedule: bool,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<()> {
     let JournalEvent::ActionCompletedEnvelope {
         run,
@@ -161,6 +185,7 @@ fn replay_action_completed_envelope_event(
         encoded_len,
         taint,
         value_digest,
+        action_abi_digest,
         ..
     } = event
     else {
@@ -175,11 +200,11 @@ fn replay_action_completed_envelope_event(
         *value_digest,
     )?;
     if require_schedule {
-        tracker.require_scheduled_ticket(*ticket, *output)?;
+        tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
     }
-    tracker.mark_completed_envelope(*ticket, *output, *encoded_len, *taint, verified_digest)
+    check_action_abi_digest_against_expected(*ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    tracker.mark_completed_envelope(*ticket, *output, *encoded_len, *taint, verified_digest, *action_abi_digest)
 }
-
 /// Reject the event when the (action, step) pair has already been resolved
 /// during this replay, preserving the non-idempotency invariant.
 fn reject_if_resolved(
