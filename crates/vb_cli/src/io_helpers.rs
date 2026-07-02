@@ -155,6 +155,9 @@ pub(crate) fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::InvalidSystemStatusArgument(reason) => {
             writeln!(handle, "invalid system status argument: {reason}\n\n{HELP}")
         }
+        ParseError::InvalidReplayDigest(reason) => {
+            writeln!(handle, "invalid replay digest: {reason}\n\n{HELP}")
+        }
     }
 }
 

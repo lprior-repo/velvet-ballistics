@@ -13,5 +13,6 @@ fn args(parts: &[&str]) -> Vec<OsString> {
 mod parse_misc;
 mod parse_misc2;
 mod parse_other;
+mod parse_replay;
 mod parse_run;
 mod parse_workflow;

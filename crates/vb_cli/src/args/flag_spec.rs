@@ -25,9 +25,16 @@ pub(crate) fn known_flag_spec(command: &str, token: &str) -> Option<FlagSpec> {
         "ai-context" => switch_flag_spec(token, "--json")
             .or_else(|| output_flag_spec(token))
             .or_else(|| value_flag_spec(token, "--db")),
-        "inspect" | "replay" | "retry" | "resume" | "incident" => {
+        "inspect" | "retry" | "resume" | "incident" => {
             output_flag_spec(token).or_else(|| value_flag_spec(token, "--db"))
         }
+        "replay" => output_flag_spec(token).or(match token {
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--expected-action-abi" => Some(FlagSpec::Value("--expected-action-abi")),
+            "--expected-policy-digest" => Some(FlagSpec::Value("--expected-policy-digest")),
+            "--allow-empty-expectations" => Some(FlagSpec::Switch),
+            _ => None,
+        }),
         "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
         "compile" => match token {
             "--json" | "--jsonl" => Some(FlagSpec::Switch),

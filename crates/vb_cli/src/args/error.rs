@@ -28,11 +28,18 @@ pub(crate) enum ParseError {
     InvalidActionInspectArgument(String),
     InvalidActionId(String),
     InvalidActionName(String),
-    UnknownFlag { command: &'static str, flag: String },
+    UnknownFlag {
+        command: &'static str,
+        flag: String,
+    },
     InvalidArgument(String),
     NoCommand,
     InvalidStep(String),
     ReasonTooLong,
+    /// `--expected-action-abi` or `--expected-policy-digest` value could not
+    /// be parsed. Either the `<id>=<hex64>` shape is malformed, the id is
+    /// not a valid u16, or the digest is not exactly 64 hex characters.
+    InvalidReplayDigest(String),
 }
 
 impl std::fmt::Display for ParseError {
@@ -134,6 +141,9 @@ impl std::fmt::Display for ParseError {
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
             Self::ReasonTooLong => {
                 write!(formatter, "reason exceeds maximum length of 256 characters")
+            }
+            Self::InvalidReplayDigest(reason) => {
+                write!(formatter, "invalid replay digest: {reason}")
             }
         }
     }

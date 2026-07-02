@@ -144,6 +144,26 @@ pub(crate) enum Command {
         run_id: String,
         db: PathBuf,
         output: OutputFormat,
+        /// Expected action-ABI digests supplied via repeatable
+        /// `--expected-action-abi <action_id>=<hex64>` flags.
+        /// Each entry is `(action_id, WorkflowDigest)`. When the slice is
+        /// empty and `allow_empty_expectations` is false, the CLI still
+        /// passes empty slices to recovery (silent bypass, current behavior).
+        /// When `allow_empty_expectations` is true, the caller is explicitly
+        /// opting in to skipping digest verification, making the empty
+        /// expectation visible at the call site.
+        expected_action_abi: Vec<(vb_core::ActionId, vb_core::WorkflowDigest)>,
+        /// Expected policy digests supplied via repeatable
+        /// `--expected-policy-digest <step>=<hex64>` flags.
+        /// Each entry is `(step, WorkflowDigest)`. Same semantics as
+        /// `expected_action_abi`.
+        expected_policy_digests: Vec<(vb_core::StepIdx, vb_core::WorkflowDigest)>,
+        /// Explicit opt-in for empty expectations (silent bypass). When set,
+        /// the caller is acknowledging that no expected digests are supplied
+        /// and recovery must skip digest verification. This is the
+        /// "explicit opt-in (not silent bypass)" knob required by
+        /// vb-wy33p.2.
+        allow_empty_expectations: bool,
     },
     Trace {
         run_id: String,

@@ -46,6 +46,32 @@ pub(super) fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
     None
 }
 
+/// Collects every value supplied for a repeatable `--flag <value>` argument,
+/// preserving caller order. The flag may appear zero or more times; each
+/// occurrence must be followed by a non-`--`-prefixed value. Values that
+/// start with `--` are rejected via [`ParseError::MissingArgument`] to keep
+/// the parsing contract consistent with [`validate_known_flags`].
+pub(super) fn collect_all_named_flags(args: &[OsString], flag: &str) -> Vec<String> {
+    let mut values: Vec<String> = Vec::new();
+    let mut index = 0_usize;
+    while index < args.len() {
+        let Some(raw) = args.get(index) else {
+            break;
+        };
+        if raw == flag {
+            let Some(next) = args.get(index.saturating_add(1)) else {
+                break;
+            };
+            let value = next.to_str().unwrap_or("").to_string();
+            values.push(value);
+            index = index.saturating_add(2);
+        } else {
+            index = index.saturating_add(1);
+        }
+    }
+    values
+}
+
 pub(super) fn has_flag(args: &[OsString], flag: &str) -> bool {
     args.iter().any(|arg| arg == flag)
 }

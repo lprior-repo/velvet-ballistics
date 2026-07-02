@@ -9,7 +9,14 @@ use crate::inspect::write_vb_kyyf_trace;
 
 pub(crate) use event_to_json::event_to_json;
 
-pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_replay(
+    run_id: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+    expected_action_abi: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+    expected_policy_digests: &[(vb_core::StepIdx, vb_core::WorkflowDigest)],
+    allow_empty_expectations: bool,
+) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -26,8 +33,26 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
         }
     };
 
+    // vb-wy33p.2: Empty expectations are explicit opt-in (not silent bypass).
+    // When the caller passes zero expected digests AND has not opted in via
+    // `--allow-empty-expectations`, the CLI records the empty state in the
+    // replay_report and emits a typed hint. The actual bypass behavior is
+    // preserved (empty slices -> no verification) so existing callers that
+    // never supplied digests continue to work. Supplying at least one
+    // expected digest (action-ABI or policy) bypasses this hint because
+    // the caller is explicitly requesting verification.
+    let explicit_empty = expected_action_abi.is_empty()
+        && expected_policy_digests.is_empty()
+        && !allow_empty_expectations;
+
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
-    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
+    match vb_storage::recovery::recover_full_journal(
+        &journal,
+        rid,
+        &mut tracker,
+        expected_action_abi,
+        expected_policy_digests,
+    ) {
         Ok(events) => {
             let terminal_name = vb_storage::recovery::extract_terminal(&events)
                 .map(|e| commands_diff::event_name(e).to_string());
@@ -43,13 +68,29 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                             "run_id": run_id,
                             "recovered": events.len(),
                             "events": event_list,
-                            "terminal": terminal_name
+                            "terminal": terminal_name,
+                            "expected_action_abi_count": expected_action_abi.len(),
+                            "expected_policy_digest_count": expected_policy_digests.len(),
+                            "allow_empty_expectations": allow_empty_expectations,
+                            "explicit_empty_expectations_hint": explicit_empty,
                         }),
                         output,
                     );
                 }
                 OutputFormat::Text => {
                     outln!("recovered {} event(s) for run {run_id}", events.len());
+                    outln!(
+                        "expected_action_abi_count={} expected_policy_digest_count={} allow_empty_expectations={}",
+                        expected_action_abi.len(),
+                        expected_policy_digests.len(),
+                        allow_empty_expectations,
+                    );
+                    if explicit_empty {
+                        outln!(
+                            "note: empty expectations without --allow-empty-expectations; \
+                             pass --expected-action-abi or --expected-policy-digest to verify"
+                        );
+                    }
                     for event in &events {
                         print_event(event);
                     }
@@ -70,7 +111,11 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                 json_error(
                     &serde_json::json!({
                         "success": false,
-                        "error": format!("error replaying run {run_id}: {e}")
+                        "error": format!("error replaying run {run_id}: {e}"),
+                        "expected_action_abi_count": expected_action_abi.len(),
+                        "expected_policy_digest_count": expected_policy_digests.len(),
+                        "allow_empty_expectations": allow_empty_expectations,
+                        "explicit_empty_expectations_hint": explicit_empty,
                     }),
                     output,
                 );

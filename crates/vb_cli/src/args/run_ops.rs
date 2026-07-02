@@ -5,8 +5,12 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::error::ParseError;
-use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
+use super::shared::{
+    collect_all_named_flags, find_positional, has_flag, named_flag, parse_output_format,
+    validate_known_flags,
+};
 use super::types::{Command, EventStatus, OutputFormat};
+use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
 pub(super) struct RunDbArgs {
     pub(super) run_id: String,
@@ -80,11 +84,134 @@ fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {
 pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "replay")?;
     let a = parse_run_db_args(args, "replay")?;
+    let expected_action_abi = parse_expected_action_abi_specs(args)?;
+    let expected_policy_digests = parse_expected_policy_digest_specs(args)?;
+    let allow_empty_expectations = has_flag(args, "--allow-empty-expectations");
     Ok(Command::Replay {
         run_id: a.run_id,
         db: a.db,
         output: a.output,
+        expected_action_abi,
+        expected_policy_digests,
+        allow_empty_expectations,
     })
+}
+
+/// Parses repeatable `--expected-action-abi <action_id>=<hex64>` specs.
+///
+/// Each value is `<u16>=<64 hex characters>` (lowercase or uppercase).
+/// Multiple occurrences accumulate. Empty values or values without the `=`
+/// separator are rejected with [`ParseError::InvalidReplayDigest`].
+fn parse_expected_action_abi_specs(
+    args: &[OsString],
+) -> Result<Vec<(ActionId, WorkflowDigest)>, ParseError> {
+    let raw_values = collect_all_named_flags(args, "--expected-action-abi");
+    let mut entries: Vec<(ActionId, WorkflowDigest)> = Vec::with_capacity(raw_values.len());
+    for raw in raw_values {
+        let (id_part, hex_part) = split_replay_digest_spec("--expected-action-abi", &raw)?;
+        let action_id = parse_replay_id::<u16>("--expected-action-abi action_id", id_part)?;
+        let digest = parse_replay_workflow_digest("--expected-action-abi digest", hex_part)?;
+        entries.push((ActionId::new(action_id), digest));
+    }
+    Ok(entries)
+}
+
+/// Parses repeatable `--expected-policy-digest <step>=<hex64>` specs.
+///
+/// Each value is `<u16>=<64 hex characters>` (lowercase or uppercase).
+/// Multiple occurrences accumulate. Empty values or values without the `=`
+/// separator are rejected with [`ParseError::InvalidReplayDigest`].
+fn parse_expected_policy_digest_specs(
+    args: &[OsString],
+) -> Result<Vec<(StepIdx, WorkflowDigest)>, ParseError> {
+    let raw_values = collect_all_named_flags(args, "--expected-policy-digest");
+    let mut entries: Vec<(StepIdx, WorkflowDigest)> = Vec::with_capacity(raw_values.len());
+    for raw in raw_values {
+        let (id_part, hex_part) = split_replay_digest_spec("--expected-policy-digest", &raw)?;
+        let step = parse_replay_id::<u16>("--expected-policy-digest step", id_part)?;
+        let digest = parse_replay_workflow_digest("--expected-policy-digest digest", hex_part)?;
+        entries.push((StepIdx::new(step), digest));
+    }
+    Ok(entries)
+}
+
+/// Splits a `<id>=<hex>` replay digest spec at the first `=` separator.
+fn split_replay_digest_spec<'a>(
+    flag: &'static str,
+    raw: &'a str,
+) -> Result<(&'a str, &'a str), ParseError> {
+    if raw.is_empty() {
+        return Err(ParseError::InvalidReplayDigest(format!(
+            "{flag} value must be in <id>=<hex64> form, got empty value"
+        )));
+    }
+    raw.split_once('=').ok_or_else(|| {
+        ParseError::InvalidReplayDigest(format!(
+            "{flag} value must be in <id>=<hex64> form, got {raw:?}"
+        ))
+    })
+}
+
+/// Parses the `<id>` half of a replay digest spec into the requested integer
+/// type via `FromStr`, returning a typed [`ParseError::InvalidReplayDigest`]
+/// on failure.
+fn parse_replay_id<T>(label: &'static str, raw: &str) -> Result<T, ParseError>
+where
+    T: std::str::FromStr,
+{
+    if raw.is_empty() {
+        return Err(ParseError::InvalidReplayDigest(format!(
+            "{label} must not be empty"
+        )));
+    }
+    raw.parse::<T>().map_err(|_| {
+        ParseError::InvalidReplayDigest(format!("{label} must be a valid integer, got {raw:?}"))
+    })
+}
+
+/// Parses the `<hex>` half of a replay digest spec into a [`WorkflowDigest`].
+///
+/// Requires exactly 64 hex characters (32 bytes); the resulting bytes are
+/// returned as `WorkflowDigest::from_bytes`. Both lowercase and uppercase
+/// hex characters are accepted. All arithmetic is checked; the input is
+/// only indexed after length validation, so no slice can panic on a UTF-8
+/// boundary or out-of-range access.
+fn parse_replay_workflow_digest(
+    label: &'static str,
+    raw: &str,
+) -> Result<WorkflowDigest, ParseError> {
+    if raw.len() != 64 {
+        return Err(ParseError::InvalidReplayDigest(format!(
+            "{label} must be exactly 64 hex characters (32 bytes), got {} characters",
+            raw.len()
+        )));
+    }
+    let mut bytes = [0u8; 32];
+    let mut index = 0_usize;
+    while index < 32 {
+        let lo = usize::checked_mul(index, 2).ok_or_else(|| {
+            ParseError::InvalidReplayDigest(format!("{label} index overflow at byte {index}"))
+        })?;
+        let hi = usize::checked_add(lo, 2).ok_or_else(|| {
+            ParseError::InvalidReplayDigest(format!("{label} index overflow at byte {index}"))
+        })?;
+        let pair = raw.get(lo..hi).ok_or_else(|| {
+            ParseError::InvalidReplayDigest(format!(
+                "{label} hex pair at byte {index} out of range"
+            ))
+        })?;
+        let value = u8::from_str_radix(pair, 16).map_err(|_| {
+            ParseError::InvalidReplayDigest(format!(
+                "{label} contains non-hex characters at byte index {index}: {pair:?}"
+            ))
+        })?;
+        let slot = bytes.get_mut(index).ok_or_else(|| {
+            ParseError::InvalidReplayDigest(format!("{label} byte slot {index} out of range"))
+        })?;
+        *slot = value;
+        index = index.saturating_add(1);
+    }
+    Ok(WorkflowDigest::from_bytes(bytes))
 }
 
 pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {

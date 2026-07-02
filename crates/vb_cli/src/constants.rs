@@ -15,7 +15,10 @@ commands:
   ipc-serve  --socket <path> --db <path>
   inspect    <run_id> --db <path> [--emit text|yaml|postcard]
   events     <run_id> --db <path> [--emit text|yaml|postcard]
-  replay     <run_id> --db <path> [--emit text|yaml|postcard]
+  replay     <run_id> --db <path> [--expected-action-abi <id>=<hex64>]...
+                          [--expected-policy-digest <step>=<hex64>]...
+                          [--allow-empty-expectations]
+                          [--emit text|yaml|postcard]
   trace      <run_id> --db <path> [--emit text|yaml|postcard]
   retry      <run_id> --db <path> [--emit text|yaml|postcard]
   resume     <run_id> --db <path> [--emit text|yaml|postcard]

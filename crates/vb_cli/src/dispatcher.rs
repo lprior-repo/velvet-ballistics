@@ -86,9 +86,21 @@ pub(crate) fn run_from_env() -> ExitCode {
             status,
             limit,
         }) => crate::events::cmd_events(&run_id, &db, output, status, limit),
-        Ok(Command::Replay { run_id, db, output }) => {
-            crate::replay::cmd_replay(&run_id, &db, output)
-        }
+        Ok(Command::Replay {
+            run_id,
+            db,
+            output,
+            expected_action_abi,
+            expected_policy_digests,
+            allow_empty_expectations,
+        }) => crate::replay::cmd_replay(
+            &run_id,
+            &db,
+            output,
+            &expected_action_abi,
+            &expected_policy_digests,
+            allow_empty_expectations,
+        ),
         Ok(Command::Trace {
             run_id,
             db,

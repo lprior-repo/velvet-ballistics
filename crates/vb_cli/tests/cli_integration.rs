@@ -3596,6 +3596,353 @@ fn cli_replay_journaled_run_produces_deterministic_output() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// vb-wy33p.2: Wire action ABI + policy digest checks through CLI replay
+// ---------------------------------------------------------------------------
+
+fn hex_64(bytes: [u8; 32]) -> String {
+    let mut out = String::with_capacity(64);
+    for byte in bytes {
+        out.push_str(&format!("{byte:02x}"));
+    }
+    out
+}
+
+fn run_cli_workflow_to_db(db_path: &std::path::Path, workflow_path: &std::path::Path) -> bool {
+    let input_path = db_path.parent().unwrap().join("replay-digest-input.bin");
+    if !write_test_file(&input_path, &[]) {
+        return false;
+    }
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return false,
+    };
+    if !run_output.status.success() {
+        assert!(
+            forced_assertion_failure(),
+            "run setup failed for digest replay test: stdout={} stderr={}",
+            output_stdout(&run_output),
+            output_stderr(&run_output)
+        );
+        return false;
+    }
+    true
+}
+
+#[test]
+fn cli_replay_with_allow_empty_expectations_succeeds() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-empty-workflow.yaml");
+    let db_path = dir.path().join("replay-empty-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !run_cli_workflow_to_db(&db_path, &workflow_path) {
+        return;
+    }
+
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--allow-empty-expectations"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&replay_output, "replay 1 --db --allow-empty-expectations");
+    let stdout = output_stdout(&replay_output);
+    assert!(
+        stdout.contains("allow_empty_expectations=true"),
+        "replay stdout should declare explicit opt-in: {stdout}"
+    );
+}
+
+#[test]
+fn cli_replay_yaml_emits_digest_counts_and_opt_in() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-yaml-workflow.yaml");
+    let db_path = dir.path().join("replay-yaml-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !run_cli_workflow_to_db(&db_path, &workflow_path) {
+        return;
+    }
+
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--allow-empty-expectations"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(
+        &replay_output,
+        "replay --emit yaml --allow-empty-expectations",
+    );
+    let replay = parse_yaml_stdout(&replay_output, "replay --emit yaml");
+    assert_eq!(
+        replay.get("kind"),
+        Some(&serde_json::json!("replay_report")),
+        "kind mismatch: {replay}"
+    );
+    assert_eq!(
+        replay.get("expected_action_abi_count"),
+        Some(&serde_json::json!(0)),
+        "expected_action_abi_count mismatch: {replay}"
+    );
+    assert_eq!(
+        replay.get("expected_policy_digest_count"),
+        Some(&serde_json::json!(0)),
+        "expected_policy_digest_count mismatch: {replay}"
+    );
+    assert_eq!(
+        replay.get("allow_empty_expectations"),
+        Some(&serde_json::json!(true)),
+        "allow_empty_expectations mismatch: {replay}"
+    );
+    assert_eq!(
+        replay.get("explicit_empty_expectations_hint"),
+        Some(&serde_json::json!(false)),
+        "explicit_empty_expectations_hint should be false when --allow-empty-expectations is set: {replay}"
+    );
+}
+
+#[test]
+fn cli_replay_default_emits_explicit_empty_hint() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-hint-workflow.yaml");
+    let db_path = dir.path().join("replay-hint-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !run_cli_workflow_to_db(&db_path, &workflow_path) {
+        return;
+    }
+
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&replay_output, "replay 1 --db");
+    let stdout = output_stdout(&replay_output);
+    assert!(
+        stdout.contains("note: empty expectations without --allow-empty-expectations"),
+        "replay stdout should emit empty-expectations hint: {stdout}"
+    );
+}
+
+#[test]
+fn cli_replay_with_expected_action_abi_on_actionless_journal_fails() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-mismatch-workflow.yaml");
+    let db_path = dir.path().join("replay-mismatch-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !run_cli_workflow_to_db(&db_path, &workflow_path) {
+        return;
+    }
+
+    // CLI_WORKFLOW has no ActionScheduled events. Supplying
+    // --expected-action-abi forces the recovery layer to require at
+    // least one ActionScheduled event, which produces ActionAbiMismatch.
+    let digest = hex_64([0xDE; 32]);
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--expected-action-abi"),
+        std::ffi::OsStr::new(&format!("5={digest}")),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !replay_output.status.success(),
+        "replay with mismatched action ABI on actionless journal must fail: stdout={} stderr={}",
+        output_stdout(&replay_output),
+        output_stderr(&replay_output)
+    );
+    let stderr = output_stderr(&replay_output);
+    assert!(
+        stderr.contains("action ABI digest mismatch")
+            || stderr.contains("ActionAbiMismatch")
+            || stderr.contains("action_abi_mismatch"),
+        "stderr should mention ActionAbiMismatch: {stderr}"
+    );
+}
+
+#[test]
+fn cli_replay_with_expected_policy_digest_on_journal_without_admission_fails() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("replay-policy-db");
+
+    // CLI workflow always emits RunAdmission, which would suppress the
+    // PolicyDigestMismatch branch. Construct a journal directly that has
+    // RunAccepted + RunAdmission-less events so supplying
+    // --expected-policy-digest triggers the typed mismatch.
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to open journal for policy digest test: {err}"
+            );
+            return;
+        }
+    };
+    let run_id = vb_core::RunId::new(9001);
+    let workflow_digest = vb_core::WorkflowDigest::from_bytes([0xAA; 32]);
+    let events = vec![
+        vb_storage::JournalEvent::RunAccepted {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: workflow_digest,
+        },
+        vb_storage::JournalEvent::StepStarted {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(1),
+            step: vb_core::StepIdx::new(0),
+            attempt: 1,
+        },
+        vb_storage::JournalEvent::StepSucceeded {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(2),
+            step: vb_core::StepIdx::new(0),
+            output: vb_core::SlotIdx::new(0),
+        },
+    ];
+    if let Err(err) = journal.append_strict_batch(&events) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to append events for policy digest test: {err}"
+        );
+        return;
+    }
+    drop(journal);
+
+    let digest = hex_64([0xCD; 32]);
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new(&run_id.get().to_string()),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--expected-policy-digest"),
+        std::ffi::OsStr::new(&format!("0={digest}")),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !replay_output.status.success(),
+        "replay with expected policy digest on journal without RunAdmission must fail: stdout={} stderr={}",
+        output_stdout(&replay_output),
+        output_stderr(&replay_output)
+    );
+    let stderr = output_stderr(&replay_output);
+    assert!(
+        stderr.contains("policy digest mismatch")
+            || stderr.contains("PolicyDigestMismatch")
+            || stderr.contains("policy_digest_mismatch"),
+        "stderr should mention PolicyDigestMismatch: {stderr}"
+    );
+}
+
+#[test]
+fn cli_replay_rejects_malformed_expected_action_abi_value() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-malformed-workflow.yaml");
+    let db_path = dir.path().join("replay-malformed-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !run_cli_workflow_to_db(&db_path, &workflow_path) {
+        return;
+    }
+
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--expected-action-abi"),
+        std::ffi::OsStr::new("notavalidid=deadbeef"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !replay_output.status.success(),
+        "replay with malformed --expected-action-abi must fail: stdout={} stderr={}",
+        output_stdout(&replay_output),
+        output_stderr(&replay_output)
+    );
+    let stderr = output_stderr(&replay_output);
+    assert!(
+        stderr.contains("invalid replay digest"),
+        "stderr should mention invalid replay digest: {stderr}"
+    );
+}
+
 #[test]
 fn cli_diff_identical_runs_reports_zero_differences() {
     let dir = match cli_tempdir() {
