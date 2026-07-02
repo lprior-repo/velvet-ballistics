@@ -1989,12 +1989,12 @@ mod tests {
         };
         // Shutdown first (processes shutdown tick)
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
-        // When trying to submit after shutdown (enqueue still works but tick ignores)
+        // When trying to submit after shutdown, admission is rejected at the boundary.
         assert_eq!(
             runtime.submit_direct(vb_core::ids::RunId::new(402), wf),
-            Ok(())
+            Err(RuntimeError::ShutdownInProgress)
         );
-        // Then tick_all returns false (shard shutting down)
+        // Then tick_all returns false (shard already shutting down)
         assert_eq!(runtime.tick_all(), Ok(false));
         assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
     }

@@ -20,7 +20,7 @@ fn summary_recovery_boundary_exposes_summary() {
         last_seq: EventSeq::new(2),
         workflow: Some(WorkflowDigest::from_bytes([4; 32])),
         steps_started: 1,
-        steps_succeeded: 1,
+        steps_succeeded: 2,
         actions_scheduled: 0,
         actions_resolved: 0,
         suspensions: 0,
@@ -538,30 +538,32 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     };
 
-    // Verify the seed itself is resumable (storage layer says it has enough evidence)
-    assert!(seed.is_resumable(), "Frame seed should be resumable");
+    // Verify the seed can hydrate a frame but cannot resume a live RunState
+    // until runtime-only components are recovered.
+    let cannot_resume = seed.cannot_resume_state();
+    assert_eq!(cannot_resume.is_resumable(), false);
+    assert_eq!(cannot_resume.workflow_missing, true);
 
-    // 2. The runtime boundary correctly hydrates the frame
+    // 2. The runtime boundary refuses live frame hydration until the full
+    //    RunState components are recoverable.
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
     let frame_result = boundary.hydrate_run_frame();
-    assert!(
-        frame_result.is_ok(),
-        "hydrate_run_frame should succeed for supported seed"
+    assert_eq!(
+        frame_result,
+        Err(crate::RuntimeError::InvalidRecoveryHydration)
     );
-    let frame = frame_result.ok().unwrap();
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.step_count(), 2);
 
-    // 3. THE GAP: runtime boundary reports CannotResume even though seed is resumable
-    //    After vb-h5j05: this should return Resumable(full_run_state) when all
-    //    full-RunState fields are also recoverable.
+    // 3. Runtime boundary reports CannotResume because the frame seed lacks
+    //    full-RunState fields. After vb-h5j05: this should return
+    //    Resumable(full_run_state) when all full-RunState fields are also
+    //    recoverable.
     match boundary.resume_status() {
         RecoveryResumeStatus::CannotResume(_) => {
             // Frame seed alone cannot resume because full RunState fields
             // (workflow, store, action_attempts, admission, collect_states,
             // action_contracts) are not represented by durable events.
-            // The seed says resumable but the boundary says CannotResume —
-            // this is the expected gap before vb-h5j05 is implemented.
+            // The typed cannot-resume state records the expected gap before
+            // vb-h5j05 is implemented.
         }
         RecoveryResumeStatus::SummaryOnly => {
             assert!(false, "Expected CannotResume, got SummaryOnly");

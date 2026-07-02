@@ -239,7 +239,7 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
 // =======================================================================
 
 #[test]
-fn shard_submit_after_shutdown_is_enqueued_but_never_processed() {
+fn shard_submit_after_shutdown_is_rejected_and_never_processed() {
     // Given a shard that has received shutdown
     let config = small_config();
     let mut shard = Shard::new(config);
@@ -255,7 +255,7 @@ fn shard_submit_after_shutdown_is_enqueued_but_never_processed() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
-        Ok(())
+        Err(RuntimeError::ShutdownInProgress)
     );
     // Then tick returns false (shutting down flag prevents processing)
     assert_eq!(shard.tick(), Ok(false));
