@@ -382,9 +382,12 @@ impl Shard {
             })?;
 
         // Build admission from the artifact (same as submit path).
-        // Empty capabilities: caps are not journaled per-run; runs requiring
-        // non-empty caps will fail admission, which is correct fail-closed.
-        let admission = self.build_admission(run, workflow.digest(), CapabilitySet::empty())?;
+        // Use the artifact's required_capabilities as the granted capability set.
+        // These were the original grants at submit time; cardinality-exact
+        // admission (RA-023) will pass because required == granted.
+        let granted_caps =
+            CapabilitySet::from_grants(artifact.required_capabilities.clone());
+        let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
 
         // Prepare the run's value store and action attempts from frame dimensions.
         let frame_step_count = frame.step_count();
@@ -398,6 +401,8 @@ impl Shard {
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             collect_states: crate::primitives::collect::CollectStates::new(),
+            // action_contracts are supplied at submit time and are not journaled;
+            // recovered runs rely on per-step policy enforcement instead.
             action_contracts: Box::new([]),
         };
 
