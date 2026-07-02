@@ -35,9 +35,9 @@ pub use full::{
 pub fn replay_events(
     events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
-    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
-    replay_events_with_schedule_requirement(events, tracker, true)
+    replay_events_with_schedule_requirement(events, tracker, true, expected_action_abi_digests)
 }
 
 fn replay_events_with_schedule_requirement(

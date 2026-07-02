@@ -104,6 +104,11 @@ pub(crate) enum SnapshotRecoveryInputViolation {
         snapshot_seq: crate::EventSeq,
         actual_seq: crate::EventSeq,
     },
+    /// First tail event seq is not contiguous with snapshot seq.
+    TailSeqGap {
+        snapshot_seq: crate::EventSeq,
+        actual_seq: crate::EventSeq,
+    },
     NoRecoveryData {
         run: RunId,
     },
@@ -413,6 +418,29 @@ fn validate_tail_events_after_snapshot(
     tail_events: &[JournalEvent],
     snapshot: &RunSnapshot,
 ) -> RecoveryResult<()> {
+    // Contiguity gate: first tail event must be snapshot.seq + 1.
+    // This catches gaps between snapshot and tail that the
+    // per-event ordering check misses.
+    if let Some(first) = tail_events.first() {
+        let first_seq = first.seq();
+        let expected = snapshot
+            .seq
+            .get()
+            .checked_add(1)
+            .ok_or_else(|| SnapshotRecoveryInputViolation::TailSeqGap {
+                snapshot_seq: snapshot.seq,
+                actual_seq: snapshot.seq,
+            })
+            .map_err(snapshot_input_violation_to_error)?;
+        if first_seq.get() != expected {
+            return Err(snapshot_input_violation_to_error(
+                SnapshotRecoveryInputViolation::TailSeqGap {
+                    snapshot_seq: snapshot.seq,
+                    actual_seq: first_seq,
+                },
+            ));
+        }
+    }
     for event in tail_events {
         validate_tail_seq_after_snapshot(TailEventMetadata::from_event(event), snapshot.seq)
             .map_err(snapshot_input_violation_to_error)?;
@@ -444,6 +472,17 @@ fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) 
             step: vb_core::StepIdx::ZERO,
             detail: format!(
                 "tail event seq {} is not after snapshot seq {}",
+                actual_seq.get(),
+                snapshot_seq.get()
+            ),
+        },
+        SnapshotRecoveryInputViolation::TailSeqGap {
+            snapshot_seq,
+            actual_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "tail event seq {} is not contiguous with snapshot seq {} (gap detected)",
                 actual_seq.get(),
                 snapshot_seq.get()
             ),
@@ -668,13 +707,13 @@ fn apply_action_scheduled_ticket_event(
         ticket,
         input,
         output,
-        ..
+        action_abi_digest,
     } = event
     else {
         return Ok(false);
     };
     verify_action_ticket_event(*run, *ticket)?;
-    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Apply {
         add_replay_parallel_in_flight(frame, ticket.step)?;
     }
@@ -695,7 +734,7 @@ fn apply_action_completed_envelope_event(
         encoded_len,
         taint,
         value_digest,
-        ..
+        action_abi_digest,
     } = event
     else {
         return Ok(false);
@@ -708,13 +747,14 @@ fn apply_action_completed_envelope_event(
         *encoded_len,
         *value_digest,
     )?;
-    tracker.require_scheduled_ticket(*ticket, *output)?;
+    tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,
         *encoded_len,
         *taint,
         verified_digest,
+        *action_abi_digest,
     )?;
     if effect == ActionReplayEffect::Apply {
         sub_replay_parallel_in_flight(frame, ticket.step)?;
