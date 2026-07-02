@@ -1166,6 +1166,8 @@ mod tests {
                 RecoveryError::TerminalStateMismatch { .. } => "terminal_state_mismatch",
                 RecoveryError::FrameDimensionOverflow { .. } => "frame_dimension_overflow",
                 RecoveryError::UnsupportedFrameSeed { .. } => "unsupported_frame_seed",
+                RecoveryError::ArtifactNotFound { .. } => "artifact_not_found",
+                RecoveryError::ArtifactDecodeFailed { .. } => "artifact_decode_failed",
             }
         }
         let _ = _exhaustive_match;
