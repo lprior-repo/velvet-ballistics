@@ -125,6 +125,7 @@ fn replay_step_started_event(
 /// Returns `Ok(())` when:
 /// - No expected digests are provided (empty list).
 /// - The action is in the expected list and the digests match.
+///
 /// Returns `ActionAbiMismatch` when the action is in the expected list
 /// but the digests differ.
 pub(crate) fn check_action_abi_digest_against_expected(

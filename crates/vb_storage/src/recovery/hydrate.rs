@@ -426,7 +426,7 @@ fn validate_tail_events_after_snapshot(
             .seq
             .get()
             .checked_add(1)
-            .ok_or_else(|| SnapshotRecoveryInputViolation::TailSeqGap {
+            .ok_or(SnapshotRecoveryInputViolation::TailSeqGap {
                 snapshot_seq: snapshot.seq,
                 actual_seq: snapshot.seq,
             })
