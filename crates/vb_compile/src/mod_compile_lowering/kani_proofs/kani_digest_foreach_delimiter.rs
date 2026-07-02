@@ -6,7 +6,6 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::StepPrimitive;
 
 /// H1: Delimiter byte 0x3A (':') is NOT a valid YAML identifier character.
 #[kani::proof]
@@ -58,13 +57,13 @@ fn kani_foreach_delimiter_prevents_boundary_collision() {
     let concat_b = format!("{}:{}", var_b, inp_b);
     kani::assume(concat_a != concat_b);
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: var_a,
         input: inp_a,
         at_once: None,
         body: vec![],
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable: var_b,
         input: inp_b,
         at_once: None,

@@ -133,7 +133,7 @@ fn watermark_snapshot_seq_lt_summary_first_seq() -> Result<(), Box<dyn std::erro
     let tail = vec![started_event(run, 3, 0), succeeded_event(run, 4, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])?;
 
     let summary = summarize_recovery_events(&replayed)?.summary();
 
@@ -154,7 +154,7 @@ fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event()
     let tail = vec![started_event(run, 6, 0), succeeded_event(run, 7, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])?;
 
     let summary = summarize_recovery_events(&replayed)?.summary();
 
@@ -175,7 +175,7 @@ fn watermark_snapshot_plus_tail_rejects_event_at_snapshot_seq() {
     }];
 
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
 
     assert!(
         result.is_err(),
@@ -195,7 +195,7 @@ fn watermark_snapshot_plus_tail_rejects_event_before_snapshot_seq() {
     }];
 
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
 
     assert!(
         result.is_err(),
@@ -224,7 +224,7 @@ fn watermark_full_journal_vs_snapshot_tail_parity() -> Result<(), Box<dyn std::e
     let tail = vec![started_event(run, 3, 1), succeeded_event(run, 4, 1, 1)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])?;
 
     let tail_summary = summarize_recovery_events(&replayed)?.summary();
 
@@ -315,7 +315,7 @@ fn watermark_empty_tail_with_max_snapshot_ok() {
     };
 
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_snapshot_plus_tail(&snapshot, &[], &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &[], &mut tracker, &[]);
     assert!(
         result.is_ok(),
         "empty tail with MAX snapshot should succeed"
@@ -598,7 +598,7 @@ proptest! {
         if tail_first_seq > snapshot_seq {
             let tail = build_tail_events(run, tail_first_seq, tail_count);
             let mut tracker = ActionReplayTracker::new();
-            let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+            let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
             prop_assert!(replayed.is_ok(), "recover_snapshot_plus_tail failed: {:?}", replayed);
             let summary_result = summarize_recovery_events(&replayed.unwrap());
             prop_assert!(
@@ -613,7 +613,7 @@ proptest! {
         } else {
             let tail = build_tail_events(run, tail_first_seq, tail_count);
             let mut tracker = ActionReplayTracker::new();
-            let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+            let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
             prop_assert!(
                 result.is_err(),
                 "expected error when tail_first_seq {} <= snapshot_seq {}",
@@ -646,7 +646,7 @@ proptest! {
             taint: vec![0, 0],
         };
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_snapshot_plus_tail(&snapshot, tail, &mut tracker);
+        let replayed = recover_snapshot_plus_tail(&snapshot, tail, &mut tracker, &[]);
         prop_assert!(replayed.is_ok(), "snapshot+tail replay failed: {:?}", replayed);
         let tail_result = summarize_recovery_events(&replayed.unwrap());
         prop_assert!(tail_result.is_ok(), "tail summary failed: {:?}", tail_result);

@@ -6,7 +6,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitiveAst};
 
 fn bounded_string(max_len: usize) -> String {
     let mut buf: Vec<u8> = Vec::with_capacity(max_len);
@@ -46,7 +46,7 @@ fn kani_foreach_all_fields_hashed() {
         id: "s".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Set {
+        primitive: StepPrimitiveAst::Set {
             output: "x".to_string(),
             value: value_s,
         },
@@ -56,13 +56,13 @@ fn kani_foreach_all_fields_hashed() {
         then: None,
     };
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: var_a,
         input: input_a,
         at_once: ao_a,
         body: vec![],
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable: var_b,
         input: input_b,
         at_once: ao_b,
@@ -80,7 +80,7 @@ fn kani_foreach_all_fields_hashed() {
 #[kani::proof]
 #[kani::unwind(3)]
 fn kani_foreach_arm_not_fallthrough() {
-    let foreach = StepPrimitive::ForEach {
+    let foreach = StepPrimitiveAst::ForEach {
         variable: "x".to_string(),
         input: "items".to_string(),
         at_once: Some(1),

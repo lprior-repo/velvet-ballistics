@@ -1071,7 +1071,7 @@ fn assert_snapshot_tail_matches_full_summary(
     };
     let tail = tail_after(events, snapshot_seq);
     let mut tail_tracker = ActionReplayTracker::new();
-    let tail_replay = recover_snapshot_plus_tail(&snapshot, &tail, &mut tail_tracker)?;
+    let tail_replay = recover_snapshot_plus_tail(&snapshot, &tail, &mut tail_tracker, &[])?;
 
     let full_summary = summarize_events(&full_replay);
     let snapshot_summary = summary_through(events, snapshot_seq);
@@ -1455,7 +1455,7 @@ fn snapshot_plus_tail_rejects_event_before_snapshot() {
     }];
     let mut tracker = ActionReplayTracker::new();
 
-    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
     let Err(err) = result else {
         panic!("tail event before snapshot should be rejected");
     };
@@ -1622,7 +1622,7 @@ fn snapshot_plus_tail_accepts_valid_tail_events() {
     ];
     let mut tracker = ActionReplayTracker::new();
 
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])
         .expect("valid tail events should replay successfully");
     assert_eq!(replayed.len(), 2);
 }
@@ -2959,7 +2959,7 @@ mod hydrate_run_frame_tests {
         }];
         let mut tracker = ActionReplayTracker::new();
 
-        let result = apply_tail_events(&mut frame, &tail, &mut tracker);
+        let result = apply_tail_events(&mut frame, &tail, &mut tracker, &[]);
 
         assert!(
             matches!(

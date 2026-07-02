@@ -201,7 +201,7 @@ fn recover_snapshot_plus_tail_returns_only_post_snapshot_events()
 
     let tail = journal.events_for_run(run)?;
     let mut tracker = ActionReplayTracker::new();
-    let replayed_tail = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
+    let replayed_tail = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])?;
 
     let full = journal.events_for_run_full(run)?;
     let pre_snapshot_len = (snapshot_seq as usize) + 1;

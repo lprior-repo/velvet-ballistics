@@ -7,7 +7,7 @@ use crate::recovery::recovery_boundary_from_hydration;
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::recovery::{
-    RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState, RecoveryCannotResumeState,
+    RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryCannotResumeState,
     RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
     UnsupportedRecoveryState,
 };
@@ -531,8 +531,8 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
         ],
         slots: vec![RecoveredSlotEntry {
             slot: SlotIdx::new(0),
-            value: SlotValue::U8(42),
-            taint: Taint::new(),
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
         }],
         pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
@@ -546,7 +546,7 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
     let frame_result = boundary.hydrate_run_frame();
     assert!(frame_result.is_ok(), "hydrate_run_frame should succeed for supported seed");
     let frame = frame_result.ok().unwrap();
-    assert_eq!(frame.run(), run);
+    assert_eq!(frame.run_id(), run);
     assert_eq!(frame.step_count(), 2);
 
     // 3. THE GAP: runtime boundary reports CannotResume even though seed is resumable

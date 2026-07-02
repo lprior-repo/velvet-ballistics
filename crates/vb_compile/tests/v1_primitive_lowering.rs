@@ -1222,7 +1222,7 @@ fn wait_workflow_yaml(event: &Option<String>, timeout: &Option<String>) -> Strin
         wait_block.push_str(&format!("\n      timeout: \"{t}\""));
     }
     format!(
-        "version: velvet-ballastics/v1\nname: wait-digest-test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: wait-digest-test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
     )
 }
 

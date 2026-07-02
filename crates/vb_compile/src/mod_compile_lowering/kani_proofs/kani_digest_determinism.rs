@@ -6,7 +6,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitiveAst};
 
 fn bounded_string(max_len: usize) -> String {
     let mut buf: Vec<u8> = Vec::with_capacity(max_len);
@@ -30,7 +30,7 @@ fn kani_foreach_digest_step_deterministic() {
     kani::assume(!input.is_empty());
     let at_once: Option<u32> = kani::any();
 
-    let foreach = StepPrimitive::ForEach {
+    let foreach = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once,
@@ -53,7 +53,7 @@ fn kani_set_digest_step_deterministic() {
     let value = bounded_string(16);
     kani::assume(!value.is_empty());
 
-    let set_prim = StepPrimitive::Set { output, value };
+    let set_prim = StepPrimitiveAst::Set { output, value };
 
     let mut h1 = blake3::Hasher::new();
     let mut h2 = blake3::Hasher::new();

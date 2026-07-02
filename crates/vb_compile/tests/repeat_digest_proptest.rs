@@ -59,7 +59,7 @@ fn repeat_workflow_yaml(
     value: &str,
 ) -> String {
     format!(
-        "version: velvet-ballastics/v1\nname: repeat-proptest\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: {body_step_id}\n          set:\n            output: {output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: repeat-proptest\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: {body_step_id}\n          set:\n            output: {output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
 }
 
@@ -72,7 +72,7 @@ fn repeat_workflow_yaml_alt(
     value: &str,
 ) -> String {
     format!(
-        "version: velvet-ballastics/v1\nname: repeat-proptest-alt\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: alt_{body_step_id}\n          set:\n            output: alt_{output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: repeat-proptest-alt\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: alt_{body_step_id}\n          set:\n            output: alt_{output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
 }
 

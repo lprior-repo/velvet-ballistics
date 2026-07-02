@@ -1158,6 +1158,8 @@ mod tests {
                 RecoveryError::PolicyDigestMismatch { .. } => "policy_digest_mismatch",
                 RecoveryError::NonIdempotentActionBlocked { .. } => "non_idempotent_action_blocked",
                 RecoveryError::ReplayDivergence { .. } => "replay_divergence",
+                RecoveryError::ArtifactNotFound { .. } => "artifact_not_found",
+                RecoveryError::ArtifactDecodeFailed => "artifact_decode_failed",
                 RecoveryError::SlotTaintReadFailed { .. } => "slot_taint_read_failed",
                 RecoveryError::CorruptSlotTaint { .. } => "corrupt_slot_taint",
                 RecoveryError::NoRecoveryData { .. } => "no_recovery_data",

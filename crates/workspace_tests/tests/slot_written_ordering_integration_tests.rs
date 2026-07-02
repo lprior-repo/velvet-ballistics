@@ -672,7 +672,7 @@ fn snapshot_plus_tail_replays_tail_slot_writes_after_snapshot() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover snapshot plus tail
-    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
     // Then: Recovery succeeds
     assert!(
@@ -889,7 +889,7 @@ fn snapshot_captures_all_preceding_slot_writes() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover snapshot plus tail
-    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
     // Then: Recovery succeeds
     assert!(
@@ -953,7 +953,7 @@ fn corrupt_snapshot_seq_fails_gracefully() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover snapshot plus tail with corrupt ordering
-    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
     // Then: Should return ReplayDivergence
     match result {
@@ -1003,7 +1003,7 @@ fn tail_seq_equal_to_snapshot_seq_fails() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover snapshot plus tail
-    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+    let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
     // Then: Should return ReplayDivergence (tail seq must be STRICTLY greater)
     match result {

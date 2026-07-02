@@ -5,7 +5,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitiveAst};
 
 fn fixed_string<const N: usize>() -> String {
     let bytes: [u8; N] = kani::any();
@@ -37,13 +37,13 @@ fn kani_foreach_at_once_reaches_hasher() {
     kani::assume(at_once_a != at_once_b);
     let body: Vec<StepAst> = vec![];
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once: at_once_a,
         body: body.clone(),
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once: at_once_b,

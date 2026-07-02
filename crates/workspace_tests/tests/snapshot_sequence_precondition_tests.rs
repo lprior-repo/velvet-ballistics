@@ -82,7 +82,7 @@ proptest! {
         let tail_events = vec![tail_event];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
         prop_assert!(result.is_ok(), "recover_snapshot_plus_tail should succeed for valid tail at seq+1");
         let replayed = result.unwrap();
@@ -115,7 +115,7 @@ proptest! {
         let tail_events = vec![tail_event];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
         prop_assert!(result.is_ok(), "StepStarted tail at seq+1 should replay successfully");
         let replayed = result.unwrap();
@@ -149,7 +149,7 @@ proptest! {
         let tail_events = vec![tail_event];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
         // When tail overlaps (overlap_seq <= snapshot_seq), expect ReplayDivergence
         if overlap_seq <= snapshot_seq {
@@ -180,7 +180,7 @@ proptest! {
         let tail_events: Vec<JournalEvent> = Vec::new();
 
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker);
+        let result = recover_snapshot_plus_tail(&snapshot, &tail_events, &mut tracker, &[]);
 
         prop_assert!(result.is_ok(), "empty tail should always be valid: seq={}", snapshot_seq);
         let replayed = result.unwrap();

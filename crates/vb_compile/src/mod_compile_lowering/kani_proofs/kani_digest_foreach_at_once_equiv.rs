@@ -10,7 +10,6 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::StepPrimitive;
 
 /// Generate a bounded YAML-identifier string using kani::any().
 fn any_yaml_identifier(max_len: usize) -> String {
@@ -34,13 +33,13 @@ fn kani_foreach_at_once_none_some1_equivalence() {
     let variable = any_yaml_identifier(8);
     let input = any_yaml_identifier(8);
 
-    let foreach_none = StepPrimitive::ForEach {
+    let foreach_none = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once: None,
         body: vec![],
     };
-    let foreach_some1 = StepPrimitive::ForEach {
+    let foreach_some1 = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once: Some(1),
@@ -62,13 +61,13 @@ fn kani_foreach_at_once_none_some0_inequivalence() {
     let variable = any_yaml_identifier(8);
     let input = any_yaml_identifier(8);
 
-    let foreach_none = StepPrimitive::ForEach {
+    let foreach_none = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once: None,
         body: vec![],
     };
-    let foreach_some0 = StepPrimitive::ForEach {
+    let foreach_some0 = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once: Some(0),

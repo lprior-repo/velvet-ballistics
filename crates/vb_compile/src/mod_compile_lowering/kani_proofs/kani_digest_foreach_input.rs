@@ -7,7 +7,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitiveAst};
 
 /// PO-K-FE-01: Prove ForEach.input reaches hasher.
 /// Uses single-character strings to keep Kani state space minimal.
@@ -31,13 +31,13 @@ fn kani_foreach_input_reaches_hasher() {
 
     let at_once: Option<u32> = kani::any();
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input_a,
         at_once,
         body: vec![],
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable,
         input: input_b,
         at_once,

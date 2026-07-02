@@ -6,7 +6,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{StepAst, StepPrimitive};
+use crate::ast::{StepAst, StepPrimitiveAst};
 
 #[kani::proof]
 #[kani::unwind(4)]
@@ -24,13 +24,13 @@ fn kani_foreach_variable_reaches_hasher() {
     let input = ic.to_string();
     let at_once: Option<u32> = kani::any();
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: variable_a,
         input: input.clone(),
         at_once,
         body: vec![],
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable: variable_b,
         input,
         at_once,

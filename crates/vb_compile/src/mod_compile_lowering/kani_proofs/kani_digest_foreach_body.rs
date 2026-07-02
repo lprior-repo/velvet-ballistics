@@ -7,7 +7,7 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-use crate::ast::{ScalarValue, StepAst, StepPrimitive};
+use crate::ast::{ScalarValue, StepAst, StepPrimitiveAst};
 
 /// H1: Changing Set body step output changes digest (1-char strings for Kani tractability).
 #[kani::proof]
@@ -39,7 +39,7 @@ fn kani_foreach_body_set_content_reaches_hasher() {
         id: "s".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Set {
+        primitive: StepPrimitiveAst::Set {
             output: output_a,
             value: value_s.clone(),
         },
@@ -52,7 +52,7 @@ fn kani_foreach_body_set_content_reaches_hasher() {
         id: "s".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Set {
+        primitive: StepPrimitiveAst::Set {
             output: output_b,
             value: value_s,
         },
@@ -62,13 +62,13 @@ fn kani_foreach_body_set_content_reaches_hasher() {
         then: None,
     }];
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once,
         body: body_a,
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once,
@@ -101,7 +101,7 @@ fn kani_foreach_body_finish_content_reaches_hasher() {
         id: "f".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Finish {
+        primitive: StepPrimitiveAst::Finish {
             result: ScalarValue::Integer(result_a),
         },
         with: None,
@@ -113,7 +113,7 @@ fn kani_foreach_body_finish_content_reaches_hasher() {
         id: "f".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Finish {
+        primitive: StepPrimitiveAst::Finish {
             result: ScalarValue::Integer(result_b),
         },
         with: None,
@@ -122,13 +122,13 @@ fn kani_foreach_body_finish_content_reaches_hasher() {
         then: None,
     }];
 
-    let foreach_a = StepPrimitive::ForEach {
+    let foreach_a = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once,
         body: body_a,
     };
-    let foreach_b = StepPrimitive::ForEach {
+    let foreach_b = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once,
@@ -162,7 +162,7 @@ fn kani_foreach_body_count_reaches_hasher() {
         id: "s".to_string(),
         name: None,
         condition: None,
-        primitive: StepPrimitive::Set {
+        primitive: StepPrimitiveAst::Set {
             output: "x".to_string(),
             value: value_s,
         },
@@ -172,13 +172,13 @@ fn kani_foreach_body_count_reaches_hasher() {
         then: None,
     };
 
-    let foreach_empty = StepPrimitive::ForEach {
+    let foreach_empty = StepPrimitiveAst::ForEach {
         variable: variable.clone(),
         input: input.clone(),
         at_once,
         body: vec![],
     };
-    let foreach_one = StepPrimitive::ForEach {
+    let foreach_one = StepPrimitiveAst::ForEach {
         variable,
         input,
         at_once,
