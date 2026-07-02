@@ -4,9 +4,12 @@
 //! Organized into:
 //! - `core`: Core replay logic (replay_events, snapshot handling)
 //! - `summary`: Summary building and frame seed construction
+//! - `observation`: Stable semantic observation projection of journal
+//!   events for deterministic cross-run comparison.
 
 pub mod attempt;
 pub mod core;
+pub(crate) mod observation;
 pub mod summary;
 
 // Re-exports
