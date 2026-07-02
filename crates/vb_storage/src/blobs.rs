@@ -37,7 +37,13 @@ impl FjallJournal {
         digest: [u8; crate::constants::DIGEST_BYTES],
     ) -> Result<Option<BlobRecord>, JournalError> {
         let key = blob_key(digest)?;
-        self.decode_optional(&self.blob, key.as_slice(), MAGIC_BLOB, MAX_BLOB_BYTES)
+        self.decode_optional_with(
+            &self.blob,
+            key.as_slice(),
+            MAGIC_BLOB,
+            MAX_BLOB_BYTES,
+            |_envelope, record| validate_blob_read(digest, record),
+        )
     }
 
     /// Removes a blob by digest, enforcing retention boundary semantics.
@@ -58,4 +64,14 @@ impl FjallJournal {
         self.blob.remove(key.as_slice())?;
         Ok(())
     }
+}
+
+fn validate_blob_read(
+    requested_digest: [u8; crate::constants::DIGEST_BYTES],
+    record: &BlobRecord,
+) -> Result<(), JournalError> {
+    if record.digest != requested_digest {
+        return Err(JournalError::PayloadDigestMismatch);
+    }
+    crate::journal::verify_content_digest(record.bytes.as_slice(), &requested_digest)
 }
