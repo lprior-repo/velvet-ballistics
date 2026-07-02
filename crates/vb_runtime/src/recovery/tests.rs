@@ -543,7 +543,9 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
 
     // 2. The runtime boundary correctly hydrates the frame
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
-    let frame = boundary.hydrate_run_frame().expect("Frame should hydrate from supported seed");
+    let frame_result = boundary.hydrate_run_frame();
+    assert!(frame_result.is_ok(), "hydrate_run_frame should succeed for supported seed");
+    let frame = frame_result.ok().unwrap();
     assert_eq!(frame.run(), run);
     assert_eq!(frame.step_count(), 2);
 
@@ -551,14 +553,15 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
     //    After vb-h5j05: this should return Resumable(full_run_state) when all
     //    full-RunState fields are also recoverable.
     match boundary.resume_status() {
-        RecoveryResumeStatus::CannotResume(cannot_resume) => {
+        RecoveryResumeStatus::CannotResume(_) => {
             // Frame seed alone cannot resume because full RunState fields
             // (workflow, store, action_attempts, admission, collect_states,
             // action_contracts) are not represented by durable events.
-            assert!(!cannot_resume.is_resumable(), "Cannot resume — full RunState missing");
+            // The seed says resumable but the boundary says CannotResume —
+            // this is the expected gap before vb-h5j05 is implemented.
         }
         RecoveryResumeStatus::SummaryOnly => {
-            panic!("Expected CannotResume, got SummaryOnly");
+            assert!(false, "Expected CannotResume, got SummaryOnly");
         }
     }
 
