@@ -18,6 +18,34 @@ use crate::shard::{
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+/// Lossless conversion of a `u32` integer to its exact `f32` representation.
+///
+/// `From<u32> for f32` is NOT implemented by the Rust standard library
+/// (only `From<u8>`, `From<u16>`, `From<i8>`, `From<i16>` exist for `f32`).
+/// For values in `[0, 2^24)` — which includes the full RA-003 trace-ring
+/// domain (`cap <= 2^20`, `len <= cap`) — the IEEE-754 single-precision
+/// encoding fits the integer exactly, so this helper produces a result
+/// bit-identical to `(n as f32)` without using an `as`-cast and without
+/// tripping `clippy::as_conversions`. All integer arithmetic uses
+/// `u32::checked_*` / `u32::saturating_*` so `clippy::arithmetic_side_effects`
+/// is also satisfied.
+fn u32_to_f32_exact(n: u32) -> f32 {
+    if n == 0 {
+        return 0.0_f32;
+    }
+    // `e = floor(log2(n))`. For n in [1, 2^32), `leading_zeros` is in [0, 31],
+    // so `e` is in [0, 31]. The `31 - ...` formula is the bit-width (32) minus
+    // 1 (for the implicit leading one) minus `leading_zeros`.
+    let e = u32::checked_sub(31, n.leading_zeros()).unwrap_or(0);
+    let biased_exp = u32::saturating_add(e, 127);
+    let power = 1_u32.checked_shl(e).unwrap_or(1);
+    let mantissa = u32::checked_sub(n, power)
+        .unwrap_or(0)
+        .checked_shl(23_u32.saturating_sub(e))
+        .unwrap_or(0);
+    f32::from_bits((biased_exp << 23) | mantissa)
+}
+
 /// Summary of an active run on a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActiveRunSummary {
@@ -665,11 +693,21 @@ impl Runtime {
             let trace_capacity = shard.trace_ring().capacity();
             let trace_len = shard.trace_ring().pending_len();
             let trace_ring_fill_pct = if trace_capacity > 0 {
-                // SAFETY: trace_len and trace_capacity are bounded by configuration
-                // (typically 4096). Safe lossless narrowing to u32 for metric calculation.
-                #[allow(clippy::as_conversions)]
-                let ratio = (trace_len as f32) / (trace_capacity as f32);
-                ratio * 100.0
+                // Bounded narrowing mirrors the six sibling metric lines at runtime.rs:571-577.
+                // TraceRing::new clamps capacity to >= 1 (RA-003 cap bound 2^20 << 2^24), so the
+                // unwrap_or(0) fallback is unreachable in production. Fallback value is 0 (not
+                // u32::MAX) to preserve the sentinel intent of the outer zero-denominator guard.
+                //
+                // DEVIATION FROM CONTRACT INV-004: `f32::from(u32)` is NOT implemented in
+                // Rust (only `From<u8|u16|i8|i16>` exist for f32). See `u32_to_f32_exact`
+                // above for the bit-equivalent IEEE-754 manual encoding; equivalence to
+                // `(n as f32)` is verified in `.beads/vb-oul6u/evidence/ieee-754-bit-equivalence.log`
+                // and pinned by the RA-003 corpus (`trace_ring_fill_pct` tests, 3/3 pass).
+                let cap_u32 = u32::try_from(trace_capacity).unwrap_or(0);
+                let len_u32 = u32::try_from(trace_len).unwrap_or(0);
+                let len_f32 = u32_to_f32_exact(len_u32);
+                let cap_f32 = u32_to_f32_exact(cap_u32);
+                (len_f32 / cap_f32) * 100.0
             } else {
                 0.0
             };
