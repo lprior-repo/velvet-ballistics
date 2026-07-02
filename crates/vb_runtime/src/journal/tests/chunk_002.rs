@@ -274,7 +274,8 @@ fn queued_storage_resume_persists_run_resumed_not_run_failed() -> Result<(), Str
 }
 
 #[test]
-fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> Result<(), String>
+fn journaled_invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure(
+) -> Result<(), String>
 {
     let (_dir, journal) = temp_journal()?;
     let adapter = StorageRuntimeJournal::strict(journal.clone());
@@ -354,8 +355,9 @@ fn invalid_resumed_timestamp_returns_typed_error_without_synthetic_failure() -> 
             },
             EventSeq::new(0),
         ),
-        Err(crate::RuntimeError::UnsupportedOperation {
-            operation: "invalid_resumed_timestamp"
+        Err(crate::RuntimeError::RuntimeJournalTimestampOutOfRange {
+            event_kind: "Resumed",
+            timestamp: u64::MAX,
         })
     ));
 
