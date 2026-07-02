@@ -346,10 +346,9 @@ impl PartialEq for RecoveryError {
                     reason: rd,
                 },
             ) => lr == rr && ld == rd,
-            (
-                Self::ArtifactNotFound { digest: ld },
-                Self::ArtifactNotFound { digest: rd },
-            ) => ld == rd,
+            (Self::ArtifactNotFound { digest: ld }, Self::ArtifactNotFound { digest: rd }) => {
+                ld == rd
+            }
             (Self::ArtifactDecodeFailed, Self::ArtifactDecodeFailed) => true,
             _ => false,
         }
@@ -1412,8 +1411,15 @@ impl ActionReplayTracker {
         value_digest: [u8; 32],
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
-        self.mark_completed_envelope_effect(ticket, output, encoded_len, taint, value_digest, action_abi_digest)
-            .map(|_| ())
+        self.mark_completed_envelope_effect(
+            ticket,
+            output,
+            encoded_len,
+            taint,
+            value_digest,
+            action_abi_digest,
+        )
+        .map(|_| ())
     }
 
     /// Records that an action failed during normal execution.

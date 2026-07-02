@@ -100,7 +100,12 @@ pub fn recover_snapshot_plus_tail(
             });
         }
     }
-    replay_events_with_schedule_requirement(tail_events, tracker, false, expected_action_abi_digests)
+    replay_events_with_schedule_requirement(
+        tail_events,
+        tracker,
+        false,
+        expected_action_abi_digests,
+    )
 }
 /// Checks whether a run has reached a terminal state.
 ///

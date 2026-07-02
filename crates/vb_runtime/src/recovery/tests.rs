@@ -7,9 +7,9 @@ use crate::recovery::recovery_boundary_from_hydration;
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::recovery::{
-    RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryCannotResumeState,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    UnsupportedRecoveryState,
+    RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
+    RecoveryCannotResumeState, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
+    RecoveryTerminalState, UnsupportedRecoveryState,
 };
 
 #[test]
@@ -544,7 +544,10 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
     // 2. The runtime boundary correctly hydrates the frame
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
     let frame_result = boundary.hydrate_run_frame();
-    assert!(frame_result.is_ok(), "hydrate_run_frame should succeed for supported seed");
+    assert!(
+        frame_result.is_ok(),
+        "hydrate_run_frame should succeed for supported seed"
+    );
     let frame = frame_result.ok().unwrap();
     assert_eq!(frame.run_id(), run);
     assert_eq!(frame.step_count(), 2);

@@ -148,8 +148,12 @@ fn apply_summary_event_checked(
             ..
         } => {
             verify_action_ticket_event(*run, *ticket)?;
-            let effect = tracker
-                .mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
+            let effect = tracker.mark_scheduled_ticket_effect(
+                *ticket,
+                *input,
+                *output,
+                *action_abi_digest,
+            )?;
             if effect == ActionReplayEffect::Apply {
                 apply_summary_event(summary, event);
             }
@@ -188,8 +192,7 @@ fn apply_summary_event_checked(
                     *encoded_len,
                     *value_digest,
                 )?;
-            tracker
-                .require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
+            tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
                 *output,

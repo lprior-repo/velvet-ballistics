@@ -203,9 +203,12 @@ impl FrameSeedAccumulator {
         output: SlotIdx,
         action_abi_digest: vb_core::WorkflowDigest,
     ) -> RecoveryResult<Self> {
-        let effect = self
-            .action_tracker
-            .mark_scheduled_ticket_effect(ticket, input, output, action_abi_digest)?;
+        let effect = self.action_tracker.mark_scheduled_ticket_effect(
+            ticket,
+            input,
+            output,
+            action_abi_digest,
+        )?;
         if effect == ActionReplayEffect::Apply {
             self.summary.actions_scheduled = self.summary.actions_scheduled.saturating_add(1);
             self.pending_actions.insert((ticket.action, ticket.step));

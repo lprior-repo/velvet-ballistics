@@ -50,8 +50,14 @@ enum HelperResponse {
 /// Result of running the helper subprocess.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum HelperOutcome {
-    Committed { count: u32, last_seq: u64 },
-    Replayed { count: u32, last_seq: u64 },
+    Committed {
+        count: u32,
+        last_seq: u64,
+    },
+    Replayed {
+        count: u32,
+        last_seq: u64,
+    },
     #[allow(dead_code)]
     HelperMissing,
     HelperFailed(String),
@@ -74,8 +80,7 @@ fn unique_temp_dir(label: &str) -> PathBuf {
 /// Build the helper binary and return the path to it. Returns `None` if the
 /// helper source is missing or the build fails (test is skipped).
 fn build_helper() -> Option<PathBuf> {
-    let helper_src = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/bin/wal_crash_helper.rs");
+    let helper_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/bin/wal_crash_helper.rs");
     if !helper_src.exists() {
         return None;
     }
@@ -173,8 +178,7 @@ fn in_process_strict_commit_survives_fresh_handle_replay() {
 
     // Phase 1: open the journal, write strict commits, drop the handle.
     {
-        let first_handle =
-            FjallJournal::open(&dir, None).expect("open journal for commit phase");
+        let first_handle = FjallJournal::open(&dir, None).expect("open journal for commit phase");
         let run = RunId::new(1);
         for i in 0..commit_count {
             let event = JournalEvent::RunAccepted {
@@ -189,12 +193,10 @@ fn in_process_strict_commit_survives_fresh_handle_replay() {
     }
 
     // Phase 2: reopen with a fresh inspect-view handle and replay.
-    let second_handle = ReadOnlyJournal::open_inspect_view(&dir)
-        .expect("open inspect view for replay phase");
+    let second_handle =
+        ReadOnlyJournal::open_inspect_view(&dir).expect("open inspect view for replay phase");
     let run = RunId::new(1);
-    let replayed = second_handle
-        .events_for_run(run)
-        .expect("events for run 1");
+    let replayed = second_handle.events_for_run(run).expect("events for run 1");
     assert_eq!(
         replayed.len() as u64,
         commit_count,
@@ -254,10 +256,7 @@ fn subprocess_wal_kill_then_reopen_recovers_all_events() {
         other => panic!("commit phase failed: {other:?}"),
     };
 
-    let replay_outcome = run_helper(
-        &helper,
-        &HelperOp::ReopenAndRead { path: dir.clone() },
-    );
+    let replay_outcome = run_helper(&helper, &HelperOp::ReopenAndRead { path: dir.clone() });
     match replay_outcome {
         HelperOutcome::Replayed { count, last_seq } => {
             assert_eq!(

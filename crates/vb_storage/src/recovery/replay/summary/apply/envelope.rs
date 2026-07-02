@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 //! Action-completion envelope summary application.
 
-use vb_core::WorkflowDigest;
 use crate::recovery::types::{
     ActionReplayEffect, RecoveredStepState, RecoveryError, RecoveryResult,
 };
+use vb_core::WorkflowDigest;
 use vb_core::{ActionTicket, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
 use super::super::accumulator::FrameSeedAccumulator;
@@ -38,8 +38,11 @@ impl FrameSeedAccumulator {
             envelope.encoded_len,
             envelope.value_digest,
         )?;
-        self.action_tracker
-            .require_scheduled_ticket(envelope.ticket, envelope.output, envelope.action_abi_digest)?;
+        self.action_tracker.require_scheduled_ticket(
+            envelope.ticket,
+            envelope.output,
+            envelope.action_abi_digest,
+        )?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
             envelope.ticket,
             envelope.output,

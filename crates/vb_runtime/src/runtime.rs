@@ -347,20 +347,15 @@ impl Runtime {
     /// Returns `RuntimeError::Recovery` when the recovery operation fails
     /// the journal replay fails (missing data, corrupt snapshot, digest
     /// mismatch, or unsupported recovery state).
-    pub fn recover_and_resume(
-        &self,
-        run: RunId,
-    ) -> RuntimeResult<()> {
+    pub fn recover_and_resume(&self, run: RunId) -> RuntimeResult<()> {
         let fjall_journal = self
             .journal
             .storage_journal()
             .ok_or(RuntimeError::RecoveryNotAvailable)?;
 
-        let hydration =
-            vb_storage::recovery::recover_runtime_frame_seed(&fjall_journal, run).map_err(|e| {
-                RuntimeError::Recovery {
-                    error: e.to_string(),
-                }
+        let hydration = vb_storage::recovery::recover_runtime_frame_seed(&fjall_journal, run)
+            .map_err(|e| RuntimeError::Recovery {
+                error: e.to_string(),
             })?;
 
         let boundary = crate::recovery::recovery_boundary_from_hydration(
@@ -369,12 +364,13 @@ impl Runtime {
 
         // Extract the workflow digest from the recovery summary so the
         // shard can reconstruct the compiled workflow from the artifact store.
-        let workflow_digest = boundary
-            .summary()
-            .workflow
-            .ok_or(RuntimeError::RecoveryCannotResume {
-                reason: String::from("workflow_digest_missing_from_recovery_summary"),
-            })?;
+        let workflow_digest =
+            boundary
+                .summary()
+                .workflow
+                .ok_or(RuntimeError::RecoveryCannotResume {
+                    reason: String::from("workflow_digest_missing_from_recovery_summary"),
+                })?;
 
         // Both CannotResume and SummaryOnly are handled by the boundary
         // itself (they already failed earlier in hydration); FrameSeed

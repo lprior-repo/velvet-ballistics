@@ -374,8 +374,13 @@ fn apply_action_scheduled_ticket(
         return Ok(ApplyOutcome::NotApplicable);
     };
     verify_action_ticket_event(*run, *ticket)?;
-    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
-    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
+    let effect =
+        tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Duplicate {
         return Ok(ApplyOutcome::Skipped);
     }
@@ -436,7 +441,11 @@ fn apply_action_completed_envelope(
         *encoded_len,
         *value_digest,
     )?;
-    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,

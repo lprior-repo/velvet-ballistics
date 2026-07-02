@@ -6,7 +6,6 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-
 /// H1: Delimiter byte 0x3A (':') is NOT a valid YAML identifier character.
 #[kani::proof]
 #[kani::unwind(2)]

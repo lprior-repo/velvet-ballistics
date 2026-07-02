@@ -666,9 +666,12 @@ fn apply_accounting_event(
         JournalEvent::ActionScheduledTicket { .. } => {
             apply_action_scheduled_ticket_event(frame, tracker, event, expected_action_abi_digests)
         }
-        JournalEvent::ActionCompletedEnvelope { .. } => {
-            apply_action_completed_envelope_event(frame, tracker, event, expected_action_abi_digests)
-        }
+        JournalEvent::ActionCompletedEnvelope { .. } => apply_action_completed_envelope_event(
+            frame,
+            tracker,
+            event,
+            expected_action_abi_digests,
+        ),
         _ => classify_metadata_event(event),
     }
 }
@@ -715,8 +718,13 @@ fn apply_action_scheduled_ticket_event(
         return Ok(false);
     };
     verify_action_ticket_event(*run, *ticket)?;
-    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
-    let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
+    let effect =
+        tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
     if effect == ActionReplayEffect::Apply {
         add_replay_parallel_in_flight(frame, ticket.step)?;
     }
@@ -753,7 +761,11 @@ fn apply_action_completed_envelope_event(
         *value_digest,
     )?;
     tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
-    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
     let effect = tracker.mark_completed_envelope_effect(
         *ticket,
         *output,
@@ -845,7 +857,9 @@ fn check_action_abi_digest_against_expected(
     for (exp_action_id, exp_digest) in expected {
         if *exp_action_id == action_id {
             if *exp_digest != found {
-                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
+                return Err(RecoveryError::ActionAbiMismatch {
+                    action_id: *exp_action_id,
+                });
             }
             return Ok(());
         }

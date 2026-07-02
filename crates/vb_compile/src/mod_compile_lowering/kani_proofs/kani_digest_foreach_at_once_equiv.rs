@@ -10,7 +10,6 @@
 #![cfg(kani)]
 #![allow(unused_must_use)]
 
-
 /// Generate a bounded YAML-identifier string using kani::any().
 fn any_yaml_identifier(max_len: usize) -> String {
     let len: u8 = kani::any();

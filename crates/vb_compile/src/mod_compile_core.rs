@@ -26,50 +26,51 @@ impl YamlCompiler {
         Self { limits }
     }
 
-/// Parses and validates YAML, then emits compiled workflow IR.
-///
-/// Forces the canonical saphyr-level document validation gates on the public
-/// compile path. The cold text-level `parse_workflow_source` rejects
-/// strict-profile YAML errors and parses the typed `WorkflowSource`, but it
-/// does NOT run the saphyr-level `validate_strict_profile`,
-/// `validate_workflow_document_shape`, or input-schema gates. Without these,
-/// `compile_workflow` let malformed or non-canonical workflows reach the
-/// lowering step. Reference, type-taint, and control-flow gates are run
-/// after lowering inside `compile_source` against the typed IR. See bead
-/// vb-y3ye5.
-pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
-    let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-    reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
-    let source = crate::parse_workflow_source(text)
-        .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
-    Self::enforce_canonical_document_validations(text)?;
-    crate::mod_compile_lowering::compile_source(&source)
-}
+    /// Parses and validates YAML, then emits compiled workflow IR.
+    ///
+    /// Forces the canonical saphyr-level document validation gates on the public
+    /// compile path. The cold text-level `parse_workflow_source` rejects
+    /// strict-profile YAML errors and parses the typed `WorkflowSource`, but it
+    /// does NOT run the saphyr-level `validate_strict_profile`,
+    /// `validate_workflow_document_shape`, or input-schema gates. Without these,
+    /// `compile_workflow` let malformed or non-canonical workflows reach the
+    /// lowering step. Reference, type-taint, and control-flow gates are run
+    /// after lowering inside `compile_source` against the typed IR. See bead
+    /// vb-y3ye5.
+    pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
+        let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
+        let source = crate::parse_workflow_source(text)
+            .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
+        Self::enforce_canonical_document_validations(text)?;
+        crate::mod_compile_lowering::compile_source(&source)
+    }
 
-/// Runs the canonical saphyr-level document validation gates on `text`.
-///
-/// This is the validation chain that `parse_workflow_source` does NOT
-/// perform by itself. It enforces:
-/// 1. Strict YAML profile (anchors, aliases, merges, duplicate keys,
-///    binary scalars, custom tags, YAML 1.1 ambiguous booleans, depth).
-/// 2. Workflow document shape (top-level keys, version, trigger, name,
-///    steps non-empty, valid step primitives).
-/// 3. Input schemas declared on the workflow.
-///
-/// Reference, type-taint, and control-flow gates are intentionally NOT run
-/// here: those gates require slot-context that is only established during
-/// `compile_source` lowering. Running them against the unlowered typed AST
-/// would require the AST to encode identifiers as pre-lowering expressions,
-/// which the typed `WorkflowAst` already does. The semantic gates live in
-/// `compile_source` and run after lowering against the typed IR parts.
-fn enforce_canonical_document_validations(text: &str) -> Result<(), CompileErrors> {
-    let docs = saphyr::Yaml::load_from_str(text).map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
-    let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
-    validate_strict_profile(doc, YamlLimits::default()).map_err(|e| CompileErrors(vec![e]))?;
-    validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
-    schema::validate_input_schemas(doc)?;
-    Ok(())
-}
+    /// Runs the canonical saphyr-level document validation gates on `text`.
+    ///
+    /// This is the validation chain that `parse_workflow_source` does NOT
+    /// perform by itself. It enforces:
+    /// 1. Strict YAML profile (anchors, aliases, merges, duplicate keys,
+    ///    binary scalars, custom tags, YAML 1.1 ambiguous booleans, depth).
+    /// 2. Workflow document shape (top-level keys, version, trigger, name,
+    ///    steps non-empty, valid step primitives).
+    /// 3. Input schemas declared on the workflow.
+    ///
+    /// Reference, type-taint, and control-flow gates are intentionally NOT run
+    /// here: those gates require slot-context that is only established during
+    /// `compile_source` lowering. Running them against the unlowered typed AST
+    /// would require the AST to encode identifiers as pre-lowering expressions,
+    /// which the typed `WorkflowAst` already does. The semantic gates live in
+    /// `compile_source` and run after lowering against the typed IR parts.
+    fn enforce_canonical_document_validations(text: &str) -> Result<(), CompileErrors> {
+        let docs = saphyr::Yaml::load_from_str(text)
+            .map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
+        let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
+        validate_strict_profile(doc, YamlLimits::default()).map_err(|e| CompileErrors(vec![e]))?;
+        validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
+        schema::validate_input_schemas(doc)?;
+        Ok(())
+    }
 
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
     pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileErrors> {

@@ -36,7 +36,10 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::StepSucceeded {
-            seq, step: _, output, ..
+            seq,
+            step: _,
+            output,
+            ..
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -45,7 +48,10 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::ActionScheduled {
-            seq, step: _, action, ..
+            seq,
+            step: _,
+            action,
+            ..
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -54,7 +60,10 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::ActionCompletedEvent {
-            seq, step: _, action, ..
+            seq,
+            step: _,
+            action,
+            ..
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -63,7 +72,10 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::ActionFailedEvent {
-            seq, step: _, action, ..
+            seq,
+            step: _,
+            action,
+            ..
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -163,7 +175,12 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::ActionScheduledTicket {
-            seq, run, ticket, input, output, action_abi_digest,
+            seq,
+            run,
+            ticket,
+            input,
+            output,
+            action_abi_digest,
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -176,8 +193,17 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::ActionCompletedEnvelope {
-            seq, run, ticket, output, outcome, value: _, encoded_len, taint, value_digest, action_abi_digest, ..
-
+            seq,
+            run,
+            ticket,
+            output,
+            outcome,
+            value: _,
+            encoded_len,
+            taint,
+            value_digest,
+            action_abi_digest,
+            ..
         } => {
             serde_json::json!({
                 "seq": seq.get(),

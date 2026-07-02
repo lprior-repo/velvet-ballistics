@@ -55,7 +55,13 @@ fn replay_events_with_schedule_requirement(
             replayed.push(event.clone());
             continue;
         }
-        last_step = dispatch_replay_event(event, tracker, require_schedule, last_step, expected_action_abi_digests)?;
+        last_step = dispatch_replay_event(
+            event,
+            tracker,
+            require_schedule,
+            last_step,
+            expected_action_abi_digests,
+        )?;
         replayed.push(event.clone());
     }
     Ok(replayed)
@@ -74,7 +80,12 @@ fn dispatch_replay_event(
     match event {
         JournalEvent::StepStarted { step, .. } => replay_step_started_event(*step, last_step),
         JournalEvent::ActionCompletedEnvelope { .. } => {
-            replay_action_completed_envelope_event(event, tracker, require_schedule, expected_action_abi_digests)?;
+            replay_action_completed_envelope_event(
+                event,
+                tracker,
+                require_schedule,
+                expected_action_abi_digests,
+            )?;
             Ok(last_step)
         }
         JournalEvent::ActionScheduled { .. }
@@ -124,7 +135,9 @@ pub(crate) fn check_action_abi_digest_against_expected(
     for (exp_action_id, exp_digest) in expected {
         if *exp_action_id == action_id {
             if *exp_digest != found {
-                return Err(RecoveryError::ActionAbiMismatch { action_id: *exp_action_id });
+                return Err(RecoveryError::ActionAbiMismatch {
+                    action_id: *exp_action_id,
+                });
             }
             return Ok(());
         }
@@ -149,7 +162,11 @@ fn replay_action_event(
             ..
         } => {
             verify_action_ticket_event(*run, *ticket)?;
-            check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
+            check_action_abi_digest_against_expected(
+                ticket.action,
+                *action_abi_digest,
+                expected_action_abi_digests,
+            )?;
             tracker
                 .mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)
                 .map(|_| ())
@@ -203,8 +220,19 @@ fn replay_action_completed_envelope_event(
     if require_schedule {
         tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
     }
-    check_action_abi_digest_against_expected(ticket.action, *action_abi_digest, expected_action_abi_digests)?;
-    tracker.mark_completed_envelope(*ticket, *output, *encoded_len, *taint, verified_digest, *action_abi_digest)
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
+    tracker.mark_completed_envelope(
+        *ticket,
+        *output,
+        *encoded_len,
+        *taint,
+        verified_digest,
+        *action_abi_digest,
+    )
 }
 /// Reject the event when the (action, step) pair has already been resolved
 /// during this replay, preserving the non-idempotency invariant.
