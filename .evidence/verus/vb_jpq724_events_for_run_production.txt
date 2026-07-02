@@ -1,2 +1,1 @@
 [verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
-verification results:: 37 verified, 0 errors

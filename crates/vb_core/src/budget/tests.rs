@@ -7298,3 +7298,191 @@ fn validate_step_ceilings_rejects_transitions_over_limit_by_one() -> Result<(), 
         )),
     }
 }
+
+// =========================================================================
+// CB-008 regression: `count_body_region_nodes` must return the real
+// reachable node count, not a linear `body_span` heuristic. The prior
+// implementation did `count.max(u64::from(body_span))` which inflated the
+// answer whenever the linear span (done - body - 1) exceeded the actual
+// reachable set.
+//
+// Layout below:
+//   node 0: ForEachStart { body: 1, done: 5 }
+//   node 1: Nop with next = 2        (visited)
+//   node 2: Jump { target: 5 }       (visited; pushes 5)
+//   node 3: Nop                      (UNREACHED — body exits via jump)
+//   node 4: Nop                      (UNREACHED — body exits via jump)
+//   node 5: ForEachJoin              (loop exit / done)
+//
+// Starting from body=1, the traversal visits nodes {1, 2} and then pops
+// done=5, terminating with count = 2. The body_span heuristic equals
+// 5 - 1 - 1 = 3, so the buggy `max(count, body_span)` returned 3.
+// =========================================================================
+
+#[test]
+fn cb_008_count_body_region_nodes_returns_real_count_not_body_span_heuristic() -> Result<(), String>
+{
+    use crate::ids::StepIdx;
+    use crate::workflow::{CompiledNode, CompiledNodeKind};
+
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 1,
+                body: StepIdx::new(1),
+                done: StepIdx::new(5),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Jump {
+                target: StepIdx::new(5),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: Some(StepIdx::new(6)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(2),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(6),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
+    ];
+    let node_count = nodes.len();
+    // The reachable set inside the body region starting at body=1 and
+    // bounded by done=5 is exactly {1, 2} — node 2 jumps to done=5 and
+    // nodes 3 and 4 are unreachable. The buggy code added a `max` clamp
+    // against `body_span = 5 - 1 - 1 = 3` and returned 3; the correct
+    // value is 2.
+    let result =
+        super::count_body_region_nodes(&nodes, StepIdx::new(1), StepIdx::new(5), node_count)
+            .map_err(|e| format!("unexpected error: {:?}", e))?;
+    if result != 2 {
+        return Err(format!(
+            "CB-008 regression: expected real count 2, got {} (buggy body_span heuristic active)",
+            result
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn cb_008_count_body_region_nodes_preserves_larger_real_count() -> Result<(), String> {
+    use crate::ids::StepIdx;
+    use crate::workflow::{CompiledNode, CompiledNodeKind};
+
+    // Linear body: 4 reachable nodes (1, 2, 3, 4) reachable from body=1
+    // before hitting done=5. body_span = 5 - 1 - 1 = 3, real count = 4.
+    // The real count must win (the function must NOT clamp DOWN to the
+    // body_span heuristic).
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: Some(StepIdx::new(4)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
+    ];
+    let node_count = nodes.len();
+    let result =
+        super::count_body_region_nodes(&nodes, StepIdx::new(1), StepIdx::new(5), node_count)
+            .map_err(|e| format!("unexpected error: {:?}", e))?;
+    if result != 4 {
+        return Err(format!(
+            "expected real count 4 (nodes 1, 2, 3, 4) for linear body, got {}",
+            result
+        ));
+    }
+    Ok(())
+}

@@ -497,7 +497,9 @@ proptest! {
         inner_body_count in 1u16..=3u16,
     ) {
         // Build: ForEachStart(outer) -> ForEachStart(inner) -> [body] -> ForEachJoin -> ForEachJoin -> Finish
-        let inner_body_end = 2 + inner_body_count as u16;
+        // The inner body has exactly `inner_body_count` Nop nodes chained via `next`.
+        let last_body_id: u16 = 1 + inner_body_count;
+        let inner_body_end = last_body_id;
         let inner_done = inner_body_end + 1;
         let outer_done = inner_done + 1;
 
@@ -534,12 +536,13 @@ proptest! {
             },
         ];
 
-        // Inner body: Nop chain
-        for i in 2..=inner_body_count as usize {
+        // Inner body: Nop chain. Push exactly `inner_body_count` body nodes
+        // (ids 2..=1+inner_body_count) chained via `next`.
+        for i in 2..=last_body_id as usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
                 output: None,
-                next: if i < inner_body_count as usize {
+                next: if (i as u16) < last_body_id {
                     Some(StepIdx::new((i + 1) as u16))
                 } else {
                     None

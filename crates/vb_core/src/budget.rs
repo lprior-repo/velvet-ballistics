@@ -1648,8 +1648,7 @@ fn count_body_region_nodes(
             count,
         )?;
     }
-    let body_span = done.get().saturating_sub(body.get()).saturating_sub(1);
-    Ok(count.max(u64::from(body_span)))
+    Ok(count)
 }
 
 /// Visits a single node in a body region during step counting.
