@@ -105,6 +105,12 @@ impl RuntimeError {
             Self::RecoveryNotAvailable => Self::INVALID_RECOVERY_HYDRATION_CODE,
             Self::RecoveryCannotResume { .. } => Self::INVALID_RECOVERY_HYDRATION_CODE,
             Self::Recovery { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            // vb-awxlm: cold-path boundary transcript failure. The
+            // journal is the authoritative source; this is a typed
+            // observability signal routed to JOURNAL_POISONED so the
+            // diagnostics surface treats it like any other journal-side
+            // resource exhaustion.
+            Self::BoundaryTranscript { .. } => Self::JOURNAL_POISONED_CODE,
             // VB-NOORE: typed profile-mismatch error. No dedicated
             // diagnostic code; routed to INTERNAL_INVARIANT.
             Self::UnsupportedDurabilityProfile { .. } => {
@@ -174,7 +180,8 @@ impl RuntimeError {
             | Self::UnsupportedDurabilityProfile { .. }
             | Self::RecoveryNotAvailable
             | Self::RecoveryCannotResume { .. }
-            | Self::Recovery { .. } => None,
+            | Self::Recovery { .. }
+            | Self::BoundaryTranscript { .. } => None,
         }
     }
 

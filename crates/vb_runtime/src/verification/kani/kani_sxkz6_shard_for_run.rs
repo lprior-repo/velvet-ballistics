@@ -48,7 +48,7 @@ fn any_run_id_bounded() -> RunId {
 
 fn small_runtime(shard_count: usize) -> Runtime {
     let count = NonZeroUsize::new(shard_count).expect("shard_count >= 1");
-    Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default())
+    Runtime::new_for_tests_and_benchmarks_only(count, ShardConfig::default(), None)
 }
 
 fn make_answer(run: RunId) -> AskAnswer {

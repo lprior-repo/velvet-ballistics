@@ -7,15 +7,22 @@ impl Shard {
             config,
             VolatileRuntimeJournal::shared(),
             crate::admission::AlwaysPresentArtifactStore::shared(),
+            None,
         )
     }
 
-    /// Creates a new shard with the given configuration, journal sink, and artifact store.
+    /// Creates a new shard with the given configuration, journal sink,
+    /// artifact store, and optional cold-path boundary transcript.
     pub fn new_with_journal_and_artifact_store(
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
+        boundary_transcript: Option<
+            crate::boundary_transcript::SharedBoundaryTranscript,
+        >,
     ) -> Self {
+        let boundary_transcript = boundary_transcript
+            .map(crate::boundary_transcript::BoundaryTranscriptJournal::new);
         Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
@@ -36,6 +43,7 @@ impl Shard {
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
+            boundary_transcript,
         }
     }
 
@@ -47,7 +55,10 @@ impl Shard {
     /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
-    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+    pub fn new_with_journal(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+    ) -> Self {
         let artifact_store: crate::admission::SharedAcceptedArtifactStore =
             if let Some(fjall_journal) = journal.storage_journal() {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
@@ -66,7 +77,7 @@ impl Shard {
                     _ => crate::admission::MissingAcceptedArtifactStore::shared(),
                 }
             };
-        Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
+        Self::new_with_journal_and_artifact_store(config, journal, artifact_store, None)
     }
 
     /// Enqueues a command. Returns `QueueFull` on overflow.
@@ -197,7 +208,16 @@ impl Shard {
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();
         let seq = self.journal_sequence_for(run);
-        self.journal.append_sequenced(event, seq)?;
+        self.journal.append_sequenced(event.clone(), seq)?;
+        // Cold-path journal projection: route the just-appended event
+        // through the boundary transcript's journal projection. Errors
+        // are propagated as `RuntimeError::BoundaryTranscript` so the
+        // runtime's typed failure channel sees a capture miss.
+        if let Some(transcript) = &self.boundary_transcript {
+            transcript
+                .record(&event)
+                .map_err(crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err)?;
+        }
         self.advance_journal_sequence(run, seq)
     }
 
@@ -221,6 +241,13 @@ impl Shard {
         let next = Self::journal_sequence_after(seq, events.len())?;
         self.reserve_journal_sequence_slot(run)?;
         self.journal.append_sequenced_batch(events, seq)?;
+        if let Some(transcript) = &self.boundary_transcript {
+            for event in events {
+                transcript
+                    .record(event)
+                    .map_err(crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err)?;
+            }
+        }
         let _previous = self.journal_sequences.insert(run, next);
         Ok(())
     }

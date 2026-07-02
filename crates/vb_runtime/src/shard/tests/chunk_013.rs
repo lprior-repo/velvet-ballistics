@@ -255,6 +255,7 @@ fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistenc
         small_config(),
         journal.clone(),
         crate::admission::AlwaysPresentArtifactStore::shared(),
+        None,
     );
     let run = super::RunId::new(712);
     assert_eq!(
@@ -283,6 +284,7 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
         small_config(),
         journal.clone(),
         crate::admission::AlwaysPresentArtifactStore::shared(),
+        None,
     );
     let run = super::RunId::new(713);
     assert_eq!(

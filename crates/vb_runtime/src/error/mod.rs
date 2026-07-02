@@ -237,6 +237,14 @@ pub enum RuntimeError {
         /// Human-readable error description.
         error: String,
     },
+    /// Cold-path boundary transcript capture failed (mutex poisoned,
+    /// allocator exhausted, or sequence saturated). The runtime journal
+    /// remains the authoritative source; this error is a typed
+    /// observability signal that the cold-path capture missed an event.
+    BoundaryTranscript {
+        /// Human-readable error description.
+        error: String,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

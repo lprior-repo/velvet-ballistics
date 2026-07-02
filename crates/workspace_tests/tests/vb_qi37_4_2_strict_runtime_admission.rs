@@ -343,6 +343,7 @@ fn run_strict_submit_with_store(
         },
         journal.clone(),
         Arc::new(store),
+        None,
     );
     let before = snapshot(&shard, &journal)?;
     shard.enqueue(ShardCommand::SubmitPrePersisted {

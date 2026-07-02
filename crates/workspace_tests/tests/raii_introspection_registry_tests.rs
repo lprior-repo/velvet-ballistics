@@ -95,7 +95,7 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
 #[test]
 fn raii_registry_register_handle_makes_run_visible_to_snapshot() -> Result<(), String> {
     // Given: a fresh runtime and a submitted run
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config(), None);
     let run = RunId::new(1001);
 
     // Submit a simple workflow that finishes immediately
@@ -445,7 +445,7 @@ fn raii_registry_snapshot_formatting_stays_cold_path() -> Result<(), String> {
 #[test]
 fn raii_registry_full_lifecycle_with_inspect() -> Result<(), String> {
     // Given: a fresh runtime and registry
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config(), None);
     let mut registry = IntrospectionRegistry::new();
 
     let run = RunId::new(1040);

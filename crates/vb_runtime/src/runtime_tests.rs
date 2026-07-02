@@ -395,7 +395,7 @@ mod tests {
             return;
         };
         let runtime =
-            Runtime::new_for_tests_and_benchmarks_only(shard_count, ShardConfig::default());
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, ShardConfig::default(), None);
         let result = runtime.snapshot_run(vb_core::ids::RunId::new(1), 7);
         assert_eq!(
             result,
@@ -422,7 +422,7 @@ mod tests {
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let first = runtime.list_events(vb_core::ids::RunId::new(1));
         let second = runtime.list_events(vb_core::ids::RunId::new(1));
         assert_eq!(first, Err(RuntimeError::RunNotFound));
@@ -434,7 +434,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -448,19 +449,26 @@ mod tests {
     /// than a silent production durability loss.
     #[test]
     fn new_requires_explicit_journal_at_compile_time() {
-        // The signature at the right is the contract: (shard_count, config, journal) -> Runtime.
-        // If anyone removes the journal argument, this line stops compiling and the
-        // CI red signal is loud.
+        // The signature at the right is the contract:
+        // (shard_count, config, journal, boundary_transcript) -> Runtime.
+        // If anyone removes the journal argument, this line stops compiling and
+        // the CI red signal is loud. The 4th argument pins the optional
+        // boundary-transcript wiring introduced by vb-awxlm.
         let _new_signature: fn(
             std::num::NonZeroUsize,
             ShardConfig,
             crate::journal::SharedRuntimeJournal,
+            Option<crate::boundary_transcript::SharedBoundaryTranscript>,
         ) -> Runtime = Runtime::new;
 
         // The test/benchmark-only long-named factory is the explicit non-durable path.
-        // It accepts (shard_count, config) and internally wires `VolatileRuntimeJournal::shared()`.
-        let _bench_signature: fn(std::num::NonZeroUsize, ShardConfig) -> Runtime =
-            Runtime::new_for_tests_and_benchmarks_only;
+        // It accepts (shard_count, config, boundary_transcript) and internally
+        // wires `VolatileRuntimeJournal::shared()`.
+        let _bench_signature: fn(
+            std::num::NonZeroUsize,
+            ShardConfig,
+            Option<crate::boundary_transcript::SharedBoundaryTranscript>,
+        ) -> Runtime = Runtime::new_for_tests_and_benchmarks_only;
     }
 
     #[test]
@@ -468,7 +476,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -479,7 +488,7 @@ mod tests {
             return Err(String::from("expected non-zero shard count"));
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = finished_workflow() else {
             return Err(String::from("expected finished workflow fixture"));
         };
@@ -546,7 +555,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -571,7 +581,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -637,7 +648,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -656,7 +668,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -677,7 +690,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -711,7 +725,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -781,7 +795,7 @@ mod tests {
             return;
         };
         let journal = RejectCompletionJournal::shared();
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -852,7 +866,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -886,7 +901,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -916,7 +932,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When shutting down only one shard
         // Use shutdown_graceful which enqueues to all shards
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
@@ -930,7 +947,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When ticking with empty queues
         let result = runtime.tick_all();
         // Then result is true
@@ -943,7 +961,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -977,7 +996,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let response = runtime.take_inspect_response(run);
         assert_eq!(response, Err(RuntimeError::RunNotFound));
@@ -989,7 +1009,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When taking counters snapshot
         let snap = runtime.counters_snapshot();
         // Then all counters are zero
@@ -1005,7 +1026,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1025,7 +1047,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let ticket = ActionTicket {
             run: vb_core::ids::RunId::new(1),
             step: StepIdx::ZERO,
@@ -1050,7 +1073,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let Some(wf) = ask_waiting_workflow() else {
             return;
@@ -1079,7 +1103,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         // Pick a run that actually lives on shard 0 so the migration target
         // (shard 1) differs from the home shard. This guarantees the
@@ -1130,7 +1155,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When answering an ask for a run that exists nowhere
         let answer = AskAnswer {
             ticket: AskTicket {
@@ -1161,7 +1187,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1195,7 +1222,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1230,7 +1258,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1269,7 +1298,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1314,7 +1344,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1359,7 +1390,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let unknown_run = vb_core::ids::RunId::new(7777);
 
         // list_events
@@ -1398,7 +1430,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When draining trace
         let events = runtime.drain_trace();
         // Then result is empty
@@ -1411,7 +1444,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1433,7 +1467,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1463,7 +1498,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When shutting down gracefully
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // Then tick_all returns false
@@ -1476,7 +1512,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
         // When ticking again
@@ -1498,7 +1535,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         // When filling the queue
         let Some(wf) = suspended_workflow() else {
             return;
@@ -1523,7 +1560,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let events = runtime.list_events(vb_core::ids::RunId::new(1));
         assert_eq!(events, Err(RuntimeError::RunNotFound));
     }
@@ -1534,7 +1572,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = finished_workflow() else {
             return;
         };
@@ -1563,7 +1602,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1586,7 +1626,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When shutting down
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // Then tick_all returns false (all shards shut down)
@@ -1606,7 +1647,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When inspecting a non-existent run
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.inspect_run(run, 1), Ok(()));
@@ -1622,7 +1664,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1650,7 +1693,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1669,7 +1713,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1699,7 +1744,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When completing an action for a run that was never submitted
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.complete_action(run, StepIdx::new(0)), Ok(()));
@@ -1713,7 +1759,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When failing an action for a run that was never submitted
         let ticket = ActionTicket {
             run: vb_core::ids::RunId::new(998),
@@ -1746,7 +1793,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1768,7 +1815,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1798,7 +1846,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -1828,7 +1876,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When snapshotting a non-existent run
         let result = runtime.snapshot_run(vb_core::ids::RunId::new(9999), 42);
         // Then it returns NotFound
@@ -1847,7 +1896,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1870,7 +1920,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1897,7 +1948,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When computing shard index for run 1 twice
         let idx1 = runtime.shard_index(vb_core::ids::RunId::new(1));
         let idx2 = runtime.shard_index(vb_core::ids::RunId::new(1));
@@ -1912,7 +1964,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         // When computing shard indices for different runs
         let idx1 = runtime.shard_index(vb_core::ids::RunId::new(1));
         let idx2 = runtime.shard_index(vb_core::ids::RunId::new(2));
@@ -1928,7 +1981,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1952,7 +2006,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1983,7 +2038,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2006,7 +2062,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2049,7 +2105,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -2103,7 +2159,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2130,7 +2186,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2166,7 +2223,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2205,7 +2263,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = wait_then_finish_workflow() else {
             return;
         };
@@ -2260,7 +2319,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2295,7 +2354,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2334,7 +2393,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = wait_then_finish_workflow() else {
             return;
         };
@@ -2395,7 +2455,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf1) = action_then_finish_workflow() else {
             return;
         };
@@ -2489,7 +2550,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         // Use the finished_workflow (SetConst -> Finish, 2 steps)
         let Some(wf) = finished_workflow() else {
             return;
@@ -2517,7 +2578,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2549,7 +2611,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2568,7 +2631,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2586,7 +2650,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
 
         assert_eq!(
             runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
@@ -2603,7 +2668,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2626,7 +2692,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2645,7 +2711,8 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2676,7 +2743,8 @@ mod tests {
     fn pending_boundary_snapshot_reports_empty_state() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(2)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let snapshot = runtime.pending_boundary_snapshot(8);
         assert_eq!(snapshot.shards().len(), 2);
         assert_snapshot_counts(&snapshot, 0, 0, 0, 0, false);
@@ -2694,7 +2762,8 @@ mod tests {
     fn pending_boundary_snapshot_reports_populated_boundaries() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let ask_workflow =
@@ -2756,7 +2825,8 @@ mod tests {
     fn pending_boundary_snapshot_reports_ask_without_timeout() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let workflow = ask_without_timeout_workflow()
             .ok_or_else(|| String::from("ask without timeout workflow fixture failed"))?;
         let ask_run = vb_core::ids::RunId::new(12);
@@ -2784,7 +2854,8 @@ mod tests {
     fn pending_boundary_snapshot_bounds_truncates_and_repeats_read_only() -> Result<(), String> {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
-        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let mut runtime =
+            Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config(), None);
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let timed_ask_workflow = ask_waiting_workflow()

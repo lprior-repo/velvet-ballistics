@@ -5,6 +5,7 @@ use std::time::Instant;
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
 
+use crate::boundary_transcript::TimerAuthority;
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
@@ -189,13 +190,24 @@ impl Shard {
                 self.run_state_insert(run, state)?;
                 return Err(error);
             }
+            let now = Instant::now();
+            // Direct capture: record the timer registration authority
+            // (generation/deadline/kind) the journal cannot preserve.
+            if let Some(transcript) = &self.boundary_transcript {
+                let authority = TimerAuthority::new(
+                    run, step, kind, generation, now, /* logical_deadline */ 0,
+                );
+                transcript.record_timer_captured(&authority).map_err(
+                    crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err,
+                )?;
+            }
             self.pending_timer_insert(
                 run,
                 PendingTimer {
                     step,
                     kind,
                     generation,
-                    deadline: Instant::now(),
+                    deadline: now,
                 },
             )?;
         }

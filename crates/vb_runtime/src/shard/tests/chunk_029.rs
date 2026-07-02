@@ -60,7 +60,7 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config());
+    let mut runtime = crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config(), None);
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for runtime legacy test");
     };

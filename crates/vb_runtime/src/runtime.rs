@@ -165,8 +165,9 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    /// Creates a new runtime with the given number of shards, per-shard configuration, and
-    /// explicit [`SharedRuntimeJournal`].
+    /// Creates a new runtime with the given number of shards, per-shard configuration,
+    /// explicit [`SharedRuntimeJournal`], and optional
+    /// [`crate::boundary_transcript::SharedBoundaryTranscript`].
     ///
     /// The journal argument is **required**: this constructor will not silently pick a
     /// non-durable default. Master §18 requires Fjall-backed persistence for recovery,
@@ -176,17 +177,28 @@ impl Runtime {
     /// [`crate::journal::VolatileRuntimeJournal::shared`] or
     /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
     /// call site documents the non-durable intent.
+    ///
+    /// The boundary transcript is optional. Production callers that want
+    /// deterministic-replay capture should pass
+    /// `Some(SharedBoundaryTranscript::with_capacity(N))`; tests that
+    /// only exercise the journal can pass `None`.
     #[must_use]
     pub fn new(
         shard_count: NonZeroUsize,
         config: ShardConfig,
         journal: SharedRuntimeJournal,
+        boundary_transcript: Option<crate::boundary_transcript::SharedBoundaryTranscript>,
     ) -> Self {
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);
         let mut index = 0usize;
         while index < count {
-            shards.push(Shard::new_with_journal(config, journal.clone()));
+            shards.push(Shard::new_with_journal_and_artifact_store(
+                config,
+                journal.clone(),
+                crate::admission::AlwaysPresentArtifactStore::shared(),
+                boundary_transcript.clone(),
+            ));
             index = index.saturating_add(1);
         }
         Self {
@@ -206,11 +218,13 @@ impl Runtime {
     pub fn new_for_tests_and_benchmarks_only(
         shard_count: NonZeroUsize,
         config: ShardConfig,
+        boundary_transcript: Option<crate::boundary_transcript::SharedBoundaryTranscript>,
     ) -> Self {
         Self::new(
             shard_count,
             config,
             crate::journal::VolatileRuntimeJournal::shared(),
+            boundary_transcript,
         )
     }
 

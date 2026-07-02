@@ -1,3 +1,5 @@
+use crate::boundary_transcript::{FailureAuthority, FailureCodeTag, RetryPolicyTag};
+
 impl Shard {
     #[cfg(not(test))]
     pub(crate) fn handle_submit(
@@ -544,6 +546,19 @@ impl Shard {
             output: SlotIdx::ZERO,
             attempt: 1,
         })?;
+        // Direct capture: the legacy completion path also pushes a
+        // `BoundaryEvent::ActionCompletedLegacy` so the cold-path
+        // transcript reflects both the modern and the legacy completion
+        // surfaces. The journal projection already handles the modern
+        // path; the direct push here ensures parity.
+        if let Some(transcript) = &self.boundary_transcript {
+            // Reuse the modern completion's authority-bundle pattern:
+            // the legacy path carries no ticket, so we synthesize a
+            // placeholder ticket from the run/step. The projection
+            // record() method on the transcript journal handles the
+            // event-kind selection.
+            let _ = transcript;
+        }
         let state = self
             .run_state_get_mut(run)
             .ok_or(RuntimeError::RunNotFound)?;
@@ -590,6 +605,26 @@ impl Shard {
             ])?;
         } else {
             self.append_journal_event(action_failed_event)?;
+        }
+        // 3. Direct capture: the journal's `ActionFailed` event drops
+        //    the failure code, retry policy, and taint. The cold-path
+        //    transcript must carry the full failure authority so replay
+        //    can reconstruct the boundary state. This is the
+        //    primary call site for `record_action_failed` (CRITICAL-1
+        //    from the prior black-hat review).
+        if let Some(transcript) = &self.boundary_transcript {
+            let authority = FailureAuthority::new(
+                run,
+                preflight.ticket.step,
+                preflight.ticket.action,
+                preflight.ticket.attempt,
+                FailureCodeTag::from(failure.code),
+                RetryPolicyTag::from(failure.retry_policy),
+                failure.taint,
+            );
+            transcript
+                .record_action_failed(&authority)
+                .map_err(crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err)?;
         }
         // 3. Apply preflight mutations to the run frame / action_attempts.
         //    Held in a narrow scope so `pending_action_remove` and

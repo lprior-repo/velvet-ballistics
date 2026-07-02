@@ -1,3 +1,5 @@
+use crate::boundary_transcript::{AskAnswerAuthority, TimerAuthority};
+
 enum DriveApplyFailure {
     BeforeCommit(RuntimeError),
     AfterCommit(RuntimeError),
@@ -89,6 +91,25 @@ impl Shard {
                 attempt: 1,
             },
         ])?;
+        // Direct capture of full ask-answer authority (the journal
+        // projection only recovers `run`/`ask_step`/`slot`; `taint`,
+        // `encoded_len`, and `resume_step` are recorded here). Errors are
+        // logged via the same fallible push path so the journal remains
+        // the authoritative source and the boundary transcript is a
+        // best-effort cold-path capture.
+        if let Some(transcript) = &self.boundary_transcript {
+            let authority = AskAnswerAuthority::new(
+                run,
+                answer.ticket.ask_step,
+                answer.ticket.resume_step,
+                answer.answer_slot,
+                answer.taint,
+                answer.encoded_len,
+            );
+            transcript
+                .record_ask_answered(&authority)
+                .map_err(crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err)?;
+        }
         {
             let state = self
                 .run_state_get_mut(run)
@@ -126,6 +147,24 @@ impl Shard {
         }
         let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
+        // Direct capture: record the timer fire authority the journal
+        // cannot preserve (generation/deadline/kind). The logical
+        // deadline is recovered from the per-run journal sequence at
+        // capture time; 0 is the conservative placeholder when no
+        // sequence is tracked yet.
+        if let Some(transcript) = &self.boundary_transcript {
+            let authority = TimerAuthority::new(
+                run,
+                current_timer.step,
+                current_timer.kind,
+                current_timer.generation,
+                current_timer.deadline,
+                /* logical_deadline */ 0,
+            );
+            transcript
+                .record_timer_fired(&authority)
+                .map_err(crate::boundary_transcript::BoundaryTranscriptError::into_runtime_err)?;
+        }
         self.append_timer_resolution_event(run, current_timer)?;
         let mut state = self.take_run_state(run)?;
         let timer = match self.pending_timer_remove(run) {

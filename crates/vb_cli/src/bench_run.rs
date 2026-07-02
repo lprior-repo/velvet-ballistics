@@ -52,7 +52,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
     // `cmd_bench_run` is the explicit benchmark path. The non-durable intent is
     // documented at the call site by using the long-named test/bench-only factory.
     let mut runtime =
-        vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, config, None);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
         if output != OutputFormat::Text {
             json_error(

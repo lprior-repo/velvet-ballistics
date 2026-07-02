@@ -683,6 +683,11 @@ pub struct Shard {
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    /// Optional cold-path boundary transcript. When set, every
+    /// authority-bearing boundary event (timer capture/fire, ask
+    /// answer, action failure) is pushed through this transcript in
+    /// addition to the runtime journal projection.
+    pub(crate) boundary_transcript: Option<crate::boundary_transcript::BoundaryTranscriptJournal>,
 }
 
 /// Read-only shard health snapshot for operator status reporting.

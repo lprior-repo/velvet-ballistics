@@ -30,7 +30,7 @@ use vb_runtime::runtime::Runtime;
 fn setup_server_and_client(
     socket_path: &std::path::Path,
 ) -> Result<(IpcServer, UnixStream, Runtime), Box<dyn std::error::Error>> {
-    let mut runtime = Runtime::new()?;
+    let mut runtime = Runtime::new(, None)?;
     let server = IpcServer::bind(socket_path)?;
     let client = UnixStream::connect(socket_path)?;
     Ok((server, client, runtime))
