@@ -56,7 +56,7 @@ unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
 rust_2018_idioms = { level = "deny", priority = -1 }
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)', 'cfg(fuzzing)', 'cfg(kani)', 'cfg(loom)', 'cfg(verus)', 'cfg(verus_keep_ghost)', 'cfg(docsrs,test)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)', 'cfg(fuzzing)', 'cfg(kani)', 'cfg(loom)', 'cfg(verus)', 'cfg(verus_keep_ghost)', 'cfg(docsrs,test)', 'cfg(feature, values("test-util"))'] }
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }

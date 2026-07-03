@@ -12,7 +12,7 @@ postcard.workspace = true
 saphyr.workspace = true
 saphyr-parser.workspace = true
 thiserror.workspace = true
-vb_core = { path = "../vb_core", features = ["test-util"] }
+vb_core = { path = "../vb_core" }
 vb_validate = { path = "../vb_validate" }
 
 [dev-dependencies]
@@ -20,7 +20,6 @@ proptest.workspace = true
 
 [features]
 default = []
-test-util = []
 
 [lints]
 workspace = true
