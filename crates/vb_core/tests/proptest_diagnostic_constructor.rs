@@ -6,6 +6,7 @@
 //!            a record where numeric_code.symbolic_code() == Some(code).
 //! The constructor never panics.
 
+use proptest::prelude::*;
 use vb_core::diagnostic::{CODE_REGISTRY, Diagnostic, DiagnosticCode, Severity, SymbolicCode};
 use vb_core::span::Span;
 
@@ -145,6 +146,88 @@ fn diagnostic_identity_property_code_round_trip() {
             entry.numeric,
             "diagnostic.numeric_code.code() should match entry.numeric for '{}'",
             entry.symbolic
+        );
+    }
+}
+
+// =========================================================================
+// vb-n17jt (State 9 test-writer) — 2 NEW proptest invariants closing the
+// gaps identified in test-plan.md §4.11 + §4.13.
+// =========================================================================
+
+proptest! {
+    /// §4.11 / PO-016: `SymbolicCode::INTERNAL_INVARIANT` is a hard-coded
+    /// const that maps to the registry's `"INTERNAL_INVARIANT_VIOLATION"`
+    /// entry at numeric 0x1309. For *any* `message` / `severity` / `span` /
+    /// `source_file` inputs, `Diagnostic::new(INTERNAL_INVARIANT, ...)`
+    /// must produce `numeric_code == DiagnosticCode::new(0x1309)` and the
+    /// reverse-lookup `numeric_code.symbolic_code() == Some(INTERNAL_INVARIANT)`.
+    #[test]
+    fn diagnostic_new_internal_invariant_yields_0x1309_numeric(
+        message in "[\\PC]{0,128}",
+        start in 0u32..4096,
+        end_delta in 0u32..4096,
+        source_file in proptest::option::of("[\\PC]{0,64}"),
+    ) {
+        // end may be < start; Span::new is the unchecked constructor that
+        // preserves offsets verbatim, so we feed both well-formed and
+        // inverted offsets. Diagnostic::new itself does not validate the
+        // span, so the invariant under test is independent of the span shape.
+        let end = start.wrapping_add(end_delta);
+        let span = Span::new(start, end);
+        let severity = Severity::Error;
+        let sf: Option<Box<str>> = source_file.map(|s| Box::<str>::from(s));
+        let msg = Box::<str>::from(message);
+        let diag = Diagnostic::new(
+            SymbolicCode::INTERNAL_INVARIANT,
+            msg,
+            severity,
+            span,
+            sf,
+        );
+        prop_assert_eq!(diag.numeric_code, DiagnosticCode::new(0x1309));
+        prop_assert_eq!(diag.code, SymbolicCode::INTERNAL_INVARIANT);
+        prop_assert_eq!(
+            diag.numeric_code.symbolic_code(),
+            Some(SymbolicCode::INTERNAL_INVARIANT),
+        );
+    }
+}
+
+/// §4.13 / PO-018: `Diagnostic::from_numeric(n, ...)` round-trips to
+/// `numeric_code == n` for every registered numeric. This is a direct
+/// exhaustive witness over `CODE_REGISTRY` (the registry has ~100
+/// entries; iterating the slice is the production-bound refinement
+/// layer per the test-planner's bridge table).
+#[test]
+fn diagnostic_from_numeric_round_trip_for_all_registered() {
+    for entry in CODE_REGISTRY {
+        let diag = Diagnostic::from_numeric(
+            DiagnosticCode::new(entry.numeric),
+            Box::<str>::from("round-trip"),
+            Severity::Error,
+            Span::ZERO,
+            None,
+        );
+        let diag = diag.unwrap_or_else(|| {
+            panic!(
+                "from_numeric must return Some for registered numeric 0x{:04X} ({})",
+                entry.numeric, entry.symbolic,
+            )
+        });
+        assert_eq!(
+            diag.numeric_code,
+            DiagnosticCode::new(entry.numeric),
+            "from_numeric round-trip must preserve numeric 0x{:04X} ({})",
+            entry.numeric,
+            entry.symbolic,
+        );
+        assert_eq!(
+            diag.code.as_str(),
+            entry.symbolic,
+            "from_numeric round-trip must map numeric 0x{:04X} to its symbolic '{}'",
+            entry.numeric,
+            entry.symbolic,
         );
     }
 }

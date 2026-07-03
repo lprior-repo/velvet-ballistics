@@ -6,7 +6,8 @@
 mod tests {
     use crate::diagnostic::{
         CODE_REGISTRY, CodeCategory, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
-        Severity, SymbolicCode, is_supported_code, numeric_to_symbolic, symbolic_to_numeric,
+        Severity, SymbolicCode, category_from_numeric, is_supported_code, numeric_to_symbolic,
+        symbolic_to_numeric,
     };
     use crate::span::Span;
     use core::str::FromStr;
@@ -376,5 +377,183 @@ mod tests {
         for code in 0x301Cu16..=0x301F {
             assert!(!is_supported_code(code), "E{:04X} must be rejected", code);
         }
+    }
+
+    // =========================================================================
+    // vb-n17jt (State 9 test-writer) — 12 NEW unit specs closing the gaps
+    // identified in test-plan.md §3 + §8. Every assertion is exact: no
+    // is_ok()/is_err() without an exact inner-value or exact error variant.
+    // =========================================================================
+
+    // ---- §3.1 / §8.1: SymbolicCode::from_static rejection of unregistered ----
+
+    #[test]
+    fn symbolic_code_from_static_returns_none_for_empty_string() {
+        // Given: the empty string is not a registered symbolic name.
+        // When: from_static is called.
+        // Then: None is returned (no panic, no allocation).
+        let result = SymbolicCode::from_static("");
+        assert!(
+            result.is_none(),
+            "empty string must not produce a SymbolicCode"
+        );
+    }
+
+    #[test]
+    fn symbolic_code_from_static_returns_none_for_lowercase_variant() {
+        // Given: a lowercase variant of a registered name.
+        // When: from_static is called.
+        // Then: None is returned (the registry is case-sensitive).
+        let result = SymbolicCode::from_static("duplicate_key");
+        assert!(
+            result.is_none(),
+            "lowercase variant must not produce a SymbolicCode"
+        );
+    }
+
+    #[test]
+    fn symbolic_code_from_static_returns_none_for_whitespace_variant() {
+        // Given: a whitespace-padded variant of a registered name.
+        // When: from_static is called.
+        // Then: None is returned (the registry uses exact byte match).
+        let result = SymbolicCode::from_static(" DUPLICATE_KEY ");
+        assert!(
+            result.is_none(),
+            "whitespace-padded variant must not produce a SymbolicCode"
+        );
+    }
+
+    #[test]
+    fn symbolic_code_from_static_returns_none_for_punctuation_only() {
+        // Given: a punctuation-only string that is not a registered name.
+        // When: from_static is called.
+        // Then: None is returned.
+        let result = SymbolicCode::from_static("!@#$");
+        assert!(
+            result.is_none(),
+            "punctuation-only string must not produce a SymbolicCode"
+        );
+    }
+
+    #[test]
+    fn symbolic_code_from_static_returns_none_for_random_non_registered() {
+        // Given: a plausibly-shaped but unregistered identifier.
+        // When: from_static is called.
+        // Then: None is returned.
+        let result = SymbolicCode::from_static("BOGUS_NOT_A_CODE");
+        assert!(
+            result.is_none(),
+            "unregistered identifier must not produce a SymbolicCode"
+        );
+    }
+
+    // ---- §3.2 / §8.2: SymbolicCode::numeric_code and as_diagnostic_code ----
+
+    #[test]
+    fn symbolic_code_internal_invariant_numeric_is_0x1309() {
+        // Given: the registered INTERNAL_INVARIANT const.
+        // When: numeric_code and as_diagnostic_code are called.
+        // Then: Some(0x1309) and Some(DiagnosticCode::new(0x1309)) respectively.
+        let code = SymbolicCode::INTERNAL_INVARIANT;
+        assert_eq!(code.as_str(), "INTERNAL_INVARIANT_VIOLATION");
+        assert_eq!(code.numeric_code(), Some(0x1309_u16));
+        assert_eq!(
+            code.as_diagnostic_code(),
+            Some(DiagnosticCode::new(0x1309))
+        );
+    }
+
+    #[test]
+    fn symbolic_code_as_diagnostic_code_wraps_numeric_when_registered() {
+        // Given: a registered symbolic code (DUPLICATE_KEY → 0x0101).
+        // When: as_diagnostic_code is called.
+        // Then: Some(DiagnosticCode::new(0x0101)) is returned.
+        let code = SymbolicCode::from_static("DUPLICATE_KEY")
+            .expect("DUPLICATE_KEY must be registered");
+        assert_eq!(
+            code.as_diagnostic_code(),
+            Some(DiagnosticCode::new(0x0101))
+        );
+    }
+
+    // ---- §3.3 / §8.2: SymbolicCode::from_str typed error carries input ----
+
+    #[test]
+    fn symbolic_code_from_str_err_carries_input_name_verbatim() {
+        // Given: an unregistered input string.
+        // When: FromStr::from_str is called.
+        // Then: Err(SymbolicCodeParseError { name }) is returned, and the
+        //       name field equals the input verbatim (Box<str> preserves bytes).
+        let input = "X_TOTALLY_NOT_REGISTERED";
+        let result: Result<SymbolicCode, _> = input.parse();
+        match result {
+            Err(crate::diagnostic::SymbolicCodeParseError { name }) => {
+                assert_eq!(name.as_ref(), input);
+            }
+            Ok(code) => panic!(
+                "expected Err for unregistered input '{input}', got Ok({})",
+                code.as_str()
+            ),
+        }
+    }
+
+    // ---- §3.6 / §8.3: DiagnosticCode::symbolic_code determinism ----
+
+    #[test]
+    fn diagnostic_code_symbolic_code_deterministic_when_called_twice() {
+        // Given: a registered numeric DiagnosticCode.
+        // When: symbolic_code() is called twice.
+        // Then: the two results are equal Some(SymbolicCode) values.
+        let dc = DiagnosticCode::new(0x0101);
+        let first = dc.symbolic_code();
+        let second = dc.symbolic_code();
+        assert_eq!(first, second);
+        assert_eq!(first.map(|c| c.as_str()), Some("DUPLICATE_KEY"));
+    }
+
+    // ---- §3.7 / §8.9: category_from_numeric high-byte fallback semantics ----
+
+    #[test]
+    fn category_from_numeric_returns_high_byte_category_for_unregistered() {
+        // Given: a numeric that is NOT in CODE_REGISTRY but whose high
+        //        byte (0x01) corresponds to a recognized category.
+        // When: category_from_numeric is called.
+        // Then: the high-byte-derived category is returned.
+        // 0x0110 has high byte 0x01 → Schema.
+        let category = category_from_numeric(0x0110);
+        assert_eq!(category, CodeCategory::Schema);
+    }
+
+    #[test]
+    fn category_from_numeric_returns_internal_for_unrecognized_high_byte() {
+        // Given: a numeric with an unrecognized high byte (0xFF).
+        // When: category_from_numeric is called.
+        // Then: CodeCategory::Internal is returned (the catch-all fallback).
+        let category = category_from_numeric(0xFF00);
+        assert_eq!(category, CodeCategory::Internal);
+    }
+
+    // ---- §3.8 / §8.6: Diagnostic::new internal-invariance fallback ----
+
+    #[test]
+    fn diagnostic_new_internal_invariant_yields_0x1309_numeric() {
+        // Given: the INTERNAL_INVARIANT const (which is registered, points to 0x1309).
+        // When: Diagnostic::new is called with INTERNAL_INVARIANT and arbitrary
+        //       message/severity/span/source_file.
+        // Then: numeric_code == DiagnosticCode::new(0x1309) and
+        //       numeric_code.symbolic_code() == Some(INTERNAL_INVARIANT).
+        let diag = Diagnostic::new(
+            SymbolicCode::INTERNAL_INVARIANT,
+            Box::<str>::from("internal invariant violation"),
+            Severity::Error,
+            Span::new(0, 5),
+            Some(Box::<str>::from("config.yaml")),
+        );
+        assert_eq!(diag.numeric_code, DiagnosticCode::new(0x1309));
+        assert_eq!(
+            diag.numeric_code.symbolic_code(),
+            Some(SymbolicCode::INTERNAL_INVARIANT)
+        );
+        assert_eq!(diag.code, SymbolicCode::INTERNAL_INVARIANT);
     }
 }

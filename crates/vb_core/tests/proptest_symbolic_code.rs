@@ -4,7 +4,9 @@
 //! Invariant: from_static(s).is_some() iff s exists in CODE_REGISTRY.
 
 use proptest::prelude::*;
-use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode, numeric_to_symbolic, symbolic_to_numeric};
+use vb_core::diagnostic::{
+    CODE_REGISTRY, CodeCategory, SymbolicCode, numeric_to_symbolic, symbolic_to_numeric,
+};
 
 // ---------------------------------------------------------------------------
 // Strategies
@@ -134,4 +136,34 @@ fn from_str_rejects_empty() {
 fn symbolic_code_is_send_and_sync() {
     fn _assert_send_sync<T: Send + Sync>() {}
     _assert_send_sync::<SymbolicCode>();
+}
+
+// =========================================================================
+// vb-n17jt (State 9 test-writer) — 1 NEW proptest invariant closing the gap
+// identified in test-plan.md §4.12.
+// =========================================================================
+
+/// §4.12 / PO-002 H1: for every registered symbolic code, the
+/// registry-declared `CodeCategory` is what `SymbolicCode::category()`
+/// returns. This locks the registry-overrides-high-byte-heuristic
+/// semantics, e.g. `INTERNAL_INVARIANT_VIOLATION` (0x1309) must be
+/// classified as `CodeCategory::Internal` even though the high byte
+/// 0x13 would heuristically map to `CodeCategory::Accessor`.
+proptest! {
+    #[test]
+    fn symbolic_code_category_agrees_with_registry_for_all_registered(s in arb_registered_str()) {
+        // Find the entry's registry-declared category.
+        let mut expected: Option<CodeCategory> = None;
+        for entry in CODE_REGISTRY {
+            if entry.symbolic == s {
+                expected = Some(entry.category);
+                break;
+            }
+        }
+        let expected =
+            expected.expect("arb_registered_str must produce a registry-resolvable name");
+        let code = SymbolicCode::from_static(s).expect("registered");
+        let actual = code.category();
+        prop_assert_eq!(actual, Some(expected));
+    }
 }
