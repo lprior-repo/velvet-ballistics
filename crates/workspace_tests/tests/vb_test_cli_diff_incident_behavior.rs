@@ -2074,36 +2074,55 @@ mod cmd_incident_bdd_scenarios {
         );
     }
 
-    /// B-5.2: the production `cmd_incident` body has more than 25 lines
-    /// today (pre-collapse RED lock). This is the "RED-to-GREEN"
-    /// transition anchor for the State 11 collapse.
+    /// B-5.2: the production `cmd_incident` body has at most 25 lines
+    /// after the State 11 collapse. This is the deterministic GREEN
+    /// version of PO-002. (Pre-collapse it asserted `count > 25` as a
+    /// deliberate RED lock; that anchor was retired at the State 11
+    /// collapse and the assertion flipped to the post-collapse state.)
     #[test]
-    fn production_body_line_count_exceeds_25_pre_collapse() {
+    fn production_body_line_count_within_budget_post_collapse() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../crates/vb_cli/src/incident_diff.rs");
         let source = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
         let count = count_cmd_incident_body_lines(&source);
         assert!(
-            count > 25,
-            "pre-collapse body line count is expected to exceed 25 (RED lock); got {}",
+            count <= 25,
+            "post-collapse body line count must be <= 25; got {}",
             count,
         );
     }
 
-    /// B-5.3: the production `cmd_incident` module doc line 1 is the
-    /// literal `//! Module: incident_diff` placeholder today (pre-collapse
-    /// RED lock for PO-003).
+    /// B-5.3: the production `cmd_incident` module doc line 1 is a
+    /// responsibility statement (not the literal `Module: incident_diff`
+    /// placeholder) after the State 11 collapse. This is the
+    /// deterministic GREEN version of PO-003. (Pre-collapse it asserted
+    /// `first_line.contains("Module: incident_diff")` as a deliberate
+    /// RED lock; that anchor was retired at the State 11 collapse and
+    /// the assertion flipped to the post-collapse state.)
     #[test]
-    fn production_module_doc_is_placeholder_pre_collapse() {
+    fn production_module_doc_is_responsibility_statement_post_collapse() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../crates/vb_cli/src/incident_diff.rs");
         let source = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e));
         let first_line = source.lines().next().expect("file not empty");
         assert!(
-            first_line.contains("Module: incident_diff"),
-            "pre-collapse line 1 must be the literal placeholder `Module: incident_diff`; got {:?}",
+            first_line.starts_with("//!"),
+            "line 1 must be a doc comment starting with `//!`; got {:?}",
+            first_line,
+        );
+        assert!(
+            !first_line.contains("Module: incident_diff"),
+            "line 1 must NOT contain the literal placeholder `Module: incident_diff`; got {:?}",
+            first_line,
+        );
+        assert!(
+            first_line.contains("incident")
+                && (first_line.contains("subcommand")
+                    || first_line.contains("handler")
+                    || first_line.contains("command")),
+            "line 1 must mention `incident` and a command/subcommand keyword; got {:?}",
             first_line,
         );
     }
