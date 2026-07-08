@@ -1,0 +1,57 @@
+# command: moon run :source-length
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+[ WARN 2026-07-09 10:42:23.797] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:workspace-assertions (cached, dff19f89)
+[ WARN 10:42:23.805] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:42:23.834] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:42:23.834] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+velvet-ballistics:panic-surface | CommitSHA: c190b285f3414b0c92a6ba649aaf1cc5ac861ba7
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (cached, 00fae8d9)
+▮▮▮▮ velvet-ballistics:test-integrity (f5b1c90a)
+▮▮▮▮ velvet-ballistics:unsafe-audit (cached, c3e12ff3)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+[ WARN 10:42:23.888] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (cached, f6dfe8b5)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 88eed2f7)
+[ WARN 10:42:24.031] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:test-integrity | test integrity: PASS base=HEAD
+▮▮▮▮ velvet-ballistics:test-integrity (169ms, f5b1c90a)
+▮▮▮▮ velvet-ballistics:source-length (e2f4786b)
+velvet-ballistics:source-length | source-length gate summary:
+velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verus              scanned=220   warn=44   over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+velvet-ballistics:source-length |   test_in_src        scanned=277   warn=50   over_limit=0    limit=1500 warn_at=1200
+velvet-ballistics:source-length |   test_top_level     scanned=351   warn=6    over_limit=0    limit=3000 warn_at=2400
+velvet-ballistics:source-length |   production         scanned=840   warn=183  over_limit=0    limit=300 warn_at=240
+velvet-ballistics:source-length |   ledger rows used:    384
+▮▮▮▮ velvet-ballistics:source-length (3s 562ms, e2f4786b)
+
+Tasks: 7 completed (4 cached)
+ Time: 3s 861ms
+
+# exit_status=0

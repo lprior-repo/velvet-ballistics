@@ -13,9 +13,9 @@ impl Shard {
             shard_id,
             command_queue_depth: self.command_queue.len(),
             command_queue_capacity: self.command_queue.capacity(),
-            active_run_count: self.runs.len(),
-            pending_timer_count: self.pending_timers.len(),
-            pending_action_count: self.pending_actions.len(),
+            active_run_count: self.active_run_count(),
+            pending_timer_count: self.pending_timer_count(),
+            pending_action_count: self.pending_action_len(),
             pending_ask_count,
             active_runs: self.active_run_snapshots(max_items),
             pending_timers: self.pending_timer_snapshots(max_items),
@@ -32,15 +32,28 @@ impl Shard {
     }
 
     fn snapshot_truncated(&self, max_items: usize, pending_ask_count: usize) -> bool {
-        self.runs.len() > max_items
-            || self.pending_timers.len() > max_items
-            || self.pending_actions.len() > max_items
+        self.active_run_count() > max_items
+            || self.pending_timer_count() > max_items
+            || self.pending_action_len() > max_items
             || pending_ask_count > max_items
     }
 
     fn active_run_snapshots(&self, max_items: usize) -> Box<[RunId]> {
-        let mut runs = Vec::with_capacity(snapshot_capacity(self.runs.len(), max_items));
-        for run_id in self.runs.keys().copied().take(max_items) {
+        let capacity = snapshot_capacity(self.active_run_count(), max_items);
+        let mut runs = Vec::with_capacity(capacity);
+        for run_id in self.runs.keys().copied() {
+            if runs.len() >= max_items {
+                break;
+            }
+            runs.push(run_id);
+        }
+        for run_id in self.checked_out_run_iter().copied() {
+            if runs.len() >= max_items {
+                break;
+            }
+            if self.runs.contains_key(&run_id) {
+                continue;
+            }
             runs.push(run_id);
         }
         runs.sort();
@@ -49,8 +62,8 @@ impl Shard {
 
     fn pending_timer_snapshots(&self, max_items: usize) -> Box<[PendingTimerBoundarySnapshot]> {
         let mut timers =
-            Vec::with_capacity(snapshot_capacity(self.pending_timers.len(), max_items));
-        for (run_id, timer) in self.pending_timers.iter().take(max_items) {
+            Vec::with_capacity(snapshot_capacity(self.pending_timer_count(), max_items));
+        for (run_id, timer) in self.pending_timer_iter().take(max_items) {
             timers.push(PendingTimerBoundarySnapshot {
                 run_id: *run_id,
                 step: timer.step,
@@ -65,8 +78,8 @@ impl Shard {
 
     fn pending_action_snapshots(&self, max_items: usize) -> Box<[PendingActionBoundarySnapshot]> {
         let mut actions =
-            Vec::with_capacity(snapshot_capacity(self.pending_actions.len(), max_items));
-        for (run_id, ticket) in self.pending_actions.iter().take(max_items) {
+            Vec::with_capacity(snapshot_capacity(self.pending_action_len(), max_items));
+        for (run_id, ticket) in self.pending_action_iter().take(max_items) {
             actions.push(PendingActionBoundarySnapshot {
                 run_id: *run_id,
                 ticket: *ticket,
@@ -119,7 +132,7 @@ impl Shard {
         run_id: RunId,
         ask_step: StepIdx,
     ) -> Option<PendingAskTimeoutBoundarySnapshot> {
-        let timer = self.pending_timers.get(&run_id)?;
+        let timer = self.pending_timer_get(run_id)?;
         if timer.kind == PendingTimerKind::Ask && timer.step == ask_step {
             Some(PendingAskTimeoutBoundarySnapshot {
                 generation: timer.generation,

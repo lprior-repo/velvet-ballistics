@@ -188,8 +188,7 @@ impl Shard {
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.terminal_runs_remove(run);
-        self.run_state_insert(run, state)?;
-        if let Err(error) = self.apply(run, RuntimeEvent::Submit) {
+        if let Err(error) = self.admit_run_state(run, state, RuntimeState::Initial) {
             let removed = self.run_state_remove(run);
             if let Some(state) = removed {
                 self.release_frame(state.frame);
@@ -392,6 +391,7 @@ impl Shard {
         // Prepare the run's value store and action attempts from frame dimensions.
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;
+        self.prepare_run_slots(run)?;
 
         // Construct the full RunState with all required fields.
         let state = crate::shard::types::RunState {
@@ -407,7 +407,7 @@ impl Shard {
         };
 
         self.terminal_runs_remove(run);
-        self.run_state_insert(run, state)?;
+        self.admit_run_state(run, state, RuntimeState::Initial)?;
 
         // Do not increment submitted counter — recovery is not a submit.
         // The counters tracking active runs will be updated by drive_run.
@@ -487,6 +487,7 @@ impl Shard {
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
         let run = ticket.run;
+        self.require_pending_action_ownership(ticket)?;
         let preflight = {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             preflight_action_completion(state, ticket, output)?
@@ -530,29 +531,34 @@ impl Shard {
         run: RunId,
         step: StepIdx,
     ) -> RuntimeResult<()> {
+        let ticket = self.require_legacy_pending_action_ownership(run, step)?;
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
-            .step_state(step)
+            .step_state(ticket.step)
             .map_err(|_| RuntimeError::RunNotFound)?;
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
         // Journal append FIRST so a journal failure does not diverge frame and journal.
         self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
-            step,
+            step: ticket.step,
             output: SlotIdx::ZERO,
-            attempt: 1,
+            attempt: ticket.attempt,
         })?;
         let state = self
             .run_state_get_mut(run)
             .ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
-            .mark_succeeded(step)
+            .mark_succeeded(ticket.step)
             .map_err(|_| RuntimeError::RunNotFound)?;
-        self.trace_ring
-            .push(TraceEvent::ActionCompleted { run, step });
+        crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+        let _removed_ticket = self.pending_action_remove(run);
+        self.trace_ring.push(TraceEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+        });
         self.drive_run(run)
     }
 
@@ -564,6 +570,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         let code = failure.code;
+        self.require_pending_action_ownership(ticket)?;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
         // 1. Preflight (read-only): validate and decide the failure outcome.
         //    No mutation has occurred yet, so a journal append failure

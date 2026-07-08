@@ -1,0 +1,76 @@
+# command: env TMPDIR=target/tmp RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo test -p vb_runtime --lib cancel --all-features
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-1cb646ae7f52db08)
+
+running 65 tests
+test journal::tests::runtime_journal_event_run_cancelled_has_correct_run_id_and_reason ... ok
+test ipc_refinement::tests::timer_refinement_binds_fire_and_cancel_operations ... ok
+test shard::directive::tests::shard_directive_cancel_is_alive ... ok
+test shard::directive::tests::shard_directive_cancel_variant_exists ... ok
+test runtime::tests::tests::tick_shard_cancel_and_barrier_do_not_advance_work_silently ... ok
+test runtime::tests::tests::runtime_cancel_run_routes_to_correct_shard ... ok
+test runtime::tests::tests::runtime_cancel_then_resubmit_on_same_shard_succeeds ... ok
+test runtime::tests::tests::scheduler_cancel_run_waiting_on_timer ... ok
+test shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_cancelled ... ok
+test shard::directive::tests::shard_directive_cancel_equality ... ok
+test shard::lifecycle::tests::cancel_nonexistent_run_succeeds_without_counter_change ... ok
+test shard::lifecycle::tests::resubmit_after_cancel_succeeds ... ok
+test shard::directive::tests::shard_directive_cancel_does_not_complete ... ok
+test shard::tests::cancelled_run_releases_frame_to_dimension_pool ... ok
+test shard::tests::bh_shd_10_cancel_nonexistent_run_no_journal_event ... ok
+test runtime::tests::tests::runtime_submit_and_cancel_increments_failed_counter ... ok
+test runtime::tests::tests::scheduler_cancel_pending_run_before_execution ... ok
+test shard::lifecycle::tests::cancel_clears_pending_timer ... ok
+test shard::lifecycle::tests::cancel_emits_run_cancelled_journal_event ... ok
+test shard::tests::bh_shd_13_timer_fire_after_cancel_returns_run_not_found ... ok
+test shard::directive::tests::shard_directive_cancel_denies_admission ... ok
+test shard::tests::cancel_nonexistent_run_returns_run_not_found ... ok
+test shard::tests::shard_cancel_append_failure_preserves_run_state_and_pending_timer ... ok
+test shard::tests::shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics ... ok
+test shard::lifecycle::tests::cancel_removes_active_run_and_increments_failed ... ok
+test shard::tests::shard_cancel_nonexistent_does_not_increment_failed ... ok
+test shard::tests::shard_action_failure_after_cancel_returns_run_not_found ... ok
+test shard::lifecycle::tests::cancel_produces_run_cancelled_trace ... ok
+test shard::tests::shard_cancel_increments_failed_counter ... ok
+test shard::tests::cancel_cleans_pending_timer ... ok
+test shard::lifecycle::tests::timer_fire_after_cancel_returns_run_not_found ... ok
+test shard::tests::shard_cancel_on_finished_run_succeeds_silently_without_counter_increment ... ok
+test shard::tests::shard_cancel_records_run_cancelled_trace_event ... ok
+test shard::tests::runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arrives ... ok
+test shard::tests::shard_cancel_removes_run_from_runs_map ... ok
+test shard::tests::shard_cancel_removes_pending_ask_timer ... ok
+test shard::tests::shard_ask_answer_after_cancel_returns_run_not_found ... ok
+test shard::tests::shard_command_equality_cancel ... ok
+test shard::tests::shard_cancel_then_inspect_returns_not_found ... ok
+test shard::tests::vb1u88_bdd_cancel_non_existent_run_is_idempotent ... ok
+test shard::tests::shard_capacity_one_submit_cancel_submit_sequence ... ok
+test shard::tests::shard_duplicate_submit_after_cancel_succeeds ... ok
+test shard::tests::shard_multiple_cancels_idempotent_for_same_run ... ok
+test shard::tests::shard_resume_for_cancelled_run_returns_run_not_found ... ok
+test shard::tests::shard_resume_after_cancel_returns_run_not_found ... ok
+test shard::tests::shard_snapshot_run_after_cancel_returns_not_found ... ok
+test shard::tests::shard_cancel_then_resubmit_then_cancel_increments_failed_twice ... ok
+test shard::tests::shard_timer_for_cancelled_run_returns_run_not_found ... ok
+test shard::tests::shard_cancel_then_resubmit_same_run_id_succeeds ... ok
+test shard::tests::shard_submit_with_inputs_after_cancel ... ok
+test shard::tests::shard_submit_after_full_cancel_resets_capacity ... ok
+test shard::tests::shard_submit_cancel_inspect_mixed_lifecycle ... ok
+test shard::tests::vb1u88_cancel_emits_run_cancelled_trace_event ... ok
+test shard::tests::vb1u88_bdd_cancel_run_removes_from_runs_emits_events ... ok
+test shard::tests::vb1u88_cancel_unknown_run_does_not_emit_events ... ok
+test shard::tests::vb1u88_cancel_unknown_run_returns_ok ... ok
+test shard::timer_wheel::tests::cancel_nonexistent_returns_false ... ok
+test shard::tests::vb1u88_cancel_emits_run_cancelled_journal_event ... ok
+test shard::tests::vb1u88_cancel_removes_pending_timer ... ok
+test shard::tests::vb1u88_cancel_removes_run_and_releases_frame ... ok
+test shard::timer_wheel::tests::insert_and_cancel ... ok
+test trace::tests::trace_event_equality_run_cancelled ... ok
+test trace::tests::trace_event_is_terminal_for_run_run_cancelled_is_terminal ... ok
+test trace::tests::trace_ring_has_terminal_event_for_run_cancelled ... ok
+test journal::tests::storage_runtime_journal_maps_cancelled_and_failed_events ... ok
+
+test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 1786 filtered out; finished in 0.08s
+
+
+# exit_status=0

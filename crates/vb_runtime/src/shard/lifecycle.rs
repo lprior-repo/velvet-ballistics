@@ -4,6 +4,7 @@
 include!("lifecycle/chunk_003.rs");
 include!("lifecycle/chunk_001.rs");
 include!("lifecycle/chunk_002.rs");
+include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
 
 #[cfg(test)]
@@ -16,4 +17,6 @@ mod tests {
     include!("lifecycle_tests/chunk_006.rs");
     include!("lifecycle_tests/chunk_007.rs");
     include!("lifecycle_tests/chunk_008.rs");
+    include!("lifecycle_tests/chunk_009.rs");
+    include!("lifecycle_tests/chunk_010.rs");
 }

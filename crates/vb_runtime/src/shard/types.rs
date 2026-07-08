@@ -4,7 +4,7 @@
 use crossbeam_queue::ArrayQueue;
 use indexmap::{IndexMap, IndexSet};
 use std::time::Instant;
-use vb_core::action::ActionContract;
+use vb_core::action::{ActionContract, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -655,23 +655,322 @@ impl ShardCommandQueue {
     }
 }
 
+/// Private aggregate for run membership side data. Runtime lifecycle state and
+/// terminal membership are co-owned here so terminal identity cannot coexist
+/// with stale resumability state.
+pub(crate) struct RunAggregate {
+    runtime_states: IndexMap<RunId, RuntimeState>,
+    checked_out_runs: IndexSet<RunId>,
+    terminal_runs: IndexSet<RunId>,
+    pending_timers: IndexMap<RunId, PendingTimer>,
+    pending_actions: IndexMap<RunId, ActionTicket>,
+}
+
+impl RunAggregate {
+    pub(crate) fn new() -> Self {
+        Self {
+            runtime_states: IndexMap::new(),
+            checked_out_runs: IndexSet::new(),
+            terminal_runs: IndexSet::new(),
+            pending_timers: IndexMap::new(),
+            pending_actions: IndexMap::new(),
+        }
+    }
+
+    pub(crate) fn reserve_runtime_state_slot(
+        &mut self,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if self.runtime_states.contains_key(&run) {
+            return Ok(());
+        }
+        if self.runtime_states.len() >= capacity {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        self.runtime_states
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    pub(crate) fn runtime_state_get(&self, run: RunId) -> Option<RuntimeState> {
+        self.runtime_states.get(&run).copied()
+    }
+
+    /// Inserts a non-terminal runtime state only when the run is not retained
+    /// as terminal. Terminal failures are represented by `terminal_runs`, not a
+    /// stale `RuntimeState::Failed` entry.
+    pub(crate) fn runtime_state_insert(
+        &mut self,
+        runs: &IndexMap<RunId, RunState>,
+        run: RunId,
+        state: RuntimeState,
+        capacity: usize,
+    ) -> RuntimeResult<Option<RuntimeState>> {
+        if state == RuntimeState::Failed {
+            return Err(crate::RuntimeError::UnsupportedOperation {
+                operation: "runtime_state_failed_terminal_split",
+            });
+        }
+        if self.terminal_contains(run) {
+            return Err(crate::RuntimeError::RunAlreadyExists);
+        }
+        if !runs.contains_key(&run) && !self.checked_out_contains(run) {
+            return Err(crate::RuntimeError::RunNotFound);
+        }
+        self.reserve_runtime_state_slot(run, capacity)?;
+        Ok(self.runtime_states.insert(run, state))
+    }
+
+    pub(crate) fn runtime_state_remove(&mut self, run: RunId) {
+        let _removed = self.runtime_states.swap_remove(&run);
+    }
+
+    /// Clears only runtime lifecycle state for terminal `RuntimeEvent` apply.
+    /// Checked-out ownership and pending boundaries are cleaned by terminal
+    /// lifecycle paths, not by this state-machine transition.
+    pub(crate) fn runtime_state_terminal_clear(&mut self, run: RunId) {
+        self.runtime_state_remove(run);
+    }
+
+    pub(crate) fn checked_out_len(&self) -> usize {
+        self.checked_out_runs.len()
+    }
+
+    pub(crate) fn checked_out_contains(&self, run: RunId) -> bool {
+        self.checked_out_runs.contains(&run)
+    }
+
+    pub(crate) fn checked_out_iter(&self) -> impl Iterator<Item = &RunId> {
+        self.checked_out_runs.iter()
+    }
+
+    pub(crate) fn reserve_checked_out_slot(
+        &mut self,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if self.checked_out_contains(run) {
+            return Ok(());
+        }
+        if self.checked_out_runs.len() >= capacity {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        self.checked_out_runs
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    pub(crate) fn checked_out_insert(&mut self, run: RunId, capacity: usize) -> RuntimeResult<()> {
+        self.reserve_checked_out_slot(run, capacity)?;
+        if self.checked_out_runs.insert(run) {
+            Ok(())
+        } else {
+            Err(crate::RuntimeError::RunAlreadyExists)
+        }
+    }
+
+    pub(crate) fn checked_out_remove(&mut self, run: RunId) {
+        let _removed = self.checked_out_runs.swap_remove(&run);
+    }
+
+    pub(crate) fn terminal_contains(&self, run: RunId) -> bool {
+        self.terminal_runs.contains(&run)
+    }
+
+    /// Retains terminal identity only after active run-state ownership has
+    /// left `Shard::runs`, and clears runtime plus active-boundary side data
+    /// for that run.
+    pub(crate) fn terminal_insert(
+        &mut self,
+        runs: &IndexMap<RunId, RunState>,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<bool> {
+        if self.terminal_contains(run) {
+            return Ok(false);
+        }
+        if runs.contains_key(&run) {
+            return Err(crate::RuntimeError::RunAlreadyExists);
+        }
+        if !self.checked_out_contains(run) {
+            return Err(crate::RuntimeError::RunNotFound);
+        }
+        self.reserve_terminal_slot(run, capacity)?;
+        self.runtime_state_remove(run);
+        self.checked_out_remove(run);
+        let _removed_timer = self.pending_timers.swap_remove(&run);
+        let _removed_action = self.pending_actions.swap_remove(&run);
+        Ok(self.terminal_runs.insert(run))
+    }
+
+    pub(crate) fn terminal_remove(&mut self, run: RunId) {
+        let _removed = self.terminal_runs.swap_remove(&run);
+    }
+
+    pub(crate) fn reserve_terminal_insert_slot(
+        &mut self,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if self.terminal_runs.contains(&run) {
+            return Ok(());
+        }
+        if capacity == 0 {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        if self.terminal_runs.len() >= capacity {
+            return Ok(());
+        }
+        self.terminal_runs
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    fn reserve_terminal_slot(&mut self, run: RunId, capacity: usize) -> RuntimeResult<()> {
+        if self.terminal_runs.contains(&run) {
+            return Ok(());
+        }
+        if capacity == 0 {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        if self.terminal_runs.len() >= capacity {
+            let evicted = self.terminal_runs.iter().next().copied();
+            if let Some(evicted) = evicted {
+                let _removed = self.terminal_runs.shift_remove(&evicted);
+            }
+        }
+        self.terminal_runs
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    pub(crate) fn run_is_live_for_boundary(
+        &self,
+        runs: &IndexMap<RunId, RunState>,
+        run: RunId,
+    ) -> bool {
+        !self.terminal_contains(run) && (runs.contains_key(&run) || self.checked_out_contains(run))
+    }
+
+    pub(crate) fn pending_timer_len(&self) -> usize {
+        self.pending_timers.len()
+    }
+
+    pub(crate) fn reserve_pending_timer_slot(
+        &mut self,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if self.pending_timers.contains_key(&run) {
+            return Ok(());
+        }
+        if self.pending_timers.len() >= capacity {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        self.pending_timers
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    pub(crate) fn pending_timer_insert(
+        &mut self,
+        runs: &IndexMap<RunId, RunState>,
+        capacity: usize,
+        run: RunId,
+        timer: PendingTimer,
+    ) -> RuntimeResult<Option<PendingTimer>> {
+        if !self.run_is_live_for_boundary(runs, run) {
+            return Err(crate::RuntimeError::RunNotFound);
+        }
+        self.reserve_pending_timer_slot(run, capacity)?;
+        Ok(self.pending_timers.insert(run, timer))
+    }
+
+    pub(crate) fn pending_timer_get(&self, run: RunId) -> Option<PendingTimer> {
+        self.pending_timers.get(&run).copied()
+    }
+
+    pub(crate) fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
+        self.pending_timers.clone()
+    }
+
+    pub(crate) fn pending_timer_remove(&mut self, run: RunId) -> Option<PendingTimer> {
+        self.pending_timers.swap_remove(&run)
+    }
+
+    pub(crate) fn pending_timer_contains(&self, run: RunId) -> bool {
+        self.pending_timers.contains_key(&run)
+    }
+
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+        self.pending_timers.iter()
+    }
+
+    pub(crate) fn pending_timer_clear(&mut self) {
+        self.pending_timers.clear();
+    }
+
+    pub(crate) fn pending_action_len(&self) -> usize {
+        self.pending_actions.len()
+    }
+
+    pub(crate) fn reserve_pending_action_slot(
+        &mut self,
+        run: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if self.pending_actions.contains_key(&run) {
+            return Ok(());
+        }
+        if self.pending_actions.len() >= capacity {
+            return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+        }
+        self.pending_actions
+            .try_reserve(1)
+            .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+    }
+
+    pub(crate) fn pending_action_insert(
+        &mut self,
+        runs: &IndexMap<RunId, RunState>,
+        capacity: usize,
+        run: RunId,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<Option<ActionTicket>> {
+        if !self.run_is_live_for_boundary(runs, run) {
+            return Err(crate::RuntimeError::RunNotFound);
+        }
+        self.reserve_pending_action_slot(run, capacity)?;
+        Ok(self.pending_actions.insert(run, ticket))
+    }
+
+    pub(crate) fn pending_action_get(&self, run: RunId) -> Option<ActionTicket> {
+        self.pending_actions.get(&run).copied()
+    }
+
+    pub(crate) fn pending_action_clone(&self) -> IndexMap<RunId, ActionTicket> {
+        self.pending_actions.clone()
+    }
+
+    pub(crate) fn pending_action_remove(&mut self, run: RunId) -> Option<ActionTicket> {
+        self.pending_actions.swap_remove(&run)
+    }
+
+    pub(crate) fn pending_action_iter(&self) -> impl Iterator<Item = (&RunId, &ActionTicket)> {
+        self.pending_actions.iter()
+    }
+}
+
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
     pub(crate) command_queue: ShardCommandQueue,
-    pub runs: IndexMap<RunId, RunState>,
-    /// Per-run lifecycle state tracking for resume eligibility.
-    pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
-    /// Terminal run ids retained as direct runtime state, independent of trace retention.
-    pub(crate) terminal_runs: IndexSet<RunId>,
+    pub(super) runs: IndexMap<RunId, RunState>,
+    pub(super) run_aggregate: RunAggregate,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
-    pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
-    /// In-flight `ActionTicket`s by run. Inserted when `await_action`
-    /// journal appends an `ActionScheduledTicket`; cleared when the
-    /// matching completion/failure/abandon event is journaled.
-    pub(crate) pending_actions: IndexMap<RunId, vb_core::action::ActionTicket>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,

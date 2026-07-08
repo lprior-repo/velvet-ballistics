@@ -94,6 +94,15 @@
         }
     }
 
+    fn pending_ticket(shard: &Shard, run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
+        let Some(ticket) = shard.pending_action_get(run) else {
+            panic!("pending action ticket must exist for run {run:?}");
+        };
+        assert_eq!(ticket.step, step);
+        assert_eq!(ticket.attempt, attempt);
+        ticket
+    }
+
     fn non_retryable_failure() -> ActionFailure {
         ActionFailure {
             code: ActionFailureCode::Timeout,
@@ -215,7 +224,7 @@
     }
 
     fn enqueue_action_failure(shard: &mut Shard, run: RunId, step: StepIdx, attempt: u16) {
-        let ticket = make_ticket(run, step, attempt);
+        let ticket = pending_ticket(shard, run, step, attempt);
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
                 ticket,

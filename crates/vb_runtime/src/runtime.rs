@@ -771,7 +771,7 @@ impl Runtime {
         };
         let mut summaries = Vec::new();
         for shard in &self.shards {
-            for (run_id, state) in &shard.runs {
+            for (run_id, state) in shard.active_runs_iter() {
                 if summaries.len() >= max {
                     break;
                 }

@@ -1,4 +1,4 @@
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx};
 use vb_core::workflow::CompiledWorkflow;

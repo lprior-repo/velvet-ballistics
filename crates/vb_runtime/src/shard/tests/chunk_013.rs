@@ -332,7 +332,7 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<()
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     // When resuming while the run is waiting, drive_run re-drives and re-suspends
     // because the WaitUntil deadline hasn't been met (no timer fire).

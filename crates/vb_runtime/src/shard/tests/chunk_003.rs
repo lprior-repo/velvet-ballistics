@@ -163,14 +163,14 @@ fn cancel_cleans_pending_timer() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     Ok(())
 }
 
@@ -190,14 +190,14 @@ fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(
         timer_command(&shard, run).map(|command| shard.enqueue(command)),
         Some(Ok(()))
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
 }
@@ -221,14 +221,14 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), St
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(
         timer_command(&shard, run).map(|command| shard.enqueue(command)),
         Some(Ok(()))
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     Ok(())
 }

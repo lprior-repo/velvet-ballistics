@@ -1,0 +1,37 @@
+# command: moon run :source-length
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+▮▮▮▮ velvet-ballistics:workspace-assertions (cached, dff19f89)
+[ WARN 10:41:15.292] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 2026-07-09 10:41:15.292] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:41:15.292] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:41:15.297] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:panic-surface (fcd82a84)
+▮▮▮▮ velvet-ballistics:unsafe-audit (b50ee6d9)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (a2f03651)
+▮▮▮▮ velvet-ballistics:test-integrity (f056bb67)
+▮▮▮▮ velvet-ballistics:unsafe-audit (107ms, b50ee6d9)
+▮▮▮▮ velvet-ballistics:test-integrity (192ms, f056bb67)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:test-integrity | test integrity: FAIL
+velvet-ballistics:test-integrity | DeletedTestFile|crates/vb_runtime/src/shard/lifecycle/flux_cancel_kill.rs|deleted file contained tests or test assertions
+velvet-ballistics:test-integrity | Add equal-or-stronger replacement coverage or bead-linked justification.
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (269ms, a2f03651)
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:test-integrity failed to run.
+  ╰─▶ Process bash failed: exit code 1
+
+# exit_status=0

@@ -1,0 +1,125 @@
+# command: env KANI_FEATURES=kani-vb-4969v-runtime-a3 RUSTC_WRAPPER= bash scripts/kani-list.sh vb_runtime
+[kani-list] package=vb_runtime dir=/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime output=/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/.evidence/kani-list/vb_runtime.json
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: struct `ReplayResolutionSet` is never constructed
+  --> crates/vb_storage/src/recovery/types.rs:17:8
+   |
+17 | struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `insert` and `contains` are never used
+  --> crates/vb_storage/src/recovery/types.rs:21:8
+   |
+20 | impl ReplayResolutionSet {
+   | ------------------------ methods in this implementation
+21 |     fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
+   |        ^^^^^^
+...
+30 |     fn contains(&self, value: &(ActionId, StepIdx)) -> bool {
+   |        ^^^^^^^^
+
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+warning: unused import: `RuntimeResult`
+  --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:29:27
+   |
+29 | use crate::{RuntimeError, RuntimeResult};
+   |                           ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `result`
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:134:9
+    |
+134 |     let result = validate_action_completion(&state, ticket);
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_result`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `can_retry`
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:240:12
+    |
+240 |         Ok(can_retry) => {
+    |            ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_can_retry`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:372:9
+    |
+372 |     let mut state = any_do_run_state(step_count, current);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `state`
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:562:9
+    |
+562 |     let state = any_do_run_state(step_count, 1);
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: unused variable: `attempt`
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:593:46
+    |
+593 |         Err(RuntimeError::AttemptBeyondMax { attempt, max }) => {
+    |                                              ^^^^^^^ help: try ignoring the field: `attempt: _`
+
+warning: unused variable: `attempt`
+   --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:622:46
+    |
+622 |         Err(RuntimeError::AttemptBeyondMax { attempt, max }) => {
+    |                                              ^^^^^^^ help: try ignoring the field: `attempt: _`
+
+warning: function `step_state_from_u8` is never used
+  --> crates/vb_runtime/src/primitives/reentry_proofs.rs:46:8
+   |
+46 |     fn step_state_from_u8(v: u8) -> StepState {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `journal_sequence_for` and `advance_journal_sequence` are never used
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:258:8
+    |
+  3 | impl Shard {
+    | ---------- methods in this implementation
+...
+258 |     fn journal_sequence_for(&self, run: RunId) -> EventSeq {
+    |        ^^^^^^^^^^^^^^^^^^^^
+...
+275 |     fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+             - simd_reduce_all (1)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+warning: Kani currently does not support concurrency. The following constructs will be treated as sequential operations:
+             - atomic_load (9)
+             - thread local (replaced by static variable) (1)
+             - atomic_xadd (5)
+             - atomic_fence (4)
+             - atomic_xchg (5)
+             - atomic_xsub (5)
+             - atomic_cxchgweak (15)
+             - atomic_store (3)
+             - atomic_cxchg (15)
+         
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 28.41s
+Wrote list results to /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime/kani-list.json
+KANI_LIST_OK output_dir=/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/.evidence/kani-list packages=vb_runtime
+
+# inventory spot-check: /usr/bin/rg -n "kani_resume_(initial|resuming|non_resumable|already_running)|kani_terminal_membership_cannot_coexist|kani_failed_runtime_state_insert_rejected" .evidence/kani-list/vb_runtime.json
+52:      "verification::kani::kani_resume_state_machine::kani_failed_runtime_state_insert_rejected",
+53:      "verification::kani::kani_resume_state_machine::kani_resume_already_running",
+58:      "verification::kani::kani_resume_state_machine::kani_resume_initial_guard",
+59:      "verification::kani::kani_resume_state_machine::kani_resume_resuming_guard",
+61:      "verification::kani::kani_resume_state_machine::kani_terminal_membership_cannot_coexist_with_runtime_state"
+
+# exit_status=0

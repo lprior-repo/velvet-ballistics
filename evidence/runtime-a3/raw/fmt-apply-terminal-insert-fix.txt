@@ -1,0 +1,4 @@
+# command: rustup run nightly-2026-04-28 cargo fmt --all
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+
+# exit_status=0

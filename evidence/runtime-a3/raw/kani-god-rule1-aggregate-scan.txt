@@ -1,0 +1,34 @@
+# command: GOD RULE 1 scan for vb-4969v aggregate-invariant Kani lane after drop-elision repair
+# negative scan: no workflow/frame construction or fixed structural fixtures in minimal aggregate harness
+# positive scan: feature gate, aggregate-only harness/API calls, and explicit drop elision
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:4://! Obligation: PO-vb282my-RS-KANI-006.
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:5://! Target: `RunAggregate::{checked_out_insert, runtime_state_insert,
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:6://! terminal_insert, runtime_state_get, terminal_contains}`.
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:56:            core::mem::forget(value);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:60:            core::mem::forget(error);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:69:            core::mem::forget(value);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:73:            core::mem::forget(error);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:79:fn terminal_inserted_fresh_without_drop(result: crate::RuntimeResult<bool>) -> bool {
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:83:            core::mem::forget(error);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:89:// PO-vb282my-RS-KANI-006 / vb-4969v: terminal aggregate membership excludes
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:94:fn kani_vb4969v_terminal_membership_excludes_runtime_state_minimal() {
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:98:    let mut aggregate = RunAggregate::new();
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:102:        result_is_ok_without_drop(aggregate.checked_out_insert(run, ACTIVE_CAPACITY)),
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:106:        result_is_ok_without_drop(aggregate.runtime_state_insert(
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:115:        aggregate.runtime_state_get(run) == Some(live_state),
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:120:        terminal_inserted_fresh_without_drop(aggregate.terminal_insert(
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:129:        aggregate.terminal_contains(run),
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:130:        "run must be terminal after terminal_insert",
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:137:        aggregate.runtime_state_get(run).is_none(),
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:142:        result_is_err_without_drop(aggregate.runtime_state_insert(
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:151:        aggregate.runtime_state_get(run).is_none(),
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:155:    // PO-vb282my-RS-KANI-006: this harness checks aggregate mutation and
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:159:    core::mem::forget(aggregate);
+crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs:160:    core::mem::forget(runs);
+crates/vb_runtime/src/verification/mod.rs:41:    // PO-vb282my-RS-KANI-006 / vb-4969v: minimal aggregate-only invariant
+crates/vb_runtime/src/verification/mod.rs:44:    #[cfg(feature = "kani-vb-4969v-aggregate-invariant")]
+crates/vb_runtime/src/verification/mod.rs:45:    pub(crate) mod kani_vb4969v_aggregate_invariant;
+crates/vb_runtime/Cargo.toml:43:# PO-vb282my-RS-KANI-006 / vb-4969v: tiny aggregate invariant harness lane.
+crates/vb_runtime/Cargo.toml:44:kani-vb-4969v-aggregate-invariant = []
+# legacy fixed-fixture absence scan in heavy resume harness
+exit_status=0

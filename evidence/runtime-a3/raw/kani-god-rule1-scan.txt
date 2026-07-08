@@ -1,0 +1,16 @@
+# command: /usr/bin/rg -n "kani_from_parts_unchecked|kani-minimal|from_bytes\(\[0u8; 32\]\)|Box::from\(\[\]\)|RunFrame::new\(run, StepIdx::new\(0\), 1, 1\)|vec!\[0u16; 1\]|action_contracts: Box::from\(\[\]\)|fn kani_resume_non_resumable_guard" crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+# GOD_RULE_1_ABSENCE_SCAN=PASS no hardcoded fixture or unsplit legacy harness pattern matched
+
+# command: /usr/bin/rg -n "symbolic_workflow_parts|CompiledWorkflow::try_from_parts|WorkflowDigest::from_bytes\(kani::any|RunFrame::new\(run, workflow.entry\(\), step_count, slot_count\)|new_action_attempts\(step_count\)|fn kani_resume_initial_guard|fn kani_resume_resuming_guard|assume_guard_workflow_parts_domain" crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+72:    CompiledWorkflow::try_from_parts(symbolic_workflow_parts()).ok()
+75:fn symbolic_workflow_parts() -> WorkflowParts {
+81:        digest: vb_core::ids::WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
+92:    assume_guard_workflow_parts_domain(&parts);
+96:fn assume_guard_workflow_parts_domain(parts: &WorkflowParts) {
+208:    let frame = match RunFrame::new(run, workflow.entry(), step_count, slot_count) {
+216:        action_attempts: crate::shard::helpers::new_action_attempts(step_count),
+305:fn kani_resume_initial_guard() {
+312:fn kani_resume_resuming_guard() {
+# binding_scan_status=0
+
+# exit_status=0

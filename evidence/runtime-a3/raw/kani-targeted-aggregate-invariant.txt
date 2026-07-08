@@ -1,0 +1,3 @@
+# command: systemd-run --user --scope --collect -p WorkingDirectory=/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3 -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=0 /usr/bin/timeout 10m env TMPDIR=target/tmp RUSTC_WRAPPER= cargo kani -p vb_runtime --features kani-vb-4969v-aggregate-invariant --harness kani_vb4969v_terminal_membership_excludes_runtime_state_minimal -j 1 --output-format regular
+Unknown assignment: WorkingDirectory=/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+exit_status=1

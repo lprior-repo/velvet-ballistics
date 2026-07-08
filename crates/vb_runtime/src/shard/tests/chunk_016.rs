@@ -90,7 +90,7 @@ fn shard_legacy_action_completed_with_wrong_step_returns_error() {
         }),
         Ok(())
     );
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ fn shard_resume_after_cancel_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
 
