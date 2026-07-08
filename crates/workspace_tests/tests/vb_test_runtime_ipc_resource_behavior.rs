@@ -450,11 +450,19 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
 // then all 4 are allocated and pool is empty.
 #[test]
 fn resource_frame_pool_take_exhausts_available_frames() {
-    let pool = match FramePool::new(2, 1, 4) {
+    let mut pool = match FramePool::new(2, 1, 4) {
         Ok(p) => p,
         Err(_) => return,
     };
     assert_eq!(pool.capacity(), 4);
+    assert_eq!(pool.available(), 4);
+
+    for run in 1u64..=4 {
+        let _frame = pool
+            .take(RunId::new(run), StepIdx::ZERO)
+            .expect("preallocated frame should be available");
+    }
+
     assert_eq!(pool.available(), 0);
     assert!(pool.is_empty());
 }
@@ -1132,9 +1140,9 @@ fn edge_shutdown_with_pending_runs_processes_all_during_drain() {
 }
 
 /// Given a 1-shard runtime, when submitting after shutdown initiated,
-// then submit succeeds but tick_all returns false (shard already shutting down).
+// then submit is rejected without processing new work.
 #[test]
-fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
+fn edge_submit_after_shutdown_is_rejected_without_processing() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
@@ -1148,9 +1156,12 @@ fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
 
     // Submit after shutdown
-    assert_eq!(runtime.submit_direct(RunId::new(90), wf), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(90), wf),
+        Err(vb_runtime::RuntimeError::ShutdownInProgress)
+    );
 
-    // tick_all returns false (shard down, ignores pending commands)
+    // tick_all returns false (shard down, no pending commands processed)
     assert_eq!(runtime.tick_all(), Ok(false));
 
     // No runs processed
@@ -1184,9 +1195,9 @@ fn edge_frame_pool_rejects_mismatched_dimension_frames() {
     // Release into pool_a (step_count=2, slot_count=1) — dimension mismatch
     pool_a.release(frame);
 
-    // pool_a remains empty (mismatched frame silently dropped)
-    assert_eq!(pool_a.available(), 0);
-    assert!(pool_a.is_empty());
+    // pool_a remains at its preallocated capacity (mismatched frame silently dropped)
+    assert_eq!(pool_a.available(), 4);
+    assert!(!pool_a.is_empty());
 }
 
 // ============================================================================

@@ -29,9 +29,19 @@ fuzz_target!(|data: &[u8]| {
 
             // If the event is RunKilled, verify its fields
             if matches!(event.record_kind(), vb_storage::RecordKind::RunKilled) {
-                assert!(event.run_id().get() != 0, "RunKilled run_id must be non-zero");
-                assert!(event.seq().get() != u64::MAX, "RunKilled seq must not be overflow");
-                assert_ne!(event.attempt(), Some(0), "RunKilled attempt must not be zero if present");
+                assert!(
+                    event.run_id().get() != 0,
+                    "RunKilled run_id must be non-zero"
+                );
+                assert!(
+                    event.seq().get() != u64::MAX,
+                    "RunKilled seq must not be overflow"
+                );
+                assert_ne!(
+                    event.attempt(),
+                    Some(0),
+                    "RunKilled attempt must not be zero if present"
+                );
             }
         }
         Err(error) => {
@@ -52,32 +62,40 @@ fuzz_target!(|data: &[u8]| {
         0x0000_0000u32,
     ] {
         for payload_limit in [0u32, 1u32, 64u32, 1024u32, 4096u32, u32::MAX] {
-            let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
-                data,
-                magic,
-                payload_limit,
-            );
+            match vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, payload_limit)
+            {
+                Ok(_) => {}
+                Err(error) => assert_typed_journal_error(error),
+            }
         }
     }
 
     // Exercise decode_record_header directly
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, max_payload_len);
+    match vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, max_payload_len) {
+        Ok(_) => {}
+        Err(error) => assert_typed_journal_error(error),
+    }
 
     // Exercise with truncated inputs (critical for kind 28 boundary)
     for truncation in 0..data.len().min(64) {
-        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            &data[..truncation],
+        let Some(prefix) = data.get(..truncation) else {
+            return;
+        };
+        match vb_storage::decode_record::<vb_storage::JournalEvent>(
+            prefix,
             vb_storage::MAGIC_JOURNAL_EVENT,
             max_payload_len,
-        );
+        ) {
+            Ok(_) => {}
+            Err(error) => assert_typed_journal_error(error),
+        }
     }
 });
 
 /// Assert that a journal error is a known current typed variant.
 ///
-/// The wildcard arm is required by `JournalError` being `#[non_exhaustive]` and
-/// accepts future variants gracefully at runtime. The CI exhaustiveness script
-/// enforces that every current production variant appears in this oracle body.
+/// The CI exhaustiveness script enforces that every current production variant
+/// appears in this oracle body. New variants must be handled explicitly.
 fn assert_typed_journal_error(error: vb_storage::JournalError) {
     use vb_storage::JournalError;
     match error {
@@ -85,29 +103,39 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
+        | JournalError::PostcardEncodeFailed(_)
         | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
+        | JournalError::RecordKindPayloadMismatch { .. }
         | JournalError::UnknownRecordKind { .. }
         | JournalError::UnsupportedSchemaVersion { .. }
         | JournalError::HeaderLengthMismatch { .. }
         | JournalError::SequenceOverflow
         | JournalError::WrongRun { .. }
         | JournalError::SequenceGap { .. }
+        | JournalError::ReplayKeyMismatch { .. }
+        | JournalError::ReplayEnvelopeSequenceMismatch { .. }
         // Internal/operational errors
         | JournalError::Fjall(_)
         | JournalError::Encode(_)
         | JournalError::KeyCapacity
         | JournalError::DuplicateEvent { .. }
+        | JournalError::DuplicateStagedKey { .. }
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
         | JournalError::JournalBatchBytesExceeded { .. }
+        | JournalError::BatchAborted
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
+        | JournalError::MalformedKeyspaceRow { .. }
         | JournalError::ArtifactMalformed
+        | JournalError::WorkflowReconstruction(_)
+        | JournalError::CompiledIrReadback(_)
+        | JournalError::AdmissionAllocationFailed(_)
         | JournalError::ArtifactChecksumMismatch
         | JournalError::InvalidGateCount { .. }
         | JournalError::MissingRequiredProofFlag { .. }
@@ -123,15 +151,15 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
+        | JournalError::IndexStatusStateCollision { .. }
         | JournalError::StrictDurabilityFailed
         | JournalError::TooManyEvents { .. }
         | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
+        | JournalError::InvalidConfig { .. }
+        | JournalError::UnsupportedReadOnly
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
         | JournalError::Trim(_) => {}
-        _ => {
-            // Coverage: unknown future variants accepted gracefully
-        }
     }
 }

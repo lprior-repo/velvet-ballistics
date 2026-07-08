@@ -30,16 +30,30 @@ fuzz_target!(|data: &[u8]| {
         None => return,
     };
 
-    let _ = vb_runtime::shard::helpers::normalize_scheduled_ticket(&state, ticket);
+    match vb_runtime::shard::helpers::normalize_scheduled_ticket(&state, ticket) {
+        Ok(_) | Err(_) => {}
+    }
 });
+
+fn read_u64_le_at(data: &[u8], start: usize) -> Option<u64> {
+    let end = start.checked_add(8)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 8]>::try_from(bytes).ok())
+        .map(u64::from_le_bytes)
+}
+
+fn read_u16_le_at(data: &[u8], start: usize) -> Option<u16> {
+    let end = start.checked_add(2)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 2]>::try_from(bytes).ok())
+        .map(u16::from_le_bytes)
+}
 
 /// Build a minimal in-memory `RunState` shaped by the fuzz input. We keep
 /// the workflow a single Do node so `normalize_scheduled_ticket` always has
 /// a valid `action_attempts` slot for `StepIdx::ZERO`. Returns `None` if
 /// the parts cannot be validated into a compiled workflow.
-fn build_run_state(
-    data: &[u8],
-) -> Option<vb_runtime::shard::types::RunState> {
+fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
     let action_byte = data.first().copied().unwrap_or(0);
     let digest = vb_core::ids::WorkflowDigest::from_bytes([action_byte; 32]);
 
@@ -97,26 +111,12 @@ fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
         return None;
     }
 
-    let run = if data.len() >= 8 {
-        RunId::new(u64::from_le_bytes([
-            data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-        ]))
-    } else {
-        RunId::new(1)
-    };
+    let run = RunId::new(read_u64_le_at(data, 0).unwrap_or(1));
     let step_byte = data.get(8).copied().unwrap_or(0);
     let seq_byte = data.get(9).copied().unwrap_or(0);
     let action_byte = data.get(10).copied().unwrap_or(0);
-    let attempt = if data.len() >= 12 {
-        u16::from_le_bytes([data[10], data[11]])
-    } else {
-        1
-    };
-    let capacity = if data.len() >= 14 {
-        u16::from_le_bytes([data[12], data[13]])
-    } else {
-        1
-    };
+    let attempt = read_u16_le_at(data, 10).unwrap_or(1);
+    let capacity = read_u16_le_at(data, 12).unwrap_or(1);
 
     Some(ActionTicket {
         run,

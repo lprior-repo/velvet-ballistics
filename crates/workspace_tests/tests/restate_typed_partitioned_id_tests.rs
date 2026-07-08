@@ -22,7 +22,7 @@ fn unknown_kind(kind: u16) -> bool {
 proptest! {
     #[test]
     fn generated_typed_partitioned_ids_preserve_bytes(
-        run in any::<u64>(),
+        run in 1u64..=u64::MAX,
         seq in 0u64..u64::MAX,
         workflow in any::<u32>(),
         action in any::<u16>(),
@@ -67,7 +67,13 @@ proptest! {
 
 #[test]
 fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
-    for run in [0, 1, 0x0102_0304_0506_0708, u64::MAX - 1, u64::MAX] {
+    let zero_header = keys::run_header_key(RunId::new(0));
+    assert!(matches!(
+        zero_header,
+        Err(JournalError::InvalidRunId { run }) if run == RunId::new(0)
+    ));
+
+    for run in [1, 0x0102_0304_0506_0708, u64::MAX - 1, u64::MAX] {
         let header = keys::run_header_key(RunId::new(run))?;
         assert_eq!(&header[1..9], &run.to_be_bytes());
     }

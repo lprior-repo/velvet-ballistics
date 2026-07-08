@@ -5,12 +5,29 @@
 use libfuzzer_sys::fuzz_target;
 use std::process::Command;
 
+fn utf8_prefix(input: &str, max_bytes: usize) -> &str {
+    if input.len() <= max_bytes {
+        return input;
+    }
+    let mut end = 0usize;
+    for (idx, ch) in input.char_indices() {
+        let Some(next) = idx.checked_add(ch.len_utf8()) else {
+            break;
+        };
+        if next > max_bytes {
+            break;
+        }
+        end = next;
+    }
+    input.get(..end).unwrap_or("")
+}
+
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {
         Ok(s) => s,
         Err(_) => return,
     };
-    let input = if input.len() > 4096 { &input[..4096] } else { input };
+    let input = utf8_prefix(input, 4096);
 
     // Generate arguments: first arg is a package-like name, rest are selector-like flags
     let parts: Vec<&str> = input.split_whitespace().take(32).collect();
@@ -18,18 +35,22 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let package_arg = parts[0];
-    let selector_args: Vec<&str> = if parts.len() > 1 {
-        parts[1..].to_vec()
-    } else {
-        vec![]
+    let Some((package_arg, selector_args)) = parts.split_first() else {
+        return;
     };
 
-    let mut full_args = vec![package_arg];
-    full_args.extend(selector_args);
+    let mut full_args = Vec::new();
+    if full_args.try_reserve(parts.len()).is_err() {
+        return;
+    }
+    full_args.push(*package_arg);
+    full_args.extend(selector_args.iter().copied());
 
-    let _ = Command::new("bash")
+    match Command::new("bash")
         .arg("scripts/flux-check-package.sh")
         .args(&full_args)
-        .output();
+        .output()
+    {
+        Ok(_) | Err(_) => {}
+    }
 });

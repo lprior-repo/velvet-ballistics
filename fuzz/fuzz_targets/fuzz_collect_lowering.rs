@@ -22,12 +22,7 @@ use vb_core::ids::{SlotIdx, StepIdx};
 ///
 /// Generates arbitrary slot and step indices plus pagination parameters
 /// to test boundary issues around pagination semantics.
-fn fuzz_collect_lowering(
-    step_ids: (u16, u16, u16),
-    source_raw: u16,
-    limit: u32,
-    page_size: u32,
-) {
+fn fuzz_collect_lowering(step_ids: (u16, u16, u16), source_raw: u16, limit: u32, page_size: u32) {
     let (id_raw, body_raw, done_raw) = step_ids;
 
     let id = StepIdx::new(id_raw);

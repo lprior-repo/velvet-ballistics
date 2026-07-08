@@ -1,0 +1,9 @@
+COMMAND: cargo fuzz build
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== cargo fuzz build ===
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 9.07s
+EXIT_STATUS=0

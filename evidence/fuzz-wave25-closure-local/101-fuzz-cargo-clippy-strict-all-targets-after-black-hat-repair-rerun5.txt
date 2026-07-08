@@ -1,0 +1,32 @@
+COMMAND: cargo clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+error: this `match` expression can be replaced with `?`
+   --> fuzz_targets/fuzz_retry_postcard_codec.rs:112:22
+    |
+112 |           let offset = match index.checked_mul(2).and_then(|value| value.checked_add(3)) {
+    |  ______________________^
+113 | |             Some(value) => value,
+114 | |             None => return None,
+115 | |         };
+    | |_________^ help: try instead: `index.checked_mul(2).and_then(|value| value.checked_add(3))?`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
+    = note: `-D clippy::question-mark` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+
+error: this `match` expression can be replaced with `?`
+   --> fuzz_targets/fuzz_retry_postcard_codec.rs:117:29
+    |
+117 |           let action_offset = match offset.checked_add(1) {
+    |  _____________________________^
+118 | |             Some(value) => value,
+119 | |             None => return None,
+120 | |         };
+    | |_________^ help: try instead: `offset.checked_add(1)?`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
+
+error: could not compile `velvet-ballistics-fuzz` (bin "fuzz_retry_postcard_codec") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT_STATUS=101

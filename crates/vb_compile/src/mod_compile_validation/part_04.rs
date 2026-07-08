@@ -1,13 +1,7 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
+use crate::mod_compile_errors::CompileError;
 use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 pub(super) fn validate_choose_shape(
     body: &Yaml<'_>,
@@ -15,6 +9,14 @@ pub(super) fn validate_choose_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
+    let mapping = primitive_body_mapping(body, index, "choose")?;
+    if is_canonical_choose_shape(mapping, index)? {
+        return validate_canonical_choose_shape(body, index);
+    }
+    validate_legacy_choose_shape(body, index)
+}
+
+fn validate_legacy_choose_shape(body: &Yaml<'_>, index: usize) -> Result<(), CompileError> {
     reject_unknown_primitive_fields(body, index, "choose", &["condition", "on_true", "on_false"])?;
     required_step_field(body, index, "condition")?;
     required_branch_target(body, index, "on_true")?;
@@ -33,11 +35,12 @@ pub(super) fn validate_for_each_shape(
         body,
         index,
         "for_each",
-        &["input", "item", "limit", "at_once"],
+        &["variable", "input", "at_once", "steps"],
     )?;
-    required_slot(body, index, "input")?;
-    required_slot(body, index, "item")?;
-    required_u32_field(body, index, "for_each", "limit")?;
+    required_primitive_string_field(body, index, "variable", "for_each.variable")?;
+    required_primitive_string_field(body, index, "input", "for_each.input")?;
+    validate_optional_u32_field(body, index, "for_each", "at_once")?;
+    validate_optional_steps_sequence(body, index)?;
     Ok(())
 }
 
@@ -55,7 +58,7 @@ pub(super) fn validate_parallel_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "parallel", &["branches"])?;
-    required_branch_targets(body, index, "branches")?;
+    validate_together_branches(body, index)?;
     Ok(())
 }
 
@@ -65,10 +68,17 @@ pub(super) fn validate_collect_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "collect", &["source", "limit", "page_size"])?;
-    required_slot(body, index, "source")?;
-    required_u32_field(body, index, "collect", "limit")?;
-    required_u32_field(body, index, "collect", "page_size")?;
+    reject_unknown_primitive_fields(
+        body,
+        index,
+        "collect",
+        &["variable", "source", "pages", "items", "steps"],
+    )?;
+    required_primitive_string_field(body, index, "variable", "collect.variable")?;
+    required_primitive_string_field(body, index, "source", "collect.source")?;
+    validate_optional_u32_field(body, index, "collect", "pages")?;
+    validate_optional_u32_field(body, index, "collect", "items")?;
+    validate_optional_steps_sequence(body, index)?;
     Ok(())
 }
 
@@ -81,13 +91,13 @@ pub(super) fn validate_aggregate_shape(
     reject_unknown_primitive_fields(
         body,
         index,
-        "aggregate",
-        &["input", "accumulator", "initial"],
+        "reduce",
+        &["variable", "input", "initial", "steps"],
     )?;
-    required_slot(body, index, "input")?;
-    required_slot(body, index, "accumulator")?;
-    let initial = required_step_field(body, index, "initial")?;
-    slot_value(initial, index)?;
+    required_primitive_string_field(body, index, "variable", "reduce.variable")?;
+    required_primitive_string_field(body, index, "input", "reduce.input")?;
+    required_primitive_string_field(body, index, "initial", "reduce.initial")?;
+    validate_optional_steps_sequence(body, index)?;
     Ok(())
 }
 
@@ -99,6 +109,7 @@ pub(super) fn validate_repeat_shape(
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts", "steps"])?;
     required_u16_field(body, index, "repeat", "max_attempts")?;
+    validate_optional_steps_sequence(body, index)?;
     Ok(())
 }
 
@@ -117,6 +128,70 @@ pub(super) fn validate_finish_shape(
     reject_unknown_primitive_fields(body, index, "finish", &["result"])?;
     required_step_field(body, index, "result")?;
     Ok(())
+}
+
+fn validate_optional_u32_field(
+    body: &Yaml<'_>,
+    step: usize,
+    primitive: &'static str,
+    field: &'static str,
+) -> Result<(), CompileError> {
+    if body.as_mapping_get(field).is_some() {
+        required_u32_field(body, step, primitive, field).map(|_| ())
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_optional_steps_sequence(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let Some(node) = body.as_mapping_get("steps") else {
+        return Ok(());
+    };
+    if node.as_sequence().is_some() {
+        Ok(())
+    } else {
+        Err(CompileError::StepFieldShape {
+            step,
+            field: "steps",
+            expected: "a sequence",
+        })
+    }
+}
+
+fn validate_together_branches(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let branches = required_step_field(body, step, "branches")?
+        .as_sequence()
+        .ok_or(CompileError::StepFieldShape {
+            step,
+            field: "branches",
+            expected: "a sequence",
+        })?;
+    for branch in branches {
+        validate_together_branch(branch, step)?;
+    }
+    Ok(())
+}
+
+fn validate_together_branch(branch: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let mapping = branch.as_mapping().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "together.branches[]",
+        expected: "a mapping",
+    })?;
+    for (key, _) in mapping {
+        let Some(field) = key.as_str() else {
+            return Err(CompileError::StepShape { step });
+        };
+        if !matches!(field, "label" | "steps") {
+            return Err(CompileError::UnknownStepPrimitiveField {
+                step,
+                primitive: "together",
+                field: Box::<str>::from(field),
+            });
+        }
+    }
+    required_primitive_string_field(branch, step, "label", "together.branches[].label")?;
+    validate_optional_steps_sequence(branch, step)
 }
 
 pub(super) fn validate_phase_zero_result(doc: &Yaml<'_>) -> Result<(), CompileError> {

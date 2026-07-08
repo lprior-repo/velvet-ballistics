@@ -3,13 +3,15 @@
 use libfuzzer_sys::fuzz_target;
 
 fn fuzz_encode_record_errors(data: &[u8]) {
+    use vb_core::{RunId, WorkflowDigest};
     use vb_storage::codec::encode_record;
     use vb_storage::constants::MAGIC_JOURNAL_EVENT;
-    use vb_storage::records::RecordKind;
     use vb_storage::events::JournalEvent;
+    use vb_storage::records::RecordKind;
     use vb_storage::types::EventSeq;
-    use vb_core::{RunId, WorkflowDigest};
-    if data.len() < 4 { return; }
+    if data.len() < 4 {
+        return;
+    }
     let max_len_bytes: [u8; 4] = match data.get(0..4) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -23,15 +25,28 @@ fn fuzz_encode_record_errors(data: &[u8]) {
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([0u8; 32]),
     };
-    let result = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, max_len);
+    let result = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        max_len,
+    );
     match result {
-        Ok(value) => { assert!(!value.is_empty()); }
-        Err(e) => { let msg = format!("{e}"); assert!(!msg.is_empty()); }
+        Ok(value) => {
+            assert!(!value.is_empty());
+        }
+        Err(e) => {
+            let msg = format!("{e}");
+            assert!(!msg.is_empty());
+        }
     }
 }
 
 fn fuzz_admission_classification(data: &[u8]) {
-    if data.len() < 24 { return; }
+    if data.len() < 24 {
+        return;
+    }
     let staged_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -56,17 +71,23 @@ fn fuzz_admission_classification(data: &[u8]) {
         None => return,
     };
     let limit = u64::from_le_bytes(limit_bytes);
-    if limit == 0 { return; }
+    if limit == 0 {
+        return;
+    }
     match staged.checked_add(candidate) {
-        Some(total) => { if total > limit { /* over-limit distinct from QueueFull */ } }
+        Some(total) if total > limit => { /* over-limit distinct from QueueFull */ }
+        Some(_) => {}
         None => { /* overflow distinct from PayloadTooLarge */ }
     }
 }
 
 fuzz_target!(|data: &[u8]| {
-    if data.is_empty() { return; }
-    match data[0] % 2 {
-        0 => fuzz_encode_record_errors(&data[1..]),
-        _ => fuzz_admission_classification(&data[1..]),
+    let Some((&selector, rest)) = data.split_first() else {
+        return;
+    };
+    match selector.checked_rem(2) {
+        Some(0) => fuzz_encode_record_errors(rest),
+        Some(_) => fuzz_admission_classification(rest),
+        None => {}
     }
 });

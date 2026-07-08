@@ -90,8 +90,10 @@ fn budget_from_bytes(data: &[u8]) -> u64 {
         };
         let mut src = [0u8; 8];
         let end = slice.len().min(8);
-        if end > 0 {
-            src[..end].copy_from_slice(&slice[..end]);
+        if end > 0
+            && let (Some(src_prefix), Some(slice_prefix)) = (src.get_mut(..end), slice.get(..end))
+        {
+            src_prefix.copy_from_slice(slice_prefix);
         }
         bytes.copy_from_slice(&src);
         u64::from_le_bytes(bytes)
@@ -127,11 +129,8 @@ pub fn fuzz_budget_compute(data: &[u8]) {
         max_slots: slot_count,
         ..vb_core::ResourceContract::DEFAULT
     };
-    let result = vb_core::budget::WholeWorkflowBudget::compute(
-        &nodes,
-        vb_core::StepIdx::ZERO,
-        &contract,
-    );
+    let result =
+        vb_core::budget::WholeWorkflowBudget::compute(&nodes, vb_core::StepIdx::ZERO, &contract);
     let Ok(budget) = result else {
         return;
     };
@@ -139,7 +138,6 @@ pub fn fuzz_budget_compute(data: &[u8]) {
         assert!(budget.max_total_steps > 0);
     }
     assert!(budget.max_total_slots >= u64::from(slot_count));
-    assert!(budget.max_fanout <= u16::MAX);
     let _ = budget.max_total_steps;
     let _ = budget.max_total_slots;
     let _ = budget.max_fanout;

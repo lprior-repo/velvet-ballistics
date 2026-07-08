@@ -90,7 +90,7 @@ fn bounded_contract() -> ResourceContract {
 #[kani::proof]
 #[kani::unwind(3)]
 fn prove_digest_determinism() {
-    let yaml = "version: velvet-ballastics/v1\nname: kani_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
+    let yaml = "version: velvet-ballistics/v1\nname: kani_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     let source =
         crate::parse_workflow_source(yaml).expect("valid representative YAML source for Kani");
 
@@ -149,7 +149,7 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     );
 
     // Verify the full canonical_digest incorporates the contract change
-    let yaml = "version: velvet-ballastics/v1\nname: test\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: \"1\"\n";
+    let yaml = "version: velvet-ballistics/v1\nname: test\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: \"1\"\n";
     let source =
         crate::parse_workflow_source(yaml).expect("valid representative YAML source for Kani");
 

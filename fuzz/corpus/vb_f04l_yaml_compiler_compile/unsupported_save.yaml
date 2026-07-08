@@ -1,5 +1,5 @@
-version: velvet-ballastics/v1
-name: fuzz-save
+version: velvet-ballistics/v1
+name: fuzz_save
 when:
   manual: {}
 steps:

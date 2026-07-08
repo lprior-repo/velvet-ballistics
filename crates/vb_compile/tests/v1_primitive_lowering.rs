@@ -9,7 +9,7 @@ use vb_core::{
 };
 
 const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: primitive-lowering\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: primitive_lowering\nwhen:\n  manual: {}\nsteps:\n";
 
 #[derive(Clone, Copy, Debug)]
 struct PrimitiveCase {
@@ -466,12 +466,12 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account:\n    is: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -539,12 +539,12 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account:\n    is: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -688,6 +688,36 @@ fn yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails() -> Res
             Ok(())
         }
         other => Err(format!("expected CanonicalYaml, got {other:?}")),
+    }
+}
+
+#[test]
+fn yaml_compiler_compile_rejects_phase_zero_empty_wait_shape() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: bad_wait\n    wait: {}\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let errors = YamlCompiler::default()
+        .compile(yaml.as_bytes())
+        .err()
+        .ok_or_else(|| String::from("empty wait shape unexpectedly compiled"))?;
+    let first = first_compile_error(&errors)?;
+
+    match first {
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected,
+        } => {
+            assert_eq!((*step, *field), (0, "wait"));
+            assert!(
+                !expected.is_empty(),
+                "phase-zero wait shape error must explain the expected shape"
+            );
+            Ok(())
+        }
+        other => Err(format!(
+            "expected StepFieldShape from YamlCompiler::compile, got {other:?}"
+        )),
     }
 }
 
@@ -1222,7 +1252,7 @@ fn wait_workflow_yaml(event: &Option<String>, timeout: &Option<String>) -> Strin
         wait_block.push_str(&format!("\n      timeout: \"{t}\""));
     }
     format!(
-        "version: velvet-ballistics/v1\nname: wait-digest-test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: wait_digest_test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
     )
 }
 

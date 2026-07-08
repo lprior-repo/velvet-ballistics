@@ -15,7 +15,7 @@
 #![forbid(unsafe_code)]
 
 use libfuzzer_sys::fuzz_target;
-use vb_compile::{lower_choose, SlotCompiler};
+use vb_compile::{SlotCompiler, lower_choose};
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::SlotBranch;
 
@@ -33,7 +33,7 @@ fn fuzz_choose_lowering(
     otherwise_val: Option<u16>,
 ) {
     // Limit branch_count to avoid OOM
-    let count = if branch_count > 128 { 128 } else { branch_count } as usize;
+    let count = usize::from(branch_count.min(128));
 
     // Empty conditions or targets would trigger RemByZero panics in the modulo.
     // Lowering empty branches is a degenerate case; skip it instead of crashing.
@@ -41,17 +41,30 @@ fn fuzz_choose_lowering(
         return;
     }
 
-    // Build branches from fuzzer data
-    let branches: Vec<SlotBranch> = (0..count)
-        .map(|i| {
-            let cond_idx = i % conditions.len();
-            let tgt_idx = i % targets.len();
-            SlotBranch {
-                condition: SlotIdx::new(conditions[cond_idx]),
-                target: StepIdx::new(targets[tgt_idx]),
-            }
-        })
-        .collect();
+    // Build branches from fuzzer data with checked indexing so the harness
+    // does not add its own panic surface while testing lower_choose.
+    let mut branches = Vec::new();
+    if branches.try_reserve(count).is_err() {
+        return;
+    }
+    for i in 0..count {
+        let Some(cond_idx) = i.checked_rem(conditions.len()) else {
+            return;
+        };
+        let Some(tgt_idx) = i.checked_rem(targets.len()) else {
+            return;
+        };
+        let Some(condition) = conditions.get(cond_idx).copied() else {
+            return;
+        };
+        let Some(target) = targets.get(tgt_idx).copied() else {
+            return;
+        };
+        branches.push(SlotBranch {
+            condition: SlotIdx::new(condition),
+            target: StepIdx::new(target),
+        });
+    }
 
     let otherwise = otherwise_val.map(StepIdx::new);
 

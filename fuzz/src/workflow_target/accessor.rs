@@ -82,7 +82,15 @@ fn build_accessors(
     let mut offset = 2usize;
     for _ in 0..accessor_count {
         let root_byte = data.get(offset).copied().unwrap_or(0);
-        let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(slot_count.max(1)));
+        // `slot_count` is constructed by `fuzz_accessor_traversal` as
+        // `u16::from(byte0.wrapping_rem(16)).saturating_add(1)`, which
+        // guarantees `slot_count >= 1`; the divisor is therefore always
+        // non-zero and `wrapping_rem` cannot panic.
+        #[allow(
+            clippy::arithmetic_side_effects,
+            reason = "wrapping_rem is intentionally side-effect-free on overflow/zero divisor; the lint's concern does not apply"
+        )]
+        let root = vb_core::SlotIdx::new(u16::from(root_byte).wrapping_rem(slot_count));
         offset = offset.saturating_add(1);
         let path_len = usize::from(data.get(offset).copied().unwrap_or(0).wrapping_rem(4));
         offset = offset.saturating_add(1);
@@ -117,7 +125,9 @@ fn build_accessors(
     accessors
 }
 
-fn object_fixture(store: &mut vb_core::ValueStore) -> Result<vb_core::ObjectId, vb_core::CoreError> {
+fn object_fixture(
+    store: &mut vb_core::ValueStore,
+) -> Result<vb_core::ObjectId, vb_core::CoreError> {
     store.insert_object(
         vec![
             vb_core::value_store::ObjectField {
@@ -143,19 +153,44 @@ fn seed_accessor_slots(
     obj_id: vb_core::ObjectId,
 ) {
     if max_slot > 0 {
-        run.write_slot_with_taint(vb_core::SlotIdx::new(0), vb_core::SlotValue::Null, vb_core::Taint::Clean).ok();
+        run.write_slot_with_taint(
+            vb_core::SlotIdx::new(0),
+            vb_core::SlotValue::Null,
+            vb_core::Taint::Clean,
+        )
+        .ok();
     }
     if slot_count > 1 {
-        run.write_slot_with_taint(vb_core::SlotIdx::new(1), vb_core::SlotValue::Bool(true), vb_core::Taint::Clean).ok();
+        run.write_slot_with_taint(
+            vb_core::SlotIdx::new(1),
+            vb_core::SlotValue::Bool(true),
+            vb_core::Taint::Clean,
+        )
+        .ok();
     }
     if slot_count > 2 {
-        run.write_slot_with_taint(vb_core::SlotIdx::new(2), vb_core::SlotValue::I64(7), vb_core::Taint::Clean).ok();
+        run.write_slot_with_taint(
+            vb_core::SlotIdx::new(2),
+            vb_core::SlotValue::I64(7),
+            vb_core::Taint::Clean,
+        )
+        .ok();
     }
     if slot_count > 3 {
-        run.write_slot_with_taint(vb_core::SlotIdx::new(3), vb_core::SlotValue::List(list_id), vb_core::Taint::Clean).ok();
+        run.write_slot_with_taint(
+            vb_core::SlotIdx::new(3),
+            vb_core::SlotValue::List(list_id),
+            vb_core::Taint::Clean,
+        )
+        .ok();
     }
     if slot_count > 4 {
-        run.write_slot_with_taint(vb_core::SlotIdx::new(4), vb_core::SlotValue::Object(obj_id), vb_core::Taint::Clean).ok();
+        run.write_slot_with_taint(
+            vb_core::SlotIdx::new(4),
+            vb_core::SlotValue::Object(obj_id),
+            vb_core::Taint::Clean,
+        )
+        .ok();
     }
 }
 

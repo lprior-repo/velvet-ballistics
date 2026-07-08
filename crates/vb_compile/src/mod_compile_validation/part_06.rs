@@ -1,13 +1,8 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
+use crate::mod_compile_errors::CompileError;
 use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
+use vb_core::StepIdx;
 
 pub(super) fn reject_unknown_trigger_fields(
     trigger: &'static str,
@@ -56,10 +51,6 @@ pub(super) fn optional_trigger_string_field(
         }),
         _ => Ok(()),
     }
-}
-
-pub(super) fn is_webhook_method(method: &str) -> bool {
-    matches!(method, "GET" | "POST" | "PUT" | "PATCH" | "DELETE")
 }
 
 pub(crate) fn required_string_field<'a>(
@@ -118,17 +109,6 @@ pub(crate) fn required_step_field<'a>(
         .ok_or(CompileError::MissingStepField { step, field })
 }
 
-pub(crate) fn optional_slot_field(
-    body: &Yaml<'_>,
-    step: usize,
-    field: &'static str,
-) -> Result<Option<SlotIdx>, CompileError> {
-    match body.as_mapping_get(field) {
-        Some(_) => required_slot(body, step, field).map(Some),
-        None => Ok(None),
-    }
-}
-
 #[allow(dead_code)]
 pub(super) fn required_next_step(
     next: Option<StepIdx>,
@@ -181,21 +161,6 @@ pub(super) fn reject_unknown_primitive_field(
             field: Box::<str>::from(field),
         })
     }
-}
-
-pub(crate) fn required_slot(
-    body: &Yaml<'_>,
-    step: usize,
-    field: &'static str,
-) -> Result<SlotIdx, CompileError> {
-    let node = required_step_field(body, step, field)?;
-    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
-        step,
-        field,
-        expected: "an integer slot index",
-    })?;
-    let value = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
-    Ok(SlotIdx::new(value))
 }
 
 pub(crate) fn required_u32_field(

@@ -15,6 +15,11 @@
 //! - All errors are typed `IpcError` variants (enforced inside
 //!   `fuzz_lib::fuzz_ipc_frame`).
 //!
+//! Every `decode_frame_header` call is matched into `Ok / Err` so that no
+//! decoder `Result` is silently discarded and no wildcard `IpcPayload` arm is
+//! reached. Decode and encode failures are routed through the typed
+//! `fuzz_lib::assert_typed_ipc_error` oracle.
+//!
 //! Corpus seeds are maintained in `fuzz/corpus/ipc_frame/`.
 
 #![no_main]
@@ -26,27 +31,38 @@ fuzz_target!(|data: &[u8]| {
     // whose version slot equals IPC_VERSION. This is the only externally
     // observable form of the "decoded header has version == IPC_VERSION"
     // invariant, since `IpcFrameHeader` does not store a version field.
-    if let Some(header_bytes) = data.get(..vb_ipc::IPC_HEADER_LEN) {
-        let mut header = [0u8; vb_ipc::IPC_HEADER_LEN];
-        header.copy_from_slice(header_bytes);
-        if let Ok(decoded) = vb_ipc::frame::decode_frame_header(&header) {
-            if let Ok(encoded) = decoded.encode() {
-                let version_bytes: [u8; 2] = encoded
-                    .as_slice()
-                    .get(4..6)
-                    .and_then(|s| <[u8; 2]>::try_from(s).ok())
-                    .unwrap_or([0u8; 2]);
-                let version = u16::from_le_bytes(version_bytes);
-                assert_eq!(
-                    version,
-                    vb_ipc::IPC_VERSION,
-                    "decoded IpcFrameHeader re-encodes with version != IPC_VERSION"
-                );
-                assert_eq!(
-                    &encoded[..],
-                    header_bytes,
-                    "re-encoded header must match original bytes"
-                );
+    //
+    // Both decoder calls are matched into `Ok / Err` so the typed oracle in
+    // `fuzz_lib` exercises every error class. The strict lint gate forbids
+    // `let _ = decode(...)` discard patterns and any wildcard `IpcPayload`
+    // arm, so we route both branches through the oracle.
+    if let Some(header_bytes) = data.first_chunk::<{ vb_ipc::IPC_HEADER_LEN }>() {
+        match vb_ipc::frame::decode_frame_header(header_bytes) {
+            Ok(decoded) => match decoded.encode() {
+                Ok(encoded) => {
+                    let version_bytes: [u8; 2] = encoded
+                        .as_slice()
+                        .get(4..6)
+                        .and_then(|s| <[u8; 2]>::try_from(s).ok())
+                        .unwrap_or([0u8; 2]);
+                    let version = u16::from_le_bytes(version_bytes);
+                    assert_eq!(
+                        version,
+                        vb_ipc::IPC_VERSION,
+                        "decoded IpcFrameHeader re-encodes with version != IPC_VERSION"
+                    );
+                    assert_eq!(
+                        encoded.as_slice(),
+                        header_bytes.as_slice(),
+                        "re-encoded header must match original bytes"
+                    );
+                }
+                Err(encode_error) => {
+                    fuzz_lib::assert_typed_ipc_error(encode_error);
+                }
+            },
+            Err(decode_error) => {
+                fuzz_lib::assert_typed_ipc_error(decode_error);
             }
         }
     }

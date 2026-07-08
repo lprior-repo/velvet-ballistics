@@ -1,0 +1,13 @@
+COMMAND: python split-log evidence package validation
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+package_mentions_117a: PASS
+package_mentions_117b: PASS
+package_omits_old_117_name: PASS
+old_unsplit_117_absent: PASS
+117a_has_command: PASS
+117a_has_cwd: PASS
+117b_has_exit_status_zero: PASS
+117a_below_jj_snapshot_cap: PASS
+117b_below_jj_snapshot_cap: PASS
+VALIDATION_PASS: split final cargo test logs indexed and below JJ snapshot cap
+EXIT_STATUS=0

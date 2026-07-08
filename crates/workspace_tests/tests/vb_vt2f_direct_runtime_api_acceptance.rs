@@ -883,7 +883,7 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
     assert_eq!(runtime.tick_all(), Ok(false));
     assert_eq!(
         runtime.submit_direct(RunId::new(9008), finished_workflow()?),
-        Ok(())
+        Err(RuntimeError::ShutdownInProgress)
     );
     assert_eq!(runtime.tick_all(), Ok(false));
     assert_eq!(runtime.counters_snapshot().runs_submitted, 1);

@@ -14,7 +14,7 @@ use vb_compile::parse_workflow_source;
 use vb_compile::{compile_source, compile_workflow};
 
 const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: repeat-digest-integration\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: repeat_digest_integration\nwhen:\n  manual: {}\nsteps:\n";
 
 fn workflow_yaml(steps: &str) -> String {
     let mut yaml = String::from(HEADER);

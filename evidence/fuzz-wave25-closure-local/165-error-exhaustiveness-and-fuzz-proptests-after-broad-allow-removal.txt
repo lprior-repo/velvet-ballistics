@@ -1,0 +1,24 @@
+COMMANDS:
+  bash scripts/check-error-exhaustiveness.sh
+  cargo test -p velvet-ballistics-fuzz --test proptest_journal_error_exhaustiveness --test proptest_ipc_error_exhaustiveness
+CWD_ROOT: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+CWD_FUZZ: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+=== Checking fuzz harness error exhaustiveness ===
+  OK JournalError in fuzz/src/journal_target/errors.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/decode_record.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/journal_decode.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/tests/proptest_journal_error_exhaustiveness.rs::assert_known_journal_error: 60 variants
+  OK IpcError in fuzz/src/ipc_target.rs::assert_typed_ipc_error: 14 variants
+  OK IpcError in fuzz/tests/proptest_ipc_error_exhaustiveness.rs::assert_known_ipc_error: 14 variants
+  OK ValidationError in fuzz/src/validation_target/verifier.rs::assert_typed_validation_error: 58 variants
+=== All error exhaustiveness checks passed ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-...)
+  ...
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-...)
+  ...
+  test result: ok. 1 passed; 0 failed; 0 failed proptest cases; finished in 0.00s
+cargo test: 3 passed (2 suites, 1.35s)
+EXIT_STATUS_ERROR_EXHAUSTIVENESS=0
+EXIT_STATUS_FUZZ_ERROR_TESTS=0

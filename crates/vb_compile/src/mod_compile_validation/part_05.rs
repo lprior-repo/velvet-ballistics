@@ -1,13 +1,8 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
+use crate::mod_compile_errors::CompileError;
 use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
 use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 pub(super) fn validate_step_ids(steps: &saphyr::Sequence<'_>) -> Result<(), CompileError> {
     let mut seen = HashSet::with_capacity(steps.len());
@@ -177,24 +172,7 @@ pub(super) fn validate_manual_trigger(node: &Yaml<'_>) -> Result<(), CompileErro
 
 pub(super) fn validate_webhook_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {
     let mapping = trigger_mapping("webhook", node)?;
-    reject_unknown_trigger_fields("webhook", mapping, &["path", "method", "unique"])?;
-    let path = required_trigger_string_field(node, "webhook", "path")?;
-    if !path.starts_with('/') {
-        return Err(CompileError::InvalidTriggerField {
-            trigger: "webhook",
-            field: "path",
-            expected: "a string starting with /",
-        });
-    }
-    let method = required_trigger_string_field(node, "webhook", "method")?;
-    if !is_webhook_method(method) {
-        return Err(CompileError::InvalidTriggerField {
-            trigger: "webhook",
-            field: "method",
-            expected: "one of GET, POST, PUT, PATCH, DELETE",
-        });
-    }
-    optional_trigger_string_field(node, "webhook", "unique")
+    reject_unknown_trigger_fields("webhook", mapping, &[])
 }
 
 pub(super) fn validate_schedule_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {

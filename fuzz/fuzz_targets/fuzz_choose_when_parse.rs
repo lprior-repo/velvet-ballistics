@@ -20,9 +20,8 @@ use libfuzzer_sys::fuzz_target;
 
 /// Build a YAML workflow with a choose step whose when strings come from fuzzer input.
 fn fuzz_choose_when(when_strings: &[String]) {
-    let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: fuzz\nwhen:\n  manual: {}\nsteps:\n",
-    );
+    let mut yaml =
+        String::from("version: velvet-ballistics/v1\nname: fuzz\nwhen:\n  manual: {}\nsteps:\n");
     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
 
     let count = when_strings.len().min(64);
@@ -68,7 +67,7 @@ fuzz_target!(|data: &[u8]| {
                 when_strings.push(std::mem::take(&mut current));
             }
         } else {
-            current.push(byte as char);
+            current.push(char::from(byte));
         }
     }
     if !current.is_empty() {

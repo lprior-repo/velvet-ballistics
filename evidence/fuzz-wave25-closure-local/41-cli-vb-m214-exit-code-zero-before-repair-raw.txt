@@ -1,0 +1,20 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/cli_vb_m214_bdd_scenarios.rs (target/debug/deps/cli_vb_m214_bdd_scenarios-ac137db190974977)
+
+running 1 test
+
+thread 'exit_code_tests::exit_code_zero_on_success' (4022250) panicked at crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs:196:9:
+assertion `left == right` failed: expected exit 0 on valid workflow
+  left: Some(2)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test exit_code_tests::exit_code_zero_on_success ... FAILED
+
+failures:
+
+failures:
+    exit_code_tests::exit_code_zero_on_success
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics --test cli_vb_m214_bdd_scenarios`

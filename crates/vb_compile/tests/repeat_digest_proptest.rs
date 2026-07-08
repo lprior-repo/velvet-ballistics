@@ -33,14 +33,14 @@ fn arb_max_attempts() -> impl Strategy<Value = u16> {
 /// Uses lowercase letter + digit prefix to guarantee no YAML 1.1 boolean
 /// collision (on/off/yes/no/true/false in any case are all rejected).
 fn arb_step_id() -> impl Strategy<Value = String> {
-    "[a-z][0-9][a-zA-Z0-9]{0,6}".prop_map(|s| s.to_string())
+    "[a-z][0-9][a-z0-9_]{0,6}".prop_map(|s| s.to_string())
 }
 
 /// Strategy for an output variable name.
 /// Uses lowercase letter + digit prefix to guarantee no YAML 1.1 boolean
 /// collision (on/off/yes/no/true/false in any case are all rejected).
 fn arb_output_name() -> impl Strategy<Value = String> {
-    "[a-z][0-9][a-zA-Z0-9]{0,6}".prop_map(|s| s.to_string())
+    "[a-z][0-9][a-z0-9_]{0,6}".prop_map(|s| s.to_string())
 }
 
 /// Strategy for a Set value (integer string).
@@ -59,7 +59,7 @@ fn repeat_workflow_yaml(
     value: &str,
 ) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: repeat-proptest\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: {body_step_id}\n          set:\n            output: {output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: repeat_proptest\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: {body_step_id}\n          set:\n            output: {output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
 }
 
@@ -72,7 +72,7 @@ fn repeat_workflow_yaml_alt(
     value: &str,
 ) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: repeat-proptest-alt\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: alt_{body_step_id}\n          set:\n            output: alt_{output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: repeat_proptest_alt\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: alt_{body_step_id}\n          set:\n            output: alt_{output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
 }
 
@@ -241,8 +241,8 @@ proptest! {
         let yaml1 = repeat_workflow_yaml(max_attempts, &id, &output, &value);
         let yaml2 = repeat_workflow_yaml_alt(max_attempts, &id, &output, &value);
 
-        let wf1 = try_compile(&yaml1).expect("compile name='repeat-proptest' should succeed");
-        let wf2 = try_compile(&yaml2).expect("compile name='repeat-proptest-alt' should succeed");
+        let wf1 = try_compile(&yaml1).expect("compile name='repeat_proptest' should succeed");
+        let wf2 = try_compile(&yaml2).expect("compile name='repeat_proptest_alt' should succeed");
 
         prop_assert_ne!(
             wf1.digest(),

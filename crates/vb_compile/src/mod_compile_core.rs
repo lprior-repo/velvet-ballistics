@@ -4,8 +4,8 @@ pub use crate::limits::YamlLimits;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_validation::{
     canonical_yaml_error, checked_utf8, reject_duplicate_mapping_keys,
-    reject_known_canonical_text_gaps, single_document, validate_strict_profile,
-    validate_workflow_document_shape,
+    reject_known_canonical_text_gaps, single_document, validate_canonical_workflow_document_shape,
+    validate_strict_profile, validate_workflow_document_shape,
 };
 use crate::{ast, control_flow, references, schema, strict_yaml, type_taint};
 use saphyr::{LoadableYamlNode, Yaml};
@@ -67,7 +67,7 @@ impl YamlCompiler {
             .map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
         let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
         validate_strict_profile(doc, YamlLimits::default()).map_err(|e| CompileErrors(vec![e]))?;
-        validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
+        validate_canonical_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
         schema::validate_input_schemas(doc)?;
         Ok(())
     }

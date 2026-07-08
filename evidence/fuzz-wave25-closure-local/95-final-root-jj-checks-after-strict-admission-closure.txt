@@ -1,0 +1,28 @@
+pwd: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+git root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+jj root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+
+Final root/JJ command:
+  pwd && git rev-parse --show-toplevel && jj root && jj status && jj diff --stat
+
+Relevant session changes added on top of prior wave25 dirty workspace:
+  M crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+  M crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs
+  M crates/vb_compile/src/mod_compile_validation/part_05.rs
+  M crates/vb_compile/src/mod_compile_validation/part_06.rs
+  M crates/workspace_tests/tests/vb_test_compile_parse_validate_behavior.rs
+  M crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs
+  M crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs
+  M fuzz/Cargo.toml
+  A evidence/fuzz-wave25-closure-local/94-strict-runtime-admission-closure-log.md
+  A evidence/fuzz-wave25-closure-local/95-final-root-jj-checks-after-strict-admission-closure.txt
+
+Fjall preservation:
+  Cargo.toml line 33 remains: fjall = { version = "=3.1.4", default-features = false, features = ["lz4"] }
+  fuzz/Cargo.lock still contains name = "fjall" and version = "3.1.4".
+
+Final full workspace gate:
+  rtk cargo test --workspace --all-features
+  PASS: cargo test: 14054 passed, 40 ignored (277 suites, 43.91s)
+
+No push, no bead close.

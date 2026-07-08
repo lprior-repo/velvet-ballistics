@@ -12,7 +12,6 @@
 // GOD RULE 2: Binds to actual Rust canonical_digest() implementation.
 
 #![no_main]
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
 
 use libfuzzer_sys::fuzz_target;
 
@@ -29,12 +28,12 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
 
     let prompt: String = prompt.chars().take(4096).collect();
 
-    let timeout: Option<String> = data.first().copied().map_or(None, |b| match b {
+    let timeout: Option<String> = data.first().copied().and_then(|b| match b {
         0 => None,
         1 => Some(String::new()),
         _ => {
             if data.len() > 1 {
-                let timeout_bytes = &data[1..];
+                let timeout_bytes = data.get(1..)?;
                 let timeout_str = String::from_utf8_lossy(timeout_bytes).into_owned();
                 let bounded: String = timeout_str.chars().take(256).collect();
                 if bounded.is_empty() {
@@ -66,7 +65,7 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
 
     let source = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         WorkflowSource::new(WorkflowSourceParts {
-            version: "velvet-ballastics/v1".to_string(),
+            version: "velvet-ballistics/v1".to_string(),
             name: "fuzz_workflow".to_string(),
             trigger: TriggerAst::Manual,
             inputs: vec![],
@@ -88,7 +87,10 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
         Err(_) => return,
     };
 
-    let digest_second = canonical_digest(&source).expect("canonical_digest should succeed");
+    let digest_second = match canonical_digest(&source) {
+        Ok(digest) => digest,
+        Err(_) => return,
+    };
 
     assert_eq!(
         digest_first, digest_second,

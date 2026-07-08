@@ -21,13 +21,10 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     // Target-level oracle: lex stage produces a bounded token stream.
-    if let Ok(text) = std::str::from_utf8(data) {
-        if let Ok(tokens) = vb_compile::lexer::lex_expr(text) {
-            assert!(
-                tokens.len() < 65536,
-                "lex_expr produced too many tokens"
-            );
-        }
+    if let Ok(text) = std::str::from_utf8(data)
+        && let Ok(tokens) = vb_compile::lexer::lex_expr(text)
+    {
+        assert!(tokens.len() < 65536, "lex_expr produced too many tokens");
     }
 
     fuzz_lib::fuzz_expression(data);

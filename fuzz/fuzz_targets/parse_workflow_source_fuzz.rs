@@ -31,7 +31,9 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|data: &[u8]| {
     // Only attempt to parse valid UTF-8; random bytes that aren't
     // UTF-8 are silently dropped (the parser operates on &str).
-    let Ok(text) = std::str::from_utf8(data) else { return; };
+    let Ok(text) = std::str::from_utf8(data) else {
+        return;
+    };
     match vb_compile::parse_workflow_source(text) {
         Ok(source) => {
             // INVARIANT: a successful parse must yield ≥1 step.

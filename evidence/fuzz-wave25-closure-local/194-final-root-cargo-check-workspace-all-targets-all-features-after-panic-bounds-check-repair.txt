@@ -1,0 +1,5 @@
+=== cargo check (root) - all targets ===
+Date: 2026-07-10T12:36:52Z
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+exit_status=0

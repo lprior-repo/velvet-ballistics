@@ -1,0 +1,36 @@
+=== cargo fuzz run fuzz_retry_record_attempt ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:35:53Z
+
+Command: cargo fuzz run fuzz_retry_record_attempt -- -runs=20000 -max_total_time=60
+
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
+     Running `target/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/fuzz_retry_record_attempt/ -runs=20000 -max_total_time=60 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_retry_record_attempt`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2373723899
+INFO: Loaded 1 modules   (6045 inline 8-bit counters): 6045 [0x5559653bb160, 0x5559653bc8fd), 
+INFO: Loaded 1 PC tables (6045 PCs): 6045 [0x5559653bc900,0x5559653d42d0), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_retry_record_attempt
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 19 ft: 20 corp: 1/1b exec/s: 0 rss: 59Mb
+#15	NEW    cov: 20 ft: 21 corp: 2/5b lim: 4 exec/s: 0 rss: 59Mb L: 4/4 MS: 3 CrossOver-CopyPart-InsertByte-
+	NEW_FUNC[1/27]: 0x5559652d7520 in core::ptr::drop_in_place::<alloc::vec::Vec<alloc::boxed::Box<[vb_core::value_store::ObjectField]>>> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:809
+	NEW_FUNC[2/27]: 0x5559652d79e0 in core::ptr::drop_in_place::<alloc::vec::Vec<alloc::boxed::Box<[vb_core::value::Taint]>>> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:809
+#442	NEW    cov: 289 ft: 291 corp: 3/13b lim: 8 exec/s: 0 rss: 59Mb L: 8/8 MS: 2 InsertByte-CopyPart-
+#452	NEW    cov: 290 ft: 292 corp: 4/21b lim: 8 exec/s: 0 rss: 59Mb L: 8/8 MS: 5 ShuffleBytes-CopyPart-InsertRepeatedBytes-CrossOver-CopyPart-
+#505	NEW    cov: 292 ft: 299 corp: 5/29b lim: 8 exec/s: 0 rss: 59Mb L: 8/8 MS: 3 ChangeBinInt-ShuffleBytes-InsertRepeatedBytes-
+#812	NEW    cov: 299 ft: 306 corp: 6/40b lim: 11 exec/s: 0 rss: 59Mb L: 11/11 MS: 2 CrossOver-InsertRepeatedBytes-
+	NEW_FUNC[1/1]: 0x5559652da980 in core::ptr::drop_in_place::<vb_runtime::error::RuntimeError> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:809
+#822	NEW    cov: 310 ft: 317 corp: 7/49b lim: 11 exec/s: 0 rss: 59Mb L: 9/11 MS: 5 ChangeByte-ShuffleBytes-CopyPart-ShuffleBytes-EraseBytes-
+#826	NEW    cov: 311 ft: 318 corp: 8/59b lim: 11 exec/s: 0 rss: 59Mb L: 10/11 MS: 4 EraseBytes-ChangeByte-InsertRepeatedBytes-InsertByte-
+#1146	NEW    cov: 320 ft: 327 corp: 9/73b lim: 14 exec/s: 0 rss: 59Mb L: 14/14 MS: 5 InsertRepeatedBytes-InsertByte-ChangeByte-ChangeBinInt-CopyPart-
+#1148	NEW    cov: 322 ft: 329 corp: 10/86b lim: 14 exec/s: 0 rss: 59Mb L: 13/14 MS: 2 EraseBytes-CopyPart-
+#1454	NEW    cov: 331 ft: 338 corp: 11/102b lim: 17 exec/s: 0 rss: 59Mb L: 16/16 MS: 1 CopyPart-
+#7228	REDUCE cov: 331 ft: 338 corp: 11/101b lim: 74 exec/s: 0 rss: 59Mb L: 12/16 MS: 4 ShuffleBytes-InsertByte-EraseBytes-CopyPart-
+#20000	DONE   cov: 331 ft: 338 corp: 11/101b lim: 198 exec/s: 0 rss: 59Mb
+Done 20000 runs in 0 second(s)
+exit_status=0

@@ -17,9 +17,18 @@ fuzz_target!(|data: &[u8]| {
     if data.len() < 3 {
         return;
     }
-    let event_num = u16::from(data[0]);
-    let timeout_a = u16::from(data[1]);
-    let timeout_b = u16::from(data[2]);
+    let Some((&event_byte, after_event)) = data.split_first() else {
+        return;
+    };
+    let Some((&timeout_a_byte, after_timeout_a)) = after_event.split_first() else {
+        return;
+    };
+    let Some((&timeout_b_byte, _tail)) = after_timeout_a.split_first() else {
+        return;
+    };
+    let event_num = u16::from(event_byte);
+    let timeout_a = u16::from(timeout_a_byte);
+    let timeout_b = u16::from(timeout_b_byte);
 
     // Only relevant when the two timeout values differ
     if timeout_a == timeout_b {
@@ -35,11 +44,15 @@ fuzz_target!(|data: &[u8]| {
 
     let parsed_a = vb_compile::parse_workflow_source(&src_a);
     let parsed_b = vb_compile::parse_workflow_source(&src_b);
-    let (Ok(source_a), Ok(source_b)) = (parsed_a, parsed_b) else { return; };
+    let (Ok(source_a), Ok(source_b)) = (parsed_a, parsed_b) else {
+        return;
+    };
 
     let compiled_a = vb_compile::compile_source(&source_a);
     let compiled_b = vb_compile::compile_source(&source_b);
-    let (Ok(wf_a), Ok(wf_b)) = (compiled_a, compiled_b) else { return; };
+    let (Ok(wf_a), Ok(wf_b)) = (compiled_a, compiled_b) else {
+        return;
+    };
 
     assert!(
         wf_a.digest() != wf_b.digest(),
@@ -55,5 +68,7 @@ fn build_workflow(event: Option<&str>, timeout: Option<&str>) -> String {
     if let Some(t) = timeout {
         wait.push_str(&format!("\n      timeout: \"{t}\""));
     }
-    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+    format!(
+        "version: velvet-ballistics/v1\nname: fuzz_wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n"
+    )
 }

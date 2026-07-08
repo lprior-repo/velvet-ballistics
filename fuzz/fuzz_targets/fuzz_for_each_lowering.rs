@@ -24,11 +24,7 @@ use vb_core::ids::{SlotIdx, StepIdx};
 /// - zero limits (degenerate case, should not panic)
 /// - arbitrary limits up to u32::MAX
 /// - arbitrary step and slot index combinations
-fn fuzz_for_each_lowering(
-    step_ids: (u16, u16, u16),
-    slot_ids: (u16, u16),
-    limit: u32,
-) {
+fn fuzz_for_each_lowering(step_ids: (u16, u16, u16), slot_ids: (u16, u16), limit: u32) {
     // Empty step/slot vectors are not possible with fixed tuples; no RemByZero
     // risk here. Only constraint is that step ids must remain distinct enough
     // that id+1 arithmetic (used elsewhere in lowering) does not collide.

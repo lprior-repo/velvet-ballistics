@@ -1413,8 +1413,9 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
 #[test]
 fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required()
 -> Result<(), String> {
-    // Given: default strict construction still wires the dummy AlwaysPresent accepted-artifact store.
+    // Given: default strict construction has no storage-backed accepted-artifact source.
     let workflow = minimal_workflow()?;
+    let expected_digest = workflow.digest();
     let run_id = RunId::new(401);
     let mut shard = Shard::new(ShardConfig {
         policy: RuntimePolicy::Strict,
@@ -1432,7 +1433,13 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
     let result = shard.tick();
 
     // Then
-    assert_eq!(result, Ok(true));
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::AdmissionArtifactNotFound { digest }) if digest == expected_digest
+        ),
+        "strict volatile shard must deny without storage-backed accepted artifact, got {result:?}"
+    );
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
@@ -1459,22 +1466,74 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
 #[test]
 fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied() {
     // Given / When
-    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
+    let admission_store_source =
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_003_stores.rs");
+    let admission_core_source =
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs");
     let shard_source = include_str!("../../../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
 
     // Then
     assert_eq!(
-        admission_source.contains("impl AcceptedArtifactStore for AlwaysPresentArtifactStore"),
+        admission_store_source
+            .contains("impl AcceptedArtifactStore for AlwaysPresentArtifactStore"),
         true
     );
     assert_eq!(
-        shard_source.contains("AlwaysPresentArtifactStore::shared()"),
+        shard_source.contains("Self::new_with_journal(config, VolatileRuntimeJournal::shared())"),
         true
     );
     assert_eq!(
-        admission_source.contains("compiled_ir_exists(digest)"),
+        shard_source.contains("MissingAcceptedArtifactStore::shared()"),
         true
     );
+    assert_eq!(
+        admission_core_source.contains("load_accepted_artifact(artifact_digest)"),
+        true
+    );
+    assert_eq!(admission_core_source.contains("compiled_ir_exists"), false);
+}
+
+#[test]
+fn given_strict_volatile_runtime_when_artifact_only_exists_then_submit_is_denied()
+-> Result<(), String> {
+    // Given
+    let workflow = minimal_workflow()?;
+    let expected_digest = workflow.digest();
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..ShardConfig::default()
+        },
+        journal.clone(),
+    );
+    let before =
+        snapshot(&shard, &journal).map_err(|error| format!("snapshot failed: {error:?}"))?;
+
+    // When
+    shard
+        .enqueue(ShardCommand::SubmitPrePersisted {
+            run: RunId::new(402),
+            workflow,
+            caps: CapabilitySet::empty(),
+        })
+        .map_err(|error| format!("enqueue failed: {error:?}"))?;
+    let result = shard.tick();
+    let after =
+        snapshot(&shard, &journal).map_err(|error| format!("snapshot failed: {error:?}"))?;
+
+    // Then
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::AdmissionArtifactNotFound { digest }) if digest == expected_digest
+        ),
+        "strict volatile runtime must deny existence-only artifact bypass, got {result:?}"
+    );
+    assert_eq!(after.active_runs, before.active_runs);
+    assert_eq!(after.journal_events, before.journal_events);
+    assert_eq!(after.command_queue_len, 0);
+    Ok(())
 }
 
 proptest! {

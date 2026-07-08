@@ -1,0 +1,4 @@
+COMMAND: python evidence package validation for latest raw logs and non-stale claims
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+VALIDATION_PASS: latest raw logs indexed; green exit statuses present; stale contradictory claims absent
+EXIT_STATUS=0

@@ -2,9 +2,9 @@
 //!
 //! For arbitrary bytes, `decode_record` must return `JournalError` variants
 //! matching the currently-defined production variants.
-//! The wildcard arm panics if any unlisted `#[non_exhaustive]` future variant is
-//! generated at runtime. Static current-variant exhaustiveness is enforced by
-//! `scripts/check-error-exhaustiveness.sh`.
+//! Static current-variant exhaustiveness is enforced by
+//! `scripts/check-error-exhaustiveness.sh`; new production variants must be
+//! listed here before the script can pass.
 
 use proptest::prelude::*;
 use vb_storage::JournalError;
@@ -21,7 +21,7 @@ proptest! {
             1024,
         );
         if let Err(error) = result {
-            assert_known_journal_error(error);
+            assert_known_journal_error(error)?;
         }
 
         // Test with wrong magic
@@ -31,7 +31,7 @@ proptest! {
             1024,
         );
         if let Err(error) = result {
-            assert_known_journal_error(error);
+            assert_known_journal_error(error)?;
         }
 
         // Test with zero magic
@@ -41,7 +41,7 @@ proptest! {
             1024,
         );
         if let Err(error) = result {
-            assert_known_journal_error(error);
+            assert_known_journal_error(error)?;
         }
 
         // Test with max magic
@@ -51,43 +51,52 @@ proptest! {
             1024,
         );
         if let Err(error) = result {
-            assert_known_journal_error(error);
+            assert_known_journal_error(error)?;
         }
     }
 }
 
 /// Asserts that a journal error is a known current typed variant.
 ///
-/// Panics if an unlisted `#[non_exhaustive]` future variant is generated at
-/// runtime. The CI exhaustiveness script enforces that every current production
-/// variant appears in this oracle body.
-fn assert_known_journal_error(error: JournalError) {
+/// The CI exhaustiveness script enforces that every current production variant
+/// appears in this oracle body.
+fn assert_known_journal_error(error: JournalError) -> Result<(), TestCaseError> {
     match error {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
+        | JournalError::PostcardEncodeFailed(_)
         | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
+        | JournalError::RecordKindPayloadMismatch { .. }
         | JournalError::UnknownRecordKind { .. }
         | JournalError::UnsupportedSchemaVersion { .. }
         | JournalError::HeaderLengthMismatch { .. }
         | JournalError::SequenceOverflow
         | JournalError::WrongRun { .. }
         | JournalError::SequenceGap { .. }
+        | JournalError::ReplayKeyMismatch { .. }
+        | JournalError::ReplayEnvelopeSequenceMismatch { .. }
         | JournalError::Fjall(_)
         | JournalError::Encode(_)
         | JournalError::KeyCapacity
         | JournalError::DuplicateEvent { .. }
+        | JournalError::DuplicateStagedKey { .. }
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
         | JournalError::JournalBatchBytesExceeded { .. }
+        | JournalError::BatchAborted
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
+        | JournalError::MalformedKeyspaceRow { .. }
         | JournalError::ArtifactMalformed
+        | JournalError::WorkflowReconstruction(_)
+        | JournalError::CompiledIrReadback(_)
+        | JournalError::AdmissionAllocationFailed(_)
         | JournalError::ArtifactChecksumMismatch
         | JournalError::InvalidGateCount { .. }
         | JournalError::MissingRequiredProofFlag { .. }
@@ -103,18 +112,15 @@ fn assert_known_journal_error(error: JournalError) {
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
+        | JournalError::IndexStatusStateCollision { .. }
         | JournalError::StrictDurabilityFailed
         | JournalError::TooManyEvents { .. }
         | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
+        | JournalError::InvalidConfig { .. }
+        | JournalError::UnsupportedReadOnly
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
-        | JournalError::Trim(_) => {}
-        _ => {
-            panic!(
-                "Unknown JournalError variant: {:?}. Update assert_known_journal_error.",
-                error
-            );
-        }
+        | JournalError::Trim(_) => Ok(()),
     }
 }

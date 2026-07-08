@@ -1,0 +1,12 @@
+=== Search for proptests / unit tests calling build_run_state or retry_policy_from_bytes ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:15Z
+
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs:30:    let policy = retry_policy_from_bytes(data);
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs:32:    let mut state = match build_run_state(data) {
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs:59:fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs:112:fn retry_policy_from_bytes(data: &[u8]) -> vb_runtime::engine::RetryPolicy {
+fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs:28:    let state = match build_run_state(data) {
+fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs:56:fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+fuzz/fuzz_targets/fuzz_retry_validate_completion.rs:26:    let state = match build_run_state(data) {
+fuzz/fuzz_targets/fuzz_retry_validate_completion.rs:53:fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {

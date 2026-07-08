@@ -1,0 +1,3 @@
+compilation failed:
+  compile error: name is not a valid Velvet v1 name: test-workflow
+

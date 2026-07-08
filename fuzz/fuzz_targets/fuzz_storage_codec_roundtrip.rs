@@ -14,6 +14,7 @@
 //! Run with: cargo fuzz run fuzz_storage_codec_roundtrip -- -max_len=4096 -runs=100000
 
 use libfuzzer_sys::fuzz_target;
+use vb_storage::JournalError;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 4 {
@@ -24,67 +25,78 @@ fuzz_target!(|data: &[u8]| {
     let magic = vb_storage::MAGIC_JOURNAL_EVENT;
 
     // Probe decode with every known magic — must not panic for any input.
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload);
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    observe_decode(vb_storage::decode_journal_event(data, magic, max_payload));
+    observe_decode(vb_storage::decode_journal_event(
         data,
         vb_storage::MAGIC_BLOB,
         vb_storage::MAX_BLOB_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode(vb_storage::decode_journal_event(
         data,
         vb_storage::MAGIC_COMPILED_ARTIFACT,
         vb_storage::MAX_COMPILED_IR_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode(vb_storage::decode_journal_event(
         data,
         vb_storage::MAGIC_SNAPSHOT,
         vb_storage::MAX_SNAPSHOT_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode(vb_storage::decode_journal_event(
         data,
         vb_storage::MAGIC_WORKFLOW_SOURCE,
         vb_storage::MAX_WORKFLOW_SOURCE_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode(vb_storage::decode_journal_event(
         data,
         vb_storage::MAGIC_INDEX_RECORD,
         vb_storage::MAX_RUN_HEADER_BYTES,
-    );
+    ));
 
-    let Ok((envelope, event)) =
-        vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload)
-    else {
+    let Ok((envelope, event)) = vb_storage::decode_journal_event(data, magic, max_payload) else {
         return;
     };
-    if !event.is_valid() {
-        return;
-    }
 
-    let Ok(first_encoded) = vb_storage::encode_record(
+    let first_encoded_result = vb_storage::encode_record(
         magic,
         event.record_kind(),
         event.seq().get(),
         &event,
         max_payload,
-    ) else {
+    );
+    assert!(
+        first_encoded_result.is_ok(),
+        "valid decoded journal event must encode: {:?}",
+        first_encoded_result.as_ref().err()
+    );
+    let Ok(first_encoded) = first_encoded_result else {
         return;
     };
 
     // Round-trip: decode the freshly encoded bytes and re-encode them. The two
     // encodes must produce identical bytes.
-    let Ok((redecoded_envelope, redecoded_event)) =
-        vb_storage::decode_record::<vb_storage::JournalEvent>(&first_encoded, magic, max_payload)
-    else {
+    let redecoded_result = vb_storage::decode_journal_event(&first_encoded, magic, max_payload);
+    assert!(
+        redecoded_result.is_ok(),
+        "freshly encoded journal event must decode: {:?}",
+        redecoded_result.as_ref().err()
+    );
+    let Ok((redecoded_envelope, redecoded_event)) = redecoded_result else {
         return;
     };
 
-    let Ok(second_encoded) = vb_storage::encode_record(
+    let second_encoded_result = vb_storage::encode_record(
         magic,
         redecoded_event.record_kind(),
         redecoded_event.seq().get(),
         &redecoded_event,
         max_payload,
-    ) else {
+    );
+    assert!(
+        second_encoded_result.is_ok(),
+        "redecoded journal event must encode: {:?}",
+        second_encoded_result.as_ref().err()
+    );
+    let Ok(second_encoded) = second_encoded_result else {
         return;
     };
 
@@ -105,19 +117,80 @@ fuzz_target!(|data: &[u8]| {
         "envelope schema_version lost across round-trip"
     );
 
-    // Error path probes: bad magic + oversized max_payload must reject, not panic.
-    let _ = vb_storage::encode_record(
+    // Error path probes: bad magic + zero max_payload must reject, not panic.
+    assert_family_mismatch(
+        vb_storage::encode_record(
+            0xFFFF_FFFFu32,
+            event.record_kind(),
+            event.seq().get(),
+            &event,
+            max_payload,
+        ),
         0xFFFF_FFFFu32,
-        event.record_kind(),
-        event.seq().get(),
-        &event,
-        max_payload,
+        event.record_kind().id(),
     );
-    let _ = vb_storage::encode_record(
-        magic,
-        event.record_kind(),
-        event.seq().get(),
-        &event,
-        u32::MAX,
+    assert_payload_too_large(
+        vb_storage::encode_record(magic, event.record_kind(), event.seq().get(), &event, 0),
+        0,
     );
 });
+
+fn observe_decode(
+    result: Result<(vb_storage::RecordEnvelope, vb_storage::JournalEvent), JournalError>,
+) {
+    match result {
+        Ok((_envelope, event)) => {
+            assert!(
+                event.is_valid(),
+                "successful decode must produce a valid event"
+            );
+        }
+        Err(error) => assert_roundtrip_decode_error(error),
+    }
+}
+
+fn assert_roundtrip_decode_error(error: JournalError) {
+    assert!(
+        matches!(
+            error,
+            JournalError::UnexpectedEof
+                | JournalError::HeaderChecksumMismatch
+                | JournalError::PayloadDigestMismatch
+                | JournalError::PostcardDecodeFailed(_)
+                | JournalError::InvalidEvent
+                | JournalError::BadMagic { .. }
+                | JournalError::PayloadTooLarge { .. }
+                | JournalError::RecordKindFamilyMismatch { .. }
+                | JournalError::UnknownRecordKind { .. }
+                | JournalError::UnsupportedSchemaVersion { .. }
+                | JournalError::MigrationRequired { .. }
+                | JournalError::HeaderLengthMismatch { .. }
+                | JournalError::RecordKindPayloadMismatch { .. }
+                | JournalError::ReplayEnvelopeSequenceMismatch { .. }
+        ),
+        "journal event decode must fail with a typed storage codec error"
+    );
+}
+
+fn assert_family_mismatch(result: Result<Vec<u8>, JournalError>, magic: u32, kind: u16) {
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::RecordKindFamilyMismatch {
+                magic: actual_magic,
+                kind: actual_kind,
+            }) if actual_magic == magic && actual_kind == kind
+        ),
+        "bad magic must return JournalError::RecordKindFamilyMismatch"
+    );
+}
+
+fn assert_payload_too_large(result: Result<Vec<u8>, JournalError>, max: u32) {
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::PayloadTooLarge { len, max: actual_max }) if len > actual_max && actual_max == max
+        ),
+        "zero max payload must return JournalError::PayloadTooLarge"
+    );
+}

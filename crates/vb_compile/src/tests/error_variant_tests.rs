@@ -972,7 +972,7 @@ steps:
 #[test]
 fn test_empty_branch_steps_produces_deterministic_digest() {
     let yaml = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: det-branch-test
 when:
   manual: {}
@@ -1012,7 +1012,7 @@ steps:
 
     // Also verify: changing one branch's set-value changes the digest
     let yaml_modified = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: det-branch-test
 when:
   manual: {}
@@ -1066,7 +1066,7 @@ steps:
 fn test_nested_together_produces_distinct_recursive_digest() {
     // Baseline: outer together with two branches, each with one set step
     let yaml_base = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: nested-together
 when:
   manual: {}
@@ -1097,7 +1097,7 @@ steps:
 
     // Variant: same outer structure but different set-step output names
     let yaml_variant = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: nested-together
 when:
   manual: {}
@@ -1142,7 +1142,7 @@ steps:
 
     // Structural change: same labels but different branch order
     let yaml_reordered = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: nested-together
 when:
   manual: {}
@@ -1189,7 +1189,7 @@ steps:
 #[test]
 fn test_canonical_digest_is_idempotent_with_together() {
     let yaml = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: idempotent-test
 when:
   manual: {}
@@ -1245,7 +1245,7 @@ steps:
 fn test_different_together_configurations_produce_different_digests() {
     // (a) Different branch counts
     let yaml_2_branch = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1270,7 +1270,7 @@ steps:
       result: 0
 ";
     let yaml_3_branch = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1314,7 +1314,7 @@ steps:
 
     // (b) Different branch labels
     let yaml_label_a = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1339,7 +1339,7 @@ steps:
       result: 0
 ";
     let yaml_label_b = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1377,7 +1377,7 @@ steps:
 
     // (c) Different sub-step IDs
     let yaml_id_a = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1402,7 +1402,7 @@ steps:
       result: 0
 ";
     let yaml_id_b = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: config-test
 when:
   manual: {}
@@ -1458,7 +1458,7 @@ steps:
 fn test_canonical_primitive_name_together_returns_together() {
     // Construct a StepPrimitive::Together via YAML parsing
     let yaml = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: name-test
 when:
   manual: {}
@@ -1677,7 +1677,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
 #[test]
 fn test_single_branch_together_produces_deterministic_digest() {
     let yaml = "\
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: single-branch-together
 when:
   manual: {}
@@ -1731,7 +1731,7 @@ steps:
 fn test_many_branch_together_produces_deterministic_digest() {
     // Build YAML with 10 branches programmatically
     let mut yaml = String::from(
-        "version: velvet-ballastics/v1\nname: many-branch-test\nwhen:\n  manual: {}\nsteps:\n  - id: fanout\n    together:\n      branches:\n",
+        "version: velvet-ballistics/v1\nname: many-branch-test\nwhen:\n  manual: {}\nsteps:\n  - id: fanout\n    together:\n      branches:\n",
     );
     for i in 0..10 {
         yaml.push_str(&format!(

@@ -1,14 +1,16 @@
 //! Expression compilation and evaluation fuzzing targets.
-#![allow(clippy::indexing_slicing)]
+//
+// The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+// `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+// `#![allow(...)]` lines that previously suppressed those lints have been
+// removed so the strict gate is enforceable. The remaining allows are
+// documentary lints the strict command does not deny.
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::let_underscore_must_use)]
-#![allow(clippy::as_conversions)]
-#![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::len_zero)]
 
 const FUZZ_MAX_EXPR_OPS: usize = 64;
@@ -192,7 +194,10 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
         let Some(taint_index) = usize::from(taint_byte).checked_rem(TAINT_LEVELS_LEN) else {
             continue;
         };
-        let taint = TAINT_LEVELS[taint_index];
+        let taint = TAINT_LEVELS
+            .get(taint_index)
+            .copied()
+            .unwrap_or(vb_core::Taint::Clean);
         max_input_taint = vb_core::join_taint(max_input_taint, taint);
         let slot_idx = vb_core::SlotIdx::new(u16::try_from(i).unwrap_or(0));
         let value = vb_core::SlotValue::I64(i64::try_from(i).unwrap_or(0));
@@ -254,15 +259,14 @@ pub fn fuzz_expr_eval(data: &[u8]) {
             if workflow.expression(expr_idx).is_none() {
                 break;
             }
-            match vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx) {
-                Ok((slot_val, _taint)) => {
-                    eval_count += 1;
-                    assert!(
-                        !matches!(slot_val, vb_core::SlotValue::Null),
-                        "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
-                    );
-                }
-                Err(_) => {}
+            if let Ok((slot_val, _taint)) =
+                vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx)
+            {
+                eval_count = eval_count.saturating_add(1);
+                assert!(
+                    !matches!(slot_val, vb_core::SlotValue::Null),
+                    "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
+                );
             }
             i = i.saturating_add(1);
             if i == 0 {

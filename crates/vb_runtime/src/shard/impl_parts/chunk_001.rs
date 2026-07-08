@@ -3,11 +3,7 @@ use crate::shard::types::RuntimeState;
 impl Shard {
     /// Creates a new shard with the given configuration.
     pub fn new(config: ShardConfig) -> Self {
-        Self::new_with_journal_and_artifact_store(
-            config,
-            VolatileRuntimeJournal::shared(),
-            crate::admission::AlwaysPresentArtifactStore::shared(),
-        )
+        Self::new_with_journal(config, VolatileRuntimeJournal::shared())
     }
 
     /// Creates a new shard with the given configuration, journal sink, and artifact store.

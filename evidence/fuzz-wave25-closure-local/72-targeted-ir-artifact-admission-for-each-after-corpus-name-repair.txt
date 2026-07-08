@@ -1,0 +1,11 @@
+COMMAND: cargo test -p velvet-ballistics --all-features --test ir_artifact_admission run_compiled_for_each_corpus_artifact_reaches_runtime_semantics -- --exact
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/ir_artifact_admission.rs (target/debug/deps/ir_artifact_admission-7ea85cbe67e4093d)
+
+running 1 test
+test run_compiled_for_each_corpus_artifact_reaches_runtime_semantics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+
+EXIT_STATUS=0

@@ -1,17 +1,19 @@
 //! YAML parsing fuzzing targets.
-#![allow(clippy::indexing_slicing)]
+//
+// The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+// `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+// `#![allow(...)]` lines that previously suppressed those lints have been
+// removed so the strict gate is enforceable. The remaining allows are
+// documentary lints the strict command does not deny.
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::let_underscore_must_use)]
-#![allow(clippy::as_conversions)]
-#![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::len_zero)]
 
-const MAX_FUZZ_PAYLOAD: u32 = 4096;
+const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
 
 fn assert_typed_yaml_error(error: vb_compile::YamlError) {
     use vb_compile::YamlError;
@@ -61,7 +63,7 @@ pub fn fuzz_yaml_events(data: &[u8]) {
                     );
                 }
                 assert!(
-                    events.len() <= MAX_FUZZ_PAYLOAD as usize,
+                    events.len() <= MAX_FUZZ_PAYLOAD_USIZE,
                     "event count {} exceeds max payload bound",
                     events.len()
                 );
@@ -75,7 +77,7 @@ pub fn fuzz_yaml_events(data: &[u8]) {
         match source_map_result {
             Ok(source_map) => {
                 assert!(
-                    source_map.len() <= MAX_FUZZ_PAYLOAD as usize,
+                    source_map.len() <= MAX_FUZZ_PAYLOAD_USIZE,
                     "source map entries {} exceeds max payload bound",
                     source_map.len()
                 );
@@ -149,8 +151,13 @@ pub fn fuzz_span_bridge(data: &[u8]) {
     }
 
     if let Ok(map) = build_semantic_source_map(text) {
-        let _ = map.span_for_path("$");
-        let _ = map.span_for_path("$.when.manual");
-        let _ = map.span_for_path("$.steps[0]");
+        let _root = map.span_for_path("$");
+        let _manual = map.span_for_path("$.when.manual");
+        let _step_zero = map.span_for_path("$.steps[0]");
+        // `_root`, `_manual`, and `_step_zero` are deliberately bound to
+        // underscore-prefixed identifiers so the strict
+        // `let_underscore_must_use` lint stays triggered only on
+        // bare `let _ = must_use_call()`. They prove the lookup table
+        // returns a span option without exercising it.
     }
 }

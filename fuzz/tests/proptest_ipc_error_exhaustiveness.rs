@@ -24,15 +24,15 @@ proptest! {
         match vb_ipc::IpcFrameHeader::decode(&header_bytes, max_payload) {
             Ok(header) => match vb_ipc::frame::decode_frame_payload(&header, &payload) {
                 Ok(_payload) => {}
-                Err(error) => assert_known_ipc_error(error),
+                Err(error) => assert_known_ipc_error(error)?,
             },
-            Err(error) => assert_known_ipc_error(error),
+            Err(error) => assert_known_ipc_error(error)?,
         }
 
         // Test simple header decode
         match vb_ipc::frame::decode_frame_header(&header_bytes) {
             Ok(_header) => {}
-            Err(error) => assert_known_ipc_error(error),
+            Err(error) => assert_known_ipc_error(error)?,
         }
     }
 
@@ -41,14 +41,14 @@ proptest! {
     fn proptest_validate_frame_magic_typed(data in prop::collection::vec(any::<u8>(), 0..64)) {
         match vb_ipc::frame::validate_frame_magic(&data) {
             Ok(_) => {}
-            Err(error) => assert_known_ipc_error(error),
+            Err(error) => assert_known_ipc_error(error)?,
         }
     }
 }
 
 /// Asserts that an IPC error is a known typed variant.
-/// Panics if an unknown variant is encountered.
-fn assert_known_ipc_error(error: IpcError) {
+/// Fails if an unknown variant is encountered.
+fn assert_known_ipc_error(error: IpcError) -> Result<(), TestCaseError> {
     match error {
         IpcError::Full
         | IpcError::Disconnected
@@ -63,12 +63,10 @@ fn assert_known_ipc_error(error: IpcError) {
         | IpcError::PayloadLengthOutOfRange { .. }
         | IpcError::PayloadEncodeFailed
         | IpcError::PayloadDecodeFailed
-        | IpcError::ResponseDecodeFailed => {}
-        _ => {
-            panic!(
-                "Unknown IpcError variant: {:?}. Update assert_known_ipc_error.",
-                error
-            );
-        }
+        | IpcError::ResponseDecodeFailed => Ok(()),
+        _ => Err(TestCaseError::fail(format!(
+            "Unknown IpcError variant: {:?}. Update assert_known_ipc_error.",
+            error
+        ))),
     }
 }

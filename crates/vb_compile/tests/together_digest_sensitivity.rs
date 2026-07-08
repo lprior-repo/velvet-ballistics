@@ -38,7 +38,7 @@ use vb_core::WorkflowDigest;
 /// the proven pattern from v1_primitive_lowering tests.
 fn together_workflow_yaml(branches_yaml: &str) -> String {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: together-test\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: together_test\nwhen:\n  manual: {}\nsteps:\n",
     );
     yaml.push_str(branches_yaml);
     yaml.push_str("  - id: done\n    finish:\n      result: 0\n");

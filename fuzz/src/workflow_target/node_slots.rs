@@ -21,7 +21,10 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
         CompiledNodeKind::Choose { otherwise, .. } => {
             let _ = otherwise;
         }
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
             for branch in branches.iter() {
                 assert_slot(branch.condition, slot_count, node_idx);
             }
@@ -96,11 +99,13 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
         CompiledNodeKind::RetryCheck { policy_slot, .. } => {
             assert_slot(*policy_slot, slot_count, node_idx);
         }
-        CompiledNodeKind::ErrorHandler { error_slot, .. } => {
-            if let Some(slot) = error_slot {
-                assert_slot(*slot, slot_count, node_idx);
-            }
-        }
+        CompiledNodeKind::ErrorHandler {
+            error_slot: Some(slot),
+            ..
+        } => assert_slot(*slot, slot_count, node_idx),
+        CompiledNodeKind::ErrorHandler {
+            error_slot: None, ..
+        } => {}
         CompiledNodeKind::Finish { result } => assert_slot(*result, slot_count, node_idx),
         _ => {}
     }

@@ -1,0 +1,542 @@
++ pwd
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++ git rev-parse --show-toplevel
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++ jj root
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++ jj status
+Working copy changes:
+M .gitignore
+M crates/vb_cli/src/naming_scan/classify.rs
+M crates/vb_cli/src/naming_scan/legacy.rs
+M crates/vb_cli/src/naming_scan/types.rs
+M crates/vb_cli/tests/cli_integration.rs
+M crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs
+M crates/vb_cli/tests/vb_qi37_14_1_run_step.rs
+M crates/vb_compile/src/kani_digest_ask_empty_prompt.rs
+M crates/vb_compile/src/kani_digest_ask_field_ordering.rs
+M crates/vb_compile/src/kani_digest_ask_prompt_sensitivity.rs
+M crates/vb_compile/src/kani_digest_ask_timeout_sensitivity.rs
+M crates/vb_compile/src/kani_digest_ask_timeout_sentinel.rs
+M crates/vb_compile/src/kani_digest_step_primitive_no_panic.rs
+M crates/vb_compile/src/kani_resource_contract_cross_field_collision.rs
+M crates/vb_compile/src/kani_resource_contract_digest_determinism.rs
+M crates/vb_compile/src/kani_resource_contract_digest_field_sensitivity.rs
+M crates/vb_compile/src/kani_resource_contract_dual_path_equivalence.rs
+M crates/vb_compile/src/kani_resource_contract_entry_point.rs
+M crates/vb_compile/src/kani_resource_contract_migration_digest.rs
+M crates/vb_compile/src/mod_compile_core.rs
+M crates/vb_compile/src/mod_compile_validation/part_03.rs
+M crates/vb_compile/src/mod_compile_validation/part_04.rs
+M crates/vb_compile/src/mod_compile_validation/part_05.rs
+M crates/vb_compile/src/mod_compile_validation/part_06.rs
+A crates/vb_compile/src/mod_compile_validation/part_08.rs
+M crates/vb_compile/src/mod_compile_validation.rs
+M crates/vb_compile/src/tests/error_variant_tests.rs
+M crates/vb_compile/src/tests/foreach_digest_tests.rs
+M crates/vb_compile/tests/digest_compilation_pipeline.rs
+M crates/vb_compile/tests/digest_yaml_e2e.rs
+M crates/vb_compile/tests/repeat_digest_integration.rs
+M crates/vb_compile/tests/repeat_digest_proptest.rs
+M crates/vb_compile/tests/together_digest_sensitivity.rs
+M crates/vb_compile/tests/v1_primitive_lowering.rs
+M crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs
+M crates/vb_compile/tests/vb_a001_for_each_topology.rs
+M crates/vb_compile/tests/vb_xi2f_compile_source_proptest.rs
+M crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs
+M crates/vb_core/tests/aggregate_resource_budget_kani_red.rs
+M crates/vb_core/tests/aggregate_resource_budget_red.rs
+M crates/vb_core/tests/aggregate_resource_budget_snapshot_red.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+M crates/vb_runtime/tests/recovery_hydration_tests.rs
+M crates/workspace_tests/tests/integration_validate_yaml_parsing.rs
+M crates/workspace_tests/tests/journal_side_index_contracts.rs
+M crates/workspace_tests/tests/restate_typed_partitioned_id_tests.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_01.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_02.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_02.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs
+M crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_05.rs
+M crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs
+M crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs
+M crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs
+A evidence/fuzz-wave25-closure-local/00-root-checks.txt
+A evidence/fuzz-wave25-closure-local/01-env-disk-targets.txt
+A evidence/fuzz-wave25-closure-local/02-root-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/03-fuzz-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/04-root-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/05-fuzz-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/06-root-cargo-clippy-strict.txt
+A evidence/fuzz-wave25-closure-local/07-fuzz-cargo-clippy-strict-all-targets.txt
+A evidence/fuzz-wave25-closure-local/08-fuzz-cargo-clippy-warnings-all-targets.txt
+A evidence/fuzz-wave25-closure-local/09-cargo-fuzz-build-all-targets.txt
+A evidence/fuzz-wave25-closure-local/10-key-targets-libfuzzer-asan-smoke.txt
+A evidence/fuzz-wave25-closure-local/100-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun4.txt
+A evidence/fuzz-wave25-closure-local/101-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun5.txt
+A evidence/fuzz-wave25-closure-local/102-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun6.txt
+A evidence/fuzz-wave25-closure-local/103-root-jj-checks-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/104-root-cargo-fmt-check-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/105-fuzz-cargo-fmt-check-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/106-root-cargo-metadata-locked-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/107-fuzz-cargo-metadata-locked-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/108-root-cargo-check-workspace-all-targets-all-features-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/109-fuzz-cargo-check-all-targets-all-features-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/11-replay-events-timeout-artifact-repro-timeout60.txt
+A evidence/fuzz-wave25-closure-local/110-root-cargo-clippy-source-strict-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/111-cargo-fuzz-build-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/112-stale-version-scan-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/113-fjall-and-fuzz-lock-preservation-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/114-final-cargo-test-workspace-all-features-raw-after-black-hat-fuzz-repair.txt
+A evidence/fuzz-wave25-closure-local/115-final-cargo-test-workspace-all-features-raw-after-naming-scan-repair.txt
+A evidence/fuzz-wave25-closure-local/116-cargo-test-canonical-spelling-red-after-language-version-repair.txt
+A evidence/fuzz-wave25-closure-local/117a-final-cargo-test-workspace-all-features-raw-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/117b-final-cargo-test-workspace-all-features-raw-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/118-root-cargo-fmt-check-final-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/119-root-cargo-check-workspace-all-targets-all-features-final-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/12-replay-events-libfuzzer-asan-smoke-timeout60.txt
+A evidence/fuzz-wave25-closure-local/120-root-cargo-clippy-source-strict-final-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/121-stale-version-scan-final-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/122-evidence-validation-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/123-final-root-jj-checks-and-diff-summary-after-black-hat-repairs.txt
+A evidence/fuzz-wave25-closure-local/124-evidence-validation-after-split-log-repair.txt
+A evidence/fuzz-wave25-closure-local/125-final-jj-snapshot-warning-closure-summary.txt
+A evidence/fuzz-wave25-closure-local/126-root-jj-checks-after-latest-black-hat-blockers.txt
+A evidence/fuzz-wave25-closure-local/13-key-targets-libfuzzer-asan-passing-smoke.txt
+A evidence/fuzz-wave25-closure-local/14-fjall-and-fuzz-lock-preservation.txt
+A evidence/fuzz-wave25-closure-local/15-root-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/16-fuzz-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/17-evidence-tracking-check.txt
+A evidence/fuzz-wave25-closure-local/18-final-status-and-jj-diff.txt
+A evidence/fuzz-wave25-closure-local/19-root-cargo-test-no-run-all-features.txt
+A evidence/fuzz-wave25-closure-local/20-root-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/21-fuzz-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/22-choose-body-repair-log.md
+A evidence/fuzz-wave25-closure-local/23-aggregate-resource-budget-red-before-repair.txt
+A evidence/fuzz-wave25-closure-local/24-aggregate-resource-budget-red-after-test-scope-repair.txt
+A evidence/fuzz-wave25-closure-local/25-cargo-test-vb-core-all-features-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/26-aggregate-resource-budget-snapshot-after-repair.txt
+A evidence/fuzz-wave25-closure-local/27-cargo-test-vb-core-all-features-after-snapshot-repair.txt
+A evidence/fuzz-wave25-closure-local/28-cargo-fmt-check-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/29-cargo-check-vb-core-all-targets-all-features-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/30-cargo-clippy-vb-core-lib-strict-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/31-cargo-test-workspace-all-features-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/32-cli-vb-m214-exit-code-zero-residual-diagnostic.txt
+A evidence/fuzz-wave25-closure-local/33-root-jj-status-and-diff-summary-after-aggregate-repair.txt
+A evidence/fuzz-wave25-closure-local/34-final-root-jj-status-and-diff-summary.txt
+A evidence/fuzz-wave25-closure-local/35-final-final-root-jj-status-and-diff-summary.txt
+A evidence/fuzz-wave25-closure-local/36-cli-vb-m214-exit-code-zero-before-repair.txt
+A evidence/fuzz-wave25-closure-local/37-cli-vb-m214-exit-code-zero-before-repair-raw.txt
+A evidence/fuzz-wave25-closure-local/38-cli-vb-m214-exit-code-zero-before-repair-direct.txt
+A evidence/fuzz-wave25-closure-local/39-cli-vb-m214-exit-code-zero-before-repair-command-cargo.txt
+A evidence/fuzz-wave25-closure-local/40-cli-vb-m214-exit-code-zero-before-repair-command-cargo.txt
+A evidence/fuzz-wave25-closure-local/41-cli-vb-m214-exit-code-zero-before-repair-raw.txt
+A evidence/fuzz-wave25-closure-local/42-cli-validate-minimal-workflow-manual-before-repair.txt
+A evidence/fuzz-wave25-closure-local/43-cli-validate-underscore-workflow-manual-before-test-repair.txt
+A evidence/fuzz-wave25-closure-local/44-cli-vb-m214-exit-code-zero-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/45-cli-vb-m214-explain-valid-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/46-cli-vb-m214-graph-valid-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/47-cli-vb-m214-action-policy-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/48-cargo-test-vb-cli-m214-bdd-all-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/49-cli-integration-valid-minimal-after-name-repair.txt
+A evidence/fuzz-wave25-closure-local/50-cargo-test-workspace-all-features-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/51-vb-runtime-recovery-hydration-checkpoint-targeted-after-workspace-fail.txt
+A evidence/fuzz-wave25-closure-local/52-cargo-fmt-check-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/53-cargo-check-vb-cli-all-targets-all-features-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/54-cargo-clippy-vb-cli-source-strict-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/55-cli-vb-m214-name-repair-log.md
+A evidence/fuzz-wave25-closure-local/56-final-root-jj-status-and-diff-summary-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/57-final-root-jj-status-and-diff-summary-after-cli-name-repair-plain-git.txt
+A evidence/fuzz-wave25-closure-local/58-final-root-jj-checks-and-diff-summary-after-cli-name-repair.txt
+A evidence/fuzz-wave25-closure-local/59-final-root-jj-checks-and-diff-summary-after-evidence-package-update.txt
+A evidence/fuzz-wave25-closure-local/60-root-jj-checks-after-recovery-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/61-recovery-hydration-parallel-repeat-after-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/62-cargo-test-vb-runtime-recovery-hydration-all-features-after-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/63-cargo-fmt-check-after-recovery-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/64-cargo-check-vb-runtime-all-targets-all-features-after-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/65-cargo-clippy-vb-runtime-source-strict-after-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/66-cargo-clippy-vb-runtime-recovery-hydration-test-warnings-after-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/67-cargo-test-workspace-all-features-after-recovery-lock-repair.txt
+A evidence/fuzz-wave25-closure-local/68-final-root-jj-checks-and-diff-summary-after-recovery-lock-evidence.txt
+A evidence/fuzz-wave25-closure-local/69-final-root-jj-checks-after-indexing-69.txt
+A evidence/fuzz-wave25-closure-local/70-root-jj-checks-after-corpus-version-repair.txt
+A evidence/fuzz-wave25-closure-local/71-targeted-ir-artifact-admission-for-each-after-corpus-version-repair.txt
+A evidence/fuzz-wave25-closure-local/72-targeted-ir-artifact-admission-for-each-after-corpus-name-repair.txt
+A evidence/fuzz-wave25-closure-local/73-cargo-test-velvet-ballistics-all-features-after-corpus-version-name-repair.txt
+A evidence/fuzz-wave25-closure-local/74-cargo-test-vb-cli-run-step-after-fixture-name-repair.txt
+A evidence/fuzz-wave25-closure-local/75-cargo-test-velvet-ballistics-all-features-after-cli-fixture-repair.txt
+A evidence/fuzz-wave25-closure-local/76-cargo-test-workspace-all-features-after-corpus-version-name-repair.txt
+A evidence/fuzz-wave25-closure-local/77-cargo-test-workspace-yaml-parsing-after-version-expectation-repair.txt
+A evidence/fuzz-wave25-closure-local/78-cargo-test-workspace-all-features-after-version-expectation-repair.txt
+A evidence/fuzz-wave25-closure-local/79-cargo-test-workspace-typed-partitioned-id-after-runid-zero-expectation-repair.txt
+A evidence/fuzz-wave25-closure-local/80a-cargo-test-workspace-all-features-after-runid-zero-expectation-repair.txt
+A evidence/fuzz-wave25-closure-local/80b-cargo-test-workspace-all-features-after-runid-zero-expectation-repair.txt
+A evidence/fuzz-wave25-closure-local/81-cargo-fmt-check-after-corpus-and-test-repairs.txt
+A evidence/fuzz-wave25-closure-local/82-cargo-check-workspace-all-targets-all-features-after-corpus-and-test-repairs.txt
+A evidence/fuzz-wave25-closure-local/83-cargo-clippy-workspace-source-strict-after-corpus-and-test-repairs.txt
+A evidence/fuzz-wave25-closure-local/84-stale-corpus-version-and-name-scan-after-repair.txt
+A evidence/fuzz-wave25-closure-local/85-final-root-jj-checks-fjall-lock-and-diff-summary-after-corpus-repair.txt
+A evidence/fuzz-wave25-closure-local/86-final-root-jj-checks-fjall-lock-and-diff-summary-after-evidence-update.txt
+A evidence/fuzz-wave25-closure-local/87-fuzz-cargo-fmt-check-after-stale-version-generation-repair.txt
+A evidence/fuzz-wave25-closure-local/88-fuzz-cargo-check-all-targets-all-features-after-stale-version-generation-repair.txt
+A evidence/fuzz-wave25-closure-local/89-fuzz-cargo-clippy-warnings-all-targets-after-stale-version-generation-repair.txt
+A evidence/fuzz-wave25-closure-local/90-stale-corpus-and-fuzz-generator-version-name-scan-after-repair.txt
+A evidence/fuzz-wave25-closure-local/91-final-root-jj-checks-fjall-lock-and-diff-summary-after-fuzz-generation-repair.txt
+A evidence/fuzz-wave25-closure-local/92-fuzz-cargo-clippy-strict-all-targets-after-stale-version-generation-repair.txt
+A evidence/fuzz-wave25-closure-local/93-final-root-jj-checks-after-strict-fuzz-clippy-evidence.txt
+A evidence/fuzz-wave25-closure-local/94-strict-runtime-admission-closure-log.md
+A evidence/fuzz-wave25-closure-local/95-final-root-jj-checks-after-strict-admission-closure.txt
+A evidence/fuzz-wave25-closure-local/96-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair.txt
+A evidence/fuzz-wave25-closure-local/97-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun.txt
+A evidence/fuzz-wave25-closure-local/98-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun2.txt
+A evidence/fuzz-wave25-closure-local/99-fuzz-cargo-clippy-strict-all-targets-after-black-hat-repair-rerun3.txt
+A evidence/fuzz-wave25-closure-local/evidence-package.md
+A fuzz/Cargo.lock
+M fuzz/Cargo.toml
+M fuzz/FUTURE.md
+M fuzz/RED_QUEEN_MASTER_PLAN.md
+M fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml
+M fuzz/corpus/vb_f04l_yaml_compiler_compile/minimal_set_finish.yaml
+M fuzz/corpus/vb_f04l_yaml_compiler_compile/unsupported_save.yaml
+M fuzz/fuzz_targets/canonical_digest_ask.rs
+M fuzz/fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs
+M fuzz/fuzz_targets/choose_lowering_fuzzer.rs
+M fuzz/fuzz_targets/decode_record.rs
+M fuzz/fuzz_targets/expr_eval.rs
+M fuzz/fuzz_targets/expression.rs
+M fuzz/fuzz_targets/fuzz_choose_depth.rs
+M fuzz/fuzz_targets/fuzz_choose_when_parse.rs
+M fuzz/fuzz_targets/fuzz_collect_lowering.rs
+M fuzz/fuzz_targets/fuzz_diagnostic_code_from_str.rs
+M fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs
+M fuzz/fuzz_targets/fuzz_for_each_lowering.rs
+M fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+M fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+M fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+M fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_digest.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_header.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_kind_family.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_payload_corruption.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_schema_version.rs
+M fuzz/fuzz_targets/ipc_frame.rs
+M fuzz/fuzz_targets/journal_decode.rs
+M fuzz/fuzz_targets/journal_event.rs
+M fuzz/fuzz_targets/kind_validation.rs
+M fuzz/fuzz_targets/parse_workflow_source_fuzz.rs
+M fuzz/fuzz_targets/span_bridge_fuzz.rs
+M fuzz/fuzz_targets/tooling_flux_check_selector.rs
+M fuzz/fuzz_targets/tooling_guard_zero_parser.rs
+M fuzz/fuzz_targets/tooling_kani_list_args.rs
+M fuzz/fuzz_targets/tooling_loom_list_xtask.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs
+A fuzz/fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_001.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_002.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_003.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_004.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_005.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_006.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_008.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_009.rs
+M fuzz/fuzz_targets/wait_digest_exhaustive_collision.rs
+M fuzz/fuzz_targets/wait_digest_sensitivity.rs
+M fuzz/fuzz_targets/wait_sentinel_collision.rs
+M fuzz/research/crate-inventory.md
+M fuzz/research/fuzz-infra.md
+M fuzz/research/red-queen-strategy.md
+M fuzz/src/expression_target.rs
+M fuzz/src/ipc_target.rs
+M fuzz/src/journal_target/admission.rs
+M fuzz/src/journal_target/errors.rs
+M fuzz/src/journal_target/event.rs
+M fuzz/src/journal_target/persisted.rs
+M fuzz/src/journal_target/readback.rs
+M fuzz/src/lib.rs
+M fuzz/src/validation_target/capability.rs
+M fuzz/src/validation_target/verifier.rs
+M fuzz/src/workflow_target/accessor.rs
+M fuzz/src/workflow_target/budget.rs
+M fuzz/src/workflow_target/collect.rs
+M fuzz/src/workflow_target/node_slots.rs
+M fuzz/tests/proptest_digest_coherence.rs
+M fuzz/tests/proptest_ipc_error_exhaustiveness.rs
+M fuzz/tests/proptest_journal_error_exhaustiveness.rs
+M fuzz/tests/proptest_roundtrip_determinism.rs
+M scripts/check-error-exhaustiveness.sh
+Working copy  (@) : vrsompwt 96480fb4 wave25 fuzz targets: vb-k7bsz vb-3or6p vb-i0fkp vb-1f4h3 vb-87qtk
+Parent commit (@-): lumrtywu c190b285 main main@origin | fix: align runtime recovery and shutdown tests
++ jj diff --stat
+.gitignore                                        |     1 +
+crates/vb_cli/src/naming_scan/classify.rs         |     2 +-
+crates/vb_cli/src/naming_scan/legacy.rs           |    11 +-
+crates/vb_cli/src/naming_scan/types.rs            |    12 +-
+crates/vb_cli/tests/cli_integration.rs            |     4 +-
+crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs  |     2 +-
+crates/vb_cli/tests/vb_qi37_14_1_run_step.rs      |     4 +-
+...vb_compile/src/kani_digest_ask_empty_prompt.rs |     2 +-
+..._compile/src/kani_digest_ask_field_ordering.rs |     2 +-
+...pile/src/kani_digest_ask_prompt_sensitivity.rs |     2 +-
+...ile/src/kani_digest_ask_timeout_sensitivity.rs |     2 +-
+...ompile/src/kani_digest_ask_timeout_sentinel.rs |     2 +-
+...ile/src/kani_digest_step_primitive_no_panic.rs |     2 +-
+...ani_resource_contract_cross_field_collision.rs |     2 +-
+...c/kani_resource_contract_digest_determinism.rs |     4 +-
+..._resource_contract_digest_field_sensitivity.rs |     2 +-
+...ani_resource_contract_dual_path_equivalence.rs |     2 +-
+...pile/src/kani_resource_contract_entry_point.rs |     2 +-
+...src/kani_resource_contract_migration_digest.rs |     2 +-
+crates/vb_compile/src/mod_compile_core.rs         |     6 +-
+..._compile/src/mod_compile_validation/part_03.rs |    75 +-
+..._compile/src/mod_compile_validation/part_04.rs |   111 +-
+..._compile/src/mod_compile_validation/part_05.rs |    19 +-
+..._compile/src/mod_compile_validation/part_06.rs |     4 -
+..._compile/src/mod_compile_validation/part_08.rs |   224 +
+crates/vb_compile/src/mod_compile_validation.rs   |     2 +
+...es/vb_compile/src/tests/error_variant_tests.rs |    30 +-
+...s/vb_compile/src/tests/foreach_digest_tests.rs |    14 +-
+...b_compile/tests/digest_compilation_pipeline.rs |     8 +-
+crates/vb_compile/tests/digest_yaml_e2e.rs        |    22 +-
+.../vb_compile/tests/repeat_digest_integration.rs |     2 +-
+crates/vb_compile/tests/repeat_digest_proptest.rs |    12 +-
+...b_compile/tests/together_digest_sensitivity.rs |     2 +-
+crates/vb_compile/tests/v1_primitive_lowering.rs  |    42 +-
+...pile/tests/vb_8mdp_7_collect_lowering_props.rs |     6 +-
+.../vb_compile/tests/vb_a001_for_each_topology.rs |     2 +-
+...mpile/tests/vb_xi2f_compile_source_proptest.rs |     2 +-
+...vb_compile/tests/vb_xi2f_nested_do_lowering.rs |     2 +-
+...re/tests/aggregate_resource_budget_kani_red.rs |    14 +-
+...vb_core/tests/aggregate_resource_budget_red.rs |    47 +-
+...ests/aggregate_resource_budget_snapshot_red.rs |    15 +-
+...s/vb_runtime/src/shard/impl_parts/chunk_001.rs |     6 +-
+...s/vb_runtime/tests/recovery_hydration_tests.rs |    59 +-
+...sts/tests/integration_validate_yaml_parsing.rs |     6 +-
+...ce_tests/tests/journal_side_index_contracts.rs |     2 +-
+...ts/tests/restate_typed_partitioned_id_tests.rs |    10 +-
+...tests/vb_37lc_canonical_spelling_red/common.rs |     8 +-
+..._37lc_canonical_spelling_red/common_part_01.rs |     9 +-
+..._37lc_canonical_spelling_red/common_part_02.rs |    17 +-
+...ests/vb_37lc_canonical_spelling_red/part_01.rs |    14 +-
+...ests/vb_37lc_canonical_spelling_red/part_02.rs |    35 +-
+...ests/vb_37lc_canonical_spelling_red/part_03.rs |    20 +-
+...ests/vb_37lc_canonical_spelling_red/part_04.rs |    15 +-
+...ests/vb_37lc_canonical_spelling_red/part_05.rs |     8 +-
+.../tests/vb_qi37_4_2_strict_runtime_admission.rs |    87 +-
+...tests/vb_test_runtime_ipc_resource_behavior.rs |    27 +-
+...tests/vb_vt2f_direct_runtime_api_acceptance.rs |     2 +-
+...e/fuzz-wave25-closure-local/00-root-checks.txt |   149 +
+...z-wave25-closure-local/01-env-disk-targets.txt |   114 +
+...ve25-closure-local/02-root-cargo-fmt-check.txt |     3 +
+...ve25-closure-local/03-fuzz-cargo-fmt-check.txt |     3 +
+...losure-local/04-root-cargo-metadata-locked.txt |     4 +
+...losure-local/05-fuzz-cargo-metadata-locked.txt |     6 +
+...-closure-local/06-root-cargo-clippy-strict.txt |   100 +
+...al/07-fuzz-cargo-clippy-strict-all-targets.txt |   381 +
+.../08-fuzz-cargo-clippy-warnings-all-targets.txt |     5 +
+...sure-local/09-cargo-fuzz-build-all-targets.txt |    19 +
+...-local/10-key-targets-libfuzzer-asan-smoke.txt |   319 +
+...-all-targets-after-black-hat-repair-rerun4.txt |   109 +
+...-all-targets-after-black-hat-repair-rerun5.txt |    32 +
+...-all-targets-after-black-hat-repair-rerun6.txt |     5 +
+...root-jj-checks-after-black-hat-fuzz-repair.txt |   459 +
+...argo-fmt-check-after-black-hat-fuzz-repair.txt |     3 +
+...argo-fmt-check-after-black-hat-fuzz-repair.txt |     3 +
+...etadata-locked-after-black-hat-fuzz-repair.txt |     5 +
+...etadata-locked-after-black-hat-fuzz-repair.txt |     5 +
+...s-all-features-after-black-hat-fuzz-repair.txt |     7 +
+...s-all-features-after-black-hat-fuzz-repair.txt |     5 +
+...ay-events-timeout-artifact-repro-timeout60.txt |    22 +
+...-source-strict-after-black-hat-fuzz-repair.txt |     5 +
+...rgo-fuzz-build-after-black-hat-fuzz-repair.txt |     8 +
+...e-version-scan-after-black-hat-fuzz-repair.txt |    14 +
+...k-preservation-after-black-hat-fuzz-repair.txt |    45 +
+...l-features-raw-after-black-hat-fuzz-repair.txt | 11255 +++++++++++++++++
+...-all-features-raw-after-naming-scan-repair.txt | 13781 ++++++++++++++++++++++
+...spelling-red-after-language-version-repair.txt |    88 +
+...e-all-features-raw-after-black-hat-repairs.txt |  7916 ++++++++++++
+...e-all-features-raw-after-black-hat-repairs.txt |  7916 ++++++++++++
+...go-fmt-check-final-after-black-hat-repairs.txt |     3 +
+...all-features-final-after-black-hat-repairs.txt |     6 +
+...play-events-libfuzzer-asan-smoke-timeout60.txt |    20 +
+...ource-strict-final-after-black-hat-repairs.txt |     6 +
+...version-scan-final-after-black-hat-repairs.txt |    19 +
+...vidence-validation-after-black-hat-repairs.txt |     4 +
+...s-and-diff-summary-after-black-hat-repairs.txt |   774 +
+...evidence-validation-after-split-log-repair.txt |    13 +
+...-final-jj-snapshot-warning-closure-summary.txt |    12 +
+...-jj-checks-after-latest-black-hat-blockers.txt |   276 +
+...3-key-targets-libfuzzer-asan-passing-smoke.txt |   213 +
+...-local/14-fjall-and-fuzz-lock-preservation.txt |    29 +
+...-root-cargo-check-all-targets-all-features.txt |    41 +
+...-fuzz-cargo-check-all-targets-all-features.txt |     5 +
+...5-closure-local/17-evidence-tracking-check.txt |     8 +
+...-closure-local/18-final-status-and-jj-diff.txt |   376 +
+...cal/19-root-cargo-test-no-run-all-features.txt |   385 +
+...sure-local/20-root-cargo-test-all-features.txt |  1721 ++
+...sure-local/21-fuzz-cargo-test-all-features.txt |    75 +
+...e25-closure-local/22-choose-body-repair-log.md |    56 +
+...ggregate-resource-budget-red-before-repair.txt |   172 +
+...esource-budget-red-after-test-scope-repair.txt |   105 +
+...b-core-all-features-after-aggregate-repair.txt |  2538 ++++
+...gate-resource-budget-snapshot-after-repair.txt |    10 +
+...vb-core-all-features-after-snapshot-repair.txt |  3050 ++++
+.../28-cargo-fmt-check-after-aggregate-repair.txt |     0
+...argets-all-features-after-aggregate-repair.txt |    24 +
+...-vb-core-lib-strict-after-aggregate-repair.txt |    10 +
+...kspace-all-features-after-aggregate-repair.txt | 11838 ++++++++++++++++++
+...vb-m214-exit-code-zero-residual-diagnostic.txt |    40 +
+...us-and-diff-summary-after-aggregate-repair.txt |   246 +
+...l/34-final-root-jj-status-and-diff-summary.txt |   248 +
+...inal-final-root-jj-status-and-diff-summary.txt |   250 +
+...6-cli-vb-m214-exit-code-zero-before-repair.txt |     2 +
+...i-vb-m214-exit-code-zero-before-repair-raw.txt |     2 +
+...b-m214-exit-code-zero-before-repair-direct.txt |     2 +
+...exit-code-zero-before-repair-command-cargo.txt |     2 +
+...exit-code-zero-before-repair-command-cargo.txt |     2 +
+...i-vb-m214-exit-code-zero-before-repair-raw.txt |    20 +
+...date-minimal-workflow-manual-before-repair.txt |     3 +
+...erscore-workflow-manual-before-test-repair.txt |     1 +
+...i-vb-m214-exit-code-zero-after-name-repair.txt |     9 +
+...li-vb-m214-explain-valid-after-name-repair.txt |     8 +
+...-cli-vb-m214-graph-valid-after-name-repair.txt |     8 +
+...li-vb-m214-action-policy-after-name-repair.txt |     8 +
+...test-vb-cli-m214-bdd-all-after-name-repair.txt |    51 +
+...ntegration-valid-minimal-after-name-repair.txt |     9 +
+...rkspace-all-features-after-cli-name-repair.txt |  7816 ++++++++++++
+...n-checkpoint-targeted-after-workspace-fail.txt |    10 +
+...l/52-cargo-fmt-check-after-cli-name-repair.txt |     0
+...targets-all-features-after-cli-name-repair.txt |    21 +
+...vb-cli-source-strict-after-cli-name-repair.txt |     8 +
+...losure-local/55-cli-vb-m214-name-repair-log.md |    53 +
+...tus-and-diff-summary-after-cli-name-repair.txt |   442 +
+...ff-summary-after-cli-name-repair-plain-git.txt |   445 +
+...cks-and-diff-summary-after-cli-name-repair.txt |   300 +
+...diff-summary-after-evidence-package-update.txt |   302 +
+...-root-jj-checks-after-recovery-lock-repair.txt |   307 +
+...ydration-parallel-repeat-after-lock-repair.txt |   553 +
+...y-hydration-all-features-after-lock-repair.txt |    55 +
+...cargo-fmt-check-after-recovery-lock-repair.txt |     2 +
+...all-targets-all-features-after-lock-repair.txt |     5 +
+...vb-runtime-source-strict-after-lock-repair.txt |     5 +
+...-hydration-test-warnings-after-lock-repair.txt |   982 +
+...ce-all-features-after-recovery-lock-repair.txt | 11963 +++++++++++++++++++
+...-diff-summary-after-recovery-lock-evidence.txt |   323 +
+.../69-final-root-jj-checks-after-indexing-69.txt |   325 +
+...root-jj-checks-after-corpus-version-repair.txt |     2 +
+...ssion-for-each-after-corpus-version-repair.txt |    25 +
+...dmission-for-each-after-corpus-name-repair.txt |    11 +
+...-features-after-corpus-version-name-repair.txt |  1214 +
+...-vb-cli-run-step-after-fixture-name-repair.txt |    36 +
+...tics-all-features-after-cli-fixture-repair.txt |  1066 +
+...-features-after-corpus-version-name-repair.txt | 12705 ++++++++++++++++++++
+...l-parsing-after-version-expectation-repair.txt |    51 +
+...-features-after-version-expectation-repair.txt | 13531 +++++++++++++++++++++
+...ned-id-after-runid-zero-expectation-repair.txt |    13 +
+...atures-after-runid-zero-expectation-repair.txt |  6848 ++++++++++
+...atures-after-runid-zero-expectation-repair.txt |  7719 ++++++++++++
+...go-fmt-check-after-corpus-and-test-repairs.txt |     3 +
+...all-features-after-corpus-and-test-repairs.txt |     8 +
+...ource-strict-after-corpus-and-test-repairs.txt |     6 +
+...-corpus-version-and-name-scan-after-repair.txt |    10 +
+...-lock-and-diff-summary-after-corpus-repair.txt |   589 +
+...ock-and-diff-summary-after-evidence-update.txt |   572 +
+...heck-after-stale-version-generation-repair.txt |     3 +
+...ures-after-stale-version-generation-repair.txt |     6 +
+...gets-after-stale-version-generation-repair.txt |     5 +
+...z-generator-version-name-scan-after-repair.txt |    14 +
+...-diff-summary-after-fuzz-generation-repair.txt |   396 +
+...gets-after-stale-version-generation-repair.txt |  1023 +
+...j-checks-after-strict-fuzz-clippy-evidence.txt |   393 +
+...cal/94-strict-runtime-admission-closure-log.md |    74 +
+...t-jj-checks-after-strict-admission-closure.txt |    28 +
+...-strict-all-targets-after-black-hat-repair.txt |   246 +
+...t-all-targets-after-black-hat-repair-rerun.txt |   253 +
+...-all-targets-after-black-hat-repair-rerun2.txt |   175 +
+...-all-targets-after-black-hat-repair-rerun3.txt |   593 +
+.../fuzz-wave25-closure-local/evidence-package.md |    69 +
+fuzz/Cargo.lock                                   |  2032 +++
+fuzz/Cargo.toml                                   |    25 +-
+fuzz/FUTURE.md                                    |     2 +-
+fuzz/RED_QUEEN_MASTER_PLAN.md                     |     2 +-
+...us/vb_f04l_yaml_compiler_compile/for_each.yaml |     4 +-
+..._yaml_compiler_compile/minimal_set_finish.yaml |     4 +-
+...4l_yaml_compiler_compile/unsupported_save.yaml |     4 +-
+fuzz/fuzz_targets/canonical_digest_ask.rs         |    12 +-
+...aint_consistency_accepts_arbitrary_markdown.rs |     2 +-
+fuzz/fuzz_targets/choose_lowering_fuzzer.rs       |    39 +-
+fuzz/fuzz_targets/decode_record.rs                |    40 +-
+fuzz/fuzz_targets/expr_eval.rs                    |    22 +-
+fuzz/fuzz_targets/expression.rs                   |    11 +-
+fuzz/fuzz_targets/fuzz_choose_depth.rs            |     5 +-
+fuzz/fuzz_targets/fuzz_choose_when_parse.rs       |     7 +-
+fuzz/fuzz_targets/fuzz_collect_lowering.rs        |     7 +-
+.../fuzz_targets/fuzz_diagnostic_code_from_str.rs |     4 +-
+fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs  |    12 +-
+fuzz/fuzz_targets/fuzz_for_each_lowering.rs       |     6 +-
+fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs  |    44 +-
+fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs    |    66 +-
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs    |    56 +-
+...fuzz_targets/fuzz_retry_validate_completion.rs |    44 +-
+fuzz/fuzz_targets/fuzz_storage_codec_digest.rs    |    32 +-
+fuzz/fuzz_targets/fuzz_storage_codec_header.rs    |    35 +-
+...fuzz_targets/fuzz_storage_codec_kind_family.rs |    82 +-
+...rgets/fuzz_storage_codec_payload_corruption.rs |   315 +-
+fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs |   145 +-
+...z_targets/fuzz_storage_codec_schema_version.rs |   216 +-
+fuzz/fuzz_targets/ipc_frame.rs                    |    38 +-
+fuzz/fuzz_targets/journal_decode.rs               |    64 +-
+fuzz/fuzz_targets/journal_event.rs                |    33 +-
+fuzz/fuzz_targets/kind_validation.rs              |    63 +-
+fuzz/fuzz_targets/parse_workflow_source_fuzz.rs   |     4 +-
+fuzz/fuzz_targets/span_bridge_fuzz.rs             |    56 +-
+fuzz/fuzz_targets/tooling_flux_check_selector.rs  |    41 +-
+fuzz/fuzz_targets/tooling_guard_zero_parser.rs    |    19 +-
+fuzz/fuzz_targets/tooling_kani_list_args.rs       |    26 +-
+fuzz/fuzz_targets/tooling_loom_list_xtask.rs      |    21 +-
+fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs  |   138 +-
+..._targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs |   131 +-
+fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs   |   195 +-
+fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs |    48 +-
+...uzz_targets/vb_rpch_slot_extra_collect_fuzz.rs |   251 +
+fuzz/fuzz_targets/vb_vzcuf_PS_001.rs              |    51 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_002.rs              |    63 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_003.rs              |    47 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_004.rs              |    82 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_005.rs              |   102 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_006.rs              |    66 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_007.rs              |    42 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_008.rs              |   125 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_009.rs              |    97 +-
+...zz_targets/wait_digest_exhaustive_collision.rs |    40 +-
+fuzz/fuzz_targets/wait_digest_sensitivity.rs      |    40 +-
+fuzz/fuzz_targets/wait_sentinel_collision.rs      |    27 +-
+fuzz/research/crate-inventory.md                  |     5 +-
+fuzz/research/fuzz-infra.md                       |     4 +-
+fuzz/research/red-queen-strategy.md               |     4 +-
+fuzz/src/expression_target.rs                     |    17 +-
+fuzz/src/ipc_target.rs                            |    18 +-
+fuzz/src/journal_target/admission.rs              |    22 +-
+fuzz/src/journal_target/errors.rs                 |    55 +-
+fuzz/src/journal_target/event.rs                  |    16 +-
+fuzz/src/journal_target/persisted.rs              |     9 +-
+fuzz/src/journal_target/readback.rs               |     9 +-
+fuzz/src/lib.rs                                   |    50 +-
+fuzz/src/validation_target/capability.rs          |    30 +-
+fuzz/src/validation_target/verifier.rs            |     6 +-
+fuzz/src/workflow_target/accessor.rs              |    39 +-
+fuzz/src/workflow_target/budget.rs                |     8 +-
+fuzz/src/workflow_target/collect.rs               |    20 +-
+fuzz/src/workflow_target/node_slots.rs            |    17 +-
+fuzz/tests/proptest_digest_coherence.rs           |    52 +-
+fuzz/tests/proptest_ipc_error_exhaustiveness.rs   |    24 +-
+...tests/proptest_journal_error_exhaustiveness.rs |    42 +-
+fuzz/tests/proptest_roundtrip_determinism.rs      |    28 +-
+scripts/check-error-exhaustiveness.sh             |    40 +-
+265 files changed, 142633 insertions(+), 1205 deletions(-)

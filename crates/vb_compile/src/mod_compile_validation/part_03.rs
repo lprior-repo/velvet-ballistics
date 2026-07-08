@@ -1,13 +1,6 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
-use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
+use crate::mod_compile_errors::CompileError;
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 impl StepPrimitive {
     pub(crate) fn from_field(field: &str) -> Option<Self> {
@@ -20,7 +13,7 @@ impl StepPrimitive {
             "for_each" => Some(Self::ForEach),
             "together" | "parallel" => Some(Self::Parallel),
             "collect" => Some(Self::Collect),
-            "aggregate" => Some(Self::Aggregate),
+            "reduce" | "aggregate" => Some(Self::Aggregate),
             "repeat" => Some(Self::Repeat),
             "wait" => Some(Self::Wait),
             "ask" => Some(Self::Ask),
@@ -39,7 +32,7 @@ impl StepPrimitive {
             Self::ForEach => "for_each",
             Self::Parallel => "parallel",
             Self::Collect => "collect",
-            Self::Aggregate => "aggregate",
+            Self::Aggregate => "reduce",
             Self::Repeat => "repeat",
             Self::Wait => "wait",
             Self::Ask => "ask",
@@ -126,6 +119,24 @@ pub(crate) fn validate_workflow_document_shape(doc: &Yaml<'_>) -> Result<(), Com
         return Err(CompileError::EmptySteps);
     }
     validate_step_ids(steps)?;
+    validate_ast_step_shapes(steps)
+}
+
+pub(crate) fn validate_canonical_workflow_document_shape(
+    doc: &Yaml<'_>,
+) -> Result<(), CompileError> {
+    validate_top_level_keys(doc)?;
+    validate_workflow_version(doc)?;
+    validate_workflow_trigger(doc)?;
+    validate_optional_top_level_shapes(doc)?;
+    validate_phase_zero_result(doc)?;
+    let name = required_string_field(doc, "name")?;
+    validate_public_name("name", name)?;
+    let steps = required_sequence_field(doc, "steps")?;
+    if steps.is_empty() {
+        return Err(CompileError::EmptySteps);
+    }
+    validate_step_ids(steps)?;
     validate_phase_zero_step_shapes(steps)
 }
 
@@ -137,6 +148,48 @@ pub(super) fn validate_phase_zero_step_shapes(
         validate_phase_zero_step_shape(step, index, last_step)?;
     }
     Ok(())
+}
+
+pub(super) fn validate_ast_step_shapes(steps: &saphyr::Sequence<'_>) -> Result<(), CompileError> {
+    let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
+    for (index, step) in steps.iter().enumerate() {
+        let StepSpec { primitive, body } = step_spec(step, index)?;
+        validate_ast_step_position(primitive, index, last_step)?;
+        validate_ast_step_body(primitive, body, index)?;
+    }
+    Ok(())
+}
+
+fn validate_ast_step_position(
+    primitive: StepPrimitive,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    match (primitive, index == last_step) {
+        (StepPrimitive::Finish, false) => Err(CompileError::StepFieldShape {
+            step: index,
+            field: "finish",
+            expected: "the last step",
+        }),
+        (StepPrimitive::Finish, true) => Ok(()),
+        (_, true) => Err(CompileError::LastStepMustFinish),
+        (_, false) => Ok(()),
+    }
+}
+
+fn validate_ast_step_body(
+    primitive: StepPrimitive,
+    body: &Yaml<'_>,
+    index: usize,
+) -> Result<(), CompileError> {
+    match primitive {
+        StepPrimitive::Finish => {
+            primitive_body_mapping(body, index, "finish")?;
+            required_step_field(body, index, "result")?;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
 }
 
 pub(super) fn validate_phase_zero_step_shape(
@@ -171,15 +224,16 @@ pub(super) fn validate_run_shape(
     primitive: &'static str,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    if !body.is_mapping() {
-        return Err(CompileError::UnsupportedStepPrimitive {
+    reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
+    let action = required_primitive_string_field(body, index, "action", "action")?;
+    if primitive == "run" && action.is_empty() {
+        return Err(CompileError::StepFieldShape {
             step: index,
-            primitive,
+            field: "run.action",
+            expected: "non-empty string",
         });
     }
-    reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
-    required_action(body, index, primitive)?;
-    required_slot(body, index, "input")?;
+    required_primitive_string_field(body, index, "input", "input")?;
     Ok(())
 }
 
@@ -189,16 +243,15 @@ pub(super) fn validate_wait_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "wait", &["until", "event", "timeout"])?;
-    let until = optional_slot_field(body, index, "until")?;
-    let event = optional_slot_field(body, index, "event")?;
-    let timeout = optional_slot_field(body, index, "timeout")?;
-    match (until, event, timeout) {
-        (Some(_), None, None) | (None, Some(_), _) => Ok(()),
+    reject_unknown_primitive_fields(body, index, "wait", &["event", "timeout"])?;
+    let has_event = validate_optional_primitive_string_field(body, index, "event", "a string")?;
+    let has_timeout = validate_optional_primitive_string_field(body, index, "timeout", "a string")?;
+    match (has_event, has_timeout) {
+        (true, _) | (false, true) => Ok(()),
         _ => Err(CompileError::StepFieldShape {
             step: index,
             field: "wait",
-            expected: "until without timeout or event with optional timeout",
+            expected: "event or timeout",
         }),
     }
 }
@@ -209,10 +262,9 @@ pub(super) fn validate_ask_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
-    required_slot(body, index, "prompt")?;
-    required_slot(body, index, "answer")?;
-    optional_slot_field(body, index, "timeout")?;
+    reject_unknown_primitive_fields(body, index, "ask", &["prompt", "timeout"])?;
+    required_primitive_string_field(body, index, "prompt", "ask.prompt")?;
+    validate_optional_primitive_string_field(body, index, "timeout", "a string")?;
     Ok(())
 }
 
@@ -223,13 +275,15 @@ pub(super) fn validate_save_shape(
     primitive: &'static str,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    if body.is_mapping() {
-        Ok(())
-    } else {
-        Err(CompileError::StepFieldShape {
+    reject_unknown_primitive_fields(body, index, primitive, &["output", "value"])?;
+    let output = required_primitive_string_field(body, index, "output", "output")?;
+    if primitive == "save" && output.is_empty() {
+        return Err(CompileError::StepFieldShape {
             step: index,
-            field: primitive,
-            expected: "an object",
-        })
+            field: "save.output",
+            expected: "non-empty string",
+        });
     }
+    required_primitive_string_field(body, index, "value", "value")?;
+    Ok(())
 }

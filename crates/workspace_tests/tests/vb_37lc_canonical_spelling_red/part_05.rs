@@ -4,7 +4,7 @@ use super::*;
 fn scan_repository_report_kernel_returns_all_findings_when_valid_and_invalid_inputs_are_mixed()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    write_fixture_file(temp.path(), "docs/good.md", "velvet-ballastics is absent\n")?;
+    write_fixture_file(temp.path(), "docs/good.md", "velvet-ballistics is absent\n")?;
     write_fixture_file(
         temp.path(),
         "docs/bad.md",
@@ -104,7 +104,7 @@ fn discover_scan_inputs_excludes_builtin_and_configured_paths_but_keeps_eligible
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     write_excluded_fixture_files(temp.path())?;
-    write_fixture_file(temp.path(), "docs/visible.md", "velvet-ballastics\n")?;
+    write_fixture_file(temp.path(), "docs/visible.md", "velvet-ballistics\n")?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let mut config = minimum_valid_scan_config();
     config.excluded_path_rules = vec![
@@ -217,7 +217,7 @@ fn discover_scan_inputs_skips_unreadable_child_directory_without_failing_root_sc
     use std::os::unix::fs::PermissionsExt;
 
     let temp = tempfile::tempdir()?;
-    write_fixture_file(temp.path(), "docs/visible.md", "velvet-ballastics\n")?;
+    write_fixture_file(temp.path(), "docs/visible.md", "velvet-ballistics\n")?;
     let unreadable = temp.path().join("restricted");
     std::fs::create_dir_all(&unreadable)?;
     std::fs::write(unreadable.join("hidden.md"), "Velvet-Ballastics\n")?;
@@ -245,7 +245,7 @@ fn discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_sho
     write_fixture_file(
         &root_path,
         "docs/naming.md",
-        "velvet-ballastics is canonical\n",
+        "velvet-ballistics is canonical\n",
     )?;
     let root = RepoRoot::new(root_path.clone());
     let config = minimum_valid_scan_config();

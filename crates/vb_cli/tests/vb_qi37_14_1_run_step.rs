@@ -17,7 +17,7 @@
 
 /// Minimal 2-step workflow: SetConst(slot0=42) -> Finish
 const SETCONST_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: setconst-test
+name: setconst_test
 when:
   manual: {}
 steps:
@@ -32,7 +32,7 @@ steps:
 
 /// 3-step workflow with Nop Save then Finish
 const NOP_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: nop-test
+name: nop_test
 when:
   manual: {}
 steps:

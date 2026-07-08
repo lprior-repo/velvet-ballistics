@@ -32,15 +32,17 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Derive an i64 value from the first 8 bytes of input.
-    let int_bytes: [u8; 8] = match data[..8].try_into() {
-        Ok(b) => b,
-        Err(_) => return,
+    let int_bytes: [u8; 8] = match data.get(..8).and_then(|bytes| bytes.try_into().ok()) {
+        Some(b) => b,
+        None => return,
     };
     let int_val: i64 = i64::from_le_bytes(int_bytes);
 
     // Derive a string value from the remaining bytes (if any).
     // Use lossy conversion — non-UTF-8 bytes become replacement characters.
-    let string_data = &data[8..];
+    let Some(string_data) = data.get(8..) else {
+        return;
+    };
     let string_val = String::from_utf8_lossy(string_data).into_owned();
 
     // ── Integer path: Finish { result: Integer(int_val) } ──────────────
@@ -111,7 +113,7 @@ fn sanitize_output_name(input: &str) -> String {
 
     if filtered.is_empty() {
         "v_empty".to_string()
-    } else if filtered.chars().next().map_or(true, |c| c.is_numeric()) {
+    } else if filtered.chars().next().is_none_or(|c| c.is_numeric()) {
         format!("v_{filtered}")
     } else {
         filtered

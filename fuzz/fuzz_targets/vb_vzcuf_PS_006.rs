@@ -21,6 +21,13 @@
 
 use libfuzzer_sys::fuzz_target;
 
+fn read_u64_le_at(data: &[u8], start: usize) -> Option<u64> {
+    let end = start.checked_add(8)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 8]>::try_from(bytes).ok())
+        .map(u64::from_le_bytes)
+}
+
 /// Sub-target 0: u64::MAX + 1 overflow detection with fuzzer-derived `a`.
 ///
 /// Production admission uses `staged_bytes.checked_add(encoded_len)`.
@@ -31,9 +38,9 @@ fn fuzz_limit_nonzero(data: &[u8]) {
     if data.len() < 8 {
         return;
     }
-    let a = u64::from_le_bytes([
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-    ]);
+    let Some(a) = read_u64_le_at(data, 0) else {
+        return;
+    };
 
     match a.checked_add(1) {
         Some(total) => {
@@ -67,12 +74,12 @@ fn fuzz_default_limit(data: &[u8]) {
     if data.len() < 16 {
         return;
     }
-    let staged = u64::from_le_bytes([
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-    ]);
-    let limit = u64::from_le_bytes([
-        data[8], data[9], data[10], data[11], data[12], data[13], data[14], data[15],
-    ]);
+    let Some(staged) = read_u64_le_at(data, 0) else {
+        return;
+    };
+    let Some(limit) = read_u64_le_at(data, 8) else {
+        return;
+    };
 
     // C1 contract: byte_limit must be non-zero.
     if limit == 0 {
@@ -100,7 +107,7 @@ fn fuzz_default_limit(data: &[u8]) {
             // Boundary sanity: a limit at u64::MAX (or u64::MAX - 1) must
             // admit any small staged value. Production must not flip the
             // comparison at the upper edge.
-            if limit >= u64::MAX - 1 && staged < limit {
+            if limit >= u64::MAX.saturating_sub(1) && staged < limit {
                 assert!(
                     accept,
                     "limit at u64::MAX boundary must accept small staged (limit={limit}, staged={staged})"
@@ -128,15 +135,15 @@ fn fuzz_arithmetic_safe(data: &[u8]) {
     if data.len() < 24 {
         return;
     }
-    let a = u64::from_le_bytes([
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-    ]);
-    let b = u64::from_le_bytes([
-        data[8], data[9], data[10], data[11], data[12], data[13], data[14], data[15],
-    ]);
-    let limit = u64::from_le_bytes([
-        data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
-    ]);
+    let Some(a) = read_u64_le_at(data, 0) else {
+        return;
+    };
+    let Some(b) = read_u64_le_at(data, 8) else {
+        return;
+    };
+    let Some(limit) = read_u64_le_at(data, 16) else {
+        return;
+    };
 
     if limit == 0 {
         return;
@@ -144,10 +151,11 @@ fn fuzz_arithmetic_safe(data: &[u8]) {
 
     match a.checked_add(b) {
         Some(total) => {
+            let wide_sum = u128::from(a).saturating_add(u128::from(b));
             // Some branch: sum fits in u64 and must equal a + b exactly.
             assert_eq!(
-                total as u128,
-                a as u128 + b as u128,
+                u128::from(total),
+                wide_sum,
                 "checked_add Some must equal wide sum exactly (a={a}, b={b}, total={total})"
             );
             // Production admission: over_limit iff total > limit.
@@ -158,10 +166,11 @@ fn fuzz_arithmetic_safe(data: &[u8]) {
             );
         }
         None => {
+            let wide_sum = u128::from(a).saturating_add(u128::from(b));
             // None branch: a + b exceeds u64::MAX. Verify the wide sum
             // actually overflows so the oracle is not vacuous.
             assert!(
-                (a as u128) + (b as u128) > u64::MAX as u128,
+                wide_sum > u128::from(u64::MAX),
                 "checked_add None iff wide sum exceeds u64::MAX (a={a}, b={b})"
             );
         }
@@ -169,12 +178,13 @@ fn fuzz_arithmetic_safe(data: &[u8]) {
 }
 
 fuzz_target!(|data: &[u8]| {
-    if data.is_empty() {
+    let Some((&selector, rest)) = data.split_first() else {
         return;
-    }
-    match data[0] % 3 {
-        0 => fuzz_limit_nonzero(&data[1..]),
-        1 => fuzz_default_limit(&data[1..]),
-        _ => fuzz_arithmetic_safe(&data[1..]),
+    };
+    match selector.checked_rem(3) {
+        Some(0) => fuzz_limit_nonzero(rest),
+        Some(1) => fuzz_default_limit(rest),
+        Some(_) => fuzz_arithmetic_safe(rest),
+        None => {}
     }
 });

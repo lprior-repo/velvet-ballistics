@@ -4,24 +4,22 @@ use super::MAX_FUZZ_PAYLOAD;
 use super::errors::{assert_typed_journal_error, assert_typed_recovery_error};
 
 pub fn fuzz_journal_event(data: &[u8]) {
-    let decoded = vb_storage::decode_record::<vb_storage::JournalEvent>(
-        data,
-        vb_storage::MAGIC_JOURNAL_EVENT,
-        MAX_FUZZ_PAYLOAD,
-    );
+    let decoded =
+        vb_storage::decode_journal_event(data, vb_storage::MAGIC_JOURNAL_EVENT, MAX_FUZZ_PAYLOAD);
     match decoded {
         Ok((_envelope, event)) => {
             assert!(event.is_valid(), "Decoded event must be structurally valid");
-            let Ok(encoded) = vb_storage::encode_record(
+            let encoded = match vb_storage::encode_record(
                 vb_storage::MAGIC_JOURNAL_EVENT,
                 event.record_kind(),
                 event.seq().get(),
                 &event,
                 MAX_FUZZ_PAYLOAD,
-            ) else {
-                return;
+            ) {
+                Ok(bytes) => bytes,
+                Err(_error) => std::process::abort(),
             };
-            let reparsed = vb_storage::decode_record::<vb_storage::JournalEvent>(
+            let reparsed = vb_storage::decode_journal_event(
                 &encoded,
                 vb_storage::MAGIC_JOURNAL_EVENT,
                 MAX_FUZZ_PAYLOAD,

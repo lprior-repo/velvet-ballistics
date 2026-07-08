@@ -3,7 +3,7 @@
 //! Covers PO-002, PO-004, PO-008, PO-009, PO-010, PO-012, PO-013, PO-014.
 //!
 //! Each test is independently runnable with:
-//! `cargo nextest run -p velvet-ballastics-workspace-tests --test journal_side_index_contracts -- <filter>`
+//! `cargo nextest run -p velvet-ballistics-workspace-tests --test journal_side_index_contracts -- <filter>`
 //!
 //! # Trusted Base
 //!

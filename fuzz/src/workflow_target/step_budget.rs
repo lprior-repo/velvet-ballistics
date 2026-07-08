@@ -6,11 +6,19 @@ pub fn fuzz_step_budget_new(data: &[u8]) {
     }
     let budget_value = if data.len() >= 8 {
         let mut bytes = [0u8; 8];
-        let src = &data[..8.min(data.len())];
-        bytes[..src.len()].copy_from_slice(src);
+        let head_len = 8usize.min(data.len());
+        if head_len > 0
+            && let (Some(dst_prefix), Some(src_prefix)) =
+                (bytes.get_mut(..head_len), data.get(..head_len))
+        {
+            dst_prefix.copy_from_slice(src_prefix);
+        }
         u64::from_le_bytes(bytes)
     } else {
-        u64::from(data[0])
+        let Some(&byte0) = data.first() else {
+            return;
+        };
+        u64::from(byte0)
     };
     let budget = vb_core::StepBudget::new(budget_value);
     let remaining = budget.remaining();

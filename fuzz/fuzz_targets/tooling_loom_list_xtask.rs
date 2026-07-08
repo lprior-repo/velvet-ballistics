@@ -33,10 +33,13 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let fake_path = fake_xtask.path().to_string_lossy().to_string();
-    let _ = std::process::Command::new("chmod")
+    match std::process::Command::new("chmod")
         .arg("+x")
         .arg(&fake_path)
-        .output();
+        .output()
+    {
+        Ok(_) | Err(_) => {}
+    }
 
     // Replace the cargo xtask loom invocation with our fake
     // We do this by creating a wrapper that the script can use
@@ -55,18 +58,24 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let wrapper_path = wrapper.path().to_string_lossy().to_string();
-    let _ = std::process::Command::new("chmod")
+    match std::process::Command::new("chmod")
         .arg("+x")
         .arg(&wrapper_path)
-        .output();
+        .output()
+    {
+        Ok(_) | Err(_) => {}
+    }
 
     // Run loom-list.sh with the fake cargo in PATH
     let wrapper_dir = std::path::Path::new(&wrapper_path)
         .parent()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| "/tmp".to_string());
-    let _ = Command::new("bash")
+    match Command::new("bash")
         .arg("scripts/loom-list.sh")
         .env("PATH", format!("{}:/usr/bin:/bin", wrapper_dir))
-        .output();
+        .output()
+    {
+        Ok(_) | Err(_) => {}
+    }
 });

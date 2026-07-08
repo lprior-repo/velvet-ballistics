@@ -29,10 +29,7 @@ fuzz_target!(|data: &[u8]| {
             Ok(f) => f,
             Err(_) => return,
         };
-        let script = format!(
-            "#!/usr/bin/env bash\ncat '{}'\nexit 0\n",
-            tmp_path
-        );
+        let script = format!("#!/usr/bin/env bash\ncat '{}'\nexit 0\n", tmp_path);
         if fake_test.write_all(script.as_bytes()).is_err() {
             return;
         }
@@ -41,17 +38,23 @@ fuzz_target!(|data: &[u8]| {
         }
         // Make executable
         let path = fake_test.path().to_string_lossy().to_string();
-        let _ = std::process::Command::new("chmod")
+        match std::process::Command::new("chmod")
             .arg("+x")
             .arg(&path)
-            .output();
+            .output()
+        {
+            Ok(_) | Err(_) => {}
+        }
         path
     };
 
     // Run guard-zero-tests.sh with the fake test
-    let _ = Command::new("bash")
+    match Command::new("bash")
         .arg("scripts/guard-zero-tests.sh")
         .arg("--")
         .arg(&fake_test_path)
-        .output();
+        .output()
+    {
+        Ok(_) | Err(_) => {}
+    }
 });

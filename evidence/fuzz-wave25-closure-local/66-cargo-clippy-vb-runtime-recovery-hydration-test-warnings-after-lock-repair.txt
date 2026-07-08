@@ -1,0 +1,982 @@
+COMMAND: cargo clippy -p vb_runtime --test recovery_hydration_tests --all-features -- -D warnings
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+error: used `expect()` on a `Result` value
+  --> crates/vb_runtime/tests/recovery_hydration_tests.rs:66:19
+   |
+66 |       let journal = FjallJournal::open(dir.path(), Some(FjallConfig::default()))
+   |  ___________________^
+67 | |         .expect("journal open should succeed");
+   | |______________________________________________^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+   = note: requested on the command line with `-F clippy::expect-used`
+
+error: used `expect()` on a `Result` value
+  --> crates/vb_runtime/tests/recovery_hydration_tests.rs:76:9
+   |
+76 | /         journal
+77 | |             .append_strict(event)
+78 | |             .expect("strict append should succeed");
+   | |___________________________________________________^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+  --> crates/vb_runtime/tests/recovery_hydration_tests.rs:88:9
+   |
+88 |         panic!("expected UnsupportedFrameSeed, got: {result:?}");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+   = note: requested on the command line with `-F clippy::panic`
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:128:13
+    |
+128 |             postcard::to_allocvec(&SlotValue::I64(42)).expect("value encoding should succeed"),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:156:13
+    |
+156 |             postcard::to_allocvec(&SlotValue::I64(99)).expect("value encoding should succeed"),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:190:15
+    |
+190 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:201:21
+    |
+201 |       let recovered = journal
+    |  _____________________^
+202 | |         .events_for_run(run)
+203 | |         .expect("events_for_run should succeed after clean shutdown");
+    | |_____________________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:223:15
+    |
+223 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:234:21
+    |
+234 |       let hydration = recover_runtime_summary(&journal, run)
+    |  _____________________^
+235 | |         .expect("recover_runtime_summary should succeed after clean shutdown");
+    | |______________________________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:256:15
+    |
+256 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:268:9
+    |
+268 | /         recover_runtime_summary(&j, run)
+269 | |             .expect("first recovery should succeed")
+    | |____________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:274:9
+    |
+274 | /         recover_runtime_summary(&j, run)
+275 | |             .expect("second recovery should succeed")
+    | |_____________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:295:15
+    |
+295 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:327:21
+    |
+327 |       let recovered = journal
+    |  _____________________^
+328 | |         .events_for_run(run)
+329 | |         .expect("events_for_run should succeed for partial run");
+    | |________________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:342:15
+    |
+342 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:366:21
+    |
+366 |       let hydration = recover_runtime_summary(&journal, run)
+    |  _____________________^
+367 | |         .expect("recover_runtime_summary should succeed for incomplete run");
+    | |____________________________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:383:15
+    |
+383 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:389:9
+    |
+389 | /         journal
+390 | |             .append_strict(&JournalEvent::RunAccepted {
+391 | |                 run,
+392 | |                 seq: EventSeq::new(0),
+393 | |                 workflow: digest,
+394 | |             })
+395 | |             .expect("append should succeed");
+    | |____________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:399:21
+    |
+399 |       let hydration = recover_runtime_summary(&journal, run)
+    |  _____________________^
+400 | |         .expect("summary recovery should succeed for RunAccepted-only run");
+    | |___________________________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:458:15
+    |
+458 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:479:17
+    |
+479 |                 postcard::to_allocvec(&SlotValue::I64(77)).expect("value encoding should succeed"),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:493:9
+    |
+493 |         recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:495:16
+    |
+495 |       let slot = seed
+    |  ________________^
+496 | |         .slots
+497 | |         .iter()
+498 | |         .find(|s| s.slot == SlotIdx::ZERO)
+499 | |         .expect("slot 0 must be in recovered slots");
+    | |____________________________________________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:533:15
+    |
+533 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:576:9
+    |
+576 |         recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:578:17
+    |
+578 |       let step0 = seed
+    |  _________________^
+579 | |         .steps
+580 | |         .iter()
+581 | |         .find(|s| s.step == StepIdx::ZERO)
+582 | |         .expect("step 0 must be in recovered steps");
+    | |____________________________________________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:585:17
+    |
+585 |       let step1 = seed
+    |  _________________^
+586 | |         .steps
+587 | |         .iter()
+588 | |         .find(|s| s.step == StepIdx::new(1))
+589 | |         .expect("step 1 must be in recovered steps");
+    | |____________________________________________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:698:9
+    |
+698 |         panic!("expected NoRecoveryData for empty events, got: {result:?}");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:708:15
+    |
+708 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:714:9
+    |
+714 | /         journal
+715 | |             .append_strict(&JournalEvent::RunAccepted {
+716 | |                 run: existing_run,
+717 | |                 seq: EventSeq::new(0),
+718 | |                 workflow: test_digest(0x0C),
+719 | |             })
+720 | |             .expect("append should succeed");
+    | |____________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:726:9
+    |
+726 |         panic!("expected NoRecoveryData for missing run, got: {result:?}");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: `panic` should not be present in production code
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:761:9
+    |
+761 |         panic!("expected CorruptSnapshot for run mismatch, got: {result:?}");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:836:15
+    |
+836 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:850:9
+    |
+850 | /         journal
+851 | |             .put_snapshot(&original)
+852 | |             .expect("put_snapshot should succeed");
+    | |__________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:856:18
+    |
+856 |       let loaded = journal
+    |  __________________^
+857 | |         .snapshot(run, EventSeq::new(42))
+858 | |         .expect("snapshot load should succeed")
+859 | |         .expect("snapshot should exist");
+    | |________________________________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:856:18
+    |
+856 |       let loaded = journal
+    |  __________________^
+857 | |         .snapshot(run, EventSeq::new(42))
+858 | |         .expect("snapshot load should succeed")
+    | |_______________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:873:15
+    |
+873 |     let dir = TempDir::new().expect("temp dir should be created");
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:879:9
+    |
+879 | /         journal
+880 | |             .append_strict(&JournalEvent::RunAccepted {
+881 | |                 run,
+882 | |                 seq: EventSeq::new(0),
+883 | |                 workflow: digest,
+884 | |             })
+885 | |             .expect("append should succeed");
+    | |____________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+   --> crates/vb_runtime/tests/recovery_hydration_tests.rs:886:9
+    |
+886 | /         journal
+887 | |             .append_strict(&JournalEvent::StepStarted {
+888 | |                 run,
+889 | |                 seq: EventSeq::new(1),
+...   |
+892 | |             })
+893 | |             .expect("append should succeed");
+    | |____________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1006:15
+     |
+1006 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1019:9
+     |
+1019 |         recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("first replay should succeed")
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1025:9
+     |
+1025 |         recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("second replay should succeed")
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1066:19
+     |
+1066 |     let frame_a = result_a.expect("first hydration should succeed");
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1067:19
+     |
+1067 |     let frame_b = result_b.expect("second hydration should succeed");
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1079:15
+     |
+1079 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1091:9
+     |
+1091 | /         recover_runtime_summary(&j, run)
+1092 | |             .expect("first summary should succeed")
+     | |___________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1097:9
+     |
+1097 | /         recover_runtime_summary(&j, run)
+1098 | |             .expect("second summary should succeed")
+     | |____________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1119:15
+     |
+1119 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1165:15
+     |
+1165 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: using a potentially dangerous silent `as` conversion
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1181:32
+     |
+1181 |             step: StepIdx::new((i % 256) as u16),
+     |                                ^^^^^^^^^^^^^^^^
+     |
+     = help: consider using a safe wrapper for this conversion
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+     = note: requested on the command line with `-D clippy::as-conversions`
+
+error: using a potentially dangerous silent `as` conversion
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1187:32
+     |
+1187 |             step: StepIdx::new((i % 256) as u16),
+     |                                ^^^^^^^^^^^^^^^^
+     |
+     = help: consider using a safe wrapper for this conversion
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1205:21
+     |
+1205 |       let recovered = journal
+     |  _____________________^
+1206 | |         .events_for_run(run)
+1207 | |         .expect("events_for_run should succeed for many events");
+     | |________________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1279:15
+     |
+1279 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1319:5
+     |
+1319 | /     recover_full_journal(&journal, run, &mut tracker, &[], &[])
+1320 | |         .expect("full journal recovery should succeed");
+     | |_______________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1333:15
+     |
+1333 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1387:9
+     |
+1387 |         panic!("expected NonIdempotentActionBlocked, got: {result:?}");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1398:15
+     |
+1398 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1423:19
+     |
+1423 |       let summary = recover_runtime_summary(&journal, run)
+     |  ___________________^
+1424 | |         .expect("summary recovery should succeed")
+     | |__________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1435:15
+     |
+1435 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1466:19
+     |
+1466 |       let summary = recover_runtime_summary(&journal, run)
+     |  ___________________^
+1467 | |         .expect("summary recovery should succeed")
+     | |__________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1480:15
+     |
+1480 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1534:15
+     |
+1534 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1566:9
+     |
+1566 |         panic!("expected TerminalStateMismatch, got: {result:?}");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1577:15
+     |
+1577 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1625:23
+     |
+1625 |       let recovered_a = journal
+     |  _______________________^
+1626 | |         .events_for_run(run_a)
+1627 | |         .expect("run A events should exist");
+     | |____________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1630:23
+     |
+1630 |       let recovered_b = journal
+     |  _______________________^
+1631 | |         .events_for_run(run_b)
+1632 | |         .expect("run B events should exist");
+     | |____________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1635:21
+     |
+1635 |       let summary_a = recover_runtime_summary(&journal, run_a)
+     |  _____________________^
+1636 | |         .expect("summary A should succeed")
+     | |___________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1638:21
+     |
+1638 |       let summary_b = recover_runtime_summary(&journal, run_b)
+     |  _____________________^
+1639 | |         .expect("summary B should succeed")
+     | |___________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1654:15
+     |
+1654 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1687:15
+     |
+1687 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1714:9
+     |
+1714 |         panic!("expected CompiledIrDigestMismatch, got: {result:?}");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1833:15
+     |
+1833 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1843:9
+     |
+1843 |         panic!("expected NoRecoveryData, got: {result:?}");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1894:15
+     |
+1894 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1933:9
+     |
+1933 |         recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1935:19
+     |
+1935 |       let pending = seed
+     |  ___________________^
+1936 | |         .pending_actions
+1937 | |         .iter()
+1938 | |         .find(|entry| entry.action == action)
+1939 | |         .expect("pending action must survive journal reopen");
+     | |_____________________________________________________________^
+     |
+     = note: if this value is `None`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1970:37
+     |
+1970 |       let events: Vec<JournalEvent> = journal
+     |  _____________________________________^
+1971 | |         .events_for_run(run)
+1972 | |         .expect("events_for_run should succeed after reopen");
+     | |_____________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:1975:9
+     |
+1975 |         panic!("expected UnsupportedFrameSeed from storage layer, got: {storage_result:?}");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2026:15
+     |
+2026 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2041:15
+     |
+2041 |     let exe = std::env::current_exe().expect("current exe should resolve");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2052:22
+     |
+2052 |           let status = cmd
+     |  ______________________^
+2053 | |             .status()
+2054 | |             .expect("child process should spawn and complete");
+     | |______________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2067:16
+     |
+2067 |       let seed = recover_runtime_frame_seed(&journal, run)
+     |  ________________^
+2068 | |         .expect("frame seed recovery should succeed after child crash");
+     | |_______________________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on an `Option` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2070:19
+     |
+2070 |       let pending = seed
+     |  ___________________^
+2071 | |         .pending_actions
+2072 | |         .iter()
+2073 | |         .find(|entry| entry.action == action)
+2074 | |         .expect("pending action must survive crash WAL replay");
+     | |_______________________________________________________________^
+     |
+     = note: if this value is `None`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2105:37
+     |
+2105 |       let events: Vec<JournalEvent> = journal
+     |  _____________________________________^
+2106 | |         .events_for_run(run)
+2107 | |         .expect("events_for_run should succeed after crash reopen");
+     | |___________________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: `panic` should not be present in production code
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2110:9
+     |
+2110 | /         panic!(
+2111 | |             "expected UnsupportedFrameSeed from storage layer after crash, got: {storage_result:?}"
+2112 | |         );
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2154:9
+     |
+2154 |         std::env::var("VB_CRASH_JOURNAL_DIR").expect("VB_CRASH_JOURNAL_DIR must be set for child");
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2157:23
+     |
+2157 |       let run_id: u64 = std::env::var("VB_CRASH_RUN_ID")
+     |  _______________________^
+2158 | |         .expect("VB_CRASH_RUN_ID must be set for child")
+2159 | |         .parse()
+2160 | |         .expect("VB_CRASH_RUN_ID must parse as u64");
+     | |____________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2157:23
+     |
+2157 |       let run_id: u64 = std::env::var("VB_CRASH_RUN_ID")
+     |  _______________________^
+2158 | |         .expect("VB_CRASH_RUN_ID must be set for child")
+     | |________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2165:19
+     |
+2165 |       let journal = FjallJournal::open(&path, Some(FjallConfig::default()))
+     |  ___________________^
+2166 | |         .expect("child: journal open should succeed");
+     | |_____________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2172:5
+     |
+2172 | /     journal
+2173 | |         .append_journaled(&JournalEvent::RunAccepted {
+2174 | |             run,
+2175 | |             seq: EventSeq::new(0),
+2176 | |             workflow: digest,
+2177 | |         })
+2178 | |         .expect("child: append_run_accepted should succeed");
+     | |____________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2179:5
+     |
+2179 | /     journal
+2180 | |         .append_journaled(&JournalEvent::StepStarted {
+2181 | |             run,
+2182 | |             seq: EventSeq::new(1),
+...    |
+2185 | |         })
+2186 | |         .expect("child: append_step_started should succeed");
+     | |____________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2187:5
+     |
+2187 | /     journal
+2188 | |         .append_journaled(&JournalEvent::ActionScheduled {
+2189 | |             run,
+2190 | |             seq: EventSeq::new(2),
+...    |
+2194 | |         })
+2195 | |         .expect("child: append_action_scheduled should succeed");
+     | |________________________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2256:15
+     |
+2256 |     let dir = TempDir::new().expect("temp dir should be created");
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: used `expect()` on a `Result` value
+    --> crates/vb_runtime/tests/recovery_hydration_tests.rs:2290:19
+     |
+2290 |       let summary = recover_runtime_summary(&journal, run)
+     |  ___________________^
+2291 | |         .expect("summary recovery should succeed")
+     | |__________________________________________________^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+
+error: could not compile `vb_runtime` (test "recovery_hydration_tests") due to 94 previous errors
+STATUS: 101

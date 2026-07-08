@@ -21,9 +21,8 @@ use libfuzzer_sys::fuzz_target;
 /// Build YAML with a choose step whose branch count and body step count
 /// come from fuzzer input bytes.
 fn fuzz_choose_structure(branch_count: u8, body_count: u8) {
-    let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: fuzz\nwhen:\n  manual: {}\nsteps:\n",
-    );
+    let mut yaml =
+        String::from("version: velvet-ballistics/v1\nname: fuzz\nwhen:\n  manual: {}\nsteps:\n");
 
     // Put some Set steps before the choose to create a realistic workflow
     yaml.push_str("  - id: setup\n    set:\n      output: cond\n      value: \"1\"\n");

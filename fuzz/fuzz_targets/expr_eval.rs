@@ -23,17 +23,17 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     // Target-level oracle: WorkflowParts decode is deterministic.
-    if let Ok(parts_a) = postcard::from_bytes::<vb_core::WorkflowParts>(data) {
-        if let Ok(parts_b) = postcard::from_bytes::<vb_core::WorkflowParts>(data) {
-            assert_eq!(
-                parts_a.slot_count, parts_b.slot_count,
-                "postcard decode of WorkflowParts is not deterministic (slot_count)"
-            );
-            assert_eq!(
-                parts_a.digest, parts_b.digest,
-                "postcard decode of WorkflowParts is not deterministic (digest)"
-            );
-        }
+    if let Ok(parts_a) = postcard::from_bytes::<vb_core::WorkflowParts>(data)
+        && let Ok(parts_b) = postcard::from_bytes::<vb_core::WorkflowParts>(data)
+    {
+        assert_eq!(
+            parts_a.slot_count, parts_b.slot_count,
+            "postcard decode of WorkflowParts is not deterministic (slot_count)"
+        );
+        assert_eq!(
+            parts_a.digest, parts_b.digest,
+            "postcard decode of WorkflowParts is not deterministic (digest)"
+        );
     }
 
     fuzz_lib::fuzz_expr_eval(data);

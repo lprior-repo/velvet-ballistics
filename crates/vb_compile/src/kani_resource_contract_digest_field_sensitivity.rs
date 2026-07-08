@@ -45,7 +45,7 @@ fn base_contract() -> ResourceContract {
 
 /// Helper: Get a representative WorkflowSource for Kani verification.
 fn representative_source() -> crate::ast::WorkflowSource {
-    let yaml = "version: velvet-ballastics/v1\nname: field_sensitivity_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
+    let yaml = "version: velvet-ballistics/v1\nname: field_sensitivity_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     crate::parse_workflow_source(yaml).expect("valid representative YAML source for Kani")
 }
 

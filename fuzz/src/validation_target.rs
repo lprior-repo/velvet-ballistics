@@ -1,14 +1,16 @@
 //! Validation fuzzing targets.
-#![allow(clippy::indexing_slicing)]
+//
+// The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+// `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+// `#![allow(...)]` lines that previously suppressed those lints have been
+// removed so the strict gate is enforceable. The remaining allows are
+// documentary lints the strict command does not deny.
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::let_underscore_must_use)]
-#![allow(clippy::as_conversions)]
-#![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::len_zero)]
 
 mod capability;

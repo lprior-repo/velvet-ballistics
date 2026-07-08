@@ -4,9 +4,13 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
     if data.is_empty() {
         return;
     }
-    let slot_count = u16::from(data[0].wrapping_rem(16)).saturating_add(1);
-    let list_len = usize::from(data[0].wrapping_rem(8));
-    let page_size = usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
+    let Some(&byte0) = data.first() else {
+        return;
+    };
+    let slot_count = u16::from(byte0.wrapping_rem(16)).saturating_add(1);
+    let list_len = usize::from(byte0.wrapping_rem(8));
+    let page_size =
+        usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
     let Ok(mut run) = vb_core::RunFrame::new(
         vb_core::RunId::new(1),
         vb_core::StepIdx::ZERO,
@@ -23,7 +27,7 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
         Ok(id) => id,
         Err(_) => return,
     };
-    let _ = run.write_slot_with_taint(
+    let _slot_list_seed = run.write_slot_with_taint(
         vb_core::SlotIdx::new(0),
         vb_core::SlotValue::List(list_id),
         vb_core::Taint::Clean,
@@ -62,19 +66,26 @@ fn exercise_collect_start(
     ) else {
         return;
     };
-    let _ = run_zero.write_slot_with_taint(
+    let _slot_list_seed_zero = run_zero.write_slot_with_taint(
         vb_core::SlotIdx::new(0),
         vb_core::SlotValue::List(list_id),
         vb_core::Taint::Clean,
     );
     let mut states_zero = CollectStates::new();
+    // `page_size` is `usize`-bounded by the fuzz input; the contract of
+    // `collect_start` requires a `u32` payload bound. The `try_from`
+    // translation is the safe replacement for the historical `as u32`
+    // silent truncation.
+    let Ok(page_size_u32) = u32::try_from(page_size) else {
+        return;
+    };
     let zero_page_result = collect_start(
         &mut run_zero,
         store,
         &mut states_zero,
         vb_core::SlotIdx::new(0),
-        page_size as u32,
-        page_size as u32,
+        page_size_u32,
+        page_size_u32,
         vb_core::StepIdx::new(1),
         vb_core::StepIdx::new(1),
         None,
@@ -83,14 +94,15 @@ fn exercise_collect_start(
     if page_size == 0 {
         assert!(zero_page_result.is_err());
     }
-    if page_size > 0 && list_len > 0 && list_len < page_size {
-        match zero_page_result {
-            Ok(signal) => assert!(matches!(
-                signal,
-                vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
-            )),
-            Err(_) => {}
-        }
+    if page_size > 0
+        && list_len > 0
+        && list_len < page_size
+        && let Ok(signal) = zero_page_result
+    {
+        assert!(matches!(
+            signal,
+            vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
+        ));
     }
 }
 
@@ -104,7 +116,7 @@ fn exercise_collect_non_list(slot_count: u16, store: &mut vb_core::ValueStore) {
     ) else {
         return;
     };
-    let _ = run_non_list.write_slot_with_taint(
+    let _slot_int_seed = run_non_list.write_slot_with_taint(
         vb_core::SlotIdx::new(0),
         vb_core::SlotValue::I64(42),
         vb_core::Taint::Clean,

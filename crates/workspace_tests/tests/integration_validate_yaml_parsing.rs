@@ -317,9 +317,8 @@ steps:
     finish:
       result: 0
 "#;
-    // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert!(result.is_err());
 }
 
 #[test]
@@ -347,9 +346,8 @@ steps:
     finish:
       result: 0
 "#;
-    // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert!(result.is_err());
 }
 
 // ---------------------------------------------------------------------------

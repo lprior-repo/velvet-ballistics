@@ -1,0 +1,38 @@
+=== jj status / diff summary ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:34Z
+
+--- git toplevel ---
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+--- jj root ---
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+
+--- jj status ---
+Working copy changes:
+M .gitignore
+M crates/vb_cli/src/naming_scan/classify.rs
+M crates/vb_cli/src/naming_scan/legacy.rs
+M crates/vb_cli/src/naming_scan/types.rs
+M crates/vb_cli/tests/cli_integration.rs
+M crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs
+M crates/vb_cli/tests/vb_qi37_14_1_run_step.rs
+M crates/vb_compile/src/kani_digest_ask_empty_prompt.rs
+M crates/vb_compile/src/kani_digest_ask_field_ordering.rs
+
+--- jj log (top 5) ---
+@  vrsompwtztlz 963dd125fb47 wave25 fuzz targets: vb-k7bsz vb-3or6p vb-i0fkp vb-1f4h3 vb-87qtk
+│ ◆  yksmotnvwnzo 4383a4e48393 vb-4969v runtime aggregate active/pending guard slice
+├─╯
+│ ◆  wprxuuokkqos 5d1938ddc47e vb-bevbg WIP: remove vb_compile test-util production dep; black-hat rejected pre-push
+│ ◆  yorlvyyzttlw 30873c405252 vb-bevbg state9 test-writer
+│ ◆  rypnzzwpnnqk 8eddd607c9f4 vb-bevbg state8 test-planner
+
+--- jj diff summary stats ---
+M fuzz/tests/proptest_digest_coherence.rs
+M fuzz/tests/proptest_ipc_error_exhaustiveness.rs
+M fuzz/tests/proptest_journal_error_exhaustiveness.rs
+M fuzz/tests/proptest_roundtrip_determinism.rs
+M scripts/check-error-exhaustiveness.sh
+
+--- jj diff stat for fuzz_retry_record_attempt.rs ---
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs    |    56 +-

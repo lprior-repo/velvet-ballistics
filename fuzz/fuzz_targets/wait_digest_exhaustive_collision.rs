@@ -17,19 +17,29 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let byte1 = data[0];
-    let byte2 = data[1];
-    let event_num1 = u16::from(data[2]);
-    let event_num2 = u16::from(data[3]);
+    let Some((&byte1, rest)) = data.split_first() else {
+        return;
+    };
+    let Some((&byte2, rest)) = rest.split_first() else {
+        return;
+    };
+    let Some((&event_byte1, rest)) = rest.split_first() else {
+        return;
+    };
+    let Some((&event_byte2, _tail)) = rest.split_first() else {
+        return;
+    };
+    let event_num1 = u16::from(event_byte1);
+    let event_num2 = u16::from(event_byte2);
 
     // Map bytes to Wait shapes
-    let shape1 = byte1 % 3;
-    let shape2 = byte2 % 3;
+    let shape1 = byte1.checked_rem(3).unwrap_or(0);
+    let shape2 = byte2.checked_rem(3).unwrap_or(0);
 
     let (e1, t1): (Option<String>, Option<String>) = match shape1 {
-        0 => (None, Some("10".to_string())),                                   // WaitUntil
-        1 => (Some(event_num1.to_string()), None),                              // WaitEvent unbounded
-        _ => (Some(event_num1.to_string()), Some("20".to_string())),            // WaitEvent bounded
+        0 => (None, Some("10".to_string())),       // WaitUntil
+        1 => (Some(event_num1.to_string()), None), // WaitEvent unbounded
+        _ => (Some(event_num1.to_string()), Some("20".to_string())), // WaitEvent bounded
     };
     let (e2, t2): (Option<String>, Option<String>) = match shape2 {
         0 => (None, Some("10".to_string())),
@@ -47,11 +57,15 @@ fuzz_target!(|data: &[u8]| {
 
     let src1 = vb_compile::parse_workflow_source(&yaml1);
     let src2 = vb_compile::parse_workflow_source(&yaml2);
-    let (Ok(s1), Ok(s2)) = (src1, src2) else { return; };
+    let (Ok(s1), Ok(s2)) = (src1, src2) else {
+        return;
+    };
 
     let c1 = vb_compile::compile_source(&s1);
     let c2 = vb_compile::compile_source(&s2);
-    let (Ok(w1), Ok(w2)) = (c1, c2) else { return; };
+    let (Ok(w1), Ok(w2)) = (c1, c2) else {
+        return;
+    };
 
     assert!(
         w1.digest() != w2.digest(),
@@ -67,5 +81,7 @@ fn build_workflow_from_opts(event: &Option<String>, timeout: &Option<String>) ->
     if let Some(t) = timeout {
         wait.push_str(&format!("\n      timeout: \"{t}\""));
     }
-    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+    format!(
+        "version: velvet-ballistics/v1\nname: fuzz_wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n"
+    )
 }

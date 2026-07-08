@@ -23,7 +23,7 @@ fn yaml_with_ask_and_timeout_produces_semantic_digest_changing_timeout() {
     // Given: YAML with Ask prompt + timeout "10s"
     let yaml_10s = r#"
 version: velvet-ballistics/v1
-name: e2e-timeout-test
+name: e2e_timeout_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -34,7 +34,7 @@ steps:
     // And: same YAML but with timeout "60s"
     let yaml_60s = r#"
 version: velvet-ballistics/v1
-name: e2e-timeout-test
+name: e2e_timeout_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -56,7 +56,7 @@ steps:
 fn yaml_with_ask_and_timeout_none_vs_some_produces_distinct_digests() {
     let yaml_no_timeout = r#"
 version: velvet-ballistics/v1
-name: e2e-timeout-none-test
+name: e2e_timeout_none_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -66,7 +66,7 @@ steps:
 "#;
     let yaml_with_timeout = r#"
 version: velvet-ballistics/v1
-name: e2e-timeout-none-test
+name: e2e_timeout_none_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -88,7 +88,7 @@ steps:
 fn yaml_with_ask_single_char_prompt_produces_valid_digest() {
     let yaml = r#"
 version: velvet-ballistics/v1
-name: e2e-minimal-prompt-test
+name: e2e_minimal_prompt_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -109,7 +109,7 @@ steps:
 fn yaml_with_ask_prompt_changes_produce_distinct_digests() {
     let yaml_a = r#"
 version: velvet-ballistics/v1
-name: e2e-prompt-test
+name: e2e_prompt_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -119,7 +119,7 @@ steps:
 "#;
     let yaml_b = r#"
 version: velvet-ballistics/v1
-name: e2e-prompt-test
+name: e2e_prompt_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -141,7 +141,7 @@ steps:
 fn yaml_with_set_finish_produces_deterministic_digest_unaffected_by_ask_fix() {
     let yaml = r#"
 version: velvet-ballistics/v1
-name: e2e-set-finish-test
+name: e2e_set_finish_test
 when: { manual: {} }
 steps:
   - id: set_1
@@ -168,7 +168,7 @@ steps:
 fn yaml_with_multi_step_ask_workflow_produces_deterministic_digest() {
     let yaml = r#"
 version: velvet-ballistics/v1
-name: e2e-multi-step
+name: e2e_multi_step
 when: { manual: {} }
 steps:
   - id: set_name
@@ -191,7 +191,7 @@ steps:
 #[test]
 fn yaml_same_content_different_layout_produces_identical_digest() {
     let yaml_compact = r#"version: velvet-ballistics/v1
-name: e2e-format-test
+name: e2e_format_test
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -202,7 +202,7 @@ steps:
     let yaml_spacious = r#"
 
 version: velvet-ballistics/v1
-name: e2e-format-test
+name: e2e_format_test
 when: { manual: {} }
 steps:
   - id: ask_1

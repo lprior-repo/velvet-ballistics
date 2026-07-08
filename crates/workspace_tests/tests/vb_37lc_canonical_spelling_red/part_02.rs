@@ -58,7 +58,7 @@ fn validate_scan_config_returns_invalid_configuration_when_allowlist_contains_su
     assert_eq!(
         result,
         Err(NamingScanError::InvalidConfiguration {
-            reason: "substring allowlist rule: Velvet-Ballastics".to_string()
+            reason: format!("substring allowlist rule: {LEGACY_PROJECT}")
         })
     );
 }
@@ -79,7 +79,7 @@ fn validate_scan_config_returns_pattern_compilation_failed_when_scan_pattern_is_
 }
 
 #[test]
-fn classify_occurrence_returns_canonical_product_when_ballastics_product_token_is_seen() {
+fn classify_occurrence_returns_canonical_product_when_ballistics_product_token_is_seen() {
     let config = minimum_valid_scan_config();
     let path = repo_path("README.md");
 
@@ -97,13 +97,13 @@ fn classify_occurrence_returns_canonical_product_when_ballastics_product_token_i
 #[test]
 fn classify_occurrence_returns_canonical_product_for_binary_package_and_bead_rig_aliases() {
     let mut config = minimum_valid_scan_config();
-    config.canonical_table.binary = "velvet-ballastics-bin".to_string();
-    config.canonical_table.package = "velvet-ballastics-package".to_string();
-    config.canonical_table.bead_rig = "velvet-ballastics-rig".to_string();
+    config.canonical_table.binary = "velvet-ballistics-bin".to_string();
+    config.canonical_table.package = "velvet-ballistics-package".to_string();
+    config.canonical_table.bead_rig = "velvet-ballistics-rig".to_string();
 
-    assert_canonical_product_alias("Cargo.toml", 1, "velvet-ballastics-bin", &config);
-    assert_canonical_product_alias("Cargo.toml", 2, "velvet-ballastics-package", &config);
-    assert_canonical_product_alias(".beads/config.yaml", 3, "velvet-ballastics-rig", &config);
+    assert_canonical_product_alias("Cargo.toml", 1, "velvet-ballistics-bin", &config);
+    assert_canonical_product_alias("Cargo.toml", 2, "velvet-ballistics-package", &config);
+    assert_canonical_product_alias(".beads/config.yaml", 3, "velvet-ballistics-rig", &config);
 }
 
 fn assert_canonical_product_alias(path: &str, line_number: u64, token: &str, config: &ScanConfig) {
@@ -119,7 +119,7 @@ fn assert_canonical_product_alias(path: &str, line_number: u64, token: &str, con
 }
 
 #[test]
-fn classify_occurrence_returns_canonical_crate_module_when_underscore_ballastics_token_is_seen() {
+fn classify_occurrence_returns_canonical_crate_module_when_configured_token_is_seen() {
     let config = minimum_valid_scan_config();
     let path = repo_path("crates/vb_cli/src/lib.rs");
 
@@ -137,15 +137,15 @@ fn classify_occurrence_returns_canonical_crate_module_when_underscore_ballastics
 #[test]
 fn classify_occurrence_returns_canonical_crate_module_when_database_alias_is_seen() {
     let mut config = minimum_valid_scan_config();
-    config.canonical_table.bead_database = "velvet_ballastics_db".to_string();
+    config.canonical_table.bead_database = "velvet_ballistics_db".to_string();
     let path = repo_path(".beads/config.yaml");
 
-    let result = classify_occurrence(path, line(1), column(1), "velvet_ballastics_db", &config);
+    let result = classify_occurrence(path, line(1), column(1), "velvet_ballistics_db", &config);
 
     assert_eq!(
         result,
         Ok(OccurrenceClass::CanonicalCrateModule {
-            canonical: "velvet_ballastics_db".to_string(),
+            canonical: "velvet_ballistics_db".to_string(),
             kind: CanonicalNameKind::CrateModule,
         })
     );
@@ -192,19 +192,11 @@ fn classify_occurrence_returns_allowed_repository_path_with_exact_payload_when_c
 }
 
 #[test]
-fn classify_occurrence_returns_allowed_master_filename_with_exact_payload_when_current_master_filename_is_seen()
- {
+fn classify_occurrence_returns_no_occurrence_when_current_master_filename_is_seen() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/migration.md");
 
     let result = classify_occurrence(path, line(5), column(3), CURRENT_MASTER_FILENAME, &config);
 
-    assert_eq!(
-        result,
-        Ok(OccurrenceClass::AllowedLegacy {
-            exception: LegacyException::MasterFilename {
-                filename: CURRENT_MASTER_FILENAME.to_string(),
-            },
-        })
-    );
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
 }

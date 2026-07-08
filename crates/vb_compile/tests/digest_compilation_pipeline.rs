@@ -13,7 +13,7 @@ use vb_compile::{WorkflowSource, parse_workflow_source};
 /// YAML fixture: workflow with an Ask step and a timeout.
 const ASK_YAML: &str = r#"
 version: velvet-ballistics/v1
-name: test-ask-digest
+name: test_ask_digest
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -25,7 +25,7 @@ steps:
 /// YAML fixture: workflow with Set + Finish only (no Ask).
 const SET_FINISH_YAML: &str = r#"
 version: velvet-ballistics/v1
-name: test-set-finish-digest
+name: test_set_finish_digest
 when: { manual: {} }
 steps:
   - id: set_1
@@ -37,7 +37,7 @@ steps:
 /// YAML fixture: same as ASK_YAML but with different prompt.
 const ASK_DIFFERENT_PROMPT_YAML: &str = r#"
 version: velvet-ballistics/v1
-name: test-ask-digest
+name: test_ask_digest
 when: { manual: {} }
 steps:
   - id: ask_1
@@ -49,7 +49,7 @@ steps:
 /// YAML fixture: same structure but different workflow name.
 const DIFFERENT_NAME_YAML: &str = r#"
 version: velvet-ballistics/v1
-name: different-workflow-name
+name: different_workflow_name
 when: { manual: {} }
 steps:
   - id: ask_1

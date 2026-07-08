@@ -2,11 +2,28 @@
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
 const CORE_LIB_RS: &str = include_str!("../src/lib.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_SHELL_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_ERROR_RS: &str =
+    include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs");
+const ADMISSION_RECORD_RS: &str =
+    include_str!("../../vb_runtime/src/admission/parts/chunk_002_records.rs");
+const ADMISSION_BUDGET_RS: &str =
+    include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs");
 const SHARD_TYPES_RS: &str = include_str!("../../vb_runtime/src/shard/types.rs");
 
+fn admission_source() -> String {
+    [
+        ADMISSION_SHELL_RS,
+        ADMISSION_ERROR_RS,
+        ADMISSION_RECORD_RS,
+        ADMISSION_BUDGET_RS,
+    ]
+    .join("\n")
+}
+
 fn repository_source() -> String {
-    [BUDGET_RS, CORE_LIB_RS, ADMISSION_RS, SHARD_TYPES_RS].join("\n")
+    let admission = admission_source();
+    [BUDGET_RS, CORE_LIB_RS, admission.as_str(), SHARD_TYPES_RS].join("\n")
 }
 
 macro_rules! source_contract_test {
@@ -248,7 +265,7 @@ source_contract_test!(
 );
 source_contract_test!(
     aggregate_admission_with_budget_exists,
-    ADMISSION_RS,
+    admission_source(),
     "pub fn admit_run_with_budget("
 );
 source_contract_test!(
@@ -280,7 +297,7 @@ source_contract_test!(
 );
 source_contract_test!(
     runtime_resource_capacity_error_variant_exists,
-    ADMISSION_RS,
+    admission_source(),
     "ResourceCapacityExceeded"
 );
 source_contract_test!(capacity_comparison_names_requested, BUDGET_RS, "requested");
@@ -329,37 +346,37 @@ source_contract_test!(
 );
 source_contract_test!(
     admission_accepts_requested_budget_argument,
-    ADMISSION_RS,
+    admission_source(),
     "requested: AggregateResourceBudget"
 );
 source_contract_test!(
     admission_accepts_available_capacity_argument,
-    ADMISSION_RS,
+    admission_source(),
     "available: AggregateResourceCapacity"
 );
 source_contract_test!(
     admission_error_preserves_resource_name,
-    ADMISSION_RS,
+    admission_source(),
     "resource"
 );
 source_contract_test!(
     admission_error_preserves_requested_value,
-    ADMISSION_RS,
+    admission_source(),
     "requested"
 );
 source_contract_test!(
     admission_error_preserves_available_value,
-    ADMISSION_RS,
+    admission_source(),
     "available"
 );
 source_contract_test!(
     admission_with_budget_still_checks_artifacts,
-    ADMISSION_RS,
+    admission_source(),
     "compiled_ir_exists"
 );
 source_contract_test!(
     admission_record_exposes_budget_when_extended,
-    ADMISSION_RS,
+    admission_source(),
     "budget"
 );
 source_contract_test!(
@@ -464,22 +481,22 @@ source_absence_test!(
 );
 source_absence_test!(
     runtime_admission_does_not_parse_json_for_capacity,
-    ADMISSION_RS,
+    admission_source(),
     "serde_json"
 );
 source_absence_test!(
     runtime_admission_does_not_parse_yaml_for_capacity,
-    ADMISSION_RS,
+    admission_source(),
     "serde_yaml"
 );
 source_absence_test!(
     runtime_admission_does_not_parse_http_for_capacity,
-    ADMISSION_RS,
+    admission_source(),
     "http"
 );
 source_absence_test!(
     runtime_admission_does_not_parse_string_commands_for_capacity,
-    ADMISSION_RS,
+    admission_source(),
     "from_str"
 );
 

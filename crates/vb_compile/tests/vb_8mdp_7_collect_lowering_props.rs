@@ -40,7 +40,7 @@ fn collect_yaml(
     set_value: &str,
 ) -> String {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: collect-test\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: collect_test\nwhen:\n  manual: {}\nsteps:\n",
     );
     // Collect step
     yaml.push_str("  - id: collect_pages\n    collect:\n");
@@ -66,7 +66,7 @@ fn collect_yaml(
 /// its StepIdx is offset from 0.
 fn collect_yaml_with_preamble(source_slot: &str, pages: Option<u32>, items: Option<u32>) -> String {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: collect-test\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: collect_test\nwhen:\n  manual: {}\nsteps:\n",
     );
     // Preamble: two set steps that consume IDs 0 and 1
     yaml.push_str("  - id: setup_a\n    set:\n      output: a\n      value: \"10\"\n");
@@ -416,7 +416,7 @@ fn step_idx_max_is_u16_max_minus_three_for_offset_three() {
 #[test]
 fn collect_with_moderate_preamble_has_correct_offsets() {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: collect-mod\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: collect_mod\nwhen:\n  manual: {}\nsteps:\n",
     );
     // 100 preamble set steps consume IDs 0..99
     for i in 0u16..100u16 {
