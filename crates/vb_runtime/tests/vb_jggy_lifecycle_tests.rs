@@ -38,18 +38,22 @@ fn contract_required_capability(action: ActionId) -> Capability {
     Capability::new("__contract_required__".into(), action)
 }
 
-fn first_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
+fn max_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
     let mut index = 0u16;
     let count = workflow.node_count();
+    let mut max_action: Option<ActionId> = None;
     while index < count {
         if let Some(node) = workflow.node(StepIdx::new(index)) {
             if let CompiledNodeKind::Do { action, .. } = node.kind {
-                return Some(action);
+                max_action = match max_action {
+                    Some(current) if current.get() >= action.get() => Some(current),
+                    _ => Some(action),
+                };
             }
         }
         index = index.saturating_add(1);
     }
-    None
+    max_action
 }
 
 fn action_contract(action: ActionId, required: bool) -> ActionContract {
@@ -103,7 +107,7 @@ fn submit_with_inputs_and_contracts(
     workflow: CompiledWorkflow,
     inputs: Box<[(SlotIdx, SlotValue)]>,
 ) {
-    let action = first_do_action(&workflow).unwrap_or(ActionId::new(0));
+    let action = max_do_action(&workflow).unwrap_or(ActionId::new(0));
     shard
         .enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,

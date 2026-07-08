@@ -5,7 +5,7 @@ use vb_core::{RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
     RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
-    RecoveryRuntimeSummary, UnsupportedRecoveryState, recover_runtime_frame_seed_from_events,
+    RecoveryRuntimeSummary, UnsupportedRecoveryState, recover_raw_runtime_frame_seed_from_events,
 };
 use vb_storage::{
     EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport, JournalWriterQueue,
@@ -74,7 +74,12 @@ fn no_output_events(run: RunId, step: StepIdx) -> Vec<JournalEvent> {
 }
 
 fn seed_for(events: &[JournalEvent]) -> Result<RecoveryFrameSeed, String> {
-    recover_runtime_frame_seed_from_events(events).map_err(|error| error.to_string())
+    // Compat DTO surface (bead vb-sixsf): this test exercises the raw
+    // replay path because it asserts exact field-by-field reconstruction
+    // (slot bytes, taint, step states, summary dimensions) that the
+    // typed `RecoveryFrameSeedProduct` does not surface. Production
+    // recovery must NOT use the `_raw_` variant.
+    recover_raw_runtime_frame_seed_from_events(events).map_err(|error| error.to_string())
 }
 
 fn unsupported_for(events: &[JournalEvent]) -> Result<UnsupportedRecoveryState, String> {
@@ -204,7 +209,7 @@ fn deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_c
 
     assert_eq!(
         hydrated,
-        Err(String::from("invalid recovery frame hydration"))
+        Err(String::from("recovery cannot resume: workflow_missing"))
     );
 }
 
@@ -302,7 +307,7 @@ fn supported_seed_hydrates_exact_secret_taint() {
 
     assert_eq!(
         hydrated,
-        Err(String::from("invalid recovery frame hydration"))
+        Err(String::from("recovery cannot resume: workflow_missing"))
     );
 }
 
@@ -312,7 +317,7 @@ fn supported_seed_hydrates_exact_derived_taint() {
 
     assert_eq!(
         hydrated,
-        Err(String::from("invalid recovery frame hydration"))
+        Err(String::from("recovery cannot resume: workflow_missing"))
     );
 }
 

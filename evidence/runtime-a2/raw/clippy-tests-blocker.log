@@ -1,0 +1,147 @@
+COMMAND: rtk cargo clippy -p vb_runtime -p vb_storage -p velvet-ballistics-workspace-tests --tests --no-deps
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+cargo clippy: 218 errors, 9 warnings
+
+Errors:
+  error[E0453]: allow(clippy::expect_used) incompatible with previous forbid
+   --> crates/vb_runtime/tests/rb_r7o2a_phantom.rs:5:5
+    |
+  5 |     clippy::expect_used,
+    |     ^^^^^^^^^^^^^^^^^^^ overruled by previous forbid
+    |
+    = note: `forbid` lint level was set on command line (`-F clippy::expect_used`)
+
+  error[E0453]: allow(clippy::panic) incompatible with previous forbid
+   --> crates/vb_runtime/tests/rb_r7o2a_phantom.rs:8:5
+    |
+  8 |     clippy::panic,
+    |     ^^^^^^^^^^^^^ overruled by previous forbid
+    |
+    = note: `forbid` lint level was set on command line (`-F clippy::panic`)
+
+  error[E0453]: allow(clippy::panic_in_result_fn) incompatible with previous forbid
+   --> crates/vb_runtime/tests/rb_r7o2a_phantom.rs:9:5
+    |
+  9 |     clippy::panic_in_result_fn,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ overruled by previous forbid
+    |
+    = note: `forbid` lint level was set on command line (`-F clippy::panic_in_result_fn`)
+
+  error[E0453]: allow(clippy::unwrap_used) incompatible with previous forbid
+    --> crates/vb_runtime/tests/rb_r7o2a_phantom.rs:10:5
+     |
+  10 |     clippy::unwrap_used
+     |     ^^^^^^^^^^^^^^^^^^^ overruled by previous forbid
+     |
+     = note: `forbid` lint level was set on command line (`-F clippy::unwrap_used`)
+
+  error: used `unwrap()` on a `Result` value
+    --> crates/vb_storage/tests/manual_qa_smoke.rs:10:16
+     |
+  10 |     let temp = tempfile::tempdir().unwrap();
+     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+     = note: requested on the command line with `-F clippy::unwrap-used`
+
+  error: used `unwrap()` on a `Result` value
+    --> crates/vb_storage/tests/manual_qa_smoke.rs:11:19
+     |
+  11 |     let journal = FjallJournal::open(temp.path(), None).unwrap();
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+  error: using a potentially dangerous silent `as` conversion
+    --> crates/vb_storage/tests/manual_qa_smoke.rs:52:43
+     |
+  52 |                 make_step_started(run, i, i as u16 - 1, i as u16)
+     |                                           ^^^^^^^^
+     |
+     = help: consider using a safe wrapper for this conversion
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+     = note: requested on the command line with `-D clippy::as-conversions`
+
+  error: using a potentially dangerous silent `as` conversion
+    --> crates/vb_storage/tests/manual_qa_smoke.rs:52:57
+     |
+  52 |                 make_step_started(run, i, i as u16 - 1, i as u16)
+     |                                                         ^^^^^^^^
+     |
+     = help: consider using a safe wrapper for this conversion
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+
+  error: used `unwrap()` on a `Result` value
+    --> crates/vb_storage/tests/manual_qa_smoke.rs:56:5
+     |
+  56 |     journal.append_strict_batch(&events).unwrap();
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: if this value is an `Err`, it will panic
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+  error: `panic` should not be present in production code
+    --> crates/vb_storage/tests/proptest_journal_idempotency.rs:35:17
+     |
+  35 |                 panic!("key encoding failed unexpectedly");
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+     = note: requested on the command line with `-F clippy::panic`
+
+  … +208 more errors
+  [full output: ~/.local/share/rtk/tee/1783567318_cargo-clippy-errors.log]
+  E0453 (110x)
+    crates/vb_runtime/tests/rb_r7o2a_phantom.rs:5:5
+    crates/vb_runtime/tests/rb_r7o2a_phantom.rs:8:5
+    crates/vb_runtime/tests/rb_r7o2a_phantom.rs:9:5
+    … +107 more
+  used `panic!()` or assertion in a function that returns `Result` (50x)
+    crates/vb_storage/tests/accepted_artifact_red_phase.rs:100:1
+    crates/vb_storage/tests/accepted_artifact_red_phase.rs:103:5
+    crates/vb_storage/tests/accepted_artifact_red_phase.rs:108:1
+    … +47 more
+  used `expect()` on a `Result` value (30x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:20:16
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:21:19
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:31:9
+    … +27 more
+  using a potentially dangerous silent `as` conversion (25x)
+    crates/vb_storage/tests/manual_qa_smoke.rs:52:43
+    crates/vb_storage/tests/manual_qa_smoke.rs:52:57
+    crates/vb_storage/tests/manual_qa_smoke.rs:148:43
+    … +22 more
+  used `unwrap()` on a `Result` value (15x)
+    crates/vb_storage/tests/manual_qa_smoke.rs:10:16
+    crates/vb_storage/tests/manual_qa_smoke.rs:11:19
+    crates/vb_storage/tests/manual_qa_smoke.rs:56:5
+    … +12 more
+  arithmetic operation that can potentially result in unexpected side-effects (8x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_007.rs:24:27
+    crates/vb_storage/tests/recovery_property_tests.rs:43:64
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_002.rs:19:36
+    … +5 more
+  you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let` (4x)
+    crates/vb_storage/tests/proptest_journal_idempotency.rs:53:9
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:49:9
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_005.rs:31:9
+    … +1 more
+  used `assert_eq!` with a literal bool (2x)
+    crates/vb_storage/tests/accepted_artifact_red_phase.rs:80:5
+    crates/vb_storage/tests/accepted_artifact_red_phase.rs:86:5
+  useless lint attribute (2x)
+    crates/vb_storage/src/admission/tests.rs:1:1
+    crates/vb_storage/src/batch/tests.rs:12:1
+  manual saturating arithmetic (2x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:58:21
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_009.rs:69:25
+  useless use of `vec!` (1x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_005.rs:68:22
+  used `unwrap()` on an `Option` value (1x)
+    crates/vb_storage/tests/proptest_vb_vzcuf_PS_001.rs:48:25
+  `panic` should not be present in production code (1x)
+    crates/vb_storage/tests/proptest_journal_idempotency.rs:35:17
+[full output: ~/.local/share/rtk/tee/1783567318_cargo_clippy.log]
+EXIT_STATUS: 101

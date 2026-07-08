@@ -1,0 +1,5 @@
+COMMAND: git rev-parse --show-toplevel
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+
+EXIT_STATUS: 0

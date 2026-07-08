@@ -9,7 +9,7 @@ use vb_core::{
 };
 
 const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: primitive-lowering\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: primitive_lowering\nwhen:\n  manual: {}\nsteps:\n";
 
 #[derive(Clone, Copy, Debug)]
 struct PrimitiveCase {
@@ -466,12 +466,12 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: inputs_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -539,12 +539,12 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: inputs_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -1222,7 +1222,7 @@ fn wait_workflow_yaml(event: &Option<String>, timeout: &Option<String>) -> Strin
         wait_block.push_str(&format!("\n      timeout: \"{t}\""));
     }
     format!(
-        "version: velvet-ballistics/v1\nname: wait-digest-test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: wait_digest_test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
     )
 }
 

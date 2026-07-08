@@ -371,7 +371,6 @@ crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs|lewis|vb-2lu1
 crates/workspace_tests/tests/vb_eepg_bdd_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 852-line file.
 verification/proptest/properties.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 369-line file.
 crates/vb_core/src/frame/parts/kani_f1_exhaustive.rs|lewis|vb-6dhl7|split-or-retire-before-release|vb-6dhl7 split K-F1 547-line 64-pair exhaustive proof into focused Kani chunk; further split blocked by single-proof stability of PO-RUST-001-FRAME-KANI obligation.
-crates/vb_core/src/frame/parts/kani_f1_exhaustive.rs|lewis|vb-6dhl7|split-or-retire-before-release|vb-6dhl7 split K-F1 547-line 64-pair exhaustive proof into focused Kani chunk; further split blocked by single-proof stability of PO-RUST-001-FRAME-KANI obligation.
 verification/verus/budget_bounded.rs|lewis|vb-fp4z5|split-into-2-chunks-in-follow-up|deferred: spec/proof boundaries require semantic split before mechanical split; tracked separately (956 lines, verus single-block).
 verification/verus/collect_ir_structure.rs|lewis|vb-fp4z5|split-into-2-chunks-in-follow-up|deferred: spec/proof boundaries require semantic split before mechanical split; tracked separately (869 lines, verus single-block).
 verification/verus/error_parity.rs|lewis|vb-fp4z5|split-into-2-chunks-in-follow-up|deferred: spec/proof boundaries require semantic split before mechanical split; tracked separately (931 lines, verus single-block).

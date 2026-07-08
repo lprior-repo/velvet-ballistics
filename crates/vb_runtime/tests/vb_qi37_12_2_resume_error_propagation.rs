@@ -680,13 +680,7 @@ fn handle_resume_propagates_flush_evidence_failure() {
 
     let run_id = RunId::new(500);
     let wf = suspended_workflow().expect("workflow must compile");
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
 
     // BUG: With observe_resume_drive_result discarding errors, tick() silently
     // ignores the drive_run failure. The submit appears to succeed even though

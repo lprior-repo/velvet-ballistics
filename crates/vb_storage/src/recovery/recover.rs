@@ -17,7 +17,7 @@
 
 use crate::recovery::types::{
     ActionAbiDigestComparison, DigestVerificationRequest, PolicyDigestComparison, RecoveryError,
-    RecoveryHydration, RecoveryResult,
+    RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryHydration, RecoveryResult,
 };
 use crate::{FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
@@ -229,16 +229,24 @@ fn terminal_state_to_string(
     }
 }
 
-/// Recovers a minimal live-frame seed from durable journal events for a run.
+/// Recovers a typed frame-seed product from durable journal events for a run.
 pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,
     run: RunId,
-) -> RecoveryResult<crate::recovery::types::RecoveryFrameSeed> {
+) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    recover_raw_runtime_frame_seed(journal, run).map(RecoveryFrameSeedProduct::from_seed)
+}
+
+/// Compatibility/raw replay DTO recovery for low-level verifier and tests.
+pub fn recover_raw_runtime_frame_seed(
+    journal: &FjallJournal,
+    run: RunId,
+) -> RecoveryResult<RecoveryFrameSeed> {
     let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
-    crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
+    crate::recovery::replay::summary::recover_raw_runtime_frame_seed_from_events(&events)
 }
 
 /// Recovers the latest run admission metadata for a run from durable events.

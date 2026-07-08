@@ -225,6 +225,15 @@ pub struct AcceptedArtifact {
     pub accepted_at_seq: EventSeq,
     /// Required capabilities for actions in this artifact.
     pub required_capabilities: Box<[vb_core::capability::Capability]>,
+    /// Validated action contracts bound into this accepted artifact.
+    ///
+    /// The runtime needs these contracts after crash recovery to validate
+    /// action completion size, taint, idempotency, and output-slot authority.
+    /// Keeping them inside the accepted artifact makes the artifact the unit of
+    /// trust described by the master contract instead of relying on ephemeral
+    /// process memory.
+    #[serde(default)]
+    pub action_contracts: Box<[ActionContract]>,
 }
 
 /// Computes the policy digest from a workflow's resource contract.
@@ -375,6 +384,7 @@ pub fn submit_artifact_with_contracts(
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities,
+                action_contracts: action_contracts.to_vec().into_boxed_slice(),
             };
             bind_artifact_digest(&mut artifact)?;
             let artifact_bytes =
@@ -425,6 +435,7 @@ pub fn submit_artifact_with_contracts(
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities,
+                action_contracts: action_contracts.to_vec().into_boxed_slice(),
             };
             bind_artifact_digest(&mut artifact)?;
 

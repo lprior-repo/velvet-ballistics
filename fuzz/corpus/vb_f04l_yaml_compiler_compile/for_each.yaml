@@ -1,11 +1,11 @@
-version: velvet-ballastics/v1
-name: fuzz-foreach
+version: velvet-ballistics/v1
+name: fuzz_foreach
 when:
   manual: {}
 steps:
   - id: loop
     for_each:
-      variable: item
+      variable: element
       input: "0"
       at_once: 2
       steps:

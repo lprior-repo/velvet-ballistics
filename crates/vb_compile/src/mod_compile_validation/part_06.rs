@@ -58,10 +58,6 @@ pub(super) fn optional_trigger_string_field(
     }
 }
 
-pub(super) fn is_webhook_method(method: &str) -> bool {
-    matches!(method, "GET" | "POST" | "PUT" | "PATCH" | "DELETE")
-}
-
 pub(crate) fn required_string_field<'a>(
     doc: &'a Yaml<'a>,
     field: &'static str,

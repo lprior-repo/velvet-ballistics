@@ -4,7 +4,7 @@
 use std::num::NonZeroUsize;
 use vb_core::action::{ActionContract, ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
 
@@ -17,6 +17,31 @@ use crate::shard::{
 };
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
+
+struct RecoveryArtifactWorkflow {
+    artifact: vb_storage::admission::AcceptedArtifact,
+    workflow: CompiledWorkflow,
+}
+
+struct RecoveryPrefixEvidence {
+    events: Vec<vb_storage::JournalEvent>,
+    admission: crate::admission::RunAdmission,
+    workflow_digest: WorkflowDigest,
+    next_seq: vb_storage::EventSeq,
+}
+
+struct RecoveredSeedProductContext {
+    run: RunId,
+    prefix: RecoveryPrefixEvidence,
+    /// Typed frame-seed product. The storage-side cannot-resume witness is
+    /// carried on `seed.cannot_resume_state()` and survives through the
+    /// runtime classification step (`product_from_recovered_context` →
+    /// `RuntimeRecoveryProduct::CannotResume`). Holding the typed product
+    /// here is what closes the FINDING-002 typestate bypass: the raw
+    /// `RecoveryFrameSeed` DTO no longer leaks into the runtime flow.
+    seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+    boundary: crate::recovery::RecoveredRunBoundary,
+}
 
 /// Lossless conversion of a `u32` integer to its exact `f32` representation.
 ///
@@ -162,6 +187,7 @@ pub struct Runtime {
     shards: Vec<Shard>,
     shard_count: usize,
     journal: SharedRuntimeJournal,
+    policy: vb_core::policy::RuntimePolicy,
 }
 
 impl Runtime {
@@ -193,6 +219,7 @@ impl Runtime {
             shards,
             shard_count: count,
             journal,
+            policy: config.policy,
         }
     }
 
@@ -244,7 +271,12 @@ impl Runtime {
         action_contracts: Box<[ActionContract]>,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission_with_contracts(
+            run,
+            workflow.digest(),
+            caps.clone(),
+            &action_contracts,
+        )?;
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow,
@@ -263,7 +295,12 @@ impl Runtime {
         action_contracts: Box<[ActionContract]>,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission_with_contracts(
+            run,
+            workflow.digest(),
+            caps.clone(),
+            &action_contracts,
+        )?;
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
@@ -336,9 +373,21 @@ impl Runtime {
     /// Recovers a run from durable Fjall journal evidence and enqueues it for resumption.
     ///
     /// This is the end-to-end recovery entry point: it reads the journal,
-    /// replays events to reconstruct a `RecoveryFrameSeed`, checks whether
-    /// the reconstructed state is resumable, hydrates a live `RunFrame`,
-    /// and enqueues `ShardCommand::Recover` on the owning shard.
+    /// replays events to reconstruct a typed `RecoveryFrameSeedProduct`,
+    /// hydrates the recoverable live-frame portion, restores durable
+    /// pending-action authority when present, and enqueues
+    /// `ShardCommand::Recover` on the owning shard.
+    ///
+    /// Recovery crosses the bead `vb-w25-runtime-a2` FINDING-001/FINDING-002
+    /// typestate boundary: the storage layer never hands back a raw
+    /// `RecoveryFrameSeed`. It returns the typed
+    /// `vb_storage::recovery::RecoveryFrameSeedProduct` (the storage
+    /// cannot-resume/resumable witness, FINDING-002), which
+    /// `recover_product` classifies through the parallel runtime boundary
+    /// into a `crate::recovery::RuntimeRecoveryProduct`
+    /// (`SummaryOnly` / `CannotResume { reason }` / `Resumable`,
+    /// FINDING-001). `recover_and_resume` enqueues only the `Resumable`
+    /// product and rejects the rest with a typed error.
     ///
     /// Returns `RuntimeError::RecoveryNotAvailable` when the runtime's
     /// journal is not storage-backed (noop or volatile journals cannot
@@ -348,41 +397,315 @@ impl Runtime {
     /// the journal replay fails (missing data, corrupt snapshot, digest
     /// mismatch, or unsupported recovery state).
     pub fn recover_and_resume(&self, run: RunId) -> RuntimeResult<()> {
-        let fjall_journal = self
-            .journal
+        match self.recover_product(run)? {
+            crate::recovery::RuntimeRecoveryProduct::Resumable(product) => {
+                self.enqueue_recovered_product(*product)
+            }
+            other => Err(Self::rejected_recovery_product_error(other)),
+        }
+    }
+
+    fn rejected_recovery_product_error(
+        product: crate::recovery::RuntimeRecoveryProduct,
+    ) -> RuntimeError {
+        match product {
+            crate::recovery::RuntimeRecoveryProduct::CannotResume(product) => {
+                RuntimeError::RecoveryCannotResume {
+                    reason: String::from(product.reason()),
+                }
+            }
+            crate::recovery::RuntimeRecoveryProduct::SummaryOnly(_)
+            | crate::recovery::RuntimeRecoveryProduct::Resumable(_) => {
+                RuntimeError::UnsupportedFullRecoveryHydration
+            }
+        }
+    }
+
+    /// Builds a typed durable recovery product without mutating shard state.
+    pub fn recover_product(
+        &self,
+        run: RunId,
+    ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let fjall_journal = self.recovery_storage_journal()?;
+        let prefix = Self::load_recovery_prefix_evidence(fjall_journal.as_ref(), run)?;
+        let recovered = Self::load_recovery_artifact_and_workflow(
+            fjall_journal,
+            prefix.admission.artifact_digest(),
+        )?;
+        Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
+        Self::build_runtime_recovery_product(run, prefix, recovered)
+    }
+
+    fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
+        self.journal
             .storage_journal()
-            .ok_or(RuntimeError::RecoveryNotAvailable)?;
+            .ok_or(RuntimeError::RecoveryNotAvailable)
+    }
 
-        let hydration = vb_storage::recovery::recover_runtime_frame_seed(&fjall_journal, run)
-            .map_err(|e| RuntimeError::Recovery {
-                error: e.to_string(),
-            })?;
+    fn load_recovery_prefix_evidence(
+        journal: &vb_storage::FjallJournal,
+        run: RunId,
+    ) -> RuntimeResult<RecoveryPrefixEvidence> {
+        let events = Self::load_recovery_events(journal, run)?;
+        let seed = Self::recover_frame_seed_from_events(&events)?;
+        let workflow_digest = Self::recovery_workflow_digest(&seed)?;
+        let next_seq = Self::next_recovery_sequence(&seed.summary())?;
+        let admission = crate::recovery::hydrate_run_admission_from_events(&events).ok_or(
+            RuntimeError::RecoveryCannotResume {
+                reason: String::from("admission_missing"),
+            },
+        )?;
+        Ok(RecoveryPrefixEvidence {
+            events,
+            admission,
+            workflow_digest,
+            next_seq,
+        })
+    }
 
-        let boundary = crate::recovery::recovery_boundary_from_hydration(
-            vb_storage::recovery::RecoveryHydration::FrameSeed(hydration),
-        );
+    fn load_recovery_events(
+        journal: &vb_storage::FjallJournal,
+        run: RunId,
+    ) -> RuntimeResult<Vec<vb_storage::JournalEvent>> {
+        journal
+            .events_for_run_full(run)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })
+    }
 
-        // Extract the workflow digest from the recovery summary so the
-        // shard can reconstruct the compiled workflow from the artifact store.
-        let workflow_digest =
-            boundary
-                .summary()
-                .workflow
-                .ok_or(RuntimeError::RecoveryCannotResume {
-                    reason: String::from("workflow_digest_missing_from_recovery_summary"),
-                })?;
+    /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+    /// from the durable event slice.
+    ///
+    /// **FINDING-002 typestate closure.** This helper no longer accepts
+    /// the raw [`vb_storage::recovery::RecoveryFrameSeed`] DTO. It threads
+    /// the storage-classified typestate product into the runtime
+    /// `RecoveredSeedProductContext`, so the storage
+    /// `RecoveryCannotResumeState` witness survives into
+    /// `RuntimeRecoveryProduct::CannotResume { reason }` without being
+    /// erased by a raw-DTO roundtrip. The internal call uses
+    /// `recover_runtime_frame_seed_from_events` (the non-`_raw_` entry
+    /// point) so the storage layer performs the cannot-resume/resumable
+    /// classification once and the runtime reuses that classification.
+    fn recover_frame_seed_from_events(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+        vb_storage::recovery::recover_runtime_frame_seed_from_events(events).map_err(|error| {
+            RuntimeError::Recovery {
+                error: error.to_string(),
+            }
+        })
+    }
 
-        // Both CannotResume and SummaryOnly are handled by the boundary
-        // itself (they already failed earlier in hydration); FrameSeed
-        // boundaries proceed here to hydrate the run frame.
-        let frame = boundary.hydrate_run_frame()?;
+    fn recovery_workflow_digest(
+        seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+    ) -> RuntimeResult<WorkflowDigest> {
+        seed.summary()
+            .workflow
+            .ok_or(RuntimeError::RecoveryCannotResume {
+                reason: String::from("workflow_digest_missing_from_recovery_summary"),
+            })
+    }
 
+    fn next_recovery_sequence(
+        summary: &vb_storage::recovery::RecoveryRuntimeSummary,
+    ) -> RuntimeResult<vb_storage::EventSeq> {
+        summary
+            .last_seq
+            .get()
+            .checked_add(1)
+            .map(vb_storage::EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+    }
+
+    fn validate_recovery_admission(
+        run: RunId,
+        runtime_policy: vb_core::RuntimePolicy,
+        prefix: &RecoveryPrefixEvidence,
+        recovered: &RecoveryArtifactWorkflow,
+    ) -> RuntimeResult<()> {
+        crate::recovery::validate_recovered_admission_evidence(
+            crate::recovery::RecoveredAdmissionEvidence {
+                context: crate::recovery::RecoveredAdmissionContext {
+                    run,
+                    expected_workflow: prefix.workflow_digest,
+                    runtime_policy,
+                },
+                admission: &prefix.admission,
+                artifact: &recovered.artifact,
+                workflow: &recovered.workflow,
+            },
+        )
+    }
+
+    fn build_runtime_recovery_product(
+        run: RunId,
+        prefix: RecoveryPrefixEvidence,
+        recovered: RecoveryArtifactWorkflow,
+    ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let expected = crate::recovery::action_abi_digests_from_contracts(
+            &recovered.artifact.action_contracts,
+        )?;
+        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+        let boundary = Self::recovered_boundary_from_events(
+            &seed,
+            &prefix.events,
+            &recovered.workflow,
+            &expected,
+        )?;
+        Self::product_from_recovered_seed(run, prefix, seed, boundary)
+    }
+
+    /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+    /// for a workflow-aware replay path.
+    ///
+    /// **FINDING-002 typestate closure.** Uses the typed entry point
+    /// `recover_runtime_frame_seed_from_events_with_workflow` so the
+    /// storage-classified cannot-resume/resumable product is the source
+    /// of truth; the runtime never sees the raw DTO.
+    fn recover_seed_for_loaded_workflow(
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+        vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })
+    }
+
+    /// Builds the recovered live-run boundary from the typed seed product.
+    ///
+    /// Takes the typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+    /// and deref-coerces to `&RecoveryFrameSeed` for the legacy
+    /// `pending_action_ticket_from_events` / `recovered_run_boundary_from_seed`
+    /// helpers, which still consume the raw DTO shape. The typed witness
+    /// survives in the context for `product_from_recovered_context`.
+    fn recovered_boundary_from_events(
+        seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+        events: &[vb_storage::JournalEvent],
+        workflow: &CompiledWorkflow,
+        expected: &[(vb_core::ActionId, WorkflowDigest)],
+    ) -> RuntimeResult<crate::recovery::RecoveredRunBoundary> {
+        let pending_action = crate::recovery::pending_action_ticket_from_events(
+            seed.seed(),
+            events,
+            workflow,
+            expected,
+        )?;
+        Ok(crate::recovery::recovered_run_boundary_from_seed(
+            seed.seed(),
+            pending_action,
+            workflow,
+        ))
+    }
+
+    fn product_from_recovered_seed(
+        run: RunId,
+        prefix: RecoveryPrefixEvidence,
+        seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+        boundary: crate::recovery::RecoveredRunBoundary,
+    ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let context = RecoveredSeedProductContext {
+            run,
+            prefix,
+            seed,
+            boundary,
+        };
+        Self::product_from_recovered_context(context)
+    }
+
+    fn product_from_recovered_context(
+        context: RecoveredSeedProductContext,
+    ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let cannot_resume =
+            crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
+        if !cannot_resume.is_resumable() {
+            return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
+                context.seed.summary(),
+                cannot_resume,
+            ));
+        }
+        Self::resumable_product_from_recovered_context(context)
+    }
+
+    fn resumable_product_from_recovered_context(
+        context: RecoveredSeedProductContext,
+    ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        let frame = crate::recovery::hydrate_frame_for_full_recovery(
+            context.seed.seed(),
+            context.boundary,
+        )?;
+        let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
+        Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
+            crate::recovery::ResumableRecoveryProduct::new(
+                crate::recovery::ResumableRecoveryParts {
+                    run: context.run,
+                    summary: context.seed.summary(),
+                    frame,
+                    artifact_digest: context.prefix.admission.artifact_digest(),
+                    workflow_digest: context.prefix.workflow_digest,
+                    next_seq: context.prefix.next_seq,
+                    collect_states,
+                    boundary: context.boundary,
+                },
+            ),
+        ))
+    }
+
+    fn hydrate_recovered_collect_states(
+        events: &[vb_storage::JournalEvent],
+    ) -> RuntimeResult<crate::primitives::collect::CollectStates> {
+        crate::primitives::collect::hydrate_collect_states_from_recovered_journal(events).map_err(
+            |_| RuntimeError::RecoveryCannotResume {
+                reason: String::from("collect_states_missing"),
+            },
+        )
+    }
+
+    fn enqueue_recovered_product(
+        &self,
+        product: crate::recovery::ResumableRecoveryProduct,
+    ) -> RuntimeResult<()> {
+        let run = product.run_id();
+        let command = product.into_recover_command();
         let shard = self.shard_for(run)?;
         shard.enqueue(ShardCommand::Recover {
             run,
-            frame,
-            workflow_digest,
+            frame: command.frame,
+            artifact_digest: command.artifact_digest,
+            workflow_digest: command.workflow_digest,
+            next_seq: command.next_seq,
+            collect_states: command.collect_states,
+            boundary: command.boundary,
         })
+    }
+
+    fn load_recovery_artifact_and_workflow(
+        journal: std::sync::Arc<vb_storage::FjallJournal>,
+        artifact_digest: WorkflowDigest,
+    ) -> RuntimeResult<RecoveryArtifactWorkflow> {
+        use crate::admission::AcceptedArtifactStore;
+
+        let store = crate::admission::StorageArtifactStore::new(journal);
+        let artifact = store
+            .load_accepted_artifact(artifact_digest)
+            .map_err(|error| RuntimeError::RecoveryCannotResume {
+                reason: match error {
+                    crate::admission::ArtifactEnvelopeError::ArtifactNotFound { .. } => {
+                        String::from("artifact_missing")
+                    }
+                    _ => String::from("artifact_decode_failed"),
+                },
+            })?;
+        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
+        let workflow =
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
+        Ok(RecoveryArtifactWorkflow { artifact, workflow })
     }
 
     /// Inspects run state.

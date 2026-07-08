@@ -213,11 +213,13 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
 }
 
 fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
+    let encoded = postcard::to_allocvec(&value).expect("test slot value encodes");
+    let encoded_len = u32::try_from(encoded.len()).expect("test output length fits u32");
     ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
+        encoded_len,
     }
 }
 
@@ -742,7 +744,17 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
     )?;
 
     let run = RunId::new(6001);
-    assert_eq!(runtime.submit_direct(run, workflow), Ok(()));
+    let action = ActionId::new(7);
+    assert_eq!(
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            run,
+            workflow,
+            Box::from([]),
+            action_grants(action),
+            action_contracts_through(action, 1),
+        ),
+        Ok(())
+    );
 
     // First tick: SetConst + Do (budget exhausted after 2 steps)
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -765,9 +777,20 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
 
     // If run is still active, complete the action
     if matches!(snap, Ok(InspectResponse::Found(_))) {
+        let seq = SeqNo::ZERO;
+        let action = ActionId::new(7);
+        let ticket = ActionTicket {
+            run,
+            step: StepIdx::new(1),
+            seq,
+            action,
+            attempt: 1,
+            idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+            capacity: 1,
+        };
         assert_eq!(
             runtime.complete_action_with_output(
-                action_ticket(run, ActionId::new(7)),
+                ticket,
                 action_output(SlotValue::I64(1), Taint::Clean),
             ),
             Ok(())

@@ -266,10 +266,12 @@ fn recovery_detects_unsupported_slot_taint() {
 
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
-    assert!(matches!(
+    assert_eq!(
         result,
-        Err(RuntimeError::InvalidRecoveryHydration)
-    ));
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("slot_taint")
+        })
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 // ---------------------------------------------------------------------------
 
 const FOREACH_YAML: &str = "version: velvet-ballistics/v1
-name: fuzz-foreach
+name: fuzz_foreach
 when:
   manual: {}
 steps:

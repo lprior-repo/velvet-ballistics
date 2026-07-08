@@ -14,7 +14,7 @@
 // which:
 //
 //   - Pulls in `verification/verus/production_inner/action_replay_tracker_production.rs`
-//     (a verbatim mirror of `crates/vb_storage/src/recovery/types.rs:867-1053`)
+//     (a verbatim mirror of `crates/vb_storage/src/recovery/types.rs:1400-1604`)
 //     via direct `#[path]` include.
 //   - Marks that module `#[verifier::external]` so every production body
 //     is opaque to Verus; only the structural shape (field names,
@@ -73,7 +73,7 @@
 // SOURCE BRIDGE
 // ============================================================================
 // Production mirror: `verification/verus/production_inner/action_replay_tracker_production.rs`
-// (verbatim copy of `crates/vb_storage/src/recovery/types.rs:867-1053`)
+// (verbatim copy of `crates/vb_storage/src/recovery/types.rs:1400-1604`)
 // Production extern: `verification/verus/extern_idempotency_replay_tracker.rs`
 // (binds the mirror via `#[path]` + module-level `#[verifier::external]`)
 

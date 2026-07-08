@@ -27,13 +27,13 @@
 //   2. `recovery_dimension_count_from_index`,
 //      `recovery_seed_dimensions_positive`,
 //      `recovery_observed_dimension_is_positive` from
-//      `crates/vb_storage/src/recovery/replay/summary/derive.rs:249-276`.
+//      `crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34`.
 //
 //   3. The `JournalEvent` enum (24 variants) from
 //      `crates/vb_storage/src/events.rs:23-316`.
 //
 //   4. The `RecoveryFrameSeed` struct from
-//      `crates/vb_storage/src/recovery/types.rs:628-649`.
+//      `crates/vb_storage/src/recovery/types.rs:925-946`.
 //
 // ----------------------------------------------------------------------------
 // Substitutions relative to production source
@@ -63,10 +63,10 @@
 //   - `recovery_dimension_count_from_index`,
 //     `recovery_seed_dimensions_positive`,
 //     `recovery_observed_dimension_is_positive`
-//                                       <- crates/vb_storage/src/recovery/replay/summary/derive.rs:249-276
+//                                       <- crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34
 //   - `JournalEvent` enum (24 variants) <- crates/vb_storage/src/events.rs:23-316
 //   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:460-487
-//   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:628-649
+//   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:899-918
 // This file MUST be regenerated whenever production attempt.rs,
 // summary/derive.rs, events.rs, or recovery/types.rs changes. The
 // mirror is annotated at the top of each section with the
@@ -471,13 +471,13 @@ impl JournalEvent {
 // VERBATIM PRODUCTION: RecoveryFrameSeed struct
 // ============================================================================
 //
-// Source: crates/vb_storage/src/recovery/types.rs:628-649
+// Source: crates/vb_storage/src/recovery/types.rs:899-918
 // Drift policy: any rename of `step_count` or `slot_count`, or any
 // change to their types, MUST be mirrored here.
 
 /// Minimal live-frame seed recovered from durable journal headers/events.
 ///
-/// Production equivalent: `crates/vb_storage/src/recovery/types.rs:629-649`.
+/// Production equivalent: `crates/vb_storage/src/recovery/types.rs:899-918`.
 
 pub struct RecoveryFrameSeed {
     pub summary: RecoveryRuntimeSummary,
@@ -579,7 +579,7 @@ pub const fn replay_step_order_diverges(previous: Option<StepIdx>, current: Step
 // VERBATIM PRODUCTION: seed-dimension production proof surface
 // ============================================================================
 //
-// Source: crates/vb_storage/src/recovery/replay/summary/derive.rs:249-276
+// Source: crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34
 // Drift policy: any rename, signature change, or body change in this
 // range MUST be mirrored here.
 

@@ -1,0 +1,6 @@
+COMMAND: rtk cargo test -p vb_storage recovery_hydration_frame_seed_variant_carries_classification --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+
+cargo test: 1 passed, 1718 filtered out (16 suites, 0.00s)
+
+EXIT_STATUS: 0

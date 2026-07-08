@@ -114,6 +114,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "capability_contract_schema"
+path = "stdin_smoke/capability_contract_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capability_name_schema"
+path = "stdin_smoke/capability_name_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "expr_bytecode"
 path = "stdin_smoke/expr_bytecode.rs"
 test = false
@@ -709,4 +723,3 @@ doc = false
 bench = false
 
 # === src/bin/ orphans (declared 2026-05-24 Phase 0) ===
-

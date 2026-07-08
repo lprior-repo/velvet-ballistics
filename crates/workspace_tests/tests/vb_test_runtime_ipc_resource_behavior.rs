@@ -15,9 +15,10 @@
 use std::num::NonZeroUsize;
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
-use vb_core::capability::CapabilitySet;
+use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
@@ -90,7 +91,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::new(0)),
         next: None,
         on_error: None,
         error_slot: None,
@@ -113,6 +114,41 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn required_capability(action: ActionId) -> Capability {
+    Capability::new(Box::from("ipc.contract.required"), action)
+}
+
+fn action_contract(action: ActionId) -> ActionContract {
+    ActionContract {
+        id: action,
+        name: ActionName::new("ipc-action").expect("static action name is valid"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::from([required_capability(action)]),
+    }
+}
+
+fn submit_suspended_workflow(
+    runtime: &Runtime,
+    run: RunId,
+    workflow: vb_core::workflow::CompiledWorkflow,
+) -> vb_runtime::RuntimeResult<()> {
+    let action = ActionId::new(0);
+    runtime.submit_direct_with_inputs_grants_and_contracts(
+        run,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+        CapabilitySet::from_grants(Box::from([required_capability(action)])),
+        Box::from([action_contract(action)]),
+    )
 }
 
 #[allow(dead_code)]
@@ -178,8 +214,8 @@ fn ipc_commands_route_to_correct_shard_by_run_id() {
     let run2 = RunId::new(2); // hashes to different shard
 
     // Submit both runs
-    assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
-    assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+    assert_eq!(submit_suspended_workflow(&runtime, run1, wf1), Ok(()));
+    assert_eq!(submit_suspended_workflow(&runtime, run2, wf2), Ok(()));
 
     // Tick once
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -246,10 +282,13 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
     assert_eq!(runtime.tick_all(), Ok(true));
 
     // Queue should now be empty, but we fill it again
-    assert_eq!(runtime.submit_direct(RunId::new(2), wf2.clone()), Ok(()));
+    assert_eq!(
+        submit_suspended_workflow(&runtime, RunId::new(2), wf2.clone()),
+        Ok(())
+    );
 
     // Try to submit when queue is full
-    let err = runtime.submit_direct(RunId::new(3), wf2);
+    let err = submit_suspended_workflow(&runtime, RunId::new(3), wf2);
     assert_eq!(err, Err(RuntimeError::QueueFull));
 
     // Run 1 still completed successfully
@@ -323,7 +362,7 @@ fn ipc_cancel_after_submit_processed_in_order() {
     let run = RunId::new(20);
 
     // Submit then cancel (in that order)
-    assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+    assert_eq!(submit_suspended_workflow(&runtime, run, wf), Ok(()));
     assert_eq!(runtime.cancel_run(run), Ok(()));
 
     // First tick processes submit (run becomes active/suspended)
@@ -450,11 +489,21 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
 // then all 4 are allocated and pool is empty.
 #[test]
 fn resource_frame_pool_take_exhausts_available_frames() {
-    let pool = match FramePool::new(2, 1, 4) {
+    let mut pool = match FramePool::new(2, 1, 4) {
         Ok(p) => p,
         Err(_) => return,
     };
     assert_eq!(pool.capacity(), 4);
+
+    let mut held_frames = Vec::new();
+    for run in 1u64..=4 {
+        let frame = pool
+            .take(RunId::new(run), StepIdx::ZERO)
+            .expect("take should succeed while preallocated frames remain");
+        held_frames.push(frame);
+    }
+
+    assert_eq!(held_frames.len(), 4);
     assert_eq!(pool.available(), 0);
     assert!(pool.is_empty());
 }
@@ -1132,9 +1181,9 @@ fn edge_shutdown_with_pending_runs_processes_all_during_drain() {
 }
 
 /// Given a 1-shard runtime, when submitting after shutdown initiated,
-// then submit succeeds but tick_all returns false (shard already shutting down).
+// then submit is rejected and tick_all returns false (shard already shut down).
 #[test]
-fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
+fn edge_submit_after_shutdown_is_rejected_and_does_not_process() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
@@ -1147,8 +1196,11 @@ fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     // Shutdown first
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
 
-    // Submit after shutdown
-    assert_eq!(runtime.submit_direct(RunId::new(90), wf), Ok(()));
+    // Submit after shutdown is rejected by intake gate.
+    assert_eq!(
+        runtime.submit_direct(RunId::new(90), wf),
+        Err(RuntimeError::ShutdownInProgress)
+    );
 
     // tick_all returns false (shard down, ignores pending commands)
     assert_eq!(runtime.tick_all(), Ok(false));
@@ -1175,6 +1227,18 @@ fn edge_frame_pool_rejects_mismatched_dimension_frames() {
         Ok(p) => p,
         Err(_) => return,
     };
+
+    // Drain pool_a so a mismatched release would be observable if it were
+    // incorrectly accepted back into the available-frame stack.
+    let mut held_frames = Vec::new();
+    for run in 10u64..14 {
+        let frame = pool_a
+            .take(RunId::new(run), StepIdx::ZERO)
+            .expect("pool_a drain should take each preallocated frame");
+        held_frames.push(frame);
+    }
+    assert_eq!(held_frames.len(), 4);
+    assert_eq!(pool_a.available(), 0);
 
     // Take frame from pool_b (step_count=4, slot_count=2)
     let frame = pool_b

@@ -4,10 +4,10 @@
 // IN-TREE PRODUCTION-SOURCE MIRROR for DigestCheck
 // ============================================================================
 //
-// This file is a VERBATIM copy of the production `DigestCheck` enum
-// and impl block from
-//   crates/vb_storage/src/recovery/types.rs:1055-1101
-// with three minimal substitutions:
+// This file is a VERBATIM copy of the production `impl Default for
+// ActionReplayTracker` block and the `DigestCheck` enum + impl block from
+//   crates/vb_storage/src/recovery/types.rs:1636-1688
+// with four minimal substitutions:
 //
 //   1. `#[derive(Debug, Clone, Copy, PartialEq, Eq)]` is dropped
 //      from the enum declaration. The macro-generated
@@ -31,6 +31,16 @@
 //      `crates/vb_storage/src/recovery/`; the mirror here is for
 //      verification only.)
 //
+//   4. `ActionReplayTracker` is declared as a minimal local stub
+//      (a unit struct with an inherent `new()` constructor). The
+//      production `ActionReplayTracker` is a large recovery-tracking
+//      struct whose fields are irrelevant to the DigestCheck
+//      verification surface; the stub is the smallest well-formed
+//      stand-in required so the verbatim `impl Default for
+//      ActionReplayTracker` block resolves and type-checks under the
+//      `#[path]`-included Verus build. Only the `ActionReplayTracker`
+//      identifier is significant for the production-inner drift gate.
+//
 // This file exists so that the companion
 // `extern_vb_rpch_digest_check.rs` can use
 //   `#[path = "production_inner/digest_check_production.rs"]`
@@ -42,7 +52,7 @@
 // requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:1055-1101` whenever
+// `crates/vb_storage/src/recovery/types.rs:1636-1688` whenever
 // production changes. The mirror is annotated at the top of every
 // section with the originating production line range so regeneration
 // is mechanical.
@@ -58,10 +68,46 @@
 #![allow(non_snake_case)]
 
 // ---------------------------------------------------------------------------
+// LOCAL STUB: ActionReplayTracker (minimized production type from THIS file)
+// ---------------------------------------------------------------------------
+//
+// The production `impl Default for ActionReplayTracker` block mirrored
+// in the next section constructs an `ActionReplayTracker` via its
+// inherent `new()` constructor. The full production struct carries
+// recovery-tracking fields (scheduled tickets, completed/failed sets,
+// completion envelopes) that are irrelevant to the DigestCheck
+// verification surface. This stub is the minimal well-formed
+// stand-in required so the verbatim `impl Default` block resolves and
+// type-checks. Only the `ActionReplayTracker` identifier is significant
+// for the drift gate; the stub body is an intentional substitution.
+pub struct ActionReplayTracker;
+
+impl ActionReplayTracker {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+// ---------------------------------------------------------------------------
+// VERBATIM PRODUCTION: impl Default for ActionReplayTracker
+// ---------------------------------------------------------------------------
+//
+// Source: crates/vb_storage/src/recovery/types.rs:1636-1640
+// Drift policy: any change to the production impl block between these
+// line numbers MUST be mirrored here. The block is copied verbatim;
+// `ActionReplayTracker` resolves to the local stub declared above.
+
+impl Default for ActionReplayTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // VERBATIM PRODUCTION: DigestCheck enum
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:1055-1065
+// Source: crates/vb_storage/src/recovery/types.rs:1642-1652
 // Drift policy: any change to the production enum between these line
 // numbers MUST be mirrored here. Variant names, variant order, and
 // variant set are matched exactly.
@@ -81,7 +127,7 @@ pub enum DigestCheck {
 // VERBATIM PRODUCTION: DigestCheck impl block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:1067-1101
+// Source: crates/vb_storage/src/recovery/types.rs:1654-1688
 // Drift policy: any change to the production impl block between these
 // line numbers MUST be mirrored here. Method signatures, body
 // structure, and `pub const` initializers are preserved.

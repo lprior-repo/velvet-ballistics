@@ -42,6 +42,7 @@ mod artifact_envelope_bdd_tests {
             verification: valid_proof(digest),
             accepted_at_seq: EventSeq::new(0),
             required_capabilities: Box::new([]),
+            action_contracts: Box::new([]),
         }
     }
 
@@ -94,6 +95,7 @@ mod artifact_envelope_bdd_tests {
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities: Box::new([]),
+                action_contracts: Box::new([]),
             };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;
@@ -140,6 +142,7 @@ mod artifact_envelope_bdd_tests {
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities: Box::new([]),
+                action_contracts: Box::new([]),
             };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;
@@ -173,6 +176,7 @@ mod artifact_envelope_bdd_tests {
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
                 required_capabilities: Box::new([]),
+                action_contracts: Box::new([]),
             };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;

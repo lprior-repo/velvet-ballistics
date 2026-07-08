@@ -463,8 +463,8 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
         .expect("slot 0 must be in recovered slots");
     assert_eq!(slot.value, SlotValue::I64(77));
 
-    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    // A frame seed alone is never resumable: the slot bytes
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
+    // A frame seed product alone is never resumable: the slot bytes
     // survive (the recovery summary preserves them) but the full
     // RunState cannot be rebuilt from journal events only. The
     // runtime boundary must report CannotResume and refuse
@@ -485,7 +485,9 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
     );
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("workflow_missing")
+        })
     );
 }
 
@@ -553,8 +555,8 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
         .expect("step 1 must be in recovered steps");
     assert_eq!(step1.state, RecoveredStepState::Asking);
 
-    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    // The frame seed alone is never resumable: it carries
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
+    // The frame seed product alone is never resumable: it carries
     // pending_actions, pending_timers, pending_asks, plus the
     // seven full-RunState-missing flags. The runtime boundary
     // must report CannotResume and refuse hydration.
@@ -576,7 +578,9 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
     );
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("pending_timers")
+        })
     );
 }
 
@@ -745,10 +749,11 @@ fn corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed() {
     let tail = vec![];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_err(),
-        "should fail when taint is missing for non-empty slots"
-    );
+    assert!(matches!(
+        result,
+        Err(RecoveryError::CorruptSnapshot { run: found, seq })
+            if found == run && seq == EventSeq::new(1)
+    ));
 }
 
 /// Given a snapshot with empty slots and empty taint
@@ -1723,12 +1728,13 @@ fn runtime_boundary_exposes_supported_pending_actions_state() {
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
     // A frame seed alone never carries the full RunState, so the
-    // boundary must report CannotResume and refuse hydration even
-    // when the storage-level unsupported state is configured.
+    // boundary must report CannotResume with the exact reason and refuse
+    // hydration even when the storage-level unsupported state is configured.
     assert!(
         matches!(
             result,
-            Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+            Err(vb_runtime::RuntimeError::RecoveryCannotResume { ref reason })
+                if reason == "pending_actions"
         ),
         "frame seed alone must be rejected: {result:?}"
     );
@@ -1778,14 +1784,15 @@ fn runtime_boundary_exposes_unsupported_state() {
         unsupported,
     };
 
-    let hydration = RecoveryHydration::FrameSeed(seed);
+    let hydration = RecoveryHydration::from_frame_seed(seed);
     let boundary = vb_runtime::recovery::recovery_boundary_from_hydration(hydration);
 
     assert_eq!(boundary.summary(), summary);
-    let result = boundary.hydrate_run_frame();
-    assert!(
-        result.is_err(),
-        "slot_taint unsupported should fail hydration"
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("slot_taint")
+        })
     );
 }
 
@@ -1836,7 +1843,7 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
 /// pending action recorded, `DurableFrameRecoveryBoundary::resume_status`
 /// reports `CannotResume` with `pending_actions: true` (plus the
 /// full-RunState-missing flags), and `boundary.hydrate_run_frame()`
-/// returns `Err(RuntimeError::InvalidRecoveryHydration)`. The
+/// returns `Err(RuntimeError::RecoveryCannotResume { reason: "pending_actions" })`. The
 /// storage-level `hydrate_run_frame_from_events` also returns
 /// `Err(RecoveryError::UnsupportedFrameSeed)` so the fail-closed
 /// surface is uniform across the runtime and storage layers.
@@ -1904,7 +1911,7 @@ fn pending_action_persisted_restart_via_appends_with_syncall() {
     assert_eq!(pending.step, StepIdx::new(2));
     assert_eq!(seed.pending_actions.len(), 1);
 
-    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
     let cannot_resume = RecoveryCannotResumeState {
         pending_actions: true,
         workflow_missing: true,
@@ -1924,7 +1931,9 @@ fn pending_action_persisted_restart_via_appends_with_syncall() {
     assert_eq!(boundary.cannot_resume_state(), cannot_resume);
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("pending_actions")
+        })
     );
 
     // The storage-layer entry point must use the same typed
@@ -2038,7 +2047,7 @@ fn pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_r
 
     // Typed rejection contract — same shape as the clean-restart
     // test, because the durable evidence is identical.
-    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
     let cannot_resume = RecoveryCannotResumeState {
         pending_actions: true,
         workflow_missing: true,
@@ -2058,7 +2067,9 @@ fn pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_r
     assert_eq!(boundary.cannot_resume_state(), cannot_resume);
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+            reason: String::from("pending_actions")
+        })
     );
 
     // Storage-layer `UnsupportedFrameSeed` surface must match too —

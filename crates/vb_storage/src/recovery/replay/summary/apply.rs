@@ -125,7 +125,7 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
         apply_summary_event_checked(&mut summary, event, &mut tracker)?;
     }
 
-    Ok(RecoveryHydration::Summary(summary))
+    Ok(RecoveryHydration::from_summary(summary))
 }
 
 fn apply_summary_event_checked(

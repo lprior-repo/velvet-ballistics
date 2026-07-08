@@ -43,6 +43,7 @@ fn accepted_artifact_with_caps(
         },
         accepted_at_seq: vb_storage::EventSeq::new(0),
         required_capabilities,
+        action_contracts: Box::new([]),
     }
 }
 

@@ -9,17 +9,17 @@ use std::process::{Command, Output};
 
 /// Minimal valid YAML workflow for CLI testing
 const MINIMAL_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: test-workflow
+name: test_workflow
 when:
   manual: {}
 steps:
   - id: step1
     save:
-      output: result
+      output: final_result
       value: '42'
   - id: done
     finish:
-      result: result
+      result: final_result
 "#;
 
 /// Run velvet-ballistics CLI with given args, return Output

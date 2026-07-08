@@ -154,6 +154,7 @@ fn accepted_artifact_with_seq(
         },
         accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
         required_capabilities,
+        action_contracts: Box::new([]),
     }
 }
 
@@ -214,6 +215,7 @@ fn accepted_artifact_with_flags_and_seq(
         },
         accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
         required_capabilities,
+        action_contracts: Box::new([]),
     }
 }
 

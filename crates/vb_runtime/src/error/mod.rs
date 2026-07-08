@@ -128,6 +128,26 @@ pub enum RuntimeError {
         /// Number of capabilities the caller granted.
         granted_count: usize,
     },
+    /// Admission gate rejected because caller action registry shape does not
+    /// match the accepted artifact's registry.
+    AdmissionActionRegistryMismatch {
+        /// Digest of the accepted artifact whose registry was authoritative.
+        digest: vb_core::ids::WorkflowDigest,
+        /// Number of action contracts accepted with the artifact.
+        expected_count: usize,
+        /// Number of action contracts supplied by the submitter.
+        submitted_count: usize,
+    },
+    /// Admission gate rejected because a caller action ABI digest diverged from
+    /// the accepted artifact's action contract digest.
+    AdmissionActionAbiDigestMismatch {
+        /// Action whose ABI digest diverged.
+        action: vb_core::ids::ActionId,
+        /// ABI digest accepted with the artifact.
+        expected: vb_core::ids::WorkflowDigest,
+        /// ABI digest supplied by the submitter.
+        submitted: vb_core::ids::WorkflowDigest,
+    },
     /// Admission gate rejected the run because the artifact certificate is stale.
     AdmissionArtifactStale {
         /// Digest of the stale artifact.

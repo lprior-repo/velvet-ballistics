@@ -1,13 +1,6 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
-use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
+use crate::mod_compile_errors::CompileError;
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 impl StepPrimitive {
     pub(crate) fn from_field(field: &str) -> Option<Self> {
@@ -20,7 +13,7 @@ impl StepPrimitive {
             "for_each" => Some(Self::ForEach),
             "together" | "parallel" => Some(Self::Parallel),
             "collect" => Some(Self::Collect),
-            "aggregate" => Some(Self::Aggregate),
+            "aggregate" | "reduce" => Some(Self::Aggregate),
             "repeat" => Some(Self::Repeat),
             "wait" => Some(Self::Wait),
             "ask" => Some(Self::Ask),
@@ -190,15 +183,15 @@ pub(super) fn validate_wait_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "wait", &["until", "event", "timeout"])?;
-    let until = optional_slot_field(body, index, "until")?;
-    let event = optional_slot_field(body, index, "event")?;
-    let timeout = optional_slot_field(body, index, "timeout")?;
+    let until = optional_slot_or_text_field(body, index, "until", "wait.until")?;
+    let event = optional_slot_or_text_field(body, index, "event", "wait.event")?;
+    let timeout = optional_slot_or_text_field(body, index, "timeout", "wait.timeout")?;
     match (until, event, timeout) {
-        (Some(_), None, None) | (None, Some(_), _) => Ok(()),
+        (true, false, false) | (false, true, _) | (false, false, true) => Ok(()),
         _ => Err(CompileError::StepFieldShape {
             step: index,
             field: "wait",
-            expected: "until without timeout or event with optional timeout",
+            expected: "until, timeout, or event with optional timeout",
         }),
     }
 }
@@ -209,11 +202,79 @@ pub(super) fn validate_ask_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
+    if body.as_mapping_get("answer").is_none() {
+        return validate_canonical_ask_shape(body, index);
+    }
     reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
     required_slot(body, index, "prompt")?;
     required_slot(body, index, "answer")?;
     optional_slot_field(body, index, "timeout")?;
     Ok(())
+}
+
+fn validate_canonical_ask_shape(body: &Yaml<'_>, index: usize) -> Result<(), CompileError> {
+    reject_unknown_primitive_fields(body, index, "ask", &["prompt", "timeout"])?;
+    required_non_empty_string_field(body, index, "prompt", "ask.prompt")?;
+    optional_non_empty_string_field(body, index, "timeout", "ask.timeout")
+}
+
+fn optional_slot_or_text_field(
+    body: &Yaml<'_>,
+    index: usize,
+    key: &'static str,
+    field: &'static str,
+) -> Result<bool, CompileError> {
+    let Some(node) = body.as_mapping_get(key) else {
+        return Ok(false);
+    };
+    if let Some(value) = node.as_integer() {
+        u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
+        return Ok(true);
+    }
+    match node.as_str() {
+        Some(value) if !value.is_empty() => Ok(true),
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field,
+            expected: "an integer slot index or non-empty string",
+        }),
+    }
+}
+
+fn required_non_empty_string_field(
+    body: &Yaml<'_>,
+    index: usize,
+    key: &'static str,
+    field: &'static str,
+) -> Result<(), CompileError> {
+    let node = required_step_field(body, index, key)?;
+    match node.as_str() {
+        Some(value) if !value.is_empty() => Ok(()),
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field,
+            expected: "a non-empty string",
+        }),
+    }
+}
+
+fn optional_non_empty_string_field(
+    body: &Yaml<'_>,
+    index: usize,
+    key: &'static str,
+    field: &'static str,
+) -> Result<(), CompileError> {
+    let Some(node) = body.as_mapping_get(key) else {
+        return Ok(());
+    };
+    match node.as_str() {
+        Some(value) if !value.is_empty() => Ok(()),
+        _ => Err(CompileError::StepFieldShape {
+            step: index,
+            field,
+            expected: "a non-empty string",
+        }),
+    }
 }
 
 pub(super) fn validate_save_shape(

@@ -1341,12 +1341,12 @@ fn header_without_recovery_events_returns_no_recovery_data() {
 
 // ---------------------------------------------------------------------------
 // B-016: Unsupported Recovery State Typed Rejection (PRE-006)
-// GA-016a — Unsupported recovery state returns InvalidRecoveryHydration
+// GA-016a — Unsupported recovery state returns RecoveryCannotResume with exact reason
 // GA-016b — Unsupported live-frame component fails closed at boundary
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unsupported_recovery_state_returns_invalid_recovery_hydration() {
+fn unsupported_recovery_state_returns_recovery_cannot_resume_reason() {
     use vb_runtime::RuntimeError;
     use vb_runtime::recovery::RuntimeRecoveryBoundary;
     use vb_storage::recovery::UnsupportedRecoveryState;
@@ -1384,10 +1384,12 @@ fn unsupported_recovery_state_returns_invalid_recovery_hydration() {
 
     // GA-016a: Runtime boundary must reject unsupported seed
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    let result = boundary.hydrate_run_frame();
-    let Err(RuntimeError::InvalidRecoveryHydration) = result else {
-        panic!("expected InvalidRecoveryHydration for unsupported recovery state, got: {result:?}");
-    };
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("slot_values")
+        })
+    );
 }
 
 #[test]
@@ -1434,12 +1436,12 @@ fn unsupported_live_frame_component_fails_closed_at_boundary() {
     };
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    let result = boundary.hydrate_run_frame();
-    let Err(RuntimeError::InvalidRecoveryHydration) = result else {
-        panic!(
-            "expected InvalidRecoveryHydration for unsupported action_payloads, got: {result:?}"
-        );
-    };
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("action_payloads")
+        })
+    );
 }
 
 // ---------------------------------------------------------------------------
