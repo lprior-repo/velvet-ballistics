@@ -355,8 +355,8 @@ fn validate_kind_family_accepts_kind_29_with_journal_magic() {
 fn validate_kind_family_rejects_kind_9_with_journal_magic() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 9);
     assert!(
-        matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
-        "kind 9 must be rejected (below journal range), got {:?}",
+        matches!(result, Err(JournalError::UnknownRecordKind { kind: 9 })),
+        "kind 9 must be rejected as unknown, got {:?}",
         result
     );
 }
@@ -365,8 +365,8 @@ fn validate_kind_family_rejects_kind_9_with_journal_magic() {
 fn validate_kind_family_rejects_kind_0_with_journal_magic() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 0);
     assert!(
-        matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
-        "kind 0 must be rejected for any magic, got {:?}",
+        matches!(result, Err(JournalError::UnknownRecordKind { kind: 0 })),
+        "kind 0 must be rejected as unknown, got {:?}",
         result
     );
 }

@@ -864,17 +864,32 @@ Required `record_kind_u16` IDs:
 | 28 | `RunKilled` |
 | 29 | `AskTimedOut` |
 | 30 | `Snapshot` |
+| 31 | `WaitResolved` |
+| 32 | `ActionAbandoned` |
+| 33 | `StepSucceeded` |
+| 34 | `ActionScheduledTicket` |
+| 35 | `ActionCompletedEnvelope` |
 | 40 | `Blob` |
 | 50 | `IndexUpdate` |
 
-The current v1 storage contract includes `AskTimedOut = 29` so ask timeout
-replay is distinguishable from `AskAnswered = 18`. This repository is still at
-workspace crate version `0.1.0`; the table above is the authoritative v1 wire
-contract before a stable compatibility release, so `CURRENT_SCHEMA_VERSION`
-remains `1`. Implementations using an older in-repo draft table that rejected
-kind `29` are not considered compatible v1 decoders. After a stable v1 storage
-compatibility release, adding or repurposing any `record_kind_u16` requires a
-schema-version bump or an explicit named migration with evidence.
+The current v1 storage contract includes `AskTimedOut = 29`,
+`WaitResolved = 31`, `ActionAbandoned = 32`, `StepSucceeded = 33`,
+`ActionScheduledTicket = 34`, and `ActionCompletedEnvelope = 35` so timeout,
+wait-resolution, abandonment, step-success, and durable action-envelope replay
+states are not collapsed onto older shared envelope kinds. This repository is
+still at workspace crate version `0.1.0`; the table above is the authoritative
+v1 wire contract before a stable compatibility release, so `CURRENT_SCHEMA_VERSION`
+remains `1`. Implementations using an older in-repo
+draft table that rejected kind `29` or kinds `31..=35` are not considered
+compatible v1 decoders. Schema-1 compatibility for records written before the
+split is explicit and named only: a persisted `StepSucceeded` payload may decode
+from old envelope kind `SlotWritten = 12`, a persisted `ActionScheduledTicket`
+payload may decode from old envelope kind `ActionScheduled = 13`, and a
+persisted `ActionCompletedEnvelope` payload may decode from old envelope kind
+`ActionCompleted = 14`. New writes must use their stable kind IDs `33`, `34`,
+and `35`. After a stable v1 storage compatibility release, adding or
+repurposing any `record_kind_u16` requires a schema-version bump or an explicit
+named migration with evidence.
 
 Decode order is mandatory: read 60-byte header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, blobs, and IPC payloads, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
 

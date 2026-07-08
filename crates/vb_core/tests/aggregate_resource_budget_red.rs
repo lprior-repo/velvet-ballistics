@@ -2,7 +2,29 @@
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
 const CORE_LIB_RS: &str = include_str!("../src/lib.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+// `vb_runtime/src/admission.rs` is a 56-line shell that `include!`s
+// focused chunks from `admission/parts/`. `include_str!` of the shell
+// alone would miss contract tokens declared in the chunks, so we
+// concatenate the shell + all chunks into `ADMISSION_RS` here at
+// compile time. Every existing macro invocation still references
+// `ADMISSION_RS`, so no other edits are required: contract searches now
+// see the same surface a real `cargo build` of the admission module
+// would see.
+const ADMISSION_RS: &str = concat!(
+    include_str!("../../vb_runtime/src/admission.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_002_records.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_003_stores.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_004_validation.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_005_admit_core.rs"),
+    "\n",
+    include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs"),
+);
 const SHARD_TYPES_RS: &str = include_str!("../../vb_runtime/src/shard/types.rs");
 
 fn repository_source() -> String {

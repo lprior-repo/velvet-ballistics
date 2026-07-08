@@ -38,7 +38,7 @@ use vb_core::WorkflowDigest;
 /// the proven pattern from v1_primitive_lowering tests.
 fn together_workflow_yaml(branches_yaml: &str) -> String {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: together-test\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: together_test\nwhen:\n  manual: {}\nsteps:\n",
     );
     yaml.push_str(branches_yaml);
     yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
@@ -57,23 +57,23 @@ fn compile_and_digest(yaml: &str) -> Result<WorkflowDigest, String> {
 /// Each branch gets exactly one set step: `set { output: out_label, value: val_str }`.
 fn together_branch_yaml(labels_and_outputs: &[(&str, &str, &str)]) -> String {
     let mut yaml = String::from("  - id: fanout\n    together:\n      branches:\n");
-    for (label, output, value) in labels_and_outputs {
+    for (branch_index, (label, output, value)) in labels_and_outputs.iter().enumerate() {
         yaml.push_str(&format!("        - label: \"{label}\"\n          steps:\n"));
         yaml.push_str(&format!(
-            "            - id: set_{label}\n              set:\n                output: \"{output}\"\n                value: \"{value}\"\n"
+            "            - id: set_b{branch_index}\n              set:\n                output: \"{output}\"\n                value: \"{value}\"\n"
         ));
     }
     yaml
 }
 
-/// Generate a label string: 1-16 chars, alphanumeric + underscores, no YAML ambiguity.
+/// Generate a label string: 1-16 public-name-safe chars, no YAML ambiguity.
 fn label_strategy() -> impl Strategy<Value = String> {
-    proptest::string::string_regex("[a-zA-Z][a-zA-Z0-9_]{0,15}").expect("label regex is valid")
+    proptest::string::string_regex("[a-z][a-z0-9_]{0,15}").expect("label regex is valid")
 }
 
-/// Generate an output name: alphanumeric, no ambiguity.
+/// Generate an output name: public-name-safe lowercase alphanumeric/underscore.
 fn output_strategy() -> impl Strategy<Value = String> {
-    proptest::string::string_regex("[a-zA-Z][a-zA-Z0-9_]{0,7}").expect("output regex is valid")
+    proptest::string::string_regex("[a-z][a-z0-9_]{0,7}").expect("output regex is valid")
 }
 
 /// Generate a value string: 1-4 digit non-empty numeric string.
@@ -352,9 +352,9 @@ proptest! {
     /// hashed via `hasher.update(branch.label.as_bytes())`.
     #[test]
     fn proptest_branch_label_length_produces_different_digest(
-        la in proptest::string::string_regex("[a-zA-Z][a-zA-Z0-9_]{0,255}")
+        la in proptest::string::string_regex("[a-z][a-z0-9_]{0,255}")
             .expect("label regex valid"),
-        lb in proptest::string::string_regex("[a-zA-Z][a-zA-Z0-9_]{0,255}")
+        lb in proptest::string::string_regex("[a-z][a-z0-9_]{0,255}")
             .expect("label regex valid"),
         o1 in output_strategy(),
         o2 in output_strategy(),

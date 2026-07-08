@@ -450,11 +450,30 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
 // then all 4 are allocated and pool is empty.
 #[test]
 fn resource_frame_pool_take_exhausts_available_frames() {
-    let pool = match FramePool::new(2, 1, 4) {
+    let mut pool = match FramePool::new(2, 1, 4) {
         Ok(p) => p,
         Err(_) => return,
     };
     assert_eq!(pool.capacity(), 4);
+    // Pool starts fully available: FramePool::new pre-allocates `capacity` frames
+    // so `take` never falls back to fresh allocation on the runtime hot path.
+    assert_eq!(pool.available(), 4);
+
+    // Take all 4 frames (exhaust the pool).
+    let _f1 = pool
+        .take(RunId::new(1), StepIdx::ZERO)
+        .expect("take 1 should succeed");
+    let _f2 = pool
+        .take(RunId::new(2), StepIdx::ZERO)
+        .expect("take 2 should succeed");
+    let _f3 = pool
+        .take(RunId::new(3), StepIdx::ZERO)
+        .expect("take 3 should succeed");
+    let _f4 = pool
+        .take(RunId::new(4), StepIdx::ZERO)
+        .expect("take 4 should succeed");
+
+    // After taking all 4 frames, the pool is empty.
     assert_eq!(pool.available(), 0);
     assert!(pool.is_empty());
 }
@@ -1132,7 +1151,8 @@ fn edge_shutdown_with_pending_runs_processes_all_during_drain() {
 }
 
 /// Given a 1-shard runtime, when submitting after shutdown initiated,
-// then submit succeeds but tick_all returns false (shard already shutting down).
+/// then the submit is rejected at the boundary with `ShutdownInProgress`
+/// and tick_all returns false (shard already shut down).
 #[test]
 fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -1147,10 +1167,16 @@ fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     // Shutdown first
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
 
-    // Submit after shutdown
-    assert_eq!(runtime.submit_direct(RunId::new(90), wf), Ok(()));
+    // Submit after shutdown fails closed at the shard boundary.
+    // The shard's enqueue path checks `shutting_down` before accepting any
+    // command and returns `ShutdownInProgress` so callers see a typed
+    // error instead of a phantom enqueue.
+    assert_eq!(
+        runtime.submit_direct(RunId::new(90), wf),
+        Err(RuntimeError::ShutdownInProgress)
+    );
 
-    // tick_all returns false (shard down, ignores pending commands)
+    // tick_all returns false (shard down, ignores any residual commands)
     assert_eq!(runtime.tick_all(), Ok(false));
 
     // No runs processed
@@ -1176,7 +1202,24 @@ fn edge_frame_pool_rejects_mismatched_dimension_frames() {
         Err(_) => return,
     };
 
-    // Take frame from pool_b (step_count=4, slot_count=2)
+    // Drain pool_a first (take all 4 frames) so available() is 0. This lets
+    // us directly observe whether the mismatched frame is accepted or rejected
+    // by `release`.
+    let _a1 = pool_a
+        .take(RunId::new(101), StepIdx::ZERO)
+        .expect("drain take 1 should succeed");
+    let _a2 = pool_a
+        .take(RunId::new(102), StepIdx::ZERO)
+        .expect("drain take 2 should succeed");
+    let _a3 = pool_a
+        .take(RunId::new(103), StepIdx::ZERO)
+        .expect("drain take 3 should succeed");
+    let _a4 = pool_a
+        .take(RunId::new(104), StepIdx::ZERO)
+        .expect("drain take 4 should succeed");
+    assert_eq!(pool_a.available(), 0);
+
+    // Take a frame from pool_b (step_count=4, slot_count=2)
     let frame = pool_b
         .take(RunId::new(1), StepIdx::ZERO)
         .expect("take should succeed");
@@ -1184,7 +1227,7 @@ fn edge_frame_pool_rejects_mismatched_dimension_frames() {
     // Release into pool_a (step_count=2, slot_count=1) — dimension mismatch
     pool_a.release(frame);
 
-    // pool_a remains empty (mismatched frame silently dropped)
+    // pool_a remains empty (mismatched frame silently dropped, no panic).
     assert_eq!(pool_a.available(), 0);
     assert!(pool_a.is_empty());
 }

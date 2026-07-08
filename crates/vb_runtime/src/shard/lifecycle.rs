@@ -4,6 +4,7 @@
 include!("lifecycle/chunk_003.rs");
 include!("lifecycle/chunk_001.rs");
 include!("lifecycle/chunk_002.rs");
+include!("lifecycle/chunk_002_drive_apply.rs");
 include!("lifecycle/chunk_004.rs");
 
 #[cfg(test)]

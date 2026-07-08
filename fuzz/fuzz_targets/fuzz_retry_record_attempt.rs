@@ -34,8 +34,24 @@ fuzz_target!(|data: &[u8]| {
         None => return,
     };
 
-    let _ = vb_runtime::shard::helpers::record_retry_attempt(&mut state, ticket, policy);
+    match vb_runtime::shard::helpers::record_retry_attempt(&mut state, ticket, policy) {
+        Ok(_) | Err(_) => {}
+    }
 });
+
+fn read_u64_le_at(data: &[u8], start: usize) -> Option<u64> {
+    let end = start.checked_add(8)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 8]>::try_from(bytes).ok())
+        .map(u64::from_le_bytes)
+}
+
+fn read_u16_le_at(data: &[u8], start: usize) -> Option<u16> {
+    let end = start.checked_add(2)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 2]>::try_from(bytes).ok())
+        .map(u16::from_le_bytes)
+}
 
 /// Build a minimal in-memory `RunState` shaped by the fuzz input. The
 /// workflow stays a single Do node so `record_retry_attempt` has a valid
@@ -112,26 +128,16 @@ fn retry_policy_from_bytes(data: &[u8]) -> vb_runtime::engine::RetryPolicy {
 
 /// Derive an `ActionTicket` from arbitrary input bytes.
 fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
-    if data.len() < 4 {
+    if data.len() < 8 {
         return None;
     }
 
-    let run = RunId::new(u64::from_le_bytes([
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-    ]));
+    let run = RunId::new(read_u64_le_at(data, 0)?);
     let step_byte = data.get(8).copied().unwrap_or(0);
     let seq_byte = data.get(9).copied().unwrap_or(0);
     let action_byte = data.get(10).copied().unwrap_or(0);
-    let attempt = if data.len() >= 12 {
-        u16::from_le_bytes([data[10], data[11]])
-    } else {
-        1
-    };
-    let capacity = if data.len() >= 14 {
-        u16::from_le_bytes([data[12], data[13]])
-    } else {
-        1
-    };
+    let attempt = read_u16_le_at(data, 10).unwrap_or(1);
+    let capacity = read_u16_le_at(data, 12).unwrap_or(1);
 
     Some(ActionTicket {
         run,

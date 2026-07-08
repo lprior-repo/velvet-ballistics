@@ -20,7 +20,7 @@ impl StepPrimitive {
             "for_each" => Some(Self::ForEach),
             "together" | "parallel" => Some(Self::Parallel),
             "collect" => Some(Self::Collect),
-            "aggregate" => Some(Self::Aggregate),
+            "reduce" | "aggregate" => Some(Self::Aggregate),
             "repeat" => Some(Self::Repeat),
             "wait" => Some(Self::Wait),
             "ask" => Some(Self::Ask),
@@ -39,7 +39,7 @@ impl StepPrimitive {
             Self::ForEach => "for_each",
             Self::Parallel => "parallel",
             Self::Collect => "collect",
-            Self::Aggregate => "aggregate",
+            Self::Aggregate => "reduce",
             Self::Repeat => "repeat",
             Self::Wait => "wait",
             Self::Ask => "ask",
@@ -129,6 +129,24 @@ pub(crate) fn validate_workflow_document_shape(doc: &Yaml<'_>) -> Result<(), Com
     validate_phase_zero_step_shapes(steps)
 }
 
+pub(crate) fn validate_canonical_workflow_document_shape(
+    doc: &Yaml<'_>,
+) -> Result<(), CompileError> {
+    validate_top_level_keys(doc)?;
+    validate_workflow_version(doc)?;
+    validate_workflow_trigger(doc)?;
+    validate_optional_top_level_shapes(doc)?;
+    validate_phase_zero_result(doc)?;
+    let name = required_string_field(doc, "name")?;
+    validate_public_name("name", name)?;
+    let steps = required_sequence_field(doc, "steps")?;
+    if steps.is_empty() {
+        return Err(CompileError::EmptySteps);
+    }
+    validate_step_ids(steps)?;
+    validate_canonical_phase_zero_step_shapes(steps)
+}
+
 pub(super) fn validate_phase_zero_step_shapes(
     steps: &saphyr::Sequence<'_>,
 ) -> Result<(), CompileError> {
@@ -164,6 +182,41 @@ pub(super) fn validate_phase_zero_step_shape(
     }
 }
 
+pub(super) fn validate_canonical_phase_zero_step_shapes(
+    steps: &saphyr::Sequence<'_>,
+) -> Result<(), CompileError> {
+    let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
+    for (index, step) in steps.iter().enumerate() {
+        validate_canonical_phase_zero_step_shape(step, index, last_step)?;
+    }
+    Ok(())
+}
+
+pub(super) fn validate_canonical_phase_zero_step_shape(
+    step: &Yaml<'_>,
+    index: usize,
+    last_step: usize,
+) -> Result<(), CompileError> {
+    let StepSpec { primitive, body } = step_spec(step, index)?;
+    match primitive {
+        StepPrimitive::Run | StepPrimitive::Do => {
+            validate_run_shape(body, index, last_step, primitive.as_str())
+        }
+        StepPrimitive::Set | StepPrimitive::Save => {
+            validate_save_shape(body, index, last_step, primitive.as_str())
+        }
+        StepPrimitive::Choose => validate_canonical_choose_shape(body, index, last_step),
+        StepPrimitive::ForEach => validate_for_each_shape(body, index, last_step),
+        StepPrimitive::Parallel => validate_together_shape(body, index, last_step),
+        StepPrimitive::Collect => validate_collect_shape(body, index, last_step),
+        StepPrimitive::Aggregate => validate_aggregate_shape(body, index, last_step),
+        StepPrimitive::Repeat => validate_repeat_shape(body, index, last_step),
+        StepPrimitive::Wait => validate_wait_shape(body, index, last_step),
+        StepPrimitive::Ask => validate_ask_shape(body, index, last_step),
+        StepPrimitive::Finish => validate_finish_shape(body, index, last_step),
+    }
+}
+
 pub(super) fn validate_run_shape(
     body: &Yaml<'_>,
     index: usize,
@@ -178,8 +231,8 @@ pub(super) fn validate_run_shape(
         });
     }
     reject_unknown_primitive_fields(body, index, primitive, &["action", "input"])?;
-    required_action(body, index, primitive)?;
-    required_slot(body, index, "input")?;
+    required_text_or_integer_field(body, index, "action", "a non-empty action id")?;
+    required_text_or_integer_field(body, index, "input", "a non-empty slot index")?;
     Ok(())
 }
 
@@ -190,15 +243,15 @@ pub(super) fn validate_wait_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "wait", &["until", "event", "timeout"])?;
-    let until = optional_slot_field(body, index, "until")?;
-    let event = optional_slot_field(body, index, "event")?;
-    let timeout = optional_slot_field(body, index, "timeout")?;
+    let until = optional_text_or_integer_field(body, index, "until")?;
+    let event = optional_text_or_integer_field(body, index, "event")?;
+    let timeout = optional_text_or_integer_field(body, index, "timeout")?;
     match (until, event, timeout) {
-        (Some(_), None, None) | (None, Some(_), _) => Ok(()),
+        (Some(()), None, None) | (None, Some(()), _) | (None, None, Some(())) => Ok(()),
         _ => Err(CompileError::StepFieldShape {
             step: index,
             field: "wait",
-            expected: "until without timeout or event with optional timeout",
+            expected: "until without timeout, event with optional timeout, or timeout only",
         }),
     }
 }
@@ -210,9 +263,11 @@ pub(super) fn validate_ask_shape(
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
     reject_unknown_primitive_fields(body, index, "ask", &["prompt", "answer", "timeout"])?;
-    required_slot(body, index, "prompt")?;
-    required_slot(body, index, "answer")?;
-    optional_slot_field(body, index, "timeout")?;
+    required_text_or_integer_field(body, index, "prompt", "a non-empty prompt slot")?;
+    if body.as_mapping_get("answer").is_some() {
+        required_text_or_integer_field(body, index, "answer", "a non-empty answer slot")?;
+    }
+    optional_text_or_integer_field(body, index, "timeout")?;
     Ok(())
 }
 

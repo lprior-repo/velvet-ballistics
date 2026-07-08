@@ -1100,10 +1100,11 @@ impl RecoveryCannotResumeState {
 
     /// Canonical reason string for a typed `UnsupportedFrameSeed` error.
     ///
-    /// Dispatches via [`Self::priority_class_first_half`] +
-    /// [`Self::priority_class_second_half`] + [`priority_reason`].
-    /// The first true flag in classification-priority order wins;
-    /// `"resumable"` is the fallback when every flag is false.
+    /// Dispatches via the `priority_class_first_half` +
+    /// `priority_class_second_half` priority scanners plus the
+    /// `priority_reason` mapping. The first true flag in
+    /// classification-priority order wins; `"resumable"` is the
+    /// fallback when every flag is false.
     #[must_use]
     pub const fn unsupported_reason(self) -> &'static str {
         match self.priority_class_first_half() {

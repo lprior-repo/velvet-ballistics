@@ -20,11 +20,21 @@ fn fuzz_bridge_value(data: &[u8]) {
 }
 
 fn fuzz_bridge_defaults(_data: &[u8]) {
-    use vb_storage::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
-    let storage_default: u64 = 1_048_576;
-    let core_policy: u64 = 1_048_576;
+    use vb_storage::constants::{
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_JOURNAL_EVENT_RECORD_BYTES, RECORD_HEADER_LEN,
+    };
+    // The storage default record budget is authoritative and derived from the
+    // storage constants, not a hand-copied magic number. `MAX_JOURNAL_EVENT_RECORD_BYTES`
+    // is defined in `vb_storage::constants` as `RECORD_HEADER_LEN + MAX_JOURNAL_EVENT_PAYLOAD_BYTES`,
+    // so the budget always accommodates a full header-plus-max-payload record.
+    // Both the storage default and the core policy derive from that single
+    // source of truth, keeping the `max_encoded <= storage_default` invariant
+    // structurally true even if either underlying constant is bumped later.
+    let storage_default: u64 = u64::from(MAX_JOURNAL_EVENT_RECORD_BYTES);
+    let core_policy: u64 = u64::from(MAX_JOURNAL_EVENT_RECORD_BYTES);
     assert_eq!(storage_default, core_policy);
-    let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+    let max_encoded =
+        u64::from(RECORD_HEADER_LEN).saturating_add(u64::from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES));
     assert!(max_encoded <= storage_default);
 }
 

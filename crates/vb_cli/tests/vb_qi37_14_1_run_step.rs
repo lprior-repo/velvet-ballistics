@@ -16,8 +16,14 @@
 // ---------------------------------------------------------------------------
 
 /// Minimal 2-step workflow: SetConst(slot0=42) -> Finish
+///
+/// Note: `name` must use Velvet v1 identifier grammar — `[a-z][a-z0-9_]{0,63}`
+/// (see `vb_compile::mod_compile_validation::is_public_name`). Hyphens are
+/// rejected with `CompileError::InvalidName`, which the CLI surfaces as a
+/// compile failure. Earlier drafts used `setconst-test` (hyphen), which
+/// broke every `run --step` test that fed this fixture through the binary.
 const SETCONST_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: setconst-test
+name: setconst_test
 when:
   manual: {}
 steps:
@@ -31,8 +37,13 @@ steps:
 "#;
 
 /// 3-step workflow with Nop Save then Finish
+///
+/// Note: `name` must use Velvet v1 identifier grammar — `[a-z][a-z0-9_]{0,63}`
+/// (see `vb_compile::mod_compile_validation::is_public_name`). Hyphens are
+/// rejected with `CompileError::InvalidName`. Earlier drafts used `nop-test`
+/// (hyphen), which broke the `pc_delta` test path through the CLI.
 const NOP_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: nop-test
+name: nop_test
 when:
   manual: {}
 steps:

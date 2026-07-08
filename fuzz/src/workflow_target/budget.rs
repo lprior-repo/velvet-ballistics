@@ -127,11 +127,8 @@ pub fn fuzz_budget_compute(data: &[u8]) {
         max_slots: slot_count,
         ..vb_core::ResourceContract::DEFAULT
     };
-    let result = vb_core::budget::WholeWorkflowBudget::compute(
-        &nodes,
-        vb_core::StepIdx::ZERO,
-        &contract,
-    );
+    let result =
+        vb_core::budget::WholeWorkflowBudget::compute(&nodes, vb_core::StepIdx::ZERO, &contract);
     let Ok(budget) = result else {
         return;
     };
@@ -139,7 +136,6 @@ pub fn fuzz_budget_compute(data: &[u8]) {
         assert!(budget.max_total_steps > 0);
     }
     assert!(budget.max_total_slots >= u64::from(slot_count));
-    assert!(budget.max_fanout <= u16::MAX);
     let _ = budget.max_total_steps;
     let _ = budget.max_total_slots;
     let _ = budget.max_fanout;

@@ -1459,7 +1459,23 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
 #[test]
 fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied() {
     // Given / When
-    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
+    // The strict-admission module is composed via `include!` of focused
+    // chunk files under `admission/parts/`. We concatenate the shell +
+    // every chunk so that literal-source assertions still cover the
+    // full module surface (impl blocks live in `chunk_003_stores`,
+    // the `compiled_ir_exists` trait method lives in `chunk_001`, and
+    // its call site is in `chunk_006_admit_budget`).
+    let admission_source = concat!(
+        include_str!("../../../crates/vb_runtime/src/admission.rs"),
+        include_str!(
+            "../../../crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs"
+        ),
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_002_records.rs"),
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_003_stores.rs"),
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_004_validation.rs"),
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs"),
+        include_str!("../../../crates/vb_runtime/src/admission/parts/chunk_006_admit_budget.rs"),
+    );
     let shard_source = include_str!("../../../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
 
     // Then

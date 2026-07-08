@@ -114,6 +114,9 @@ impl FrameSeedAccumulator {
             JournalEvent::StepSucceeded { step, .. } => Ok(self
                 .record_step(*step, RecoveredStepState::Succeeded)
                 .record_last_succeeded(*step)),
+            JournalEvent::StepFailed { step, .. } => {
+                Ok(self.record_step(*step, RecoveredStepState::Failed))
+            }
             JournalEvent::ActionScheduled { action, step, .. } => {
                 self.record_action_scheduled(*action, *step)
             }

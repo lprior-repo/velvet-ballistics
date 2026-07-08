@@ -789,6 +789,7 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
     match event {
         JournalEvent::StepStarted { .. }
         | JournalEvent::StepSucceeded { .. }
+        | JournalEvent::StepFailed { .. }
         | JournalEvent::SlotWrittenEvent { .. }
         | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }

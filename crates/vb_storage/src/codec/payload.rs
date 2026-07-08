@@ -69,6 +69,11 @@ pub(crate) fn decode_record_payload(
     let payload = bytes
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
+    if bytes.len() != payload_end {
+        return Err(JournalError::PostcardDecodeFailed(
+            postcard::Error::DeserializeBadEncoding,
+        ));
+    }
     verify_digest_match(payload, header.payload_digest)?;
     Ok((
         RecordEnvelope {

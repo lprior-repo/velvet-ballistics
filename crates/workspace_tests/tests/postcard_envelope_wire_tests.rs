@@ -7,11 +7,13 @@
 //!
 //! PO-3t44-009 through PO-3t44-030: 22 proptest obligations for postcard envelope wire format.
 
-use proptest::prelude::*;
+use proptest::{prelude::*, test_runner::TestCaseError};
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{
-    EventSeq, JournalEvent,
-    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+    EventSeq, JournalError, JournalEvent,
+    constants::{
+        CRC_OFFSET, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES,
+    },
     decode_record, encode_record,
     records::RecordKind,
 };
@@ -363,7 +365,7 @@ proptest! {
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
-            RecordKind::SlotWritten,
+            RecordKind::StepSucceeded,
             13,
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
@@ -393,22 +395,32 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        // Corrupt the magic bytes (first 4 bytes)
-        encoded[0] ^= 0xFF;
-        encoded[1] ^= 0xFF;
-        encoded[2] ^= 0xFF;
-        encoded[3] ^= 0xFF;
+        let magic_bytes = encoded
+            .get_mut(0..4)
+            .ok_or_else(|| TestCaseError::fail("encoded record missing magic bytes"))?;
+        for byte in magic_bytes {
+            *byte ^= 0xFF;
+        }
         let result = decode_record::<JournalEvent>(
             &encoded,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(result.is_err(), "wrong magic should be rejected");
+        match result {
+            Err(JournalError::BadMagic { found }) => {
+                prop_assert_eq!(found, MAGIC_JOURNAL_EVENT ^ u32::MAX);
+            }
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "wrong magic must yield exact BadMagic variant, got {other:?}"
+                )));
+            }
+        }
     }
 
-    // PO-3t44-024: Decode order guarantee - CRC checked before digest
+    // PO-3t44-024: Payload corruption after a valid header yields digest mismatch
     #[test]
-    fn po_3t44_024_crc_before_digest_check(run_val in 1u64..=10u64) {
+    fn po_3t44_024_payload_digest_mismatch_is_exact(run_val in 1u64..=10u64) {
         let run = RunId::new(run_val);
         let digest = WorkflowDigest::from_bytes([42u8; 32]);
         let event = JournalEvent::RunAccepted {
@@ -423,17 +435,63 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        // Corrupt a byte in the payload (after header) to cause digest mismatch
-        if encoded.len() > 60 {
-            encoded[60] ^= 0x01;
-        }
+        let payload_byte = encoded
+            .get_mut(RECORD_HEADER_BYTES)
+            .ok_or_else(|| TestCaseError::fail("encoded record missing payload byte"))?;
+        *payload_byte ^= 0x01;
         let result = decode_record::<JournalEvent>(
             &encoded,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        // Should fail due to digest mismatch (CRC was computed correctly on corrupted payload)
-        prop_assert!(result.is_err(), "digest mismatch should be detected");
+        match result {
+            Err(JournalError::PayloadDigestMismatch) => {}
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "payload corruption must yield exact PayloadDigestMismatch variant, got {other:?}"
+                )));
+            }
+        }
+    }
+
+    // PO-3t44-024b: Decode order guarantee - header checksum checked before digest
+    #[test]
+    fn po_3t44_024b_header_checksum_wins_when_header_and_payload_corrupt(run_val in 1u64..=10u64) {
+        let run = RunId::new(run_val);
+        let digest = WorkflowDigest::from_bytes([42u8; 32]);
+        let event = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::ZERO,
+            workflow: digest,
+        };
+        let mut encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        ).expect("encode should succeed");
+        let checksum_byte = encoded
+            .get_mut(CRC_OFFSET)
+            .ok_or_else(|| TestCaseError::fail("encoded record missing checksum byte"))?;
+        *checksum_byte ^= 0x01;
+        let payload_byte = encoded
+            .get_mut(RECORD_HEADER_BYTES)
+            .ok_or_else(|| TestCaseError::fail("encoded record missing payload byte"))?;
+        *payload_byte ^= 0x01;
+        let result = decode_record::<JournalEvent>(
+            &encoded,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        match result {
+            Err(JournalError::HeaderChecksumMismatch) => {}
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "header checksum mismatch must win before payload digest, got {other:?}"
+                )));
+            }
+        }
     }
 
     // PO-3t44-025: Payload too large rejected before payload slice
@@ -454,18 +512,32 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        // Use a very small max_payload_len
+        let expected_payload_len = encoded
+            .len()
+            .checked_sub(RECORD_HEADER_BYTES)
+            .and_then(|len| u32::try_from(len).ok())
+            .ok_or_else(|| TestCaseError::fail("encoded payload length did not fit u32"))?;
+        let too_small_max = 8;
         let result = decode_record::<JournalEvent>(
             &encoded,
             MAGIC_JOURNAL_EVENT,
-            8, // smaller than any real payload
+            too_small_max,
         );
-        prop_assert!(result.is_err(), "payload too large should be rejected");
+        match result {
+            Err(JournalError::PayloadTooLarge { len, max }) => {
+                prop_assert_eq!((len, max), (expected_payload_len, too_small_max));
+            }
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "oversized payload must yield exact PayloadTooLarge variant, got {other:?}"
+                )));
+            }
+        }
     }
 
     // PO-3t44-026: All known RecordKind ids roundtrip correctly
     #[test]
-    fn po_3t44_026_all_record_kind_ids_valid(kind_id in 10u16..=29u16) {
+    fn po_3t44_026_all_record_kind_ids_valid(kind_id in prop_oneof![10u16..=29u16, 31u16..=35u16]) {
         // Verify that all record kind IDs in the journal event range are known
         let kind = match kind_id {
             10 => RecordKind::RunAccepted,
@@ -488,6 +560,11 @@ proptest! {
             27 => RecordKind::RunAnswered,
             28 => RecordKind::RunKilled,
             29 => RecordKind::AskTimedOut,
+            31 => RecordKind::WaitResolved,
+            32 => RecordKind::ActionAbandoned,
+            33 => RecordKind::StepSucceeded,
+            34 => RecordKind::ActionScheduledTicket,
+            35 => RecordKind::ActionCompletedEnvelope,
             _ => return Ok(()),
         };
         prop_assert_eq!(kind.id(), kind_id);
@@ -535,14 +612,23 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        // Truncate the encoded data
-        let truncated = &encoded[..encoded.len() / 2];
+        let truncated_len = encoded.len() / 2;
+        let truncated = encoded
+            .get(..truncated_len)
+            .ok_or_else(|| TestCaseError::fail("encoded truncation slice missing"))?;
         let result = decode_record::<JournalEvent>(
             truncated,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(result.is_err(), "truncated data should be rejected");
+        match result {
+            Err(JournalError::UnexpectedEof) => {}
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "truncated record must yield exact UnexpectedEof variant, got {other:?}"
+                )));
+            }
+        }
     }
 
     // PO-3t44-029: Header checksum mismatch detected
@@ -562,16 +648,23 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        // Corrupt a byte in the header checksum region (offset 56)
-        if encoded.len() > 56 {
-            encoded[56] ^= 0x01;
-        }
+        let checksum_byte = encoded
+            .get_mut(CRC_OFFSET)
+            .ok_or_else(|| TestCaseError::fail("encoded record missing checksum byte"))?;
+        *checksum_byte ^= 0x01;
         let result = decode_record::<JournalEvent>(
             &encoded,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(result.is_err(), "header checksum mismatch should be detected");
+        match result {
+            Err(JournalError::HeaderChecksumMismatch) => {}
+            other => {
+                return Err(TestCaseError::fail(format!(
+                    "header checksum corruption must yield exact HeaderChecksumMismatch variant, got {other:?}"
+                )));
+            }
+        }
     }
 
     // PO-3t44-030: Valid encoded record can be decoded

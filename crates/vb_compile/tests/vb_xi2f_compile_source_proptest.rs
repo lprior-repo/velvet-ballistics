@@ -34,7 +34,7 @@ fn valid_yaml_workflow() -> impl Strategy<Value = String> {
 "#;
 
     let header =
-        "version: velvet-ballistics/v1\nname: test-workflow\nwhen:\n  manual: {}\nsteps:\n";
+        "version: velvet-ballistics/v1\nname: test_workflow\nwhen:\n  manual: {}\nsteps:\n";
 
     // Generate workflows with 1-10 steps, always ending with finish
     prop_oneof![

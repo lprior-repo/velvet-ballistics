@@ -1194,6 +1194,7 @@ mod tests {
                 JournalEvent::ActionAbandoned { .. } => Ok(true),
                 JournalEvent::StepStarted { .. } => Ok(true),
                 JournalEvent::StepSucceeded { .. } => Ok(true),
+                JournalEvent::StepFailed { .. } => Ok(true),
                 JournalEvent::SlotWrittenEvent { .. } => Ok(true),
                 JournalEvent::WaitScheduledEvent { .. } => Ok(true),
                 JournalEvent::AskScheduledEvent { .. } => Ok(true),

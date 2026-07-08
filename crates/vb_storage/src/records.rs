@@ -151,8 +151,12 @@ pub enum RecordKind {
     SlotWritten = 12,
     /// Action scheduled event.
     ActionScheduled = 13,
+    /// Action scheduled event carrying the full replay ticket.
+    ActionScheduledTicket = 34,
     /// Action completed event.
     ActionCompleted = 14,
+    /// Action completed event carrying the full durable completion envelope.
+    ActionCompletedEnvelope = 35,
     /// Action failed event.
     ActionFailed = 15,
     /// Wait scheduled event.
@@ -165,6 +169,11 @@ pub enum RecordKind {
     RetryScheduled = 19,
     /// Step failed event.
     StepFailed = 20,
+    /// Step succeeded event.
+    ///
+    /// Distinct from `SlotWritten = 12` because a successful step transition
+    /// may be recorded without carrying the encoded slot-value payload shape.
+    StepSucceeded = 33,
     /// Run cancelled event.
     RunCancelled = 21,
     /// Run killed event.
@@ -235,8 +244,104 @@ impl RecordKind {
             Self::Snapshot => 30,
             Self::WaitResolved => 31,
             Self::ActionAbandoned => 32,
+            Self::StepSucceeded => 33,
+            Self::ActionScheduledTicket => 34,
+            Self::ActionCompletedEnvelope => 35,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
+        }
+    }
+
+    /// Returns the typed record kind for a stable wire identifier.
+    #[must_use]
+    pub const fn from_id(id: u16) -> Option<Self> {
+        match id {
+            1 => Some(Self::WorkflowSource),
+            2 => Some(Self::CompiledIr),
+            3 => Some(Self::RunHeader),
+            10 => Some(Self::RunAccepted),
+            11 => Some(Self::StepStarted),
+            12 => Some(Self::SlotWritten),
+            13 => Some(Self::ActionScheduled),
+            14 => Some(Self::ActionCompleted),
+            15 => Some(Self::ActionFailed),
+            16 => Some(Self::WaitScheduled),
+            17 => Some(Self::AskScheduled),
+            18 => Some(Self::AskAnswered),
+            19 => Some(Self::RetryScheduled),
+            20 => Some(Self::StepFailed),
+            21 => Some(Self::RunCancelled),
+            22 => Some(Self::RunFinished),
+            23 => Some(Self::RunFailed),
+            24 => Some(Self::RunAdmission),
+            25 => Some(Self::RunResumed),
+            26 => Some(Self::RunRetried),
+            27 => Some(Self::RunAnswered),
+            28 => Some(Self::RunKilled),
+            29 => Some(Self::AskTimedOut),
+            30 => Some(Self::Snapshot),
+            31 => Some(Self::WaitResolved),
+            32 => Some(Self::ActionAbandoned),
+            33 => Some(Self::StepSucceeded),
+            34 => Some(Self::ActionScheduledTicket),
+            35 => Some(Self::ActionCompletedEnvelope),
+            40 => Some(Self::Blob),
+            50 => Some(Self::IndexUpdate),
+            _ => None,
+        }
+    }
+
+    /// Returns true when this kind belongs to the durable journal-event family.
+    #[must_use]
+    pub const fn is_journal_event(self) -> bool {
+        match self {
+            Self::RunAccepted
+            | Self::StepStarted
+            | Self::SlotWritten
+            | Self::ActionScheduled
+            | Self::ActionCompleted
+            | Self::ActionFailed
+            | Self::WaitScheduled
+            | Self::AskScheduled
+            | Self::AskAnswered
+            | Self::RetryScheduled
+            | Self::StepFailed
+            | Self::RunCancelled
+            | Self::RunFinished
+            | Self::RunFailed
+            | Self::RunAdmission
+            | Self::RunResumed
+            | Self::RunRetried
+            | Self::RunAnswered
+            | Self::RunKilled
+            | Self::AskTimedOut
+            | Self::WaitResolved
+            | Self::ActionAbandoned
+            | Self::StepSucceeded
+            | Self::ActionScheduledTicket
+            | Self::ActionCompletedEnvelope => true,
+            Self::WorkflowSource
+            | Self::CompiledIr
+            | Self::RunHeader
+            | Self::Snapshot
+            | Self::Blob
+            | Self::IndexUpdate => false,
+        }
+    }
+
+    /// Returns true when this kind is valid for the supplied record-family magic.
+    #[must_use]
+    pub const fn belongs_to_magic(self, magic: u32) -> bool {
+        match magic {
+            crate::constants::MAGIC_WORKFLOW_SOURCE => matches!(self, Self::WorkflowSource),
+            crate::constants::MAGIC_COMPILED_ARTIFACT => matches!(self, Self::CompiledIr),
+            crate::constants::MAGIC_JOURNAL_EVENT => self.is_journal_event(),
+            crate::constants::MAGIC_SNAPSHOT => matches!(self, Self::Snapshot),
+            crate::constants::MAGIC_BLOB => matches!(self, Self::Blob),
+            crate::constants::MAGIC_INDEX_RECORD => {
+                matches!(self, Self::RunHeader | Self::IndexUpdate)
+            }
+            _ => false,
         }
     }
 }

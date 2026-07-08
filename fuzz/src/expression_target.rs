@@ -254,15 +254,14 @@ pub fn fuzz_expr_eval(data: &[u8]) {
             if workflow.expression(expr_idx).is_none() {
                 break;
             }
-            match vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx) {
-                Ok((slot_val, _taint)) => {
-                    eval_count += 1;
-                    assert!(
-                        !matches!(slot_val, vb_core::SlotValue::Null),
-                        "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
-                    );
-                }
-                Err(_) => {}
+            if let Ok((slot_val, _taint)) =
+                vb_core::engine::eval_expr_with_store(&workflow, &run, &mut store, expr_idx)
+            {
+                eval_count += 1;
+                assert!(
+                    !matches!(slot_val, vb_core::SlotValue::Null),
+                    "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
+                );
             }
             i = i.saturating_add(1);
             if i == 0 {

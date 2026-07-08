@@ -86,6 +86,18 @@ pub const RECORD_HEADER_BYTES: usize = 60;
 pub const CRC_OFFSET: usize = 56;
 /// Maximum journal event payload accepted by the default journal APIs.
 pub const MAX_JOURNAL_EVENT_PAYLOAD_BYTES: u32 = 1_048_576;
+/// Authoritative maximum encoded size of a single journal-event record:
+/// the fixed record envelope header (`RECORD_HEADER_LEN`) plus a
+/// maximum-size journal event payload (`MAX_JOURNAL_EVENT_PAYLOAD_BYTES`).
+///
+/// This is the storage budget any default journal record must accommodate.
+/// It is derived from the two source constants with a const `saturating_add`
+/// so a future bump to either the header length or the payload maximum keeps
+/// the header-plus-payload budget invariant structurally true and cannot
+/// silently underflow the intended budget. The sum is far below `u32::MAX`,
+/// so saturation never triggers at current values.
+pub const MAX_JOURNAL_EVENT_RECORD_BYTES: u32 =
+    RECORD_HEADER_LEN.saturating_add(MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 /// Maximum source bytes accepted by the default workflow source APIs.
 pub const MAX_WORKFLOW_SOURCE_BYTES: u32 = 1_048_576;
 /// Maximum compiled IR bytes accepted by the default compiled artifact APIs.

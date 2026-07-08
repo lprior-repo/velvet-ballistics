@@ -67,7 +67,12 @@ proptest! {
 
 #[test]
 fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
-    for run in [0, 1, 0x0102_0304_0506_0708, u64::MAX - 1, u64::MAX] {
+    // PO-cn2v4-001: `run = 0` is the reserved "no run" sentinel. The encoder
+    // rejects it via `require_non_zero_run` (see `vb_storage::keys::tests::`
+    // for direct coverage of the `InvalidRunId` error across encoders), so
+    // it is intentionally excluded from this explicit-edges sweep. Edge
+    // coverage here is: smallest valid (1), sparse interior bits, max-1, max.
+    for run in [1, 0x0102_0304_0506_0708, u64::MAX - 1, u64::MAX] {
         let header = keys::run_header_key(RunId::new(run))?;
         assert_eq!(&header[1..9], &run.to_be_bytes());
     }

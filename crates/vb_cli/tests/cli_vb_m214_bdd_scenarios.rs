@@ -7,9 +7,16 @@
 
 use std::process::{Command, Output};
 
-/// Minimal valid YAML workflow for CLI testing
+/// Minimal valid YAML workflow for CLI testing.
+///
+/// Note: `name` must use Velvet v1 identifier grammar — `[a-z][a-z0-9_]{0,63}`
+/// (see `vb_compile::mod_compile_validation::is_public_name`). Hyphens are
+/// rejected with `CompileError::InvalidName`, which surfaces as exit code 2
+/// (`CliExitCode::ValidationFailed`). Earlier drafts used `test-workflow`
+/// (hyphen), which broke `explain`, `graph`, `validate`, and several `run`
+/// exit-code assertions in this file.
 const MINIMAL_WORKFLOW: &str = r#"version: velvet-ballistics/v1
-name: test-workflow
+name: test_workflow
 when:
   manual: {}
 steps:

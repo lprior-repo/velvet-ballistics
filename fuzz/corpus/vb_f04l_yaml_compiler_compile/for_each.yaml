@@ -1,5 +1,5 @@
-version: velvet-ballastics/v1
-name: fuzz-foreach
+version: velvet-ballistics/v1
+name: fuzz_foreach
 when:
   manual: {}
 steps:

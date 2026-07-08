@@ -908,9 +908,9 @@ mod tests {
     // BH-13: Payload declared length vs actual bytes mismatch
     // =========================================================================
 
-    /// SECURITY: Header declaring payload_len=0 fails BLAKE3 digest check.
+    /// SECURITY: Header declaring payload_len=0 rejects trailing bytes.
     #[test]
-    fn zero_payload_len_with_bytes_fails_digest_check() {
+    fn zero_payload_len_with_bytes_rejects_trailing_bytes() {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
@@ -944,8 +944,13 @@ mod tests {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         assert!(
-            matches!(result, Err(JournalError::PayloadDigestMismatch)),
-            "zero payload_len with non-empty digest must fail, got {:?}",
+            matches!(
+                result,
+                Err(JournalError::PostcardDecodeFailed(
+                    postcard::Error::DeserializeBadEncoding
+                ))
+            ),
+            "zero payload_len with trailing bytes must fail, got {:?}",
             result
         );
     }

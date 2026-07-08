@@ -58,10 +58,6 @@ pub(super) fn optional_trigger_string_field(
     }
 }
 
-pub(super) fn is_webhook_method(method: &str) -> bool {
-    matches!(method, "GET" | "POST" | "PUT" | "PATCH" | "DELETE")
-}
-
 pub(crate) fn required_string_field<'a>(
     doc: &'a Yaml<'a>,
     field: &'static str,
@@ -116,17 +112,6 @@ pub(crate) fn required_step_field<'a>(
 ) -> Result<&'a Yaml<'a>, CompileError> {
     body.as_mapping_get(field)
         .ok_or(CompileError::MissingStepField { step, field })
-}
-
-pub(crate) fn optional_slot_field(
-    body: &Yaml<'_>,
-    step: usize,
-    field: &'static str,
-) -> Result<Option<SlotIdx>, CompileError> {
-    match body.as_mapping_get(field) {
-        Some(_) => required_slot(body, step, field).map(Some),
-        None => Ok(None),
-    }
 }
 
 #[allow(dead_code)]

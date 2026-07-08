@@ -996,6 +996,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                     summary.terminal = Some(TerminalSummary::Failed);
                 }
                 JournalEvent::RunAdmission { .. }
+                | JournalEvent::StepFailed { .. }
                 | JournalEvent::SlotWrittenEvent { .. }
                 | JournalEvent::WaitResolvedEvent { .. }
                 | JournalEvent::AskTimedOutEvent { .. }

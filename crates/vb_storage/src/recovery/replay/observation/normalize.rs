@@ -59,7 +59,9 @@ fn observe_event(
         | JournalEvent::RunAdmission { .. }
         | JournalEvent::RunResumed { .. }
         | JournalEvent::RunRetried { .. } => observe_lifecycle_event(event, observations)?,
-        JournalEvent::StepStarted { .. } | JournalEvent::StepSucceeded { .. } => {
+        JournalEvent::StepStarted { .. }
+        | JournalEvent::StepSucceeded { .. }
+        | JournalEvent::StepFailed { .. } => {
             observe_step_event(event, observations);
         }
         JournalEvent::ActionScheduled { .. }

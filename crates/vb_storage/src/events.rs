@@ -1,334 +1,22 @@
 #![forbid(unsafe_code)]
 //! Journal event types and record kind identifiers.
+//!
+//! `JournalEvent` and `DurableActionOutcome` live in `event.rs`; this
+//! module hosts the impl block plus the wire-format re-exports. The
+//! wire-format sub-modules (`wire*`) and their `decode_*` /
+//! `is_schema_one_shared_envelope_compatible` re-exports are unchanged.
 
-use crate::{EventSeq, JournalError, RecordKind};
-use chrono::{DateTime, Utc};
-use vb_core::{
-    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, SlotValue,
-    StepIdx, Taint, WorkflowDigest,
+use crate::{JournalError, RecordKind};
+use vb_core::{RunId, SlotValue};
+
+mod event;
+mod wire;
+
+pub(crate) use wire::{
+    decode_journal_event_payload_for_envelope, is_schema_one_shared_envelope_compatible,
 };
 
-/// Default ABI digest used when an event predates the `action_abi_digest`
-/// field or is rendered by a writer that does not pin an ABI. Keeping
-/// the all-zero fallback here lets older journals deserialize without a
-/// hard error while signalling the missing-evidence classification to
-/// the recovery cannot-resume gate.
-const fn zero_workflow_digest() -> WorkflowDigest {
-    WorkflowDigest::from_bytes([0; 32])
-}
-
-/// Terminal action outcome captured by durable completion envelopes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[repr(u8)]
-#[non_exhaustive]
-pub enum DurableActionOutcome {
-    /// Action completed successfully and wrote an output slot.
-    Ready = 1,
-}
-
-/// Compact binary journal event. JSONL is a projection, not this durable format.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[non_exhaustive]
-pub enum JournalEvent {
-    /// Run was accepted after input mapping.
-    RunAccepted {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Compiled workflow digest.
-        workflow: WorkflowDigest,
-    },
-    /// Run admission metadata persisted after admission control succeeds.
-    RunAdmission {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Compiled artifact digest admitted for this run.
-        artifact_digest: WorkflowDigest,
-        /// Capabilities granted for this run.
-        granted_capabilities: CapabilitySet,
-        /// Policy used to admit this run.
-        policy: RuntimePolicy,
-    },
-    /// Step began execution.
-    StepStarted {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Step completed and wrote an output slot.
-    StepSucceeded {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Output slot index.
-        output: SlotIdx,
-    },
-    /// Action was scheduled.
-    ActionScheduled {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Action identifier.
-        action: ActionId,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Action completed successfully.
-    ActionCompletedEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Action identifier.
-        action: ActionId,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Action was scheduled with the full replay ticket preserved.
-    ActionScheduledTicket {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Full action ticket issued by the runtime.
-        ticket: ActionTicket,
-        /// Input slot consumed by the action.
-        input: SlotIdx,
-        /// Output slot expected to receive the result.
-        output: SlotIdx,
-        /// Digest of the persisted action ABI contract used for this action.
-        #[serde(default = "zero_workflow_digest")]
-        action_abi_digest: WorkflowDigest,
-    },
-    /// Action completed successfully with an atomic durable envelope.
-    ActionCompletedEnvelope {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Full action ticket completed by the runtime.
-        ticket: ActionTicket,
-        /// Output slot written by the action.
-        output: SlotIdx,
-        /// Terminal outcome discriminant for this completion.
-        outcome: DurableActionOutcome,
-        /// Encoded output value bytes.
-        value: Vec<u8>,
-        /// Encoded output byte length validated before persistence.
-        encoded_len: u32,
-        /// Taint written with the output value.
-        taint: Taint,
-        /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
-        value_digest: [u8; 32],
-        /// Digest of the persisted action ABI contract used for this action.
-        #[serde(default = "zero_workflow_digest")]
-        action_abi_digest: WorkflowDigest,
-    },
-    /// Action failed.
-    ActionFailedEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Action identifier.
-        action: ActionId,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Action was abandoned because the run was cancelled or killed
-    /// before the action boundary completed. Distinct from
-    /// `ActionFailedEvent` because no `ActionFailureCode` was ever
-    /// produced by the action — the suspension itself was terminated
-    /// by run-level cancellation. Master §45 Do-node "Resume" sub-row
-    /// requires this event so recovery can finalize the step without
-    /// re-running the external action.
-    ActionAbandoned {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Full action ticket that was abandoned. Preserves all seven
-        /// required `ActionTicket` fields plus the journal position so
-        /// recovery can deterministically drop the pending action from
-        /// the resume queue without re-executing it.
-        ticket: ActionTicket,
-    },
-    /// Slot was written during execution.
-    SlotWrittenEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Slot index.
-        slot: SlotIdx,
-        /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
-        value: Option<Vec<u8>>,
-        /// Versioned slot-write extra envelope, or legacy encoded frame extra data.
-        #[serde(default)]
-        extra: Option<Vec<u8>>,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Wait was scheduled.
-    WaitScheduledEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Ask was scheduled.
-    AskScheduledEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Ask was answered.
-    AskAnsweredEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Wait was resolved by an external timer.
-    ///
-    /// Distinct from `RetryScheduledEvent` because a wait resolution is not a
-    /// retry: the suspended run resumes from a satisfied external condition
-    /// rather than from a bounded retry attempt. See bug-hunt RE-009.
-    WaitResolvedEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Retry was scheduled.
-    RetryScheduledEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Run cancelled.
-    RunCancelled {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Attempt number (1-based).
-        attempt: u16,
-        /// Optional cancellation reason.
-        reason: Option<String>,
-    },
-    /// Run killed.
-    RunKilled {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Run completed.
-    RunFinished {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Result slot index.
-        result: SlotIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Run failed.
-    RunFailedEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Run was resumed from a waiting state.
-    RunResumed {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// When the run was resumed.
-        timestamp: DateTime<Utc>,
-    },
-    /// Run was retried after failure.
-    RunRetried {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// When the run was retried.
-        timestamp: DateTime<Utc>,
-    },
-    /// Run received an answer to a waiting question.
-    RunAnswered {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Slot that received the answer.
-        slot_idx: SlotIdx,
-        /// The answer value.
-        answer: ConstValue,
-        /// When the answer was received.
-        timestamp: DateTime<Utc>,
-    },
-    /// Ask timed out and resumed along the ask timeout path.
-    AskTimedOutEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-}
+pub use event::{DurableActionOutcome, JournalEvent};
 
 impl JournalEvent {
     /// Run identifier carried by this event.
@@ -339,6 +27,7 @@ impl JournalEvent {
             | Self::RunAdmission { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
+            | Self::StepFailed { run, .. }
             | Self::ActionScheduled { run, .. }
             | Self::ActionCompletedEvent { run, .. }
             | Self::ActionScheduledTicket { run, .. }
@@ -367,12 +56,13 @@ impl JournalEvent {
     /// Lifecycle events (RunResumed, RunRetried, RunAnswered) now carry sequence numbers
     /// to enable deduplication and ordering in the journal.
     #[must_use]
-    pub const fn seq(&self) -> EventSeq {
+    pub const fn seq(&self) -> crate::EventSeq {
         match self {
             Self::RunAccepted { seq, .. }
             | Self::RunAdmission { seq, .. }
             | Self::StepStarted { seq, .. }
             | Self::StepSucceeded { seq, .. }
+            | Self::StepFailed { seq, .. }
             | Self::ActionScheduled { seq, .. }
             | Self::ActionCompletedEvent { seq, .. }
             | Self::ActionScheduledTicket { seq, .. }
@@ -403,15 +93,15 @@ impl JournalEvent {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission { .. } => RecordKind::RunAdmission,
             Self::StepStarted { .. } => RecordKind::StepStarted,
-            Self::StepSucceeded { .. } | Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
-            Self::ActionScheduled { .. } | Self::ActionScheduledTicket { .. } => {
-                RecordKind::ActionScheduled
-            }
-            Self::ActionCompletedEvent { .. } | Self::ActionCompletedEnvelope { .. } => {
-                RecordKind::ActionCompleted
-            }
+            Self::StepSucceeded { .. } => RecordKind::StepSucceeded,
+            Self::StepFailed { .. } => RecordKind::StepFailed,
+            Self::ActionScheduled { .. } => RecordKind::ActionScheduled,
+            Self::ActionCompletedEvent { .. } => RecordKind::ActionCompleted,
+            Self::ActionScheduledTicket { .. } => RecordKind::ActionScheduledTicket,
+            Self::ActionCompletedEnvelope { .. } => RecordKind::ActionCompletedEnvelope,
             Self::ActionFailedEvent { .. } => RecordKind::ActionFailed,
             Self::ActionAbandoned { .. } => RecordKind::ActionAbandoned,
+            Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
@@ -484,6 +174,7 @@ impl JournalEvent {
             | Self::WaitResolvedEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
+            | Self::StepFailed { attempt, .. }
             | Self::RunCancelled { attempt, .. }
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
@@ -532,6 +223,7 @@ impl JournalEvent {
             | Self::WaitResolvedEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
+            | Self::StepFailed { attempt, .. }
             | Self::RunCancelled { attempt, .. }
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }

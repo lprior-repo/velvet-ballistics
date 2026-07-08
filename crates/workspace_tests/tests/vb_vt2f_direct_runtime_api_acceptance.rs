@@ -881,9 +881,12 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
     assert_eq!(runtime.tick_all(), Ok(false));
     assert_eq!(runtime.tick_all(), Ok(false));
+    // Post-shutdown submissions are rejected at the shard boundary with a
+    // typed `ShutdownInProgress` error so callers see the runtime is no
+    // longer accepting work instead of a phantom enqueue.
     assert_eq!(
         runtime.submit_direct(RunId::new(9008), finished_workflow()?),
-        Ok(())
+        Err(RuntimeError::ShutdownInProgress)
     );
     assert_eq!(runtime.tick_all(), Ok(false));
     assert_eq!(runtime.counters_snapshot().runs_submitted, 1);

@@ -8,10 +8,12 @@ extern crate flux_rs;
 use flux_rs::attrs::*;
 
 /// Trusted model for known storage record kinds, including journal kinds
-/// 10..=29, WaitResolved=31, and ActionAbandoned=32.
+/// 10..=29, WaitResolved=31, ActionAbandoned=32, and the split stable
+/// tags StepSucceeded=33, ActionScheduledTicket=34, ActionCompletedEnvelope=35.
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
-    kind == 1 || kind == 2 || kind == 3 || kind == 30 || kind == 31 || kind == 32 ||
+    kind == 1 || kind == 2 || kind == 3 || kind == 30 ||
+    kind == 31 || kind == 32 || kind == 33 || kind == 34 || kind == 35 ||
     kind == 40 || kind == 50 ||
     (kind >= 10 && kind <= 29)
 }])]
@@ -26,11 +28,10 @@ fn model_validate_kind_family(magic: u32, kind: u16) -> Result<(), crate::Journa
     crate::codec::validation::validate_kind_family(magic, kind)
 }
 
-/// Journal magic admits journal kinds 10..=29 plus WaitResolved=31 and
-/// ActionAbandoned=32.
+/// Journal magic admits journal kinds 10..=29 plus stable split tags 31..=35.
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
-    ((kind >= 10 && kind <= 29) || kind == 31 || kind == 32) ==
+    ((kind >= 10 && kind <= 29) || (kind >= 31 && kind <= 35)) ==
         model_validate_kind_family_ok(kind)
 }])]
 fn model_journal_kind_valid(kind: u16) -> bool {
@@ -217,6 +218,14 @@ mod flux_validation_tests {
     }
 
     #[test]
+    fn split_kinds_33_to_35_valid_for_journal_family() {
+        for kind in 33..=35 {
+            let result = validate_kind_family(MAGIC_JOURNAL_EVENT, kind);
+            assert!(result.is_ok(), "kind {kind} must be admitted: {result:?}");
+        }
+    }
+
+    #[test]
     fn kind_31_is_known_record_kind() {
         assert!(model_is_known_record_kind(31));
     }
@@ -224,6 +233,13 @@ mod flux_validation_tests {
     #[test]
     fn kind_32_is_known_record_kind() {
         assert!(model_is_known_record_kind(32));
+    }
+
+    #[test]
+    fn split_kinds_33_to_35_are_known_record_kinds() {
+        for kind in 33..=35 {
+            assert!(model_is_known_record_kind(kind), "kind {kind} must be known");
+        }
     }
 
     #[test]
@@ -277,12 +293,8 @@ mod flux_validation_tests {
     }
 
     #[test]
-    fn kind_28_rejected_for_snapshot() {
+    fn kind_28_rejected_for_non_journal_families() {
         assert!(model_kind_28_rejected_for_snapshot());
-    }
-
-    #[test]
-    fn kind_28_rejected_for_blob() {
         assert!(model_kind_28_rejected_for_blob());
     }
 }

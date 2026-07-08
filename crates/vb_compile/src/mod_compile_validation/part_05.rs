@@ -177,24 +177,7 @@ pub(super) fn validate_manual_trigger(node: &Yaml<'_>) -> Result<(), CompileErro
 
 pub(super) fn validate_webhook_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {
     let mapping = trigger_mapping("webhook", node)?;
-    reject_unknown_trigger_fields("webhook", mapping, &["path", "method", "unique"])?;
-    let path = required_trigger_string_field(node, "webhook", "path")?;
-    if !path.starts_with('/') {
-        return Err(CompileError::InvalidTriggerField {
-            trigger: "webhook",
-            field: "path",
-            expected: "a string starting with /",
-        });
-    }
-    let method = required_trigger_string_field(node, "webhook", "method")?;
-    if !is_webhook_method(method) {
-        return Err(CompileError::InvalidTriggerField {
-            trigger: "webhook",
-            field: "method",
-            expected: "one of GET, POST, PUT, PATCH, DELETE",
-        });
-    }
-    optional_trigger_string_field(node, "webhook", "unique")
+    reject_unknown_trigger_fields("webhook", mapping, &[])
 }
 
 pub(super) fn validate_schedule_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {

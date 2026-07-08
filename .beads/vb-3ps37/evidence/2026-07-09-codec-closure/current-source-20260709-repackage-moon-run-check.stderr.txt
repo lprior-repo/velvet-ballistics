@@ -1,0 +1,2 @@
+[ WARN 2026-07-09 22:53:13.427] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:53:19.524] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
