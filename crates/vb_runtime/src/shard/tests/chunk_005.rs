@@ -42,7 +42,7 @@ fn shard_wait_suspension_registers_pending_timer() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(
         shard.pending_timer_get(run).map(|timer| timer.step),
         Some(vb_core::ids::StepIdx::new(1))
@@ -70,7 +70,7 @@ fn shard_timer_fired_advances_timed_wait_to_finish() {
     assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 }
 

@@ -1,0 +1,39 @@
+# command: env TMPDIR=target/tmp RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo test -p vb_runtime --lib terminal --all-features
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.49s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-1cb646ae7f52db08)
+
+running 27 tests
+test ipc_refinement::tests::terminal_transition_refinement_binds_event_predicates ... ok
+test shard::helpers::tests::retry_metadata_exists_for_terminal_node_returns_false ... ok
+test shard::lifecycle::tests::finish_run_appends_run_finished_event_and_inserts_terminal_run ... ok
+test shard::lifecycle::tests::terminal_membership_clears_runtime_state_immediately ... ok
+test shard::lifecycle::tests::checked_out_terminal_remove_apply_clears_only_runtime_state ... ok
+test shard::lifecycle::tests::terminal_transition_clears_active_and_pending_boundaries ... ok
+test shard::lifecycle::tests::checked_out_nonterminal_apply_preserves_runtime_state ... ok
+test shard::lifecycle::tests::failed_terminal_parity_clears_boundaries_and_runtime_state ... ok
+test shard::tests::runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arrives ... ok
+test shard::types::tests::runtime_event_drive_finished_is_terminal ... ok
+test trace::tests::trace_event_is_terminal_for_run_non_terminal_variants_return_false ... ok
+test shard::types::tests::runtime_event_fail_is_terminal ... ok
+test trace::tests::trace_event_is_terminal_for_run_run_cancelled_is_terminal ... ok
+test shard::lifecycle::tests::terminal_retention_evicts_oldest_terminal_identity_at_capacity ... ok
+test trace::tests::trace_event_is_terminal_for_run_run_failed_is_terminal ... ok
+test trace::tests::trace_event_is_terminal_for_run_run_finished_is_terminal ... ok
+test trace::tests::trace_ring_has_terminal_event_returns_false_when_only_non_terminal_events ... ok
+test shard::lifecycle::tests::terminal_membership_rejects_never_admitted_run ... ok
+test shard::lifecycle::tests::terminal_membership_clears_checked_out_and_pending_boundaries ... ok
+test shard::tests::terminal_append_failure_reports_rollback_failure_without_laundering ... ok
+test trace::tests::trace_ring_has_terminal_event_for_run_cancelled ... ok
+test shard::lifecycle::tests::terminal_failed_runtime_state_insert_is_rejected_and_cannot_coexist ... ok
+test shard::lifecycle::tests::terminal_membership_rejects_live_run_state_owner ... ok
+test shard::lifecycle::tests::terminal_retained_run_rejects_new_pending_boundaries ... ok
+test trace::tests::trace_ring_has_terminal_event_for_run_failed ... ok
+test shard::lifecycle::tests::terminal_retention_does_not_consume_active_capacity ... ok
+test verification::proptest::proptest_attempt_fence::prop_terminal_completion_no_panic ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 1824 filtered out; finished in 0.00s
+
+
+# exit_status=0

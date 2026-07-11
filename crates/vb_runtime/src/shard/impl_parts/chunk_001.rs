@@ -1,9 +1,13 @@
-use crate::shard::types::RuntimeState;
+use crate::shard::types::{RunAggregate, RuntimeState};
 
 impl Shard {
     /// Creates a new shard with the given configuration.
     pub fn new(config: ShardConfig) -> Self {
-        Self::new_with_journal(config, VolatileRuntimeJournal::shared())
+        Self::new_with_journal_and_artifact_store(
+            config,
+            VolatileRuntimeJournal::shared(),
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
     }
 
     /// Creates a new shard with the given configuration, journal sink, and artifact store.
@@ -15,13 +19,9 @@ impl Shard {
         Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
-            runtime_states: IndexMap::new(),
-            terminal_runs: IndexSet::new(),
+            run_aggregate: RunAggregate::new(),
             journal_sequences: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
-            pending_timers: IndexMap::new(),
-            pending_actions: IndexMap::new(),
-            action_abi_digests: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
@@ -114,7 +114,9 @@ impl Shard {
     /// Returns the number of active runs on this shard.
     #[must_use]
     pub fn active_run_count(&self) -> usize {
-        self.runs.len()
+        self.runs
+            .len()
+            .saturating_add(self.run_aggregate.checked_out_len())
     }
 
     fn run_capacity_error(capacity: usize) -> RuntimeError {
@@ -123,10 +125,11 @@ impl Shard {
 
     pub(crate) fn prepare_run_slots(&mut self, run_id: RunId) -> RuntimeResult<()> {
         self.reserve_run_state_slot(run_id)?;
+        self.reserve_checked_out_run_slot(run_id)?;
         self.reserve_runtime_state_slot(run_id)?;
         self.reserve_journal_sequence_slot(run_id)?;
         self.reserve_pending_timer_slot(run_id)?;
-        self.reserve_action_abi_digest_slot(run_id)
+        self.reserve_pending_action_slot(run_id)
     }
 
     fn reserve_index_map_slot<T>(
@@ -145,34 +148,18 @@ impl Shard {
             .map_err(|_| Self::run_capacity_error(capacity))
     }
 
-    fn reserve_index_set_slot(
-        slots: &mut IndexSet<RunId>,
-        run_id: RunId,
-        capacity: usize,
-    ) -> RuntimeResult<()> {
-        if slots.contains(&run_id) {
-            return Ok(());
-        }
-        if capacity == 0 {
-            return Err(Self::run_capacity_error(capacity));
-        }
-        if slots.len() >= capacity {
-            let evicted = slots.iter().next().copied();
-            if let Some(evicted) = evicted {
-                let _removed = slots.shift_remove(&evicted);
-            }
-        }
-        slots
-            .try_reserve(1)
-            .map_err(|_| Self::run_capacity_error(capacity))
-    }
-
     fn reserve_run_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
         Self::reserve_index_map_slot(&mut self.runs, run_id, self.max_active_runs)
     }
 
+    pub(crate) fn reserve_checked_out_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_checked_out_slot(run_id, self.max_active_runs)
+    }
+
     fn reserve_runtime_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
-        Self::reserve_index_map_slot(&mut self.runtime_states, run_id, self.max_active_runs)
+        self.run_aggregate
+            .reserve_runtime_state_slot(run_id, self.max_active_runs)
     }
 
     fn reserve_journal_sequence_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
@@ -180,19 +167,13 @@ impl Shard {
     }
 
     pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
-        Self::reserve_index_map_slot(&mut self.pending_timers, run_id, self.max_active_runs)
+        self.run_aggregate
+            .reserve_pending_timer_slot(run_id, self.max_active_runs)
     }
 
     fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
-        Self::reserve_index_map_slot(&mut self.pending_actions, run_id, self.max_active_runs)
-    }
-
-    pub(crate) fn reserve_action_abi_digest_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
-        Self::reserve_index_map_slot(&mut self.action_abi_digests, run_id, self.max_active_runs)
-    }
-
-    fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
-        Self::reserve_index_set_slot(&mut self.terminal_runs, run_id, self.max_active_runs)
+        self.run_aggregate
+            .reserve_pending_action_slot(run_id, self.max_active_runs)
     }
 
     #[cfg(not(kani))]
@@ -306,16 +287,6 @@ impl Shard {
         let _removed = self.journal_sequences.swap_remove(&run);
     }
 
-    pub(crate) fn restore_journal_sequence(
-        &mut self,
-        run: RunId,
-        next_seq: EventSeq,
-    ) -> RuntimeResult<()> {
-        self.reserve_journal_sequence_slot(run)?;
-        let _previous = self.journal_sequences.insert(run, next_seq);
-        Ok(())
-    }
-
     pub(crate) fn add_executed_step_delta(&mut self, run: RunId, executed: u64) {
         let previous = self
             .accounted_executed_steps
@@ -339,7 +310,7 @@ impl Shard {
     /// Returns the number of pending timers on this shard.
     #[must_use]
     pub fn pending_timer_count(&self) -> usize {
-        self.pending_timers.len()
+        self.run_aggregate.pending_timer_len()
     }
 
     /// Returns the run state for the given run ID, if it exists.
@@ -354,6 +325,11 @@ impl Shard {
         self.runs.get_mut(&run_id)
     }
 
+    /// Iterates active run state without exposing direct map mutation.
+    pub(crate) fn active_runs_iter(&self) -> impl Iterator<Item = (&RunId, &RunState)> {
+        self.runs.iter()
+    }
+
     /// Returns true if a run with the given ID exists.
     #[must_use]
     pub fn run_state_contains(&self, run_id: RunId) -> bool {
@@ -361,56 +337,144 @@ impl Shard {
     }
 
     /// Removes and returns the run state for the given run ID.
-    pub fn run_state_remove(&mut self, run_id: RunId) -> Option<RunState> {
-        self.runs.swap_remove(&run_id)
+    pub(crate) fn run_state_remove(&mut self, run_id: RunId) -> Option<RunState> {
+        let state = self.runs.swap_remove(&run_id)?;
+        if !self.checked_out_run_contains(run_id) {
+            self.runtime_state_remove(run_id);
+            let _removed_timer = self.pending_timer_remove(run_id);
+            let _removed_action = self.pending_action_remove(run_id);
+        }
+        Some(state)
     }
 
     /// Returns the runtime state for the given run ID, if it exists.
     #[must_use]
     pub fn runtime_state_get(&self, run_id: RunId) -> Option<RuntimeState> {
-        self.runtime_states.get(&run_id).copied()
+        self.run_aggregate.runtime_state_get(run_id)
     }
 
-    /// Inserts a runtime state for the given run ID.
-    pub fn runtime_state_insert(
+    /// Inserts a non-terminal runtime state for the given run ID.
+    pub(crate) fn runtime_state_insert(
         &mut self,
         run_id: RunId,
         state: RuntimeState,
     ) -> RuntimeResult<Option<RuntimeState>> {
-        self.reserve_runtime_state_slot(run_id)?;
-        Ok(self.runtime_states.insert(run_id, state))
+        self.run_aggregate
+            .runtime_state_insert(&self.runs, run_id, state, self.max_active_runs)
     }
 
     /// Removes the runtime state for the given run ID, if it exists.
     pub(crate) fn runtime_state_remove(&mut self, run_id: RunId) {
-        let _removed = self.runtime_states.swap_remove(&run_id);
+        if self.run_state_contains(run_id) || self.checked_out_run_contains(run_id) {
+            return;
+        }
+        self.run_aggregate.runtime_state_remove(run_id);
+    }
+
+    /// Clears runtime state for a terminal event apply path, including when
+    /// the run is checked out of `runs` for deterministic drive cleanup.
+    pub(crate) fn runtime_state_terminal_clear(&mut self, run_id: RunId) {
+        self.run_aggregate.runtime_state_terminal_clear(run_id);
     }
 
     /// Returns true if the given run ID is in the terminal state.
     #[must_use]
     pub fn terminal_runs_contains(&self, run_id: RunId) -> bool {
-        self.terminal_runs.contains(&run_id)
+        self.run_aggregate.terminal_contains(run_id)
     }
 
     /// Inserts a run state for the given run ID.
-    pub fn run_state_insert(
+    pub(crate) fn run_state_insert(
         &mut self,
         run_id: RunId,
         state: RunState,
     ) -> RuntimeResult<Option<RunState>> {
+        if self.terminal_runs_contains(run_id) || self.run_state_contains(run_id) {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        if !self.run_state_has_aggregate_visibility(run_id) {
+            return Err(RuntimeError::RunNotFound);
+        }
         self.reserve_run_state_slot(run_id)?;
-        Ok(self.runs.insert(run_id, state))
+        let previous = self.runs.insert(run_id, state);
+        self.run_aggregate.checked_out_remove(run_id);
+        Ok(previous)
+    }
+
+    fn run_state_has_aggregate_visibility(&self, run_id: RunId) -> bool {
+        self.runtime_state_get(run_id).is_some() || self.checked_out_run_contains(run_id)
+    }
+
+    pub(crate) fn admit_run_state(
+        &mut self,
+        run_id: RunId,
+        state: RunState,
+        runtime_state: RuntimeState,
+    ) -> RuntimeResult<()> {
+        self.validate_new_active_run(run_id, runtime_state)?;
+        self.reserve_run_state_slot(run_id)?;
+        self.reserve_runtime_state_slot(run_id)?;
+        let _previous = self.runs.insert(run_id, state);
+        match self.runtime_state_insert(run_id, runtime_state) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let _removed = self.runs.swap_remove(&run_id);
+                Err(error)
+            }
+        }
+    }
+
+    fn validate_new_active_run(
+        &self,
+        run_id: RunId,
+        runtime_state: RuntimeState,
+    ) -> RuntimeResult<()> {
+        if runtime_state == RuntimeState::Failed {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "runtime_state_failed_terminal_split",
+            });
+        }
+        if self.run_state_contains(run_id)
+            || self.checked_out_run_contains(run_id)
+            || self.runtime_state_get(run_id).is_some()
+            || self.terminal_runs_contains(run_id)
+        {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn checked_out_run_insert(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .checked_out_insert(run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn checked_out_run_remove(&mut self, run_id: RunId) {
+        self.run_aggregate.checked_out_remove(run_id);
+    }
+
+    pub(crate) fn checked_out_run_contains(&self, run_id: RunId) -> bool {
+        self.run_aggregate.checked_out_contains(run_id)
+    }
+
+    pub(crate) fn checked_out_run_iter(&self) -> impl Iterator<Item = &RunId> {
+        self.run_aggregate.checked_out_iter()
     }
 
     /// Inserts a run into the terminal runs set.
     pub fn terminal_runs_insert(&mut self, run_id: RunId) -> RuntimeResult<bool> {
-        self.reserve_terminal_run_slot(run_id)?;
-        Ok(self.terminal_runs.insert(run_id))
+        self.run_aggregate
+            .terminal_insert(&self.runs, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_terminal_insert_slot(run_id, self.max_active_runs)
     }
 
     /// Removes a run from the terminal runs set.
     pub fn terminal_runs_remove(&mut self, run_id: RunId) {
-        let _removed = self.terminal_runs.swap_remove(&run_id);
+        self.run_aggregate.terminal_remove(run_id);
     }
 
     /// Inserts a pending timer for the given run ID.
@@ -419,31 +483,43 @@ impl Shard {
         run_id: RunId,
         timer: PendingTimer,
     ) -> RuntimeResult<Option<PendingTimer>> {
-        self.reserve_pending_timer_slot(run_id)?;
-        Ok(self.pending_timers.insert(run_id, timer))
+        self.run_aggregate.pending_timer_insert(
+            &self.runs,
+            self.max_active_runs,
+            run_id,
+            timer,
+        )
     }
 
     /// Returns the pending timer for the given run ID, if it exists.
     #[must_use]
     pub fn pending_timer_get(&self, run_id: RunId) -> Option<PendingTimer> {
-        self.pending_timers.get(&run_id).copied()
+        self.run_aggregate.pending_timer_get(run_id)
     }
 
     /// Returns a clone of all pending timers.
     #[must_use]
     pub fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
-        self.pending_timers.clone()
+        self.run_aggregate.pending_timer_clone()
     }
 
     /// Removes and returns the pending timer for the given run ID.
     pub fn pending_timer_remove(&mut self, run_id: RunId) -> Option<PendingTimer> {
-        self.pending_timers.swap_remove(&run_id)
+        self.run_aggregate.pending_timer_remove(run_id)
     }
 
     /// Returns true if a pending timer exists for the given run ID.
     #[must_use]
     pub fn pending_timer_contains(&self, run_id: RunId) -> bool {
-        self.pending_timers.contains_key(&run_id)
+        self.run_aggregate.pending_timer_contains(run_id)
+    }
+
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+        self.run_aggregate.pending_timer_iter()
+    }
+
+    pub(crate) fn clear_pending_timers(&mut self) {
+        self.run_aggregate.pending_timer_clear();
     }
 
     /// Inserts an in-flight action ticket for the given run ID.
@@ -452,8 +528,12 @@ impl Shard {
         run_id: RunId,
         ticket: vb_core::action::ActionTicket,
     ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
-        self.reserve_pending_action_slot(run_id)?;
-        Ok(self.pending_actions.insert(run_id, ticket))
+        self.run_aggregate.pending_action_insert(
+            &self.runs,
+            self.max_active_runs,
+            run_id,
+            ticket,
+        )
     }
 
     /// Returns the in-flight action ticket for the given run, if any.
@@ -462,13 +542,18 @@ impl Shard {
         &self,
         run_id: RunId,
     ) -> Option<vb_core::action::ActionTicket> {
-        self.pending_actions.get(&run_id).copied()
+        self.run_aggregate.pending_action_get(run_id)
+    }
+
+    #[must_use]
+    pub(crate) fn pending_action_len(&self) -> usize {
+        self.run_aggregate.pending_action_len()
     }
 
     /// Returns a clone of all pending action tickets.
     #[must_use]
     pub fn pending_action_clone(&self) -> IndexMap<RunId, vb_core::action::ActionTicket> {
-        self.pending_actions.clone()
+        self.run_aggregate.pending_action_clone()
     }
 
     /// Removes and returns the in-flight action ticket for the given
@@ -477,35 +562,13 @@ impl Shard {
         &mut self,
         run_id: RunId,
     ) -> Option<vb_core::action::ActionTicket> {
-        self.pending_actions.swap_remove(&run_id)
+        self.run_aggregate.pending_action_remove(run_id)
     }
 
-    pub(crate) fn action_abi_digests_store(
-        &mut self,
-        run_id: RunId,
-        digests: Box<[(ActionId, WorkflowDigest)]>,
-    ) {
-        let _previous = self.action_abi_digests.insert(run_id, digests);
-    }
-
-    pub(crate) fn action_abi_digests_remove(&mut self, run_id: RunId) {
-        let _removed = self.action_abi_digests.swap_remove(&run_id);
-    }
-
-    pub(crate) fn action_abi_digest_for_run_action(
+    pub(crate) fn pending_action_iter(
         &self,
-        run_id: RunId,
-        action: ActionId,
-    ) -> RuntimeResult<WorkflowDigest> {
-        let digest = self
-            .action_abi_digests
-            .get(&run_id)
-            .and_then(|digests| action_abi_digest_from_entries(digests, action))
-            .ok_or_else(action_abi_authority_missing)?;
-        if digest.as_bytes() == [0u8; 32] {
-            return Err(action_abi_authority_missing());
-        }
-        Ok(digest)
+    ) -> impl Iterator<Item = (&RunId, &vb_core::action::ActionTicket)> {
+        self.run_aggregate.pending_action_iter()
     }
 
     /// Advances the deterministic clock to the given tick.
@@ -633,22 +696,8 @@ impl Shard {
             ShardCommand::Recover {
                 run,
                 frame,
-                artifact_digest,
                 workflow_digest,
-                next_seq,
-                collect_states,
-                boundary,
-            } => self.handle_recover(
-                crate::shard::types::RecoverRunCommand {
-                    run,
-                    frame,
-                    artifact_digest,
-                    workflow_digest,
-                    next_seq,
-                    collect_states,
-                    boundary,
-                },
-            )?,
+            } => self.handle_recover(run, frame, workflow_digest)?,
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);
@@ -868,24 +917,5 @@ impl Shard {
         for event in trace_events {
             self.trace_ring.push(event);
         }
-    }
-}
-
-fn action_abi_digest_from_entries(
-    entries: &[(ActionId, WorkflowDigest)],
-    action: ActionId,
-) -> Option<WorkflowDigest> {
-    entries.iter().find_map(|(id, digest)| {
-        if *id == action {
-            Some(*digest)
-        } else {
-            None
-        }
-    })
-}
-
-fn action_abi_authority_missing() -> RuntimeError {
-    RuntimeError::RecoveryCannotResume {
-        reason: String::from("action_abi_digests_missing"),
     }
 }

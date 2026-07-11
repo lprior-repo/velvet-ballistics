@@ -175,10 +175,12 @@ impl Shard {
             return Err(RuntimeError::RunNotFound);
         }
         if self.run_state_contains(run) {
-            self.emit_action_abandoned_for_pending(run)?;
-            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
+            self.reserve_cancel_kill_terminalization(run)?;
+            self.append_cancel_terminal_events(run, reason)?;
+            self.checked_out_run_insert(run)?;
             let _removed_timer = self.pending_timer_remove(run);
             let Some(state) = self.run_state_remove(run) else {
+                self.checked_out_run_remove(run);
                 return Err(RuntimeError::RunNotFound);
             };
             self.release_frame(state.frame);
@@ -198,8 +200,9 @@ impl Shard {
             return Err(RuntimeError::RunNotFound);
         }
         if self.run_state_contains(run) {
-            self.emit_action_abandoned_for_pending(run)?;
-            self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
+            self.reserve_cancel_kill_terminalization(run)?;
+            self.append_kill_terminal_events(run)?;
+            self.checked_out_run_insert(run)?;
             let _removed_timer = self.pending_timer_remove(run);
         }
         if let Some(state) = self.run_state_remove(run) {
@@ -255,35 +258,16 @@ impl Shard {
     }
 
     fn take_run_state(&mut self, run: RunId) -> RuntimeResult<RunState> {
+        if !self.run_state_contains(run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        self.checked_out_run_insert(run)?;
         match self.run_state_remove(run) {
             Some(state) => Ok(state),
-            None => Err(RuntimeError::RunNotFound),
+            None => {
+                self.checked_out_run_remove(run);
+                Err(RuntimeError::RunNotFound)
+            }
         }
     }
-
-    fn drive_state(
-        state: &mut RunState,
-        step_budget_per_tick: u64,
-        evidence: &mut EvidenceCollector,
-    ) -> RuntimeEngineResult<RuntimeSignal> {
-        let mut budget = vb_core::engine::StepBudget::new(step_budget_per_tick);
-        let empty_caps = CapabilitySet::empty();
-        let granted = state
-            .admission
-            .as_ref()
-            .map(|a| a.granted_capabilities())
-            .unwrap_or(&empty_caps);
-        drive_deterministic_full(
-            &state.workflow,
-            &mut state.frame,
-            &mut budget,
-            &mut state.store,
-            &state.action_contracts,
-            RetryPolicy::NEVER,
-            evidence,
-            &mut state.collect_states,
-            granted,
-        )
-    }
-
 }

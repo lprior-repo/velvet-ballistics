@@ -45,7 +45,7 @@
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        let ticket = make_ticket(run, StepIdx::new(1), 1);
+        let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
                 ticket,
@@ -68,7 +68,7 @@
         let wf = require_workflow("error_handler", error_handler_workflow())?;
         let run = RunId::new(610);
         submit_run(&mut shard, run, wf);
-        let ticket = make_ticket(run, StepIdx::new(1), 1);
+        let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
                 ticket,
@@ -315,7 +315,7 @@
         // Send action failure with Retryable — should retry
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
-                ticket: make_ticket(run, StepIdx::new(1), 1),
+                ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
                 failure: retryable_failure(),
             }),
             Ok(())
@@ -338,7 +338,7 @@
         // First failure at attempt 1 → retry to attempt 2
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
-                ticket: make_ticket(run, StepIdx::new(1), 1),
+                ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
                 failure: retryable_failure(),
             }),
             Ok(())
@@ -347,7 +347,7 @@
         // Second failure at attempt 2 → retry exhausted, run fails
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
-                ticket: make_ticket(run, StepIdx::new(1), 2),
+                ticket: pending_ticket(&shard, run, StepIdx::new(1), 2),
                 failure: retryable_failure(),
             }),
             Ok(())
@@ -367,7 +367,7 @@
         // Send non-retryable failure
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
-                ticket: make_ticket(run, StepIdx::new(1), 1),
+                ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
                 failure: non_retryable_failure(),
             }),
             Ok(())
@@ -397,7 +397,7 @@
         // should route to error handler, which drives the run to completion
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
-                ticket: make_ticket(run, StepIdx::new(1), 1),
+                ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
                 failure: non_retryable_failure(),
             }),
             Ok(())

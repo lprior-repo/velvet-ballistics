@@ -136,7 +136,7 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
 
 // =========================================================================
 // vb-p5so: Forcefully clear pending suspended timers on drain_for_shutdown
-// RED PHASE — These tests compile but fail until pending_timers.clear()
+// RED PHASE — These tests compile but fail until pending timers are cleared
 // is added to drain_for_shutdown().
 // =========================================================================
 
@@ -158,14 +158,14 @@ fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     // When: drain_for_shutdown processes Shutdown
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
 
     // Then: pending timers are cleared and shard is shutting down
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.is_shutting_down(), true);
 }
 
@@ -187,7 +187,7 @@ fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     // Fill the command queue with Inspect commands (no Shutdown)
     for i in 0..config.command_queue_capacity {
@@ -207,7 +207,7 @@ fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
     );
 
     // Then: pending timers are unchanged
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(shard.is_shutting_down(), false);
 }
 
@@ -219,13 +219,13 @@ fn test_calling_drain_for_shutdown_repeatedly_is_idempotent() {
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
 
     // When: drain_for_shutdown is called again
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
 
     // Then: state remains unchanged
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.is_shutting_down(), true);
 }
 
@@ -234,20 +234,20 @@ fn test_drain_for_shutdown_handles_empty_timer_state() {
     // Given: a shard with no pending timers
     let config = small_config();
     let mut shard = Shard::new(config);
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
 
     // When: drain_for_shutdown processes Shutdown
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
 
     // Then: timers remain empty and shard is shutting down
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.is_shutting_down(), true);
 }
 
 #[test]
-fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully() {
-    // Given: a shard with an orphaned pending timer entry (no corresponding run)
+fn test_pending_timer_rejects_missing_run_before_shutdown_drain() {
+    // Given: a shard without an aggregate-active run for the timer target.
     let config = small_config();
     let mut shard = Shard::new(config);
     let orphaned_run = super::RunId::new(9003);
@@ -261,15 +261,15 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
                 deadline: std::time::Instant::now(),
             },
         ),
-        Ok(None)
+        Err(RuntimeError::RunNotFound)
     );
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 0);
 
     // When: drain_for_shutdown processes Shutdown
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
 
-    // Then: orphaned timer is cleared without panic
-    assert_eq!(shard.pending_timers.len(), 0);
+    // Then: no orphaned timer was admitted and shutdown remains panic-free.
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.is_shutting_down(), true);
 }

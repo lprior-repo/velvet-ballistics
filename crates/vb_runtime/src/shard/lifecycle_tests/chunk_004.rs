@@ -41,7 +41,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
 }
 
 #[test]
-fn future_attempt_completion_beyond_max_is_action_failed_code() {
+fn future_attempt_completion_mismatch_is_action_failed_code() {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
@@ -63,7 +63,7 @@ fn future_attempt_completion_beyond_max_is_action_failed_code() {
         taint: Taint::Clean,
         encoded_len: 2,
     };
-    let error = RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 };
+    let error = RuntimeError::InvalidActionCompletion;
     assert_eq!(error.runtime_code(), Some("ACTION_FAILED"));
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted {
@@ -130,10 +130,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
     );
     assert_eq!(
         shard.tick(),
-        Err(RuntimeError::StaleAttempt {
-            incoming: 2,
-            current: 3,
-        })
+        Err(RuntimeError::InvalidActionCompletion)
     );
     let Some(state_after) = shard.run_state_get_mut(run) else {
         assert_eq!(
@@ -926,7 +923,7 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_050);
     submit_run(&mut shard, run, retry_workflow()?);
-    let ticket = make_ticket(run, StepIdx::new(1), 1);
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
     let frame_before = shard
         .run_state_get(run)
         .ok_or("run should remain active after retry workflow suspension")?
@@ -1447,7 +1444,7 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
     let durable_before = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
-    let ticket = make_ticket(run, StepIdx::new(1), 1);
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
 
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -1574,7 +1571,7 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
     let durable_before = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
-    let ticket = make_ticket(run, StepIdx::new(1), 1);
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
 
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -1682,12 +1679,19 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(RejectRunFinishedJournal);
     let mut config = small_config();
-    config.max_active_runs = 0;
+    config.max_active_runs = 1;
     let mut shard = Shard::new_with_journal(config, shared);
     let run = RunId::new(50_090);
     let workflow = require_workflow("finished", finished_workflow())?;
     let state = crate::shard::helpers::make_run_state(workflow, run)
         .ok_or("run state fixture must build")?;
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    shard.max_active_runs = 0;
     let result = shard.finish_run(run, state);
 
     match result {

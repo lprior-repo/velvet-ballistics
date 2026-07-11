@@ -118,7 +118,7 @@ fn shard_action_failure_retryable_with_retry_check_retries_action() {
     // Run is suspended on the Do action at step 1
 
     // When failing with a retryable failure and retry metadata exists
-    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let ticket = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -175,7 +175,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
 
     // First retryable failure: retries (attempt counter goes to 2)
-    let ticket1 = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let ticket1 = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: ticket1,
@@ -186,11 +186,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Second retryable failure: retries (attempt counter goes to 2, then tries add to 2, max=2, returns false => exhausts)
-    let ticket2 = vb_core::action::ActionTicket {
-        attempt: 2,
-        capacity: 2,
-        ..action_ticket(run, vb_core::ids::StepIdx::new(1))
-    };
+    let ticket2 = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 2);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: ticket2,

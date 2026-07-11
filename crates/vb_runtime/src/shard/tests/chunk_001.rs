@@ -34,6 +34,17 @@ fn invalid_timer_command(run: super::RunId) -> ShardCommand {
     }
 }
 
+fn insert_pending_timer_for_live_run(
+    shard: &mut Shard,
+    run: super::RunId,
+    timer: PendingTimer,
+) -> crate::RuntimeResult<Option<PendingTimer>> {
+    if !shard.run_state_contains(run) && !shard.checked_out_run_contains(run) {
+        shard.checked_out_run_insert(run)?;
+    }
+    shard.pending_timer_insert(run, timer)
+}
+
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
@@ -136,6 +147,25 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
     }
 }
 
+fn pending_action_ticket(
+    shard: &Shard,
+    run: super::RunId,
+    step: vb_core::ids::StepIdx,
+    attempt: u16,
+) -> vb_core::action::ActionTicket {
+    let ticket = shard.pending_action_get(run);
+    assert!(
+        ticket.is_some(),
+        "pending action ticket must exist for run {run:?}"
+    );
+    let Some(ticket) = ticket else {
+        return action_ticket(run, step);
+    };
+    assert_eq!(ticket.step, step);
+    assert_eq!(ticket.attempt, attempt);
+    ticket
+}
+
 fn timeout_failure() -> vb_core::action::ActionFailure {
     vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -212,9 +242,10 @@ fn action_failed_routes_to_nearby_error_handler() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    let ticket = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
-            ticket: action_ticket(run, vb_core::ids::StepIdx::new(1)),
+            ticket,
             failure: timeout_failure(),
         }),
         Ok(())

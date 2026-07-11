@@ -1,0 +1,11 @@
+# command: moon run :fmt
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+[ WARN 2026-07-09 09:53:32.930] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:fmt (f52f58c1)
+▮▮▮▮ velvet-ballistics:fmt (1s 280ms, f52f58c1)
+
+Tasks: 1 completed
+ Time: 1s 358ms
+
+
+# exit_status=0

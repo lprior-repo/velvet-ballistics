@@ -38,6 +38,10 @@ kani-sxkz6-list-events = []
 kani-sxkz6-take-inspect = []
 kani-sxkz6-capture-timer = []
 kani-sxkz6-timer-fired = []
+# PO-vb282my-RS-KANI-001..006 / vb-4969v: repaired resume-state harness lane.
+kani-vb-4969v-runtime-a3 = []
+# PO-vb282my-RS-KANI-006 / vb-4969v: tiny aggregate invariant harness lane.
+kani-vb-4969v-aggregate-invariant = []
 vb-y9d3v-attempt-fence = []
 vb-y9d3v-flux-refinements = []
 

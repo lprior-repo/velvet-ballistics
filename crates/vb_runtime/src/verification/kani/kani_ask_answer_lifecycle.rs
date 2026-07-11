@@ -33,6 +33,13 @@ fn new_shard() -> Shard {
     Shard::new(ShardConfig::default())
 }
 
+fn seed_checked_out_run(shard: &mut Shard, run: RunId) {
+    kani::assert(
+        shard.checked_out_run_insert(run).is_ok(),
+        "setup checked-out aggregate ownership must succeed",
+    );
+}
+
 // =========================================================================
 // PO-vb282my-AA-KANI-001: Append-before-insert ordering
 // await_timer calls append_journal_event BEFORE pending_timers.insert().
@@ -45,9 +52,14 @@ fn kani_ask_answer_append_before_insert() {
     let mut shard = new_shard();
     let run = any_run_id();
 
+    // Seed valid aggregate ownership before invoking the production transition.
     // apply(AwaitTimer) sets state to Resumable — this is called
-    // AFTER the journal append in the production await_timer function
-    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
+    // AFTER the journal append in the production await_timer function.
+    seed_checked_out_run(&mut shard, run);
+    kani::assert(
+        shard.apply(run, RuntimeEvent::AwaitTimer).is_ok(),
+        "apply AwaitTimer must succeed with checked-out ownership",
+    );
 
     let state = shard.runtime_state_get(run);
     kani::assert(
@@ -59,7 +71,11 @@ fn kani_ask_answer_append_before_insert() {
     // Also test AwaitAction → Resumable
     let mut s2 = new_shard();
     let r2 = any_run_id();
-    let _ = s2.apply(r2, RuntimeEvent::AwaitAction);
+    seed_checked_out_run(&mut s2, r2);
+    kani::assert(
+        s2.apply(r2, RuntimeEvent::AwaitAction).is_ok(),
+        "apply AwaitAction must succeed with checked-out ownership",
+    );
     let state2 = s2.runtime_state_get(r2);
     kani::assert(
         state2 == Some(RuntimeState::Resumable),
@@ -71,8 +87,8 @@ fn kani_ask_answer_append_before_insert() {
 // =========================================================================
 // PO-vb282my-AA-KANI-002: Append failure
 // When journal append fails, apply is not called.
-// Test that apply only runs after successful append by verifying
-// the append_journal_event stub returns both Ok and Err paths.
+// Test that apply only runs after successful append by observing the
+// append_journal_event result without mutating timers on failure.
 // =========================================================================
 
 #[kani::proof]
@@ -81,7 +97,7 @@ fn kani_ask_answer_append_failure_no_timer() {
     let mut shard = new_shard();
     let run = any_run_id();
 
-    // Call production append_journal_event (stubbed under kani — returns kani::any())
+    // Call production append_journal_event (stubbed under kani).
     let ask_event = RuntimeJournalEvent::AskScheduled {
         run,
         step: vb_core::ids::StepIdx::new(0),
@@ -105,7 +121,7 @@ fn kani_ask_answer_append_failure_no_timer() {
         Err(_) => {
             // On failure, pending_timers must NOT be modified
             // Since we started with empty pending_timers, it should still be empty.
-            let timer_count = shard.pending_timers.len();
+            let timer_count = shard.pending_timer_count();
             kani::assert(
                 timer_count == 0,
                 "append failure must not modify pending_timers",
@@ -188,7 +204,11 @@ fn kani_ask_answer_slot_written_before_ask_answered() {
     // We test apply() as the state-mutation step that prepares the run
     // for the SlotWritten→AskAnswered sequence.
 
-    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
+    seed_checked_out_run(&mut shard, run);
+    kani::assert(
+        shard.apply(run, RuntimeEvent::AwaitTimer).is_ok(),
+        "apply AwaitTimer must succeed before ask answer evidence",
+    );
     let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Resumable),
@@ -217,7 +237,11 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     // Test: apply(AwaitTimer) sets Resumable, which is the state
     // after SlotWritten failure. The AskAnswered append path is not reached.
 
-    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
+    seed_checked_out_run(&mut shard, run);
+    kani::assert(
+        shard.apply(run, RuntimeEvent::AwaitTimer).is_ok(),
+        "initial apply AwaitTimer must succeed",
+    );
     let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Resumable),
@@ -225,7 +249,10 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     );
 
     // Verify that calling apply(AwaitTimer) again is idempotent
-    let _ = shard.apply(run, RuntimeEvent::AwaitTimer);
+    kani::assert(
+        shard.apply(run, RuntimeEvent::AwaitTimer).is_ok(),
+        "second apply AwaitTimer must succeed",
+    );
     let state2 = shard.runtime_state_get(run);
     kani::assert(
         state2 == Some(RuntimeState::Resumable),
@@ -265,11 +292,11 @@ fn kani_ask_answer_journal_monotonicity() {
             // On success, advance_journal_sequence should have incremented the sequence
             let after_seq = shard.journal_seq_get(run);
             match (initial_seq, after_seq) {
-                (None, Some(new_seq)) => {
+                (None, Some(_new_seq)) => {
                     // First append: sequence should be ZERO + 1 = 1
                     kani::cover!(true, "first_append_sequence_incremented");
                 }
-                (Some(old), Some(new)) => {
+                (Some(_old), Some(_new)) => {
                     // Subsequent append: new must be old + 1
                     // But only if the stub returned Ok AND advance_journal_sequence succeeded
                     kani::cover!(true, "subsequent_append_sequence_advanced");

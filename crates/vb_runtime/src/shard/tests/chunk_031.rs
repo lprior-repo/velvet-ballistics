@@ -3,7 +3,7 @@
 // Numeric Timer Seam — Shard-Level Unit Tests
 // =========================================================================
 // Tests for advance_clock_to, current_tick, next_pending_timer_generation
-// on Shard using pub(crate) access to pending_timers.
+// on Shard using the aggregate-backed pending timer accessors.
 
 use super::TimerTick;
 
@@ -147,7 +147,8 @@ fn next_pending_timer_generation_increments_for_existing_timer() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -166,7 +167,8 @@ fn next_pending_timer_generation_increments_from_one_to_two() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -185,7 +187,8 @@ fn next_pending_timer_generation_returns_none_at_max_u64() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -204,7 +207,8 @@ fn next_pending_timer_generation_does_not_mutate_on_overflow_check() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -228,7 +232,8 @@ fn next_pending_timer_generation_is_independent_per_run() {
     let r1 = run_numeric(1);
     let r2 = run_numeric(2);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r1,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -240,7 +245,8 @@ fn next_pending_timer_generation_is_independent_per_run() {
         Ok(None)
     );
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r2,
             PendingTimer {
                 step: vb_core::ids::StepIdx::new(1),
@@ -263,7 +269,8 @@ fn next_pending_timer_generation_at_max_minus_one_returns_max() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -292,7 +299,8 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             run_numeric(1),
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,
@@ -305,7 +313,8 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
     );
     assert_eq!(shard.pending_timer_count(), 1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             run_numeric(2),
             PendingTimer {
                 step: vb_core::ids::StepIdx::new(1),
@@ -328,7 +337,8 @@ fn advance_clock_to_does_not_affect_pending_timers() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
     assert_eq!(
-        shard.pending_timer_insert(
+        insert_pending_timer_for_live_run(
+            &mut shard,
             r,
             PendingTimer {
                 step: vb_core::ids::StepIdx::ZERO,

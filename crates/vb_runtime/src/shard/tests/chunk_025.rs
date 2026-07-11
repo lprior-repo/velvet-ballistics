@@ -140,10 +140,10 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
             Ok(())
         );
         let _ = shard.tick();
+        let active_runs = shard.active_run_count();
         assert!(
-            shard.runs.len() <= config.max_active_runs,
-            "runs.len() = {} should never exceed max_active_runs = {}",
-            shard.runs.len(),
+            active_runs <= config.max_active_runs,
+            "active_run_count = {active_runs} should never exceed max_active_runs = {}",
             config.max_active_runs
         );
     }

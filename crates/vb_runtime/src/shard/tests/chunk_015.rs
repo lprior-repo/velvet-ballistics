@@ -18,7 +18,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result
     assert_eq!(shard.tick(), Ok(true));
 
     // Fail the action at step 1 (inside the error handler body)
-    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let ticket = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: vb_core::action::RetryPolicy::NonRetryable,
@@ -87,7 +87,7 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
     );
     assert_eq!(shard.tick(), Ok(true));
     // Run is now waiting on an ask with a pending timer
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     // When answering the ask
     let answer = AskAnswer {
@@ -108,7 +108,7 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     // Pending timer was cleaned up by the answer
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     Ok(())
 }
 
@@ -208,7 +208,7 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), Stri
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     assert_eq!(
         timer_command(&shard, run).map(|command| shard.enqueue(command)),
@@ -242,7 +242,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     assert_eq!(
         timer_command(&shard, run).map(|command| shard.enqueue(command)),
@@ -357,8 +357,9 @@ fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result
 #[test]
 fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(TerminalAppendFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
-    shard.max_active_runs = 0;
+    let mut config = small_config();
+    config.max_active_runs = 1;
+    let mut shard = Shard::new_with_journal(config, shared);
     let run = super::RunId::new(763);
     let workflow =
         suspended_workflow().ok_or_else(|| "suspended workflow fixture must build".to_owned())?;
@@ -373,6 +374,17 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };
+
+    shard
+        .admit_run_state(run, state, super::RuntimeState::Running)
+        .map_err(|error| error.to_string())?;
+    shard
+        .checked_out_run_insert(run)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .run_state_remove(run)
+        .ok_or_else(|| "admitted run must check out for terminal rollback test".to_owned())?;
+    shard.max_active_runs = 0;
 
     let result = shard.fail_run_state(run, state);
 
@@ -417,14 +429,14 @@ fn shard_cancel_removes_pending_ask_timer() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.pending_timer_count(), 1);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     Ok(())
 }

@@ -58,7 +58,7 @@ fn shard_snapshot_after_error_handler_finish() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Fail the action to route to handler, which then completes
-    let ticket = action_ticket(run, vb_core::ids::StepIdx::new(1));
+    let ticket = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
     let failure = vb_core::action::ActionFailure {
         code: vb_core::ActionFailureCode::Timeout,
         retry_policy: VbRetryPolicy::NonRetryable,
@@ -201,7 +201,7 @@ fn shard_ask_answered_with_i64_value() {
     // Run should complete
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
 }
 
 /// ShardConfig::new at the max command queue capacity boundary succeeds.

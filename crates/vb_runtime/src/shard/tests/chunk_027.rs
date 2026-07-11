@@ -37,13 +37,13 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    assert_eq!(shard.pending_timers.len(), 2);
+    assert_eq!(shard.pending_timer_count(), 2);
 
     // When: drain_for_shutdown processes Shutdown
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
 
     // Then: all pending timers are cleared regardless of kind
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.is_shutting_down(), true);
 }

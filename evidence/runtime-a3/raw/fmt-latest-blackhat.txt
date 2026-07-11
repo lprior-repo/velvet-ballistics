@@ -1,0 +1,7 @@
+[ WARN 2026-07-09 21:49:18.432] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:fmt (a7f51ab0)
+▮▮▮▮ velvet-ballistics:fmt (1s 280ms, a7f51ab0)
+
+Tasks: 1 completed
+ Time: 1s 639ms
+

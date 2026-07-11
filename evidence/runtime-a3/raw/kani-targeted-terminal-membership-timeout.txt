@@ -1,0 +1,48 @@
+# command: env TMPDIR=target/tmp RUSTC_WRAPPER= timeout 10m cargo kani -p vb_runtime --features kani-vb-4969v-runtime-a3 --harness kani_terminal_membership_cannot_coexist_with_runtime_state -j 1 --output-format regular
+# status: TIMEOUT at shell timeout before Kani emitted VERIFICATION:- SUCCESSFUL or a verifier summary
+# exit_status: 124 (timeout)
+# resource_control: timeout 10m; -j 1; no cgroup memory cap
+# opencode_full_output_source: /home/lewis/.local/share/opencode/tool-output/tool_f47088b27001xsdYY8U2pIbVrO
+
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: struct `ReplayResolutionSet` is never constructed
+  --> crates/vb_storage/src/recovery/types.rs:17:8
+   |
+17 | struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
+   |        ^^^^^^^^^^^^^^^^^^^
+
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+warning: unused import: `RuntimeResult`
+  --> crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs:29:27
+   |
+29 | use crate::{RuntimeError, RuntimeResult};
+   |                           ^^^^^^^^^^^^^
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+             - simd_reduce_all (1)
+
+warning: Kani currently does not support concurrency. The following constructs will be treated as sequential operations:
+             - atomic_load (9)
+             - thread local (replaced by static variable) (1)
+             - atomic_xadd (5)
+             - atomic_fence (4)
+             - atomic_xchg (5)
+             - atomic_xsub (5)
+             - atomic_cxchgweak (15)
+             - atomic_store (3)
+             - atomic_cxchg (15)
+
+Checking harness verification::kani::kani_resume_state_machine::kani_terminal_membership_cannot_coexist_with_runtime_state...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Starting Bounded Model Checking
+
+# selected timeout-tail evidence from opencode full output
+Not unwinding loop _RINvNtCsci0VKyKEi6N_4core3ptr13drop_in_placeSNtNtCs1IDF1x3w9mr_7vb_core10capability10CapabilityEBL_.0 iteration 10 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs line 805 column 1 function std::ptr::drop_in_place::<[vb_core::Capability]> thread 0
+Not unwinding loop _RINvNtCsci0VKyKEi6N_4core3ptr13drop_in_placeSNtNtCseVPMVVey0i8_10vb_runtime7journal19RuntimeJournalEventEBL_.0 iteration 10 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs line 805 column 1 function std::ptr::drop_in_place::<[journal::RuntimeJournalEvent]> thread 0
+Not unwinding recursion std::ptr::drop_in_place::<std::io::Error> iteration 11
+
+# no VERIFICATION:- SUCCESSFUL line was emitted before timeout
+# proof_claim=false

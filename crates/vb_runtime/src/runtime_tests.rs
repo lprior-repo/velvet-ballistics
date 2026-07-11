@@ -218,6 +218,47 @@ mod tests {
             .map(|state| state.frame.clone())
     }
 
+    fn shard_error_index(index: usize) -> u32 {
+        u32::try_from(index).map_or(u32::MAX, |value| value)
+    }
+
+    fn migrate_active_run_for_test(
+        runtime: &mut Runtime,
+        source: usize,
+        destination: usize,
+        run: vb_core::ids::RunId,
+    ) -> crate::RuntimeResult<()> {
+        if source == destination {
+            return Err(RuntimeError::MigrateSelf);
+        }
+        let shard_count = runtime.shards.len();
+        if source >= shard_count || destination >= shard_count {
+            return Err(RuntimeError::ShardNotFound {
+                shard: shard_error_index(destination),
+            });
+        }
+        if source < destination {
+            let (left, right) = runtime.shards.split_at_mut(destination);
+            let source_shard = left.get_mut(source).ok_or(RuntimeError::ShardNotFound {
+                shard: shard_error_index(source),
+            })?;
+            let target_shard = right.get_mut(0).ok_or(RuntimeError::ShardNotFound {
+                shard: shard_error_index(destination),
+            })?;
+            return source_shard.transfer_active_run_to(target_shard, run);
+        }
+        let (left, right) = runtime.shards.split_at_mut(source);
+        let target_shard = left
+            .get_mut(destination)
+            .ok_or(RuntimeError::ShardNotFound {
+                shard: shard_error_index(destination),
+            })?;
+        let source_shard = right.get_mut(0).ok_or(RuntimeError::ShardNotFound {
+            shard: shard_error_index(source),
+        })?;
+        source_shard.transfer_active_run_to(target_shard, run)
+    }
+
     fn submit_suspended(
         runtime: &Runtime,
         run: vb_core::ids::RunId,
@@ -1100,13 +1141,10 @@ mod tests {
         assert_eq!(runtime.tick_all(), Ok(true));
         // Sanity: run is now active on home shard.
         assert!(runtime.shards[home_index].run_state_contains(run));
-        // Simulate migration: remove from home, insert into destination.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Now answer_ask must find the run on the destination shard.
         let answer = AskAnswer {
@@ -1174,13 +1212,10 @@ mod tests {
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert!(runtime.shards[home_index].run_state_contains(run));
-        // Simulate migration.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Then list_events returns Ok on the destination shard.
         let result = runtime.list_events(run);
@@ -1208,13 +1243,10 @@ mod tests {
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert!(runtime.shards[home_index].run_state_contains(run));
-        // Simulate migration.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Then take_inspect_response returns Ok on the destination shard.
         // No inspect was issued, so the slot is None.
@@ -1243,13 +1275,10 @@ mod tests {
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert!(runtime.shards[home_index].run_state_contains(run));
-        // Simulate migration.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Then capture_timer_entry returns InvalidTimerFire because the run
         // was migrated but no timer entry exists yet on the destination.
@@ -1282,13 +1311,10 @@ mod tests {
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert!(runtime.shards[home_index].run_state_contains(run));
-        // Simulate migration.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Construct a timer entry for the run.
         use crate::shard::PendingTimerKind;
@@ -1326,13 +1352,10 @@ mod tests {
         };
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        // Simulate migration.
-        let state = runtime.shards[home_index]
-            .run_state_remove(run)
-            .expect("run must be active on home shard before migration");
+        // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
-            runtime.shards[destination].run_state_insert(run, state),
-            Ok(None)
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
         );
         // Then each method observes the owning shard (post-fix).
         let answer = AskAnswer {

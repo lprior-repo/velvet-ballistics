@@ -30,7 +30,7 @@ impl Shard {
     /// * `DriveContinue` → `runtime_states.insert(run, RuntimeState::Running)`
     /// * `AwaitAction` → `runtime_states.insert(run, RuntimeState::Resumable)`
     /// * `AwaitTimer` → `runtime_states.insert(run, RuntimeState::Resumable)`
-    /// * `Fail` → `runtime_states.insert(run, RuntimeState::Failed)`
+    /// * `Fail` → `runtime_states.swap_remove(&run)`
     /// * `TerminalRemove` → `runtime_states.swap_remove(&run)`
     /// * `DriveFinished` → `runtime_states.swap_remove(&run)`
     ///
@@ -65,11 +65,8 @@ impl Shard {
             RuntimeEvent::AwaitAction | RuntimeEvent::AwaitTimer => {
                 self.runtime_state_insert(run, RuntimeState::Resumable)?;
             }
-            RuntimeEvent::Fail => {
-                self.runtime_state_insert(run, RuntimeState::Failed)?;
-            }
-            RuntimeEvent::TerminalRemove | RuntimeEvent::DriveFinished => {
-                self.runtime_state_remove(run);
+            RuntimeEvent::Fail | RuntimeEvent::TerminalRemove | RuntimeEvent::DriveFinished => {
+                self.runtime_state_terminal_clear(run);
             }
         }
         Ok(())
@@ -107,6 +104,7 @@ impl Shard {
         state: RunState,
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
+        let _removed_action = self.pending_action_remove(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
         self.add_executed_step_delta(run, state.frame.executed());
@@ -228,6 +226,7 @@ impl Shard {
         state: RunState,
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
+        let _removed_action = self.pending_action_remove(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });

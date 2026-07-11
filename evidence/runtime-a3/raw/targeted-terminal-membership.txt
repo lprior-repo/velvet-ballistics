@@ -1,0 +1,15 @@
+# command: env TMPDIR=target/tmp RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo test -p vb_runtime --lib terminal_membership --all-features
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-1cb646ae7f52db08)
+
+running 4 tests
+test shard::lifecycle::tests::terminal_membership_rejects_never_admitted_run ... ok
+test shard::lifecycle::tests::terminal_membership_rejects_live_run_state_owner ... ok
+test shard::lifecycle::tests::terminal_membership_clears_runtime_state_immediately ... ok
+test shard::lifecycle::tests::terminal_membership_clears_checked_out_and_pending_boundaries ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1847 filtered out; finished in 0.00s
+
+
+# exit_status=0

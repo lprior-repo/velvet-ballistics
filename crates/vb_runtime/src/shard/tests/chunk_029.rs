@@ -111,14 +111,14 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
     };
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
 
     // When the stale captured event arrives after cancel.
     assert_eq!(shard.enqueue(stale_command), Ok(()));
 
     // Then stale delivery must map to InvalidTimerFire, not RunNotFound/no-op/success.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(active_timer.kind, PendingTimerKind::Wait);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
@@ -154,7 +154,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
     };
     assert_eq!(shard.enqueue(terminal_command.clone()), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(terminal_timer.kind, PendingTimerKind::Wait);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
@@ -164,7 +164,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
 
     // Then it must be rejected as stale timer authority and must not resurrect/progress.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
-    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 }
@@ -245,8 +245,9 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     };
     timer.generation = u64::MAX;
     assert!(matches!(shard.pending_timer_insert(run, timer), Ok(Some(_))));
-    let Some(state) = shard.run_state_get(run).cloned() else {
-        panic!("waiting run state must remain available for overflow test");
+    assert_eq!(shard.checked_out_run_insert(run), Ok(()));
+    let Some(state) = shard.run_state_remove(run) else {
+        panic!("waiting run state must check out for overflow test");
     };
 
     // When registration tries to replace the timer, generation must not wrap to 1.
@@ -399,7 +400,7 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
                 if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
         ),
         "expected StorageJournalAppend::QueueFull, got {result:?}, pending {:?}, events {:?}",
-        shard.pending_timers,
+        shard.pending_timer_clone(),
         journal.snapshot()
     );
 
