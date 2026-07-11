@@ -112,6 +112,7 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
+        self.action_abi_digests_remove(run);
         self.discard_journal_sequence(run);
         self.clear_executed_step_accounting(run);
         Ok(())
@@ -140,11 +141,12 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
+        let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
         if let Err(error) = self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
             ticket,
             input,
             output,
-            action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+            action_abi_digest,
         }) {
             self.run_state_insert(run, state)?;
             return Err(error);
@@ -168,15 +170,11 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
-        if crate::shard::helpers::timer_registration_required(&state, step) {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state)?;
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
+        let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        if register_timer {
             self.reserve_pending_timer_slot(run)?;
+        }
+        if register_timer || kind == PendingTimerKind::Ask {
             let append_result = match kind {
                 PendingTimerKind::Wait => {
                     self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })
@@ -189,6 +187,15 @@ impl Shard {
                 self.run_state_insert(run, state)?;
                 return Err(error);
             }
+        }
+        if register_timer {
+            let generation = match self.next_pending_timer_generation(run) {
+                Some(generation) => generation,
+                None => {
+                    self.run_state_insert(run, state)?;
+                    return Err(RuntimeError::InvalidTimerFire);
+                }
+            };
             self.pending_timer_insert(
                 run,
                 PendingTimer {
@@ -225,6 +232,7 @@ impl Shard {
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.release_frame(state.frame);
+        self.action_abi_digests_remove(run);
         self.runtime_state_remove(run);
         self.discard_journal_sequence(run);
         self.clear_executed_step_accounting(run);

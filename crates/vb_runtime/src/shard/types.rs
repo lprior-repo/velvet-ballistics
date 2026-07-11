@@ -53,6 +53,25 @@ impl PendingTimer {
     }
 }
 
+/// Internal recovery command payload used to keep recovery evidence grouped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RecoverRunCommand {
+    /// Run identifier being recovered.
+    pub(crate) run: RunId,
+    /// Hydrated run frame from journal replay.
+    pub(crate) frame: RunFrame,
+    /// Durable accepted-artifact digest from `RunAdmission`.
+    pub(crate) artifact_digest: WorkflowDigest,
+    /// Workflow/source digest retained for artifact binding validation.
+    pub(crate) workflow_digest: WorkflowDigest,
+    /// Next durable sequence number after the recovered prefix.
+    pub(crate) next_seq: EventSeq,
+    /// Recovered collect pagination side table from durable frame extras.
+    pub(crate) collect_states: CollectStates,
+    /// Recovered suspended boundary, if durable evidence parked the run.
+    pub(crate) boundary: crate::recovery::RecoveredRunBoundary,
+}
+
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -186,15 +205,23 @@ pub enum ShardCommand {
     ///
     /// The runtime has already reconstructed a `RunFrame` from the journal
     /// replay and is injecting it directly into the shard's frame pool.
-    /// The `workflow_digest` is used to look up the compiled workflow
-    /// from the artifact store before driving the run.
+    /// The durable accepted-artifact digest is used to look up the compiled
+    /// workflow; the workflow digest is retained for source-binding validation.
     Recover {
         /// Run identifier being recovered.
         run: RunId,
         /// Hydrated run frame from journal replay.
         frame: RunFrame,
+        /// Durable accepted-artifact digest from `RunAdmission`.
+        artifact_digest: WorkflowDigest,
         /// Workflow digest for artifact store lookup during recovery.
         workflow_digest: WorkflowDigest,
+        /// Next durable sequence number after the recovered prefix.
+        next_seq: EventSeq,
+        /// Recovered collect pagination side table from durable frame extras.
+        collect_states: CollectStates,
+        /// Recovered suspended boundary, if durable evidence parked the run.
+        boundary: crate::recovery::RecoveredRunBoundary,
     },
 }
 
@@ -672,6 +699,9 @@ pub struct Shard {
     /// journal appends an `ActionScheduledTicket`; cleared when the
     /// matching completion/failure/abandon event is journaled.
     pub(crate) pending_actions: IndexMap<RunId, vb_core::action::ActionTicket>,
+    /// Per-run action ABI digests computed at admission/recovery time.
+    /// The schedule/completion hot path only performs bounded lookup.
+    pub(crate) action_abi_digests: IndexMap<RunId, Box<[(ActionId, WorkflowDigest)]>>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,

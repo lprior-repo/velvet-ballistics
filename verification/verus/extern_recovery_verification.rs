@@ -9,8 +9,8 @@
 // recovery decision surfaces in:
 //
 //   - crates/vb_storage/src/recovery/types.rs
-//     (UnsupportedRecoveryState, RecoveryFrameSeed, RecoveryHydration,
-//      RecoveryRuntimeSummary, RecoveryTerminalState, DigestCheck,
+//     (UnsupportedRecoveryState, RecoveryFrameSeed, RecoveryFrameSeedProduct,
+//      RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState, DigestCheck,
 //      DigestVerificationRequest, DigestPair, ActionAbiDigestComparison,
 //      PolicyDigestComparison, FullDigestEvidence, RecoveryError)
 //   - crates/vb_storage/src/recovery/recover.rs
@@ -26,7 +26,7 @@
 //      hydrate_events_preconditions,
 //      hydrate_dimensions_positive)
 //   - crates/vb_runtime/src/recovery.rs
-//     (reject_unsupported_live_frame_state,
+//     (DurableFrameRecoveryProduct::hydrate_run_frame,
 //      empty_recovered_frame,
 //      apply_recovered_step / apply_recovered_steps / apply_recovered_slots /
 //      apply_recovered_pc,
@@ -76,22 +76,23 @@
 // Type mirrors (each mirrors a production type line-by-line so any
 // drift breaks the build):
 //
-//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types.rs:654-663
-//   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:730-749
-//   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:872-899
-//   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:610-621
-//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:625-630
-//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:634-641
-//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:645-650
-//   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:531-543
-//   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:547-570
-//   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:589-605
-//   - `DigestPair`                        <- crates/vb_storage/src/recovery/types.rs:346-358
-//   - `ActionAbiDigestComparison`         <- crates/vb_storage/src/recovery/types.rs:363-379
-//   - `PolicyDigestComparison`            <- crates/vb_storage/src/recovery/types.rs:383-399
-//   - `FullDigestEvidence<'a>`            <- crates/vb_storage/src/recovery/types.rs:403-456
-//   - `DigestVerificationRequest<'a>`     <- crates/vb_storage/src/recovery/types.rs:460-526
-//   - `DigestCheck`                       <- crates/vb_storage/src/recovery/types.rs:1422-1465
+//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types.rs:821-832
+//   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:925-946
+//   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:1063-1098
+//   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:776-790
+//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:792-799
+//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:801-810
+//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:812-819
+//   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:547-562
+//   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:564-589
+//   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:604-645
+//   - `RecoveryFrameSeedProduct`          <- crates/vb_storage/src/recovery/types.rs:647-740
+//   - `DigestPair`                        <- crates/vb_storage/src/recovery/types.rs:363-378
+//   - `ActionAbiDigestComparison`         <- crates/vb_storage/src/recovery/types.rs:380-398
+//   - `PolicyDigestComparison`            <- crates/vb_storage/src/recovery/types.rs:400-418
+//   - `FullDigestEvidence<'a>`            <- crates/vb_storage/src/recovery/types.rs:420-475
+//   - `DigestVerificationRequest<'a>`     <- crates/vb_storage/src/recovery/types.rs:477-545
+//   - `DigestCheck`                       <- crates/vb_storage/src/recovery/types.rs:1606-1652
 //   - `RecoveryError` (spec subset)       <- crates/vb_storage/src/recovery/types.rs:39-158
 //                                            (only the four variants the spec exercises)
 //   - `RuntimeError` (spec subset)        <- crates/vb_runtime/src/error/mod.rs:7-203
@@ -103,9 +104,9 @@
 // alloc paths, and the spec proofs attach contracts via
 // `assume_specification`):
 //
-//   - `reject_unsupported_live_frame_state`
-//        <- crates/vb_runtime/src/recovery.rs:109-115
-//        (production body: `seed.cannot_resume_state().is_resumable()`;
+//   - `DurableFrameRecoveryProduct::hydrate_run_frame`
+//        <- crates/vb_runtime/src/recovery/product.rs:36-41
+//        (production body: dispatches the typed recovery product;
 //        frame seeds are rejected when any of the 13 cannot-resume
 //        flags is true.)
 //   - `check_compiled_ir_digest_pure`
@@ -138,8 +139,8 @@
 //        summarize_recovery_events. Pure projection: success iff
 //        has_events && summary_ok.)
 //   - `hydrate_run_frame`
-//        <- crates/vb_storage/src/recovery/hydrate.rs:206-225 +
-//           crates/vb_runtime/src/recovery.rs:99-105
+//        <- crates/vb_storage/src/recovery/hydrate.rs:218-238 +
+//           crates/vb_runtime/src/recovery/product.rs:36-41
 //        (production body: validate_snapshot_recovery_inputs, then
 //        decode_snapshot_slots (alloc), then derive_dimensions
 //        (alloc), then ensure_nonzero_step_count, then build RunFrame
@@ -151,7 +152,7 @@
 //        steps_apply_ok, slots_apply_ok, pc_in_bounds,
 //        unsupported_passes_through_reject).)
 //   - `SummaryRecoveryBoundary::hydrate_run_frame`
-//        <- crates/vb_runtime/src/recovery.rs:188-190
+//        <- crates/vb_runtime/src/recovery.rs:194-209
 //        (production body: returns Err(UnsupportedFullRecoveryHydration).
 //        Pure projection: never succeeds.)
 //
@@ -179,7 +180,7 @@
 //         mapping narrows to `InvalidRecoveryHydration` for the
 //         hydration-specific failure paths.
 //   - D3: production `CANNOT_RESUME_REASONS` array at
-//         `crates/vb_storage/src/recovery/types.rs:1044-1058` is
+//         `crates/vb_storage/src/recovery/types.rs:1241-1255` is
 //         redeclared in this extern layer because `crate::recovery::types`
 //         is not reachable from the standalone `verus --crate-type=lib`
 //         invocation (see "WHY NOT FULL `#[path]` INCLUSION OF
@@ -189,7 +190,7 @@
 //         `recovery_verification.rs` discharges the priority invariant.
 //         `RecoveryCannotResumeState::unsupported_reason()` is
 //         refactored to a priority-typed (`CannotResumePriority`)
-//         first-match dispatch at production `types.rs:1089-1175`,
+// first-match dispatch at production `types.rs:1117-1203`,
 //         with each helper bounded to <=25 lines to satisfy Farley.
 //         The mirror's `unsupported_reason_pure` body remains
 //         `#[verifier::external]`-opaque; the priority ordering is
@@ -263,7 +264,7 @@ pub mod prod_src;
 #[verifier::external]
 fn prod_methods_drift_check() {
     // Reference every field of UnsupportedRecoveryStateStub
-    // (production types.rs:654-663).
+    // (production types.rs:821-832).
     let _stub = prod_src::UnsupportedRecoveryStateStub {
         slot_values: false,
         slot_taint: false,
@@ -272,7 +273,7 @@ fn prod_methods_drift_check() {
     };
 
     // Reference every field of RecoveryCannotResumeStateStub
-    // (production types.rs:872-899).
+    // (production types.rs:1063-1098).
     let _cannot_resume = prod_src::RecoveryCannotResumeStateStub {
         slot_values: false,
         slot_taint: false,
@@ -297,7 +298,7 @@ fn prod_methods_drift_check() {
     let _ = _stub.is_fully_supported_stub();
 
     // Reference the RecoveryCannotResumeStateStub::is_resumable
-    // production method (types.rs:1025-1039).
+    // production method (types.rs:1220-1236).
     let _ = _cannot_resume.is_resumable_stub();
 }
 
@@ -393,11 +394,11 @@ impl EventSeq {
 }
 
 // ============================================================================
-// UnsupportedRecoveryState mirror — types.rs:654-663
+// UnsupportedRecoveryState mirror — types.rs:821-832
 // ============================================================================
 
 /// Mirror of `UnsupportedRecoveryState` at
-/// `crates/vb_storage/src/recovery/types.rs:654-663`. All four fields
+/// `crates/vb_storage/src/recovery/types.rs:821-832`. All four fields
 /// are `bool` so the mirror is bit-identical to production.
 ///
 /// `PartialEq, Eq` are intentionally NOT derived here because the
@@ -437,7 +438,7 @@ impl UnsupportedRecoveryState {
 // ============================================================================
 
 /// Mirror of `RecoveredStepState` at
-/// `crates/vb_storage/src/recovery/types.rs:610-621`. The discriminant
+/// `crates/vb_storage/src/recovery/types.rs:776-790`. The discriminant
 /// set is mirrored exactly; production uses `#[non_exhaustive]` but
 /// the spec projection enumerates the closed set the proofs reason
 /// about.
@@ -455,14 +456,14 @@ pub enum RecoveredStepState {
     Asking,
 }
 
-/// Mirror of `RecoveredStepEntry` at `types.rs:625-630`.
+/// Mirror of `RecoveredStepEntry` at `types.rs:792-799`.
 #[derive(Clone, Copy)]
 pub struct RecoveredStepEntry {
     pub step: StepIdx,
     pub state: RecoveredStepState,
 }
 
-/// Mirror of `RecoveredSlotEntry` at `types.rs:634-641`.
+/// Mirror of `RecoveredSlotEntry` at `types.rs:801-810`.
 #[derive(Clone, Copy)]
 pub struct RecoveredSlotEntry {
     pub slot: SlotIdx,
@@ -476,7 +477,7 @@ pub struct RecoveredSlotEntry {
     pub taint: (),
 }
 
-/// Mirror of `RecoveredPendingAction` at `types.rs:645-650`.
+/// Mirror of `RecoveredPendingAction` at `types.rs:812-819`.
 #[derive(Clone, Copy)]
 pub struct RecoveredPendingAction {
     pub step: StepIdx,
@@ -485,10 +486,10 @@ pub struct RecoveredPendingAction {
 
 // ============================================================================
 // RecoveryTerminalState + RecoveryRuntimeSummary + RecoveryHydration
-// mirrors — types.rs:531-605
+// mirrors — types.rs:547-645
 // ============================================================================
 
-/// Mirror of `RecoveryTerminalState` at `types.rs:531-543`. Closed
+/// Mirror of `RecoveryTerminalState` at `types.rs:547-562`. Closed
 /// projection: production uses `#[non_exhaustive]` but the spec
 /// only needs the four documented variants.
 ///
@@ -502,7 +503,7 @@ pub enum RecoveryTerminalState {
     Finished { result: SlotIdx },
 }
 
-/// Mirror of `RecoveryRuntimeSummary` at `types.rs:547-570`. All
+/// Mirror of `RecoveryRuntimeSummary` at `types.rs:564-589`. All
 /// fields are `Copy` primitives; the mirror is bit-identical.
 ///
 /// `PartialEq, Eq` intentionally NOT derived (see
@@ -522,7 +523,7 @@ pub struct RecoveryRuntimeSummary {
     pub terminal: Option<RecoveryTerminalState>,
 }
 
-/// Mirror of `RecoveryFrameSeed` at `types.rs:730-749`. The `Vec`
+/// Mirror of `RecoveryFrameSeed` at `types.rs:925-946`. The `Vec`
 /// fields are abstracted to length counters because Verus cannot
 /// model `Vec<T>` heap storage. The length counters are the
 /// production-derived counts that the spec decision fns reason about.
@@ -537,21 +538,39 @@ pub struct RecoveryFrameSeed {
     pub slot_count: u16,
     pub pc: StepIdx,
     /// Number of recovered step entries (mirrors `steps: Vec<RecoveredStepEntry>`
-    /// at types.rs:742). The spec projection reasons only about the
+    /// at types.rs:939). The spec projection reasons only about the
     /// count.
     pub steps_len: usize,
     /// Number of recovered slot entries (mirrors `slots: Vec<RecoveredSlotEntry>`
-    /// at types.rs:744). The spec projection reasons only about the
+    /// at types.rs:941). The spec projection reasons only about the
     /// count.
     pub slots_len: usize,
     /// Number of pending actions (mirrors `pending_actions: Vec<RecoveredPendingAction>`
-    /// at types.rs:746). The spec projection reasons only about the
+    /// at types.rs:943). The spec projection reasons only about the
     /// count.
     pub pending_actions_len: usize,
     pub unsupported: UnsupportedRecoveryState,
 }
 
-/// Mirror of `RecoveryHydration` at `types.rs:589-605`. Production uses
+/// Mirror of `NonResumableRecoveryFrameSeedProduct` at `types.rs`.
+pub struct NonResumableRecoveryFrameSeedProduct {
+    pub seed: RecoveryFrameSeed,
+    pub cannot_resume: RecoveryCannotResumeState,
+}
+
+/// Mirror of `ResumableRecoveryFrameSeedProduct` at `types.rs`.
+pub struct ResumableRecoveryFrameSeedProduct {
+    pub seed: RecoveryFrameSeed,
+}
+
+/// Mirror of `RecoveryFrameSeedProduct` at `types.rs`. The mirror keeps the
+/// storage product split between cannot-resume and resumable products.
+pub enum RecoveryFrameSeedProduct {
+    CannotResume(NonResumableRecoveryFrameSeedProduct),
+    Resumable(ResumableRecoveryFrameSeedProduct),
+}
+
+/// Mirror of `RecoveryHydration` at `types.rs`. Production uses
 /// `#[non_exhaustive]` with two documented variants; the spec mirrors
 /// both.
 ///
@@ -561,7 +580,7 @@ pub struct RecoveryFrameSeed {
 /// instantiate this enum).
 pub enum RecoveryHydration {
     Summary(RecoveryRuntimeSummary),
-    FrameSeed(RecoveryFrameSeed),
+    FrameSeed(RecoveryFrameSeedProduct),
 }
 
 impl RecoveryHydration {
@@ -570,17 +589,20 @@ impl RecoveryHydration {
     pub fn summary(&self) -> RecoveryRuntimeSummary {
         match self {
             Self::Summary(s) => *s,
-            Self::FrameSeed(seed) => seed.summary,
+            Self::FrameSeed(product) => match product {
+                RecoveryFrameSeedProduct::CannotResume(inner) => inner.seed.summary,
+                RecoveryFrameSeedProduct::Resumable(inner) => inner.seed.summary,
+            },
         }
     }
 }
 
 // ============================================================================
-// RecoveryCannotResumeState mirror — types.rs:872-899 (FINDING-001, vb-wy33p.11)
+// RecoveryCannotResumeState mirror — types.rs:1063-1098 (FINDING-001, vb-wy33p.11)
 // ============================================================================
 
 /// Mirror of [`RecoveryCannotResumeState`] at
-/// `crates/vb_storage/src/recovery/types.rs:872-899`. The struct
+/// `crates/vb_storage/src/recovery/types.rs:1063-1098`. The struct
 /// carries the same 13 cannot-resume flags as production
 /// (FINDING-001 widened the original 7-flag classification to 13 to
 /// cover full-RunState-incomplete evidence). Every flag is `bool`,
@@ -594,37 +616,37 @@ impl RecoveryHydration {
 /// [`RecoveryCannotResumeState`]: types.rs::RecoveryCannotResumeState
 #[derive(Clone, Copy)]
 pub struct RecoveryCannotResumeState {
-    /// Mirror of production `slot_values: bool` at types.rs:874.
+    /// Mirror of production `slot_values: bool` at types.rs:902.
     pub slot_values: bool,
-    /// Mirror of production `slot_taint: bool` at types.rs:876.
+    /// Mirror of production `slot_taint: bool` at types.rs:904.
     pub slot_taint: bool,
-    /// Mirror of production `action_payloads: bool` at types.rs:878.
+    /// Mirror of production `action_payloads: bool` at types.rs:906.
     pub action_payloads: bool,
-    /// Mirror of production `pending_actions: bool` at types.rs:880.
+    /// Mirror of production `pending_actions: bool` at types.rs:908.
     pub pending_actions: bool,
-    /// Mirror of production `pending_timers: bool` at types.rs:882.
+    /// Mirror of production `pending_timers: bool` at types.rs:910.
     pub pending_timers: bool,
-    /// Mirror of production `pending_asks: bool` at types.rs:884.
+    /// Mirror of production `pending_asks: bool` at types.rs:912.
     pub pending_asks: bool,
-    /// Mirror of production `workflow_missing: bool` at types.rs:886.
+    /// Mirror of production `workflow_missing: bool` at types.rs:914.
     pub workflow_missing: bool,
-    /// Mirror of production `store_missing: bool` at types.rs:888.
+    /// Mirror of production `store_missing: bool` at types.rs:916.
     pub store_missing: bool,
-    /// Mirror of production `action_attempts_missing: bool` at types.rs:890.
+    /// Mirror of production `action_attempts_missing: bool` at types.rs:918.
     pub action_attempts_missing: bool,
-    /// Mirror of production `admission_missing: bool` at types.rs:892.
+    /// Mirror of production `admission_missing: bool` at types.rs:920.
     pub admission_missing: bool,
-    /// Mirror of production `collect_states_missing: bool` at types.rs:894.
+    /// Mirror of production `collect_states_missing: bool` at types.rs:922.
     pub collect_states_missing: bool,
-    /// Mirror of production `action_contracts_missing: bool` at types.rs:896.
+    /// Mirror of production `action_contracts_missing: bool` at types.rs:924.
     pub action_contracts_missing: bool,
-    /// Mirror of production `action_abi_digests_missing: bool` at types.rs:898.
+    /// Mirror of production `action_abi_digests_missing: bool` at types.rs:926.
     pub action_abi_digests_missing: bool,
 }
 
 impl RecoveryCannotResumeState {
     /// Mirror of production `RecoveryCannotResumeState::RESUMABLE`
-    /// at `types.rs:903-917`. All 13 cannot-resume flags are false.
+    /// at `types.rs:931-945`. All 13 cannot-resume flags are false.
     pub const RESUMABLE: Self = Self {
         slot_values: false,
         slot_taint: false,
@@ -642,7 +664,7 @@ impl RecoveryCannotResumeState {
     };
 
     /// Mirror of `RecoveryCannotResumeState::is_resumable()` at
-    /// `types.rs:1025-1039`. Returns true iff every flag is false.
+    /// `types.rs:1192-1208`. Returns true iff every flag is false.
     pub const fn is_resumable(self) -> bool {
         !self.slot_values
             && !self.slot_taint
@@ -660,7 +682,7 @@ impl RecoveryCannotResumeState {
     }
 
     /// Mirror of the production `from_seed` decision fn at
-    /// `types.rs:949-957`. Returns true iff the production body
+    /// `types.rs:1118-1126`. Returns true iff the production body
     /// calls `mark_full_run_state_missing()` and any of the 7
     /// `*_missing` flags is therefore true.
     ///
@@ -690,7 +712,7 @@ impl RecoveryCannotResumeState {
     }
 
     /// Mirror of `RecoveryCannotResumeState::unsupported_reason()`
-    /// at `types.rs:1089-1097`. Returns the priority-ordered first
+    /// at `types.rs:1251-1266`. Returns the priority-ordered first
     /// matching canonical reason token, or
     /// `"resumable"` if every flag is false.
     #[verifier::external]
@@ -709,7 +731,7 @@ impl RecoveryCannotResumeState {
     ///
     /// DRIFT D3 (binding ledger): the production array is named
     /// `CANNOT_RESUME_REASONS` at
-    /// `crates/vb_storage/src/recovery/types.rs:1044-1058`. The mirror
+    /// `crates/vb_storage/src/recovery/types.rs:1213-1227`. The mirror
     /// redeclares it in the extern layer because `crate::recovery::types`
     /// is not reachable from this standalone `verus --crate-type=lib`
     /// invocation (see "WHY NOT FULL `#[path]` INCLUSION OF PRODUCTION
@@ -734,7 +756,7 @@ impl RecoveryCannotResumeState {
     ];
 
 // ============================================================================
-// Digest* mirrors — types.rs:346-526, 1422-1465
+// Digest* mirrors — types.rs:346-526, 1606-1652
 // ============================================================================
 
 /// Mirror of `DigestPair` at `types.rs:346-358`.
@@ -917,8 +939,8 @@ pub type RuntimeResult<T> = Result<T, RuntimeError>;
 // production decision logic line-by-line.
 // ============================================================================
 
-/// Pure decision fn mirroring `reject_unsupported_live_frame_state`
-/// at `crates/vb_runtime/src/recovery.rs:109-115`.
+/// Pure decision fn mirroring runtime product resume rejection at
+/// `crates/vb_runtime/src/recovery/product.rs:36-41`.
 ///
 /// Production body:
 /// ```text
@@ -1054,7 +1076,7 @@ pub fn recover_runtime_summary_pure(has_events: bool, summary_ok: bool) -> bool 
 }
 
 /// Pure precondition decision mirroring `hydrate_run_frame` at
-/// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND the
+/// `crates/vb_storage/src/recovery/hydrate.rs:218-238` AND the
 /// `DurableFrameRecoveryBoundary::hydrate_run_frame` driver at
 /// `crates/vb_runtime/src/recovery.rs:99-115`.
 ///
@@ -1101,7 +1123,7 @@ pub fn hydrate_run_frame_preconditions_pure(
 
 /// Pure decision fn mirroring
 /// `SummaryRecoveryBoundary::hydrate_run_frame` at
-/// `crates/vb_runtime/src/recovery.rs:188-190`.
+/// `crates/vb_runtime/src/recovery.rs:162-174`.
 ///
 /// Production body: `Err(RuntimeError::UnsupportedFullRecoveryHydration)`
 /// unconditionally. Pure projection: always false (never succeeds).

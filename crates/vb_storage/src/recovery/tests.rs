@@ -188,7 +188,7 @@ fn assert_recovered_i64_slot(seed: &crate::recovery::RecoveryFrameSeed, slot: Sl
 }
 
 fn assert_compiled_digest_mismatch(
-    result: Result<crate::recovery::RecoveryFrameSeed, RecoveryError>,
+    result: Result<crate::recovery::RecoveryFrameSeedProduct, RecoveryError>,
     expected: WorkflowDigest,
     found: WorkflowDigest,
 ) {
@@ -200,7 +200,7 @@ fn assert_compiled_digest_mismatch(
 }
 
 fn assert_replay_divergence_step(
-    result: Result<crate::recovery::RecoveryFrameSeed, RecoveryError>,
+    result: Result<crate::recovery::RecoveryFrameSeedProduct, RecoveryError>,
     expected_step: StepIdx,
     expected_detail: &str,
 ) {
@@ -462,8 +462,9 @@ fn replay_events_accepts_identical_duplicate_action_scheduled_ticket() {
         ),
     ];
     let mut tracker = ActionReplayTracker::new();
+    let expected = [(ticket.action, sample_digest(0xA1))];
 
-    let result = replay_events(&events, &mut tracker, &[]);
+    let result = replay_events(&events, &mut tracker, &expected);
 
     assert!(result.is_ok(), "expected Ok, got {:?}", result);
 }
@@ -489,8 +490,9 @@ fn replay_events_rejects_divergent_action_scheduled_ticket() {
         ),
     ];
     let mut tracker = ActionReplayTracker::new();
+    let expected = [(ticket.action, sample_digest(0xA1))];
 
-    let result = replay_events(&events, &mut tracker, &[]);
+    let result = replay_events(&events, &mut tracker, &expected);
 
     assert!(matches!(
         result,
@@ -521,8 +523,9 @@ fn replay_events_rejects_completion_output_mismatch_with_schedule() {
         ),
     ];
     let mut tracker = ActionReplayTracker::new();
+    let expected = [(ticket.action, sample_digest(0xA1))];
 
-    let result = replay_events(&events, &mut tracker, &[]);
+    let result = replay_events(&events, &mut tracker, &expected);
 
     assert!(matches!(
         result,
@@ -839,6 +842,101 @@ fn recover_runtime_frame_seed_reads_events_from_journal() {
     assert!(seed.steps.iter().any(
         |entry| entry.step == StepIdx::new(2) && entry.state == RecoveredStepState::Asking
     ));
+}
+
+#[test]
+fn recover_runtime_frame_seed_reopens_fjall_pending_action_ticket()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = tempfile::tempdir()?;
+    let run = RunId::new(94);
+    let step = StepIdx::new(2);
+    let action = ActionId::new(7);
+    let workflow = sample_digest(15);
+    let input = SlotIdx::new(1);
+    let output = SlotIdx::new(3);
+    let ticket = recovery_action_ticket(run, step, action);
+    let events = [
+        accepted_event(run, EventSeq::new(0), workflow),
+        recovery_action_scheduled_ticket_event(run, EventSeq::new(1), ticket, input, output),
+    ];
+
+    {
+        let journal = FjallJournal::open(temp_dir.path(), None)?;
+        journal.append_strict_batch(&events)?;
+    }
+
+    let reopened = FjallJournal::open(temp_dir.path(), None)?;
+    let seed = recover_runtime_frame_seed(&reopened, run)?;
+    let cannot_resume = seed.cannot_resume_state();
+
+    assert_eq!(seed.summary.workflow, Some(workflow));
+    assert_eq!(seed.summary.actions_scheduled, 1);
+    assert_eq!(seed.step_count, 3);
+    assert_eq!(seed.slot_count, 4);
+    assert_eq!(seed.pc, step);
+    assert!(
+        seed.pending_actions
+            .iter()
+            .any(|entry| entry.step == step && entry.action == action)
+    );
+    assert!(seed.unsupported.pending_actions);
+    assert!(cannot_resume.pending_actions);
+    assert_eq!(cannot_resume.unsupported_reason(), "pending_actions");
+    Ok(())
+}
+
+#[test]
+fn recover_runtime_frame_seed_reopens_fjall_wait_and_ask_boundaries()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = tempfile::tempdir()?;
+    let run = RunId::new(95);
+    let workflow = sample_digest(16);
+    let wait_step = StepIdx::new(1);
+    let ask_step = StepIdx::new(2);
+    let events = [
+        accepted_event(run, EventSeq::new(0), workflow),
+        JournalEvent::WaitScheduledEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: wait_step,
+            attempt: 1,
+        },
+        JournalEvent::AskScheduledEvent {
+            run,
+            seq: EventSeq::new(2),
+            step: ask_step,
+            attempt: 1,
+        },
+    ];
+
+    {
+        let journal = FjallJournal::open(temp_dir.path(), None)?;
+        journal.append_strict_batch(&events)?;
+    }
+
+    let reopened = FjallJournal::open(temp_dir.path(), None)?;
+    let seed = recover_runtime_frame_seed(&reopened, run)?;
+    let cannot_resume = seed.cannot_resume_state();
+
+    assert_eq!(seed.summary.workflow, Some(workflow));
+    assert_eq!(seed.summary.suspensions, 2);
+    assert_eq!(seed.step_count, 3);
+    assert_eq!(seed.pc, ask_step);
+    assert!(
+        seed.steps
+            .iter()
+            .any(|entry| entry.step == wait_step && entry.state == RecoveredStepState::Waiting)
+    );
+    assert!(
+        seed.steps
+            .iter()
+            .any(|entry| entry.step == ask_step && entry.state == RecoveredStepState::Asking)
+    );
+    assert_eq!(seed.unsupported, UnsupportedRecoveryState::SUPPORTED);
+    assert!(cannot_resume.pending_timers);
+    assert!(cannot_resume.pending_asks);
+    assert_eq!(cannot_resume.unsupported_reason(), "pending_timers");
+    Ok(())
 }
 
 #[test]
@@ -3363,7 +3461,7 @@ mod hydrate_run_frame_tests {
     }
 
     #[test]
-    fn hydrate_run_frame_applies_tail_completion_without_pre_snapshot_schedule() {
+    fn hydrate_run_frame_rejects_tail_completion_without_expected_action_abi() {
         let run = RunId::new(25);
         let snapshot = empty_snapshot(run, EventSeq::new(1));
         let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
@@ -3377,16 +3475,17 @@ mod hydrate_run_frame_tests {
         )];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        // The snapshot+tail path remains a lower-level mechanism that
-        // can still build a frame from durable evidence. The events-only
-        // `hydrate_run_frame_from_events` path now fails closed with
-        // `UnsupportedFrameSeed` because a frame seed alone never carries
-        // the full RunState.
+        // The snapshot+tail path has no accepted-artifact ABI evidence in
+        // this legacy signature, so an action completion envelope must now
+        // fail closed instead of hydrating with unauthenticated action ABI.
         assert!(
-            result.is_ok(),
-            "snapshot+tail hydration must succeed: {result:?}"
+            matches!(
+                result,
+                Err(RecoveryError::ActionAbiMismatch { action_id })
+                    if action_id == ActionId::new(1)
+            ),
+            "snapshot+tail hydration must reject missing expected action ABI: {result:?}"
         );
-        // frame binding removed: storage boundary now fails closed.
     }
 
     // --- Invariant: Dimension integrity ---

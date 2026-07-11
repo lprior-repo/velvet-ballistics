@@ -59,6 +59,7 @@ fn accepted_artifact(
         verification: verification_proof(digest, idempotency_actions),
         accepted_at_seq: EventSeq::new(1),
         required_capabilities,
+        action_contracts: Box::new([]),
     }
 }
 

@@ -119,6 +119,7 @@ pub(crate) fn submit_cli_compiled_artifact(
         ),
         accepted_at_seq: vb_storage::EventSeq::new(0),
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     };
     let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
     artifact.digest = digest;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Drift-detection mirror for vb-edvbj symbolic codes.
+// DRIFT POLICY: `crates/vb_runtime/src/error/diagnostics.rs:107-198`
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

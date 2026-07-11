@@ -22,11 +22,11 @@ when:
 steps:
   - id: step1
     save:
-      output: result
+      output: final_result
       value: '42'
   - id: done
     finish:
-      result: result
+      result: final_result
 "#;
 
 /// Run velvet-ballistics CLI with given args, return Output

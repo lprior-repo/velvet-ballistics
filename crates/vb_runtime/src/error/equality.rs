@@ -52,6 +52,10 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::UnsupportedOperation { operation: a },
             RuntimeError::UnsupportedOperation { operation: b },
         ) => a == b,
+        (
+            RuntimeError::RecoveryCannotResume { reason: a },
+            RuntimeError::RecoveryCannotResume { reason: b },
+        ) => a == b,
         (RuntimeError::Core { source: a }, RuntimeError::Core { source: b }) => a == b,
         (
             RuntimeError::StorageJournalAppend { source: a },
@@ -202,6 +206,8 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
 fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     admission_capability_denied_eq(left, right)
         || admission_capability_count_mismatch_eq(left, right)
+        || admission_action_registry_mismatch_eq(left, right)
+        || admission_action_abi_digest_mismatch_eq(left, right)
 }
 
 fn admission_capability_denied_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
@@ -234,6 +240,42 @@ fn admission_capability_count_mismatch_eq(left: &RuntimeError, right: &RuntimeEr
                 granted_count: rg,
             },
         ) => lc == rc && lg == rg,
+        _ => false,
+    }
+}
+
+fn admission_action_registry_mismatch_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::AdmissionActionRegistryMismatch {
+                digest: ld,
+                expected_count: le,
+                submitted_count: ls,
+            },
+            RuntimeError::AdmissionActionRegistryMismatch {
+                digest: rd,
+                expected_count: re,
+                submitted_count: rs,
+            },
+        ) => ld == rd && le == re && ls == rs,
+        _ => false,
+    }
+}
+
+fn admission_action_abi_digest_mismatch_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::AdmissionActionAbiDigestMismatch {
+                action: la,
+                expected: le,
+                submitted: ls,
+            },
+            RuntimeError::AdmissionActionAbiDigestMismatch {
+                action: ra,
+                expected: re,
+                submitted: rs,
+            },
+        ) => la == ra && le == re && ls == rs,
         _ => false,
     }
 }

@@ -12,6 +12,62 @@ use vb_storage::recovery::{
     RecoveryTerminalState, UnsupportedRecoveryState,
 };
 
+fn shape_validation_seed() -> RecoveryFrameSeed {
+    RecoveryFrameSeed {
+        summary: RecoveryRuntimeSummary {
+            run: RunId::new(26000),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(1),
+            workflow: Some(WorkflowDigest::from_bytes([0x26; 32])),
+            steps_started: 1,
+            steps_succeeded: 0,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 1,
+            terminal: None,
+        },
+        first_step: StepIdx::ZERO,
+        step_count: 2,
+        slot_count: 2,
+        pc: StepIdx::ZERO,
+        steps: vec![RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Running,
+        }],
+        slots: vec![RecoveredSlotEntry {
+            slot: SlotIdx::ZERO,
+            value: SlotValue::I64(1),
+            taint: Taint::Clean,
+        }],
+        pending_actions: Vec::new(),
+        unsupported: UnsupportedRecoveryState::SUPPORTED,
+    }
+}
+
+fn assert_invalid_seed_shape(seed: RecoveryFrameSeed) {
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
+}
+
+fn recovered_slot(slot: SlotIdx, value: i64) -> RecoveredSlotEntry {
+    RecoveredSlotEntry {
+        slot,
+        value: SlotValue::I64(value),
+        taint: Taint::Clean,
+    }
+}
+
+fn recovered_pending_action(step: StepIdx, action: u16) -> RecoveredPendingAction {
+    RecoveredPendingAction {
+        step,
+        action: ActionId::new(action),
+    }
+}
+
 #[test]
 fn summary_recovery_boundary_exposes_summary() {
     let summary = RecoveryRuntimeSummary {
@@ -118,7 +174,9 @@ fn durable_frame_recovery_boundary_rejects_frame_only_minimal_state() {
     );
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(RuntimeError::InvalidRecoveryHydration)
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("pending_timers")
+        })
     );
     assert_eq!(
         boundary.unsupported_state(),
@@ -174,6 +232,193 @@ fn durable_frame_recovery_boundary_rejects_inconsistent_seed() {
 }
 
 #[test]
+fn durable_frame_recovery_boundary_rejects_unbounded_seed_entries() {
+    let summary = RecoveryRuntimeSummary {
+        run: RunId::new(25),
+        first_seq: EventSeq::new(0),
+        last_seq: EventSeq::new(1),
+        workflow: None,
+        steps_started: 2,
+        steps_succeeded: 0,
+        actions_scheduled: 0,
+        actions_resolved: 0,
+        suspensions: 0,
+        slots_written: 0,
+        terminal: None,
+    };
+    let seed = RecoveryFrameSeed {
+        summary,
+        first_step: StepIdx::ZERO,
+        step_count: 1,
+        slot_count: 0,
+        pc: StepIdx::ZERO,
+        steps: vec![
+            RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Running,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Succeeded,
+            },
+        ],
+        slots: Vec::new(),
+        pending_actions: Vec::new(),
+        unsupported: UnsupportedRecoveryState::SUPPORTED,
+    };
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
+}
+
+#[test]
+fn seed_shape_rejects_zero_step_count() {
+    let mut seed = shape_validation_seed();
+    seed.step_count = 0;
+    seed.steps = Vec::new();
+    seed.slots = Vec::new();
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_first_step_out_of_bounds() {
+    let mut seed = shape_validation_seed();
+    seed.first_step = StepIdx::new(2);
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_program_counter_out_of_bounds() {
+    let mut seed = shape_validation_seed();
+    seed.pc = StepIdx::new(2);
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_slots_len_over_slot_count() {
+    let mut seed = shape_validation_seed();
+    seed.slot_count = 1;
+    seed.slots = vec![
+        recovered_slot(SlotIdx::ZERO, 1),
+        recovered_slot(SlotIdx::ZERO, 2),
+    ];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_slot_index_out_of_bounds() {
+    let mut seed = shape_validation_seed();
+    seed.slot_count = 1;
+    seed.slots = vec![recovered_slot(SlotIdx::new(1), 1)];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_pending_actions_len_over_step_count() {
+    let mut seed = shape_validation_seed();
+    seed.step_count = 1;
+    seed.pending_actions = vec![
+        recovered_pending_action(StepIdx::ZERO, 1),
+        recovered_pending_action(StepIdx::ZERO, 2),
+    ];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_pending_action_step_out_of_bounds() {
+    let mut seed = shape_validation_seed();
+    seed.step_count = 1;
+    seed.pending_actions = vec![recovered_pending_action(StepIdx::new(1), 1)];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_duplicate_step_keys() {
+    let mut seed = shape_validation_seed();
+    seed.steps = vec![
+        RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Running,
+        },
+        RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Succeeded,
+        },
+    ];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn recovery_boundary_factory_preserves_storage_cannot_resume_witness_on_invalid_shape() {
+    let mut seed = shape_validation_seed();
+    seed.steps = vec![
+        RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Waiting,
+        },
+        RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Succeeded,
+        },
+    ];
+    let hydration = RecoveryHydration::from_frame_seed(seed);
+    let boundary = recovery_boundary_from_hydration(hydration);
+    let cannot_resume = RecoveryCannotResumeState {
+        pending_timers: true,
+        workflow_missing: true,
+        store_missing: true,
+        action_attempts_missing: true,
+        admission_missing: true,
+        collect_states_missing: true,
+        action_contracts_missing: true,
+        action_abi_digests_missing: true,
+        ..RecoveryCannotResumeState::RESUMABLE
+    };
+
+    assert_eq!(
+        boundary.resume_status(),
+        RecoveryResumeStatus::CannotResume(cannot_resume)
+    );
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
+}
+
+#[test]
+fn seed_shape_rejects_duplicate_slot_keys() {
+    let mut seed = shape_validation_seed();
+    seed.slots = vec![
+        recovered_slot(SlotIdx::new(1), 1),
+        recovered_slot(SlotIdx::new(1), 2),
+    ];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
+fn seed_shape_rejects_duplicate_pending_action_step_keys() {
+    let mut seed = shape_validation_seed();
+    seed.pending_actions = vec![
+        recovered_pending_action(StepIdx::new(1), 1),
+        recovered_pending_action(StepIdx::new(1), 2),
+    ];
+
+    assert_invalid_seed_shape(seed);
+}
+
+#[test]
 fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(23),
@@ -211,7 +456,9 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
 
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(RuntimeError::InvalidRecoveryHydration)
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("action_payloads")
+        })
     );
 }
 
@@ -268,7 +515,9 @@ fn durable_frame_recovery_boundary_rejects_frame_only_slot_value_and_taint() {
     assert_eq!(boundary.cannot_resume_state(), cannot_resume);
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(RuntimeError::InvalidRecoveryHydration)
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("workflow_missing")
+        })
     );
 }
 
@@ -338,7 +587,7 @@ fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
             pending_actions: false,
         },
     };
-    let hydration = RecoveryHydration::FrameSeed(seed);
+    let hydration = RecoveryHydration::from_frame_seed(seed);
     let boundary = recovery_boundary_from_hydration(hydration);
 
     assert_eq!(boundary.summary(), summary);
@@ -358,7 +607,9 @@ fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
     );
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(RuntimeError::InvalidRecoveryHydration)
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("workflow_missing")
+        })
     );
 }
 
@@ -408,7 +659,7 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
             pending_actions: false,
         },
     };
-    let hydration = RecoveryHydration::FrameSeed(seed);
+    let hydration = RecoveryHydration::from_frame_seed(seed);
     let boundary = recovery_boundary_from_hydration(hydration);
 
     let recovered_summary = boundary.summary();
@@ -488,7 +739,9 @@ fn pending_actions_fail_closed_with_typed_cannot_resume_state() {
     );
     assert_eq!(
         boundary.hydrate_run_frame(),
-        Err(RuntimeError::InvalidRecoveryHydration)
+        Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("pending_actions")
+        })
     );
     assert!(boundary.unsupported_state().pending_actions);
 }
@@ -550,7 +803,9 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
     let frame_result = boundary.hydrate_run_frame();
     assert_eq!(
         frame_result,
-        Err(crate::RuntimeError::InvalidRecoveryHydration)
+        Err(crate::RuntimeError::RecoveryCannotResume {
+            reason: String::from("workflow_missing")
+        })
     );
 
     // 3. Runtime boundary reports CannotResume because the frame seed lacks

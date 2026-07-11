@@ -69,7 +69,7 @@
 //                                     (`pub(crate) fn next_seq`)
 //   - `validate_replayed_event`    <- crates/vb_storage/src/codec/mod.rs:160
 //                                     (`pub(crate) fn validate_replayed_event`)
-//   - `validate_replay_sequence`   <- crates/vb_storage/src/journal/replay.rs:164
+//   - `validate_replay_sequence`   <- crates/vb_storage/src/journal/replay.rs:182-194
 //
 // ============================================================================
 // TRUST BOUNDARY

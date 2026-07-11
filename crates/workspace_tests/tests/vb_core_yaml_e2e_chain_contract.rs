@@ -103,6 +103,7 @@ fn accepted_artifact_with_gate_count(
         },
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     };
     bind_test_artifact_digest(&mut artifact);
     artifact

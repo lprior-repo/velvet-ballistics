@@ -132,7 +132,7 @@
 //                       via `validate_replay_sequence`, enforces
 //                       `EventReplayLimit` via `push_replay_event`)
 //   - `production_validate_replay_sequence`
-//                                       <- crates/vb_storage/src/journal/replay.rs:164-176
+//                                       <- crates/vb_storage/src/journal/replay.rs:182-194
 //        (production: wraps `validate_replayed_event` and advances
 //                       the `expected` cursor to `next_seq(expected)?`)
 //   - `production_classify_replay_push_len`

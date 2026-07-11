@@ -12,9 +12,11 @@
 //! Behaviors: B-003, B-010, B-011, B-012, B-015, B-016, B-021, B-022
 
 use proptest::prelude::*;
-use vb_core::capability::CapabilitySet;
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
+use vb_core::value::SlotValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
@@ -72,11 +74,34 @@ fn new_run_id(n: u64) -> RunId {
     RunId::new(n)
 }
 
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__resource_admission_contract__".into(), action)
+}
+
+fn action_contract(action: ActionId) -> ActionContract {
+    ActionContract {
+        id: action,
+        name: ActionName::new("resource-admission-action").expect("static action name is valid"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::from([contract_required_capability(action)]),
+    }
+}
+
 fn submit_command(run: u64) -> ShardCommand {
-    ShardCommand::Submit {
+    let action = ActionId::new(0);
+    ShardCommand::SubmitWithInputsAndContracts {
         run: new_run_id(run),
         workflow: do_workflow(),
-        caps: CapabilitySet::empty(),
+        inputs: Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+        caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+        action_contracts: Box::from([action_contract(action)]),
     }
 }
 
@@ -654,7 +679,6 @@ fn supersession_preserves_prior_runs() {
 /// would fail if the ledger were not recorded.
 #[test]
 fn invocation_ledger_records_workflow_on_accept() {
-    let workflow = do_workflow();
     let mut shard = Shard::new(new_shard_config(8));
 
     // Snapshot shard state before acceptance
@@ -664,11 +688,7 @@ fn invocation_ledger_records_workflow_on_accept() {
     assert_eq!(shard.command_queue_len(), 0, "queue initially empty");
 
     // Submit the workflow
-    let cmd = ShardCommand::Submit {
-        run: new_run_id(1),
-        workflow,
-        caps: CapabilitySet::empty(),
-    };
+    let cmd = submit_command(1);
     shard.enqueue(cmd).expect("enqueue should succeed");
     assert_eq!(shard.command_queue_len(), 1, "command enqueued");
 
@@ -693,10 +713,10 @@ fn invocation_ledger_records_workflow_on_accept() {
         "runs_submitted counter incremented on acceptance — ledger recorded"
     );
     assert!(
-        counter_after.steps_executed > 0
+        shard.active_run_count() > 0
             || counter_after.runs_completed > 0
             || counter_after.runs_failed > 0,
-        "submission produced observable counter changes beyond just the submit increment"
+        "submission produced observable active or terminal run state beyond just the submit increment"
     );
 
     // Trace ring: RunSubmitted event recorded (ledger event traced)

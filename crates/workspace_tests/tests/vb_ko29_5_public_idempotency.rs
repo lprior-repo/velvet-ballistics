@@ -67,6 +67,7 @@ fn valid_artifact(artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifa
         },
         accepted_at_seq: EventSeq::new(1),
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     }
 }
 

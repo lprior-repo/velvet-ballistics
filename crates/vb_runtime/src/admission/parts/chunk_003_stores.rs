@@ -63,6 +63,7 @@ fn always_present_accepted_artifact(
         verification: always_present_verification_proof(artifact_digest),
         accepted_at_seq: vb_storage::types::EventSeq::new(0),
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     }
 }
 

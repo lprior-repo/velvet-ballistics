@@ -32,6 +32,9 @@ impl RuntimeError {
     pub const ADMISSION_CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x2012);
     pub const ADMISSION_CAPABILITY_COUNT_MISMATCH_CODE: DiagnosticCode =
         DiagnosticCode::new(0x201F);
+    pub const ADMISSION_ACTION_REGISTRY_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x2021);
+    pub const ADMISSION_ACTION_ABI_DIGEST_MISMATCH_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2022);
     pub const ADMISSION_ARTIFACT_INVALID_CODE: DiagnosticCode = DiagnosticCode::new(0x2014);
     pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
     pub const SECRET_RESULT_NOT_ALLOWED_CODE: DiagnosticCode = DiagnosticCode::new(0x2016);
@@ -88,6 +91,12 @@ impl RuntimeError {
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
             Self::AdmissionCapabilityCountMismatch { .. } => {
                 Self::ADMISSION_CAPABILITY_COUNT_MISMATCH_CODE
+            }
+            Self::AdmissionActionRegistryMismatch { .. } => {
+                Self::ADMISSION_ACTION_REGISTRY_MISMATCH_CODE
+            }
+            Self::AdmissionActionAbiDigestMismatch { .. } => {
+                Self::ADMISSION_ACTION_ABI_DIGEST_MISMATCH_CODE
             }
             Self::AdmissionArtifactStale { .. } => Self::ADMISSION_ARTIFACT_STALE_CODE,
             Self::AdmissionDigestMismatch { .. } => Self::ADMISSION_DIGEST_MISMATCH_CODE,
@@ -163,6 +172,8 @@ impl RuntimeError {
             | Self::AdmissionArtifactInvalid { .. }
             | Self::AdmissionCapabilityDenied { .. }
             | Self::AdmissionCapabilityCountMismatch { .. }
+            | Self::AdmissionActionRegistryMismatch { .. }
+            | Self::AdmissionActionAbiDigestMismatch { .. }
             | Self::EncodeFailed
             | Self::UnsupportedRuntimeJournalEventMapping { .. }
             | Self::RuntimeJournalTimestampOutOfRange { .. }

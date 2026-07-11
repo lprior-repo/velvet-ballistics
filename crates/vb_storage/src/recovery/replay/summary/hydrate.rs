@@ -49,7 +49,9 @@ pub(super) fn recover_slots(
             recover_slots_through_step(plan, target)?,
             recovered_event_slots(accumulator),
         )),
-        (Some(_), None) => Ok(RecoveredSlots::supported(Vec::new())),
+        (Some(_), None) => Ok(RecoveredSlots::supported(recovered_event_slots(
+            accumulator,
+        ))),
         (None, _) if accumulator.slot_values.is_empty() => Ok(RecoveredSlots::unsupported()),
         (None, _) => Ok(RecoveredSlots::supported(recovered_event_slots(
             accumulator,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Drift-detection mirror for vb-edvbj propagation chain.
+// DRIFT POLICY: `crates/vb_runtime/src/journal/chunk_002.rs:408-412`
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

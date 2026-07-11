@@ -13,8 +13,8 @@ mod recovery_type_tests {
     use crate::EventSeq;
     use crate::recovery::{
         ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
-        RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
-        RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+        RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryFrameSeedProduct,
+        RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     };
     use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
@@ -191,6 +191,50 @@ mod recovery_type_tests {
         let s = hydration.summary();
         assert_eq!(s.run, RunId::new(1));
         assert_eq!(s.steps_started, 5);
+    }
+
+    #[test]
+    fn recovery_hydration_frame_seed_variant_carries_classification() {
+        let seed = RecoveryFrameSeed {
+            summary: RecoveryRuntimeSummary {
+                run: RunId::new(2),
+                first_seq: EventSeq::new(0),
+                last_seq: EventSeq::new(3),
+                workflow: None,
+                steps_started: 2,
+                steps_succeeded: 1,
+                actions_scheduled: 0,
+                actions_resolved: 0,
+                suspensions: 0,
+                slots_written: 0,
+                terminal: None,
+            },
+            first_step: StepIdx::new(0),
+            step_count: 2,
+            slot_count: 1,
+            pc: StepIdx::new(1),
+            steps: vec![],
+            slots: vec![],
+            pending_actions: vec![],
+            unsupported: UnsupportedRecoveryState::SUPPORTED,
+        };
+
+        let hydration = RecoveryHydration::from_frame_seed(seed);
+        match hydration {
+            RecoveryHydration::FrameSeed(product) => {
+                assert_eq!(product.summary().run, RunId::new(2));
+                assert!(matches!(product, RecoveryFrameSeedProduct::CannotResume(_)));
+                assert!(product.seed().unsupported.is_fully_supported());
+                assert!(!product.is_resumable());
+                assert_eq!(
+                    product.cannot_resume_state().unsupported_reason(),
+                    "workflow_missing"
+                );
+            }
+            RecoveryHydration::Summary(_) => {
+                assert!(false, "expected typed frame-seed product");
+            }
+        }
     }
 
     #[test]

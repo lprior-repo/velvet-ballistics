@@ -855,9 +855,12 @@ fn check_action_abi_digest_against_expected(
     found: WorkflowDigest,
     expected: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<()> {
+    if found == zero_workflow_digest() {
+        return Err(RecoveryError::ActionAbiMismatch { action_id });
+    }
     for (exp_action_id, exp_digest) in expected {
         if *exp_action_id == action_id {
-            if *exp_digest != found {
+            if *exp_digest == zero_workflow_digest() || *exp_digest != found {
                 return Err(RecoveryError::ActionAbiMismatch {
                     action_id: *exp_action_id,
                 });
@@ -865,5 +868,9 @@ fn check_action_abi_digest_against_expected(
             return Ok(());
         }
     }
-    Ok(())
+    Err(RecoveryError::ActionAbiMismatch { action_id })
+}
+
+const fn zero_workflow_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; 32])
 }

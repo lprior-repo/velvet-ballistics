@@ -122,9 +122,8 @@ fn replay_step_started_event(
 }
 /// Checks whether the found action ABI digest matches any of the expected digests.
 ///
-/// Returns `Ok(())` when:
-/// - No expected digests are provided (empty list).
-/// - The action is in the expected list and the digests match.
+/// Returns `Ok(())` only when the action is in the expected list and the
+/// persisted digest is non-zero and matches.
 ///
 /// Returns `ActionAbiMismatch` when the action is in the expected list
 /// but the digests differ.
@@ -133,9 +132,12 @@ pub(crate) fn check_action_abi_digest_against_expected(
     found: WorkflowDigest,
     expected: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<()> {
+    if found == zero_workflow_digest() {
+        return Err(RecoveryError::ActionAbiMismatch { action_id });
+    }
     for (exp_action_id, exp_digest) in expected {
         if *exp_action_id == action_id {
-            if *exp_digest != found {
+            if *exp_digest == zero_workflow_digest() || *exp_digest != found {
                 return Err(RecoveryError::ActionAbiMismatch {
                     action_id: *exp_action_id,
                 });
@@ -143,7 +145,11 @@ pub(crate) fn check_action_abi_digest_against_expected(
             return Ok(());
         }
     }
-    Ok(())
+    Err(RecoveryError::ActionAbiMismatch { action_id })
+}
+
+const fn zero_workflow_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; 32])
 }
 fn replay_action_event(
     event: &JournalEvent,

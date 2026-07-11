@@ -1,0 +1,11 @@
+=== check-verus-production-binding.sh @ 2026-07-10T06:56:14Z ===
+workspace: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+================================================================
+  Verus production-binding audit (ABSOLUTE — no exceptions)
+================================================================
+  STRONG (direct crates/ binding): 0
+  WEAK (production_inner/ mirror): 72
+  VACUUM (no production binding):  0
+
+
+EXIT=0

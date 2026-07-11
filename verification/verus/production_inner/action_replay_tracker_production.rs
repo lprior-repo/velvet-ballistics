@@ -6,7 +6,7 @@
 //
 // This file is a VERBATIM copy of the production `ActionReplayTracker`
 // implementation block from
-//   crates/vb_storage/src/recovery/types.rs:867-1053
+//   crates/vb_storage/src/recovery/types.rs:1429-1634
 // with two minimal substitutions:
 //
 //   1. The crate-internal `RecoveryError` and `RecoveryResult` aliases are
@@ -20,11 +20,12 @@
 //        - RecoveryError::ReplayDivergence { step, detail }
 //
 //   2. The `vb_core` newtypes `ActionId`, `StepIdx`, `SlotIdx`, `Taint`,
-//      and the struct `ActionTicket` are declared locally with the same
-//      field names, same `#[repr(transparent)]` shape, and same method
-//      surface (`new`, `get`). These are `Copy + PartialEq + Eq +
-//      Hash` so the `HashSet<(ActionId, StepIdx)>` operations on lines
-//      871-873 and 963/1026/1032/1038/1045 of production resolve
+//      `WorkflowDigest`, and the struct `ActionTicket` are declared
+//      locally with the same field names, same `#[repr(transparent)]`
+//      shape, and same method surface (`new`, `get`). These are
+//      `Copy + PartialEq + Eq +
+//      Hash` so the `HashSet<(ActionId, StepIdx)>` operations in the
+//      production block at `types.rs:1433-1634` resolve
 //      identically.
 //
 // This file exists so that the companion `extern_idempotency_replay_tracker.rs`
@@ -36,7 +37,7 @@
 // the explicit drift-detection mechanism the user requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:867-1053` whenever production
+// `crates/vb_storage/src/recovery/types.rs:1429-1634` whenever production
 // changes. The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -109,6 +110,9 @@ pub struct ActionTicket {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkflowDigest(pub [u8; 32]);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Taint {
     Clean,
     Secret,
@@ -152,7 +156,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // VERBATIM PRODUCTION: ActionReplayTracker block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:867-1053
+// Source: crates/vb_storage/src/recovery/types.rs:1429-1634
 // Drift policy: any change to the production block between these line
 // numbers MUST be mirrored here.
 
@@ -160,7 +164,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// re-execution of non-idempotent actions.
 ///
 /// Note on field visibility: the production struct at
-/// `crates/vb_storage/src/recovery/types.rs:870-875` has PRIVATE fields
+/// `crates/vb_storage/src/recovery/types.rs:1432-1437` has PRIVATE fields
 /// `scheduled_tickets`, `completed`, `failed`, and
 /// `completed_envelopes`. This in-tree mirror declares them as `pub`
 /// so the companion Verus spec can reason about the HashSet view
@@ -187,6 +191,7 @@ pub struct ActionScheduleEvidence {
     pub ticket: ActionTicket,
     pub input: SlotIdx,
     pub output: SlotIdx,
+    pub action_abi_digest: WorkflowDigest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -196,6 +201,7 @@ pub struct ActionCompletionEvidence {
     pub encoded_len: u32,
     pub taint: Taint,
     pub value_digest: [u8; 32],
+    pub action_abi_digest: WorkflowDigest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -220,6 +226,7 @@ impl ActionReplayTracker {
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
         if self.is_resolved(ticket.action, ticket.step) {
@@ -232,6 +239,7 @@ impl ActionReplayTracker {
             ticket,
             input,
             output,
+            action_abi_digest,
         };
         match self.scheduled_tickets.get(&key).copied() {
             Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
@@ -250,10 +258,17 @@ impl ActionReplayTracker {
         &self,
         ticket: ActionTicket,
         output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
         let key = (ticket.action, ticket.step);
         match self.scheduled_tickets.get(&key).copied() {
-            Some(existing) if existing.ticket == ticket && existing.output == output => Ok(()),
+            Some(existing)
+                if existing.ticket == ticket
+                    && existing.output == output
+                    && existing.action_abi_digest == action_abi_digest =>
+            {
+                Ok(())
+            }
             Some(_) => Err(RecoveryError::ReplayDivergence {
                 step: ticket.step,
                 detail: String::from("action completion envelope does not match schedule ticket"),
@@ -278,6 +293,7 @@ impl ActionReplayTracker {
         encoded_len: u32,
         taint: Taint,
         value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
         let evidence = ActionCompletionEvidence {
@@ -286,6 +302,7 @@ impl ActionReplayTracker {
             encoded_len,
             taint,
             value_digest,
+            action_abi_digest,
         };
         // Note: production uses a let-chain here
         //   (if let Some(schedule) = ... && (schedule.ticket != ticket || schedule.output != output))
@@ -331,9 +348,17 @@ impl ActionReplayTracker {
         encoded_len: u32,
         taint: Taint,
         value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
-        self.mark_completed_envelope_effect(ticket, output, encoded_len, taint, value_digest)
-            .map(|_| ())
+        self.mark_completed_envelope_effect(
+            ticket,
+            output,
+            encoded_len,
+            taint,
+            value_digest,
+            action_abi_digest,
+        )
+        .map(|_| ())
     }
 
     /// Records that an action failed during normal execution.

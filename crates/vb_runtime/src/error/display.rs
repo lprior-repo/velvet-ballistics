@@ -49,6 +49,12 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionCapabilityCountMismatch { .. } => {
             Some("admission rejected: capability count mismatch")
         }
+        RuntimeError::AdmissionActionRegistryMismatch { .. } => {
+            Some("admission rejected: action registry mismatch")
+        }
+        RuntimeError::AdmissionActionAbiDigestMismatch { .. } => {
+            Some("admission rejected: action ABI digest mismatch")
+        }
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
         }
@@ -78,6 +84,9 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::UnsupportedOperation { operation } => {
             write!(f, "unsupported runtime operation: {operation}")
+        }
+        RuntimeError::RecoveryCannotResume { reason } => {
+            write!(f, "recovery cannot resume: {reason}")
         }
         RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
         RuntimeError::StorageJournalAppend { source } => {

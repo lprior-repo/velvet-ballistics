@@ -1,13 +1,7 @@
 #![forbid(unsafe_code)]
-//! Frame-seed assembly: turn an accumulator into a [`RecoveryFrameSeed`].
+//! Frame-seed assembly and the [`RecoveryFrameSeedBuilder`] compatibility adapter.
 //!
-//! [`RecoveryFrameSeedBuilder`] is a thin compatibility adapter that
-//! delegates to the direct `recover_runtime_frame_seed_from_events*`
-//! functions exposed below. Also provides:
-//! - `recover_run_admission_from_events`: latest admission metadata
-//! - `dimension_count` and the production proof surface
-//!   (`recovery_dimension_count_from_index`, `recovery_seed_dimensions_positive`,
-//!   `recovery_observed_dimension_is_positive`).
+//! Also exposes admission recovery and dimension proof helpers for production bindings.
 
 use std::collections::{HashMap, HashSet};
 
@@ -16,17 +10,19 @@ use vb_core::{ActionId, CompiledWorkflow, RunId, SlotIdx, StepIdx, WorkflowDiges
 use crate::JournalEvent;
 use crate::recovery::types::{
     RecoveredPendingAction, RecoveredRunAdmission, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryResult, UnsupportedRecoveryState,
+    RecoveryError, RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryResult,
+    UnsupportedRecoveryState,
 };
 
 use super::accumulator::FrameSeedAccumulator;
 use super::hydrate::RecoveredSlots;
 
-/// Builder that constructs a [`RecoveryFrameSeed`] from journal events.
+/// Builder that constructs a raw [`RecoveryFrameSeed`] from journal events.
 ///
-/// This type is intentionally retained as a tiny compatibility adapter for
-/// callers that configure recovery incrementally. It owns no recovery logic;
-/// all behavior delegates to the direct public functions below.
+/// This compatibility adapter is for low-level replay tests and verifier
+/// bridges that need the DTO shape directly. Normal recovery callers should use
+/// [`recover_runtime_frame_seed_from_events`] and receive a typed
+/// [`RecoveryFrameSeedProduct`].
 pub struct RecoveryFrameSeedBuilder<'a> {
     workflow: Option<&'a CompiledWorkflow>,
 }
@@ -49,9 +45,9 @@ impl<'a> RecoveryFrameSeedBuilder<'a> {
     pub fn build(&self, events: &[JournalEvent]) -> RecoveryResult<RecoveryFrameSeed> {
         match self.workflow {
             Some(workflow) => {
-                recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+                recover_raw_runtime_frame_seed_from_events_with_workflow(events, workflow)
             }
-            None => recover_runtime_frame_seed_from_events(events),
+            None => recover_raw_runtime_frame_seed_from_events(events),
         }
     }
 }
@@ -62,19 +58,36 @@ impl Default for RecoveryFrameSeedBuilder<'_> {
     }
 }
 
-/// Recovers a [`RecoveryFrameSeed`] from ordered journal events.
+/// Recovers a typed frame-seed product from ordered journal events.
 ///
 /// Reconstructs step states, dimensions, and program counter from the
-/// durable event sequence.
+/// durable event sequence, then immediately classifies the raw DTO so public
+/// callers cannot confuse replay shape with live-run resume authority.
 pub fn recover_runtime_frame_seed_from_events(
+    events: &[JournalEvent],
+) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    recover_raw_runtime_frame_seed_from_events(events).map(RecoveryFrameSeedProduct::from_seed)
+}
+
+/// Compatibility/raw replay DTO recovery for verifier and low-level callers.
+pub fn recover_raw_runtime_frame_seed_from_events(
     events: &[JournalEvent],
 ) -> RecoveryResult<RecoveryFrameSeed> {
     recover_runtime_frame_seed_from_events_inner(events, None)
 }
 
-/// Recovers a [`RecoveryFrameSeed`] and reconstructs deterministic slot state
-/// from a compiled workflow.
+/// Recovers a typed frame-seed product and reconstructs deterministic slot state
+/// from a compiled workflow before classification.
 pub fn recover_runtime_frame_seed_from_events_with_workflow(
+    events: &[JournalEvent],
+    workflow: &CompiledWorkflow,
+) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    recover_raw_runtime_frame_seed_from_events_with_workflow(events, workflow)
+        .map(RecoveryFrameSeedProduct::from_seed)
+}
+
+/// Compatibility/raw replay DTO recovery with compiled-workflow replay.
+pub fn recover_raw_runtime_frame_seed_from_events_with_workflow(
     events: &[JournalEvent],
     workflow: &CompiledWorkflow,
 ) -> RecoveryResult<RecoveryFrameSeed> {
@@ -167,8 +180,14 @@ fn build_recovery_frame_seed(
     workflow: Option<&CompiledWorkflow>,
 ) -> RecoveryResult<RecoveryFrameSeed> {
     let run = accumulator.run;
-    let step_count = dimension_count(accumulator.max_step_idx, run)?;
-    let slot_count = dimension_count(accumulator.max_slot_idx, run)?;
+    let observed_step_count = dimension_count(accumulator.max_step_idx, run)?;
+    let observed_slot_count = dimension_count(accumulator.max_slot_idx, run)?;
+    let step_count = workflow.map_or(observed_step_count, |value| {
+        observed_step_count.max(value.node_count())
+    });
+    let slot_count = workflow.map_or(observed_slot_count, |value| {
+        observed_slot_count.max(value.slot_count())
+    });
     let first_step = accumulator.first_step();
     let slots = super::hydrate::recover_slots(&accumulator, workflow)?;
     let unsupported = seed_unsupported_state(&accumulator, &slots);
@@ -244,35 +263,6 @@ fn dimension_count<T: RecoveryIndex>(max: Option<T>, run: RunId) -> RecoveryResu
             .ok_or(RecoveryError::FrameDimensionOverflow { run })
     })
     .map_or(Ok(0), |result| result)
-}
-
-/// Production proof surface for turning a maximum zero-based dimension into a count.
-pub fn recovery_dimension_count_from_index(
-    max_index: Option<u16>,
-    run: RunId,
-) -> RecoveryResult<u16> {
-    max_index
-        .map(|value| {
-            value
-                .checked_add(1)
-                .ok_or(RecoveryError::FrameDimensionOverflow { run })
-        })
-        .map_or(Ok(0), |result| result)
-}
-
-/// Production proof surface for successful non-empty/evidence-bearing seed dimensions.
-#[must_use]
-pub const fn recovery_seed_dimensions_positive(seed: &RecoveryFrameSeed) -> bool {
-    seed.step_count > 0 && seed.slot_count > 0
-}
-
-/// Production proof surface for an observed dimension requiring positive count.
-#[must_use]
-pub const fn recovery_observed_dimension_is_positive(max_index: Option<u16>, count: u16) -> bool {
-    match max_index {
-        Some(_) => count > 0,
-        None => count == 0,
-    }
 }
 
 fn recovered_steps(step_states: HashMap<StepIdx, RecoveredStepState>) -> Vec<RecoveredStepEntry> {

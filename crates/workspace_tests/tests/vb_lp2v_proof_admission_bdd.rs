@@ -44,6 +44,7 @@ fn accepted_artifact(source_digest: WorkflowDigest) -> Result<AcceptedArtifact, 
         },
         accepted_at_seq: EventSeq::new(42),
         required_capabilities: Box::new([required_capability()]),
+        action_contracts: Box::new([]),
     };
     let artifact_digest = accepted_artifact_digest(&artifact).map_err(|error| error.to_string())?;
     artifact.digest = artifact_digest;

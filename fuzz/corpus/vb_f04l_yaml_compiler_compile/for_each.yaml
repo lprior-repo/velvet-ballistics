@@ -5,7 +5,7 @@ when:
 steps:
   - id: loop
     for_each:
-      variable: item
+      variable: element
       input: "0"
       at_once: 2
       steps:

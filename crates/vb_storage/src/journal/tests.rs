@@ -61,6 +61,7 @@ fn accepted_artifact_record_for_source(
         verification: crate::admission::VerificationProof::new(zero_digest, 15, false),
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     };
     let digest = crate::admission::accepted_artifact_digest(&artifact)?;
     artifact.digest = digest;

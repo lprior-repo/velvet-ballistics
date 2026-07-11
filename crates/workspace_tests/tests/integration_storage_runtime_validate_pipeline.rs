@@ -104,7 +104,7 @@ fn storage_recovery_to_runtime_boundary_to_validation() {
     let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - use runtime boundary to hydrate frame
-    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = DurableFrameRecoveryBoundary::from_product(seed);
     let summary = boundary.summary();
     assert_eq!(summary.run, run);
     assert_eq!(summary.steps_started, 1);
@@ -160,7 +160,7 @@ fn storage_recovery_feeds_runtime_boundary_with_partial_progress() {
 
     // When
     let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
-    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = DurableFrameRecoveryBoundary::from_product(seed);
 
     // Then - partial progress is captured
     let summary = boundary.summary();
@@ -301,7 +301,7 @@ fn storage_recovery_error_propagates_to_runtime() {
     let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - seed captures the incomplete state
-    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = DurableFrameRecoveryBoundary::from_product(seed);
     let summary = boundary.summary();
     assert_eq!(summary.steps_started, 1);
     assert_eq!(summary.steps_succeeded, 0);

@@ -74,6 +74,7 @@ fn accepted_artifact_with_caps(required_capabilities: Box<[Capability]>) -> Acce
         },
         accepted_at_seq: EventSeq::new(0),
         required_capabilities,
+        action_contracts: Box::new([]),
     }
 }
 

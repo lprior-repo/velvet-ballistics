@@ -21,6 +21,7 @@ impl Shard {
             accounted_executed_steps: IndexMap::new(),
             pending_timers: IndexMap::new(),
             pending_actions: IndexMap::new(),
+            action_abi_digests: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
@@ -124,7 +125,8 @@ impl Shard {
         self.reserve_run_state_slot(run_id)?;
         self.reserve_runtime_state_slot(run_id)?;
         self.reserve_journal_sequence_slot(run_id)?;
-        self.reserve_pending_timer_slot(run_id)
+        self.reserve_pending_timer_slot(run_id)?;
+        self.reserve_action_abi_digest_slot(run_id)
     }
 
     fn reserve_index_map_slot<T>(
@@ -183,6 +185,10 @@ impl Shard {
 
     fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
         Self::reserve_index_map_slot(&mut self.pending_actions, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_action_abi_digest_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.action_abi_digests, run_id, self.max_active_runs)
     }
 
     fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
@@ -298,6 +304,16 @@ impl Shard {
 
     pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
         let _removed = self.journal_sequences.swap_remove(&run);
+    }
+
+    pub(crate) fn restore_journal_sequence(
+        &mut self,
+        run: RunId,
+        next_seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        self.reserve_journal_sequence_slot(run)?;
+        let _previous = self.journal_sequences.insert(run, next_seq);
+        Ok(())
     }
 
     pub(crate) fn add_executed_step_delta(&mut self, run: RunId, executed: u64) {
@@ -464,6 +480,34 @@ impl Shard {
         self.pending_actions.swap_remove(&run_id)
     }
 
+    pub(crate) fn action_abi_digests_store(
+        &mut self,
+        run_id: RunId,
+        digests: Box<[(ActionId, WorkflowDigest)]>,
+    ) {
+        let _previous = self.action_abi_digests.insert(run_id, digests);
+    }
+
+    pub(crate) fn action_abi_digests_remove(&mut self, run_id: RunId) {
+        let _removed = self.action_abi_digests.swap_remove(&run_id);
+    }
+
+    pub(crate) fn action_abi_digest_for_run_action(
+        &self,
+        run_id: RunId,
+        action: ActionId,
+    ) -> RuntimeResult<WorkflowDigest> {
+        let digest = self
+            .action_abi_digests
+            .get(&run_id)
+            .and_then(|digests| action_abi_digest_from_entries(digests, action))
+            .ok_or_else(action_abi_authority_missing)?;
+        if digest.as_bytes() == [0u8; 32] {
+            return Err(action_abi_authority_missing());
+        }
+        Ok(digest)
+    }
+
     /// Advances the deterministic clock to the given tick.
     ///
     /// The new tick must be >= the current tick. Returns an error if
@@ -589,8 +633,22 @@ impl Shard {
             ShardCommand::Recover {
                 run,
                 frame,
+                artifact_digest,
                 workflow_digest,
-            } => self.handle_recover(run, frame, workflow_digest)?,
+                next_seq,
+                collect_states,
+                boundary,
+            } => self.handle_recover(
+                crate::shard::types::RecoverRunCommand {
+                    run,
+                    frame,
+                    artifact_digest,
+                    workflow_digest,
+                    next_seq,
+                    collect_states,
+                    boundary,
+                },
+            )?,
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);
@@ -810,5 +868,24 @@ impl Shard {
         for event in trace_events {
             self.trace_ring.push(event);
         }
+    }
+}
+
+fn action_abi_digest_from_entries(
+    entries: &[(ActionId, WorkflowDigest)],
+    action: ActionId,
+) -> Option<WorkflowDigest> {
+    entries.iter().find_map(|(id, digest)| {
+        if *id == action {
+            Some(*digest)
+        } else {
+            None
+        }
+    })
+}
+
+fn action_abi_authority_missing() -> RuntimeError {
+    RuntimeError::RecoveryCannotResume {
+        reason: String::from("action_abi_digests_missing"),
     }
 }

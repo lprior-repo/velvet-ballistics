@@ -57,6 +57,7 @@ fn make_artifact_with_gate_count(gate_count: u8, all_flags_true: bool) -> Accept
         },
         accepted_at_seq: vb_storage::types::EventSeq::ZERO,
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     }
 }
 
@@ -89,6 +90,7 @@ fn make_artifact_with_flags(
         },
         accepted_at_seq: vb_storage::types::EventSeq::ZERO,
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     }
 }
 
@@ -113,6 +115,7 @@ fn make_artifact_with_digest(digest: WorkflowDigest) -> AcceptedArtifact {
         },
         accepted_at_seq: vb_storage::types::EventSeq::ZERO,
         required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
     }
 }
 

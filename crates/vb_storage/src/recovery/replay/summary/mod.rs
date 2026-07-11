@@ -27,6 +27,7 @@ use hydrate::{RecoveredSlots, replay_error_to_recovery};
 pub mod accumulator;
 pub mod apply;
 pub mod derive;
+pub mod dimensions;
 pub mod hydrate;
 
 #[cfg(test)]
@@ -35,8 +36,11 @@ mod tests;
 
 pub use apply::{apply_summary_event, summarize_recovery_events};
 pub use derive::{
-    RecoveryFrameSeedBuilder, recover_run_admission_from_events,
+    RecoveryFrameSeedBuilder, recover_raw_runtime_frame_seed_from_events,
+    recover_raw_runtime_frame_seed_from_events_with_workflow, recover_run_admission_from_events,
     recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
+};
+pub use dimensions::{
     recovery_dimension_count_from_index, recovery_observed_dimension_is_positive,
     recovery_seed_dimensions_positive,
 };
