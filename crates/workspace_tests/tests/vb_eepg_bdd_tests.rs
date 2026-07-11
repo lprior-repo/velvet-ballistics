@@ -491,12 +491,16 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 33..=39, 41..=49, 51..=65535
-        // (kind 31 is WaitResolved and kind 32 is ActionAbandoned; both are admitted as journal kinds)
-        // We test a representative sample due to the large range
+        // Given: kind values 0, 4..=9, 36..=39, 41..=49, 51..=65535
+        // (kind 31 is WaitResolved, kind 32 is ActionAbandoned, kind 33 is
+        // StepSucceeded, kind 34 is ActionScheduledTicket, kind 35 is
+        // ActionCompletedEnvelope — all five are admitted as journal kinds
+        // per the StepSucceeded split and the ticket/envelope enrichment;
+        // see `crates/vb_storage/src/records.rs` and PO-QXJGX-001..007).
+        // We test a representative sample due to the large range.
         let invalid_kinds: Vec<u16> = vec![
             0, 4, 5, 6, 7, 8, 9, // 4..=9
-            33, 34, 35, 36, 37, 38, 39, // 33..=39 (31/32 are admitted journal kinds)
+            36, 37, 38, 39, // 36..=39 (31/32/33/34/35 are admitted journal kinds)
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50
             100, 255,   // edge cases

@@ -22,73 +22,153 @@ pub(super) fn validate_choose_shape(
     Ok(())
 }
 
-pub(super) fn validate_for_each_shape(
+pub(super) fn validate_canonical_choose_shape(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unsupported_for_each_fields(body, index)?;
-    reject_unknown_primitive_fields(
-        body,
-        index,
-        "for_each",
-        &["input", "item", "limit", "at_once"],
-    )?;
-    required_slot(body, index, "input")?;
-    required_slot(body, index, "item")?;
-    required_u32_field(body, index, "for_each", "limit")?;
+    reject_unknown_primitive_fields(body, index, "choose", &["branches", "otherwise"])?;
+    validate_choose_branches(body, index)?;
+    validate_choose_otherwise(body, index)?;
     Ok(())
 }
 
-pub(crate) fn reject_unsupported_for_each_fields(
-    _body: &Yaml<'_>,
-    _step: usize,
-) -> Result<(), CompileError> {
+fn validate_choose_branches(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let Some(node) = body.as_mapping_get("branches") else {
+        return Ok(());
+    };
+    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "choose.branches",
+        expected: "a sequence",
+    })?;
+    if sequence.len() > 64 {
+        return Err(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "choose",
+            field: "branches",
+            value: sequence.len(),
+            limit: 64,
+        });
+    }
+    for branch in sequence {
+        validate_choose_branch(branch, step)?;
+    }
     Ok(())
 }
 
-pub(super) fn validate_parallel_shape(
+fn validate_choose_branch(branch: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let mapping = branch.as_mapping().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "choose.branches[]",
+        expected: "a mapping",
+    })?;
+    for (key, _) in mapping {
+        let Some(field) = key.as_str() else {
+            return Err(CompileError::StepShape { step });
+        };
+        if !["when", "steps"].contains(&field) {
+            return Err(CompileError::UnknownStepPrimitiveField {
+                step,
+                primitive: "choose",
+                field: Box::<str>::from(field),
+            });
+        }
+    }
+    required_non_empty_step_string(branch, step, "when", "choose.branches[].when")?;
+    validate_choose_body_steps(branch, step)
+}
+
+fn validate_choose_body_steps(branch: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let Some(node) = branch.as_mapping_get("steps") else {
+        return Ok(());
+    };
+    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
+        step,
+        field: "choose.branches[].steps",
+        expected: "a sequence",
+    })?;
+    for body_step in sequence {
+        validate_choose_body_step(body_step, step)?;
+    }
+    Ok(())
+}
+
+fn validate_choose_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let id = required_step_id(body_step, step)?;
+    validate_public_name("step id", id)?;
+    let StepSpec { primitive, body } = step_spec(body_step, step)?;
+    match primitive {
+        StepPrimitive::Set | StepPrimitive::Save => validate_choose_body_set(body, step),
+        StepPrimitive::Run | StepPrimitive::Do => {
+            validate_choose_body_do(body, step, primitive.as_str())
+        }
+        _ => Err(CompileError::UnsupportedStepPrimitive {
+            step,
+            primitive: primitive.as_str(),
+        }),
+    }
+}
+
+pub(super) fn validate_choose_body_set(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    reject_unknown_primitive_fields(body, step, "set", &["output", "value"])?;
+    required_non_empty_step_string(body, step, "output", "choose.body.set.output")?;
+    required_non_empty_step_string(body, step, "value", "choose.body.set.value")?;
+    Ok(())
+}
+
+pub(super) fn validate_choose_body_do(
     body: &Yaml<'_>,
-    index: usize,
-    last_step: usize,
+    step: usize,
+    primitive: &'static str,
 ) -> Result<(), CompileError> {
-    reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "parallel", &["branches"])?;
-    required_branch_targets(body, index, "branches")?;
+    reject_unknown_primitive_fields(body, step, primitive, &["action", "input"])?;
+    required_non_empty_step_string(body, step, "action", "choose.body.do.action")?;
+    required_non_empty_step_string(body, step, "input", "choose.body.do.input")?;
     Ok(())
 }
 
-pub(super) fn validate_collect_shape(
-    body: &Yaml<'_>,
-    index: usize,
-    last_step: usize,
-) -> Result<(), CompileError> {
-    reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "collect", &["source", "limit", "page_size"])?;
-    required_slot(body, index, "source")?;
-    required_u32_field(body, index, "collect", "limit")?;
-    required_u32_field(body, index, "collect", "page_size")?;
-    Ok(())
+fn validate_choose_otherwise(body: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
+    let Some(node) = body.as_mapping_get("otherwise") else {
+        return Ok(());
+    };
+    let Some(value) = node.as_str() else {
+        return Err(CompileError::StepFieldShape {
+            step,
+            field: "choose.otherwise",
+            expected: "a non-empty string",
+        });
+    };
+    if value.is_empty() {
+        return Err(CompileError::StepFieldShape {
+            step,
+            field: "choose.otherwise",
+            expected: "a non-empty string",
+        });
+    }
+    validate_public_name("choose.otherwise", value)
 }
 
-pub(super) fn validate_aggregate_shape(
-    body: &Yaml<'_>,
-    index: usize,
-    last_step: usize,
+pub(super) fn required_non_empty_step_string(
+    node: &Yaml<'_>,
+    step: usize,
+    field: &'static str,
+    diagnostic: &'static str,
 ) -> Result<(), CompileError> {
-    reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(
-        body,
-        index,
-        "aggregate",
-        &["input", "accumulator", "initial"],
-    )?;
-    required_slot(body, index, "input")?;
-    required_slot(body, index, "accumulator")?;
-    let initial = required_step_field(body, index, "initial")?;
-    slot_value(initial, index)?;
-    Ok(())
+    let value = node
+        .as_mapping_get(field)
+        .ok_or(CompileError::MissingStepField {
+            step,
+            field: diagnostic,
+        })?;
+    match value.as_str() {
+        Some(text) if !text.is_empty() => Ok(()),
+        _ => Err(CompileError::StepFieldShape {
+            step,
+            field: diagnostic,
+            expected: "a non-empty string",
+        }),
+    }
 }
 
 pub(super) fn validate_repeat_shape(
@@ -132,102 +212,4 @@ pub(super) fn validate_phase_zero_result(doc: &Yaml<'_>) -> Result<(), CompileEr
     } else {
         Err(CompileError::UnsupportedTopLevelResult)
     }
-}
-
-pub(super) fn validate_optional_top_level_shapes(doc: &Yaml<'_>) -> Result<(), CompileError> {
-    optional_inputs_mapping(doc)?;
-    optional_vars_mapping(doc)?;
-    optional_secret_mapping(doc)?;
-    optional_examples_sequence(doc)
-}
-
-pub(super) fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
-    let Some(node) = doc.as_mapping_get("inputs") else {
-        return Ok(());
-    };
-    let mapping = node.as_mapping().ok_or(CompileError::FieldShape {
-        field: "inputs",
-        expected: "a mapping",
-    })?;
-    for (key, _) in mapping {
-        let Some(name) = key.as_str() else {
-            return Err(non_string_key_error());
-        };
-        validate_public_name("inputs", name)?;
-    }
-    Ok(())
-}
-
-pub(super) fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
-    let Some(node) = doc.as_mapping_get("vars") else {
-        return Ok(());
-    };
-    let mapping = node.as_mapping().ok_or(CompileError::FieldShape {
-        field: "vars",
-        expected: "a mapping",
-    })?;
-    for (key, value) in mapping {
-        let Some(name) = key.as_str() else {
-            return Err(non_string_key_error());
-        };
-        validate_public_name("vars", name)?;
-        slot_value(value, 0)?;
-    }
-    Ok(())
-}
-
-pub(super) fn optional_secret_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
-    let Some(node) = doc.as_mapping_get("secrets") else {
-        return Ok(());
-    };
-    let mapping = node.as_mapping().ok_or(CompileError::FieldShape {
-        field: "secrets",
-        expected: "a mapping",
-    })?;
-    for (key, value) in mapping {
-        let Some(name) = key.as_str() else {
-            return Err(non_string_key_error());
-        };
-        validate_public_name("secrets", name)?;
-        if value.as_str().is_none() {
-            return Err(CompileError::FieldShape {
-                field: "secrets",
-                expected: "a mapping of secret names to environment variable names",
-            });
-        }
-    }
-    Ok(())
-}
-
-pub(super) fn optional_examples_sequence(doc: &Yaml<'_>) -> Result<(), CompileError> {
-    let Some(node) = doc.as_mapping_get("examples") else {
-        return Ok(());
-    };
-    let examples = node.as_sequence().ok_or(CompileError::FieldShape {
-        field: "examples",
-        expected: "a sequence",
-    })?;
-    for example in examples {
-        if !example.is_mapping() {
-            return Err(CompileError::FieldShape {
-                field: "examples",
-                expected: "a sequence of mappings",
-            });
-        }
-        let name = required_example_name(example)?;
-        validate_public_name("examples", name)?;
-    }
-    Ok(())
-}
-
-pub(super) fn required_example_name<'a>(example: &'a Yaml<'a>) -> Result<&'a str, CompileError> {
-    let name = example
-        .as_mapping_get("name")
-        .ok_or(CompileError::MissingField {
-            field: "examples.name",
-        })?;
-    name.as_str().ok_or(CompileError::FieldShape {
-        field: "examples.name",
-        expected: "a string",
-    })
 }

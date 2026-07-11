@@ -13,6 +13,10 @@
 
 pub mod bin_common;
 
+mod storage_codec_assertions;
+mod storage_codec_errors;
+mod storage_codec_mutation;
+pub mod storage_codec_target;
 pub mod yaml_target;
 pub mod validation_target;
 pub mod journal_target;
@@ -20,6 +24,8 @@ pub mod expression_target;
 pub mod workflow_target;
 pub mod ipc_target;
 pub mod boundary_target;
+
+pub use storage_codec_target::fuzz_vb_storage_codec;
 
 pub use yaml_target::fuzz_yaml_events;
 pub use yaml_target::fuzz_strict_yaml_profile;

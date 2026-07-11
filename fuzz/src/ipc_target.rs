@@ -44,14 +44,14 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
 
     let header_result = decode_frame_header(&header);
 
-    if let Ok(decoded_header) = header_result {
-        if let Ok(encoded) = decoded_header.encode() {
-            assert_eq!(
-                &encoded[..],
-                header_bytes,
-                "re-encoded header must match original bytes"
-            );
-        }
+    if let Ok(decoded_header) = header_result
+        && let Ok(encoded) = decoded_header.encode()
+    {
+        assert_eq!(
+            &encoded[..],
+            header_bytes,
+            "re-encoded header must match original bytes"
+        );
     }
 
     let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {

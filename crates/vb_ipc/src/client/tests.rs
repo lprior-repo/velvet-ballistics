@@ -204,7 +204,24 @@ fn adversarial_client_error_variants_are_distinct() {
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("vb_ipc_client_test_{name}_{}", std::process::id()))
+    // Linux `unix(7)` `sun_path` is bounded by `SUN_LEN` (108) bytes. We must
+    // bypass `std::env::temp_dir()` here because cargo and CI frequently set
+    // `TMPDIR` to deep worktree paths (e.g. `$PWD/target/tmp`), which pushes
+    // the concatenated socket path past the limit and makes `bind(2)` fail
+    // with `EINVAL: path must be shorter than SUN_LEN`. Using a fixed short
+    // parent (`/tmp`) keeps every per-test path well below 108 bytes.
+    //
+    // Per-test uniqueness is guaranteed by the process id (parallel cargo
+    // test workers) and a static monotonic counter (successive invocations
+    // within the same process). The previous test run's stale socket, if
+    // any, is removed by `IpcServer::bind` via `remove_file`.
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let pid = std::process::id();
+    let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::path::PathBuf::from("/tmp").join(format!(
+        "vb_ipc_client_test_{name}_{pid}_{counter:04x}.sock"
+    ))
 }
 
 struct CleanupPath<'a>(&'a std::path::Path);

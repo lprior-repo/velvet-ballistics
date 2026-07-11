@@ -206,6 +206,7 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
         match event {
             JournalEvent::StepStarted { step, .. }
             | JournalEvent::StepSucceeded { step, .. }
+            | JournalEvent::StepFailed { step, .. }
             | JournalEvent::ActionScheduled { step, .. }
             | JournalEvent::ActionCompletedEvent { step, .. }
             | JournalEvent::ActionFailedEvent { step, .. }
@@ -279,9 +280,9 @@ pub(super) fn apply_tail_events(
     let mut executed = 0u64;
     for event in tail_events {
         let outcome = match event {
-            JournalEvent::StepStarted { .. } | JournalEvent::StepSucceeded { .. } => {
-                apply_step_lifecycle(frame, event)?
-            }
+            JournalEvent::StepStarted { .. }
+            | JournalEvent::StepSucceeded { .. }
+            | JournalEvent::StepFailed { .. } => apply_step_lifecycle(frame, event)?,
             JournalEvent::ActionScheduled { .. } => apply_action_scheduled(frame, event, tracker)?,
             JournalEvent::ActionScheduledTicket { .. } => {
                 apply_action_scheduled_ticket(frame, event, tracker, expected_action_abi_digests)?
@@ -326,6 +327,15 @@ fn apply_step_lifecycle(
                 .map_err(|_e| RecoveryError::ReplayDivergence {
                     step: *step,
                     detail: "mark_succeeded failed".to_owned(),
+                })?;
+            Ok(ApplyOutcome::Executed)
+        }
+        JournalEvent::StepFailed { step, .. } => {
+            frame
+                .mark_failed(*step)
+                .map_err(|_e| RecoveryError::ReplayDivergence {
+                    step: *step,
+                    detail: "mark_failed failed".to_owned(),
                 })?;
             Ok(ApplyOutcome::Executed)
         }

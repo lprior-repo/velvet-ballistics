@@ -365,34 +365,37 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
         }
 
         fn is_target_answer_event(&self, index: usize, event: &RuntimeJournalEvent) -> bool {
-            match (index, event) {
-                (
-                    0,
-                    RuntimeJournalEvent::SlotWritten {
-                        run,
-                        slot,
-                        ..
-                    },
-                ) => *run == self.run && *slot == SlotIdx::new(2),
-                (
-                    1,
-                    RuntimeJournalEvent::AskAnswered {
-                        run,
-                        step,
-                        slot,
-                    },
-                ) => *run == self.run && *step == StepIdx::new(2) && *slot == SlotIdx::new(2),
-                (
-                    2,
-                    RuntimeJournalEvent::StepSucceeded {
-                        run,
-                        step,
-                        output,
-                        ..
-                    },
-                ) => *run == self.run && *step == StepIdx::new(2) && *output == SlotIdx::new(2),
+            match index {
+                0 => self.is_target_slot_written(event),
+                1 => self.is_target_ask_answered(event),
+                2 => self.is_target_step_succeeded(event),
                 _ => false,
             }
+        }
+
+        fn is_target_slot_written(&self, event: &RuntimeJournalEvent) -> bool {
+            matches!(
+                event,
+                RuntimeJournalEvent::SlotWritten { run, slot, .. }
+                    if *run == self.run && *slot == SlotIdx::new(2)
+            )
+        }
+
+        fn is_target_ask_answered(&self, event: &RuntimeJournalEvent) -> bool {
+            matches!(
+                event,
+                RuntimeJournalEvent::AskAnswered { run, step, slot }
+                    if *run == self.run && *step == StepIdx::new(2) && *slot == SlotIdx::new(2)
+            )
+        }
+
+        fn is_target_step_succeeded(&self, event: &RuntimeJournalEvent) -> bool {
+            matches!(
+                event,
+                RuntimeJournalEvent::StepSucceeded {
+                    run, step, output, ..
+                } if *run == self.run && *step == StepIdx::new(2) && *output == SlotIdx::new(2)
+            )
         }
     }
 

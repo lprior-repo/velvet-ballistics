@@ -41,7 +41,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
 
     write_u16(&mut header, 4, CURRENT_SCHEMA_VERSION);
     write_u16(&mut header, 6, kind);
-    if !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 40 | 50) {
+    if !matches!(kind, 1 | 2 | 3 | 10..=29 | 30..=35 | 40 | 50) {
         assert!(
             matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::UnknownRecordKind { kind: observed }) if observed == kind)
         );

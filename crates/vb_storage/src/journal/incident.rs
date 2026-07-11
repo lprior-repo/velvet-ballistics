@@ -68,6 +68,11 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                     certainty: SideEffectCertainty::Failed,
                 });
             }
+            JournalEvent::StepFailed { step, .. } => {
+                failure_found = true;
+                failure_code = "StepFailed".to_string();
+                failed_at_step = Some(step.get());
+            }
             JournalEvent::RunFailedEvent { .. } => {
                 failure_found = true;
                 failure_code = "RunFailed".to_string();
@@ -99,7 +104,7 @@ pub fn build_repair_hints(
     let mut hints: Vec<String> = Vec::new();
 
     match failure_code {
-        "RunFailed" => {
+        "RunFailed" | "StepFailed" => {
             hints.push("investigate step output and engine logs for the failed step".to_string());
             if !side_effects.is_empty() {
                 hints.push(
@@ -148,7 +153,7 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 ///
 /// - `RunCancelled`, `RunKilled` → `Cancelled` (terminal)
 /// - `RunFinished`, `RunAnswered` → `Completed` (terminal)
-/// - `RunFailedEvent`, `ActionFailedEvent` → `Failed` (non-terminal; retry may
+/// - `RunFailedEvent`, `StepFailed`, `ActionFailedEvent` → `Failed` (non-terminal; retry may
 ///   transition a run away from `Failed`)
 /// - `WaitScheduledEvent`, `AskScheduledEvent`, `AskAnsweredEvent` →
 ///   `WaitingAnswer`
@@ -184,6 +189,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::RunAdmission { .. } => LifecycleState::Active,
         JournalEvent::StepStarted { .. } => LifecycleState::Active,
         JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
+        JournalEvent::StepFailed { .. } => LifecycleState::Failed,
         JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
         JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
         JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,

@@ -54,10 +54,20 @@ mod record_tests {
         assert_eq!(RecordKind::AskAnswered.id(), 18);
         assert_eq!(RecordKind::AskTimedOut.id(), 29);
         assert_eq!(RecordKind::RetryScheduled.id(), 19);
+        assert_eq!(RecordKind::StepFailed.id(), 20);
         assert_eq!(RecordKind::RunCancelled.id(), 21);
         assert_eq!(RecordKind::RunFinished.id(), 22);
         assert_eq!(RecordKind::RunFailed.id(), 23);
         assert_eq!(RecordKind::RunAdmission.id(), 24);
+        assert_eq!(RecordKind::RunResumed.id(), 25);
+        assert_eq!(RecordKind::RunRetried.id(), 26);
+        assert_eq!(RecordKind::RunAnswered.id(), 27);
+        assert_eq!(RecordKind::RunKilled.id(), 28);
+        assert_eq!(RecordKind::WaitResolved.id(), 31);
+        assert_eq!(RecordKind::ActionAbandoned.id(), 32);
+        assert_eq!(RecordKind::StepSucceeded.id(), 33);
+        assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
+        assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
     }
 
     #[test]
@@ -85,6 +95,12 @@ mod record_tests {
             RecordKind::RunResumed.id(),
             RecordKind::RunRetried.id(),
             RecordKind::RunAnswered.id(),
+            RecordKind::RunKilled.id(),
+            RecordKind::WaitResolved.id(),
+            RecordKind::ActionAbandoned.id(),
+            RecordKind::StepSucceeded.id(),
+            RecordKind::ActionScheduledTicket.id(),
+            RecordKind::ActionCompletedEnvelope.id(),
             RecordKind::Snapshot.id(),
             RecordKind::Blob.id(),
             RecordKind::IndexUpdate.id(),

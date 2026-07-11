@@ -32,6 +32,7 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::StepSucceeded { .. } => {
             summary.steps_succeeded = summary.steps_succeeded.saturating_add(1);
         }
+        JournalEvent::StepFailed { .. } => {}
         JournalEvent::ActionScheduled { .. } => {
             summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
         }

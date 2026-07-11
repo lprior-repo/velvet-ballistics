@@ -174,16 +174,16 @@ fn check_kind_28_blob_family_rejected() {
     );
 }
 
-/// PO-KANI-004-H6: Unknown kind 33 must be rejected.
-/// Kind 32 is now ActionAbandoned.
+/// PO-KANI-004-H6: Unknown kind 36 must be rejected.
+/// Kinds 33..=35 are unique stable tags for formerly shared journal variants.
 #[kani::proof]
 fn check_unknown_kind_rejected() {
-    let kind: u16 = 33;
+    let kind: u16 = 36;
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
     kani::assert(
         result.is_err(),
-        "unknown kind 33 must be rejected by validate_kind_family",
+        "unknown kind 36 must be rejected by validate_kind_family",
     );
 }
 
@@ -246,12 +246,42 @@ fn check_action_abandoned_kind_id() {
     kani::assert(id == 32, "ActionAbandoned wire kind must remain 32");
 }
 
+/// PO-KANI-004-H6h: Kind 33 (StepSucceeded) must be admitted for MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_33_journal_family() {
+    let result = crate::codec::validation::validate_kind_family(crate::MAGIC_JOURNAL_EVENT, 33);
+    kani::assert(
+        result.is_ok(),
+        "kind 33 (StepSucceeded) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
+/// PO-KANI-004-H6i: Kind 34 (ActionScheduledTicket) must be admitted for MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_34_journal_family() {
+    let result = crate::codec::validation::validate_kind_family(crate::MAGIC_JOURNAL_EVENT, 34);
+    kani::assert(
+        result.is_ok(),
+        "kind 34 (ActionScheduledTicket) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
+/// PO-KANI-004-H6j: Kind 35 (ActionCompletedEnvelope) must be admitted for MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_35_journal_family() {
+    let result = crate::codec::validation::validate_kind_family(crate::MAGIC_JOURNAL_EVENT, 35);
+    kani::assert(
+        result.is_ok(),
+        "kind 35 (ActionCompletedEnvelope) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
 /// PO-KANI-004-H7: All existing known kinds remain known.
 #[kani::proof]
 fn check_all_existing_kinds_known() {
-    let known_kinds: [u16; 28] = [
+    let known_kinds: [u16; 31] = [
         1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-        30, 31, 32, 40, 50,
+        30, 31, 32, 33, 34, 35, 40, 50,
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
@@ -260,8 +290,8 @@ fn check_all_existing_kinds_known() {
 }
 
 /// PO-KANI-004-H8: Exhaustive: for any arbitrary u16 kind value,
-/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds
-/// 10..=29 | 31 | 32.
+/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for the
+/// current journal-kind set 10..=29 | 31..=35.
 #[kani::proof]
 #[kani::unwind(3)]
 fn check_journal_family_exhaustive() {
@@ -269,20 +299,21 @@ fn check_journal_family_exhaustive() {
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
 
-    // Expected valid set: 10..=29, 31 (WaitResolved), or 32 (ActionAbandoned).
-    let is_valid_journal_kind = (kind >= 10u16 && kind <= 29u16) || kind == 31u16 || kind == 32u16;
+    // Expected valid set: 10..=29 or 31..=35. Kind 30 remains Snapshot-only.
+    let is_valid_journal_kind =
+        (kind >= 10u16 && kind <= 29u16) || (kind >= 31u16 && kind <= 35u16);
 
     match result {
         Ok(()) => {
             kani::assert(
                 is_valid_journal_kind,
-                "Ok journal kind must be in valid set 10..=29 | 31 | 32",
+                "Ok journal kind must be in valid set 10..=29 | 31..=35",
             );
         }
         Err(_) => {
             kani::assert(
                 !is_valid_journal_kind,
-                "Err journal kind must not be in valid set 10..=29 | 31 | 32",
+                "Err journal kind must not be in valid set 10..=29 | 31..=35",
             );
         }
     }

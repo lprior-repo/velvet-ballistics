@@ -187,11 +187,11 @@ fn next_seq_max_minus_one_returns_max() {
 // B60: journal-specific kind admission does not open unknown adjacent kinds
 // =============================================================================
 
-/// Confirms that WaitResolved (kind 31) and ActionAbandoned (kind 32) are
-/// admitted for the journal magic while genuinely unknown adjacent kinds remain
-/// rejected.
+/// Confirms that WaitResolved (kind 31), ActionAbandoned (kind 32), and the
+/// formerly shared event variants (33..=35) are admitted for the journal magic
+/// while genuinely unknown adjacent kinds remain rejected.
 #[test]
-fn kind_28_29_31_32_admission_for_journal_magic() {
+fn kind_28_29_31_through_35_admission_for_journal_magic() {
     assert!(is_known_record_kind(28), "kind 28 must be known");
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 28).is_ok(),
@@ -221,14 +221,21 @@ fn kind_28_29_31_32_admission_for_journal_magic() {
         validate_kind_family(MAGIC_JOURNAL_EVENT, 32).is_ok(),
         "kind 32 (ActionAbandoned) must be admitted for journal magic"
     );
+    for kind in [33_u16, 34, 35] {
+        assert!(is_known_record_kind(kind), "new unique kind must be known");
+        assert!(
+            validate_kind_family(MAGIC_JOURNAL_EVENT, kind).is_ok(),
+            "new unique kind must be admitted for journal magic"
+        );
+    }
     // Kinds outside the journal range remain rejected.
-    assert!(!is_known_record_kind(33), "kind 33 must remain unknown");
+    assert!(!is_known_record_kind(36), "kind 36 must remain unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 33),
-            Err(JournalError::RecordKindFamilyMismatch { .. })
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 36),
+            Err(JournalError::UnknownRecordKind { .. })
         ),
-        "kind 33 must be rejected for journal magic"
+        "kind 36 must be rejected for journal magic"
     );
 }
 

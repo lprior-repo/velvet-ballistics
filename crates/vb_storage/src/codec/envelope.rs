@@ -24,7 +24,7 @@ use crate::{
 ///
 /// # Preconditions
 ///
-/// `bytes` must contain at least `RECORD_HEADER_BYTES + header.payload_len`
+/// `bytes` must contain exactly `RECORD_HEADER_BYTES + header.payload_len`
 /// bytes starting at offset 0. The 60-byte header at offset 0 must satisfy
 /// `decode_record_header` (valid magic, schema, kind, family, length, and
 /// CRC32C header checksum).
@@ -68,6 +68,11 @@ pub(crate) fn decode_envelope_only(bytes: &[u8]) -> Result<(RecordEnvelope, &[u8
     let raw_payload = bytes
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
+    if bytes.len() != payload_end {
+        return Err(JournalError::PostcardDecodeFailed(
+            postcard::Error::DeserializeBadEncoding,
+        ));
+    }
 
     // Fail closed: envelope-only decode must still detect payload tampering.
     verify_digest_match(raw_payload, header.payload_digest)?;
@@ -165,6 +170,26 @@ mod tests {
         assert!(
             matches!(result, Err(JournalError::UnexpectedEof)),
             "truncated payload must yield UnexpectedEof, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn decode_envelope_only_rejects_trailing_physical_bytes() {
+        let payload = b"payload with forged trailing bytes";
+        let mut record = build_valid_record(payload);
+        record.push(0xAA);
+
+        let result = decode_envelope_only(&record);
+
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::PostcardDecodeFailed(
+                    postcard::Error::DeserializeBadEncoding
+                ))
+            ),
+            "trailing bytes after declared payload_len must be rejected, got {:?}",
             result
         );
     }

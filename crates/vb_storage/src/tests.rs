@@ -19,9 +19,9 @@ mod tests {
     use crate::queue::BatchBuilder;
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
     use crate::{
-        BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal,
-        IndexStatusState, JournalError, JournalEvent, JournalWriterQueue, KeyspaceProfile,
-        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
+        BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES, DurableActionOutcome,
+        EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriterQueue,
+        KeyspaceProfile, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
         MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
         MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
         MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR,
@@ -33,7 +33,10 @@ mod tests {
         open_store, put_blob, put_compiled_ir, put_run_header, put_workflow_source, read_blob,
         read_run_events, replay_journal, verify_digest_match, write_snapshot,
     };
-    use vb_core::{ActionId, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{
+        ActionId, ActionTicket, CapabilitySet, ConstValue, DiagnosticCode, RunId, RuntimePolicy,
+        SeqNo, SlotIdx, StepIdx, Taint, WorkflowDigest, WorkflowId,
+    };
 
     fn compiled_ir_digest(ir: &[u8]) -> WorkflowDigest {
         WorkflowDigest::from_bytes(blake3::hash(ir).into())
@@ -2090,9 +2093,18 @@ mod tests {
         assert_eq!(RecordKind::RunCancelled.id(), 21);
         assert_eq!(RecordKind::RunFinished.id(), 22);
         assert_eq!(RecordKind::RunFailed.id(), 23);
+        assert_eq!(RecordKind::RunAdmission.id(), 24);
+        assert_eq!(RecordKind::RunResumed.id(), 25);
+        assert_eq!(RecordKind::RunRetried.id(), 26);
+        assert_eq!(RecordKind::RunAnswered.id(), 27);
         assert_eq!(RecordKind::RunKilled.id(), 28);
         assert_eq!(RecordKind::AskTimedOut.id(), 29);
         assert_eq!(RecordKind::Snapshot.id(), 30);
+        assert_eq!(RecordKind::WaitResolved.id(), 31);
+        assert_eq!(RecordKind::ActionAbandoned.id(), 32);
+        assert_eq!(RecordKind::StepSucceeded.id(), 33);
+        assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
+        assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
         assert_eq!(RecordKind::Blob.id(), 40);
         assert_eq!(RecordKind::IndexUpdate.id(), 50);
     }
@@ -2965,165 +2977,382 @@ mod tests {
         assert_eq!(result, None);
     }
 
+    fn sample_action_ticket(run: RunId, seq: EventSeq) -> ActionTicket {
+        ActionTicket {
+            run,
+            step: StepIdx::new(0),
+            seq: SeqNo::new(seq.get()),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: 7,
+            capacity: 3,
+        }
+    }
+
+    fn journal_event_variants_for_run_and_seq(
+        run: RunId,
+        seq: EventSeq,
+    ) -> Vec<(JournalEvent, RecordKind)> {
+        let ticket = sample_action_ticket(run, seq);
+        let timestamp = chrono::Utc::now();
+        vec![
+            (
+                JournalEvent::RunAccepted {
+                    run,
+                    seq,
+                    workflow: test_digest(1),
+                },
+                RecordKind::RunAccepted,
+            ),
+            (
+                JournalEvent::RunAdmission {
+                    run,
+                    seq,
+                    artifact_digest: test_digest(2),
+                    granted_capabilities: CapabilitySet::empty(),
+                    policy: RuntimePolicy::Strict,
+                },
+                RecordKind::RunAdmission,
+            ),
+            (
+                JournalEvent::StepStarted {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::StepStarted,
+            ),
+            (
+                JournalEvent::StepSucceeded {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    output: SlotIdx::new(0),
+                },
+                RecordKind::StepSucceeded,
+            ),
+            (
+                JournalEvent::StepFailed {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::StepFailed,
+            ),
+            (
+                JournalEvent::ActionScheduled {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    action: ActionId::new(1),
+                    attempt: 1,
+                },
+                RecordKind::ActionScheduled,
+            ),
+            (
+                JournalEvent::ActionCompletedEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    action: ActionId::new(1),
+                    attempt: 1,
+                },
+                RecordKind::ActionCompleted,
+            ),
+            (
+                JournalEvent::ActionScheduledTicket {
+                    run,
+                    seq,
+                    ticket,
+                    input: SlotIdx::new(1),
+                    output: SlotIdx::new(2),
+                    action_abi_digest: test_digest(3),
+                },
+                RecordKind::ActionScheduledTicket,
+            ),
+            (
+                JournalEvent::ActionCompletedEnvelope {
+                    run,
+                    seq,
+                    ticket,
+                    output: SlotIdx::new(2),
+                    outcome: DurableActionOutcome::Ready,
+                    value: vec![1, 2, 3],
+                    encoded_len: 3,
+                    taint: Taint::Clean,
+                    value_digest: [4; 32],
+                    action_abi_digest: test_digest(4),
+                },
+                RecordKind::ActionCompletedEnvelope,
+            ),
+            (
+                JournalEvent::ActionFailedEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    action: ActionId::new(1),
+                    attempt: 1,
+                },
+                RecordKind::ActionFailed,
+            ),
+            (
+                JournalEvent::ActionAbandoned { run, seq, ticket },
+                RecordKind::ActionAbandoned,
+            ),
+            (
+                JournalEvent::SlotWrittenEvent {
+                    run,
+                    seq,
+                    slot: SlotIdx::new(0),
+                    value: None,
+                    extra: None,
+                    attempt: 1,
+                },
+                RecordKind::SlotWritten,
+            ),
+            (
+                JournalEvent::WaitScheduledEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::WaitScheduled,
+            ),
+            (
+                JournalEvent::AskScheduledEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::AskScheduled,
+            ),
+            (
+                JournalEvent::AskAnsweredEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::AskAnswered,
+            ),
+            (
+                JournalEvent::WaitResolvedEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::WaitResolved,
+            ),
+            (
+                JournalEvent::RetryScheduledEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::RetryScheduled,
+            ),
+            (
+                JournalEvent::RunCancelled {
+                    run,
+                    seq,
+                    attempt: 1,
+                    reason: None,
+                },
+                RecordKind::RunCancelled,
+            ),
+            (
+                JournalEvent::RunKilled {
+                    run,
+                    seq,
+                    attempt: 1,
+                },
+                RecordKind::RunKilled,
+            ),
+            (
+                JournalEvent::RunFinished {
+                    run,
+                    seq,
+                    result: SlotIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::RunFinished,
+            ),
+            (
+                JournalEvent::RunFailedEvent {
+                    run,
+                    seq,
+                    attempt: 1,
+                },
+                RecordKind::RunFailed,
+            ),
+            (
+                JournalEvent::RunResumed {
+                    run,
+                    seq,
+                    timestamp: timestamp.to_owned(),
+                },
+                RecordKind::RunResumed,
+            ),
+            (
+                JournalEvent::RunRetried {
+                    run,
+                    seq,
+                    timestamp: timestamp.to_owned(),
+                },
+                RecordKind::RunRetried,
+            ),
+            (
+                JournalEvent::RunAnswered {
+                    run,
+                    seq,
+                    slot_idx: SlotIdx::new(0),
+                    answer: ConstValue::Null,
+                    timestamp,
+                },
+                RecordKind::RunAnswered,
+            ),
+            (
+                JournalEvent::AskTimedOutEvent {
+                    run,
+                    seq,
+                    step: StepIdx::new(0),
+                    attempt: 1,
+                },
+                RecordKind::AskTimedOut,
+            ),
+        ]
+    }
+
+    fn record_kind_count(cases: &[(JournalEvent, RecordKind)], kind: RecordKind) -> usize {
+        cases
+            .iter()
+            .map(|(_, expected_kind)| *expected_kind)
+            .filter(|expected_kind| *expected_kind == kind)
+            .count()
+    }
+
+    #[test]
+    fn journal_event_variant_fixture_covers_each_record_kind_once() {
+        let cases = journal_event_variants_for_run_and_seq(RunId::new(7), EventSeq::new(8));
+
+        assert_eq!(cases.len(), 25);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunAccepted), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunAdmission), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::StepStarted), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::StepSucceeded), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::StepFailed), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::ActionScheduled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::ActionCompleted), 1);
+        assert_eq!(
+            record_kind_count(&cases, RecordKind::ActionScheduledTicket),
+            1
+        );
+        assert_eq!(
+            record_kind_count(&cases, RecordKind::ActionCompletedEnvelope),
+            1
+        );
+        assert_eq!(record_kind_count(&cases, RecordKind::ActionFailed), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::ActionAbandoned), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::SlotWritten), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::WaitScheduled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::AskScheduled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::AskAnswered), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::WaitResolved), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RetryScheduled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunCancelled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunKilled), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunFinished), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunFailed), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunResumed), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunRetried), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::RunAnswered), 1);
+        assert_eq!(record_kind_count(&cases, RecordKind::AskTimedOut), 1);
+    }
+
+    #[test]
+    fn record_kind_magic_family_keeps_journal_kinds_under_journal_magic() {
+        assert_eq!(
+            RecordKind::RunAdmission.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::RunResumed.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::RunRetried.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::RunAnswered.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::WaitResolved.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::ActionAbandoned.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::StepSucceeded.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::ActionScheduledTicket.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::ActionCompletedEnvelope.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            true
+        );
+        assert_eq!(
+            RecordKind::RunKilled.belongs_to_magic(MAGIC_SNAPSHOT),
+            false
+        );
+        assert_eq!(RecordKind::RunKilled.belongs_to_magic(MAGIC_BLOB), false);
+        assert_eq!(
+            RecordKind::WaitResolved.belongs_to_magic(MAGIC_SNAPSHOT),
+            false
+        );
+        assert_eq!(
+            RecordKind::ActionCompletedEnvelope.belongs_to_magic(MAGIC_BLOB),
+            false
+        );
+        assert_eq!(
+            RecordKind::Snapshot.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            false
+        );
+        assert_eq!(
+            RecordKind::Blob.belongs_to_magic(MAGIC_JOURNAL_EVENT),
+            false
+        );
+        assert_eq!(
+            RecordKind::RunHeader.belongs_to_magic(MAGIC_INDEX_RECORD),
+            true
+        );
+        assert_eq!(
+            RecordKind::IndexUpdate.belongs_to_magic(MAGIC_INDEX_RECORD),
+            true
+        );
+    }
+
     #[test]
     fn journal_event_run_id_returns_correct_run_for_all_variants() {
         // Given every JournalEvent variant with run_id 99
         // When run_id() is called
         // Then each returns RunId::new(99)
         let run = RunId::new(99);
-        assert_eq!(
-            JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(0),
-                workflow: test_digest(1)
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::StepStarted {
-                run,
-                seq: EventSeq::new(1),
-                step: vb_core::StepIdx::ZERO,
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::StepSucceeded {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                output: vb_core::SlotIdx::new(0)
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::ActionScheduled {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::ActionCompletedEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::ActionFailedEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::SlotWrittenEvent {
-                run,
-                seq: EventSeq::new(0),
-                slot: vb_core::SlotIdx::new(0),
-                value: None,
-                extra: None,
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::WaitScheduledEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::AskScheduledEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::AskAnsweredEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::AskTimedOutEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::RetryScheduledEvent {
-                run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::RunCancelled {
-                run,
-                seq: EventSeq::new(0),
-                attempt: 1,
-                reason: None,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::RunFinished {
-                run,
-                seq: EventSeq::new(0),
-                result: vb_core::SlotIdx::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
-        assert_eq!(
-            JournalEvent::RunFailedEvent {
-                run,
-                seq: EventSeq::new(0),
-                attempt: 1,
-            }
-            .run_id(),
-            run
-        );
+        for (event, _) in journal_event_variants_for_run_and_seq(run, EventSeq::new(0)) {
+            assert_eq!(event.run_id(), run);
+        }
     }
 
     #[test]
@@ -3133,159 +3362,9 @@ mod tests {
         // Then each returns EventSeq::new(42)
         let seq = EventSeq::new(42);
         let run = RunId::new(1);
-        assert_eq!(
-            JournalEvent::RunAccepted {
-                run,
-                seq,
-                workflow: test_digest(1)
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::StepStarted {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::StepSucceeded {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                output: vb_core::SlotIdx::new(0)
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::ActionScheduled {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::ActionCompletedEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::ActionFailedEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::SlotWrittenEvent {
-                run,
-                seq,
-                slot: vb_core::SlotIdx::new(0),
-                value: None,
-                extra: None,
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::WaitScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::AskScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::AskAnsweredEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::AskTimedOutEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::RetryScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::RunCancelled {
-                run,
-                seq,
-                attempt: 1,
-                reason: None
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::RunFinished {
-                run,
-                seq,
-                result: vb_core::SlotIdx::new(0),
-                attempt: 1,
-            }
-            .seq(),
-            seq
-        );
-        assert_eq!(
-            JournalEvent::RunFailedEvent {
-                run,
-                seq,
-                attempt: 1
-            }
-            .seq(),
-            seq
-        );
+        for (event, _) in journal_event_variants_for_run_and_seq(run, seq) {
+            assert_eq!(event.seq(), seq);
+        }
     }
 
     #[test]
@@ -3295,159 +3374,9 @@ mod tests {
         // Then each returns the expected RecordKind
         let run = RunId::new(1);
         let seq = EventSeq::new(0);
-        assert_eq!(
-            JournalEvent::RunAccepted {
-                run,
-                seq,
-                workflow: test_digest(1)
-            }
-            .record_kind(),
-            RecordKind::RunAccepted
-        );
-        assert_eq!(
-            JournalEvent::StepStarted {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::StepStarted
-        );
-        assert_eq!(
-            JournalEvent::StepSucceeded {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                output: vb_core::SlotIdx::new(0)
-            }
-            .record_kind(),
-            RecordKind::SlotWritten
-        );
-        assert_eq!(
-            JournalEvent::ActionScheduled {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::ActionScheduled
-        );
-        assert_eq!(
-            JournalEvent::ActionCompletedEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::ActionCompleted
-        );
-        assert_eq!(
-            JournalEvent::ActionFailedEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                action: ActionId::new(1),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::ActionFailed
-        );
-        assert_eq!(
-            JournalEvent::SlotWrittenEvent {
-                run,
-                seq,
-                slot: vb_core::SlotIdx::new(0),
-                value: None,
-                extra: None,
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::SlotWritten
-        );
-        assert_eq!(
-            JournalEvent::WaitScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::WaitScheduled
-        );
-        assert_eq!(
-            JournalEvent::AskScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::AskScheduled
-        );
-        assert_eq!(
-            JournalEvent::AskAnsweredEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::AskAnswered
-        );
-        assert_eq!(
-            JournalEvent::AskTimedOutEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::AskTimedOut
-        );
-        assert_eq!(
-            JournalEvent::RetryScheduledEvent {
-                run,
-                seq,
-                step: StepIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::RetryScheduled
-        );
-        assert_eq!(
-            JournalEvent::RunCancelled {
-                run,
-                seq,
-                attempt: 1,
-                reason: None
-            }
-            .record_kind(),
-            RecordKind::RunCancelled
-        );
-        assert_eq!(
-            JournalEvent::RunFinished {
-                run,
-                seq,
-                result: vb_core::SlotIdx::new(0),
-                attempt: 1,
-            }
-            .record_kind(),
-            RecordKind::RunFinished
-        );
-        assert_eq!(
-            JournalEvent::RunFailedEvent {
-                run,
-                seq,
-                attempt: 1
-            }
-            .record_kind(),
-            RecordKind::RunFailed
-        );
+        for (event, expected_kind) in journal_event_variants_for_run_and_seq(run, seq) {
+            assert_eq!(event.record_kind(), expected_kind);
+        }
     }
 
     // --- Section 5: Encode/Decode Roundtrip Tests ---
@@ -3498,8 +3427,14 @@ mod tests {
             step: StepIdx::new(5),
             output: vb_core::SlotIdx::new(10),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 2, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::StepSucceeded,
+            2,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);
@@ -3899,9 +3834,18 @@ mod tests {
             RecordKind::RunCancelled.id(),
             RecordKind::RunFinished.id(),
             RecordKind::RunFailed.id(),
+            RecordKind::RunAdmission.id(),
+            RecordKind::RunResumed.id(),
+            RecordKind::RunRetried.id(),
+            RecordKind::RunAnswered.id(),
             RecordKind::RunKilled.id(),
             RecordKind::AskTimedOut.id(),
             RecordKind::Snapshot.id(),
+            RecordKind::WaitResolved.id(),
+            RecordKind::ActionAbandoned.id(),
+            RecordKind::StepSucceeded.id(),
+            RecordKind::ActionScheduledTicket.id(),
+            RecordKind::ActionCompletedEnvelope.id(),
             RecordKind::Blob.id(),
             RecordKind::IndexUpdate.id(),
         ];

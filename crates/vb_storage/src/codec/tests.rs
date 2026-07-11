@@ -7,13 +7,1043 @@
 )]
 use super::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, JournalEvent, RecordKind, WorkflowSourceRecord, constants::*,
-    types::EventSeq,
+    BlobRecord, CompiledIrRecord, DurableActionOutcome, JournalEvent, RecordKind,
+    WorkflowSourceRecord, constants::*, types::EventSeq,
 };
-use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+use vb_core::{
+    ActionId, CapabilitySet, ConstValue, RunId, RuntimePolicy, SeqNo, SlotIdx, SlotValue, StepIdx,
+    Taint, WorkflowDigest,
+};
 
 mod kill_kind_admission;
 mod replay_integrity;
+
+fn codec_sample_digest(byte: u8) -> WorkflowDigest {
+    WorkflowDigest::from_bytes([byte; DIGEST_BYTES])
+}
+
+fn codec_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
+    let seq = SeqNo::new(7);
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        capacity: 2,
+    }
+}
+
+fn all_journal_event_cases() -> Result<Vec<(JournalEvent, RecordKind)>, JournalError> {
+    let run = RunId::new(99);
+    let digest = codec_sample_digest(0xCC);
+    let ticket = codec_action_ticket(run, StepIdx::new(8), ActionId::new(5));
+    let value = postcard::to_allocvec(&SlotValue::I64(42)).map_err(JournalError::Encode)?;
+    let encoded_len = u32::try_from(value.len()).map_err(|_| JournalError::PayloadTooLarge {
+        len: u32::MAX,
+        max: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    })?;
+    let value_digest = *blake3::hash(&value).as_bytes();
+    Ok(vec![
+        (
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            RecordKind::RunAccepted,
+        ),
+        (
+            JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: digest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+            RecordKind::RunAdmission,
+        ),
+        (
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+            RecordKind::StepStarted,
+        ),
+        (
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                output: SlotIdx::new(0),
+            },
+            RecordKind::StepSucceeded,
+        ),
+        (
+            JournalEvent::StepFailed {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(2),
+                attempt: 1,
+            },
+            RecordKind::StepFailed,
+        ),
+        (
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            RecordKind::ActionScheduled,
+        ),
+        (
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            RecordKind::ActionCompleted,
+        ),
+        (
+            JournalEvent::ActionScheduledTicket {
+                run,
+                seq: EventSeq::new(7),
+                ticket,
+                input: SlotIdx::new(0),
+                output: SlotIdx::new(1),
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            RecordKind::ActionScheduledTicket,
+        ),
+        (
+            JournalEvent::ActionCompletedEnvelope {
+                run,
+                seq: EventSeq::new(8),
+                ticket,
+                output: SlotIdx::new(1),
+                outcome: DurableActionOutcome::Ready,
+                value: value.clone(),
+                encoded_len,
+                taint: Taint::Clean,
+                value_digest,
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            RecordKind::ActionCompletedEnvelope,
+        ),
+        (
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(4),
+                action: ActionId::new(2),
+                attempt: 1,
+            },
+            RecordKind::ActionFailed,
+        ),
+        (
+            JournalEvent::ActionAbandoned {
+                run,
+                seq: EventSeq::new(10),
+                ticket,
+            },
+            RecordKind::ActionAbandoned,
+        ),
+        (
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(11),
+                slot: SlotIdx::new(2),
+                value: Some(value),
+                extra: None,
+                attempt: 1,
+            },
+            RecordKind::SlotWritten,
+        ),
+        (
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(12),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            RecordKind::WaitScheduled,
+        ),
+        (
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(13),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            RecordKind::AskScheduled,
+        ),
+        (
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(14),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            RecordKind::AskAnswered,
+        ),
+        (
+            JournalEvent::WaitResolvedEvent {
+                run,
+                seq: EventSeq::new(15),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            RecordKind::WaitResolved,
+        ),
+        (
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(16),
+                step: StepIdx::new(7),
+                attempt: 1,
+            },
+            RecordKind::RetryScheduled,
+        ),
+        (
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(17),
+                attempt: 1,
+                reason: Some("operator".to_owned()),
+            },
+            RecordKind::RunCancelled,
+        ),
+        (
+            JournalEvent::RunKilled {
+                run,
+                seq: EventSeq::new(18),
+                attempt: 1,
+            },
+            RecordKind::RunKilled,
+        ),
+        (
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(19),
+                result: SlotIdx::new(2),
+                attempt: 1,
+            },
+            RecordKind::RunFinished,
+        ),
+        (
+            JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(20),
+                attempt: 1,
+            },
+            RecordKind::RunFailed,
+        ),
+        (
+            JournalEvent::RunResumed {
+                run,
+                seq: EventSeq::new(21),
+                timestamp: chrono::Utc::now(),
+            },
+            RecordKind::RunResumed,
+        ),
+        (
+            JournalEvent::RunRetried {
+                run,
+                seq: EventSeq::new(22),
+                timestamp: chrono::Utc::now(),
+            },
+            RecordKind::RunRetried,
+        ),
+        (
+            JournalEvent::RunAnswered {
+                run,
+                seq: EventSeq::new(23),
+                slot_idx: SlotIdx::new(3),
+                answer: ConstValue::I64(7),
+                timestamp: chrono::Utc::now(),
+            },
+            RecordKind::RunAnswered,
+        ),
+        (
+            JournalEvent::AskTimedOutEvent {
+                run,
+                seq: EventSeq::new(24),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            RecordKind::AskTimedOut,
+        ),
+    ])
+}
+
+const SCHEMA_ONE_VERSION_FOR_TEST: u16 = 1;
+
+struct SchemaOneFixtureCase {
+    payload: SchemaOneJournalEventFixture,
+    expected: JournalEvent,
+    envelope_kind: RecordKind,
+}
+
+struct SchemaOneMissingFieldCase {
+    payload: SchemaOneMissingFieldFixture,
+    expected: JournalEvent,
+    envelope_kind: RecordKind,
+    name: &'static str,
+}
+
+#[allow(dead_code)]
+#[derive(serde::Serialize)]
+enum SchemaOneJournalEventFixture {
+    RunAccepted {
+        run: RunId,
+        seq: EventSeq,
+        workflow: WorkflowDigest,
+    },
+    RunAdmission {
+        run: RunId,
+        seq: EventSeq,
+        artifact_digest: WorkflowDigest,
+        granted_capabilities: CapabilitySet,
+        policy: RuntimePolicy,
+    },
+    StepStarted {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    StepSucceeded {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        output: SlotIdx,
+    },
+    ActionScheduled {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        action: ActionId,
+        attempt: u16,
+    },
+    ActionCompletedEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        action: ActionId,
+        attempt: u16,
+    },
+    ActionScheduledTicket {
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
+    },
+    ActionCompletedEnvelope {
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        output: SlotIdx,
+        outcome: DurableActionOutcome,
+        value: Vec<u8>,
+        encoded_len: u32,
+        taint: Taint,
+        value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
+    },
+    ActionFailedEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        action: ActionId,
+        attempt: u16,
+    },
+    ActionAbandoned {
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+    },
+    SlotWrittenEvent {
+        run: RunId,
+        seq: EventSeq,
+        slot: SlotIdx,
+        value: Option<Vec<u8>>,
+        extra: Option<Vec<u8>>,
+        attempt: u16,
+    },
+    WaitScheduledEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    AskScheduledEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    AskAnsweredEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    WaitResolvedEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    RetryScheduledEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+    RunCancelled {
+        run: RunId,
+        seq: EventSeq,
+        attempt: u16,
+        reason: Option<String>,
+    },
+    RunKilled {
+        run: RunId,
+        seq: EventSeq,
+        attempt: u16,
+    },
+    RunFinished {
+        run: RunId,
+        seq: EventSeq,
+        result: SlotIdx,
+        attempt: u16,
+    },
+    RunFailedEvent {
+        run: RunId,
+        seq: EventSeq,
+        attempt: u16,
+    },
+    RunResumed {
+        run: RunId,
+        seq: EventSeq,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    RunRetried {
+        run: RunId,
+        seq: EventSeq,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    RunAnswered {
+        run: RunId,
+        seq: EventSeq,
+        slot_idx: SlotIdx,
+        answer: ConstValue,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    AskTimedOutEvent {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
+}
+
+#[allow(dead_code)]
+#[derive(serde::Serialize)]
+enum SchemaOneMissingFieldFixture {
+    RunAccepted,
+    RunAdmission,
+    StepStarted,
+    StepSucceeded,
+    ActionScheduled,
+    ActionCompletedEvent,
+    ActionScheduledTicket {
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+    },
+    ActionCompletedEnvelope {
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        output: SlotIdx,
+        outcome: DurableActionOutcome,
+        value: Vec<u8>,
+        encoded_len: u32,
+        taint: Taint,
+        value_digest: [u8; 32],
+    },
+    ActionFailedEvent,
+    ActionAbandoned,
+    SlotWrittenEvent {
+        run: RunId,
+        seq: EventSeq,
+        slot: SlotIdx,
+        value: Option<Vec<u8>>,
+        attempt: u16,
+    },
+}
+
+fn schema_one_default_action_abi_digest_for_test() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; DIGEST_BYTES])
+}
+
+fn schema_one_timestamp_for_test(
+    offset_ms: i64,
+) -> Result<chrono::DateTime<chrono::Utc>, JournalError> {
+    let millis = 1_700_000_000_000_i64
+        .checked_add(offset_ms)
+        .ok_or(JournalError::InvalidEvent)?;
+    chrono::DateTime::<chrono::Utc>::from_timestamp_millis(millis).ok_or(JournalError::InvalidEvent)
+}
+
+fn schema_one_fixture_payload<T>(payload: &T) -> Result<Vec<u8>, JournalError>
+where
+    T: serde::Serialize + ?Sized,
+{
+    postcard::to_allocvec(payload).map_err(JournalError::Encode)
+}
+
+fn encode_schema_one_payload_bytes(
+    payload: &[u8],
+    envelope_kind: RecordKind,
+    sequence: EventSeq,
+) -> Result<Vec<u8>, JournalError> {
+    let payload_len =
+        super::payload::payload_len_u32(payload.len(), MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+    let mut bytes = super::payload::encode_record_payload(
+        MAGIC_JOURNAL_EVENT,
+        envelope_kind,
+        sequence.get(),
+        payload,
+        payload_len,
+    )?;
+    rewrite_schema_version_for_test(&mut bytes, SCHEMA_ONE_VERSION_FOR_TEST)?;
+    Ok(bytes)
+}
+
+fn encode_schema_one_fixture_record<T>(
+    payload_fixture: &T,
+    envelope_kind: RecordKind,
+    sequence: EventSeq,
+) -> Result<Vec<u8>, JournalError>
+where
+    T: serde::Serialize + ?Sized,
+{
+    let payload = schema_one_fixture_payload(payload_fixture)?;
+    encode_schema_one_payload_bytes(&payload, envelope_kind, sequence)
+}
+
+fn schema_one_fixture_cases() -> Result<Vec<SchemaOneFixtureCase>, JournalError> {
+    let run = RunId::new(99);
+    let digest = codec_sample_digest(0xCC);
+    let ticket = codec_action_ticket(run, StepIdx::new(8), ActionId::new(5));
+    let slot_value = postcard::to_allocvec(&SlotValue::I64(42)).map_err(JournalError::Encode)?;
+    let encoded_len =
+        u32::try_from(slot_value.len()).map_err(|_| JournalError::PayloadTooLarge {
+            len: u32::MAX,
+            max: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        })?;
+    let value_digest = *blake3::hash(&slot_value).as_bytes();
+    let resumed_at = schema_one_timestamp_for_test(21)?;
+    let retried_at = schema_one_timestamp_for_test(22)?;
+    let answered_at = schema_one_timestamp_for_test(23)?;
+
+    Ok(vec![
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            expected: JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            envelope_kind: RecordKind::RunAccepted,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: digest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+            expected: JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: digest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+            envelope_kind: RecordKind::RunAdmission,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::StepStarted {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+            expected: JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::StepStarted,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::StepSucceeded {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                output: SlotIdx::new(0),
+            },
+            expected: JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                output: SlotIdx::new(0),
+            },
+            envelope_kind: RecordKind::SlotWritten,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionScheduled {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            expected: JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::ActionScheduled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            expected: JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(3),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::ActionCompleted,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionScheduledTicket {
+                run,
+                seq: EventSeq::new(7),
+                ticket,
+                input: SlotIdx::new(0),
+                output: SlotIdx::new(1),
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            expected: JournalEvent::ActionScheduledTicket {
+                run,
+                seq: EventSeq::new(7),
+                ticket,
+                input: SlotIdx::new(0),
+                output: SlotIdx::new(1),
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            envelope_kind: RecordKind::ActionScheduled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionCompletedEnvelope {
+                run,
+                seq: EventSeq::new(8),
+                ticket,
+                output: SlotIdx::new(1),
+                outcome: DurableActionOutcome::Ready,
+                value: slot_value.clone(),
+                encoded_len,
+                taint: Taint::Clean,
+                value_digest,
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            expected: JournalEvent::ActionCompletedEnvelope {
+                run,
+                seq: EventSeq::new(8),
+                ticket,
+                output: SlotIdx::new(1),
+                outcome: DurableActionOutcome::Ready,
+                value: slot_value.clone(),
+                encoded_len,
+                taint: Taint::Clean,
+                value_digest,
+                action_abi_digest: codec_sample_digest(0xA1),
+            },
+            envelope_kind: RecordKind::ActionCompleted,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(4),
+                action: ActionId::new(2),
+                attempt: 1,
+            },
+            expected: JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(4),
+                action: ActionId::new(2),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::ActionFailed,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::ActionAbandoned {
+                run,
+                seq: EventSeq::new(10),
+                ticket,
+            },
+            expected: JournalEvent::ActionAbandoned {
+                run,
+                seq: EventSeq::new(10),
+                ticket,
+            },
+            envelope_kind: RecordKind::ActionAbandoned,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(11),
+                slot: SlotIdx::new(2),
+                value: Some(slot_value.clone()),
+                extra: None,
+                attempt: 1,
+            },
+            expected: JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(11),
+                slot: SlotIdx::new(2),
+                value: Some(slot_value.clone()),
+                extra: None,
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::SlotWritten,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(12),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            expected: JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(12),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::WaitScheduled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(13),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            expected: JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(13),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::AskScheduled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(14),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            expected: JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(14),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::AskAnswered,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::WaitResolvedEvent {
+                run,
+                seq: EventSeq::new(15),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            expected: JournalEvent::WaitResolvedEvent {
+                run,
+                seq: EventSeq::new(15),
+                step: StepIdx::new(5),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::WaitResolved,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(16),
+                step: StepIdx::new(7),
+                attempt: 1,
+            },
+            expected: JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(16),
+                step: StepIdx::new(7),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::RetryScheduled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunCancelled {
+                run,
+                seq: EventSeq::new(17),
+                attempt: 1,
+                reason: Some("operator".to_owned()),
+            },
+            expected: JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(17),
+                attempt: 1,
+                reason: Some("operator".to_owned()),
+            },
+            envelope_kind: RecordKind::RunCancelled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunKilled {
+                run,
+                seq: EventSeq::new(18),
+                attempt: 1,
+            },
+            expected: JournalEvent::RunKilled {
+                run,
+                seq: EventSeq::new(18),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::RunKilled,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunFinished {
+                run,
+                seq: EventSeq::new(19),
+                result: SlotIdx::new(2),
+                attempt: 1,
+            },
+            expected: JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(19),
+                result: SlotIdx::new(2),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::RunFinished,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunFailedEvent {
+                run,
+                seq: EventSeq::new(20),
+                attempt: 1,
+            },
+            expected: JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(20),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::RunFailed,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunResumed {
+                run,
+                seq: EventSeq::new(21),
+                timestamp: resumed_at,
+            },
+            expected: JournalEvent::RunResumed {
+                run,
+                seq: EventSeq::new(21),
+                timestamp: resumed_at,
+            },
+            envelope_kind: RecordKind::RunResumed,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunRetried {
+                run,
+                seq: EventSeq::new(22),
+                timestamp: retried_at,
+            },
+            expected: JournalEvent::RunRetried {
+                run,
+                seq: EventSeq::new(22),
+                timestamp: retried_at,
+            },
+            envelope_kind: RecordKind::RunRetried,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::RunAnswered {
+                run,
+                seq: EventSeq::new(23),
+                slot_idx: SlotIdx::new(3),
+                answer: ConstValue::I64(7),
+                timestamp: answered_at,
+            },
+            expected: JournalEvent::RunAnswered {
+                run,
+                seq: EventSeq::new(23),
+                slot_idx: SlotIdx::new(3),
+                answer: ConstValue::I64(7),
+                timestamp: answered_at,
+            },
+            envelope_kind: RecordKind::RunAnswered,
+        },
+        SchemaOneFixtureCase {
+            payload: SchemaOneJournalEventFixture::AskTimedOutEvent {
+                run,
+                seq: EventSeq::new(24),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            expected: JournalEvent::AskTimedOutEvent {
+                run,
+                seq: EventSeq::new(24),
+                step: StepIdx::new(6),
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::AskTimedOut,
+        },
+    ])
+}
+
+fn schema_one_missing_field_cases() -> Result<Vec<SchemaOneMissingFieldCase>, JournalError> {
+    let default_digest = schema_one_default_action_abi_digest_for_test();
+    let ticket_run = RunId::new(910);
+    let ticket = codec_action_ticket(ticket_run, StepIdx::new(4), ActionId::new(9));
+    let envelope_run = RunId::new(911);
+    let envelope_ticket = codec_action_ticket(envelope_run, StepIdx::new(5), ActionId::new(10));
+    let envelope_value =
+        postcard::to_allocvec(&SlotValue::Bool(true)).map_err(JournalError::Encode)?;
+    let envelope_len =
+        u32::try_from(envelope_value.len()).map_err(|_| JournalError::PayloadTooLarge {
+            len: u32::MAX,
+            max: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        })?;
+    let envelope_digest = *blake3::hash(&envelope_value).as_bytes();
+    let slot_run = RunId::new(912);
+    let slot_value = postcard::to_allocvec(&SlotValue::I64(64)).map_err(JournalError::Encode)?;
+
+    Ok(vec![
+        SchemaOneMissingFieldCase {
+            payload: SchemaOneMissingFieldFixture::ActionScheduledTicket {
+                run: ticket_run,
+                seq: EventSeq::new(3),
+                ticket,
+                input: SlotIdx::new(1),
+                output: SlotIdx::new(2),
+            },
+            expected: JournalEvent::ActionScheduledTicket {
+                run: ticket_run,
+                seq: EventSeq::new(3),
+                ticket,
+                input: SlotIdx::new(1),
+                output: SlotIdx::new(2),
+                action_abi_digest: default_digest,
+            },
+            envelope_kind: RecordKind::ActionScheduled,
+            name: "action scheduled ticket without action_abi_digest",
+        },
+        SchemaOneMissingFieldCase {
+            payload: SchemaOneMissingFieldFixture::ActionCompletedEnvelope {
+                run: envelope_run,
+                seq: EventSeq::new(4),
+                ticket: envelope_ticket,
+                output: SlotIdx::new(2),
+                outcome: DurableActionOutcome::Ready,
+                value: envelope_value.clone(),
+                encoded_len: envelope_len,
+                taint: Taint::Clean,
+                value_digest: envelope_digest,
+            },
+            expected: JournalEvent::ActionCompletedEnvelope {
+                run: envelope_run,
+                seq: EventSeq::new(4),
+                ticket: envelope_ticket,
+                output: SlotIdx::new(2),
+                outcome: DurableActionOutcome::Ready,
+                value: envelope_value,
+                encoded_len: envelope_len,
+                taint: Taint::Clean,
+                value_digest: envelope_digest,
+                action_abi_digest: default_digest,
+            },
+            envelope_kind: RecordKind::ActionCompleted,
+            name: "action completed envelope without action_abi_digest",
+        },
+        SchemaOneMissingFieldCase {
+            payload: SchemaOneMissingFieldFixture::SlotWrittenEvent {
+                run: slot_run,
+                seq: EventSeq::new(5),
+                slot: SlotIdx::new(3),
+                value: Some(slot_value.clone()),
+                attempt: 1,
+            },
+            expected: JournalEvent::SlotWrittenEvent {
+                run: slot_run,
+                seq: EventSeq::new(5),
+                slot: SlotIdx::new(3),
+                value: Some(slot_value),
+                extra: None,
+                attempt: 1,
+            },
+            envelope_kind: RecordKind::SlotWritten,
+            name: "slot written without extra",
+        },
+    ])
+}
+
+fn rewrite_schema_version_for_test(
+    bytes: &mut [u8],
+    schema_version: u16,
+) -> Result<(), JournalError> {
+    let version_bytes = schema_version.to_le_bytes();
+    let version = bytes.get_mut(4..6).ok_or(JournalError::UnexpectedEof)?;
+    version.copy_from_slice(&version_bytes);
+    let checksum = crc32c::crc32c(bytes.get(..CRC_OFFSET).ok_or(JournalError::UnexpectedEof)?);
+    let checksum_bytes = checksum.to_le_bytes();
+    let checksum_end = CRC_OFFSET.saturating_add(4);
+    let checksum_field = bytes
+        .get_mut(CRC_OFFSET..checksum_end)
+        .ok_or(JournalError::UnexpectedEof)?;
+    checksum_field.copy_from_slice(&checksum_bytes);
+    Ok(())
+}
 
 #[test]
 fn encode_decode_roundtrip_journal_event_run_accepted() -> Result<(), JournalError> {
@@ -408,6 +1438,116 @@ fn decode_record_journal_event_accepts_ask_timed_out_with_matching_kind() -> Res
     assert_eq!(envelope.record_kind, RecordKind::AskTimedOut.id());
     assert_eq!(decoded, event);
     Ok(())
+}
+
+fn assert_stable_payload_kind_mismatch(
+    event: &JournalEvent,
+    envelope_kind: RecordKind,
+    payload_kind: RecordKind,
+) -> Result<(), JournalError> {
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        envelope_kind,
+        event.seq().get(),
+        event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    rewrite_schema_version_for_test(&mut bytes, SCHEMA_ONE_VERSION_FOR_TEST)?;
+    match decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    ) {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: observed_envelope,
+            payload_kind: observed_payload,
+        }) if observed_envelope == envelope_kind.id() && observed_payload == payload_kind.id() => {
+            Ok(())
+        }
+        other => {
+            eprintln!(
+                "expected stable schema-1 envelope kind {} payload kind {} mismatch, got {other:?}",
+                envelope_kind.id(),
+                payload_kind.id()
+            );
+            Err(JournalError::InvalidEvent)
+        }
+    }
+}
+
+#[test]
+fn stable_schema_one_step_succeeded_payload_under_slot_written_envelope_is_rejected()
+-> Result<(), JournalError> {
+    let event = JournalEvent::StepSucceeded {
+        run: RunId::new(501),
+        seq: EventSeq::new(1),
+        step: StepIdx::new(2),
+        output: SlotIdx::new(3),
+    };
+    assert_stable_payload_kind_mismatch(&event, RecordKind::SlotWritten, RecordKind::StepSucceeded)
+}
+
+#[test]
+fn stable_schema_one_slot_written_payload_under_step_succeeded_envelope_is_rejected()
+-> Result<(), JournalError> {
+    let event = JournalEvent::SlotWrittenEvent {
+        run: RunId::new(502),
+        seq: EventSeq::new(2),
+        slot: SlotIdx::new(3),
+        value: None,
+        extra: None,
+        attempt: 1,
+    };
+    assert_stable_payload_kind_mismatch(&event, RecordKind::StepSucceeded, RecordKind::SlotWritten)
+}
+
+#[test]
+fn stable_schema_one_action_ticket_payload_under_legacy_action_scheduled_envelope_is_rejected()
+-> Result<(), JournalError> {
+    let run = RunId::new(503);
+    let ticket = codec_action_ticket(run, StepIdx::new(4), ActionId::new(9));
+    let event = JournalEvent::ActionScheduledTicket {
+        run,
+        seq: EventSeq::new(3),
+        ticket,
+        input: SlotIdx::new(1),
+        output: SlotIdx::new(2),
+        action_abi_digest: codec_sample_digest(0xA2),
+    };
+    assert_stable_payload_kind_mismatch(
+        &event,
+        RecordKind::ActionScheduled,
+        RecordKind::ActionScheduledTicket,
+    )
+}
+
+#[test]
+fn stable_schema_one_action_envelope_payload_under_legacy_action_completed_envelope_is_rejected()
+-> Result<(), JournalError> {
+    let run = RunId::new(504);
+    let ticket = codec_action_ticket(run, StepIdx::new(5), ActionId::new(10));
+    let value = postcard::to_allocvec(&SlotValue::Bool(true)).map_err(JournalError::Encode)?;
+    let encoded_len = u32::try_from(value.len()).map_err(|_| JournalError::PayloadTooLarge {
+        len: u32::MAX,
+        max: MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    })?;
+    let event = JournalEvent::ActionCompletedEnvelope {
+        run,
+        seq: EventSeq::new(4),
+        ticket,
+        output: SlotIdx::new(2),
+        outcome: DurableActionOutcome::Ready,
+        value: value.clone(),
+        encoded_len,
+        taint: Taint::Clean,
+        value_digest: *blake3::hash(&value).as_bytes(),
+        action_abi_digest: codec_sample_digest(0xA3),
+    };
+    assert_stable_payload_kind_mismatch(
+        &event,
+        RecordKind::ActionCompleted,
+        RecordKind::ActionCompletedEnvelope,
+    )
 }
 
 #[test]
@@ -1067,6 +2207,33 @@ fn kind_31_wait_resolved_record_roundtrip() -> Result<(), JournalError> {
 }
 
 #[test]
+fn journal_event_payload_starts_with_record_kind_tag() -> Result<(), JournalError> {
+    let event = JournalEvent::StepSucceeded {
+        run: RunId::new(72),
+        seq: EventSeq::new(10),
+        step: StepIdx::new(7),
+        output: SlotIdx::new(3),
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::StepSucceeded,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let tag = bytes
+        .get(RECORD_HEADER_BYTES)
+        .copied()
+        .ok_or(JournalError::UnexpectedEof)?;
+    assert_eq!(
+        tag,
+        u8::try_from(RecordKind::StepSucceeded.id()).unwrap_or(u8::MAX),
+        "first postcard payload byte must be the stable RecordKind tag, not enum-order or seq length"
+    );
+    Ok(())
+}
+
+#[test]
 fn encode_decode_roundtrip_run_failed() -> Result<(), JournalError> {
     let event = JournalEvent::RunFailedEvent {
         run: RunId::new(80),
@@ -1334,9 +2501,12 @@ fn record_kind_ids_are_distinct() {
         RecordKind::RunHeader,
         RecordKind::RunAccepted,
         RecordKind::StepStarted,
+        RecordKind::StepSucceeded,
         RecordKind::SlotWritten,
         RecordKind::ActionScheduled,
+        RecordKind::ActionScheduledTicket,
         RecordKind::ActionCompleted,
+        RecordKind::ActionCompletedEnvelope,
         RecordKind::ActionFailed,
         RecordKind::WaitScheduled,
         RecordKind::AskScheduled,
@@ -1346,7 +2516,15 @@ fn record_kind_ids_are_distinct() {
         RecordKind::RunCancelled,
         RecordKind::RunFinished,
         RecordKind::RunFailed,
+        RecordKind::RunAdmission,
+        RecordKind::RunResumed,
+        RecordKind::RunRetried,
+        RecordKind::RunAnswered,
+        RecordKind::RunKilled,
+        RecordKind::AskTimedOut,
         RecordKind::Snapshot,
+        RecordKind::WaitResolved,
+        RecordKind::ActionAbandoned,
         RecordKind::Blob,
         RecordKind::IndexUpdate,
     ];
@@ -1380,7 +2558,18 @@ fn record_kind_ids_match_discriminant_values() {
     assert_eq!(RecordKind::RunCancelled.id(), 21);
     assert_eq!(RecordKind::RunFinished.id(), 22);
     assert_eq!(RecordKind::RunFailed.id(), 23);
+    assert_eq!(RecordKind::RunAdmission.id(), 24);
+    assert_eq!(RecordKind::RunResumed.id(), 25);
+    assert_eq!(RecordKind::RunRetried.id(), 26);
+    assert_eq!(RecordKind::RunAnswered.id(), 27);
+    assert_eq!(RecordKind::RunKilled.id(), 28);
+    assert_eq!(RecordKind::AskTimedOut.id(), 29);
     assert_eq!(RecordKind::Snapshot.id(), 30);
+    assert_eq!(RecordKind::WaitResolved.id(), 31);
+    assert_eq!(RecordKind::ActionAbandoned.id(), 32);
+    assert_eq!(RecordKind::StepSucceeded.id(), 33);
+    assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
+    assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
     assert_eq!(RecordKind::Blob.id(), 40);
     assert_eq!(RecordKind::IndexUpdate.id(), 50);
 }
@@ -1496,7 +2685,7 @@ fn encode_rejects_payload_one_byte_over_max() -> Result<(), JournalError> {
 }
 
 #[test]
-fn decode_ignores_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
+fn decode_rejects_trailing_bytes_beyond_declared_payload() -> Result<(), JournalError> {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(1),
         seq: EventSeq::new(0),
@@ -1514,12 +2703,17 @@ fn decode_ignores_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
     bytes.push(0xFF);
     bytes.push(0xFE);
     bytes.push(0xFD);
-    let (_, decoded) = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-    assert_eq!(decoded, event, "trailing bytes should be ignored on decode");
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::PostcardDecodeFailed(
+                postcard::Error::DeserializeBadEncoding
+            ))
+        ),
+        "bytes beyond RECORD_HEADER_BYTES + payload_len must be rejected, got {result:?}"
+    );
     Ok(())
 }
 
@@ -1615,7 +2809,7 @@ fn encode_accepts_run_header_kind_with_index_record_magic() -> Result<(), Journa
 }
 
 #[test]
-fn step_succeeded_event_maps_to_slot_written_kind() {
+fn step_succeeded_event_maps_to_unique_kind() {
     let event = JournalEvent::StepSucceeded {
         run: RunId::new(1),
         seq: EventSeq::new(0),
@@ -1624,8 +2818,8 @@ fn step_succeeded_event_maps_to_slot_written_kind() {
     };
     assert_eq!(
         event.record_kind(),
-        RecordKind::SlotWritten,
-        "StepSucceeded event should map to SlotWritten record kind"
+        RecordKind::StepSucceeded,
+        "StepSucceeded event should map to its unique record kind"
     );
 }
 
@@ -1894,141 +3088,7 @@ fn sequential_cycles_with_varying_kinds() -> Result<(), JournalError> {
 
 #[test]
 fn all_journal_event_kinds_encode_and_decode_correctly() -> Result<(), JournalError> {
-    let run = RunId::new(99);
-    let digest = WorkflowDigest::from_bytes([0xCC; DIGEST_BYTES]);
-
-    let events_and_kinds: Vec<(JournalEvent, RecordKind)> = vec![
-        (
-            JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(0),
-                workflow: digest,
-            },
-            RecordKind::RunAccepted,
-        ),
-        (
-            JournalEvent::StepStarted {
-                run,
-                seq: EventSeq::new(1),
-                step: StepIdx::new(0),
-                attempt: 1,
-            },
-            RecordKind::StepStarted,
-        ),
-        (
-            JournalEvent::StepSucceeded {
-                run,
-                seq: EventSeq::new(2),
-                step: StepIdx::new(0),
-                output: SlotIdx::new(0),
-            },
-            RecordKind::SlotWritten,
-        ),
-        (
-            JournalEvent::ActionScheduled {
-                run,
-                seq: EventSeq::new(3),
-                step: StepIdx::new(0),
-                action: vb_core::ActionId::new(1),
-                attempt: 1,
-            },
-            RecordKind::ActionScheduled,
-        ),
-        (
-            JournalEvent::ActionCompletedEvent {
-                run,
-                seq: EventSeq::new(4),
-                step: StepIdx::new(0),
-                action: vb_core::ActionId::new(1),
-                attempt: 1,
-            },
-            RecordKind::ActionCompleted,
-        ),
-        (
-            JournalEvent::ActionFailedEvent {
-                run,
-                seq: EventSeq::new(5),
-                step: StepIdx::new(1),
-                action: vb_core::ActionId::new(2),
-                attempt: 1,
-            },
-            RecordKind::ActionFailed,
-        ),
-        (
-            JournalEvent::SlotWrittenEvent {
-                run,
-                seq: EventSeq::new(6),
-                slot: SlotIdx::new(0),
-                value: None,
-                extra: None,
-                attempt: 1,
-            },
-            RecordKind::SlotWritten,
-        ),
-        (
-            JournalEvent::WaitScheduledEvent {
-                run,
-                seq: EventSeq::new(7),
-                step: StepIdx::new(1),
-                attempt: 1,
-            },
-            RecordKind::WaitScheduled,
-        ),
-        (
-            JournalEvent::AskScheduledEvent {
-                run,
-                seq: EventSeq::new(8),
-                step: StepIdx::new(2),
-                attempt: 1,
-            },
-            RecordKind::AskScheduled,
-        ),
-        (
-            JournalEvent::AskAnsweredEvent {
-                run,
-                seq: EventSeq::new(9),
-                step: StepIdx::new(2),
-                attempt: 1,
-            },
-            RecordKind::AskAnswered,
-        ),
-        (
-            JournalEvent::RetryScheduledEvent {
-                run,
-                seq: EventSeq::new(10),
-                step: StepIdx::new(1),
-                attempt: 1,
-            },
-            RecordKind::RetryScheduled,
-        ),
-        (
-            JournalEvent::RunCancelled {
-                run,
-                seq: EventSeq::new(11),
-                attempt: 1,
-                reason: None,
-            },
-            RecordKind::RunCancelled,
-        ),
-        (
-            JournalEvent::RunFinished {
-                run,
-                seq: EventSeq::new(12),
-                result: SlotIdx::new(1),
-                attempt: 1,
-            },
-            RecordKind::RunFinished,
-        ),
-        (
-            JournalEvent::RunFailedEvent {
-                run,
-                seq: EventSeq::new(13),
-                attempt: 1,
-            },
-            RecordKind::RunFailed,
-        ),
-    ];
-
+    let events_and_kinds = all_journal_event_cases()?;
     for (i, (event, expected_kind)) in events_and_kinds.iter().enumerate() {
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -2056,6 +3116,9 @@ fn all_journal_event_kinds_encode_and_decode_correctly() -> Result<(), JournalEr
 
 #[test]
 fn kind_id_matches_wire_value_for_every_variant() {
+    assert_eq!(RecordKind::WorkflowSource.id(), 1);
+    assert_eq!(RecordKind::CompiledIr.id(), 2);
+    assert_eq!(RecordKind::RunHeader.id(), 3);
     assert_eq!(RecordKind::RunAccepted.id(), 10);
     assert_eq!(RecordKind::StepStarted.id(), 11);
     assert_eq!(RecordKind::SlotWritten.id(), 12);
@@ -2070,7 +3133,18 @@ fn kind_id_matches_wire_value_for_every_variant() {
     assert_eq!(RecordKind::RunCancelled.id(), 21);
     assert_eq!(RecordKind::RunFinished.id(), 22);
     assert_eq!(RecordKind::RunFailed.id(), 23);
+    assert_eq!(RecordKind::RunAdmission.id(), 24);
+    assert_eq!(RecordKind::RunResumed.id(), 25);
+    assert_eq!(RecordKind::RunRetried.id(), 26);
+    assert_eq!(RecordKind::RunAnswered.id(), 27);
+    assert_eq!(RecordKind::RunKilled.id(), 28);
+    assert_eq!(RecordKind::AskTimedOut.id(), 29);
     assert_eq!(RecordKind::Snapshot.id(), 30);
+    assert_eq!(RecordKind::WaitResolved.id(), 31);
+    assert_eq!(RecordKind::ActionAbandoned.id(), 32);
+    assert_eq!(RecordKind::StepSucceeded.id(), 33);
+    assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
+    assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
     assert_eq!(RecordKind::Blob.id(), 40);
     assert_eq!(RecordKind::IndexUpdate.id(), 50);
 }
@@ -2114,111 +3188,10 @@ fn decode_rejects_old_schema_version_with_migration_required() -> Result<(), Jou
 
 #[test]
 fn every_event_variant_roundtrips_via_record_kind_method() -> Result<(), JournalError> {
-    let run = RunId::new(42);
-    let digest = WorkflowDigest::from_bytes([0xAA; DIGEST_BYTES]);
-    let slot_bytes =
-        postcard::to_allocvec(&vb_core::SlotValue::Bool(true)).map_err(JournalError::Encode)?;
-
-    let events: Vec<JournalEvent> = vec![
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        },
-        JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-            attempt: 1,
-        },
-        JournalEvent::StepSucceeded {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::new(0),
-            output: SlotIdx::new(0),
-        },
-        JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(3),
-            step: StepIdx::new(0),
-            action: vb_core::ActionId::new(1),
-            attempt: 1,
-        },
-        JournalEvent::ActionCompletedEvent {
-            run,
-            seq: EventSeq::new(4),
-            step: StepIdx::new(0),
-            action: vb_core::ActionId::new(1),
-            attempt: 1,
-        },
-        JournalEvent::ActionFailedEvent {
-            run,
-            seq: EventSeq::new(5),
-            step: StepIdx::new(1),
-            action: vb_core::ActionId::new(2),
-            attempt: 1,
-        },
-        JournalEvent::SlotWrittenEvent {
-            run,
-            seq: EventSeq::new(6),
-            slot: SlotIdx::new(0),
-            value: None,
-            extra: None,
-            attempt: 1,
-        },
-        JournalEvent::SlotWrittenEvent {
-            run,
-            seq: EventSeq::new(7),
-            slot: SlotIdx::new(1),
-            value: Some(slot_bytes),
-            extra: None,
-            attempt: 1,
-        },
-        JournalEvent::WaitScheduledEvent {
-            run,
-            seq: EventSeq::new(8),
-            step: StepIdx::new(1),
-            attempt: 1,
-        },
-        JournalEvent::AskScheduledEvent {
-            run,
-            seq: EventSeq::new(9),
-            step: StepIdx::new(2),
-            attempt: 1,
-        },
-        JournalEvent::AskAnsweredEvent {
-            run,
-            seq: EventSeq::new(10),
-            step: StepIdx::new(2),
-            attempt: 1,
-        },
-        JournalEvent::RetryScheduledEvent {
-            run,
-            seq: EventSeq::new(11),
-            step: StepIdx::new(1),
-            attempt: 1,
-        },
-        JournalEvent::RunCancelled {
-            run,
-            seq: EventSeq::new(12),
-            attempt: 1,
-            reason: None,
-        },
-        JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(13),
-            result: SlotIdx::new(0),
-            attempt: 1,
-        },
-        JournalEvent::RunFailedEvent {
-            run,
-            seq: EventSeq::new(14),
-            attempt: 1,
-        },
-    ];
-
-    for (i, event) in events.iter().enumerate() {
+    let cases = all_journal_event_cases()?;
+    for (i, (event, expected_kind)) in cases.iter().enumerate() {
         let kind = event.record_kind();
+        assert_eq!(kind, *expected_kind, "record_kind mismatch at index {i}");
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
             kind,
@@ -2226,6 +3199,11 @@ fn every_event_variant_roundtrips_via_record_kind_method() -> Result<(), Journal
             event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
+        assert_eq!(
+            bytes.get(RECORD_HEADER_BYTES).copied(),
+            Some(u8::try_from(kind.id()).unwrap_or(u8::MAX)),
+            "first postcard payload tag must be stable RecordKind id at index {i}"
+        );
         let (envelope, decoded) = decode_record::<JournalEvent>(
             &bytes,
             MAGIC_JOURNAL_EVENT,
@@ -2247,6 +3225,238 @@ fn every_event_variant_roundtrips_via_record_kind_method() -> Result<(), Journal
         );
         assert_eq!(decoded, *event, "payload mismatch at index {i}");
     }
+    Ok(())
+}
+
+#[test]
+fn schema_one_fixture_payloads_decode_for_unchanged_envelope_kinds() -> Result<(), JournalError> {
+    let cases = schema_one_fixture_cases()?;
+    let mut checked = 0usize;
+    for (i, case) in cases.iter().enumerate() {
+        if case.envelope_kind != case.expected.record_kind() {
+            continue;
+        }
+        let bytes = encode_schema_one_fixture_record(
+            &case.payload,
+            case.envelope_kind,
+            case.expected.seq(),
+        )?;
+        let (envelope, decoded) = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        assert_eq!(
+            envelope.schema_version, SCHEMA_ONE_VERSION_FOR_TEST,
+            "schema-one fixture compatibility must be explicit schema 1 at index {i}"
+        );
+        assert_eq!(envelope.record_kind, case.envelope_kind.id());
+        assert_eq!(
+            decoded, case.expected,
+            "schema-one fixture decode mismatch at index {i}"
+        );
+        checked = checked.saturating_add(1);
+    }
+    assert_eq!(
+        checked, 21,
+        "schema-one ordinal fixture decode must cover unchanged envelope kinds only"
+    );
+    Ok(())
+}
+
+#[test]
+fn schema_one_fixture_shared_envelope_records_decode_through_compatibility_path()
+-> Result<(), JournalError> {
+    let cases = schema_one_fixture_cases()?;
+    let mut checked = 0usize;
+    for (i, case) in cases.iter().enumerate() {
+        if case.envelope_kind == case.expected.record_kind() {
+            continue;
+        }
+        let bytes = encode_schema_one_fixture_record(
+            &case.payload,
+            case.envelope_kind,
+            case.expected.seq(),
+        )?;
+        let (envelope, decoded) =
+            decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+        assert_eq!(
+            envelope.schema_version, SCHEMA_ONE_VERSION_FOR_TEST,
+            "shared-envelope fixture path must be explicit schema 1 at index {i}"
+        );
+        assert_eq!(
+            envelope.record_kind,
+            case.envelope_kind.id(),
+            "old envelope kind mismatch at index {i}"
+        );
+        assert_eq!(
+            decoded, case.expected,
+            "shared-envelope fixture decode mismatch at index {i}"
+        );
+        checked = checked.saturating_add(1);
+    }
+    assert_eq!(
+        checked, 3,
+        "schema-one compatibility must cover exactly the three old shared-envelope records"
+    );
+    Ok(())
+}
+
+#[test]
+fn schema_one_missing_default_fields_decode_with_historical_defaults() -> Result<(), JournalError> {
+    let cases = schema_one_missing_field_cases()?;
+    for case in &cases {
+        let bytes = encode_schema_one_fixture_record(
+            &case.payload,
+            case.envelope_kind,
+            case.expected.seq(),
+        )?;
+        let (envelope, decoded) =
+            decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+        assert_eq!(
+            envelope.schema_version, SCHEMA_ONE_VERSION_FOR_TEST,
+            "{} must remain a schema-one fixture",
+            case.name
+        );
+        assert_eq!(
+            envelope.record_kind,
+            case.envelope_kind.id(),
+            "{} envelope kind changed",
+            case.name
+        );
+        assert_eq!(
+            decoded, case.expected,
+            "{} must decode with historical default values",
+            case.name
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn schema_one_fixture_unchanged_envelope_rejects_trailing_postcard_bytes()
+-> Result<(), JournalError> {
+    let case = SchemaOneFixtureCase {
+        payload: SchemaOneJournalEventFixture::RunAccepted {
+            run: RunId::new(901),
+            seq: EventSeq::new(1),
+            workflow: codec_sample_digest(0x91),
+        },
+        expected: JournalEvent::RunAccepted {
+            run: RunId::new(901),
+            seq: EventSeq::new(1),
+            workflow: codec_sample_digest(0x91),
+        },
+        envelope_kind: RecordKind::RunAccepted,
+    };
+    let mut payload = schema_one_fixture_payload(&case.payload)?;
+    payload.push(0x00);
+    let bytes = encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::PostcardDecodeFailed(
+                postcard::Error::DeserializeBadEncoding
+            ))
+        ),
+        "schema-one unchanged-envelope fixture with trailing bytes must be rejected, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn schema_one_fixture_shared_envelope_rejects_trailing_postcard_bytes() -> Result<(), JournalError>
+{
+    let cases = schema_one_fixture_cases()?;
+    let mut checked = 0usize;
+    for (i, case) in cases.iter().enumerate() {
+        if case.envelope_kind == case.expected.record_kind() {
+            continue;
+        }
+        let mut payload = schema_one_fixture_payload(&case.payload)?;
+        payload.push(0x00);
+        let bytes =
+            encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+
+        let result =
+            decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::PostcardDecodeFailed(
+                    postcard::Error::DeserializeBadEncoding
+                ))
+            ),
+            "schema-one shared-envelope fixture with trailing bytes must be rejected at index {i}, got {result:?}"
+        );
+        checked = checked.saturating_add(1);
+    }
+    assert_eq!(
+        checked, 3,
+        "trailing-byte rejection must cover exactly the three schema-one shared-envelope cases"
+    );
+    Ok(())
+}
+
+#[test]
+fn schema_one_missing_default_field_payloads_reject_trailing_postcard_bytes()
+-> Result<(), JournalError> {
+    let cases = schema_one_missing_field_cases()?;
+    for case in &cases {
+        let mut payload = schema_one_fixture_payload(&case.payload)?;
+        payload.push(0x00);
+        let bytes =
+            encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+        let result =
+            decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::PostcardDecodeFailed(
+                    postcard::Error::DeserializeBadEncoding
+                ))
+            ),
+            "{} fixture with trailing bytes must be rejected, got {result:?}",
+            case.name
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn workflow_source_payload_rejects_digest_valid_trailing_postcard_bytes() -> Result<(), JournalError>
+{
+    let source = b"workflow: exact-consumption".to_vec();
+    let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+    let record = WorkflowSourceRecord { digest, source };
+    let mut payload = postcard::to_allocvec(&record).map_err(JournalError::Encode)?;
+    payload.push(0x00);
+    let payload_len = super::payload::payload_len_u32(payload.len(), MAX_WORKFLOW_SOURCE_BYTES)?;
+    let bytes = super::payload::encode_record_payload(
+        MAGIC_WORKFLOW_SOURCE,
+        RecordKind::WorkflowSource,
+        0,
+        &payload,
+        payload_len,
+    )?;
+
+    let result = decode_record::<WorkflowSourceRecord>(
+        &bytes,
+        MAGIC_WORKFLOW_SOURCE,
+        MAX_WORKFLOW_SOURCE_BYTES,
+    );
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::PostcardDecodeFailed(
+                postcard::Error::DeserializeBadEncoding
+            ))
+        ),
+        "non-journal decode_record payload with digest-valid trailing bytes must be rejected, got {result:?}"
+    );
     Ok(())
 }
 
@@ -2489,7 +3699,9 @@ fn magic_journal_event_accepts_all_journal_event_kinds() -> Result<(), JournalEr
         RecordKind::StepStarted,
         RecordKind::SlotWritten,
         RecordKind::ActionScheduled,
+        RecordKind::ActionScheduledTicket,
         RecordKind::ActionCompleted,
+        RecordKind::ActionCompletedEnvelope,
         RecordKind::ActionFailed,
         RecordKind::WaitScheduled,
         RecordKind::AskScheduled,
@@ -2497,8 +3709,16 @@ fn magic_journal_event_accepts_all_journal_event_kinds() -> Result<(), JournalEr
         RecordKind::RetryScheduled,
         RecordKind::StepFailed,
         RecordKind::RunCancelled,
+        RecordKind::RunKilled,
+        RecordKind::AskTimedOut,
+        RecordKind::WaitResolved,
+        RecordKind::ActionAbandoned,
         RecordKind::RunFinished,
         RecordKind::RunFailed,
+        RecordKind::RunAdmission,
+        RecordKind::RunResumed,
+        RecordKind::RunRetried,
+        RecordKind::RunAnswered,
     ];
     let payload: Vec<u8> = vec![0u8; 4];
     for kind in &journal_kinds {
@@ -2550,6 +3770,39 @@ fn corrupted_payload_byte_is_detected() -> Result<(), JournalError> {
             result
         );
     }
+    Ok(())
+}
+
+#[test]
+fn forged_payload_trailing_postcard_bytes_are_rejected_exactly() -> Result<(), JournalError> {
+    let event = JournalEvent::RunAccepted {
+        run: RunId::new(43),
+        seq: EventSeq::new(0),
+        workflow: WorkflowDigest::from_bytes([1; DIGEST_BYTES]),
+    };
+    let mut payload = postcard::to_allocvec(&event).map_err(JournalError::Encode)?;
+    payload.push(0x00);
+    let payload_len =
+        super::payload::payload_len_u32(payload.len(), MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+    let bytes = super::payload::encode_record_payload(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        event.seq().get(),
+        &payload,
+        payload_len,
+    )?;
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::PostcardDecodeFailed(
+                postcard::Error::DeserializeBadEncoding
+            ))
+        ),
+        "payload with digest-valid trailing postcard bytes must yield exact PostcardDecodeFailed(DeserializeBadEncoding), got {:?}",
+        result
+    );
     Ok(())
 }
 

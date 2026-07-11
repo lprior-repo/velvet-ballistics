@@ -7,7 +7,7 @@ use vb_compile::{CompileError, CompileErrors, compile_workflow};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, StepIdx};
 
 const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: nested-do-lowering\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: nested_do_lowering\nwhen:\n  manual: {}\nsteps:\n";
 
 /// Tests that a `repeat` primitive with a `do` body lowers to final IR.
 #[test]

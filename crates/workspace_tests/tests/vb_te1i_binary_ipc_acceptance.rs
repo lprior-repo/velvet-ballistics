@@ -29,10 +29,24 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 
 /// Path to a temporary server socket. Each test uses a unique path.
+///
+/// Linux `unix(7)` `sun_path` is bounded by `SUN_LEN` (108) bytes. We
+/// bypass `std::env::temp_dir()` because cargo and moon set `TMPDIR` to
+/// deep worktree paths (e.g. `$PWD/target/tmp`), which pushes the
+/// concatenated socket path past the limit and makes `bind(2)` fail with
+/// `EINVAL: path must be shorter than SUN_LEN`. Using a fixed short parent
+/// (`/tmp`) keeps every per-test path well below 108 bytes. Per-test
+/// uniqueness is guaranteed by the process id (parallel cargo test workers)
+/// and a static monotonic counter (successive invocations within the same
+/// process). Any stale socket from a prior run is removed by `IpcServer::bind`
+/// via `remove_file`.
 fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "vb_te1i_ipc_acceptance_test_{name}_{}",
-        std::process::id()
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let pid = std::process::id();
+    let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::path::PathBuf::from("/tmp").join(format!(
+        "vb_te1i_ipc_acceptance_test_{name}_{pid}_{counter:04x}.sock"
     ))
 }
 

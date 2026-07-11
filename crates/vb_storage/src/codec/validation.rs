@@ -1,14 +1,13 @@
-use crate::{
-    constants::{
-        CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
-    },
-    error::JournalError,
-    records::RecordKind,
-};
+use crate::{constants::CURRENT_SCHEMA_VERSION, error::JournalError, records::RecordKind};
+
+const SCHEMA_ONE_VERSION: u16 = 1;
+
+pub(crate) const fn is_schema_one_version(version: u16) -> bool {
+    version == SCHEMA_ONE_VERSION
+}
 
 pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> {
-    if version == CURRENT_SCHEMA_VERSION {
+    if version == CURRENT_SCHEMA_VERSION || is_schema_one_version(version) {
         Ok(())
     } else if version < CURRENT_SCHEMA_VERSION {
         Err(JournalError::MigrationRequired {
@@ -21,7 +20,7 @@ pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> 
 }
 
 pub(crate) const fn is_known_record_kind(kind: u16) -> bool {
-    matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 32 | 40 | 50)
+    RecordKind::from_id(kind).is_some()
 }
 
 pub(crate) const fn unknown_record_kind_value(kind: u16) -> Option<u16> {
@@ -40,22 +39,9 @@ pub(crate) fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
 }
 
 pub(crate) fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
-    let valid = match magic {
-        MAGIC_WORKFLOW_SOURCE => kind == RecordKind::WorkflowSource.id(),
-        MAGIC_COMPILED_ARTIFACT => kind == RecordKind::CompiledIr.id(),
-        MAGIC_JOURNAL_EVENT => {
-            matches!(kind, 10..=29)
-                || kind == RecordKind::WaitResolved.id()
-                || kind == RecordKind::ActionAbandoned.id()
-        }
-        MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
-        MAGIC_BLOB => kind == RecordKind::Blob.id(),
-        MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),
-        _ => false,
-    };
-    if valid {
-        Ok(())
-    } else {
-        Err(JournalError::RecordKindFamilyMismatch { magic, kind })
+    match RecordKind::from_id(kind) {
+        Some(record_kind) if record_kind.belongs_to_magic(magic) => Ok(()),
+        Some(_) => Err(JournalError::RecordKindFamilyMismatch { magic, kind }),
+        None => Err(JournalError::UnknownRecordKind { kind }),
     }
 }

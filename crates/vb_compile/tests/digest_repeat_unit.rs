@@ -9,8 +9,9 @@
 //!
 //! All tests use the public `compile_workflow` and `compile_source` APIs.
 
-use vb_compile::parse_workflow_source;
-use vb_compile::{compile_source, compile_workflow};
+use vb_compile::{
+    CompileError, CompileErrors, compile_source, compile_workflow, parse_workflow_source,
+};
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: repeat_digest_unit\nwhen:\n  manual: {}\nsteps:\n";
@@ -30,6 +31,23 @@ fn compile_workflow_from_steps(steps: &str) -> Result<vb_core::CompiledWorkflow,
             .collect::<Vec<_>>()
             .join("; ")
     })
+}
+
+fn compile_workflow_errors_from_steps(steps: &str) -> Result<CompileErrors, String> {
+    let yaml = workflow_yaml(steps);
+    match compile_workflow(yaml.as_bytes()) {
+        Ok(workflow) => Err(format!(
+            "expected compile error, got workflow with {} nodes",
+            workflow.node_count()
+        )),
+        Err(errors) => Ok(errors),
+    }
+}
+
+fn first_compile_error(errors: &CompileErrors) -> Result<&CompileError, String> {
+    errors
+        .first()
+        .ok_or_else(|| String::from("CompileErrors contained no first error"))
 }
 
 fn compile_source_from_steps(steps: &str) -> Result<vb_core::CompiledWorkflow, String> {
@@ -212,17 +230,20 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 fn test_repeat_multi_step_body_rejected() {
     let steps_multi = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n        - id: b\n          set:\n            output: out2\n            value: \"20\"\n        - id: c\n          set:\n            output: out3\n            value: \"30\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let result = compile_workflow_from_steps(steps_multi);
-
-    assert!(
-        result.is_err(),
-        "multi-step repeat body must be rejected by lowering validation"
-    );
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("exactly one set step") || err.contains("step"),
-        "multi-step body rejection error must mention step constraint, got: {err}"
-    );
+    let errors = compile_workflow_errors_from_steps(steps_multi)
+        .expect("multi-step repeat body must be rejected by lowering validation");
+    let first = first_compile_error(&errors).expect("compile error list must be non-empty");
+    match first {
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected,
+        } => assert_eq!(
+            (*step, *field, *expected),
+            (0, "steps", "exactly one set step")
+        ),
+        other => panic!("expected StepFieldShape for multi-step repeat body, got {other:?}"),
+    }
 }
 
 // =========================================================================
@@ -302,17 +323,20 @@ fn test_repeat_different_set_output_changes_digest() {
 fn test_repeat_empty_body_rejected_with_step_field_shape() {
     let steps_empty = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps: []\n  - id: done\n    finish:\n      result: 0\n";
 
-    let result = compile_workflow_from_steps(steps_empty);
-
-    assert!(
-        result.is_err(),
-        "repeat with empty body (body: []) must fail to compile"
-    );
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("step"),
-        "empty repeat body error must mention 'step', got: {err}"
-    );
+    let errors = compile_workflow_errors_from_steps(steps_empty)
+        .expect("repeat with empty body (body: []) must fail to compile");
+    let first = first_compile_error(&errors).expect("compile error list must be non-empty");
+    match first {
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected,
+        } => assert_eq!(
+            (*step, *field, *expected),
+            (0, "steps", "exactly one set step")
+        ),
+        other => panic!("expected StepFieldShape for empty repeat body, got {other:?}"),
+    }
 }
 
 /// PO-010 extended: Same config cross-path (compile_workflow vs compile_source).

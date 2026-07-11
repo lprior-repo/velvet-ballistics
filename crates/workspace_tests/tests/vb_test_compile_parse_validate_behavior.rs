@@ -27,6 +27,13 @@ fn all_errors(source: &[u8]) -> Vec<CompileError> {
     }
 }
 
+fn compile_errors(source: &[u8]) -> Vec<CompileError> {
+    match compile_workflow(source) {
+        Ok(workflow) => panic!("compile_workflow unexpectedly succeeded: {workflow:?}"),
+        Err(CompileErrors(errors)) => errors,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Parse Error Detection — Empty Source
 // ---------------------------------------------------------------------------
@@ -687,6 +694,36 @@ steps:
 }
 
 #[test]
+fn compile_rejects_webhook_trigger_configuration_fields() {
+    let source = br#"
+version: velvet-ballistics/v1
+name: webhook_with_path
+when:
+  webhook:
+    path: "/deploy"
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+    let errors = compile_errors(source);
+    let rejected_extra_field = errors.iter().any(|error| match error {
+        CompileError::UnknownTriggerField {
+            trigger: "webhook",
+            field,
+        } => field.as_ref() == "path",
+        CompileError::CanonicalYaml { category, message } => {
+            *category == "field_shape" && message.contains("when.webhook")
+        }
+        _ => false,
+    });
+    assert!(
+        rejected_extra_field,
+        "webhook trigger must stay empty per master contract: {errors:?}"
+    );
+}
+
+#[test]
 fn compile_produces_valid_workflow_with_schedule_trigger() {
     let source = br#"
 version: velvet-ballistics/v1
@@ -703,6 +740,134 @@ steps:
     assert!(
         result.is_ok(),
         "schedule workflow should compile: {result:?}"
+    );
+}
+
+#[test]
+fn compile_workflow_accepts_canonical_choose_with_body_steps() {
+    let source = br#"
+version: velvet-ballistics/v1
+name: choose_body_workflow
+when:
+  manual: {}
+steps:
+  - id: flag
+    set:
+      output: flag_value
+      value: "1"
+  - id: route
+    choose:
+      branches:
+        - when: "0"
+          steps:
+            - id: body_set
+              set:
+                output: branch_value
+                value: "7"
+      otherwise: done
+  - id: done
+    finish:
+      result: 0
+"#;
+    let result = compile_workflow(source);
+    assert!(
+        result.is_ok(),
+        "canonical choose with body steps should compile: {result:?}"
+    );
+}
+
+#[test]
+fn compile_workflow_rejects_legacy_choose_condition_shape() {
+    let source = br#"
+version: velvet-ballistics/v1
+name: legacy_choose_workflow
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: true
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+    let errors = compile_errors(source);
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.to_string().contains("condition")),
+        "legacy choose.condition field should be rejected: {errors:?}"
+    );
+}
+
+#[test]
+fn compile_workflow_rejects_non_string_choose_otherwise() {
+    let source = br#"
+version: velvet-ballistics/v1
+name: choose_bad_otherwise
+when:
+  manual: {}
+steps:
+  - id: flag
+    set:
+      output: flag_value
+      value: "1"
+  - id: route
+    choose:
+      branches:
+        - when: "0"
+          steps:
+            - id: body_set
+              set:
+                output: branch_value
+                value: "7"
+      otherwise: 1
+  - id: done
+    finish:
+      result: 0
+"#;
+    let errors = compile_errors(source);
+    assert!(
+        errors.iter().any(|error| matches!(
+            error,
+            CompileError::StepFieldShape {
+                field: "choose.otherwise",
+                ..
+            }
+        )),
+        "non-string choose.otherwise should be rejected by canonical validation: {errors:?}"
+    );
+}
+
+#[test]
+fn compile_workflow_rejects_unknown_choose_branch_field() {
+    let source = br#"
+version: velvet-ballistics/v1
+name: choose_bad_branch
+when:
+  manual: {}
+steps:
+  - id: flag
+    set:
+      output: flag_value
+      value: "1"
+  - id: route
+    choose:
+      branches:
+        - when: "0"
+          then: done
+  - id: done
+    finish:
+      result: 0
+"#;
+    let errors = compile_errors(source);
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.to_string().contains("then")),
+        "unknown choose branch field should be rejected: {errors:?}"
     );
 }
 

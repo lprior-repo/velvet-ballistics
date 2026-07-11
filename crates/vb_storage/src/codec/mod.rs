@@ -89,7 +89,12 @@ where
 {
     let (envelope, payload) =
         self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
-    let value = postcard::from_bytes(payload).map_err(JournalError::PostcardDecodeFailed)?;
+    let (value, remainder) = T::decode_payload(&envelope, payload)?;
+    if !remainder.is_empty() {
+        return Err(JournalError::PostcardDecodeFailed(
+            postcard::Error::DeserializeBadEncoding,
+        ));
+    }
     T::enforce_kind_parity(&envelope, &value)?;
     Ok((envelope, value))
 }
@@ -110,6 +115,23 @@ pub fn validate_journal_event_record_kind(
     }
 }
 
+pub(crate) fn validate_decoded_journal_event_record_kind(
+    envelope: &RecordEnvelope,
+    event: &JournalEvent,
+) -> Result<(), JournalError> {
+    let payload_kind = event.record_kind().id();
+    if envelope.record_kind == payload_kind
+        || crate::events::is_schema_one_shared_envelope_compatible(envelope, event)
+    {
+        Ok(())
+    } else {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: envelope.record_kind,
+            payload_kind,
+        })
+    }
+}
+
 /// Decodes a `JournalEvent` and validates its envelope/payload parity and semantic constraints.
 ///
 /// This is the correct decode function for untrusted input streams. The kind/payload
@@ -120,7 +142,8 @@ pub fn validate_journal_event_record_kind(
 /// # Errors
 ///
 /// Returns an error if the bytes do not form a valid journal event record, including:
-/// - [`JournalError::RecordKindPayloadMismatch`] if the envelope kind and payload variant disagree
+/// - [`JournalError::RecordKindPayloadMismatch`] if the envelope kind and payload variant disagree,
+///   except for the named schema-1 shared-envelope compatibility path
 /// - [`JournalError::InvalidEvent`] if the payload is structurally encoded but semantically invalid
 ///   (`run_id == 0`, `seq == u64::MAX`, or `attempt == 0`)
 pub fn decode_journal_event(
@@ -132,7 +155,7 @@ pub fn decode_journal_event(
     // `decode_record::<JournalEvent>` already enforces parity and is_valid via the
     // `EnforceKindParity` impl. These explicit calls remain as a defense-in-depth
     // self-check and to make the invariants obvious to readers.
-    validate_journal_event_record_kind(&envelope, &event)?;
+    validate_decoded_journal_event_record_kind(&envelope, &event)?;
     if !event.is_valid() {
         return Err(JournalError::InvalidEvent);
     }

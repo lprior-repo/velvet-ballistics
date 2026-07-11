@@ -9,7 +9,7 @@ use vb_core::{
 };
 
 const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: primitive-lowering\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: primitive_lowering\nwhen:\n  manual: {}\nsteps:\n";
 
 #[derive(Clone, Copy, Debug)]
 struct PrimitiveCase {
@@ -252,22 +252,30 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
         (
             "for_each",
             "  - id: loop\n    for_each:\n      variable: \"\"\n      input: \"0\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("foreach.variable"),
+            ExpectedShapeError::CanonicalYamlMessage(
+                "field shape error: foreach.variable expected non-empty string",
+            ),
         ),
         (
             "together",
             "  - id: fanout\n    together:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("together.branches[].label"),
+            ExpectedShapeError::CanonicalYamlMessage(
+                "field shape error: together.branches[].label expected non-empty string",
+            ),
         ),
         (
             "collect",
             "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("collect.source"),
+            ExpectedShapeError::CanonicalYamlMessage(
+                "field shape error: collect.source expected non-empty string",
+            ),
         ),
         (
             "reduce",
             "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("reduce.initial"),
+            ExpectedShapeError::CanonicalYamlMessage(
+                "field shape error: reduce.initial expected non-empty string",
+            ),
         ),
         (
             "repeat",
@@ -277,12 +285,14 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
         (
             "wait",
             "  - id: wait_for_event\n    wait:\n      event: \"\"\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("wait.event"),
+            ExpectedShapeError::CanonicalYamlMessage("wait.event must be non-empty"),
         ),
         (
             "ask",
             "  - id: ask_human\n    ask:\n      prompt: \"\"\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("ask.prompt"),
+            ExpectedShapeError::CanonicalYamlMessage(
+                "field shape error: ask.prompt expected non-empty string",
+            ),
         ),
     ];
 
@@ -370,7 +380,7 @@ fn compile_workflow_rejects_non_set_body_in_collect() -> Result<(), String> {
 
 #[derive(Clone, Copy)]
 enum ExpectedShapeError {
-    CanonicalYamlField(&'static str),
+    CanonicalYamlMessage(&'static str),
     CompileStepField(&'static str),
 }
 
@@ -382,11 +392,11 @@ fn assert_expected_shape_error(
     match (actual, expected_error) {
         (
             CompileError::CanonicalYaml { category, message },
-            ExpectedShapeError::CanonicalYamlField(expected_field),
+            ExpectedShapeError::CanonicalYamlMessage(expected_message),
         ) => {
             assert_eq!(
-                (*category, message.contains(expected_field)),
-                ("field_shape", true),
+                (*category, message.as_ref()),
+                ("field_shape", expected_message),
                 "primitive {primitive} returned wrong canonical field-shape payload"
             );
             Ok(())
@@ -406,7 +416,7 @@ fn assert_expected_shape_error(
             );
             Ok(())
         }
-        (other, ExpectedShapeError::CanonicalYamlField(_)) => Err(format!(
+        (other, ExpectedShapeError::CanonicalYamlMessage(_)) => Err(format!(
             "primitive {primitive} expected CanonicalYaml field_shape, got {other:?}"
         )),
         (other, ExpectedShapeError::CompileStepField(_)) => Err(format!(
@@ -466,12 +476,12 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -539,12 +549,12 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -684,7 +694,10 @@ fn yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails() -> Res
     match first {
         CompileError::CanonicalYaml { category, message } => {
             assert_eq!(*category, "field_shape");
-            assert_eq!(message.contains("id"), true);
+            assert_eq!(
+                message.as_ref(),
+                "field shape error: step.id expected non-empty string"
+            );
             Ok(())
         }
         other => Err(format!("expected CanonicalYaml, got {other:?}")),
@@ -1222,7 +1235,7 @@ fn wait_workflow_yaml(event: &Option<String>, timeout: &Option<String>) -> Strin
         wait_block.push_str(&format!("\n      timeout: \"{t}\""));
     }
     format!(
-        "version: velvet-ballistics/v1\nname: wait-digest-test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: wait_digest_test\nwhen:\n  manual: {{}}\nsteps:\n{wait_block}\n  - id: finish_step\n    finish:\n      result: 0\n"
     )
 }
 

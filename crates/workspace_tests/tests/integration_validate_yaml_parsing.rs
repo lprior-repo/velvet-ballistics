@@ -12,8 +12,8 @@
 
 use vb_compile::compile_workflow;
 use vb_compile::{
-    YamlError, parse_workflow_source, parse_yaml_events, reject_duplicate_keys,
-    validate_yaml_profile,
+    CompileError, CompileErrors, YamlError, parse_workflow_source, parse_yaml_events,
+    reject_duplicate_keys, validate_yaml_profile,
 };
 
 // ---------------------------------------------------------------------------
@@ -317,9 +317,8 @@ steps:
     finish:
       result: 0
 "#;
-    // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert_invalid_version(result, "not-velvet-at-all");
 }
 
 #[test]
@@ -347,9 +346,27 @@ steps:
     finish:
       result: 0
 "#;
-    // compile_workflow does not validate the version string — it accepts any version
     let result = compile_workflow(yaml);
-    assert!(result.is_ok());
+    assert_invalid_version(result, "velvet-ballistics/v2");
+}
+
+fn assert_invalid_version(
+    result: Result<vb_core::CompiledWorkflow, CompileErrors>,
+    expected: &str,
+) {
+    match result {
+        Err(CompileErrors(errors)) => {
+            assert!(
+                errors.iter().any(|error| matches!(
+                    error,
+                    CompileError::InvalidVersion { actual }
+                        if actual.as_ref() == expected && error.code().as_str() == "INVALID_VERSION"
+                )),
+                "expected INVALID_VERSION for {expected}, got {errors:?}"
+            );
+        }
+        Ok(_) => panic!("expected compile_workflow to reject version {expected}"),
+    }
 }
 
 // ---------------------------------------------------------------------------

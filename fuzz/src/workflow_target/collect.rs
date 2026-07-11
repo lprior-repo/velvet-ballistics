@@ -6,7 +6,8 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
     }
     let slot_count = u16::from(data[0].wrapping_rem(16)).saturating_add(1);
     let list_len = usize::from(data[0].wrapping_rem(8));
-    let page_size = usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
+    let page_size =
+        usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
     let Ok(mut run) = vb_core::RunFrame::new(
         vb_core::RunId::new(1),
         vb_core::StepIdx::ZERO,
@@ -83,14 +84,15 @@ fn exercise_collect_start(
     if page_size == 0 {
         assert!(zero_page_result.is_err());
     }
-    if page_size > 0 && list_len > 0 && list_len < page_size {
-        match zero_page_result {
-            Ok(signal) => assert!(matches!(
-                signal,
-                vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
-            )),
-            Err(_) => {}
-        }
+    if page_size > 0
+        && list_len > 0
+        && list_len < page_size
+        && let Ok(signal) = zero_page_result
+    {
+        assert!(matches!(
+            signal,
+            vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
+        ));
     }
 }
 

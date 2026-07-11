@@ -1,0 +1,15 @@
+
+running 10 tests
+test codec::tests::stable_schema_one_slot_written_payload_under_step_succeeded_envelope_is_rejected ... ok
+test codec::tests::stable_schema_one_action_envelope_payload_under_legacy_action_completed_envelope_is_rejected ... ok
+test codec::tests::schema_one_fixture_unchanged_envelope_rejects_trailing_postcard_bytes ... ok
+test codec::tests::stable_schema_one_action_ticket_payload_under_legacy_action_scheduled_envelope_is_rejected ... ok
+test codec::tests::stable_schema_one_step_succeeded_payload_under_slot_written_envelope_is_rejected ... ok
+test codec::tests::schema_one_fixture_shared_envelope_rejects_trailing_postcard_bytes ... ok
+test codec::tests::schema_one_fixture_shared_envelope_records_decode_through_compatibility_path ... ok
+test codec::tests::schema_one_missing_default_fields_decode_with_historical_defaults ... ok
+test codec::tests::schema_one_missing_default_field_payloads_reject_trailing_postcard_bytes ... ok
+test codec::tests::schema_one_fixture_payloads_decode_for_unchanged_envelope_kinds ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1583 filtered out; finished in 0.00s
+
