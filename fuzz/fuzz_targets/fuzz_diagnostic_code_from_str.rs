@@ -15,5 +15,7 @@ fuzz_target!(|data: &[u8]| {
     };
 
     // Must never panic. Any input is valid to attempt parsing.
-    let _ = vb_core::diagnostic::DiagnosticCode::from_str(s);
+    match vb_core::diagnostic::DiagnosticCode::from_str(s) {
+        Ok(_) | Err(_) => {}
+    }
 });

@@ -1,0 +1,5 @@
+COMMAND: cargo clippy -p vb_runtime --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.02s
+STATUS: 0

@@ -34,7 +34,7 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_project() {
-        assert!(contains_legacy("velvet-ballistics is bad"));
+        assert!(contains_legacy(LEGACY_PROJECT));
     }
 
     #[test]
@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_language_version() {
-        assert!(contains_legacy("velvet-ballistics/v1"));
+        assert!(contains_legacy(LEGACY_LANGUAGE_VERSION));
     }
 
     #[test]
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_false_for_canonical_hyphen() {
-        assert!(!contains_legacy("velvet-ballastics"));
+        assert!(!contains_legacy("velvet-ballistics"));
     }
 
     #[test]
@@ -84,7 +84,8 @@ mod tests {
 
     #[test]
     fn class_for_text_returns_legacy_language_version_spelling() {
-        let result = class_for_text("use velvet-ballistics/v1 here");
+        let text = format!("use {LEGACY_LANGUAGE_VERSION} here");
+        let result = class_for_text(&text);
         match result {
             OccurrenceClass::InvalidLegacy {
                 spelling_class,
@@ -99,7 +100,7 @@ mod tests {
 
     #[test]
     fn class_for_text_returns_legacy_project_spelling() {
-        let result = class_for_text("velvet-ballistics is the old name");
+        let result = class_for_text(LEGACY_PROJECT);
         match result {
             OccurrenceClass::InvalidLegacy {
                 spelling_class,

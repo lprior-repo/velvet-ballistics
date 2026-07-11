@@ -180,7 +180,7 @@ mod tests {
             RepoPath::new("test.rs"),
             LineNumber::new(1),
             ColumnNumber::new(1),
-            "velvet-ballistics is bad",
+            LEGACY_PROJECT,
             &cfg,
         )
         .unwrap();

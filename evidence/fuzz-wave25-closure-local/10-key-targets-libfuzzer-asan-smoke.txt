@@ -1,0 +1,319 @@
++ overall=0
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' fuzz_storage_codec_payload_corruption
+
+===== target=fuzz_storage_codec_payload_corruption =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address fuzz_storage_codec_payload_corruption -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.87s
+    Blocking waiting for file lock on package cache
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.82s
+     Running `target/x86_64-unknown-linux-gnu/release/fuzz_storage_codec_payload_corruption -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/fuzz_storage_codec_payload_corruption/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_storage_codec_payload_corruption`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (9775 inline 8-bit counters): 9775 [0x55e121caa350, 0x55e121cac97f), 
+INFO: Loaded 1 PC tables (9775 PCs): 9775 [0x55e121cac980,0x55e121cd2c70), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_storage_codec_payload_corruption
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 276 ft: 277 corp: 1/1b exec/s: 0 rss: 49Mb
+#3	NEW    cov: 278 ft: 279 corp: 2/3b lim: 4 exec/s: 0 rss: 49Mb L: 2/2 MS: 1 CrossOver-
+#11	NEW    cov: 280 ft: 281 corp: 3/6b lim: 4 exec/s: 0 rss: 49Mb L: 3/3 MS: 3 ChangeByte-ChangeBit-InsertByte-
+#14	NEW    cov: 284 ft: 287 corp: 4/9b lim: 4 exec/s: 0 rss: 49Mb L: 3/3 MS: 3 ChangeBinInt-InsertByte-ChangeByte-
+#17	NEW    cov: 285 ft: 290 corp: 5/11b lim: 4 exec/s: 0 rss: 49Mb L: 2/3 MS: 3 EraseBytes-ChangeBit-ChangeBit-
+#21	REDUCE cov: 285 ft: 290 corp: 5/10b lim: 4 exec/s: 0 rss: 49Mb L: 2/3 MS: 4 ShuffleBytes-ChangeBit-ChangeBit-EraseBytes-
+#25	NEW    cov: 286 ft: 291 corp: 6/14b lim: 4 exec/s: 0 rss: 49Mb L: 4/4 MS: 4 ShuffleBytes-ChangeByte-ShuffleBytes-CopyPart-
+#32	DONE   cov: 286 ft: 291 corp: 6/14b lim: 4 exec/s: 0 rss: 49Mb
+Done 32 runs in 0 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     0
+stat::new_units_added:          6
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              49
++ target_status=0
++ printf 'target=%s exit_status=%s\n' fuzz_storage_codec_payload_corruption 0
+target=fuzz_storage_codec_payload_corruption exit_status=0
++ '[' 0 -ne 0 ']'
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' fuzz_storage_codec_schema_version
+
+===== target=fuzz_storage_codec_schema_version =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address fuzz_storage_codec_schema_version -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.38s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.50s
+     Running `target/x86_64-unknown-linux-gnu/release/fuzz_storage_codec_schema_version -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/fuzz_storage_codec_schema_version/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_storage_codec_schema_version`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (10686 inline 8-bit counters): 10686 [0x5570e81e4d90, 0x5570e81e774e), 
+INFO: Loaded 1 PC tables (10686 PCs): 10686 [0x5570e81e7750,0x5570e8211330), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/fuzz_storage_codec_schema_version
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 200 ft: 201 corp: 1/1b exec/s: 0 rss: 47Mb
+#3	NEW    cov: 202 ft: 203 corp: 2/3b lim: 4 exec/s: 0 rss: 47Mb L: 2/2 MS: 1 CrossOver-
+#11	NEW    cov: 204 ft: 205 corp: 3/6b lim: 4 exec/s: 0 rss: 47Mb L: 3/3 MS: 3 ChangeByte-ChangeBit-InsertByte-
+#14	NEW    cov: 205 ft: 207 corp: 4/9b lim: 4 exec/s: 0 rss: 47Mb L: 3/3 MS: 3 ChangeBinInt-InsertByte-ChangeByte-
+#17	NEW    cov: 205 ft: 208 corp: 5/11b lim: 4 exec/s: 0 rss: 47Mb L: 2/3 MS: 3 EraseBytes-ChangeBit-ChangeBit-
+#21	REDUCE cov: 205 ft: 208 corp: 5/10b lim: 4 exec/s: 0 rss: 47Mb L: 2/3 MS: 4 ShuffleBytes-ChangeBit-ChangeBit-EraseBytes-
+#25	NEW    cov: 206 ft: 209 corp: 6/14b lim: 4 exec/s: 0 rss: 47Mb L: 4/4 MS: 4 ShuffleBytes-ChangeByte-ShuffleBytes-CopyPart-
+#32	DONE   cov: 206 ft: 209 corp: 6/14b lim: 4 exec/s: 0 rss: 47Mb
+Done 32 runs in 0 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     0
+stat::new_units_added:          6
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              47
++ target_status=0
++ printf 'target=%s exit_status=%s\n' fuzz_storage_codec_schema_version 0
+target=fuzz_storage_codec_schema_version exit_status=0
++ '[' 0 -ne 0 ']'
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' vb_rpch_slot_extra_collect_fuzz
+
+===== target=vb_rpch_slot_extra_collect_fuzz =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address vb_rpch_slot_extra_collect_fuzz -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.55s
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.01s
+     Running `target/x86_64-unknown-linux-gnu/release/vb_rpch_slot_extra_collect_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_slot_extra_collect_fuzz/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_slot_extra_collect_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (3254 inline 8-bit counters): 3254 [0x558e37c94380, 0x558e37c95036), 
+INFO: Loaded 1 PC tables (3254 PCs): 3254 [0x558e37c95038,0x558e37ca1b98), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_slot_extra_collect_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 137 ft: 138 corp: 1/1b exec/s: 0 rss: 42Mb
+#3	NEW    cov: 139 ft: 140 corp: 2/3b lim: 4 exec/s: 0 rss: 42Mb L: 2/2 MS: 1 CrossOver-
+	NEW_FUNC[1/8]: 0x558e37bd2600 in core::ptr::drop_in_place::<hashbrown::raw::RawTable<((vb_core::ids::RunId, vb_core::ids::SlotIdx), vb_runtime::primitives::collect::CollectPageLineage)>> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:809
+	NEW_FUNC[2/8]: 0x558e37bd4580 in <postcard::de::deserializer::SeqAccess<postcard::de::flavors::Slice> as serde_core::de::SeqAccess>::next_element::<core::option::Option<u64>> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/de/mod.rs:1769
+#5	NEW    cov: 215 ft: 217 corp: 3/4b lim: 4 exec/s: 5 rss: 42Mb L: 1/2 MS: 2 ShuffleBytes-ChangeByte-
+#8	NEW    cov: 217 ft: 219 corp: 4/7b lim: 4 exec/s: 8 rss: 42Mb L: 3/3 MS: 3 CopyPart-ShuffleBytes-InsertByte-
+#9	NEW    cov: 219 ft: 221 corp: 5/11b lim: 4 exec/s: 9 rss: 42Mb L: 4/4 MS: 1 InsertByte-
+#10	NEW    cov: 228 ft: 230 corp: 6/14b lim: 4 exec/s: 10 rss: 42Mb L: 3/4 MS: 1 ChangeBinInt-
+#11	NEW    cov: 233 ft: 235 corp: 7/17b lim: 4 exec/s: 11 rss: 42Mb L: 3/4 MS: 1 InsertByte-
+#13	NEW    cov: 237 ft: 249 corp: 8/21b lim: 4 exec/s: 13 rss: 42Mb L: 4/4 MS: 2 ChangeBinInt-ChangeBit-
+#15	NEW    cov: 241 ft: 256 corp: 9/25b lim: 4 exec/s: 15 rss: 42Mb L: 4/4 MS: 2 CopyPart-InsertByte-
+	NEW_FUNC[1/1]: 0x558e37bc9aa0 in vb_rpch_slot_extra_collect_fuzz::corrupt_envelope_extra /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs:197
+#25	NEW    cov: 255 ft: 273 corp: 10/26b lim: 4 exec/s: 25 rss: 42Mb L: 1/4 MS: 5 ShuffleBytes-CopyPart-EraseBytes-EraseBytes-ChangeByte-
+#29	NEW    cov: 264 ft: 282 corp: 11/27b lim: 4 exec/s: 29 rss: 42Mb L: 1/4 MS: 4 ChangeBit-ShuffleBytes-InsertByte-EraseBytes-
+#32	DONE   cov: 264 ft: 282 corp: 11/27b lim: 4 exec/s: 32 rss: 42Mb
+Done 32 runs in 1 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     32
+stat::new_units_added:          10
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              42
++ target_status=0
++ printf 'target=%s exit_status=%s\n' vb_rpch_slot_extra_collect_fuzz 0
+target=vb_rpch_slot_extra_collect_fuzz exit_status=0
++ '[' 0 -ne 0 ']'
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' vb_rpch_replay_events_fuzz
+
+===== target=vb_rpch_replay_events_fuzz =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address vb_rpch_replay_events_fuzz -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 8.01s
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.05s
+     Running `target/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_replay_events_fuzz/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_replay_events_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (79482 inline 8-bit counters): 79482 [0x558c79b9fda0, 0x558c79bb341a), 
+INFO: Loaded 1 PC tables (79482 PCs): 79482 [0x558c79bb3420,0x558c79ce9bc0), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_replay_events_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 6345 ft: 6346 corp: 1/1b exec/s: 0 rss: 69Mb
+#3	NEW    cov: 6345 ft: 6383 corp: 2/3b lim: 4 exec/s: 0 rss: 80Mb L: 2/2 MS: 1 CrossOver-
+#4	NEW    cov: 6346 ft: 6458 corp: 3/4b lim: 4 exec/s: 0 rss: 89Mb L: 1/2 MS: 1 ShuffleBytes-
+#5	NEW    cov: 6350 ft: 6467 corp: 4/6b lim: 4 exec/s: 0 rss: 97Mb L: 2/2 MS: 1 InsertByte-
+#6	NEW    cov: 6352 ft: 6492 corp: 5/8b lim: 4 exec/s: 0 rss: 104Mb L: 2/2 MS: 1 ShuffleBytes-
+#7	NEW    cov: 6354 ft: 6501 corp: 6/9b lim: 4 exec/s: 7 rss: 113Mb L: 1/2 MS: 1 ChangeByte-
+#8	NEW    cov: 6356 ft: 6504 corp: 7/11b lim: 4 exec/s: 8 rss: 122Mb L: 2/2 MS: 1 CopyPart-
+#9	NEW    cov: 6356 ft: 6517 corp: 8/13b lim: 4 exec/s: 9 rss: 129Mb L: 2/2 MS: 1 InsertByte-
+#10	NEW    cov: 6356 ft: 6519 corp: 9/14b lim: 4 exec/s: 10 rss: 137Mb L: 1/2 MS: 1 ChangeByte-
+#11	NEW    cov: 6358 ft: 6526 corp: 10/15b lim: 4 exec/s: 5 rss: 144Mb L: 1/2 MS: 1 CopyPart-
+#13	NEW    cov: 6360 ft: 6531 corp: 11/16b lim: 4 exec/s: 3 rss: 160Mb L: 1/2 MS: 2 ChangeByte-ShuffleBytes-
+#14	NEW    cov: 6360 ft: 6534 corp: 12/17b lim: 4 exec/s: 2 rss: 167Mb L: 1/2 MS: 1 ChangeBit-
+#15	NEW    cov: 6367 ft: 6568 corp: 13/20b lim: 4 exec/s: 1 rss: 174Mb L: 3/3 MS: 1 InsertByte-
+ALARM: working on the last Unit for 13 seconds
+       and the timeout value is 10 (use -timeout=N to change)
+MS: 1 ShuffleBytes-; base unit: adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+0xa,
+\012
+artifact_prefix='/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_replay_events_fuzz/'; Test unit written to /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_replay_events_fuzz/timeout-adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+Base64: Cg==
+==1822220== ERROR: libFuzzer: timeout after 13 seconds
+    #0 0x558c7968c3a1 in __sanitizer_print_stack_trace /rustc/llvm/src/llvm-project/compiler-rt/lib/asan/asan_stack.cpp:87:3
+    #1 0x558c79aea296 in fuzzer::PrintStackTrace() /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerUtil.cpp:210:38
+    #2 0x558c79a9636e in fuzzer::Fuzzer::AlarmCallback() /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:304:20
+    #3 0x558c79a9636e in fuzzer::Fuzzer::AlarmCallback() /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:278:6
+    #4 0x7f87b1c3e8ef  (/usr/lib/libc.so.6+0x3e8ef) (BuildId: 020d6f7c33b2413f4fe10814c4729dce1387f049)
+    #5 0x558c798f8e02 in branch<(), lsm_tree::error::Error> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:9
+    #6 0x558c798f8e02 in <lsm_tree::table::multi_writer::MultiWriter>::write /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/lsm-tree-3.1.4/src/table/multi_writer.rs:230:17
+    #7 0x558c798ed87d in <lsm_tree::tree::ingest::Ingestion>::write /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/lsm-tree-3.1.4/src/tree/ingest.rs:161:21
+    #8 0x558c797ce68f in write<lsm_tree::slice::slice_default::Slice, lsm_tree::slice::slice_default::Slice> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/lsm-tree-3.1.4/src/ingestion.rs:34:36
+    #9 0x558c797ce68f in <fjall::meta_keyspace::MetaKeyspace>::create_keyspace /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/meta_keyspace.rs:112:23
+    #10 0x558c796ba78a in <fjall::db::Database>::keyspace::<<vb_storage::journal::core::FjallJournal>::open<&std::path::Path>::{closure#8}> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/db.rs:482:18
+    #11 0x558c796be5be in <vb_storage::journal::core::FjallJournal>::open::<&std::path::Path> /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage/src/journal/core.rs:124:37
+    #12 0x558c796c8ab7 in observe_close_reopen_replay /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs:79:23
+    #13 0x558c796c8ab7 in vb_rpch_replay_events_fuzz::_::__libfuzzer_sys_run /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs:30:5
+    #14 0x558c796dec50 in rust_fuzzer_test_input /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/src/lib.rs:276:60
+    #15 0x558c79a8f8e4 in {closure#0} /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/src/lib.rs:62:9
+    #16 0x558c79a8f8e4 in std::panicking::catch_unwind::do_call::<libfuzzer_sys::test_input_wrap::{closure#0}, i32> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:581:40
+    #17 0x558c79a90528 in __rust_try libfuzzer_sys.58093b4bccca2628-cgu.0
+    #18 0x558c79a8efcd in catch_unwind<i32, libfuzzer_sys::test_input_wrap::{closure_env#0}> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:544:19
+    #19 0x558c79a8efcd in catch_unwind<libfuzzer_sys::test_input_wrap::{closure_env#0}, i32> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:359:14
+    #20 0x558c79a8efcd in LLVMFuzzerTestOneInput /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/src/lib.rs:60:22
+    #21 0x558c79a9669b in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:619:15
+    #22 0x558c79a9ad28 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:516:22
+    #23 0x558c79a9d892 in fuzzer::Fuzzer::MutateAndTestOne() /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:765:25
+    #24 0x558c79aa04f7 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerLoop.cpp:910:21
+    #25 0x558c79ab760f in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerDriver.cpp:923:10
+    #26 0x558c79acf422 in main /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/libfuzzer-sys-0.4.13/libfuzzer/FuzzerMain.cpp:20:30
+    #27 0x7f87b1c27740 in __libc_start_call_main /usr/src/debug/glibc/glibc/csu/../sysdeps/nptl/libc_start_call_main.h:59:16
+    #28 0x7f87b1c27878 in __libc_start_main /usr/src/debug/glibc/glibc/csu/../csu/libc-start.c:360:3
+    #29 0x558c795f5e64 in _start (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/target/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x32ae64) (BuildId: 85e3cf8a3560526bf1c6c71cb982b75d50100649)
+
+SUMMARY: libFuzzer: timeout
+stat::number_of_executed_units: 16
+stat::average_exec_per_sec:     0
+stat::new_units_added:          12
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              176
+
+────────────────────────────────────────────────────────────────────────────────
+
+Failing input:
+
+	artifacts/vb_rpch_replay_events_fuzz/timeout-adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+
+Output of `std::fmt::Debug`:
+
+	[10]
+
+Reproduce with:
+
+	cargo fuzz run vb_rpch_replay_events_fuzz artifacts/vb_rpch_replay_events_fuzz/timeout-adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+
+Minimize test case with:
+
+	cargo fuzz tmin vb_rpch_replay_events_fuzz artifacts/vb_rpch_replay_events_fuzz/timeout-adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+
+────────────────────────────────────────────────────────────────────────────────
+
+Error: Fuzz target exited with exit status: 70
+
+Stack backtrace:
+   0: <anyhow::Error>::msg::<alloc::string::String>
+   1: <cargo_fuzz::project::FuzzProject>::exec_fuzz
+   2: cargo_fuzz::main
+   3: std::sys::backtrace::__rust_begin_short_backtrace::<fn() -> core::result::Result<(), anyhow::Error>, core::result::Result<(), anyhow::Error>>
+   4: std::rt::lang_start::<core::result::Result<(), anyhow::Error>>::{closure#0}
+   5: std::rt::lang_start_internal
+   6: main
+   7: <unknown>
+   8: __libc_start_main
+   9: _start
++ target_status=1
++ printf 'target=%s exit_status=%s\n' vb_rpch_replay_events_fuzz 1
+target=vb_rpch_replay_events_fuzz exit_status=1
++ '[' 1 -ne 0 ']'
++ overall=1
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' vb_rpch_hydrate_snapshot_tail_fuzz
+
+===== target=vb_rpch_hydrate_snapshot_tail_fuzz =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address vb_rpch_hydrate_snapshot_tail_fuzz -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.08s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.08s
+     Running `target/x86_64-unknown-linux-gnu/release/vb_rpch_hydrate_snapshot_tail_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_hydrate_snapshot_tail_fuzz/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_hydrate_snapshot_tail_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (6369 inline 8-bit counters): 6369 [0x5592bff85d60, 0x5592bff87641), 
+INFO: Loaded 1 PC tables (6369 PCs): 6369 [0x5592bff87648,0x5592bffa0458), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_hydrate_snapshot_tail_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 291 ft: 292 corp: 1/1b exec/s: 0 rss: 60Mb
+#3	NEW    cov: 293 ft: 294 corp: 2/3b lim: 4 exec/s: 0 rss: 60Mb L: 2/2 MS: 1 CrossOver-
+	NEW_FUNC[1/1]: 0x5592bfe80150 in core::ptr::drop_in_place::<core::result::Result<vb_core::frame::RunFrame, vb_storage::recovery::types::RecoveryError>> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:809
+#5	NEW    cov: 310 ft: 319 corp: 3/4b lim: 4 exec/s: 0 rss: 60Mb L: 1/2 MS: 2 ShuffleBytes-ChangeByte-
+	NEW_FUNC[1/1]: 0x5592bfeb4c70 in vb_storage::recovery::hydrate::snapshot_input_violation_to_error /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage/src/recovery/hydrate.rs:450
+#13	NEW    cov: 327 ft: 337 corp: 4/5b lim: 4 exec/s: 0 rss: 60Mb L: 1/2 MS: 3 CopyPart-ShuffleBytes-ChangeBit-
+#14	NEW    cov: 335 ft: 349 corp: 5/7b lim: 4 exec/s: 0 rss: 60Mb L: 2/2 MS: 1 InsertByte-
+#28	NEW    cov: 339 ft: 353 corp: 6/8b lim: 4 exec/s: 0 rss: 60Mb L: 1/2 MS: 4 CopyPart-ShuffleBytes-CrossOver-ChangeBit-
+#32	DONE   cov: 339 ft: 353 corp: 6/8b lim: 4 exec/s: 0 rss: 60Mb
+Done 32 runs in 0 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     0
+stat::new_units_added:          5
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              60
++ target_status=0
++ printf 'target=%s exit_status=%s\n' vb_rpch_hydrate_snapshot_tail_fuzz 0
+target=vb_rpch_hydrate_snapshot_tail_fuzz exit_status=0
++ '[' 0 -ne 0 ']'
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' vb_rpch_hydrate_events_fuzz
+
+===== target=vb_rpch_hydrate_events_fuzz =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address vb_rpch_hydrate_events_fuzz -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
+     Running `target/x86_64-unknown-linux-gnu/release/vb_rpch_hydrate_events_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/vb_rpch_hydrate_events_fuzz/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_hydrate_events_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (12563 inline 8-bit counters): 12563 [0x564669c9c8e0, 0x564669c9f9f3), 
+INFO: Loaded 1 PC tables (12563 PCs): 12563 [0x564669c9f9f8,0x564669cd0b28), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/vb_rpch_hydrate_events_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 155 ft: 156 corp: 1/1b exec/s: 0 rss: 62Mb
+#3	NEW    cov: 156 ft: 157 corp: 2/3b lim: 4 exec/s: 0 rss: 62Mb L: 2/2 MS: 1 CrossOver-
+#5	NEW    cov: 156 ft: 187 corp: 3/4b lim: 4 exec/s: 0 rss: 62Mb L: 1/2 MS: 2 ShuffleBytes-ChangeByte-
+#14	NEW    cov: 156 ft: 223 corp: 4/6b lim: 4 exec/s: 0 rss: 62Mb L: 2/2 MS: 4 CopyPart-ShuffleBytes-ChangeBit-InsertByte-
+#25	REDUCE cov: 156 ft: 223 corp: 4/5b lim: 4 exec/s: 0 rss: 62Mb L: 1/2 MS: 1 EraseBytes-
+#27	REDUCE cov: 156 ft: 223 corp: 4/4b lim: 4 exec/s: 0 rss: 62Mb L: 1/1 MS: 2 ChangeByte-EraseBytes-
+#32	DONE   cov: 156 ft: 223 corp: 4/4b lim: 4 exec/s: 0 rss: 62Mb
+Done 32 runs in 0 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     0
+stat::new_units_added:          5
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              62
++ target_status=0
++ printf 'target=%s exit_status=%s\n' vb_rpch_hydrate_events_fuzz 0
+target=vb_rpch_hydrate_events_fuzz exit_status=0
++ '[' 0 -ne 0 ']'
++ for target in fuzz_storage_codec_payload_corruption fuzz_storage_codec_schema_version vb_rpch_slot_extra_collect_fuzz vb_rpch_replay_events_fuzz vb_rpch_hydrate_snapshot_tail_fuzz vb_rpch_hydrate_events_fuzz journal_event_fuzz
++ printf '\n===== target=%s =====\n' journal_event_fuzz
+
+===== target=journal_event_fuzz =====
++ RUST_BACKTRACE=1
++ cargo fuzz run --sanitizer address journal_event_fuzz -- -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.06s
+     Running `target/x86_64-unknown-linux-gnu/release/journal_event_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/journal_event_fuzz/ -runs=32 -seed=4242 -max_len=64 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/journal_event_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4242
+INFO: Loaded 1 modules   (9692 inline 8-bit counters): 9692 [0x55bacc798450, 0x55bacc79aa2c), 
+INFO: Loaded 1 PC tables (9692 PCs): 9692 [0x55bacc79aa30,0x55bacc7c07f0), 
+INFO:        0 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/journal_event_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 46 ft: 47 corp: 1/1b exec/s: 0 rss: 61Mb
+#32	DONE   cov: 46 ft: 47 corp: 1/1b lim: 4 exec/s: 0 rss: 61Mb
+Done 32 runs in 0 second(s)
+stat::number_of_executed_units: 32
+stat::average_exec_per_sec:     0
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              61
++ target_status=0
++ printf 'target=%s exit_status=%s\n' journal_event_fuzz 0
+target=journal_event_fuzz exit_status=0
++ '[' 0 -ne 0 ']'
++ printf '\noverall_exit_status=%s\n' 1
+
+overall_exit_status=1
++ exit 1
+
+wrapper_exit_status=1

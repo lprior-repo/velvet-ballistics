@@ -1,0 +1,51 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running tests/cli_vb_m214_bdd_scenarios.rs (target/debug/deps/cli_vb_m214_bdd_scenarios-ac137db190974977)
+
+running 44 tests
+test bdd_scenarios::cli_resume_requires_db_and_run_id ... ok
+test bdd_scenarios::cli_explain_invalid_workflow_reports_validation_errors ... ok
+test bdd_scenarios::cli_explain_valid_workflow_emits_diagnostic_details ... ok
+test bdd_scenarios::cli_ipc_serve_requires_socket_and_db ... ok
+test bdd_scenarios::cli_incident_nonexistent_run_reports_not_found ... ok
+test bdd_scenarios::cli_agent_context_emits_machine_readable_output ... ok
+test bdd_scenarios::cli_action_inspect_requires_action_id ... ok
+test bdd_scenarios::cli_cancel_requires_run_id ... ok
+test bdd_scenarios::cli_graph_invalid_workflow_reports_error ... ok
+test bdd_scenarios::cli_bench_run_valid_workflow_produces_output ... ok
+test bdd_scenarios::cli_help_shows_usage ... ok
+test bdd_scenarios::cli_answer_requires_db_and_step_and_value_file ... ok
+test bdd_scenarios::cli_cancel_rejects_reason_exceeding_256_chars ... ok
+test bdd_scenarios::cli_status_shows_queue_info ... ok
+test exit_code_tests::exit_code_three_on_compile_failure ... ok
+test bdd_scenarios::cli_retry_requires_db_and_run_id ... ok
+test exit_code_tests::exit_code_eight_on_replay_divergence ... ok
+test parse_error_tests::parse_reason_too_long_returns_error ... ok
+test bdd_scenarios::cli_bench_run_invalid_workflow_reports_compile_error ... ok
+test bdd_scenarios::cli_action_list_shows_registered_actions ... ok
+test parse_error_tests::parse_unknown_command_returns_error ... ok
+test bdd_scenarios::cli_diff_requires_two_runs ... ok
+test exit_code_tests::exit_code_four_on_runtime_failure ... ok
+test bdd_scenarios::cli_trace_requires_db_and_run_id ... ok
+test bdd_scenarios::cli_run_strict_durability_requires_db ... ok
+test exit_code_tests::exit_code_two_on_verification_failure ... ok
+test invariant_tests::cli_has_28_commands ... ok
+test parse_error_tests::parse_unknown_durability_returns_error ... ok
+test bdd_scenarios::cli_cancel_with_reason_flag_accepted ... ok
+test invariant_tests::cli_output_format_has_text_json_jsonl ... ok
+test bdd_scenarios::cli_graph_valid_workflow_emits_dot_format ... ok
+test invariant_tests::cli_verify_profile_has_quick_standard_full ... ok
+test parse_error_tests::parse_unknown_profile_returns_error ... ok
+test exit_code_tests::exit_code_five_on_storage_error ... ok
+test parse_error_tests::parse_unknown_emit_target_returns_error ... ok
+test bdd_scenarios::cli_run_journaled_durability_requires_db ... ok
+test exit_code_tests::exit_code_two_on_validation_failure ... ok
+test parse_error_tests::parse_valid_command_returns_ok ... ok
+test bdd_scenarios::cli_unknown_command_returns_error ... ok
+test parse_error_tests::parse_unknown_action_registry_returns_error ... ok
+test exit_code_tests::exit_code_zero_on_success ... ok
+test parse_error_tests::parse_validate_requires_workflow_path ... ok
+test exit_code_tests::exit_code_seven_on_action_policy_error ... ok
+test exit_code_tests::exit_code_six_on_ipc_error ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+

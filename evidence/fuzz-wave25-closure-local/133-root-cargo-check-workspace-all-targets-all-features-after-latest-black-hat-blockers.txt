@@ -1,0 +1,4 @@
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.23s

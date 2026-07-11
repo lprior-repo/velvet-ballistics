@@ -24,7 +24,12 @@ pub fn fuzz_admission_flow(data: &[u8]) {
         };
         nodes.push(admission_node(step_idx, next_step, max_slot));
     }
-    let parts_zeroed = workflow_parts("fuzz_admission", [0u8; 32], nodes.into_boxed_slice(), slot_count);
+    let parts_zeroed = workflow_parts(
+        "fuzz_admission",
+        [0u8; 32],
+        nodes.into_boxed_slice(),
+        slot_count,
+    );
     let Ok(hash_bytes) = postcard::to_allocvec(&parts_zeroed) else {
         return;
     };
@@ -105,7 +110,10 @@ fn workflow_parts(
     }
 }
 
-fn submit_with_all_policies(journal: &vb_storage::FjallJournal, workflow: &vb_core::CompiledWorkflow) {
+fn submit_with_all_policies(
+    journal: &vb_storage::FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+) {
     for policy in [
         vb_core::RuntimePolicy::Relaxed,
         vb_core::RuntimePolicy::Journaled,
@@ -146,10 +154,6 @@ pub fn fuzz_strict_artifact_decoder(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<vb_core::WorkflowParts>(data) {
         assert!(parts.nodes.len() <= usize::from(u16::MAX));
     }
-    let artifact_decode = postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(data);
-    let parts_decode = postcard::from_bytes::<vb_core::WorkflowParts>(data);
-    let _ = artifact_decode.is_ok();
-    let _ = parts_decode.is_ok();
 }
 
 pub fn fuzz_digest_coherence(data: &[u8]) {
@@ -180,14 +184,18 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
     };
     let mut reference_parts = workflow_parts("fuzz_digest_test", [0u8; 32], nodes, 1);
     if let Ok(serialized) = postcard::to_allocvec(&reference_parts) {
-        let reference_digest = vb_core::WorkflowDigest::from_bytes(*blake3::hash(&serialized).as_bytes());
+        let reference_digest =
+            vb_core::WorkflowDigest::from_bytes(*blake3::hash(&serialized).as_bytes());
         reference_parts.digest = reference_digest;
         let coherent_workflow = match vb_core::CompiledWorkflow::try_from_parts(reference_parts) {
             Ok(wf) => wf,
             Err(_) => return,
         };
-        let result =
-            vb_storage::submit_artifact(&journal, &coherent_workflow, vb_core::RuntimePolicy::Strict);
+        let result = vb_storage::submit_artifact(
+            &journal,
+            &coherent_workflow,
+            vb_core::RuntimePolicy::Strict,
+        );
         match result {
             Ok(artifact) => assert_eq!(artifact.digest, reference_digest),
             Err(error) => assert_typed_journal_error(error),

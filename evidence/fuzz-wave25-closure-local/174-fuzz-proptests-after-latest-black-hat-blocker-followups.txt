@@ -1,0 +1,51 @@
+COMMAND: cargo test --workspace --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== fuzz proptests (all suites including ipc error exhaustiveness) ===
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.39s
+     Running unittests src/lib.rs (target/debug/deps/fuzz_lib-e7d418a2208889b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-22cbabdfeaef2978)
+
+running 1 test
+test proptest_workflow_digest_coherence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-572c3df898fe7ded)
+
+running 2 tests
+test proptest_validate_frame_magic_typed ... ok
+test proptest_ipc_frame_errors_are_typed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.43s
+
+     Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-5f88b1dce644a117)
+
+running 1 test
+test proptest_decode_record_errors_are_typed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-d67db5f2381de9a2)
+
+running 2 tests
+test proptest_step_started_roundtrip ... ok
+test proptest_journal_event_roundtrip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests fuzz_lib
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT_STATUS=0

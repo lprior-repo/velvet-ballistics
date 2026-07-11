@@ -29,18 +29,12 @@ fuzz_target!(|data: &[u8]| {
     ];
 
     for magic in magics {
-        let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            data,
-            magic,
-            max_payload_len,
-        );
+        let result =
+            vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload_len);
         match result {
             Ok((_envelope, event)) => {
                 // On success, event must pass is_valid().
-                assert!(
-                    event.is_valid(),
-                    "decoded event must be structurally valid"
-                );
+                assert!(event.is_valid(), "decoded event must be structurally valid");
             }
             Err(error) => {
                 assert_typed_journal_error(error);
@@ -50,11 +44,8 @@ fuzz_target!(|data: &[u8]| {
 
     // Exercise with boundary magic values.
     for magic in [0xFFFF_FFFFu32, 0x0000_0000u32] {
-        let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            data,
-            magic,
-            max_payload_len,
-        );
+        let result =
+            vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload_len);
         match result {
             Ok((_envelope, event)) => {
                 assert!(event.is_valid(), "decoded event must be structurally valid");
@@ -68,9 +59,8 @@ fuzz_target!(|data: &[u8]| {
 
 /// Asserts that a journal error is a known current typed variant.
 ///
-/// The wildcard arm is required by `JournalError` being `#[non_exhaustive]` and
-/// accepts future variants gracefully at runtime. The CI exhaustiveness script
-/// enforces that every current production variant appears in this oracle body.
+/// The CI exhaustiveness script enforces that every current production variant
+/// appears in this oracle body. New variants must be handled explicitly.
 fn assert_typed_journal_error(error: vb_storage::JournalError) {
     use vb_storage::JournalError;
     match error {
@@ -78,29 +68,39 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         JournalError::UnexpectedEof
         | JournalError::HeaderChecksumMismatch
         | JournalError::PayloadDigestMismatch
+        | JournalError::PostcardEncodeFailed(_)
         | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::BadMagic { .. }
         | JournalError::PayloadTooLarge { .. }
         | JournalError::RecordKindFamilyMismatch { .. }
+        | JournalError::RecordKindPayloadMismatch { .. }
         | JournalError::UnknownRecordKind { .. }
         | JournalError::UnsupportedSchemaVersion { .. }
         | JournalError::HeaderLengthMismatch { .. }
         | JournalError::SequenceOverflow
         | JournalError::WrongRun { .. }
         | JournalError::SequenceGap { .. }
+        | JournalError::ReplayKeyMismatch { .. }
+        | JournalError::ReplayEnvelopeSequenceMismatch { .. }
         // Internal/operational errors
         | JournalError::Fjall(_)
         | JournalError::Encode(_)
         | JournalError::KeyCapacity
         | JournalError::DuplicateEvent { .. }
+        | JournalError::DuplicateStagedKey { .. }
         | JournalError::WriteLockPoisoned
         | JournalError::QueueCapacity
         | JournalError::QueueFull
         | JournalError::JournalBatchBytesExceeded { .. }
+        | JournalError::BatchAborted
         | JournalError::QueueShutdown
         | JournalError::MigrationRequired { .. }
+        | JournalError::MalformedKeyspaceRow { .. }
         | JournalError::ArtifactMalformed
+        | JournalError::WorkflowReconstruction(_)
+        | JournalError::CompiledIrReadback(_)
+        | JournalError::AdmissionAllocationFailed(_)
         | JournalError::ArtifactChecksumMismatch
         | JournalError::InvalidGateCount { .. }
         | JournalError::MissingRequiredProofFlag { .. }
@@ -116,15 +116,15 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::ActiveRunCapacityExceeded
         | JournalError::FrameAllocationFailed
         | JournalError::AdmissionJournalFailed
+        | JournalError::IndexStatusStateCollision { .. }
         | JournalError::StrictDurabilityFailed
         | JournalError::TooManyEvents { .. }
         | JournalError::ReplayAllocationFailed { .. }
         | JournalError::ClockUnavailable
+        | JournalError::InvalidConfig { .. }
+        | JournalError::UnsupportedReadOnly
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
         | JournalError::Trim(_) => {}
-        _ => {
-            // Coverage-only: unknown future variants are accepted gracefully.
-        }
     }
 }

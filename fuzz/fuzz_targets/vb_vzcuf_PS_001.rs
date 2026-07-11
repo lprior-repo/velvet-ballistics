@@ -16,12 +16,12 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use vb_core::{RunId, WorkflowDigest};
 use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
-use vb_storage::records::RecordKind;
 use vb_storage::events::JournalEvent;
+use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
-use vb_core::{RunId, WorkflowDigest};
 
 /// Admission function mirroring production logic.
 fn admit_bytes(current: u64, candidate: u64, limit: u64) -> Result<u64, ()> {
@@ -31,7 +31,9 @@ fn admit_bytes(current: u64, candidate: u64, limit: u64) -> Result<u64, ()> {
 
 /// Sub-target 0: Fuzz admission boundary with arbitrary u64 triplets.
 fn fuzz_admission_boundary(data: &[u8]) {
-    if data.len() < 24 { return; }
+    if data.len() < 24 {
+        return;
+    }
     let current_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -57,8 +59,12 @@ fn fuzz_admission_boundary(data: &[u8]) {
     };
     let limit = u64::from_le_bytes(limit_bytes);
 
-    if limit == 0 { return; }
-    if current > limit { return; }
+    if limit == 0 {
+        return;
+    }
+    if current > limit {
+        return;
+    }
 
     match admit_bytes(current, candidate, limit) {
         Ok(total) => {
@@ -68,16 +74,20 @@ fn fuzz_admission_boundary(data: &[u8]) {
         }
         Err(()) => {
             let overflow = current.checked_add(candidate).is_none();
-            let over = current.checked_add(candidate).map_or(true, |t| t > limit);
-            assert!(overflow || over,
-                "rejection without overflow or over-limit: current={current} candidate={candidate} limit={limit}");
+            let over = current.checked_add(candidate).is_none_or(|t| t > limit);
+            assert!(
+                overflow || over,
+                "rejection without overflow or over-limit: current={current} candidate={candidate} limit={limit}"
+            );
         }
     }
 }
 
 /// Sub-target 1: Fuzz encode_record with arbitrary payload sizes.
 fn fuzz_encode_record(data: &[u8]) {
-    if data.len() < 8 { return; }
+    if data.len() < 8 {
+        return;
+    }
     let run_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -86,7 +96,9 @@ fn fuzz_encode_record(data: &[u8]) {
         None => return,
     };
     let run = u64::from_le_bytes(run_bytes);
-    if run == 0 { return; }
+    if run == 0 {
+        return;
+    }
 
     let event = JournalEvent::RunAccepted {
         run: RunId::new(run),
@@ -94,21 +106,26 @@ fn fuzz_encode_record(data: &[u8]) {
         workflow: WorkflowDigest::from_bytes([0u8; 32]),
     };
 
-    // encode_record must not panic
-    let _ = encode_record(
+    // encode_record must not panic; both typed outcomes are valid fuzz observations.
+    match encode_record(
         MAGIC_JOURNAL_EVENT,
         RecordKind::RunAccepted,
         0,
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    ) {
+        Ok(_) | Err(_) => {}
+    }
 }
 
 fuzz_target!(|data: &[u8]| {
-    if data.is_empty() { return; }
+    let Some((&selector, rest)) = data.split_first() else {
+        return;
+    };
     // Dispatch: first byte mod 2 selects sub-target
-    match data[0] % 2 {
-        0 => fuzz_admission_boundary(&data[1..]),
-        _ => fuzz_encode_record(&data[1..]),
+    match selector.checked_rem(2) {
+        Some(0) => fuzz_admission_boundary(rest),
+        Some(_) => fuzz_encode_record(rest),
+        None => {}
     }
 });

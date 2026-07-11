@@ -1,35 +1,35 @@
 use super::*;
 
 #[test]
-fn canonical_table_returns_ballastics_for_product_when_loaded() {
+fn canonical_table_returns_ballistics_for_product_when_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.product, CANONICAL_HYPHEN);
 }
 
 #[test]
-fn canonical_table_returns_ballastics_for_binary_when_loaded() {
+fn canonical_table_returns_ballistics_for_binary_when_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.binary, CANONICAL_HYPHEN);
 }
 
 #[test]
-fn canonical_table_returns_ballastics_for_package_when_loaded() {
+fn canonical_table_returns_ballistics_for_package_when_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.package, CANONICAL_HYPHEN);
 }
 
 #[test]
-fn canonical_table_returns_ballastics_for_bead_rig_when_loaded() {
+fn canonical_table_returns_ballistics_for_bead_rig_when_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.bead_rig, CANONICAL_HYPHEN);
 }
 
 #[test]
-fn canonical_table_returns_underscore_ballastics_for_crate_module_and_database_when_loaded() {
+fn canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.crate_module, CANONICAL_UNDERSCORE);
@@ -37,7 +37,7 @@ fn canonical_table_returns_underscore_ballastics_for_crate_module_and_database_w
 }
 
 #[test]
-fn canonical_table_returns_ballastics_v1_when_language_version_is_loaded() {
+fn canonical_table_returns_ballistics_v1_when_language_version_is_loaded() {
     let table = canonical_spelling_table();
 
     assert_eq!(table.language_version, CANONICAL_LANGUAGE_VERSION);
@@ -194,7 +194,7 @@ fn validate_scan_config_returns_invalid_configuration_when_canonical_token_contr
     assert_eq!(
         result,
         Err(NamingScanError::InvalidConfiguration {
-            reason: "contradictory token for crate_module: Velvet-Ballastics".to_string()
+            reason: format!("contradictory token for crate_module: {LEGACY_PROJECT}")
         })
     );
 }

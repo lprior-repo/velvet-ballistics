@@ -107,9 +107,15 @@ pub fn fuzz_capability_name_schema(data: &[u8]) {
     };
     let result = vb_validate::shared::validate_with_contracts(&parts, &[contract]);
     if bounded_name.is_empty() {
-        assert!(matches!(result, Err(ValidationError::CapabilityNameEmpty { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameEmpty { .. })
+        ));
     } else if !capability_name_is_valid(bounded_name) {
-        assert!(matches!(result, Err(ValidationError::CapabilityNameInvalid { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameInvalid { .. })
+        ));
     } else {
         assert!(result.is_ok());
     }
@@ -135,12 +141,24 @@ pub fn fuzz_capability_contract_schema(data: &[u8]) {
     };
     let result = vb_validate::shared::validate_with_contracts(&parts, &[contract]);
     if name.is_empty() {
-        assert!(matches!(result, Err(ValidationError::CapabilityNameEmpty { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameEmpty { .. })
+        ));
     } else if !capability_name_is_valid(name) {
-        assert!(matches!(result, Err(ValidationError::CapabilityNameInvalid { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameInvalid { .. })
+        ));
     } else if first != second {
-        assert!(matches!(result, Err(ValidationError::CapabilityActionMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityActionMismatch { .. })
+        ));
     } else {
-        assert!(matches!(result, Err(ValidationError::CapabilityDuplicate { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityDuplicate { .. })
+        ));
     }
 }

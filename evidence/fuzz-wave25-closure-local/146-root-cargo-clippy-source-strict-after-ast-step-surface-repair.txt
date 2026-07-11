@@ -1,0 +1,6 @@
+COMMAND: cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.25s
+EXIT_STATUS=0

@@ -1,0 +1,253 @@
+COMMAND: cargo clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/tooling_guard_zero_parser.rs:41:9
+   |
+41 | /         let _ = std::process::Command::new("chmod")
+42 | |             .arg("+x")
+43 | |             .arg(&path)
+44 | |             .output();
+   | |______________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/tooling_guard_zero_parser.rs:49:5
+   |
+49 | /     let _ = Command::new("bash")
+50 | |         .arg("scripts/guard-zero-tests.sh")
+51 | |         .arg("--")
+52 | |         .arg(&fake_test_path)
+53 | |         .output();
+   | |__________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:23:29
+   |
+23 |         u32::from_le_bytes([data[0], data[1], data[2], data[3]])
+   |                             ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:23:38
+   |
+23 |         u32::from_le_bytes([data[0], data[1], data[2], data[3]])
+   |                                      ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:23:47
+   |
+23 |         u32::from_le_bytes([data[0], data[1], data[2], data[3]])
+   |                                               ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:23:56
+   |
+23 |         u32::from_le_bytes([data[0], data[1], data[2], data[3]])
+   |                                                        ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/journal_decode.rs:65:13
+   |
+65 | /             let _ =
+66 | |                 vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, payload_limit);
+   | |__________________________________________________________________________________________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:29:29
+   |
+29 |         u16::from_le_bytes([data[4], data[5]])
+   |                             ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:29:38
+   |
+29 |         u16::from_le_bytes([data[4], data[5]])
+   |                                      ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/journal_decode.rs:71:5
+   |
+71 | /     let _ =
+72 | |         vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, max_payload_len);
+   | |_________________________________________________________________________________________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:31:29
+   |
+31 |         u16::from_le_bytes([data[0], data[1]]) // reuse first 2 bytes as kind for 4-byte inputs
+   |                             ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/kind_validation.rs:31:38
+   |
+31 |         u16::from_le_bytes([data[0], data[1]]) // reuse first 2 bytes as kind for 4-byte inputs
+   |                                      ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/journal_decode.rs:76:9
+   |
+76 | /         let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+77 | |             &data[..truncation],
+78 | |             vb_storage::MAGIC_JOURNAL_EVENT,
+79 | |             max_payload_len,
+80 | |         );
+   | |__________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+
+error: slicing may panic
+  --> fuzz_targets/journal_decode.rs:77:14
+   |
+77 |             &data[..truncation],
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/kind_validation.rs:99:9
+   |
+99 |         let _ = vb_storage::codec::validate_record_kind_family(test_magic, kind);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: non-binding `let` on an expression with `#[must_use]` type
+   --> fuzz_targets/kind_validation.rs:104:9
+    |
+104 |         let _ = vb_storage::codec::validate_record_kind_family(boundary_magic, kind);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: consider explicitly using expression value
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+
+error: indexing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:133:11
+    |
+133 |     match data[0] % 3 {
+    |           ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:134:46
+    |
+134 |         0 => fuzz_encode_record_determinism(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:135:46
+    |
+135 |         1 => fuzz_staged_state_preservation(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:136:46
+    |
+136 |         _ => fuzz_rejection_batch_integrity(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: could not compile `velvet-ballistics-fuzz` (bin "tooling_guard_zero_parser") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `velvet-ballistics-fuzz` (bin "journal_decode") due to 4 previous errors
+error: could not compile `velvet-ballistics-fuzz` (bin "kind_validation") due to 10 previous errors
+error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_004") due to 4 previous errors
+error: using a potentially dangerous silent `as` conversion
+  --> tests/proptest_digest_coherence.rs:24:41
+   |
+24 |             let step_idx = StepIdx::new(i as u16);
+   |                                         ^^^^^^^^
+   |
+   = help: consider using a safe wrapper for this conversion
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+   = note: requested on the command line with `-D clippy::as-conversions`
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/proptest_digest_coherence.rs:25:32
+   |
+25 |             let next_step = if i + 1 < node_count {
+   |                                ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
+   = note: requested on the command line with `-D clippy::arithmetic-side-effects`
+
+error: using a potentially dangerous silent `as` conversion
+  --> tests/proptest_digest_coherence.rs:26:35
+   |
+26 |                 Some(StepIdx::new((i + 1) as u16))
+   |                                   ^^^^^^^^^^^^^^
+   |
+   = help: consider using a safe wrapper for this conversion
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/proptest_digest_coherence.rs:26:35
+   |
+26 |                 Some(StepIdx::new((i + 1) as u16))
+   |                                   ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/proptest_digest_coherence.rs:32:16
+   |
+32 |             if i + 1 == node_count {
+   |                ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
+
+error: could not compile `velvet-ballistics-fuzz` (test "proptest_digest_coherence") due to 5 previous errors
+EXIT_STATUS=101

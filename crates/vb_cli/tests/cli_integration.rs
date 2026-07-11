@@ -886,7 +886,7 @@ steps: []
 fn yaml_parse_valid_minimal_workflow() {
     let yaml = "\
 version: \"velvet-ballistics/v1\"
-name: test-workflow
+name: test_workflow
 when:
   manual: {}
 steps:
@@ -902,7 +902,7 @@ steps:
     let result = vb_compile::parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.name(), "test-workflow");
+            assert_eq!(wf.name(), "test_workflow");
             assert_eq!(wf.steps().len(), 2);
         }
         Err(err) => assert!(

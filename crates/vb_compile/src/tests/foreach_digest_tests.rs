@@ -88,7 +88,7 @@ fn foreach_workflow(
         then: None,
     }];
     WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -749,7 +749,7 @@ fn foreach_step_position_changes_workflow_digest() {
 
     // ForEach first, Set second
     let source_fe_first = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -761,7 +761,7 @@ fn foreach_step_position_changes_workflow_digest() {
     });
     // Set first, ForEach second
     let source_fe_last = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -883,7 +883,7 @@ fn foreach_nested_body_content_changes_workflow_digest() {
     };
 
     let source_a = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -894,7 +894,7 @@ fn foreach_nested_body_content_changes_workflow_digest() {
         examples: vec![],
     });
     let source_b = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -966,7 +966,7 @@ fn foreach_nested_foreach_vs_flat_set_body_produces_different_workflow_digest() 
     };
 
     let source_nested = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],
@@ -977,7 +977,7 @@ fn foreach_nested_foreach_vs_flat_set_body_produces_different_workflow_digest() 
         examples: vec![],
     });
     let source_flat = WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],

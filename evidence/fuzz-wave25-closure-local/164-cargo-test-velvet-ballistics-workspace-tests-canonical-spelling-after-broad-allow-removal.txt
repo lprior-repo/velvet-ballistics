@@ -1,0 +1,10 @@
+COMMAND: cargo test -p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.62s
+     Running tests/vb_37lc_canonical_spelling_red.rs (target/debug/deps/vb_37lc_canonical_spelling_red-...)
+
+running 76 tests
+... 76 individual test names listed ...
+test result: ok. 76 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+EXIT_STATUS=0

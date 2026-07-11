@@ -1,0 +1,21 @@
+COMMAND: cargo test --test proptest_journal_error_exhaustiveness --test proptest_ipc_error_exhaustiveness
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.86s
+     Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-015f847c3ef37a53)
+
+running 2 tests
+test proptest_validate_frame_magic_typed ... ok
+test proptest_ipc_frame_errors_are_typed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-df4505e593a30867)
+
+running 1 test
+test proptest_decode_record_errors_are_typed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+EXIT_STATUS=0

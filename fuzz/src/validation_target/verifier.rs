@@ -49,8 +49,8 @@ fn build_fuzz_node(
 }
 
 fn bounded_next(index: usize, node_count: usize, add: usize) -> vb_core::StepIdx {
-    let idx = u16::try_from(index.saturating_add(add).min(node_count.saturating_sub(1)))
-        .unwrap_or(0);
+    let idx =
+        u16::try_from(index.saturating_add(add).min(node_count.saturating_sub(1))).unwrap_or(0);
     vb_core::StepIdx::new(idx)
 }
 
@@ -169,7 +169,7 @@ fn assert_typed_validation_error(error: vb_validate::ValidationError) {
         | ValidationError::MissingSchemaVersion
         | ValidationError::CueVetFailed { .. }
         | ValidationError::VersionMonotonicityBreach { .. } => {}
-        _ => {}
+        _ => std::process::abort(),
     }
 }
 

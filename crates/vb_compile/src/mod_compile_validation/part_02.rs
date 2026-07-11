@@ -1,13 +1,7 @@
-#![allow(unused_imports)]
-use super::*;
 use crate::limits::YamlLimits;
-use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
+use crate::mod_compile_errors::{CompileError, SourceMark};
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
 use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 pub(crate) fn validate_strict_profile(
     root: &Yaml<'_>,

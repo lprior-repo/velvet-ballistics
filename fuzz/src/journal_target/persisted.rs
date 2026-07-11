@@ -43,7 +43,10 @@ fn exercise_truncated_persisted_payload(max_payload_len: u32) {
         vb_storage::MAGIC_JOURNAL_EVENT,
         max_payload_len,
     );
-    assert!(matches!(result, Err(vb_storage::JournalError::UnexpectedEof)));
+    assert!(matches!(
+        result,
+        Err(vb_storage::JournalError::UnexpectedEof)
+    ));
 }
 
 fn exercise_corrupted_persisted_payload(max_payload_len: u32) {
@@ -135,7 +138,9 @@ pub fn fuzz_binary_payload_boundary(data: &[u8]) {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
     match result {
-        Ok(_) | Err(JournalError::BadMagic { .. }) | Err(JournalError::RecordKindFamilyMismatch { .. }) => {}
+        Ok(_)
+        | Err(JournalError::BadMagic { .. })
+        | Err(JournalError::RecordKindFamilyMismatch { .. }) => {}
         Err(e) => assert_typed_journal_error(e),
     }
 }

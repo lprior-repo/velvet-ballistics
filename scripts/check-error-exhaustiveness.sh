@@ -100,6 +100,20 @@ def mentioned_variants(path: Path, type_name: str, function_name: str) -> set[st
     return set(re.findall(rf"\b{re.escape(type_name)}::([A-Z][A-Za-z0-9_]*)\b", body))
 
 
+def graceful_wildcard_failure(path: Path, function_name: str) -> str | None:
+    text = strip_comments(path.read_text(encoding="utf-8"))
+    body = function_body(text, function_name)
+    graceful_patterns = [
+        r"_\s*=>\s*\{\s*\}",
+        r"_\s*=>\s*Ok\s*\(\s*\(\s*\)\s*\)",
+        r"_\s*=>\s*\(\s*\)",
+    ]
+    for pattern in graceful_patterns:
+        if re.search(pattern, body, flags=re.S) is not None:
+            return "graceful wildcard arm accepts an unlisted variant"
+    return None
+
+
 def main() -> int:
     root = Path(sys.argv[1])
     checks = [
@@ -107,7 +121,7 @@ def main() -> int:
             "JournalError",
             root / "crates/vb_storage/src/error/mod.rs",
             [
-                Oracle(root / "fuzz/src/lib.rs", "assert_typed_journal_error"),
+                Oracle(root / "fuzz/src/journal_target/errors.rs", "assert_typed_journal_error"),
                 Oracle(root / "fuzz/fuzz_targets/decode_record.rs", "assert_typed_journal_error"),
                 Oracle(root / "fuzz/fuzz_targets/journal_decode.rs", "assert_typed_journal_error"),
                 Oracle(
@@ -119,12 +133,23 @@ def main() -> int:
         (
             "IpcError",
             root / "crates/vb_ipc/src/error.rs",
-            [Oracle(root / "fuzz/src/lib.rs", "assert_typed_ipc_error")],
+            [
+                Oracle(root / "fuzz/src/ipc_target.rs", "assert_typed_ipc_error"),
+                Oracle(
+                    root / "fuzz/tests/proptest_ipc_error_exhaustiveness.rs",
+                    "assert_known_ipc_error",
+                ),
+            ],
         ),
         (
             "ValidationError",
-            root / "crates/vb_validate/src/lib.rs",
-            [Oracle(root / "fuzz/src/lib.rs", "assert_typed_validation_error")],
+            root / "crates/vb_validate/src/validation_errors.rs",
+            [
+                Oracle(
+                    root / "fuzz/src/validation_target/verifier.rs",
+                    "assert_typed_validation_error",
+                )
+            ],
         ),
     ]
 
@@ -142,6 +167,13 @@ def main() -> int:
             except ValueError as error:
                 failures.append(f"{type_name} oracle parse failed in {rel}::{oracle.function}: {error}")
                 continue
+            try:
+                wildcard_failure = graceful_wildcard_failure(oracle.path, oracle.function)
+            except ValueError as error:
+                failures.append(f"{type_name} wildcard parse failed in {rel}::{oracle.function}: {error}")
+                continue
+            if wildcard_failure is not None:
+                failures.append(f"{type_name} {wildcard_failure} in {rel}::{oracle.function}")
             missing = sorted(variants - mentions)
             if missing:
                 failures.append(

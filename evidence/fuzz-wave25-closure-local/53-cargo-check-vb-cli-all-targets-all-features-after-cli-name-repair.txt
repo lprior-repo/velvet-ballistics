@@ -1,0 +1,21 @@
+    Checking log v0.4.29
+    Checking heapless v0.7.17
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking anstyle v1.0.14
+    Checking ahash v0.8.12
+    Checking serde_json v1.0.150
+    Checking proptest v1.11.0
+    Checking sfa v1.0.0
+    Checking mio v1.2.0
+    Checking annotate-snippets v0.12.16
+    Checking lsm-tree v3.1.4
+    Checking postcard v1.1.3
+    Checking serde-saphyr v0.0.25
+    Checking fjall v3.1.4
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.07s

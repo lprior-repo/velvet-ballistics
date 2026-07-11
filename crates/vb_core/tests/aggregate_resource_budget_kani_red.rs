@@ -2,6 +2,10 @@
 mod aggregate_budget_kani_harnesses {
     const BUDGET_RS: &str = include_str!("../src/budget.rs");
     const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+    const ADMISSION_ERRORS_RS: &str =
+        include_str!("../../vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs");
+    const ADMISSION_BUDGET_RS: &str =
+        include_str!("../../vb_runtime/src/admission/parts/chunk_006_admit_budget.rs");
 
     #[kani::proof]
     fn checked_addition_harness_requires_aggregate_usage_api() {
@@ -29,7 +33,13 @@ mod aggregate_budget_kani_harnesses {
 
     #[kani::proof]
     fn admission_harness_requires_budget_capacity_api() {
-        assert!(ADMISSION_RS.contains("admit_run_with_budget"));
-        assert!(ADMISSION_RS.contains("ResourceCapacityExceeded"));
+        assert!(
+            ADMISSION_RS.contains("admit_run_with_budget")
+                || ADMISSION_BUDGET_RS.contains("admit_run_with_budget")
+        );
+        assert!(
+            ADMISSION_RS.contains("ResourceCapacityExceeded")
+                || ADMISSION_ERRORS_RS.contains("ResourceCapacityExceeded")
+        );
     }
 }

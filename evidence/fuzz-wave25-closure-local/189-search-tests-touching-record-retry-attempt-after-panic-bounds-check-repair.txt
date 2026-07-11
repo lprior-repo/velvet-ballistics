@@ -1,0 +1,4 @@
+=== Search for proptests / tests touching the fuzz harness entry point ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:15Z
+

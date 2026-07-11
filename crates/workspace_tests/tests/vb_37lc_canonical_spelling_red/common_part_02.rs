@@ -97,7 +97,7 @@ pub(crate) fn minimum_valid_raw_config() -> RawScanConfig {
     RawScanConfig {
         canonical_entries: canonical_entries(),
         legacy_allowlist: exact_legacy_allowlist(),
-        scan_patterns: vec![LEGACY_PROJECT.to_string()],
+        scan_patterns: project_scan_patterns(),
         excluded_path_rules: vec![".git/**".to_string(), "target/**".to_string()],
         workspace_root: PathBuf::from("."),
         report_destination: None,
@@ -110,8 +110,9 @@ pub(crate) fn maximum_bounded_valid_raw_config() -> RawScanConfig {
         legacy_allowlist: exact_legacy_allowlist(),
         scan_patterns: vec![
             LEGACY_PROJECT.to_string(),
+            LEGACY_PROJECT_TITLE.to_string(),
             "velvet_ballistics".to_string(),
-            "velvet-ballistics/v1".to_string(),
+            LEGACY_LANGUAGE_VERSION.to_string(),
         ],
         excluded_path_rules: vec![
             ".git/**".to_string(),
@@ -137,7 +138,7 @@ pub(crate) fn minimum_valid_scan_config() -> ScanConfig {
             language_version: CANONICAL_LANGUAGE_VERSION.to_string(),
         },
         allowlist_policy: AllowlistPolicy::Exact(exact_legacy_allowlist()),
-        scan_patterns: vec![LEGACY_PROJECT.to_string()],
+        scan_patterns: project_scan_patterns(),
         excluded_path_rules: vec![".git/**".to_string(), "target/**".to_string()],
         config_fingerprint: "vb-37lc-minimum-config".to_string(),
         report_destination: None,
@@ -156,9 +157,14 @@ pub(crate) fn maximum_bounded_scan_config() -> ScanConfig {
 pub(crate) fn maximum_scan_patterns() -> Vec<String> {
     vec![
         LEGACY_PROJECT.to_string(),
+        LEGACY_PROJECT_TITLE.to_string(),
         "velvet_ballistics".to_string(),
-        "velvet-ballistics/v1".to_string(),
+        LEGACY_LANGUAGE_VERSION.to_string(),
     ]
+}
+
+pub(crate) fn project_scan_patterns() -> Vec<String> {
+    vec![LEGACY_PROJECT.to_string(), LEGACY_PROJECT_TITLE.to_string()]
 }
 
 pub(crate) fn maximum_excluded_path_rules() -> Vec<String> {

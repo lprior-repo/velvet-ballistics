@@ -12,6 +12,7 @@
 //! Run with: cargo fuzz run fuzz_storage_codec_header -- -max_len=4096 -runs=100000
 
 use libfuzzer_sys::fuzz_target;
+use vb_storage::JournalError;
 
 fuzz_target!(|data: &[u8]| {
     let magics: [u32; 8] = [
@@ -36,8 +37,40 @@ fuzz_target!(|data: &[u8]| {
                 if len > cap {
                     continue;
                 }
-                let _ = vb_storage::decode_record_header(&data[..len], magic, limit);
+                if let Some(prefix) = data.get(..len) {
+                    observe_header_decode(vb_storage::decode_record_header(prefix, magic, limit));
+                }
             }
         }
     }
 });
+
+fn observe_header_decode(result: Result<vb_storage::RecordHeader, JournalError>) {
+    match result {
+        Ok(header) => {
+            assert!(
+                header.payload_len <= vb_storage::MAX_BLOB_BYTES,
+                "decoded header payload length must remain inside the largest storage bound"
+            );
+        }
+        Err(error) => assert_header_decode_error(error),
+    }
+}
+
+fn assert_header_decode_error(error: JournalError) {
+    assert!(
+        matches!(
+            error,
+            JournalError::UnexpectedEof
+                | JournalError::BadMagic { .. }
+                | JournalError::UnsupportedSchemaVersion { .. }
+                | JournalError::MigrationRequired { .. }
+                | JournalError::UnknownRecordKind { .. }
+                | JournalError::RecordKindFamilyMismatch { .. }
+                | JournalError::HeaderLengthMismatch { .. }
+                | JournalError::PayloadTooLarge { .. }
+                | JournalError::HeaderChecksumMismatch
+        ),
+        "header decoder must return only header-class JournalError variants"
+    );
+}

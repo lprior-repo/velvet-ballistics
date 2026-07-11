@@ -12,6 +12,9 @@
 //! - Recovery idempotency
 //! - Recovery with max-size journal
 
+use std::ops::Deref;
+use std::sync::{Mutex, MutexGuard};
+
 use tempfile::TempDir;
 use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
@@ -26,13 +29,46 @@ use vb_storage::recovery::{
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
+// These tests exercise real Fjall files and one test spawns this test binary
+// as a crash child. On Unix, a fork/exec window can briefly inherit open
+// flock-backed process-lock file descriptors from unrelated parallel tests.
+// Serialising journal lifetimes in this test binary keeps the durable paths
+// unique while preventing inherited descriptors from making clean reopen tests
+// observe a false ProcessLockHeld on their own TempDir.
+static JOURNAL_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+struct LockedJournal {
+    journal: FjallJournal,
+    _guard: MutexGuard<'static, ()>,
+}
+
+impl Deref for LockedJournal {
+    type Target = FjallJournal;
+
+    fn deref(&self) -> &Self::Target {
+        &self.journal
+    }
+}
+
+fn journal_test_lock() -> MutexGuard<'static, ()> {
+    match JOURNAL_TEST_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
 fn test_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
 }
 
-fn open_journal(dir: &TempDir) -> FjallJournal {
-    FjallJournal::open(dir.path(), Some(FjallConfig::default()))
-        .expect("journal open should succeed")
+fn open_journal(dir: &TempDir) -> LockedJournal {
+    let guard = journal_test_lock();
+    let journal = FjallJournal::open(dir.path(), Some(FjallConfig::default()))
+        .expect("journal open should succeed");
+    LockedJournal {
+        journal,
+        _guard: guard,
+    }
 }
 
 fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) {
@@ -2011,13 +2047,16 @@ fn pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_r
     cmd.arg("--exact");
     cmd.arg("crash_child_marker");
 
-    let status = cmd
-        .status()
-        .expect("child process should spawn and complete");
-    assert!(
-        status.success(),
-        "child must exit successfully even though it exited without dropping the journal: {status:?}"
-    );
+    {
+        let _spawn_guard = journal_test_lock();
+        let status = cmd
+            .status()
+            .expect("child process should spawn and complete");
+        assert!(
+            status.success(),
+            "child must exit successfully even though it exited without dropping the journal: {status:?}"
+        );
+    }
 
     // Reopen the journal on the same path. The pending action must
     // survive Fjall WAL replay because the child's writes were

@@ -6,8 +6,8 @@
 
 use proptest::prelude::*;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-    ResourceContract,
+    CompiledNode, CompiledNodeKind, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
+    WorkflowParts,
 };
 
 proptest! {
@@ -21,15 +21,31 @@ proptest! {
         // Build a minimal workflow with deterministic nodes.
         let mut nodes: Vec<CompiledNode> = Vec::new();
         for i in 0..node_count {
-            let step_idx = StepIdx::new(i as u16);
-            let next_step = if i + 1 < node_count {
-                Some(StepIdx::new((i + 1) as u16))
+            let step_raw = match u16::try_from(i) {
+                Ok(value) => value,
+                Err(error) => return Err(TestCaseError::fail(format!(
+                    "node index must fit in u16: {error:?}"
+                ))),
+            };
+            let step_idx = StepIdx::new(step_raw);
+            let next_index = match i.checked_add(1) {
+                Some(value) => value,
+                None => return Err(TestCaseError::fail("node index overflow")),
+            };
+            let next_step = if next_index < node_count {
+                let next_raw = match u16::try_from(next_index) {
+                    Ok(value) => value,
+                    Err(error) => return Err(TestCaseError::fail(format!(
+                        "next node index must fit in u16: {error:?}"
+                    ))),
+                };
+                Some(StepIdx::new(next_raw))
             } else {
                 None
             };
             let max_slot = slot_count.saturating_sub(1);
 
-            if i + 1 == node_count {
+            if next_index == node_count {
                 nodes.push(CompiledNode {
                     id: step_idx,
                     output: None,
@@ -68,10 +84,16 @@ proptest! {
         };
 
         // Compute reference digest via postcard + blake3.
-        let serialized = postcard::to_allocvec(&parts_zeroed);
-        prop_assert!(serialized.is_ok(), "postcard serialization must succeed");
+        let serialized = match postcard::to_allocvec(&parts_zeroed) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(TestCaseError::fail(format!(
+                    "postcard serialization must succeed: {error:?}"
+                )));
+            }
+        };
 
-        let reference_hash = blake3::hash(&serialized.unwrap());
+        let reference_hash = blake3::hash(&serialized);
         let reference_digest = WorkflowDigest::from_bytes(*reference_hash.as_bytes());
 
         // Now build the correct parts with the right digest.
@@ -80,10 +102,14 @@ proptest! {
             ..parts_zeroed
         };
 
-        let workflow = vb_core::CompiledWorkflow::try_from_parts(corrected_parts);
-        prop_assert!(workflow.is_ok(), "workflow construction must succeed");
-
-        let workflow = workflow.unwrap();
+        let workflow = match vb_core::CompiledWorkflow::try_from_parts(corrected_parts) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(TestCaseError::fail(format!(
+                    "workflow construction must succeed: {error:?}"
+                )));
+            }
+        };
 
         // The workflow's digest must match the reference.
         prop_assert_eq!(workflow.digest(), reference_digest,

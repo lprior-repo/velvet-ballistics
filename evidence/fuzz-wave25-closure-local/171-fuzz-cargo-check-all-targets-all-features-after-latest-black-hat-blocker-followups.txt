@@ -1,0 +1,10 @@
+COMMAND: cargo check --workspace --all-targets --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== fuzz cargo check --workspace --all-targets --all-features ===
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.40s
+EXIT_STATUS=0

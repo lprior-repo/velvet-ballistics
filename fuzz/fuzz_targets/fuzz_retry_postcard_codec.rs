@@ -26,6 +26,20 @@ fuzz_target!(|data: &[u8]| {
     fuzz_action_ticket_codec(data);
 });
 
+fn read_u64_le_at(data: &[u8], start: usize) -> Option<u64> {
+    let end = start.checked_add(8)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 8]>::try_from(bytes).ok())
+        .map(u64::from_le_bytes)
+}
+
+fn read_u16_le_at(data: &[u8], start: usize) -> Option<u16> {
+    let end = start.checked_add(2)?;
+    data.get(start..end)
+        .and_then(|bytes| <[u8; 2]>::try_from(bytes).ok())
+        .map(u16::from_le_bytes)
+}
+
 /// Exercise postcard encode/decode for `WorkflowParts` derived from the fuzz
 /// input. The decode path tolerates arbitrary bytes (postcard returns `Err`
 /// for malformed payloads), but the harness must never panic regardless of
@@ -66,17 +80,13 @@ where
         Ok(bytes) => bytes,
         Err(_) => return,
     };
-    if first != second {
-        panic!("postcard encode is not deterministic");
-    }
+    assert_eq!(first, second, "postcard encode is not deterministic");
 
     let decoded = match postcard::from_bytes::<T>(&first) {
         Ok(value) => value,
         Err(_) => return,
     };
-    if &decoded != value {
-        panic!("postcard round-trip lost data");
-    }
+    assert_eq!(&decoded, value, "postcard round-trip lost data");
 }
 
 /// Construct a `WorkflowParts` value from arbitrary input bytes. Bounds the
@@ -91,13 +101,20 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
     let entry_byte = *data.get(1)?;
     let digest = vb_core::ids::WorkflowDigest::from_bytes([digest_byte; 32]);
 
-    let node_count = if data.len() >= 3 { usize::from(data[2] & 0x03) + 1 } else { 1 };
+    let node_count = data
+        .get(2)
+        .copied()
+        .and_then(|byte| usize::from(byte & 0x03).checked_add(1))
+        .unwrap_or(1);
 
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(node_count);
     for index in 0..node_count {
-        let offset = 3 + index * 2;
+        let offset = index
+            .checked_mul(2)
+            .and_then(|value| value.checked_add(3))?;
         let step_byte = data.get(offset).copied().unwrap_or(0);
-        let action_byte = data.get(offset + 1).copied().unwrap_or(0);
+        let action_offset = offset.checked_add(1)?;
+        let action_byte = data.get(action_offset).copied().unwrap_or(0);
         nodes.push(CompiledNode {
             id: StepIdx::new(u16::from(step_byte)),
             output: None,
@@ -135,24 +152,17 @@ fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
         return None;
     }
 
-    let run = RunId::new(u64::from_le_bytes([
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-    ]));
-    let step = StepIdx::new(u16::from_le_bytes([data[8], data[9]]));
-    let seq = SeqNo::new(u64::from_le_bytes([
-        data[10], data[11], data[12], data[13], data[14], data[15], data[16], data[17],
-    ]));
-    let action = ActionId::new(u16::from_le_bytes([data[18], data[19]]));
-    let attempt = u16::from_le_bytes([data[20], data[21]]);
-    let idempotency_key = u128::from_le_bytes([
-        data[22], data[23], data[24], data[25], data[26], data[27], data[28], data[29],
-        data[30], data[31], 0, 0, 0, 0, 0, 0,
-    ]);
-    let capacity = if data.len() >= 34 {
-        u16::from_le_bytes([data[32], data[33]])
-    } else {
-        1
-    };
+    let run = RunId::new(read_u64_le_at(data, 0)?);
+    let step = StepIdx::new(read_u16_le_at(data, 8)?);
+    let seq = SeqNo::new(read_u64_le_at(data, 10)?);
+    let action = ActionId::new(read_u16_le_at(data, 18)?);
+    let attempt = read_u16_le_at(data, 20)?;
+    let mut idempotency_bytes = [0u8; 16];
+    let source_key_bytes = data.get(22..32)?;
+    let target_key_bytes = idempotency_bytes.get_mut(..10)?;
+    target_key_bytes.copy_from_slice(source_key_bytes);
+    let idempotency_key = u128::from_le_bytes(idempotency_bytes);
+    let capacity = read_u16_le_at(data, 32).unwrap_or(1);
 
     Some(ActionTicket {
         run,

@@ -5,9 +5,9 @@ fn classify_occurrence_returns_allowed_migration_reference_with_exact_payload_wh
  {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/migration.md");
-    let text = "MIGRATION-REFERENCE external-preexisting-artifact Velvet-Ballastics";
+    let text = format!("{MIGRATION_LABEL} {MIGRATION_ARTIFACT} {LEGACY_PROJECT}");
 
-    let result = classify_occurrence(path, line(6), column(1), text, &config);
+    let result = classify_occurrence(path, line(6), column(1), &text, &config);
 
     assert_eq!(
         result,
@@ -33,23 +33,24 @@ fn classify_occurrence_returns_invalid_legacy_when_repository_path_is_only_a_sub
 }
 
 #[test]
-fn classify_occurrence_returns_invalid_legacy_when_master_filename_is_embedded_in_unrelated_path() {
+fn classify_occurrence_returns_no_occurrence_when_current_master_filename_is_embedded_in_unrelated_path()
+ {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/bad.md");
     let text = "archive/velvet-ballistics-MASTER.md.copy";
 
     let result = classify_occurrence(path, line(2), column(9), text, &config);
 
-    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
 }
 
 #[test]
 fn classify_occurrence_returns_invalid_legacy_when_migration_label_is_absent() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/bad.md");
-    let text = "external-preexisting-artifact Velvet-Ballastics";
+    let text = format!("{MIGRATION_ARTIFACT} {LEGACY_PROJECT}");
 
-    let result = classify_occurrence(path, line(3), column(31), text, &config);
+    let result = classify_occurrence(path, line(3), column(31), &text, &config);
 
     assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
 }
@@ -69,7 +70,7 @@ fn classify_occurrence_returns_no_occurrence_when_text_has_no_legacy_token() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/clean.md");
 
-    let result = classify_occurrence(path, line(1), column(1), "ballastics only", &config);
+    let result = classify_occurrence(path, line(1), column(1), "trajectory only", &config);
 
     assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
 }
@@ -126,7 +127,7 @@ fn classify_occurrence_returns_legacy_language_version_class_when_legacy_languag
     let config = maximum_bounded_scan_config();
     let path = repo_path("fixtures/workflow.yaml");
 
-    let result = classify_occurrence(path, line(1), column(11), "velvet-ballistics/v1", &config);
+    let result = classify_occurrence(path, line(1), column(11), LEGACY_LANGUAGE_VERSION, &config);
 
     assert_eq!(
         result,
@@ -141,9 +142,9 @@ fn classify_occurrence_returns_legacy_language_version_class_when_legacy_languag
 fn classify_occurrence_returns_legacy_language_version_class_when_token_is_embedded() {
     let config = maximum_bounded_scan_config();
     let path = repo_path("fixtures/workflow.yaml");
-    let text = "language=velvet-ballistics/v1";
+    let text = format!("language={LEGACY_LANGUAGE_VERSION}");
 
-    let result = classify_occurrence(path, line(1), column(10), text, &config);
+    let result = classify_occurrence(path, line(1), column(10), &text, &config);
 
     assert_eq!(
         result,

@@ -20,9 +20,6 @@ pub(crate) fn exact_legacy_allowlist() -> Vec<LegacyAllowRule> {
         LegacyAllowRule::RepositoryPath {
             path: CURRENT_REPOSITORY_PATH.to_string(),
         },
-        LegacyAllowRule::MasterFilename {
-            filename: CURRENT_MASTER_FILENAME.to_string(),
-        },
         LegacyAllowRule::MigrationReference {
             label: MIGRATION_LABEL.to_string(),
             artifact: MIGRATION_ARTIFACT.to_string(),
@@ -39,7 +36,7 @@ pub(crate) fn raw_config_missing_kind(kind: CanonicalNameKind) -> RawScanConfig 
     RawScanConfig {
         canonical_entries: entries,
         legacy_allowlist: exact_legacy_allowlist(),
-        scan_patterns: vec![LEGACY_PROJECT.to_string()],
+        scan_patterns: project_scan_patterns(),
         excluded_path_rules: vec![".git/**".to_string(), "target/**".to_string()],
         workspace_root: PathBuf::from("."),
         report_destination: None,
@@ -66,7 +63,7 @@ pub(crate) fn raw_config_with_contradictory_token(
     RawScanConfig {
         canonical_entries: entries,
         legacy_allowlist: exact_legacy_allowlist(),
-        scan_patterns: vec![LEGACY_PROJECT.to_string()],
+        scan_patterns: project_scan_patterns(),
         excluded_path_rules: vec![".git/**".to_string(), "target/**".to_string()],
         workspace_root: PathBuf::from("."),
         report_destination: None,
@@ -77,7 +74,7 @@ pub(crate) fn raw_config_with_allow_rule(rule: LegacyAllowRule) -> RawScanConfig
     RawScanConfig {
         canonical_entries: canonical_entries(),
         legacy_allowlist: vec![rule],
-        scan_patterns: vec![LEGACY_PROJECT.to_string()],
+        scan_patterns: project_scan_patterns(),
         excluded_path_rules: vec![".git/**".to_string(), "target/**".to_string()],
         workspace_root: PathBuf::from("."),
         report_destination: None,

@@ -1,13 +1,7 @@
-#![allow(unused_imports)]
 use super::*;
-use crate::limits::YamlLimits;
-use crate::mod_compile_errors::non_string_key_error;
-use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
+use crate::mod_compile_errors::CompileError;
 use saphyr::Yaml;
-use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
-use std::str;
-use vb_core::{ConstValue, SlotIdx, StepIdx};
+use vb_core::{ConstValue, StepIdx};
 
 pub(crate) fn required_u16_field(
     body: &Yaml<'_>,
@@ -34,45 +28,6 @@ pub(crate) fn integer_error_value(value: i64) -> usize {
         Ok(value) => value,
         Err(_) => usize::MAX,
     }
-}
-
-pub(crate) fn required_branch_targets(
-    body: &Yaml<'_>,
-    step: usize,
-    field: &'static str,
-) -> Result<Vec<StepIdx>, CompileError> {
-    let node = required_step_field(body, step, field)?;
-    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
-        step,
-        field,
-        expected: "a sequence of integer step indexes",
-    })?;
-    if sequence.is_empty() {
-        return Err(CompileError::StepFieldShape {
-            step,
-            field,
-            expected: "at least one integer step index",
-        });
-    }
-    let mut targets = Vec::with_capacity(sequence.len());
-    let mut index = 0usize;
-    while index < sequence.len() {
-        let Some(node) = sequence.get(index) else {
-            return Err(CompileError::StepIndexOutOfRange { value: index });
-        };
-        let value = node.as_integer().ok_or(CompileError::StepFieldShape {
-            step,
-            field,
-            expected: "a sequence of integer step indexes",
-        })?;
-        let value =
-            u16::try_from(value).map_err(|_| CompileError::BranchTargetOutOfRange { value })?;
-        targets.push(StepIdx::new(value));
-        index = index
-            .checked_add(1)
-            .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
-    }
-    Ok(targets)
 }
 
 #[allow(dead_code)]

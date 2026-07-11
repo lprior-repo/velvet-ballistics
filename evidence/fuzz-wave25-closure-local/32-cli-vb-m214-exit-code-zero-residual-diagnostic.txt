@@ -1,0 +1,40 @@
+   Compiling log v0.4.29
+   Compiling heapless v0.7.17
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+   Compiling anstyle v1.0.14
+   Compiling serde_json v1.0.150
+   Compiling ahash v0.8.12
+   Compiling proptest v1.11.0
+   Compiling sfa v1.0.0
+   Compiling mio v1.2.0
+   Compiling annotate-snippets v0.12.16
+   Compiling lsm-tree v3.1.4
+   Compiling serde-saphyr v0.0.25
+   Compiling fjall v3.1.4
+   Compiling postcard v1.1.3
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_validate)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.52s
+     Running tests/cli_vb_m214_bdd_scenarios.rs (target/debug/deps/cli_vb_m214_bdd_scenarios-ac137db190974977)
+
+running 1 test
+
+thread 'exit_code_tests::exit_code_zero_on_success' (3817989) panicked at crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs:196:9:
+assertion `left == right` failed: expected exit 0 on valid workflow
+  left: Some(2)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test exit_code_tests::exit_code_zero_on_success ... FAILED
+
+failures:
+
+failures:
+    exit_code_tests::exit_code_zero_on_success
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics --test cli_vb_m214_bdd_scenarios`

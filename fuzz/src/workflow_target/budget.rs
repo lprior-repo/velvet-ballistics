@@ -90,8 +90,10 @@ fn budget_from_bytes(data: &[u8]) -> u64 {
         };
         let mut src = [0u8; 8];
         let end = slice.len().min(8);
-        if end > 0 {
-            src[..end].copy_from_slice(&slice[..end]);
+        if end > 0
+            && let (Some(src_prefix), Some(slice_prefix)) = (src.get_mut(..end), slice.get(..end))
+        {
+            src_prefix.copy_from_slice(slice_prefix);
         }
         bytes.copy_from_slice(&src);
         u64::from_le_bytes(bytes)

@@ -1,0 +1,8 @@
+COMMAND: cargo fuzz build
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 18.19s
+EXIT_STATUS=0

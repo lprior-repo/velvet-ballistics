@@ -1,0 +1,2 @@
+COMMAND: root and JJ isolation check after corpus version repair
+zsh:1: read-only variable: status

@@ -173,7 +173,8 @@ pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
         return;
     }
     let store = vb_runtime::admission::StorageArtifactStore::new(std::sync::Arc::new(journal));
-    let result = vb_runtime::admission::AcceptedArtifactStore::load_accepted_artifact(&store, digest);
+    let result =
+        vb_runtime::admission::AcceptedArtifactStore::load_accepted_artifact(&store, digest);
     if let Ok(artifact) = result {
         assert!(artifact.accepted_at_seq.get() > 0);
         assert!(artifact.verification.gate_count > 0);
@@ -185,7 +186,11 @@ pub fn fuzz_recovery_decode(data: &[u8]) {
     let run = vb_core::RunId::new(u64::from(data.first().copied().unwrap_or(0)));
     let seq = vb_storage::EventSeq::new(1);
     let events = if data.len().is_multiple_of(2) {
-        vec![vb_storage::JournalEvent::RunAccepted { run, seq, workflow: digest }]
+        vec![vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq,
+            workflow: digest,
+        }]
     } else {
         Vec::new()
     };

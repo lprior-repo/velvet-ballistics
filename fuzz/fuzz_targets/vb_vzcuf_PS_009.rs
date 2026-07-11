@@ -3,7 +3,9 @@
 use libfuzzer_sys::fuzz_target;
 
 fn fuzz_duplicate_accounting(data: &[u8]) {
-    if data.len() < 16 { return; }
+    if data.len() < 16 {
+        return;
+    }
     let current_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -20,26 +22,36 @@ fn fuzz_duplicate_accounting(data: &[u8]) {
         None => return,
     };
     let encoded_len = u64::from_le_bytes(encoded_len_bytes);
-    if current > u64::MAX / 2 { return; }
-    if encoded_len > 1_000_000 { return; }
-    let conservative = current + encoded_len;
+    if current > u64::MAX / 2 {
+        return;
+    }
+    if encoded_len > 1_000_000 {
+        return;
+    }
+    let Some(conservative) = current.checked_add(encoded_len) else {
+        return;
+    };
     assert!(conservative >= current);
-    let precise_new = current + encoded_len;
+    let precise_new = conservative;
     assert!(precise_new >= current);
     assert_eq!(precise_new, conservative);
     let precise_dup = current;
     assert!(precise_dup >= current);
-    if encoded_len > 0 { assert!(precise_dup < conservative); }
+    if encoded_len > 0 {
+        assert!(precise_dup < conservative);
+    }
 }
 
 fn fuzz_encode_record_duplicate(data: &[u8]) {
+    use vb_core::{RunId, WorkflowDigest};
     use vb_storage::codec::encode_record;
     use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
-    use vb_storage::records::RecordKind;
     use vb_storage::events::JournalEvent;
+    use vb_storage::records::RecordKind;
     use vb_storage::types::EventSeq;
-    use vb_core::{RunId, WorkflowDigest};
-    if data.len() < 8 { return; }
+    if data.len() < 8 {
+        return;
+    }
     let run_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -48,19 +60,39 @@ fn fuzz_encode_record_duplicate(data: &[u8]) {
         None => return,
     };
     let run = u64::from_le_bytes(run_bytes);
-    if run == 0 { return; }
-    let event = JournalEvent::RunAccepted { run: RunId::new(run), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
-    let r1 = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-    let r2 = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-    match (&r1, &r2) {
-        (Ok(v1), Ok(v2)) => { assert_eq!(v1, v2); assert_eq!(v1.len(), v2.len()); }
-        (Err(_), Err(_)) => {}
-        _ => panic!("non-deterministic encoding"),
+    if run == 0 {
+        return;
+    }
+    let event = JournalEvent::RunAccepted {
+        run: RunId::new(run),
+        seq: EventSeq::new(0),
+        workflow: WorkflowDigest::from_bytes([0u8; 32]),
+    };
+    let r1 = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    );
+    let r2 = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    );
+    assert_eq!(r1.is_ok(), r2.is_ok(), "non-deterministic encoding");
+    if let (Ok(v1), Ok(v2)) = (r1, r2) {
+        assert_eq!(v1, v2);
+        assert_eq!(v1.len(), v2.len());
     }
 }
 
 fn fuzz_staged_invariant(data: &[u8]) {
-    if data.len() < 24 { return; }
+    if data.len() < 24 {
+        return;
+    }
     let staged_bytes: [u8; 8] = match data.get(0..8) {
         Some(slice) => match slice.try_into() {
             Ok(arr) => arr,
@@ -85,19 +117,30 @@ fn fuzz_staged_invariant(data: &[u8]) {
         None => return,
     };
     let limit = u64::from_le_bytes(limit_bytes);
-    if limit == 0 || staged > limit { return; }
-    let is_duplicate = data.len() >= 25 && data[24] & 1 == 1;
-    let new_staged = if is_duplicate { staged }
-    else { staged.checked_add(encoded_len).and_then(|t| if t <= limit { Some(t) } else { None }).unwrap_or(staged) };
+    if limit == 0 || staged > limit {
+        return;
+    }
+    let is_duplicate = data.get(24).map(|byte| byte & 1 == 1).unwrap_or(false);
+    let new_staged = if is_duplicate {
+        staged
+    } else {
+        staged
+            .checked_add(encoded_len)
+            .filter(|t| *t <= limit)
+            .unwrap_or(staged)
+    };
     assert!(new_staged <= limit);
     assert!(new_staged >= staged || is_duplicate);
 }
 
 fuzz_target!(|data: &[u8]| {
-    if data.is_empty() { return; }
-    match data[0] % 3 {
-        0 => fuzz_duplicate_accounting(&data[1..]),
-        1 => fuzz_encode_record_duplicate(&data[1..]),
-        _ => fuzz_staged_invariant(&data[1..]),
+    let Some((&selector, rest)) = data.split_first() else {
+        return;
+    };
+    match selector.checked_rem(3) {
+        Some(0) => fuzz_duplicate_accounting(rest),
+        Some(1) => fuzz_encode_record_duplicate(rest),
+        Some(_) => fuzz_staged_invariant(rest),
+        None => {}
     }
 });

@@ -1,0 +1,10 @@
+=== cargo fuzz build ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:35:49Z
+
+Command: cargo fuzz build
+
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.10s
+exit_status=0

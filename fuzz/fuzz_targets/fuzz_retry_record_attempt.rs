@@ -56,9 +56,7 @@ fn read_u16_le_at(data: &[u8], start: usize) -> Option<u16> {
 /// Build a minimal in-memory `RunState` shaped by the fuzz input. The
 /// workflow stays a single Do node so `record_retry_attempt` has a valid
 /// `action_attempts` slot for `StepIdx::ZERO`.
-fn build_run_state(
-    data: &[u8],
-) -> Option<vb_runtime::shard::types::RunState> {
+fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
     let action_byte = data.first().copied().unwrap_or(0);
     let digest = vb_core::ids::WorkflowDigest::from_bytes([action_byte; 32]);
 
@@ -113,14 +111,18 @@ fn build_run_state(
 /// real logic instead of failing closed on the `max_attempts == 0` branch.
 fn retry_policy_from_bytes(data: &[u8]) -> vb_runtime::engine::RetryPolicy {
     let max_attempts = data.first().copied().unwrap_or(1);
-    let base_delay_bytes: [u8; 8] = match data.get(1..9).and_then(|slice| slice.try_into().ok()) {
-        Some(bytes) => bytes,
-        None => [0u8; 8],
-    };
+    let base_delay_bytes: [u8; 8] = data
+        .get(1..9)
+        .and_then(|slice| slice.try_into().ok())
+        .unwrap_or_default();
     let exponential_backoff = data.get(9).copied().unwrap_or(0) & 1 == 1;
 
     vb_runtime::engine::RetryPolicy {
-        max_attempts: if max_attempts == 0 { 1 } else { u16::from(max_attempts) },
+        max_attempts: if max_attempts == 0 {
+            1
+        } else {
+            u16::from(max_attempts)
+        },
         base_delay_ms: u64::from_le_bytes(base_delay_bytes),
         exponential_backoff,
     }

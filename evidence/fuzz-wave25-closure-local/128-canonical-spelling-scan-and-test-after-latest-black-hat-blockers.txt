@@ -1,0 +1,111 @@
++ rg -n 'velvet-ballastics|Velvet-Ballastics|VELVET-BALLASTICS|ballastics' --glob '!evidence/**' --glob '!target/**' --glob '!fuzz/target/**' .
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_06.rs:26:        "ok\nok\nlegacy Velvet-Ballastics\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_05.rs:11:        "ok\nok\nlegacy Velvet-Ballastics\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_05.rs:223:    std::fs::write(unreadable.join("hidden.md"), "Velvet-Ballastics\n")?;
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:38:        "legacy Velvet-Ballastics\n".as_bytes().to_vec(),
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:125:    let input = text_scan_input("docs/naming.md", "Velvet-Ballastics must be fixed\n");
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:138:    let input = text_scan_input("docs/naming.md", "ok\r\nfix: Velvet-Ballastics\r\n");
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:151:    let input = text_scan_input("docs/naming.md", "first line\nfinal Velvet-Ballastics");
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:166:        "Velvet-Ballastics then Velvet-Ballastics\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:28:    let text = "prefix-https://github.com/priorlewis43/Velvet-Ballastics-suffix";
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:82:    let result = classify_occurrence(path, line(1), column(1), "Velvet-Ballastics", &config);
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:92:    let result = classify_occurrence(path, line(1), column(1), "VELVET-BALLASTICS", &config);
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:162:        "legacy source: https://github.com/priorlewis43/Velvet-Ballastics.\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:175:        "https://github.com/priorlewis43/Velvet-Ballastics\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:188:        "xhttps://github.com/priorlewis43/Velvet-Ballastics\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:204:        "https://github.com/priorlewis43/Velvet-Ballastics-extra\n",
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs:16:pub(crate) const LEGACY_LANGUAGE_VERSION: &str = concat!("velvet-", "ballastics/v1");
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs:17:pub(crate) const LEGACY_PROJECT: &str = concat!("velvet-", "ballastics");
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs:18:pub(crate) const LEGACY_PROJECT_TITLE: &str = "Velvet-Ballastics";
+./crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs:20:    "https://github.com/priorlewis43/Velvet-Ballastics";
+./crates/vb_cli/src/naming_scan/types.rs:6:pub(crate) const LEGACY_PROJECT: &str = concat!("velvet-", "ballastics");
+./crates/vb_cli/src/naming_scan/types.rs:8:pub(crate) const LEGACY_LANGUAGE_VERSION: &str = concat!("velvet-", "ballastics/v1");
+./crates/vb_cli/src/naming_scan/legacy.rs:7:        || text.contains("Velvet-Ballastics")
+./crates/vb_cli/src/naming_scan/legacy.rs:8:        || text.contains("VELVET-BALLASTICS")
+./crates/vb_cli/src/naming_scan/legacy.rs:52:        assert!(contains_legacy("Velvet-Ballastics rule"));
+./crates/vb_cli/src/naming_scan/legacy.rs:57:        assert!(contains_legacy("VELVET-BALLASTICS"));
++ cargo test -p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/vb_37lc_canonical_spelling_red.rs (target/debug/deps/vb_37lc_canonical_spelling_red-91341e01d1ba4e88)
+
+running 76 tests
+test vb_37lc_canonical_spelling_red::part_01::canonical_entry_replaces_token_only_when_kind_matches ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_ballistics_for_package_when_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_ballistics_for_binary_when_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_ballistics_for_bead_rig_when_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_ballistics_v1_when_language_version_is_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_ballistics_for_product_when_loaded ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_names_binary_package_and_bead_rig_when_tokens_contradict_kind ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_canonical_token_contradicts_kind ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_config_is_empty ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_allowed_repository_path_with_exact_payload_when_current_external_repository_path_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_canonical_crate_module_when_configured_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_canonical_crate_module_when_database_alias_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_canonical_language_version_when_v1_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_canonical_product_for_binary_package_and_bead_rig_aliases ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_canonical_product_when_ballistics_product_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::classify_occurrence_returns_no_occurrence_when_current_master_filename_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind ... ok
+test vb_37lc_canonical_spelling_red::part_02::validate_scan_config_returns_invalid_configuration_when_allowlist_contains_prefix_only_rule ... ok
+test vb_37lc_canonical_spelling_red::part_02::validate_scan_config_returns_invalid_configuration_when_allowlist_contains_substring_rule ... ok
+test vb_37lc_canonical_spelling_red::part_02::validate_scan_config_returns_invalid_configuration_when_allowlist_contains_wildcard ... ok
+test vb_37lc_canonical_spelling_red::part_02::validate_scan_config_returns_pattern_compilation_failed_when_scan_pattern_is_invalid ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_allowed_migration_reference_with_exact_payload_when_explicit_migration_reference_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_invalid_legacy_when_case_variant_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_invalid_legacy_when_migration_label_is_absent ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_invalid_legacy_when_repository_path_is_only_a_substring ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_invalid_legacy_when_unicode_confusable_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_invalid_legacy_when_uppercase_variant_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_language_version_class_when_legacy_language_version_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_language_version_class_when_token_is_embedded ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_no_occurrence_when_current_master_filename_is_embedded_in_unrelated_path ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_no_occurrence_when_text_has_no_legacy_token ... ok
+test vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_no_occurrence_when_text_is_empty ... ok
+test vb_37lc_canonical_spelling_red::part_03::scan_file_allows_documented_external_legacy_repository_url_inside_sentence ... ok
+test vb_37lc_canonical_spelling_red::part_03::scan_file_allows_documented_external_legacy_repository_url_when_exact_boundary_text_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated ... ok
+test vb_37lc_canonical_spelling_red::part_03::scan_file_rejects_documented_external_legacy_repository_url_when_left_boundary_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_03::scan_file_rejects_documented_external_legacy_repository_url_when_right_boundary_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_finding_kernel_returns_all_occurrences_when_many_tokens_share_one_line ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_decodes_valid_utf8_bytes_and_reports_exact_finding ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_location_kernel_preserves_final_line_without_newline_when_invalid_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_returns_input_read_failed_when_file_input_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_location_kernel_returns_column_one_when_token_starts_at_first_column ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_language_version_finding_when_legacy_language_version_token_is_seen ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_repository_report_kernel_preserves_config_identity_when_report_is_successful ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_repository_report_kernel_returns_zero_findings_with_exact_input_count_when_inputs_are_empty ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_language_version_is_in_real_file ... ok
+test vb_37lc_canonical_spelling_red::part_05::render_scan_report_orders_duplicate_sort_keys_deterministically_when_findings_have_equal_path_line_column ... ok
+test vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file ... ok
+test vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_returns_invalid_root_when_root_path_is_a_file ... ok
+test vb_37lc_canonical_spelling_red::part_05::render_scan_report_returns_empty_body_when_report_has_zero_findings ... ok
+test vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_skips_unreadable_child_directory_without_failing_root_scan ... ok
+test vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_shortcut ... ok
+test vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_keeps_every_eligible_extension_and_rejects_ineligible_text ... ok
+test vb_37lc_canonical_spelling_red::part_05::scan_repository_returns_invalid_root_when_root_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_06::render_scan_report_returns_report_write_failed_when_destination_parent_is_missing ... ok
+test vb_37lc_canonical_spelling_red::part_05::render_scan_report_preserves_single_finding_fields_when_report_has_one_finding ... ok
+test vb_37lc_canonical_spelling_red::part_06::scan_file_returns_input_read_failed_when_selected_input_is_undecodable ... ok
+test vb_37lc_canonical_spelling_red::part_06::render_scan_report_returns_report_write_failed_when_destination_is_directory ... ok
+test vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_excludes_builtin_and_configured_paths_but_keeps_eligible_files ... ok
+test vb_37lc_canonical_spelling_red::part_07::render_scan_report_writes_report_when_destination_parent_exists ... ok
+test vb_37lc_canonical_spelling_red::part_06::render_scan_report_writes_report_when_destination_has_empty_parent_component ... ok
+test vb_37lc_canonical_spelling_red::part_05::scan_repository_report_kernel_returns_all_findings_when_valid_and_invalid_inputs_are_mixed ... ok
+test vb_37lc_canonical_spelling_red::part_06::scan_repository_returns_invalid_canonical_spelling_when_legacy_spelling_is_outside_allowlist ... ok
+
+test result: ok. 76 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

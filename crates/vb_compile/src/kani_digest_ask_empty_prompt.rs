@@ -36,7 +36,7 @@ fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
         then: None,
     }];
     WorkflowSource::new(WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
+        version: "velvet-ballistics/v1".to_string(),
         name: "test_workflow".to_string(),
         trigger: TriggerAst::Manual,
         inputs: vec![],

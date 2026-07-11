@@ -11,6 +11,7 @@
 //! Run with: cargo fuzz run fuzz_storage_codec_kind_family -- -max_len=4096 -runs=100000
 
 use libfuzzer_sys::fuzz_target;
+use vb_storage::JournalError;
 
 fuzz_target!(|data: &[u8]| {
     let mut source = data.to_vec();
@@ -22,41 +23,76 @@ fuzz_target!(|data: &[u8]| {
     };
 
     // Valid pairing: MAGIC_WORKFLOW_SOURCE + RecordKind::WorkflowSource must encode.
-    let _ = vb_storage::encode_record(
+    let valid = vb_storage::encode_record(
         vb_storage::MAGIC_WORKFLOW_SOURCE,
         vb_storage::RecordKind::WorkflowSource,
         0,
         &record,
-        128,
+        vb_storage::MAX_WORKFLOW_SOURCE_BYTES,
+    );
+    assert!(
+        valid.is_ok(),
+        "valid workflow-source family pair must encode"
     );
 
     // Mismatched family pairings must be rejected.
-    let _ = vb_storage::encode_record(
+    assert_family_mismatch(
+        vb_storage::encode_record(
+            vb_storage::MAGIC_JOURNAL_EVENT,
+            vb_storage::RecordKind::WorkflowSource,
+            0,
+            &record,
+            128,
+        ),
         vb_storage::MAGIC_JOURNAL_EVENT,
-        vb_storage::RecordKind::WorkflowSource,
-        0,
-        &record,
-        128,
+        vb_storage::RecordKind::WorkflowSource.id(),
     );
-    let _ = vb_storage::encode_record(
+    assert_family_mismatch(
+        vb_storage::encode_record(
+            vb_storage::MAGIC_BLOB,
+            vb_storage::RecordKind::Snapshot,
+            0,
+            &record,
+            128,
+        ),
         vb_storage::MAGIC_BLOB,
-        vb_storage::RecordKind::Snapshot,
-        0,
-        &record,
-        128,
+        vb_storage::RecordKind::Snapshot.id(),
     );
-    let _ = vb_storage::encode_record(
+    assert_family_mismatch(
+        vb_storage::encode_record(
+            vb_storage::MAGIC_SNAPSHOT,
+            vb_storage::RecordKind::IndexUpdate,
+            0,
+            &record,
+            128,
+        ),
         vb_storage::MAGIC_SNAPSHOT,
-        vb_storage::RecordKind::IndexUpdate,
-        0,
-        &record,
-        128,
+        vb_storage::RecordKind::IndexUpdate.id(),
     );
-    let _ = vb_storage::encode_record(
-        vb_storage::MAGIC_JOURNAL_EVENT,
-        vb_storage::RecordKind::RunAccepted,
-        0,
-        &record,
-        128,
+    assert_family_mismatch(
+        vb_storage::encode_record(
+            vb_storage::MAGIC_WORKFLOW_SOURCE,
+            vb_storage::RecordKind::RunAccepted,
+            0,
+            &record,
+            128,
+        ),
+        vb_storage::MAGIC_WORKFLOW_SOURCE,
+        vb_storage::RecordKind::RunAccepted.id(),
     );
 });
+
+fn assert_family_mismatch(
+    result: Result<Vec<u8>, JournalError>,
+    expected_magic: u32,
+    expected_kind: u16,
+) {
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::RecordKindFamilyMismatch { magic, kind })
+                if magic == expected_magic && kind == expected_kind
+        ),
+        "mismatched storage record family must return JournalError::RecordKindFamilyMismatch"
+    );
+}

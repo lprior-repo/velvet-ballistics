@@ -34,20 +34,20 @@ proptest! {
             event.seq().get(),
             &event,
             max_payload_len,
-        );
-        prop_assert!(encoded.is_ok(), "encode must succeed for valid event");
-
-        let encoded = encoded.unwrap();
+        ).map_err(|error| TestCaseError::fail(format!(
+            "encode must succeed for valid event: {error:?}"
+        )))?;
 
         // Decode back
         let decoded = vb_storage::decode_record::<vb_storage::JournalEvent>(
             &encoded,
             MAGIC_JOURNAL_EVENT,
             max_payload_len,
-        );
-        prop_assert!(decoded.is_ok(), "roundtrip decode must succeed");
+        ).map_err(|error| TestCaseError::fail(format!(
+            "roundtrip decode must succeed: {error:?}"
+        )))?;
 
-        let (_envelope, recovered) = decoded.unwrap();
+        let (_envelope, recovered) = decoded;
 
         // Verify field-level equivalence
         prop_assert_eq!(recovered.record_kind(), event.record_kind(),
@@ -78,17 +78,19 @@ proptest! {
             event.seq().get(),
             &event,
             max_payload_len,
-        );
-        prop_assert!(encoded.is_ok(), "encode must succeed");
+        ).map_err(|error| TestCaseError::fail(format!(
+            "encode must succeed: {error:?}"
+        )))?;
 
         let decoded = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            &encoded.unwrap(),
+            &encoded,
             MAGIC_JOURNAL_EVENT,
             max_payload_len,
-        );
-        prop_assert!(decoded.is_ok(), "roundtrip decode must succeed");
+        ).map_err(|error| TestCaseError::fail(format!(
+            "roundtrip decode must succeed: {error:?}"
+        )))?;
 
-        let (_envelope, recovered) = decoded.unwrap();
+        let (_envelope, recovered) = decoded;
         prop_assert!(recovered.is_valid(), "recovered event must be valid");
     }
 }
