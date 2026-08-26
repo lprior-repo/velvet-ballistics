@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Velvet Ballistics Workspace Tests
 //!
 //! Test infrastructure and workspace-level testing support.
