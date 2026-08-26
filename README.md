@@ -4,7 +4,7 @@ A formally bounded workflow runtime for AI agent orchestration.
 
 **TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-velvet-ballistics is a nightly-Rust, single-binary orchestration engine. The clarified product contract is **Rust-code authoring only**: Rust-authored workflows/actions compile into accepted numeric IR, the runtime executes accepted IR through a bounded interpreter, dispatches native actions, and persists events through Fjall-backed append-only storage. The legacy YAML source format remains as an internal/test-only cold-authoring surface for v1 fixtures; it is not a public user-facing input. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
+velvet-ballistics is a nightly-Rust, single-binary orchestration engine. The current v1 public authoring contract is **strict YAML on the cold path**: workflows are parsed, validated, and compiled into accepted numeric IR; the runtime executes accepted IR through a bounded interpreter, dispatches native actions, and persists events through Fjall-backed append-only storage. Rust workflow code generation is not a current product path. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
 ## Why This Exists
 
@@ -22,13 +22,14 @@ velvet-ballistics addresses all four dimensions:
 | Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
 | IR compilation | `CompiledWorkflow` numeric artifact with exact semantics | Interpreted history/worker model | Interpreted graph model |
 | Runtime boundary | IR interpreter only; no runtime YAML/JSON/HTTP | Service/runtime boundary | Python object graph/runtime |
-| Public authoring | Rust code → accepted numeric IR (YAML is internal/test-only v1) | Workflow source as runtime object | Graph source as runtime object |
+| Public authoring | Strict YAML → accepted numeric IR (cold path; no runtime YAML) | Workflow source as runtime object | Graph source as runtime object |
 
 ## Architecture
 
 ```text
-Rust source (public authoring contract)
-  -> rustc + vb_compile driver (cold path, off hot path)
+Strict YAML source (current v1 cold authoring surface)
+  -> strict parser -> validated AST (cold path, off hot path)
+  -> typed expression bytecode and numeric slot compiler
   -> accepted numeric IR (34 node kinds, u16 step indices, u16 slot indices)
   -> bounded IR interpreter
   -> shard-owned in-memory runtime (no async, no allocation in hot path)
@@ -36,30 +37,22 @@ Rust source (public authoring contract)
   -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
   -> Unix domain socket IPC (bounded queue, 256 concurrent clients)
   -> SPSC trace ring (rtrb, 4096 events)
-
-Legacy v1 cold authoring surface (internal/test-only, NOT public):
-  YAML source -> strict compile-time parser -> validated AST
-  -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
-  -> numeric slot compiler
-  (YAML input is retained only for test fixtures and migration; the public
-   product contract is Rust-code authoring.)
 ```
 
 ## Workspace
 
 ```text
-crates/vb_core         Compiled IR, engine, frame, value store, diagnostics
-crates/vb_compile      Full compilation pipeline (Rust source -> validated IR)
-crates/vb_validate     Control-flow, reference, schema, taint validation
-crates/vb_expr         Expression lexer, parser, bytecode, typecheck
-crates/vb_storage      Fjall journal, envelope, recovery, snapshots
-crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
-crates/vb_ipc          Unix domain socket server/client, binary protocol
-crates/workspace_tests Cross-crate integration tests and benchmark harnesses
-fuzz/                  Parser, decoder, and IR fuzz targets
+crates/vb_cli             Product package, library entry points, and CLI binary
+crates/vb_compile         Strict YAML parsing and compilation to accepted IR
+crates/vb_core            Compiled IR, engine, frame, value store, diagnostics
+crates/vb_ipc             Unix domain socket server/client and binary protocol
+crates/vb_queue_semantics Bounded queue-state transitions for runtime queues and proofs
+crates/vb_runtime         Shard engine, action dispatch, primitives, frame pool
+crates/vb_storage         Fjall journal, envelope, recovery, snapshots
+crates/vb_validate        Control-flow, reference, schema, and taint validation
+crates/workspace_tests    Cross-crate integration tests and benchmark harnesses
 
-Legacy internal/test-only (v1 cold authoring, not public API):
-crates/vb_yaml         YAML parser, AST, source maps (test fixtures + migration only)
+fuzz/                     Fuzz targets (excluded from the root Cargo workspace)
 ```
 
 ## Safety Guarantees
