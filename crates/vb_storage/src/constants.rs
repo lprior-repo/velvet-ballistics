@@ -22,6 +22,8 @@ pub const KEYSPACE_INDEX_STATUS: &str = "index_status";
 pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
 /// Pending action index records.
 pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
+/// System metadata records (acceptance sequence counter).
+pub const KEYSPACE_SYSTEM: &str = "system";
 
 /// `workflow_source` key prefix.
 pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
@@ -41,6 +43,8 @@ pub const PREFIX_INDEX_STATUS: u8 = 0x30;
 pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 /// `index_action` key prefix.
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+/// `system` key prefix.
+pub const PREFIX_SYSTEM: u8 = 0x40;
 
 /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
 ///
@@ -70,6 +74,11 @@ pub const MAGIC_IPC_FRAME: u32 = 0x5642_4C54;
 pub const MAGIC_WORKFLOW_SOURCE: u32 = 0x5642_5352;
 /// Index record magic, ASCII `VBIX`.
 pub const MAGIC_INDEX_RECORD: u32 = 0x5642_4958;
+/// System metadata record magic, ASCII `VBSY`.
+pub const MAGIC_SYSTEM_RECORD: u32 = 0x5642_5359;
+/// Key for the acceptance-sequence counter inside the `system` keyspace.
+/// Stored as big-endian u64 — the next value to hand out.
+pub const SYSTEM_ACCEPT_SEQ_KEY: &[u8] = &[PREFIX_SYSTEM, 0x01];
 
 pub(crate) const JOURNAL_KEY_BYTES: usize = 17;
 pub(crate) const DIGEST_KEY_BYTES: usize = 33;

@@ -217,11 +217,8 @@ pub struct AcceptedArtifact {
     pub verification: VerificationProof,
     /// Journal sequence when accepted.
     ///
-    /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
-    /// because actual sequence tracking is not implemented. The field is retained
-    /// as a placeholder for future implementation of proper sequence tracking.
-    /// When actual tracking is implemented, replace the placeholder with the real
-    /// sequence number from the journal at admission time.
+    /// Sequence-aware submission APIs bind this value from the caller that owns
+    /// the journal sequence authority. It is part of the artifact digest.
     pub accepted_at_seq: EventSeq,
     /// Required capabilities for actions in this artifact.
     pub required_capabilities: Box<[vb_core::capability::Capability]>,
@@ -348,21 +345,62 @@ const ADMISSION_GATE_COUNT: u8 = 15;
 /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
 /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
+/// The accepted-at-sequence is allocated from the journal's durable counter via
+/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
+/// to a specific transaction should use `submit_artifact_at_seq` instead.
+///
 /// Returns the `AcceptedArtifact` on success.
 pub fn submit_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
-    submit_artifact_with_contracts(journal, workflow, policy, &[])
+    let accepted_at_seq = journal.accept_seq_allocate()?;
+    submit_artifact_at_seq(journal, workflow, policy, accepted_at_seq)
+}
+
+/// Submits an artifact and binds the caller's journal-authoritative acceptance sequence.
+///
+/// The caller must obtain `accepted_at_seq` from the journal/run acceptance transaction;
+/// this function does not synthesize sequence authority from time or process-local state.
+pub fn submit_artifact_at_seq(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
+    accepted_at_seq: EventSeq,
+) -> Result<AcceptedArtifact, JournalError> {
+    submit_artifact_with_contracts_at_seq(journal, workflow, policy, accepted_at_seq, &[])
 }
 
 /// Validates, verifies, and persists a compiled workflow artifact with the
 /// required capability profile extracted from validated action contracts.
+///
+/// The accepted-at-sequence is allocated from the journal's durable counter via
+/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
+/// to a specific transaction should use `submit_artifact_with_contracts_at_seq`
+/// instead.
 pub fn submit_artifact_with_contracts(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
+    action_contracts: &[ActionContract],
+) -> Result<AcceptedArtifact, JournalError> {
+    let accepted_at_seq = journal.accept_seq_allocate()?;
+    submit_artifact_with_contracts_at_seq(
+        journal,
+        workflow,
+        policy,
+        accepted_at_seq,
+        action_contracts,
+    )
+}
+
+/// Submits an artifact with action contracts and caller-owned sequence authority.
+pub fn submit_artifact_with_contracts_at_seq(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
+    accepted_at_seq: EventSeq,
     action_contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
     let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
@@ -382,7 +420,7 @@ pub fn submit_artifact_with_contracts(
                 policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
                 verification: proof,
-                accepted_at_seq: EventSeq::new(0),
+                accepted_at_seq,
                 required_capabilities,
                 action_contracts: action_contracts.to_vec().into_boxed_slice(),
             };
@@ -433,7 +471,7 @@ pub fn submit_artifact_with_contracts(
                 policy_digest: compute_policy_digest(workflow)?,
                 ir: ir_bytes,
                 verification: proof,
-                accepted_at_seq: EventSeq::new(0),
+                accepted_at_seq,
                 required_capabilities,
                 action_contracts: action_contracts.to_vec().into_boxed_slice(),
             };

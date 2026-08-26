@@ -13,11 +13,11 @@ use crate::{
     constants::{
         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_SYSTEM, KEYSPACE_WORKFLOW_SOURCE, SYSTEM_ACCEPT_SEQ_KEY,
     },
     error::JournalError,
     process_lock::ProcessLock,
-    types::{FjallConfig, KeyspaceProfile},
+    types::{EventSeq, FjallConfig, KeyspaceProfile},
 };
 
 /// Bounded replay limit for journal event collection.
@@ -59,6 +59,7 @@ pub struct FjallJournal {
     pub(crate) index_status: fjall::Keyspace,
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
+    pub(crate) system: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
     #[cfg(test)]
@@ -124,6 +125,9 @@ impl FjallJournal {
         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let system = database.keyspace(KEYSPACE_SYSTEM, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
@@ -136,6 +140,7 @@ impl FjallJournal {
             index_status,
             index_workflow,
             index_action,
+            system,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             #[cfg(test)]
@@ -149,7 +154,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 9] {
+    pub const fn declared_keyspaces() -> [&'static str; 10] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -160,7 +165,47 @@ impl FjallJournal {
             KEYSPACE_INDEX_STATUS,
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
+            KEYSPACE_SYSTEM,
         ]
+    }
+
+    /// Allocates the next durable artifact-acceptance sequence number.
+    ///
+    /// Reads the current counter from the `system` keyspace, increments it,
+    /// and writes back the new value in a single batch commit. The caller's
+    /// write_lock serializes concurrent callers so that two callers never
+    /// observe the same counter value.
+    ///
+    /// Returns `JournalError::SequenceOverflow` when the counter is already
+    /// at `EventSeq::MAX` — no wrapping or silent reuse.
+    pub fn accept_seq_allocate(&self) -> Result<EventSeq, JournalError> {
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let current: u64 = self
+            .system
+            .get(SYSTEM_ACCEPT_SEQ_KEY)?
+            .map(|raw| -> Result<u64, JournalError> {
+                let buf: [u8; 8] = raw
+                    .as_ref()
+                    .try_into()
+                    .map_err(|_| JournalError::KeyCapacity)?;
+                Ok(u64::from_be_bytes(buf))
+            })
+            .transpose()?
+            .unwrap_or(0);
+        let next = current
+            .checked_add(1)
+            .ok_or(JournalError::SequenceOverflow)?;
+        let mut batch = self.database.batch();
+        batch.insert(
+            &self.system,
+            SYSTEM_ACCEPT_SEQ_KEY,
+            next.to_be_bytes().as_slice(),
+        );
+        batch.commit()?;
+        Ok(EventSeq::new(next))
     }
 
     /// Returns whether the action index contains an entry for the given key.
@@ -215,6 +260,7 @@ impl FjallJournal {
         let _ = self.index_status.contains_key(empty_key)?;
         let _ = self.index_workflow.contains_key(empty_key)?;
         let _ = self.index_action.contains_key(empty_key)?;
+        let _ = self.system.contains_key(empty_key)?;
         Ok(())
     }
 

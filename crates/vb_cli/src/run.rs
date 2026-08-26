@@ -103,31 +103,7 @@ pub(crate) fn submit_cli_compiled_artifact(
     journal: &vb_storage::FjallJournal,
     compiled: &vb_core::CompiledWorkflow,
 ) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
-    let parts = compiled.to_parts();
-    let ir =
-        postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
-    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let mut artifact = vb_storage::AcceptedArtifact {
-        digest: zero,
-        source_digest: compiled.digest(),
-        policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
-        ir,
-        verification: vb_storage::VerificationProof::new(
-            zero,
-            vb_runtime::admission::REQUIRED_GATE_COUNT,
-            true,
-        ),
-        accepted_at_seq: vb_storage::EventSeq::new(0),
-        required_capabilities: Box::new([]),
-        action_contracts: Box::new([]),
-    };
-    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
-    artifact.digest = digest;
-    artifact.verification.digest = digest;
-    let bytes =
-        postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
-    journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
-    Ok(artifact)
+    vb_storage::submit_artifact(journal, compiled, vb_core::RuntimePolicy::Strict)
 }
 
 pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
