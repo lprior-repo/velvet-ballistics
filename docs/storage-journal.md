@@ -4,17 +4,25 @@ Fjall is the only embedded durability substrate in this scaffold. It is used as 
 
 ## Key Layout
 
-Journal keys are fixed-width big-endian bytes:
+Journal event keys use a one-byte type prefix followed by fixed-width
+big-endian numeric fields:
 
 ```text
-events: [RunId_16B | EventSeq_8B] = 24 bytes
+events: [0x11 | RunId_u64_be | EventSeq_u64_be] = 17 bytes
 ```
 
 Big-endian encoding preserves numeric ordering during prefix/range scans.
 
 ## Event Encoding
 
-Internal events use compact binary encoding through `postcard`. JSONL is a public observability projection and must not be the primary durable journal format.
+Internal events use compact binary encoding through `postcard`. Each payload is
+preceded by the 60-byte storage record envelope. All multi-byte integer fields
+in that envelope are little-endian; it carries a 32-byte BLAKE3 payload digest
+at bytes `24..56` and a little-endian CRC32C over bytes `0..56` at bytes
+`56..60`. This record envelope is distinct from the 24-byte IPC header. Fjall
+numeric key fields remain big-endian so range scans preserve numeric order.
+JSONL is a public observability projection and must not be the primary durable
+journal format.
 
 The storage API exposes explicit durability names: `append_journaled` writes without a caller-visible fsync barrier, while `append_strict` appends and calls `PersistMode::SyncAll` before returning.
 

@@ -809,7 +809,7 @@ Persistence invariants:
 7. Recovery never reparses YAML for existing runs; it loads compiled artifacts, snapshots, and journal records by digest.
 8. Replay checks workflow source digest, compiled workflow digest, action ABI digest, and policy digest. Mismatch returns typed replay failure and must not silently continue.
 
-Every binary file, IPC frame, compiled artifact, snapshot, and journal record uses this envelope before payload decode. Multi-byte envelope fields are little-endian. Fjall keys remain big-endian as specified above for lexicographic ordering; record bodies are little-endian through this envelope and Postcard payloads.
+Every persisted binary artifact, snapshot, blob, index value, and journal record uses this 60-byte envelope before payload decode. Multi-byte envelope fields are little-endian. Fjall numeric key fields remain big-endian as specified above for lexicographic ordering. External `vb-ipc` frames instead use the separate 24-byte little-endian header defined in Section 21.
 
 ```text
 offset  bytes  field
@@ -832,7 +832,7 @@ Magic values:
 | Journal event | `0x56424A45` | `VBJE` |
 | Snapshot | `0x5642534E` | `VBSN` |
 | Blob record | `0x5642424C` | `VBBL` |
-| IPC frame | `0x56424C54` | `VBLT` |
+| External IPC header (separate 24-byte format) | `0x56424C54` | `VBLT` |
 | Workflow source record | `0x56425352` | `VBSR` |
 | Index record | `0x56424958` | `VBIX` |
 
@@ -891,7 +891,7 @@ and `35`. After a stable v1 storage compatibility release, adding or
 repurposing any `record_kind_u16` requires a schema-version bump or an explicit
 named migration with evidence.
 
-Decode order is mandatory: read 60-byte header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, blobs, and IPC payloads, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
+Decode order is mandatory: read the 60-byte storage header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, and blobs, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
 
 Typed storage/decode errors must include `BadMagic { found: u32 }`, `UnsupportedSchemaVersion { version: u16 }`, `UnknownRecordKind { kind: u16 }`, `RecordKindFamilyMismatch { magic: u32, kind: u16 }`, `HeaderLengthMismatch { found: u32 }`, `PayloadTooLarge { len: u32, max: u32 }`, `HeaderChecksumMismatch`, `PayloadDigestMismatch`, `UnexpectedEof`, `PostcardDecodeFailed`, and `MigrationRequired { from: u16, to: u16 }`. Schema version migration is never implicit: an older supported version must pass through a named migration function that emits the current version and records migration evidence; unsupported versions fail with `MigrationRequired` or `UnsupportedSchemaVersion` and must not be replayed.
 
@@ -1060,6 +1060,10 @@ pub enum ShardCommand {
 ## 21. Binary IPC Protocol
 
 Fastest ingress is direct in-process Rust API. External local process ingress uses binary IPC.
+
+The production frame begins with a fixed 24-byte header. Every multi-byte field
+in this IPC header is little-endian. This is not the 60-byte storage record
+envelope and does not contain storage-envelope BLAKE3 or CRC32C fields.
 
 Frame wire format:
 

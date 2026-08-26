@@ -9,10 +9,13 @@ Fjall is the embedded persistence layer. The runtime core remains in memory; per
 Current event key:
 
 ```text
-[RunId_16B | EventSeq_8B]
+[0x11 | RunId_u64_be | EventSeq_u64_be] = 17 bytes
 ```
 
-Big-endian encoding preserves ordered replay by run and sequence.
+Big-endian encoding of Fjall numeric key fields preserves ordered replay by run
+and sequence. Stored values use the separate 60-byte little-endian record
+envelope with a BLAKE3 payload digest and CRC32C header checksum before the
+Postcard payload.
 
 ## Current Events
 
