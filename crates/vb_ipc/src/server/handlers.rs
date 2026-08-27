@@ -333,6 +333,23 @@ pub fn submit_resolved_workflow(
             message: String::from("submit input exceeds maximum allowed size"),
         };
     }
+    let typed_input_pairs: Vec<(SlotIdx, SlotValue)> = if submit.input.is_empty() {
+        Vec::new()
+    } else {
+        match postcard::from_bytes(&submit.input) {
+            Ok(pairs) => pairs,
+            Err(_) => {
+                return IpcResponse::PayloadError {
+                    diagnostic: crate::IpcError::PayloadDecodeFailed
+                        .diagnostic_code()
+                        .code(),
+                    message: String::from(
+                        "submit input bytes are not valid postcard-encoded SlotIdx/SlotValue pairs",
+                    ),
+                };
+            }
+        }
+    };
     let Some(resolver) = resolver else {
         return IpcResponse::WorkflowResolutionRequired;
     };
@@ -346,9 +363,28 @@ pub fn submit_resolved_workflow(
     if workflow.digest() != submit.workflow {
         return IpcResponse::WorkflowDigestMismatch;
     }
+    let max_slots = workflow.resource_contract().max_slots;
+    let input_count = typed_input_pairs.len();
+    if u32::try_from(input_count)
+        .ok()
+        .filter(|&c| c <= u32::from(max_slots))
+        .is_none()
+    {
+        return IpcResponse::PayloadError {
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
+            message: String::from("input slot count exceeds workflow max_slots"),
+        };
+    }
+    let inputs: Box<[(SlotIdx, SlotValue)]> = typed_input_pairs.into_boxed_slice();
     let result = match command {
-        IpcCommand::SubmitRun => runtime.submit_compiled(submit.run_id, workflow),
-        IpcCommand::SubmitRunInline => runtime.submit_direct(submit.run_id, workflow),
+        IpcCommand::SubmitRun => {
+            runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
+        }
+        IpcCommand::SubmitRunInline => {
+            runtime.submit_direct_with_inputs(submit.run_id, workflow, inputs)
+        }
         _ => return IpcResponse::CommandPayloadMismatch,
     };
     match result {

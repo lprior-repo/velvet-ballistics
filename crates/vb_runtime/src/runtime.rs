@@ -335,6 +335,34 @@ impl Runtime {
         self.submit_compiled_with_inputs_and_grants(run, workflow, inputs, CapabilitySet::empty())
     }
 
+    /// Submits a run with pre-mapped inline input slots and explicit caller grants.
+    pub fn submit_direct_with_inputs_and_grants(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+            caps,
+        })
+    }
+
+    /// Submits a run with pre-mapped inline input slots (empty-capability wrapper).
+    pub fn submit_direct_with_inputs(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+    ) -> RuntimeResult<()> {
+        self.submit_direct_with_inputs_and_grants(run, workflow, inputs, CapabilitySet::empty())
+    }
+
     /// Submits a run with pre-mapped runtime input slots and explicit caller grants.
     pub fn submit_compiled_with_inputs_and_grants(
         &self,
