@@ -693,11 +693,7 @@ impl Shard {
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
             }
-            ShardCommand::Recover {
-                run,
-                frame,
-                workflow_digest,
-            } => self.handle_recover(run, frame, workflow_digest)?,
+            ShardCommand::Recover(command) => self.handle_recover(command)?,
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);

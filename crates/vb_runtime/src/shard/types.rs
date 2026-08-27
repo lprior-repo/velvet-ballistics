@@ -188,14 +188,31 @@ pub enum ShardCommand {
     /// replay and is injecting it directly into the shard's frame pool.
     /// The `workflow_digest` is used to look up the compiled workflow
     /// from the artifact store before driving the run.
-    Recover {
-        /// Run identifier being recovered.
-        run: RunId,
-        /// Hydrated run frame from journal replay.
-        frame: RunFrame,
-        /// Workflow digest for artifact store lookup during recovery.
-        workflow_digest: WorkflowDigest,
-    },
+    Recover(RecoverRunCommand),
+}
+
+/// Bounded command carrying all recovery evidence produced by
+/// `ResumableRecoveryProduct`.  The shard handler consumes every
+/// field: artifact digest for artifact lookup, journal sequence for
+/// recovery continuity, collect states for pagination, and boundary
+/// for pending-action authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RecoverRunCommand {
+    /// Run identifier being recovered.
+    pub run: RunId,
+    /// Hydrated run frame from journal replay.
+    pub frame: RunFrame,
+    /// Artifact digest for storage-side admission lookup.
+    pub artifact_digest: WorkflowDigest,
+    /// Workflow digest for artifact store lookup during recovery.
+    pub workflow_digest: WorkflowDigest,
+    /// Next journal sequence number for this run.
+    pub next_seq: EventSeq,
+    /// Per-run collect pagination state restored from the journal.
+    pub collect_states: crate::primitives::collect::CollectStates,
+    /// External boundary authority recovered from the frame.
+    pub boundary: crate::recovery::RecoveredRunBoundary,
 }
 
 /// Ticket identifying where an ask answer must resume execution.

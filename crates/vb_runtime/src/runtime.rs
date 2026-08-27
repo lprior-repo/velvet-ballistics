@@ -669,15 +669,7 @@ impl Runtime {
         let run = product.run_id();
         let command = product.into_recover_command();
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Recover {
-            run,
-            frame: command.frame,
-            artifact_digest: command.artifact_digest,
-            workflow_digest: command.workflow_digest,
-            next_seq: command.next_seq,
-            collect_states: command.collect_states,
-            boundary: command.boundary,
-        })
+        shard.enqueue(ShardCommand::Recover(command))
     }
 
     fn load_recovery_artifact_and_workflow(

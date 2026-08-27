@@ -347,14 +347,23 @@ impl Shard {
     ///   admission during recovery, which is the correct fail-closed behavior).
     pub(crate) fn handle_recover(
         &mut self,
-        run: RunId,
-        frame: vb_core::frame::RunFrame,
-        workflow_digest: vb_core::ids::WorkflowDigest,
+        command: crate::shard::types::RecoverRunCommand,
     ) -> RuntimeResult<()> {
-        // Load the accepted artifact from the shard's artifact store.
+        let crate::shard::types::RecoverRunCommand {
+            run,
+            frame,
+            artifact_digest,
+            workflow_digest,
+            next_seq,
+            collect_states,
+            boundary,
+        } = command;
+
+        // Load the accepted artifact from the shard's artifact store by
+        // artifact_digest (not workflow_digest).
         let artifact = self
             .artifact_store
-            .load_accepted_artifact(workflow_digest)
+            .load_accepted_artifact(artifact_digest)
             .map_err(|e| match e {
                 crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
                     RuntimeError::Recovery {
@@ -372,13 +381,17 @@ impl Shard {
                 error: "artifact IR decode failed".to_string(),
             })?;
 
-        // Validate and reconstruct the compiled workflow.
-        // Workflow compilation failure means the recovered parts are invalid;
-        // this maps to UnsupportedFrameSeed since the frame cannot be resumed.
+        // Validate and reconstruct the compiled workflow using workflow_digest
+        // for the post-compile integrity check.
         let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
             .map_err(|e| RuntimeError::Recovery {
                 error: format!("workflow compile failed: {e}"),
             })?;
+        if workflow.digest() != workflow_digest {
+            return Err(RuntimeError::Recovery {
+                error: "workflow digest mismatch during recovery".to_string(),
+            });
+        }
 
         // Build admission from the artifact (same as submit path).
         // Use the artifact's required_capabilities as the granted capability set.
@@ -393,21 +406,45 @@ impl Shard {
         let max_slots = workflow.resource_contract().max_slots;
         self.prepare_run_slots(run)?;
 
-        // Construct the full RunState with all required fields.
+        // Insert the recovered journal sequence before the run state so
+        // failure cleanup can drain both together.
+        let _next_seq = self
+            .journal_sequences
+            .insert(run, next_seq);
+
+        // Construct the full RunState with restored collect_states.
         let state = crate::shard::types::RunState {
             frame,
             workflow,
             store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
-            collect_states: crate::primitives::collect::CollectStates::new(),
+            collect_states,
             // action_contracts are supplied at submit time and are not journaled;
             // recovered runs rely on per-step policy enforcement instead.
             action_contracts: Box::new([]),
         };
 
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, RuntimeState::Initial)?;
+        let run_state_result = self.admit_run_state(run, state, RuntimeState::Initial);
+        if run_state_result.is_err() {
+            self.discard_journal_sequence(run);
+            return run_state_result;
+        }
+
+        // Restore a pending-action ticket recovered from the frame boundary
+        // before drive, so the drive loop sees the durable authority.
+        if let Some(ticket) = boundary.pending_action_ticket() {
+            if let Err(original) = self.pending_action_insert(run, ticket.ticket()) {
+                let _removed = self.run_state_remove(run);
+                self.discard_journal_sequence(run);
+                return Err(RuntimeError::Recovery {
+                    error: format!(
+                        "pending-action insert failed during recovery: {original}"
+                    ),
+                });
+            }
+        }
 
         // Do not increment submitted counter — recovery is not a submit.
         // The counters tracking active runs will be updated by drive_run.
@@ -419,6 +456,11 @@ impl Shard {
                 // The journal sequence is the recovered state; discarding it
                 // would destroy evidence that the recovery attempt produced.
                 if !self.run_state_contains(run) {
+                    // Clean up the pending-action we inserted during recovery
+                    // when the run state was removed by drive_run.
+                    if boundary.pending_action_ticket().is_some() {
+                        self.pending_action_remove(run);
+                    }
                     // Only discard if run_state_insert failed (no state to drive).
                     self.discard_journal_sequence(run);
                 }
