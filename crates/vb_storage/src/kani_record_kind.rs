@@ -276,6 +276,31 @@ fn check_kind_35_journal_family() {
     );
 }
 
+/// PO-KANI-004-H6k: is_known_record_kind(20) must return true.
+#[kani::proof]
+fn check_kind_20_known() {
+    let kind: u16 = 20;
+    let result = crate::codec::validation::is_known_record_kind(kind);
+    kani::assert(result, "kind 20 (StepFailed) must be a known record kind");
+}
+
+/// PO-KANI-004-H6l: Kind 20 (StepFailed) must be admitted for MAGIC_JOURNAL_EVENT.
+#[kani::proof]
+fn check_kind_20_journal_family() {
+    let result = crate::codec::validation::validate_kind_family(crate::MAGIC_JOURNAL_EVENT, 20);
+    kani::assert(
+        result.is_ok(),
+        "kind 20 (StepFailed) with MAGIC_JOURNAL_EVENT must return Ok(())",
+    );
+}
+
+/// PO-KANI-004-H6m: RecordKind::StepFailed.id() returns the stable wire kind 20.
+#[kani::proof]
+fn check_kind_20_step_failed_id() {
+    let id = crate::RecordKind::StepFailed.id();
+    kani::assert(id == 20, "StepFailed wire kind must remain 20");
+}
+
 /// PO-KANI-004-H7: All existing known kinds remain known.
 #[kani::proof]
 fn check_all_existing_kinds_known() {
