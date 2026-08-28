@@ -1538,6 +1538,12 @@ impl ActionReplayTracker {
         }
     }
 
+    /// Returns true if the given (action, step) pair has a registered
+    /// schedule ticket in the tracker.
+    pub(crate) fn scheduled_tickets_contains(&self, key: &(ActionId, StepIdx)) -> bool {
+        self.scheduled_tickets.contains_key(key)
+    }
+
     /// Records that an action was completed during normal execution.
     /// During recovery, encountering this action again will block re-execution.
     pub fn mark_completed(&mut self, action: ActionId, step: StepIdx) {

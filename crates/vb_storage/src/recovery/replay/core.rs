@@ -92,7 +92,7 @@ fn dispatch_replay_event(
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }
         | JournalEvent::ActionFailedEvent { .. } => {
-            replay_action_event(event, tracker, expected_action_abi_digests)?;
+            replay_action_event(event, tracker, require_schedule, expected_action_abi_digests)?;
             Ok(last_step)
         }
         _ => Ok(last_step),
@@ -154,6 +154,7 @@ const fn zero_workflow_digest() -> WorkflowDigest {
 fn replay_action_event(
     event: &JournalEvent,
     tracker: &mut ActionReplayTracker,
+    require_schedule: bool,
     expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<()> {
     match event {
@@ -180,11 +181,17 @@ fn replay_action_event(
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_if_resolved(tracker, *action, *step)?;
+            if require_schedule {
+                validate_action_has_schedule(tracker, *action, *step)?;
+            }
             tracker.mark_completed(*action, *step);
             Ok(())
         }
         JournalEvent::ActionFailedEvent { action, step, .. } => {
             reject_if_resolved(tracker, *action, *step)?;
+            if require_schedule {
+                validate_action_has_schedule(tracker, *action, *step)?;
+            }
             tracker.mark_failed(*action, *step);
             Ok(())
         }
@@ -252,6 +259,28 @@ fn reject_if_resolved(
         return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
     }
     Ok(())
+}
+
+/// Validate that the given (action, step) pair has a registered schedule
+/// in the tracker. Rejects orphan completions whose step was never
+/// scheduled during this replay.
+fn validate_action_has_schedule(
+    tracker: &ActionReplayTracker,
+    action: ActionId,
+    step: StepIdx,
+) -> RecoveryResult<()> {
+    let key = (action, step);
+    if tracker.scheduled_tickets_contains(&key) {
+        Ok(())
+    } else {
+        Err(RecoveryError::ReplayDivergence {
+            step,
+            detail: format!(
+                "action completion at step {} has no matching schedule ticket",
+                step.get()
+            ),
+        })
+    }
 }
 
 fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {

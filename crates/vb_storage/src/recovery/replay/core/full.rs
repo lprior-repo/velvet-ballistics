@@ -103,7 +103,7 @@ pub fn recover_snapshot_plus_tail(
     replay_events_with_schedule_requirement(
         tail_events,
         tracker,
-        false,
+        true,
         expected_action_abi_digests,
     )
 }

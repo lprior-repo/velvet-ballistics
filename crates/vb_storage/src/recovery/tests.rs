@@ -41,6 +41,7 @@ fn deterministic_parts() -> WorkflowParts {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     }
 }
 
@@ -704,6 +705,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     };
     let plan = CompiledWorkflow::try_from_parts(parts)?;
     let ticket = recovery_action_ticket(run, StepIdx::ZERO, action);
@@ -1724,6 +1726,128 @@ fn snapshot_plus_tail_accepts_valid_tail_events() {
     let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[])
         .expect("valid tail events should replay successfully");
     assert_eq!(replayed.len(), 2);
+}
+
+#[test]
+fn snapshot_plus_tail_rejects_orphan_action_completed_envelope() {
+    let run = RunId::new(42);
+    let digest = sample_digest(1);
+    let seq = SeqNo::ZERO;
+    let ticket = ActionTicket {
+        run,
+        step: StepIdx::new(0),
+        seq,
+        action: ActionId::new(1),
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, ActionId::new(1)),
+        capacity: 1,
+    };
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow: digest,
+        slots: Vec::new(),
+        taint: Vec::new(),
+    };
+    let tail = vec![JournalEvent::ActionCompletedEnvelope {
+        run,
+        seq: EventSeq::new(3),
+        ticket,
+        output: SlotIdx::new(0),
+        outcome: DurableActionOutcome::Ready,
+        value: Vec::new(),
+        encoded_len: 0,
+        taint: vb_core::Taint::Clean,
+        value_digest: [0u8; 32],
+        action_abi_digest: sample_digest(5),
+    }];
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
+    let Err(err) = result else {
+        panic!("orphan completion envelope should be rejected");
+    };
+    assert!(
+        matches!(err, RecoveryError::ReplayDivergence { .. }),
+        "expected ReplayDivergence for orphan completion, got {err:?}"
+    );
+}
+
+#[test]
+fn snapshot_plus_tail_rejects_orphan_action_completed_event() {
+    let run = RunId::new(43);
+    let action = ActionId::new(2);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow: sample_digest(1),
+        slots: Vec::new(),
+        taint: Vec::new(),
+    };
+    let tail = vec![JournalEvent::ActionCompletedEvent {
+        run,
+        seq: EventSeq::new(3),
+        step: StepIdx::new(5),
+        action,
+        attempt: 1,
+    }];
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &[]);
+    let Err(err) = result else {
+        panic!("orphan completed event should be rejected");
+    };
+    assert!(
+        matches!(err, RecoveryError::ReplayDivergence { .. }),
+        "expected ReplayDivergence for orphan completion, got {err:?}"
+    );
+}
+
+#[test]
+fn snapshot_plus_tail_accepts_completion_following_schedule_in_tail() {
+    let run = RunId::new(44);
+    let digest = sample_digest(1);
+    let action = ActionId::new(3);
+    let seq = SeqNo::new(1);
+    let ticket = ActionTicket {
+        run,
+        step: StepIdx::new(5),
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        capacity: 1,
+    };
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow: digest,
+        slots: Vec::new(),
+        taint: Vec::new(),
+    };
+    let tail = vec![
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq: EventSeq::new(3),
+            ticket,
+            input: SlotIdx::new(0),
+            output: SlotIdx::new(1),
+            action_abi_digest: sample_digest(5),
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(4),
+            step: StepIdx::new(5),
+            action,
+            attempt: 1,
+        },
+    ];
+    let mut tracker = ActionReplayTracker::new();
+    let expected_abi = vec![(action, sample_digest(5))];
+    let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker, &expected_abi);
+    assert!(
+        result.is_ok(),
+        "completion following schedule in tail should succeed: {:?}",
+        result
+    );
 }
 
 #[test]

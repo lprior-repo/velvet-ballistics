@@ -611,6 +611,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
     };
     let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
     let computed = blake3::hash(&hash_bytes);
@@ -677,6 +678,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
 
@@ -733,6 +735,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
     };
 
     // Compute digest from content with digest field zeroed.
@@ -822,6 +825,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
@@ -890,6 +894,7 @@ fn submit_artifact_stale_digest_rejected() {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
     };
     let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // The stale workflow claims the same digest as the original but has different
