@@ -19,13 +19,55 @@ use crate::shard::types::{InspectSnapshot, PendingTimer, PendingTimerKind};
 pub fn seed_input_slots(
     frame: &mut RunFrame,
     inputs: &[(SlotIdx, SlotValue)],
+    workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
     for (slot, value) in inputs {
+        let declared = workflow
+            .input_slots()
+            .iter()
+            .find(|cs| cs.slot == *slot)
+            .map(|cs| cs.kind);
+        if let Some(kind) = declared {
+            if !slot_value_matches_kind(value, kind) {
+                return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                    slot: *slot,
+                    expected: kind,
+                    actual: slot_value_kind(value),
+                });
+            }
+        }
         frame
             .write_slot_with_taint(*slot, *value, Taint::Clean)
             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
     }
     Ok(())
+}
+
+fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
+    matches!(
+        (value, kind),
+        (SlotValue::Null, vb_core::InputSlotKind::Null)
+            | (SlotValue::Bool(_), vb_core::InputSlotKind::Bool)
+            | (SlotValue::I64(_), vb_core::InputSlotKind::I64)
+            | (SlotValue::F64(_), vb_core::InputSlotKind::F64)
+            | (SlotValue::Symbol(_), vb_core::InputSlotKind::Symbol)
+            | (SlotValue::List(_), vb_core::InputSlotKind::List)
+            | (SlotValue::Object(_), vb_core::InputSlotKind::Object)
+            | (SlotValue::Blob(_), vb_core::InputSlotKind::Blob)
+    )
+}
+
+fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
+    match value {
+        SlotValue::Null => vb_core::InputSlotKind::Null,
+        SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+        SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+        SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+        SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+        SlotValue::List(_) => vb_core::InputSlotKind::List,
+        SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+        SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+    }
 }
 
 /// Validates that an action completion matches the expected ticket.

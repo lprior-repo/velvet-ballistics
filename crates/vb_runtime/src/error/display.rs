@@ -13,6 +13,7 @@ impl std::fmt::Display for RuntimeError {
 fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
     match error {
         RuntimeError::QueueFull => Some("queue full"),
+        RuntimeError::RuntimeInputSlotKindMismatch { .. } => Some("runtime input slot kind mismatch"),
         RuntimeError::RunNotFound => Some("run not found"),
         RuntimeError::RunAlreadyExists => Some("run already exists"),
         RuntimeError::ShutdownInProgress => Some("shutdown in progress"),
@@ -153,6 +154,9 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::ShardNotFound { shard } => {
             write!(f, "shard {shard} not found")
+        }
+        RuntimeError::RuntimeInputSlotKindMismatch { slot, expected, actual } => {
+            write!(f, "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}")
         }
         _ => Ok(()),
     }

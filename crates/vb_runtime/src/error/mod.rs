@@ -257,6 +257,15 @@ pub enum RuntimeError {
         /// Human-readable error description.
         error: String,
     },
+    /// Runtime input slot value kind does not match declared input slot kind.
+    RuntimeInputSlotKindMismatch {
+        /// Slot index where mismatch occurred.
+        slot: vb_core::SlotIdx,
+        /// Declared kind for the slot.
+        expected: vb_core::InputSlotKind,
+        /// Actual kind of the supplied value.
+        actual: vb_core::InputSlotKind,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

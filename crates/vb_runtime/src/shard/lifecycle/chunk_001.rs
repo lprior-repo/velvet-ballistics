@@ -156,7 +156,7 @@ impl Shard {
         let digest = workflow.digest();
         let admission = self.build_admission(run, digest, caps)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
-        crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
+        crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         if persist_header {
             self.append_admission_header_journal_event(
