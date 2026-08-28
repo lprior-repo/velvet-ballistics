@@ -80,6 +80,10 @@ pub(crate) enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,
     SlotIndexOutOfRange,
+    KindMismatch {
+        slot: vb_core::SlotIdx,
+        expected_kind: vb_core::InputSlotKind,
+    },
 }
 
 impl std::fmt::Display for InputMappingError {
@@ -88,6 +92,12 @@ impl std::fmt::Display for InputMappingError {
             Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
             Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
             Self::SlotIndexOutOfRange => INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+            Self::KindMismatch { slot, expected_kind } => {
+                write!(
+                    formatter,
+                    "INPUT_MAPPING_FAILED: slot {slot} value kind mismatch, expected {expected_kind}"
+                )
+            }
         })
     }
 }
@@ -96,21 +106,39 @@ pub(crate) fn map_runtime_inputs(
     compiled: &vb_core::CompiledWorkflow,
     input_data: &[u8],
 ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    let input_slots = compiled.input_slots();
+    if input_slots.is_empty() {
+        return Ok(Box::from([]));
+    }
     if input_data.is_empty() {
         return Ok(Box::from([]));
     }
     let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
         .map_err(|_| InputMappingError::DecodeFailed)?;
-    if values.len() > usize::from(compiled.slot_count()) {
+    if values.len() > input_slots.len() {
         return Err(InputMappingError::SlotCountExceeded);
     }
-    values
+    input_slots
         .iter()
-        .copied()
-        .enumerate()
-        .map(|(index, value)| {
-            let slot = u16::try_from(index).map_err(|_| InputMappingError::SlotIndexOutOfRange)?;
-            Ok((vb_core::SlotIdx::new(slot), value))
+        .zip(values.iter())
+        .map(|(slot, value)| {
+            let value_kind = match value {
+                vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+                vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+                vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+                vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+                vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+                vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+                vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+                vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+            };
+            if value_kind != slot.kind {
+                return Err(InputMappingError::KindMismatch {
+                    slot: slot.slot,
+                    expected_kind: slot.kind,
+                });
+            }
+            Ok((slot.slot, *value))
         })
         .collect::<Result<Vec<_>, _>>()
         .map(Vec::into_boxed_slice)

@@ -21,8 +21,9 @@ pub(crate) mod prelude {
         action_contract_detail, action_table_rows, registered_cli_actions,
     };
     pub(crate) use crate::app_impl::{
-        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, VERSION, compile_errors_message,
+        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+        VERSION, compile_errors_message,
     };
     pub(crate) use crate::args::{
         self, ActionRegistryMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat, StepTarget,
@@ -65,6 +66,8 @@ pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
 pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot index out of range";
+pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: slot value kind mismatch";
 
 pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
     crate::validate::compile_errors_message(errors)
