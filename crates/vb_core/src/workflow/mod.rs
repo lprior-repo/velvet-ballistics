@@ -28,6 +28,7 @@ pub struct CompiledWorkflow {
     entry: StepIdx,
     resource_contract: ResourceContract,
     step_names: Box<[Box<str>]>,
+    input_slots: Box<[CompiledInputSlot]>,
 }
 
 impl CompiledWorkflow {
@@ -35,6 +36,7 @@ impl CompiledWorkflow {
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         validate_budget(&parts)?;
+        validate_input_slots(&parts)?;
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
@@ -47,6 +49,7 @@ impl CompiledWorkflow {
             entry: parts.entry,
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
+            input_slots: parts.input_slots,
         })
     }
 
@@ -68,6 +71,7 @@ impl CompiledWorkflow {
             entry: parts.entry,
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
+            input_slots: parts.input_slots,
         }
     }
 
@@ -87,6 +91,7 @@ impl CompiledWorkflow {
             entry: parts.entry,
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
+            input_slots: parts.input_slots,
         }
     }
 
@@ -162,6 +167,12 @@ impl CompiledWorkflow {
         self.resource_contract
     }
 
+    /// Read-only reference to the compiled input slots.
+    #[must_use]
+    pub fn input_slots(&self) -> &[CompiledInputSlot] {
+        self.input_slots.as_ref()
+    }
+
     /// Converts back to the serializable parts representation for artifact emission.
     #[must_use]
     pub fn to_parts(&self) -> WorkflowParts {
@@ -177,6 +188,7 @@ impl CompiledWorkflow {
             entry: self.entry,
             resource_contract: self.resource_contract,
             step_names: self.step_names.clone(),
+            input_slots: self.input_slots.clone(),
         }
     }
     pub(crate) fn error_handler_for_body(&self, body_step: StepIdx) -> Option<&CompiledNode> {
@@ -269,6 +281,41 @@ pub struct SlotBranch {
     pub target: StepIdx,
 }
 
+/// Classification of a compiled input slot by its runtime value shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum InputSlotKind {
+    /// Slot holds a null value.
+    Null,
+    /// Slot holds a boolean value.
+    Bool,
+    /// Slot holds a 64-bit signed integer value.
+    I64,
+    /// Slot holds a 64-bit float value.
+    F64,
+    /// Slot holds an interned symbol.
+    Symbol,
+    /// Slot holds a list handle.
+    List,
+    /// Slot holds an object handle.
+    Object,
+    /// Slot holds a blob handle.
+    Blob,
+}
+
+/// A compiled input slot: numeric index plus production classification.
+///
+/// Source names are intentionally excluded; the compiler emits only numeric
+/// references so the runtime never pays for string lookups on hot paths.
+/// The `kind` field describes the runtime value shape held at that slot index.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CompiledInputSlot {
+    /// Numeric slot index.
+    pub slot: SlotIdx,
+    /// Runtime value shape classification for this slot.
+    pub kind: InputSlotKind,
+}
+
 /// Untrusted compiled workflow parts emitted by a compiler boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkflowParts {
@@ -294,6 +341,11 @@ pub struct WorkflowParts {
     pub resource_contract: ResourceContract,
     /// Human-readable step names indexed by StepIdx.
     pub step_names: Box<[Box<str>]>,
+    /// Compiled input slots emitted by the compiler.
+    ///
+    /// Serde `default` tolerates pre-v1 artifacts that omit this field.
+    #[serde(default)]
+    pub input_slots: Box<[CompiledInputSlot]>,
 }
 
 /// Bounded accessor program for slot-rooted path traversal.
@@ -448,6 +500,30 @@ pub enum WorkflowError {
         outer: StepIdx,
         /// The inner `TogetherStart` step reachable from the outer branch.
         inner: StepIdx,
+    },
+    /// A compiled input slot references a slot index that exceeds the declared slot count.
+    #[error("input slot {slot:?} kind {kind:?} is outside slot_count")]
+    InputSlotOutOfBounds {
+        /// The out-of-bounds input slot.
+        slot: SlotIdx,
+        /// The kind classification of the offending slot.
+        kind: InputSlotKind,
+    },
+    /// A compiled input slot index is duplicated.
+    #[error("duplicate input slot {slot:?} kind {kind:?}")]
+    DuplicateInputSlot {
+        /// The duplicated slot index.
+        slot: SlotIdx,
+        /// The kind classification of the duplicate.
+        kind: InputSlotKind,
+    },
+    /// Compiled input slots are not in strictly increasing index order.
+    #[error("input slots out of canonical order: {prev_slot:?} followed by {curr_slot:?}")]
+    NonCanonicalInputSlotOrder {
+        /// The preceding slot index.
+        prev_slot: SlotIdx,
+        /// The out-of-order slot index.
+        curr_slot: SlotIdx,
     },
 }
 
@@ -773,6 +849,38 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     // the shape at the source. The helper returns
     // `WorkflowError::NestedTogether { outer, inner }`.
     crate::engine::validate::validate_no_nested_together(parts)?;
+    Ok(())
+}
+
+fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let slot_count = parts.slot_count;
+    let mut prev_slot: Option<SlotIdx> = None;
+    for input_slot in parts.input_slots.as_ref() {
+        let current = input_slot.slot;
+        let current_value = current.get();
+        if current_value >= slot_count {
+            return Err(WorkflowError::InputSlotOutOfBounds {
+                slot: current,
+                kind: input_slot.kind,
+            });
+        }
+        if let Some(prev) = prev_slot {
+            let prev_value = prev.get();
+            if current_value == prev_value {
+                return Err(WorkflowError::DuplicateInputSlot {
+                    slot: current,
+                    kind: input_slot.kind,
+                });
+            }
+            if current_value < prev_value {
+                return Err(WorkflowError::NonCanonicalInputSlotOrder {
+                    prev_slot: prev,
+                    curr_slot: current,
+                });
+            }
+        }
+        prev_slot = Some(current);
+    }
     Ok(())
 }
 

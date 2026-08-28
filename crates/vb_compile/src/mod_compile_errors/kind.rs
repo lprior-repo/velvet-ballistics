@@ -94,6 +94,8 @@ pub enum CompileError {
     MissingStepId { step: usize },
     #[error("duplicate step id: {id}")]
     DuplicateStepId { id: Box<str> },
+    #[error("duplicate input name: {name}")]
+    DuplicateInputName { name: Box<str> },
     #[error("step {step} must be a mapping")]
     StepShape { step: usize },
     #[error("step {step} has unknown field: {field}")]

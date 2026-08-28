@@ -124,7 +124,7 @@ pub use span::{Located, SourceMap, Span, SpanError, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
-    check_expr_stack_bound,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
+    WorkflowError, WorkflowParts, check_expr_stack_bound,
 };

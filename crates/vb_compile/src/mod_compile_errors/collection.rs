@@ -56,7 +56,7 @@ impl CompileError {
             Self::UnsupportedTopLevelDeclaration { .. } => "UNSUPPORTED_TOP_LEVEL_DECLARATION",
             Self::EmptySteps | Self::MissingStepPrimitive { .. } => "MISSING_STEP_PRIMITIVE",
             Self::InvalidName { field, value } => invalid_name_code(field, value),
-            Self::DuplicateStepId { .. } | Self::DuplicateOutputName { .. } => "DUPLICATE_ID",
+            Self::DuplicateStepId { .. } | Self::DuplicateOutputName { .. } | Self::DuplicateInputName { .. } => "DUPLICATE_ID",
             Self::UnknownOutputName { .. } => "UNKNOWN_OUTPUT_NAME",
             Self::UnknownStepField { .. } | Self::UnknownStepPrimitiveField { .. } => {
                 "UNKNOWN_STEP_FIELD"

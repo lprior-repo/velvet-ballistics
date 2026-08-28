@@ -4,12 +4,13 @@ use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_erro
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
 };
+use crate::yaml_ast::types::{AuthorValue, InputField};
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
@@ -42,6 +43,7 @@ pub fn compile_source(
             &mut builder,
         )?;
     }
+    allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
     let parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: canonical_digest(source)?,
@@ -54,9 +56,52 @@ pub fn compile_source(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
+        input_slots: builder.input_slots.into_boxed_slice(),
     };
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+}
+
+/// Allocate declared input slots after all steps are lowered.
+///
+/// Reads the base slot count from the builder, checked-adds the declaration
+/// index for each input field in source order, creates the `SlotIdx`, calls
+/// `record_slot` and `record_input_slot`.  Source names are intentionally
+/// excluded from the emitted IR.
+pub(super) fn allocate_input_slots(
+    inputs: &[InputField],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileError> {
+    let base = builder.slot_count()?;
+    for (declaration_index, input) in inputs.iter().enumerate() {
+        let declaration_index = u16::try_from(declaration_index).map_err(|_| {
+            CompileError::SlotIndexOutOfRange {
+                value: i64::MAX,
+            }
+        })?;
+        let base_usize = usize::from(base);
+        let declaration_usize = usize::from(declaration_index);
+        let slot_index_usize = base_usize
+            .checked_add(declaration_usize)
+            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+        let slot = SlotIdx::new(u16::try_from(slot_index_usize).map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?);
+        builder.record_slot(slot);
+        let kind = kind_from_author_value(&input.value);
+        builder.record_input_slot(slot, kind);
+    }
+    Ok(())
+}
+
+/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
+pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
+    match value {
+        AuthorValue::Null => InputSlotKind::Null,
+        AuthorValue::Bool(_) => InputSlotKind::Bool,
+        AuthorValue::I64(_) => InputSlotKind::I64,
+        AuthorValue::Text(_) => InputSlotKind::Symbol,
+        AuthorValue::Sequence(_) => InputSlotKind::List,
+        AuthorValue::Mapping(_) => InputSlotKind::Object,
+    }
 }
 
 #[derive(Clone, Copy)]

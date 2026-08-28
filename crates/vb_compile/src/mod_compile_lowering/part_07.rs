@@ -7,9 +7,9 @@ use crate::mod_compile_validation::{
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 /// Lowers a `repeat` primitive into retry IR nodes.
@@ -179,8 +179,8 @@ pub fn validate_ir(parts: WorkflowParts) -> Result<CompiledWorkflow, CompileErro
 
 /// Mutable slot compiler state for building node arrays.
 ///
-/// Tracks slot allocation, constant pool, expression programs, and accessor
-/// programs during step lowering.
+/// Tracks slot allocation, constant pool, expression programs, accessor
+/// programs, and input slot metadata during step lowering.
 #[derive(Debug, Default)]
 pub struct SlotCompiler {
     pub(super) nodes: Vec<CompiledNode>,
@@ -188,4 +188,5 @@ pub struct SlotCompiler {
     pub(super) expressions: Vec<ExprProgram>,
     pub(super) accessors: Vec<AccessorProgram>,
     pub(super) max_slot: Option<usize>,
+    pub(super) input_slots: Vec<CompiledInputSlot>,
 }

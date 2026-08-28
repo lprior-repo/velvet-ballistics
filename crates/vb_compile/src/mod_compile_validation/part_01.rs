@@ -55,8 +55,13 @@ pub(crate) fn validate_canonical_compile_scope(
     source: &crate::WorkflowSource,
 ) -> Result<(), CompileErrors> {
     let mut errors = Vec::new();
-    if !source.inputs().is_empty() {
-        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "inputs" });
+    let mut input_keys = HashSet::with_capacity(source.inputs().len());
+    for input in source.inputs() {
+        if !input_keys.insert(input.key.as_str()) {
+            errors.push(CompileError::DuplicateInputName {
+                name: Box::from(input.key.as_str()),
+            });
+        }
     }
     if !source.vars().is_empty() {
         errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "vars" });
