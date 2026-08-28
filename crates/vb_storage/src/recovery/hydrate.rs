@@ -92,6 +92,7 @@ impl TailEventMetadata {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SnapshotRecoveryInputViolation {
     SnapshotRunMismatch {
+        expected_run: RunId,
         snapshot_run: RunId,
         snapshot_seq: crate::EventSeq,
     },
@@ -122,6 +123,7 @@ pub(crate) const fn validate_snapshot_metadata(
         Ok(())
     } else {
         Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            expected_run: run_id,
             snapshot_run,
             snapshot_seq,
         })
@@ -447,14 +449,20 @@ fn validate_tail_events_after_snapshot(
     Ok(())
 }
 
-fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) -> RecoveryError {
+fn snapshot_input_violation_to_error(
+    violation: SnapshotRecoveryInputViolation,
+) -> RecoveryError {
     match violation {
         SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            expected_run,
             snapshot_run,
             snapshot_seq,
-        } => RecoveryError::CorruptSnapshot {
-            run: snapshot_run,
-            seq: snapshot_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "snapshot run_id mismatch: expected {:?}, found {:?} (snapshot at seq {:?})",
+                expected_run, snapshot_run, snapshot_seq
+            ),
         },
         SnapshotRecoveryInputViolation::TailRunMismatch { expected, actual } => {
             RecoveryError::ReplayDivergence {
