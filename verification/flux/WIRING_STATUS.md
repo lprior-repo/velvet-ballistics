@@ -40,11 +40,19 @@ evidence.
 | `vb_xi2f_compile_source.rs` | `verification/flux/vb_xi2f_compile_source.rs` | SCOPED-ONLY | Compile-source shadow model. |
 | `vb_xi2f_try_from_parts.rs` | `verification/flux/vb_xi2f_try_from_parts.rs` | SCOPED-ONLY | `try_from_parts` shadow model. |
 | `vb_compile/` | `verification/flux/vb_compile/` | SCOPED-ONLY | Directory of shadow-model refinements. |
+| `vb-p0vpw-sequence-replay.rs` | `verification/flux/vb-p0vpw-sequence-replay.rs` | SCOPED-ONLY | vb-p0vpw sequence+replay Flux refinements. Companion extern files: `extern_flux_sequence.rs`, `extern_flux_replay.rs`. |
 
 No Flux artifact in `verification/flux/` is currently WIRED. The
 production-storage Flux path is disabled at the package-feature level
 (see `crates/vb_storage/src/flux.rs` if present, otherwise confirm via
 `bash scripts/check-flux-production-binding.sh`).
+
+The vacuous Flux files that were previously embedded in the production
+crate (`crates/vb_storage/src/types/flux_sequence.rs` and
+`crates/vb_storage/src/recovery/flux_replay.rs`) have been removed
+per bead vb-p0vpw. Their model functions and tests have been
+consolidated into `verification/flux/vb-p0vpw-sequence-replay.rs`
+with companion extern files documenting the production binding intent.
 
 ## Required Follow-Up (out of scope for this bead)
 

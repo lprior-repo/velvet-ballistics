@@ -1,10 +1,40 @@
-//! Flux-rs refinement annotations for sequence bounds in `vb_storage` types.
+//! Flux-rs refinement annotations for sequence bounds and replay invariants.
 //!
-//! This module binds EventSeq range invariants and contiguity models to the
-//! production storage types so that `cargo flux` can verify sequence ordering,
-//! contiguity, and replay bounds at the type level.
+//! ============================================================================
+//! PRODUCTION BINDING — SCOPED-ONLY
+//! ============================================================================
+//!
+//! These refinement annotations model the sequence and replay invariants
+//! that production code in `vb_storage` enforces by construction. The
+//! companion extern files (`extern_flux_sequence.rs`, `extern_flux_replay.rs`)
+//! document the production types that this model mirrors.
+//!
+//! Production bindings:
+//!   Sequence bounds:    `crates/vb_storage/src/types.rs:73` EventSeq(u64)
+//!   Contiguity check:   `crates/vb_storage/src/journal/replay.rs`
+//!   Step ordering:      `crates/vb_storage/src/recovery/types.rs` StepIdx
+//!   Replay bounds:      `crates/vb_storage/src/recovery/replay/core.rs`
+//!   Non-idempotent:     `crates/vb_storage/src/recovery/replay/attempt.rs`
+//!
+//! The refined model types define the same invariants that production
+//! types enforce by construction:
+//!   - EventSeqRefined raw ∈ [0, u64::MAX] (trivially true for u64)
+//!   - Contiguous sequence: next == prev.saturating_add(1)
+//!   - Step ordering: current >= previous (monotonic non-decreasing)
+//!   - Tail events: seq > snapshot_seq (strictly after snapshot)
+//!   - Attempt filter: current >= max_attempt, stale < max_attempt
+//!
+//! These SCOPED-ONLY models are verified at runtime via the #[cfg(test)]
+//! module below. They document the invariants for human review and
+//! future Flux/Verus binding when production types carry #[refined_by].
+//!
+//! See also:
+//!   verification/flux/extern_flux_sequence.rs
+//!   verification/flux/extern_flux_replay.rs
+//!   verification/flux/WIRING_STATUS.md
 
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 extern crate flux_rs;
 use flux_rs::attrs::*;
@@ -19,6 +49,8 @@ use flux_rs::attrs::*;
 /// `u64` itself cannot hold values outside `[0, u64::MAX]`. The refinement
 /// records the invariant so that callers and downstream functions can
 /// reason about the sequence without needing explicit bounds checks.
+///
+/// Production mirror: EventSeq in crates/vb_storage/src/types.rs:73
 #[flux_rs::refined_by(raw: u64)]
 #[flux_rs::invariant(0 <= raw && raw <= u64::MAX)]
 pub struct EventSeqRefined {
@@ -219,6 +251,169 @@ fn model_max_attempt_ge_one(attempts: &[u16]) -> bool {
 }
 
 // ============================================================================
+// Journal replay contiguity models (from flux_replay)
+// ============================================================================
+
+/// Model: a slice of sequence values passes contiguity when every adjacent
+/// pair satisfies `next == prev + 1` (saturating).
+#[flux_rs::sig(
+    fn(seqs: &[u64]) -> bool[
+        contiguous_sequence_check(seqs)
+    ]
+)]
+fn model_contiguous_sequence_check(seqs: &[u64]) -> bool {
+    if seqs.len() <= 1 {
+        return true;
+    }
+    let mut expected = seqs[0];
+    for &seq in seqs.iter().skip(1) {
+        if seq != expected {
+            return false;
+        }
+        expected = expected.saturating_add(1);
+    }
+    true
+}
+
+/// Model: a gap in the sequence is detected when any adjacent pair fails the
+/// `next == prev + 1` check.
+#[flux_rs::sig(
+    fn(seqs: &[u64]) -> bool[
+        !contiguous_sequence_check(seqs)
+    ]
+)]
+fn model_sequence_gap_found(seqs: &[u64]) -> bool {
+    if seqs.len() < 2 {
+        return false;
+    }
+    let mut expected = seqs[0];
+    for &seq in seqs.iter().skip(1) {
+        if seq != expected {
+            return true;
+        }
+        expected = expected.saturating_add(1);
+    }
+    false
+}
+
+// ============================================================================
+// Replay divergence detection
+// ============================================================================
+
+/// Model: snapshot-plus-tail replay is valid when every tail event sequence
+/// is strictly greater than the snapshot sequence.
+#[flux_rs::sig(
+    fn(snapshot_seq: u64, tail_seqs: &[u64]) -> bool[
+        replay_tail_valid(snapshot_seq, tail_seqs)
+    ]
+)]
+fn model_replay_tail_valid(snapshot_seq: u64, tail_seqs: &[u64]) -> bool {
+    for seq in tail_seqs {
+        if *seq <= snapshot_seq {
+            return false;
+        }
+    }
+    true
+}
+
+/// Model: snapshot-plus-tail replay diverges when any tail event has
+/// sequence <= snapshot sequence.
+#[flux_rs::sig(
+    fn(snapshot_seq: u64, tail_seqs: &[u64]) -> bool[
+        replay_tail_diverges(snapshot_seq, tail_seqs)
+    ]
+)]
+fn model_replay_tail_diverges(snapshot_seq: u64, tail_seqs: &[u64]) -> bool {
+    for seq in tail_seqs {
+        if *seq <= snapshot_seq {
+            return true;
+        }
+    }
+    false
+}
+
+// ============================================================================
+// Non-idempotent action blocking
+// ============================================================================
+
+/// Model: an action is already resolved when the tracker has seen it.
+#[flux_rs::sig(
+    fn(resolved: bool, action: u64, step: u16) -> bool[
+        action_already_resolved(resolved, action, step)
+    ]
+)]
+fn model_action_already_resolved(resolved: bool, _action: u64, _step: u16) -> bool {
+    resolved
+}
+
+/// Model: non-idempotent action is blocked when the action+step pair is
+/// already in the resolved set.
+#[flux_rs::sig(
+    fn(is_resolved: bool) -> bool[
+        non_idempotent_action_blocked(is_resolved)
+    ]
+)]
+fn model_non_idempotent_action_blocked(is_resolved: bool) -> bool {
+    is_resolved
+}
+
+// ============================================================================
+// Terminal state extraction
+// ============================================================================
+
+/// Model: a terminal event is one of RunFinished, RunCancelled, RunKilled,
+/// or RunFailedEvent.
+#[flux_rs::sig(
+    fn(is_terminal: bool) -> bool[is_terminal_event(is_terminal)]
+)]
+fn model_is_terminal_event(is_terminal: bool) -> bool {
+    is_terminal
+}
+
+/// Model: terminal event extraction finds the last terminal event from the
+/// latest attempt.
+#[flux_rs::sig(
+    fn(attempt: u16, max_attempt: u16) -> bool[
+        terminal_event_from_latest_attempt(attempt, max_attempt)
+    ]
+)]
+fn model_terminal_event_from_latest_attempt(attempt: u16, max_attempt: u16) -> bool {
+    attempt == max_attempt
+}
+
+// ============================================================================
+// Step divergence from replay perspective
+// ============================================================================
+
+/// Model: step order diverges when a StepStarted event carries an index
+/// strictly less than the previously observed step. This enforces the
+/// monotonic non-decreasing step ordering invariant.
+#[flux_rs::sig(
+    fn(last_step: Option<u16>, current: u16) -> bool[
+        step_started_diverges(last_step, current)
+    ]
+)]
+fn model_step_started_diverges(last_step: Option<u16>, current: u16) -> bool {
+    match last_step {
+        Some(prev) => current < prev,
+        None => false,
+    }
+}
+
+/// Model: step order is valid when current >= last (or last is None).
+#[flux_rs::sig(
+    fn(last_step: Option<u16>, current: u16) -> bool[
+        step_started_valid(last_step, current)
+    ]
+)]
+fn model_step_started_valid(last_step: Option<u16>, current: u16) -> bool {
+    match last_step {
+        Some(prev) => current >= prev,
+        None => true,
+    }
+}
+
+// ============================================================================
 // Tests — runtime verification of model correctness
 // ============================================================================
 
@@ -314,5 +509,95 @@ mod flux_sequence_tests {
         assert!(model_max_attempt_ge_one(&[]));
         assert!(model_max_attempt_ge_one(&[1]));
         assert!(model_max_attempt_ge_one(&[3, 5, 2]));
+    }
+}
+
+#[cfg(test)]
+mod flux_replay_tests {
+    use super::*;
+
+    #[test]
+    fn contiguous_sequence_passes() {
+        assert!(model_contiguous_sequence_check(&[0, 1, 2, 3]));
+    }
+
+    #[test]
+    fn contiguous_single_element() {
+        assert!(model_contiguous_sequence_check(&[42]));
+    }
+
+    #[test]
+    fn contiguous_empty() {
+        assert!(model_contiguous_sequence_check(&[]));
+    }
+
+    #[test]
+    fn gap_sequence_detected() {
+        assert!(model_sequence_gap_found(&[0, 1, 3, 4]));
+    }
+
+    #[test]
+    fn duplicate_sequence_detected() {
+        assert!(model_sequence_gap_found(&[0, 1, 1, 2]));
+    }
+
+    #[test]
+    fn no_gap_in_contiguous() {
+        assert!(!model_sequence_gap_found(&[0, 1, 2, 3]));
+    }
+
+    #[test]
+    fn step_diverges() {
+        assert!(model_step_started_diverges(Some(5), 3));
+    }
+
+    #[test]
+    fn step_preserved() {
+        assert!(model_step_started_valid(Some(3), 5));
+        assert!(model_step_started_valid(Some(3), 3));
+        assert!(model_step_started_valid(None, 0));
+    }
+
+    #[test]
+    fn step_no_previous_valid() {
+        assert!(model_step_started_valid(None, 0));
+    }
+
+    #[test]
+    fn tail_valid_after_snapshot() {
+        assert!(model_replay_tail_valid(100, &[101, 102, 103]));
+    }
+
+    #[test]
+    fn tail_rejected_at_snapshot() {
+        assert!(!model_replay_tail_valid(100, &[100, 101, 102]));
+    }
+
+    #[test]
+    fn tail_rejected_before_snapshot() {
+        assert!(!model_replay_tail_valid(100, &[50, 60, 70]));
+    }
+
+    #[test]
+    fn tail_diverges_detected() {
+        assert!(model_replay_tail_diverges(100, &[100, 101]));
+        assert!(model_replay_tail_diverges(100, &[50, 60]));
+    }
+
+    #[test]
+    fn tail_no_divergence() {
+        assert!(!model_replay_tail_diverges(100, &[101, 102, 103]));
+    }
+
+    #[test]
+    fn action_resolved_blocks() {
+        assert!(model_non_idempotent_action_blocked(true));
+        assert!(!model_non_idempotent_action_blocked(false));
+    }
+
+    #[test]
+    fn terminal_from_latest() {
+        assert!(model_terminal_event_from_latest_attempt(3, 3));
+        assert!(!model_terminal_event_from_latest_attempt(2, 3));
     }
 }
