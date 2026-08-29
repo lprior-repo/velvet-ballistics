@@ -53,4 +53,6 @@
 # - github.org
 # - github.repo
 
-dolt.server-port: 43643
+dolt.server-port: 44101
+
+sync.remote: "git+https://github.com/lprior-repo/velvet-ballistics.git"
