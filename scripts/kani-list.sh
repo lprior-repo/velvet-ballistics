@@ -9,6 +9,7 @@ usage() {
   printf 'usage: bash scripts/kani-list.sh <package> [<package> ...]\n' >&2
   printf 'writes per-package kani-list JSON to KANI_LIST_DIR or .evidence/kani-list\n' >&2
   printf 'set KANI_FEATURES=feature1,feature2 to activate package features\n' >&2
+  printf 'set KANI_DEFAULT_UNWIND=N to set CBMC loop-unwind bound for listed harnesses\n' >&2
 }
 
 if [ "$#" -eq 0 ]; then
@@ -52,6 +53,9 @@ PY
     kani_args=()
     if [ -n "${KANI_FEATURES:-}" ]; then
       kani_args+=(--features "$KANI_FEATURES")
+    fi
+    if [ -n "${KANI_DEFAULT_UNWIND:-}" ]; then
+      kani_args+=(--default-unwind "$KANI_DEFAULT_UNWIND")
     fi
     cargo kani "${kani_args[@]}" list --format json
   )

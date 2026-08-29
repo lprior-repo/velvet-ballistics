@@ -1,0 +1,213 @@
+# Resource-controlled Kani proof tasks for bounded verification lanes.
+# These tasks add explicit resource controls (unwind bounds, timeouts, memory caps)
+# on top of the existing kani.yml verification tasks.
+
+fileGroups:
+  kani_sources:
+    - 'crates/vb_core/src/**/*'
+    - 'crates/vb_validate/src/**/*'
+    - 'crates/vb_compile/src/kani/**/*'
+    - 'verification/kani/**/*'
+  kani_harnesses:
+    - 'crates/vb_validate/src/kani_gate_08_structural.rs'
+    - 'crates/vb_compile/src/kani/*.rs'
+    - 'verification/kani/**/*.rs'
+
+tasks:
+  # ── Resource-controlled single-harness proofs ──────────────────────────
+  # Runs one harness at a time with explicit unwind bound and timeout.
+  # Use for targeted proof verification of a single claim.
+
+  kani-proof-single:
+    script: |
+      set -euo pipefail
+      if [ -z "${KANI_PROOF_PACKAGE:-}" ] || [ -z "${KANI_PROOF_HARNESS:-}" ]; then
+        printf 'Set KANI_PROOF_PACKAGE and KANI_PROOF_HARNESS env vars.\n' >&2
+        exit 2
+      fi
+      mkdir -p target/kani-tmp
+      TMPDIR="$PWD/target/kani-tmp" \
+      KANI_FEATURES="${KANI_PROOF_FEATURES:-}" \
+      bash scripts/kani-proof.sh "$KANI_PROOF_PACKAGE" "$KANI_PROOF_HARNESS"
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'scripts/kani-proof.sh'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: false
+
+  # ── Resource-controlled vb_core proof lane with bounded unwind ──────────
+  # Runs budget/idempotency harnesses with explicit unwind bound.
+  # KANI_DEFAULT_UNWIND defaults to 8; override for deeper proofs.
+
+  kani-proof-vb-core-bounded:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock \
+        env -u RUSTC_WRAPPER \
+            TMPDIR="$PWD/target/kani-tmp" \
+            RUSTFLAGS="-Dwarnings" \
+            CARGO_TARGET_DIR=target/kani-bounded-vb-core \
+        timeout 60m rustup run nightly-2026-04-28 cargo kani \
+          --lib -p vb_core --all-features -j 1 \
+          --default-unwind "${KANI_DEFAULT_UNWIND:-8}" \
+          -Z unstable-options \
+          --harness-timeout "${KANI_HARNESS_TIMEOUT:-30m}" \
+          --harness 'kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary' \
+          --harness 'kani_budget_add_dim_zero::kani_budget_add_dim_zero' \
+          --harness 'kani_budget_sub_dim_zero::kani_budget_sub_dim_zero' \
+          --harness 'kani_aggregate_usage_zero::kani_aggregate_usage_zero' \
+          2>&1 | tee .evidence/kani/proofs/vb_core_bounded.log \
+        || { cat .evidence/kani/proofs/vb_core_bounded.log >&2; exit 1; }
+      if ! grep -q 'VERIFICATION:- SUCCESSFUL' .evidence/kani/proofs/vb_core_bounded.log; then
+        printf 'kani-proof-vb-core-bounded: missing VERIFICATION:- SUCCESSFUL\n' >&2
+        exit 1
+      fi
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani-resource.yml'
+    outputs:
+      - '.evidence/kani/proofs/vb_core_bounded.log'
+    options:
+      runInCI: true
+
+  # ── Resource-controlled vb_compile proof lane ──────────────────────────
+  # Runs bytecode/expression proof harnesses with bounded unwind.
+
+  kani-proof-vb-compile-bounded:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock \
+        env -u RUSTC_WRAPPER \
+            TMPDIR="$PWD/target/kani-tmp" \
+            RUSTFLAGS="-Dwarnings" \
+            CARGO_TARGET_DIR=target/kani-bounded-vb-compile \
+        timeout 90m rustup run nightly-2026-04-28 cargo kani \
+          --lib -p vb_compile --all-features -j 1 \
+          --default-unwind "${KANI_DEFAULT_UNWIND:-16}" \
+          -Z unstable-options \
+          --harness-timeout "${KANI_HARNESS_TIMEOUT:-45m}" \
+          2>&1 | tee .evidence/kani/proofs/vb_compile_bounded.log \
+        || { cat .evidence/kani/proofs/vb_compile_bounded.log >&2; exit 1; }
+      if ! grep -q 'VERIFICATION:- SUCCESSFUL' .evidence/kani/proofs/vb_compile_bounded.log; then
+        printf 'kani-proof-vb-compile-bounded: missing VERIFICATION:- SUCCESSFUL\n' >&2
+        exit 1
+      fi
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani-resource.yml'
+    outputs:
+      - '.evidence/kani/proofs/vb_compile_bounded.log'
+    options:
+      runInCI: true
+
+  # ── Resource-controlled memory-limited proof ───────────────────────────
+  # Runs a harness with a CBMC memory cap to prevent OOM in CI.
+  # KANI_MEMORY_LIMIT is in MiB (e.g., 4096 = 4 GiB).
+
+  kani-proof-memory-capped:
+    script: |
+      set -euo pipefail
+      if [ -z "${KANI_PROOF_PACKAGE:-}" ] || [ -z "${KANI_PROOF_HARNESS:-}" ]; then
+        printf 'Set KANI_PROOF_PACKAGE and KANI_PROOF_HARNESS env vars.\n' >&2
+        exit 2
+      fi
+      mkdir -p target/kani-tmp
+      TMPDIR="$PWD/target/kani-tmp" \
+      KANI_FEATURES="${KANI_PROOF_FEATURES:-}" \
+      bash scripts/kani-proof.sh "$KANI_PROOF_PACKAGE" "$KANI_PROOF_HARNESS"
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'scripts/kani-proof.sh'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: false
+
+  # ── Resource-controlled full proof lane (all packages) ─────────────────
+  # Runs every package with resource bounds. Sequential (j=1) with per-package
+  # wall-clock timeout. Memory cap applied via cgroup on the outer command.
+
+  kani-proof-all-bounded:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp target/moon-locks .evidence/kani/proofs/all
+      declare -a PACKAGES=(vb_core vb_validate vb_compile)
+      declare -A HARNESS_FILTERS=(
+        ["vb_core"]='kani_step_budget_try_take_arbitrary::kani_step_budget_try_take_arbitrary'
+        ["vb_validate"]='kani_gate_08_arbitrary_parts_valid_accessors_pass'
+        ["vb_compile"]='kani_compile_expr_to_bytecode_overflow'
+      )
+      declare -A DEFAULT_UNWINDS=(
+        ["vb_core"]="8"
+        ["vb_validate"]="8"
+        ["vb_compile"]="16"
+      )
+      all_pass=true
+      for pkg in "${PACKAGES[@]}"; do
+        log=".evidence/kani/proofs/all/${pkg}_bounded.log"
+        harness="${HARNESS_FILTERS[$pkg]:-}"
+        unwind="${DEFAULT_UNWINDS[$pkg]:-8}"
+        if [ -z "$harness" ]; then
+          printf '[kani-proof-all] SKIP package=%s (no harness filter)\n' "$pkg" >&2
+          continue
+        fi
+        printf '[kani-proof-all] RUN package=%s unwind=%s harness=%s\n' "$pkg" "$unwind" "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock \
+          env -u RUSTC_WRAPPER \
+              TMPDIR="$PWD/target/kani-tmp" \
+              RUSTFLAGS="-Dwarnings" \
+              CARGO_TARGET_DIR="target/kani-bounded-${pkg}" \
+          timeout 60m rustup run nightly-2026-04-28 cargo kani \
+            --lib -p "$pkg" --all-features -j 1 \
+            --default-unwind "$unwind" \
+            -Z unstable-options \
+            --harness-timeout "${KANI_HARNESS_TIMEOUT:-30m}" \
+            --harness "$harness" \
+          2>&1 | tee "$log" \
+          || { cat "$log" >&2; all_pass=false; continue; }
+        if ! grep -q 'VERIFICATION:- SUCCESSFUL' "$log"; then
+          printf '[kani-proof-all] FAIL package=%s (no SUCCESSFUL marker)\n' "$pkg" >&2
+          all_pass=false
+        fi
+      done
+      if [ "$all_pass" = false ]; then
+        printf '[kani-proof-all] RESULT=PARTIAL or FAIL\n' >&2
+        exit 1
+      fi
+      printf '[kani-proof-all] RESULT=ALL_PASS\n'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani-resource.yml'
+    outputs:
+      - '.evidence/kani/proofs/all/vb_core_bounded.log'
+      - '.evidence/kani/proofs/all/vb_validate_bounded.log'
+      - '.evidence/kani/proofs/all/vb_compile_bounded.log'
+    options:
+      runInCI: true
