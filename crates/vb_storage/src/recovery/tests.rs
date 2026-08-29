@@ -1,18 +1,18 @@
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
 use crate::recovery::{
-    ActionAbiDigestComparison, ActionReplayTracker, DigestVerificationRequest, FullDigestEvidence,
-    PolicyDigestComparison, RecoveredStepState, RecoveryError, RecoveryHydration,
-    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
-    check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
-    recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
-    recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+    check_compiled_ir_digest, check_workflow_source_digest, extract_terminal, is_terminal_event,
+    recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
+    recover_runtime_summary, recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    verify_digests, ActionAbiDigestComparison, ActionReplayTracker, DigestVerificationRequest,
+    FullDigestEvidence, PolicyDigestComparison, RecoveredStepState, RecoveryError,
+    RecoveryHydration, RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
 };
 use crate::{
     DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RecordKind, RunHeaderRecord,
 };
-use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+use vb_core::action::{compute_action_idempotency_key, ActionTicket};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
@@ -636,11 +636,10 @@ fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() 
     assert_eq!(seed.step_count, 4);
     assert_eq!(seed.slot_count, 6);
     assert_eq!(seed.pc, StepIdx::new(3));
-    assert!(
-        seed.steps.iter().any(
-            |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
-        )
-    );
+    assert!(seed
+        .steps
+        .iter()
+        .any(|entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting));
     assert!(
         seed.steps
             .iter()
@@ -660,8 +659,8 @@ fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() 
 }
 
 #[test]
-fn frame_seed_with_workflow_replays_deterministic_slot_values()
--> Result<(), Box<dyn std::error::Error>> {
+fn frame_seed_with_workflow_replays_deterministic_slot_values(
+) -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(94);
     let plan = deterministic_plan()?;
     let events = deterministic_replay_events(run, sample_digest(44));
@@ -676,8 +675,8 @@ fn frame_seed_with_workflow_replays_deterministic_slot_values()
 }
 
 #[test]
-fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_value()
--> Result<(), Box<dyn std::error::Error>> {
+fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_value(
+) -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(943);
     let digest = sample_digest(55);
     let action = ActionId::new(4);
@@ -765,8 +764,8 @@ fn frame_seed_builder_delegates_to_workflow_replay() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay()
--> Result<(), Box<dyn std::error::Error>> {
+fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay(
+) -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(95);
     let plan = deterministic_plan()?;
     let mismatched = sample_digest(45);
@@ -839,14 +838,15 @@ fn recover_runtime_frame_seed_reads_events_from_journal() {
     assert_eq!(seed.step_count, 3);
     assert_eq!(seed.slot_count, 0);
     assert_eq!(seed.pc, StepIdx::new(2));
-    assert!(seed.steps.iter().any(
-        |entry| entry.step == StepIdx::new(2) && entry.state == RecoveredStepState::Asking
-    ));
+    assert!(seed
+        .steps
+        .iter()
+        .any(|entry| entry.step == StepIdx::new(2) && entry.state == RecoveredStepState::Asking));
 }
 
 #[test]
-fn recover_runtime_frame_seed_reopens_fjall_pending_action_ticket()
--> Result<(), Box<dyn std::error::Error>> {
+fn recover_runtime_frame_seed_reopens_fjall_pending_action_ticket(
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempfile::tempdir()?;
     let run = RunId::new(94);
     let step = StepIdx::new(2);
@@ -874,11 +874,10 @@ fn recover_runtime_frame_seed_reopens_fjall_pending_action_ticket()
     assert_eq!(seed.step_count, 3);
     assert_eq!(seed.slot_count, 4);
     assert_eq!(seed.pc, step);
-    assert!(
-        seed.pending_actions
-            .iter()
-            .any(|entry| entry.step == step && entry.action == action)
-    );
+    assert!(seed
+        .pending_actions
+        .iter()
+        .any(|entry| entry.step == step && entry.action == action));
     assert!(seed.unsupported.pending_actions);
     assert!(cannot_resume.pending_actions);
     assert_eq!(cannot_resume.unsupported_reason(), "pending_actions");
@@ -886,8 +885,8 @@ fn recover_runtime_frame_seed_reopens_fjall_pending_action_ticket()
 }
 
 #[test]
-fn recover_runtime_frame_seed_reopens_fjall_wait_and_ask_boundaries()
--> Result<(), Box<dyn std::error::Error>> {
+fn recover_runtime_frame_seed_reopens_fjall_wait_and_ask_boundaries(
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempfile::tempdir()?;
     let run = RunId::new(95);
     let workflow = sample_digest(16);
@@ -922,16 +921,14 @@ fn recover_runtime_frame_seed_reopens_fjall_wait_and_ask_boundaries()
     assert_eq!(seed.summary.suspensions, 2);
     assert_eq!(seed.step_count, 3);
     assert_eq!(seed.pc, ask_step);
-    assert!(
-        seed.steps
-            .iter()
-            .any(|entry| entry.step == wait_step && entry.state == RecoveredStepState::Waiting)
-    );
-    assert!(
-        seed.steps
-            .iter()
-            .any(|entry| entry.step == ask_step && entry.state == RecoveredStepState::Asking)
-    );
+    assert!(seed
+        .steps
+        .iter()
+        .any(|entry| entry.step == wait_step && entry.state == RecoveredStepState::Waiting));
+    assert!(seed
+        .steps
+        .iter()
+        .any(|entry| entry.step == ask_step && entry.state == RecoveredStepState::Asking));
     assert_eq!(seed.unsupported, UnsupportedRecoveryState::SUPPORTED);
     assert!(cannot_resume.pending_timers);
     assert!(cannot_resume.pending_asks);
@@ -1269,10 +1266,18 @@ fn action_tracker_blocks_non_idempotent_replay() {
     let Err(err) = result else {
         panic!("replay should fail for already-completed action");
     };
-    assert!(matches!(
-        err,
-        RecoveryError::NonIdempotentActionBlocked { .. }
-    ));
+    let RecoveryError::NonIdempotentActionBlocked {
+        action: found_action,
+        step: found_step,
+    } = err
+    else {
+        panic!("expected NonIdempotentActionBlocked, got {:?}", err);
+    };
+    assert_eq!(
+        found_action, action,
+        "action must match the already-completed action"
+    );
+    assert_eq!(found_step, step, "step must match the action step");
 }
 
 #[test]
@@ -1452,10 +1457,18 @@ fn action_tracker_tracks_failed_actions() {
     let Err(err) = result else {
         panic!("replay should fail for already-failed action");
     };
-    assert!(matches!(
-        err,
-        RecoveryError::NonIdempotentActionBlocked { .. }
-    ));
+    let RecoveryError::NonIdempotentActionBlocked {
+        action: found_action,
+        step: found_step,
+    } = err
+    else {
+        panic!("expected NonIdempotentActionBlocked, got {:?}", err);
+    };
+    assert_eq!(
+        found_action, action,
+        "action must match the already-failed action"
+    );
+    assert_eq!(found_step, step, "step must match the action step");
 }
 
 #[test]
@@ -1471,10 +1484,15 @@ fn compiled_ir_digest_mismatch_fails() {
     let Err(err) = check_compiled_ir_digest(expected, found) else {
         panic!("mismatched digests should fail");
     };
-    assert!(matches!(
-        err,
-        RecoveryError::CompiledIrDigestMismatch { .. }
-    ));
+    let RecoveryError::CompiledIrDigestMismatch {
+        expected: exp,
+        found: fnd,
+    } = err
+    else {
+        panic!("expected CompiledIrDigestMismatch, got {:?}", err);
+    };
+    assert_eq!(exp, expected, "expected digest must match");
+    assert_eq!(fnd, found, "found digest must match");
 }
 
 #[test]
@@ -1558,7 +1576,10 @@ fn snapshot_plus_tail_rejects_event_before_snapshot() {
     let Err(err) = result else {
         panic!("tail event before snapshot should be rejected");
     };
-    assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
+    let RecoveryError::ReplayDivergence { step, detail: _ } = err else {
+        panic!("expected ReplayDivergence, got {:?}", err);
+    };
+    assert_eq!(step, StepIdx::new(0), "step must match the tail event step");
 }
 
 #[test]
@@ -1571,7 +1592,10 @@ fn full_journal_recovery_with_no_data_fails() {
     let Err(err) = result else {
         panic!("empty journal should produce NoRecoveryData");
     };
-    assert!(matches!(err, RecoveryError::NoRecoveryData { .. }));
+    let RecoveryError::NoRecoveryData { run: found } = err else {
+        panic!("expected NoRecoveryData, got {:?}", err);
+    };
+    assert_eq!(found, RunId::new(999), "run must match the requested run");
 }
 
 #[test]
@@ -1749,7 +1773,10 @@ fn replay_detects_out_of_order_step() {
     let Err(err) = result else {
         panic!("out-of-order steps should cause divergence");
     };
-    assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
+    let RecoveryError::ReplayDivergence { step, detail: _ } = err else {
+        panic!("expected ReplayDivergence, got {:?}", err);
+    };
+    assert_eq!(step, StepIdx::new(1), "step must be the out-of-order step");
 }
 
 // --- New Recovery Tests ---
@@ -1864,10 +1891,15 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         run,
         DigestVerificationRequest::workflow_and_ir(digest, sample_digest(8), sample_digest(9)),
     );
-    assert!(matches!(
-        result,
-        Err(RecoveryError::CompiledIrDigestMismatch { .. })
-    ));
+    let Err(RecoveryError::CompiledIrDigestMismatch {
+        expected: exp,
+        found: fnd,
+    }) = result
+    else {
+        panic!("expected CompiledIrDigestMismatch, got {:?}", result);
+    };
+    assert_eq!(exp, sample_digest(8), "expected IR digest must match");
+    assert_eq!(fnd, sample_digest(9), "found IR digest must match");
 }
 
 #[test]
@@ -2008,10 +2040,10 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
             FullDigestEvidence::action_abi_only(&action_evidence),
         ),
     );
-    assert!(
-        matches!(result_action, Err(RecoveryError::ActionAbiMismatch { .. })),
-        "asymmetric action-ABI digest must reject, got {result_action:?}"
-    );
+    let Err(RecoveryError::ActionAbiMismatch { action_id: found }) = result_action else {
+        panic!("asymmetric action-ABI digest must reject, got {result_action:?}");
+    };
+    assert_eq!(found, action, "action_id must match the tested action");
 
     // Two mismatched non-zero policy digests must surface as
     // PolicyDigestMismatch, not silently pass.
@@ -2030,13 +2062,10 @@ fn verify_digests_full_zero_digest_corruption_is_not_silently_equal() {
             FullDigestEvidence::policy_only(&policy_evidence),
         ),
     );
-    assert!(
-        matches!(
-            result_policy,
-            Err(RecoveryError::PolicyDigestMismatch { .. })
-        ),
-        "asymmetric policy digest must reject, got {result_policy:?}"
-    );
+    let Err(RecoveryError::PolicyDigestMismatch { step: found }) = result_policy else {
+        panic!("asymmetric policy digest must reject, got {result_policy:?}");
+    };
+    assert_eq!(found, step, "step must match the tested policy step");
 }
 
 #[test]
@@ -2270,7 +2299,7 @@ fn empty_events_returns_no_recovery_data() {
     let events: Vec<JournalEvent> = vec![];
 
     let summary_result = summarize_recovery_events(&events);
-    let Err(RecoveryError::NoRecoveryData { .. }) = summary_result else {
+    let Err(RecoveryError::NoRecoveryData { run: _summary_run }) = summary_result else {
         panic!(
             "summarize_recovery_events: expected NoRecoveryData, got {:?}",
             summary_result
@@ -2278,7 +2307,7 @@ fn empty_events_returns_no_recovery_data() {
     };
 
     let seed_result = recover_runtime_frame_seed_from_events(&events);
-    let Err(RecoveryError::NoRecoveryData { .. }) = seed_result else {
+    let Err(RecoveryError::NoRecoveryData { run: _seed_run }) = seed_result else {
         panic!(
             "recover_runtime_frame_seed_from_events: expected NoRecoveryData, got {:?}",
             seed_result
@@ -2409,6 +2438,49 @@ fn recovery_error_terminal_state_mismatch_constructs_correctly() {
     );
 }
 
+#[test]
+fn recovery_error_missing_snapshot_constructs_correctly() {
+    let run = RunId::new(55);
+    let seq = EventSeq::new(10);
+    let err = RecoveryError::MissingSnapshot { run, seq };
+    assert!(
+        matches!(err, RecoveryError::MissingSnapshot { run: r, seq: s } if r == run && s == seq)
+    );
+}
+
+#[test]
+fn recovery_error_artifact_not_found_constructs_correctly() {
+    let digest = sample_digest(42);
+    let err = RecoveryError::ArtifactNotFound { digest };
+    assert!(matches!(err, RecoveryError::ArtifactNotFound { digest: d } if d == digest));
+}
+
+#[test]
+fn recovery_error_artifact_decode_failed_constructs_correctly() {
+    let err = RecoveryError::ArtifactDecodeFailed;
+    assert!(matches!(err, RecoveryError::ArtifactDecodeFailed));
+}
+
+#[test]
+fn recovery_error_frame_dimension_overflow_constructs_correctly() {
+    let run = RunId::new(88);
+    let err = RecoveryError::FrameDimensionOverflow { run };
+    assert!(matches!(err, RecoveryError::FrameDimensionOverflow { run: r } if r == run));
+}
+
+#[test]
+fn recovery_error_unsupported_frame_seed_constructs_correctly() {
+    let run = RunId::new(12);
+    let reason = "missing workflow digest in durable events".to_string();
+    let err = RecoveryError::UnsupportedFrameSeed {
+        run,
+        reason: reason.clone(),
+    };
+    assert!(
+        matches!(err, RecoveryError::UnsupportedFrameSeed { run: r, reason: ref rt } if r == run && *rt == reason)
+    );
+}
+
 // ============================================================================
 // Hydrate RunFrame from snapshot and journal — TDD Red Phase tests
 // ============================================================================
@@ -2416,11 +2488,11 @@ fn recovery_error_terminal_state_mismatch_constructs_correctly() {
 mod hydrate_run_frame_tests {
     use crate::recovery::hydrate_support::apply_tail_events;
     use crate::recovery::{
-        ActionReplayTracker, RecoveryError, RunSnapshot, hydrate_run_frame,
-        hydrate_run_frame_from_events,
+        hydrate_run_frame, hydrate_run_frame_from_events, ActionReplayTracker, RecoveryError,
+        RunSnapshot,
     };
     use crate::{DurableActionOutcome, EventSeq, JournalEvent};
-    use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+    use vb_core::action::{compute_action_idempotency_key, ActionTicket};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, StepState, WorkflowDigest};
 
@@ -2597,10 +2669,11 @@ mod hydrate_run_frame_tests {
         // longer reachable from the public API; the run state has
         // to be rebuilt by the higher-level runtime boundary that
         // supplies the missing full-state components.
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "expected UnsupportedFrameSeed, got {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("expected UnsupportedFrameSeed, got {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
     }
 
     #[test]
@@ -2662,10 +2735,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "legacy frame extra must not be corrupt taint: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("legacy frame extra must be unsupported: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
     }
 
     // vb-i21a2 (SR-013): legacy frames without a taint sidecar must NOT
@@ -2734,10 +2808,11 @@ mod hydrate_run_frame_tests {
         // preservation invariant for legacy `Bool(false)` is now
         // covered by `legacy_bool_false_slot_does_not_downgrade_to_clean_taint`
         // which exercises `legacy_slot_taint` directly.
-        let Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) = result else {
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
             panic!("frame seed alone must be rejected: {result:?}");
         };
         assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
     }
 
     // --- Error: mismatched snapshot run_id ---
@@ -2749,11 +2824,14 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
-            "expected CorruptSnapshot, got {:?}",
-            result
-        );
+        match result {
+            Err(RecoveryError::CorruptSnapshot { run: r, seq: s })
+                if r == RunId::new(1) && s == EventSeq::new(0) => {}
+            other => panic!(
+                "expected CorruptSnapshot {{ run: 1, seq: 0 }}, got {:?}",
+                other
+            ),
+        }
     }
 
     // --- Error: tail event for wrong run ---
@@ -2771,11 +2849,10 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail: _ }) = result else {
+            panic!("expected ReplayDivergence, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::new(0));
     }
 
     // --- Error: tail event before snapshot seq ---
@@ -2793,11 +2870,10 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail: _ }) = result else {
+            panic!("expected ReplayDivergence, got {:?}", result);
+        };
+        assert_eq!(step, StepIdx::new(0));
     }
 
     // --- Error: corrupt snapshot bytes ---
@@ -2815,11 +2891,14 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
-            "expected CorruptSnapshot, got {:?}",
-            result
-        );
+        match result {
+            Err(RecoveryError::CorruptSnapshot { run: r, seq: s })
+                if r == run && s == EventSeq::new(0) => {}
+            other => panic!(
+                "expected CorruptSnapshot {{ run: 1, seq: 0 }}, got {:?}",
+                other
+            ),
+        }
     }
 
     // Round 10 issue 10: regression test that the `CorruptSnapshot`
@@ -2859,11 +2938,10 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
-            "expected NoRecoveryData, got {:?}",
-            result
-        );
+        let Err(RecoveryError::NoRecoveryData { run: found }) = result else {
+            panic!("expected NoRecoveryData, got {:?}", result);
+        };
+        assert_eq!(found, run);
     }
 
     // --- Error: zero step count from events ---
@@ -2879,15 +2957,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(
-                result,
-                Err(RecoveryError::ReplayDivergence { .. })
-                    | Err(RecoveryError::NoRecoveryData { .. })
-            ),
-            "expected error for zero step count, got {:?}",
-            result
-        );
+        match result {
+            Err(RecoveryError::ReplayDivergence { step: _, detail: _ }) => {}
+            Err(RecoveryError::NoRecoveryData { run: found }) if found == run => {}
+            other => panic!("expected error for zero step count, got {:?}", other),
+        }
     }
 
     // --- State: PC from last step event ---
@@ -2917,10 +2991,11 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3154,10 +3229,11 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3273,10 +3349,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3351,10 +3428,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3453,10 +3531,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3668,10 +3747,11 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3757,10 +3837,17 @@ mod hydrate_run_frame_tests {
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence for equal seq, got {:?}",
-            result
+        let Err(RecoveryError::ReplayDivergence {
+            step: found,
+            detail: _,
+        }) = result
+        else {
+            panic!("expected ReplayDivergence for equal seq, got {:?}", result);
+        };
+        assert_eq!(
+            found,
+            StepIdx::new(0),
+            "step must match the tail event step"
         );
     }
 
@@ -3776,10 +3863,20 @@ mod hydrate_run_frame_tests {
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence for seq < snapshot, got {:?}",
-            result
+        let Err(RecoveryError::ReplayDivergence {
+            step: found,
+            detail: _,
+        }) = result
+        else {
+            panic!(
+                "expected ReplayDivergence for seq < snapshot, got {:?}",
+                result
+            );
+        };
+        assert_eq!(
+            found,
+            StepIdx::new(0),
+            "step must match the tail event step"
         );
     }
 
@@ -3823,10 +3920,11 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(
-            matches!(result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "frame seed alone must be rejected: {result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = result else {
+            panic!("frame seed alone must be rejected: {result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
         // frame binding removed: storage boundary now fails closed.
     }
 
@@ -3894,10 +3992,11 @@ mod hydrate_run_frame_tests {
         let frame_from_snapshot =
             hydrate_run_frame(&snapshot, &tail, run).expect("snapshot+tail should succeed");
         let journal_result = hydrate_run_frame_from_events(&all_events, run);
-        assert!(
-            matches!(journal_result, Err(RecoveryError::UnsupportedFrameSeed { run: found, .. }) if found == run),
-            "events-only hydration must be rejected: {journal_result:?}"
-        );
+        let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = journal_result else {
+            panic!("events-only hydration must be rejected: {journal_result:?}");
+        };
+        assert_eq!(found, run);
+        assert!(!reason.is_empty(), "reason must not be empty");
 
         // Basic assertions: the snapshot+tail path still produces a
         // frame with the expected run id, dimensions, pc, and step
