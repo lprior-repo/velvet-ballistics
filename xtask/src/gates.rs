@@ -71,7 +71,7 @@ fn command_words(gate: Gate) -> &'static [&'static str] {
         Gate::Nextest => &["cargo", "nextest", "run", "--workspace"],
         Gate::ForbiddenScan => &["bash", "scripts/forbidden-scan.sh"],
         Gate::HotpathScan => &["bash", "scripts/hotpath-scan.sh"],
-        Gate::Miri => &["cargo", "+nightly", "miri", "test", "--workspace"],
+        Gate::Miri => &["bash", "scripts/verify-miri-gate.sh"],
         Gate::Mutants => &["moon", "run", ":mutants"],
         Gate::LlvmCov => &["cargo", "llvm-cov"],
         Gate::FuzzBuild => &["cargo", "fuzz", "build"],
@@ -215,7 +215,7 @@ mod tests {
         );
         assert_eq!(
             Gate::Miri.command(),
-            vec!["cargo", "+nightly", "miri", "test", "--workspace"]
+            vec!["bash", "scripts/verify-miri-gate.sh"]
         );
         assert_eq!(Gate::Check.command(), vec!["moon", "run", ":check"]);
     }

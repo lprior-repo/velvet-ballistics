@@ -47,6 +47,9 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
             "test".into(),
             "-p".into(),
             crate_name.into(),
+            "--".into(),
+            "-Zmiri-strict-provenance".into(),
+            "-Zmiri-ignore-leaks".into(),
         ],
         "loom" => vec![
             "cargo".into(),

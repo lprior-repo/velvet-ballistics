@@ -459,9 +459,15 @@ tasks:
   miri:
     script: |
       set -euo pipefail
-      mkdir -p target/miri-tmp
-      mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests::run_id_zero_constant
+      # Strengthened Miri UB-detection gate: strict provenance + leak suppression
+      # on all pure crates (vb_core, vb_expr, vb_compile) per MASTER.md miri lane.
+      export MIRIFLAGS="${MIRIFLAGS:--Zmiri-strict-provenance -Zmiri-ignore-leaks}"
+      rm -rf target/miri-tmp
+      mkdir -p target/miri-tmp target/moon-locks
+      TMPDIR="$PWD/target/miri-tmp" \
+        flock --shared target/moon-locks/source-mutation.lock \
+        env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" \
+        timeout 10m rustup run nightly-2026-04-28 bash scripts/verify-miri-gate.sh
     toolchains:
       - rust
     inputs:

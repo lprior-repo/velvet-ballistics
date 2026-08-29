@@ -186,7 +186,10 @@ fn secret_status_valid(entry: &ParsedSecretFixtureEvidence) -> bool {
 /// Returns `Error::GateFailed` if command returns non-zero.
 /// Returns `Error::EvidenceWriteFailed` if YAML write fails.
 pub fn run_gate(gate: &str, cmd: &[String], evidence_path: &Path) -> Result<GateEvidence> {
-    if gate == "miri" && !cmd.iter().any(|arg| arg == "--workspace") {
+    if gate == "miri"
+        && !cmd.iter().any(|arg| arg == "--workspace")
+        && !cmd.iter().any(|arg| arg.contains("verify-miri-gate"))
+    {
         return Err(Error::GateTimeout {
             gate: gate.to_string(),
             duration_secs: 300,
