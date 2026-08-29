@@ -7,6 +7,7 @@ use saphyr::Yaml;
 use saphyr_parser::{Event, Parser, Span, StrInput};
 use std::collections::HashSet;
 use std::str;
+use crate::mod_compile_lowering::{required_branch_targets, required_slot};
 use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 pub(super) fn validate_for_each_shape(

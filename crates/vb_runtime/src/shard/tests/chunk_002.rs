@@ -194,6 +194,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -241,6 +242,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

@@ -53,6 +53,25 @@ impl PendingTimer {
     }
 }
 
+/// Recover command payload produced by the recovery product.
+#[derive(Debug, Clone)]
+pub struct RecoverRunCommand {
+    /// Run identifier being recovered.
+    pub run: RunId,
+    /// Hydrated run frame from journal replay.
+    pub frame: RunFrame,
+    /// Workflow artifact digest for artifact store lookup.
+    pub artifact_digest: WorkflowDigest,
+    /// Workflow digest for artifact store lookup.
+    pub workflow_digest: WorkflowDigest,
+    /// Next journal sequence to assign after recovery.
+    pub next_seq: EventSeq,
+    /// Collect partition states to restore during recovery.
+    pub collect_states: CollectStates,
+    /// Recovered run boundary information.
+    pub boundary: crate::recovery::RecoveredRunBoundary,
+}
+
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -193,8 +212,16 @@ pub enum ShardCommand {
         run: RunId,
         /// Hydrated run frame from journal replay.
         frame: RunFrame,
+        /// Workflow artifact digest for artifact store lookup during recovery.
+        artifact_digest: WorkflowDigest,
         /// Workflow digest for artifact store lookup during recovery.
         workflow_digest: WorkflowDigest,
+        /// Next journal sequence to assign after recovery.
+        next_seq: EventSeq,
+        /// Collect partition states to restore during recovery.
+        collect_states: crate::primitives::collect::CollectStates,
+        /// Recovered run boundary information.
+        boundary: crate::recovery::RecoveredRunBoundary,
     },
 }
 
@@ -981,8 +1008,10 @@ pub struct Shard {
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
-    pub(crate) journal: SharedRuntimeJournal,
-}
+   pub(crate) journal: SharedRuntimeJournal,
+     /// Per-run, per-action ABI digests for journal event emission.
+     pub(crate) action_abi_digests: IndexMap<(RunId, vb_core::StepIdx), WorkflowDigest>,
+ }
 
 /// Read-only shard health snapshot for operator status reporting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

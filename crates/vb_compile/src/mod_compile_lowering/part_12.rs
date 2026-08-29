@@ -94,7 +94,7 @@ pub(super) fn reject_unknown_primitive_field(
     }
 }
 
-pub(super) fn required_slot(
+pub(crate) fn required_slot(
     body: &Yaml<'_>,
     step: usize,
     field: &'static str,
@@ -156,7 +156,7 @@ pub(super) fn integer_error_value(value: i64) -> usize {
     }
 }
 
-pub(super) fn required_branch_targets(
+pub(crate) fn required_branch_targets(
     body: &Yaml<'_>,
     step: usize,
     field: &'static str,

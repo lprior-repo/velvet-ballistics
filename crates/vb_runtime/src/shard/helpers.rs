@@ -58,17 +58,19 @@ fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> b
 }
 
 fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
-    match value {
-        SlotValue::Null => vb_core::InputSlotKind::Null,
-        SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-        SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-        SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-        SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
-        SlotValue::List(_) => vb_core::InputSlotKind::List,
-        SlotValue::Object(_) => vb_core::InputSlotKind::Object,
-        SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
-    }
-}
+     match value {
+         SlotValue::Null => vb_core::InputSlotKind::Null,
+         SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+         SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+         SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+         SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+         SlotValue::List(_) => vb_core::InputSlotKind::List,
+         SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+         SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+         #[allow(unreachable_code)]
+         _ => vb_core::InputSlotKind::Null,
+     }
+ }
 
 /// Validates that an action completion matches the expected ticket.
 pub fn validate_action_completion(

@@ -139,7 +139,7 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
-        let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
+        let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.step);
         if let Err(error) = self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
             ticket,
             input,

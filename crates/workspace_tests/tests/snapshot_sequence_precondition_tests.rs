@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Proptest invariants for snapshot minimum-sequence preconditions (bead vb-jnz9).
+//! Proptest invariants for snapshot minimum-sequence preconditions (bead vb-a0mmt).
 //!
 //! Property-based tests covering:
 //! - Single tail event replay after snapshot boundary (AC-07)

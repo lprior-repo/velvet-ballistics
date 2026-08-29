@@ -114,6 +114,9 @@ impl RuntimeError {
             Self::RecoveryNotAvailable => Self::INVALID_RECOVERY_HYDRATION_CODE,
             Self::RecoveryCannotResume { .. } => Self::INVALID_RECOVERY_HYDRATION_CODE,
             Self::Recovery { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::RuntimeInputSlotKindMismatch { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
             // VB-NOORE: typed profile-mismatch error. No dedicated
             // diagnostic code; routed to INTERNAL_INVARIANT.
             Self::UnsupportedDurabilityProfile { .. } => {
@@ -182,6 +185,7 @@ impl RuntimeError {
             | Self::ShardNotFound { .. }
             | Self::MigrateSelf
             | Self::IntrospectionEpochExhausted
+            | Self::RuntimeInputSlotKindMismatch { .. }
             | Self::UnsupportedDurabilityProfile { .. }
             | Self::RecoveryNotAvailable
             | Self::RecoveryCannotResume { .. }

@@ -65,6 +65,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

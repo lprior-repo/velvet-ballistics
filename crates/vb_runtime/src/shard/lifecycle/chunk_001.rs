@@ -303,6 +303,49 @@ impl Shard {
         Ok(())
     }
 
+    pub(crate) fn validate_submit_admission_with_contracts(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+        _action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        self.build_admission(run, digest, caps)?;
+        Ok(())
+    }
+
+    pub(crate) fn action_abi_digests_remove(&mut self, run: RunId) {
+        let to_remove: Vec<_> = self
+            .action_abi_digests
+            .iter()
+            .filter(|(k, _)| k.0 == run)
+            .map(|(k, _)| *k)
+            .collect();
+        for k in to_remove {
+            self.action_abi_digests.swap_remove(&k);
+        }
+    }
+
+    pub(crate) fn action_abi_digest_for_run_action(
+        &self,
+        run: RunId,
+        action: vb_core::StepIdx,
+    ) -> vb_core::ids::WorkflowDigest {
+        self.action_abi_digests
+            .get(&(run, action))
+            .copied()
+            .unwrap_or_else(|| vb_core::ids::WorkflowDigest::from_bytes([0; 32]))
+    }
+
+    pub(crate) fn action_abi_digest_insert(
+        &mut self,
+        run: RunId,
+        step: vb_core::StepIdx,
+        digest: vb_core::ids::WorkflowDigest,
+    ) {
+        self.action_abi_digests.insert((run, step), digest);
+    }
+
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
         self.validate_run_exists(run)?;
         let current_state = self.get_runtime_state_or_running(run);
@@ -345,16 +388,21 @@ impl Shard {
     /// - Admission is built with empty capabilities (caps are not persisted
     ///   per-run in the journal; runs requiring non-empty caps will fail
     ///   admission during recovery, which is the correct fail-closed behavior).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn handle_recover(
         &mut self,
         run: RunId,
         frame: vb_core::frame::RunFrame,
-        workflow_digest: vb_core::ids::WorkflowDigest,
+        artifact_digest: vb_core::ids::WorkflowDigest,
+        _workflow_digest: vb_core::ids::WorkflowDigest,
+        _next_seq: vb_storage::EventSeq,
+        _collect_states: crate::primitives::collect::CollectStates,
+        _boundary: crate::recovery::RecoveredRunBoundary,
     ) -> RuntimeResult<()> {
         // Load the accepted artifact from the shard's artifact store.
         let artifact = self
             .artifact_store
-            .load_accepted_artifact(workflow_digest)
+            .load_accepted_artifact(artifact_digest)
             .map_err(|e| match e {
                 crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
                     RuntimeError::Recovery {

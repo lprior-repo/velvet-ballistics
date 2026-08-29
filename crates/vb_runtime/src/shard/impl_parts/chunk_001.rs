@@ -32,8 +32,9 @@ impl Shard {
             inspect_response: None,
             shutting_down: false,
             current_tick: TimerTick::new(0),
-            journal,
-        }
+      journal,
+             action_abi_digests: IndexMap::new(),
+         }
     }
 
     /// Creates a new shard with the given configuration and journal sink.
@@ -696,8 +697,12 @@ impl Shard {
             ShardCommand::Recover {
                 run,
                 frame,
+                artifact_digest,
                 workflow_digest,
-            } => self.handle_recover(run, frame, workflow_digest)?,
+                next_seq,
+                collect_states,
+                boundary,
+            } => self.handle_recover(run, frame, artifact_digest, workflow_digest, next_seq, collect_states, boundary)?,
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);
