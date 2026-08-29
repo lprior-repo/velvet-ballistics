@@ -15,13 +15,15 @@
 //      and TYPE are preserved byte-for-byte. Any drift in field
 //      NAME breaks the verification build.
 //
-//   2. `StepBudget::from_env` body is wrapped in
-//      `#[verifier::external_body]` because the closure pattern
-//      `|_| EngineError::BudgetParse { reason: ... }` (production at
-//      signals.rs:84) is rejected by Verus 0.2026.05.05 (Rust 1.95.0)
-//      as "only variables are supported here, not general patterns".
-//      The body is opaque to Verus. The signature and field name
-//      remain production-identical so any drift breaks this Verus build.
+//   2. `StepBudget::from_env` is wrapped as a standalone
+//      `step_budget_from_env` function marked `#[verifier::external]`
+//      because the closure pattern `|_| EngineError::BudgetParse {
+//      reason: ... }` (production at signals.rs:84) is rejected by
+//      Verus 0.2026.05.05 (Rust 1.95.0) as "only variables are
+//      supported here, not general patterns". The contract is provided
+//      by `assume_specification` in `signals_from_env.rs` (PO-VERUS-032).
+//      The signature and field name remain production-identical so any
+//      drift breaks this Verus build.
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/engine/signals.rs` whenever production changes.
@@ -164,29 +166,22 @@ impl StepBudget {
 
     /// Mirror of `StepBudget::DEFAULT_BUDGET` at signals.rs:72.
     const DEFAULT_BUDGET: u64 = MAX_STEP_BUDGET;
+}
 
-    /// Mirror of `StepBudget::from_env() -> Result<Self, EngineError>`
-    /// at signals.rs:80-94. Body marked `#[verifier::external_body]`
-    /// because the closure pattern `|_| EngineError::BudgetParse { reason }`
-    /// is rejected by Verus 0.2026.05.05 (Rust 1.95.0) as "only
-    /// variables are supported here, not general patterns".
-    /// Signature is production-identical so any drift breaks the
-    /// verification build.
-    #[verifier::external_body]
-    pub fn from_env() -> Result<Self, EngineError> {
-        match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
-            Ok(raw) => {
-                let parsed = raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
-                    reason: "invalid u64 value",
-                })?;
-                Ok(Self::new(parsed))
-            }
-            Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),
-            Err(_) => Err(EngineError::BudgetParse {
-                reason: "env var access error",
-            }),
-        }
-    }
+/// Standalone wrapper mirror of `StepBudget::from_env() ->
+/// Result<Self, EngineError>` at signals.rs:80-94. Marked
+/// `#[verifier::external]` so the body is opaque and no spec is
+/// registered — the contract is provided exclusively by
+/// `assume_specification[ production::step_budget_from_env ]` in
+/// `verification/verus/signals_from_env.rs` (PO-VERUS-032).
+/// The closure pattern `|_| EngineError::BudgetParse { reason }`
+/// (production at signals.rs:84) is rejected by Verus 0.2026.05.05
+/// (Rust 1.95.0) as "only variables are supported here, not general
+/// patterns". Signature remains production-identical so any drift
+/// breaks this Verus build.
+#[verifier::external]
+pub fn step_budget_from_env() -> Result<StepBudget, EngineError> {
+    loop {}
 }
 
 /// Mirror of `EngineSignal` at `crates/vb_core/src/engine/signals.rs:99-115`.

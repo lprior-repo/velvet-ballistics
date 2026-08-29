@@ -1142,6 +1142,11 @@ verus_registry:
     verus: verification/verus/vb-6da68-append-strict-commit.rs
     production: crates/vb_storage/src/journal/append.rs
 
+  - id: PO-VERUS-032
+    description: "StepBudget::from_env boundedness: env-var–parsed budget is clamped to MAX_STEP_BUDGET, BudgetParse errors on invalid input, StepCounterOverflow never returned from from_env (trusted external_body boundary). Binds to production_inner/signals_production.rs via extern_signals_invariant.rs mirror. (PO-VERUS-006/007 cover new/try_take; PO-VERUS-032 covers the env-entry point.)"
+    verus: verification/verus/signals_from_env.rs
+    production: crates/vb_core/src/engine/signals.rs
+
 # ============================================================
 # EVIDENCE FORMAT
 # ============================================================

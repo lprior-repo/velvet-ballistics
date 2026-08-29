@@ -45,7 +45,7 @@
 //   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:26-35
 //   - `StepBudget::try_take`                <- crates/vb_core/src/engine/signals.rs:50-60
 //   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:62-66
-//   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:80-94
+//   - `step_budget_from_env`                <- crates/vb_core/src/engine/signals.rs:80-94
 //   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:241
 //   - `MAX_STEP_BUDGET = 10_000`            <- crates/vb_core/src/limits.rs:94
 //   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:99-115
@@ -56,7 +56,10 @@
 // TRUST BOUNDARY
 // =============================================================================
 // The production bodies of `StepBudget::new`, `try_take`, `remaining`,
-// `MAX`, `from_env`, and the `EngineSignal` enum are NOT verified by
+// `MAX`, and the `EngineSignal` enum are NOT verified by Verus directly
+// (the mirror wraps the methods with `#[verifier::external]`, making
+// their bodies opaque). The `step_budget_from_env` wrapper is also
+// external (PO-VERUS-032). The contracts attached via
 // Verus directly (the mirror wraps the methods with
 // `#[verifier::external]`, making their bodies opaque). The contracts
 // attached via `assume_specification` in `signals_invariant.rs` state
@@ -91,4 +94,4 @@ pub mod production_signals;
 
 // Re-export the production types so the spec file can reference them
 // via `crate::production::production_signals::StepBudget`.
-pub use production_signals::{EngineError, EngineSignal, StepBudget};
+pub use production_signals::{EngineError, EngineSignal, StepBudget, step_budget_from_env};
