@@ -46,6 +46,9 @@ fn canonical_name_together_harness() {
 
     let label_char: u8 = kani::any();
     kani::assume(label_char.is_ascii_alphanumeric());
+    kani::cover!(label_char == b'a', "label_char covers lowercase letter");
+    kani::cover!(label_char == b'Z', "label_char covers uppercase letter");
+    kani::cover!(label_char == b'0', "label_char covers digit");
     let label = String::from_utf8(vec![label_char]).unwrap_or_default();
 
     let together_primitive = StepPrimitive::Together {
@@ -88,6 +91,8 @@ fn canonical_name_aggregate_harness() {
 
     let label_char: u8 = kani::any();
     kani::assume(label_char.is_ascii_alphanumeric());
+    kani::cover!(label_char == b'a', "aggregate label covers lowercase letter");
+    kani::cover!(label_char == b'0', "aggregate label covers digit");
     let label = String::from_utf8(vec![label_char]).unwrap_or_default();
 
     let aggregate_primitive = StepPrimitive::Aggregate {
@@ -142,6 +147,13 @@ fn canonical_name_all_harness() {
     // Symbolic discriminant for variant selection (GOD RULE 1 compliant)
     let discriminant: u8 = kani::any();
     kani::assume(discriminant < 12);
+    kani::cover!(discriminant == 0, "all variants covers Set");
+    kani::cover!(discriminant == 5, "all variants covers Together");
+    kani::cover!(discriminant == 7, "all variants covers Aggregate");
+    kani::cover!(discriminant == 11, "all variants covers Finish");
+    kani::cover!(discriminant == 8, "all variants covers Repeat");
+    kani::cover!(discriminant == 9, "all variants covers Wait");
+    kani::cover!(discriminant == 10, "all variants covers Ask");
 
     // Field values are hardcoded because canonical_primitive_name ignores them
     let label = String::from("d");

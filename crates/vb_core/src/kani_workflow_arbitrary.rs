@@ -67,9 +67,14 @@ impl kani::Arbitrary for ExprProgram {
     fn any() -> Self {
         let ops_len: u8 = kani::any();
         kani::assume(ops_len <= 16);
+        kani::cover!(ops_len == 0, "expr program covers zero ops");
+        kani::cover!(ops_len == 16, "expr program covers max ops");
+        kani::cover!(ops_len == 8, "expr program covers mid-range ops");
         let mut ops: Vec<ExprOp> = Vec::with_capacity(usize::from(ops_len));
         ops.extend((0..ops_len).map(|_| kani::any::<ExprOp>()));
         let max_stack: u8 = kani::any();
+        kani::cover!(max_stack == 0, "expr program covers zero max_stack");
+        kani::cover!(max_stack == u8::MAX, "expr program covers max max_stack");
         Self {
             ops: ops.into_boxed_slice(),
             max_stack,
@@ -128,7 +133,16 @@ impl kani::Arbitrary for SlotBranch {
 
 impl kani::Arbitrary for CompiledNodeKind {
     fn any() -> Self {
-        match kani::any::<u8>() {
+        let raw_kind: u8 = kani::any();
+        kani::assume(raw_kind <= 32);
+        kani::cover!(raw_kind == 0, "compiled node kind covers Nop");
+        kani::cover!(raw_kind == 1, "compiled node kind covers SetConst");
+        kani::cover!(raw_kind == 6, "compiled node kind covers Do");
+        kani::cover!(raw_kind == 7, "compiled node kind covers Choose");
+        kani::cover!(raw_kind == 26, "compiled node kind covers WaitUntil");
+        kani::cover!(raw_kind == 32, "compiled node kind covers Jump");
+        kani::cover!(raw_kind == 33, "compiled node kind covers Finish");
+        match raw_kind {
             0 => Self::Nop,
             1 => Self::SetConst {
                 value: ConstIdx::new(kani::any()),
@@ -352,18 +366,27 @@ impl kani::Arbitrary for WorkflowParts {
     fn any() -> Self {
         let node_count: u8 = kani::any();
         kani::assume(node_count <= 8);
+        kani::cover!(node_count == 0, "workflow parts covers zero nodes");
+        kani::cover!(node_count == 8, "workflow parts covers max nodes");
+        kani::cover!(node_count == 4, "workflow parts covers mid-range nodes");
         let mut nodes: Vec<CompiledNode> = Vec::with_capacity(usize::from(node_count));
         nodes.extend((0..node_count).map(|_| kani::any::<CompiledNode>()));
         let expr_count: u8 = kani::any();
         kani::assume(expr_count <= 4);
+        kani::cover!(expr_count == 0, "workflow parts covers zero expressions");
+        kani::cover!(expr_count == 4, "workflow parts covers max expressions");
         let mut expressions: Vec<ExprProgram> = Vec::with_capacity(usize::from(expr_count));
         expressions.extend((0..expr_count).map(|_| kani::any::<ExprProgram>()));
         let const_count: u8 = kani::any();
         kani::assume(const_count <= 4);
+        kani::cover!(const_count == 0, "workflow parts covers zero constants");
+        kani::cover!(const_count == 4, "workflow parts covers max constants");
         let mut constants: Vec<ConstValue> = Vec::with_capacity(usize::from(const_count));
         constants.extend((0..const_count).map(|_| kani::any::<ConstValue>()));
         let step_name_count: u8 = kani::any();
         kani::assume(step_name_count <= 4);
+        kani::cover!(step_name_count == 0, "workflow parts covers zero step names");
+        kani::cover!(step_name_count == 4, "workflow parts covers max step names");
         let mut step_names: Vec<Box<str>> = Vec::with_capacity(usize::from(step_name_count));
         step_names.extend((0..step_name_count).map(kani_step_name));
         Self {
@@ -395,10 +418,17 @@ impl kani::Arbitrary for RunFrame {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
         kani::assume(step_count <= 8);
+        kani::cover!(step_count == 1, "run frame covers single-step");
+        kani::cover!(step_count == 8, "run frame covers max 8 steps");
+        kani::cover!(step_count == 4, "run frame covers mid-range steps");
         let slot_count: u16 = kani::any();
         kani::assume(slot_count <= 8);
+        kani::cover!(slot_count == 0, "run frame covers zero slots");
+        kani::cover!(slot_count == 8, "run frame covers max 8 slots");
         let first_step: u16 = kani::any();
         kani::assume(first_step < step_count);
+        kani::cover!(first_step == 0, "first_step covers zero index");
+        kani::cover!(first_step == step_count - 1, "first_step covers last step index");
         let run_id = crate::ids::RunId::new(kani::any::<u64>());
         let first_step_idx = StepIdx::new(first_step);
         // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
@@ -473,12 +503,19 @@ fn bounded_step_indices() -> Box<[StepIdx]> {
 fn bounded_len_3() -> u8 {
     let len: u8 = kani::any();
     kani::assume(len <= 3);
+    kani::cover!(len == 0, "bounded_len_3 covers zero length");
+    kani::cover!(len == 3, "bounded_len_3 covers max length");
+    kani::cover!(len == 1, "bounded_len_3 covers length 1");
+    kani::cover!(len == 2, "bounded_len_3 covers length 2");
     len
 }
 
 fn bounded_len_2() -> u8 {
     let len: u8 = kani::any();
     kani::assume(len <= 2);
+    kani::cover!(len == 0, "bounded_len_2 covers zero length");
+    kani::cover!(len == 2, "bounded_len_2 covers max length");
+    kani::cover!(len == 1, "bounded_len_2 covers length 1");
     len
 }
 

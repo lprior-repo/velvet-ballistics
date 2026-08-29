@@ -44,7 +44,12 @@ mod kani_harnesses {
         // Bound inputs to prevent overflow in add_dim
         kani::assume(current <= u64::MAX / 2);
         kani::assume(requested <= u64::MAX / 2);
+        kani::cover!(current == 0, "current covers zero value");
+        kani::cover!(current == u64::MAX / 2, "current covers max-safe bound");
+        kani::cover!(requested == 0, "requested covers zero value");
+        kani::cover!(requested == u64::MAX / 2, "requested covers max-safe bound");
         let result = add_dim(current, requested, "cpu");
+        kani::cover!(result.is_ok(), "add_dim returns Ok for bounded inputs");
         // add_dim with bounded inputs cannot overflow - returns Ok
         assert!(result.is_ok());
     }
@@ -57,19 +62,27 @@ mod kani_harnesses {
         let requested: u64 = kani::any();
         // Bound: requested <= current to prevent underflow in sub_dim
         kani::assume(requested <= current);
+        kani::cover!(requested == current, "requested equals current (zero diff)");
+        kani::cover!(requested == 0, "requested covers zero value");
+        kani::cover!(current == u64::MAX, "current covers u64::MAX");
         let result = sub_dim(current, requested, "disk");
+        kani::cover!(result.is_ok(), "sub_dim returns Ok for bounded inputs");
         // sub_dim with valid inputs (requested <= current) cannot underflow - returns Ok
         assert!(result.is_ok());
     }
 
     /// K-B3: add_dim overflow with symbolic inputs.
-    #[kani::proof]
+     #[kani::proof]
     fn add_dim_max_plus_max_overflow() {
         let a = kani::any::<u64>();
         let b = kani::any::<u64>();
         // Bound: inputs are large enough that their sum overflows u64
         kani::assume(a > u64::MAX / 2);
         kani::assume(b > u64::MAX / 2);
+        kani::cover!(a == u64::MAX / 2 + 1, "a covers min-overflow value");
+        kani::cover!(a == u64::MAX, "a covers u64::MAX");
+        kani::cover!(b == u64::MAX / 2 + 1, "b covers min-overflow value");
+        kani::cover!(b == u64::MAX, "b covers u64::MAX");
         let result = add_dim(a, b, "cpu");
         match result {
             Err(LocalError::Overflow { resource }) => kani::assert(
@@ -82,14 +95,19 @@ mod kani_harnesses {
     }
 
     /// K-B4: add_dim non-overflow with bounded symbolic inputs.
-    #[kani::proof]
+     #[kani::proof]
     fn add_dim_zero_plus_zero() {
         let a = kani::any::<u64>();
         let b = kani::any::<u64>();
         // Bound: inputs are small enough that sum does not overflow
         kani::assume(a <= u64::MAX / 2);
         kani::assume(b <= u64::MAX / 2);
+        kani::cover!(a == 0, "a covers zero value for non-overflow");
+        kani::cover!(a == u64::MAX / 2, "a covers max-safe for non-overflow");
+        kani::cover!(b == 0, "b covers zero value for non-overflow");
+        kani::cover!(b == u64::MAX / 2, "b covers max-safe for non-overflow");
         let result = add_dim(a, b, "cpu");
+        kani::cover!(result.is_ok(), "bounded add returns Ok for small inputs");
         kani::assert(result.is_ok(), "bounded add must return Ok");
         kani::assert(result.unwrap() == a + b, "add result must equal a + b");
     }
@@ -102,6 +120,10 @@ mod kani_harnesses {
         // Bound: a is non-zero and b is large enough that a + b overflows
         kani::assume(a > 0);
         kani::assume(b > u64::MAX - a);
+        kani::cover!(a == 1, "a covers minimum non-zero value for overflow");
+        kani::cover!(a == u64::MAX / 2 + 1, "a covers mid-range overflow value");
+        kani::cover!(b == u64::MAX - a + 1, "b covers min-overflow boundary");
+        kani::cover!(b == u64::MAX, "b covers u64::MAX for overflow");
         let result = add_dim(a, b, "cpu");
         match result {
             Err(LocalError::Overflow { resource }) => kani::assert(
@@ -120,6 +142,9 @@ mod kani_harnesses {
         let requested = kani::any::<u64>();
         // Bound: current < requested to force underflow
         kani::assume(current < requested);
+        kani::cover!(current == 0, "current covers zero for underflow");
+        kani::cover!(current == u64::MAX / 2, "current covers mid-range for underflow");
+        kani::cover!(requested == u64::MAX, "requested covers u64::MAX for underflow");
         let result = sub_dim(current, requested, "disk");
         match result {
             Err(LocalError::Underflow { resource }) => kani::assert(
@@ -138,7 +163,11 @@ mod kani_harnesses {
         let requested = kani::any::<u64>();
         // Bound: current >= requested to prevent underflow
         kani::assume(current >= requested);
+        kani::cover!(current == requested, "current equals requested (zero diff)");
+        kani::cover!(requested == 0, "requested covers zero value");
+        kani::cover!(current == u64::MAX, "current covers u64::MAX");
         let result = sub_dim(current, requested, "disk");
+        kani::cover!(result.is_ok(), "sub_dim returns Ok for bounded inputs");
         kani::assert(result.is_ok(), "bounded sub must return Ok");
         kani::assert(
             result.unwrap() == current - requested,
@@ -154,7 +183,12 @@ mod kani_harnesses {
         // Bound: inputs are small enough that sum does not overflow
         kani::assume(a <= u64::MAX / 2);
         kani::assume(b <= u64::MAX / 2);
+        kani::cover!(a == 0, "a covers zero for mem non-overflow");
+        kani::cover!(a == u64::MAX / 2, "a covers max-safe for mem non-overflow");
+        kani::cover!(b == 0, "b covers zero for mem non-overflow");
+        kani::cover!(b == u64::MAX / 2, "b covers max-safe for mem non-overflow");
         let result = add_dim(a, b, "mem");
+        kani::cover!(result.is_ok(), "bounded add returns Ok for mem budget");
         kani::assert(result.is_ok(), "bounded add must return Ok");
         kani::assert(result.unwrap() == a + b, "add result must equal a + b");
     }
@@ -166,7 +200,11 @@ mod kani_harnesses {
         let requested = kani::any::<u64>();
         // Bound: current >= requested to prevent underflow
         kani::assume(current >= requested);
+        kani::cover!(current == requested, "current equals requested for net");
+        kani::cover!(requested == 0, "requested covers zero for net");
+        kani::cover!(current == u64::MAX, "current covers u64::MAX for net");
         let result = sub_dim(current, requested, "net");
+        kani::cover!(result.is_ok(), "bounded sub returns Ok for net budget");
         kani::assert(result.is_ok(), "bounded sub must return Ok");
         kani::assert(
             result.unwrap() == current - requested,
@@ -205,7 +243,31 @@ mod kani_harnesses {
         kani::assume(usage.max_transitions_per_tick <= u64::MAX / 2);
         kani::assume(u64::from(budget.max_transitions_per_tick) <= u64::MAX / 2);
 
+        kani::cover!(
+            usage.max_steps_executable == 0,
+            "aggregate usage covers zero max_steps_executable"
+        );
+        kani::cover!(
+            usage.max_steps_executable == u64::MAX / 2,
+            "aggregate usage covers max-safe boundary"
+        );
+        kani::cover!(
+            u64::from(budget.max_steps_executable) == 0,
+            "aggregate budget covers zero max_steps_executable"
+        );
+        kani::cover!(
+            usage.max_action_tickets == 0,
+            "aggregate usage covers zero max_action_tickets"
+        );
+        kani::cover!(
+            usage.max_parallel_in_flight == 0,
+            "aggregate usage covers zero max_parallel_in_flight"
+        );
         let result = usage.try_add_budget(&budget);
+        kani::cover!(
+            result.is_ok(),
+            "try_add_budget returns Ok for bounded aggregate usage"
+        );
         kani::assert(result.is_ok(), "bounded try_add_budget returns Ok");
 
         let next = result.unwrap();
@@ -275,8 +337,17 @@ mod kani_harnesses {
         // Bound: force overflow on max_steps_executable by setting it to max
         usage.max_steps_executable = u64::MAX;
         kani::assume(budget.max_steps_executable > 0);
+        kani::cover!(
+            budget.max_steps_executable == 1,
+            "overflow test covers minimal non-zero budget"
+        );
+        kani::cover!(
+            budget.max_steps_executable == u64::MAX,
+            "overflow test covers maximal budget"
+        );
 
         let result = usage.try_add_budget(&budget);
+        kani::cover!(result.is_err(), "try_add_budget rejects overflow with u64::MAX");
         kani::assert(result.is_err(), "try_add_budget must reject overflow");
 
         match &result {
@@ -299,8 +370,24 @@ mod kani_harnesses {
 
         // Bound: force max_steps_executable to exceed capacity so fits_within fails
         kani::assume(usage.max_steps_executable > capacity.max_steps_executable);
+        kani::cover!(
+            capacity.max_steps_executable == 0,
+            "fits_within rejects with zero capacity"
+        );
+        kani::cover!(
+            capacity.max_steps_executable == 1,
+            "fits_within rejects with minimal capacity"
+        );
+        kani::cover!(
+            usage.max_steps_executable == u64::MAX,
+            "fits_within rejects with max usage"
+        );
 
         let result = usage.fits_within(&capacity);
+        kani::cover!(
+            result.is_err(),
+            "fits_within rejects when usage exceeds capacity"
+        );
         kani::assert(result.is_err(), "fits_within must reject over-capacity");
 
         match &result {

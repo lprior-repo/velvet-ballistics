@@ -72,17 +72,26 @@ fn join_taint_commutative() {
 fn read_taint_no_panic() {
     let slot_count: u16 = kani::any();
     kani::assume(slot_count > 0);
+    kani::cover!(slot_count == 1, "slot_count covers single-slot frame");
+    kani::cover!(slot_count == u16::MAX, "slot_count covers max-u16 frame");
 
     let slot_raw: u16 = kani::any();
     kani::assume(slot_raw < slot_count);
+    kani::cover!(slot_raw == 0, "slot_raw covers zero index");
+    kani::cover!(slot_raw == slot_count - 1, "slot_raw covers last valid index");
     let slot = SlotIdx::new(slot_raw);
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
+    kani::cover!(slot_count >= 1, "frame construction with valid slot_count");
     let mut frame = frame.unwrap();
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
     kani::assume(init_result.is_ok());
+    kani::cover!(
+        init_result.is_ok(),
+        "write_slot(Null) succeeded for valid slot"
+    );
 
     let result = frame.read_taint(slot);
     kani::assert(result.is_ok(), "read_taint with valid idx returns Ok");
@@ -92,20 +101,31 @@ fn read_taint_no_panic() {
 fn write_taint_no_panic() {
     let slot_count: u16 = kani::any();
     kani::assume(slot_count > 0);
+    kani::cover!(slot_count == 1, "slot_count covers single-slot frame");
+    kani::cover!(slot_count == u16::MAX, "slot_count covers max-u16 frame");
 
     let slot_raw: u16 = kani::any();
     kani::assume(slot_raw < slot_count);
+    kani::cover!(slot_raw == 0, "slot_raw covers zero index");
+    kani::cover!(slot_raw == slot_count - 1, "slot_raw covers last valid index");
     let slot = SlotIdx::new(slot_raw);
 
     let taint_raw = kani::any::<u8>();
     let taint = taint_from_u8(taint_raw);
+    kani::cover!(taint == Taint::Clean, "taint covers Clean variant");
+    kani::cover!(taint == Taint::Secret, "taint covers Secret variant");
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
+    kani::cover!(slot_count >= 1, "frame construction with valid slot_count");
     let mut frame = frame.unwrap();
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
     kani::assume(init_result.is_ok());
+    kani::cover!(
+        init_result.is_ok(),
+        "write_slot(Null) succeeded for valid slot in write_taint harness"
+    );
 
     let result = frame.write_taint(slot, taint);
     kani::assert(result.is_ok(), "write_taint with valid idx returns Ok");

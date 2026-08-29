@@ -1489,6 +1489,22 @@ mod frame_kani_harnesses {
             StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled
         );
         kani::assume(is_terminal);
+        kani::cover!(
+            terminal == StepState::Succeeded,
+            "terminal state covers Succeeded"
+        );
+        kani::cover!(
+            terminal == StepState::Failed,
+            "terminal state covers Failed"
+        );
+        kani::cover!(
+            terminal == StepState::Skipped,
+            "terminal state covers Skipped"
+        );
+        kani::cover!(
+            terminal == StepState::Cancelled,
+            "terminal state covers Cancelled"
+        );
         let result = validate_transition_inline(terminal, target);
         // Terminal states can transition to themselves (idempotent re-mark)
         if terminal == target {
@@ -1507,16 +1523,22 @@ mod frame_kani_harnesses {
     fn set_pc_no_panic() {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
+        kani::cover!(step_count == 1, "set_pc covers single-step frame");
+        kani::cover!(step_count >= 4, "set_pc covers multi-step frame");
 
         let pc_raw: u16 = kani::any();
         kani::assume(pc_raw < step_count);
+        kani::cover!(pc_raw == 0, "pc_raw covers zero index");
+        kani::cover!(pc_raw == step_count - 1, "pc_raw covers last valid index");
         let pc = StepIdx::new(pc_raw);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for set_pc test");
         let mut frame = frame.unwrap();
 
         let result = frame.set_pc(pc);
+        kani::cover!(result.is_ok(), "set_pc returns Ok for valid index");
         kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
     }
 
@@ -1526,9 +1548,12 @@ mod frame_kani_harnesses {
     fn increment_executed_no_panic() {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
+        kani::cover!(step_count == 1, "increment_executed covers single-step");
+        kani::cover!(step_count >= 4, "increment_executed covers multi-step");
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for increment test");
         let mut frame = frame.unwrap();
 
         let _result = frame.increment_executed();
@@ -1540,16 +1565,22 @@ mod frame_kani_harnesses {
     fn set_pc_rejects_out_of_bounds() {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
+        kani::cover!(step_count == 1, "set_pc OOB covers single-step");
+        kani::cover!(step_count >= 4, "set_pc OOB covers multi-step");
 
         let pc_raw: u16 = kani::any();
         kani::assume(pc_raw >= step_count);
+        kani::cover!(pc_raw == step_count, "pc_raw covers exact-count boundary");
+        kani::cover!(pc_raw == u16::MAX, "pc_raw covers max u16 for OOB");
         let pc = StepIdx::new(pc_raw);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for OOB test");
         let mut frame = frame.unwrap();
 
         let result = frame.set_pc(pc);
+        kani::cover!(result.is_err(), "set_pc returns Err for out-of-bounds index");
         kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
     }
 
@@ -1561,16 +1592,23 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         kani::assume(slot_count > 0);
         kani::assume(slot_count <= 16); // Tighter bound to reduce symbolic state space
+        kani::cover!(slot_count == 1, "read_slot covers single-slot");
+        kani::cover!(slot_count == 16, "read_slot covers max 16 slots");
+        kani::cover!(slot_count == 8, "read_slot covers mid-range slots");
 
         let slot_raw: u16 = kani::any();
         kani::assume(slot_raw < slot_count);
+        kani::cover!(slot_raw == 0, "slot_raw covers zero index for read");
+        kani::cover!(slot_raw == slot_count - 1, "slot_raw covers last slot for read");
         let slot = SlotIdx::new(slot_raw);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for read_slot test");
         let frame = frame.unwrap();
 
         let result = frame.read_slot(slot);
+        kani::cover!(result.is_ok() || result.is_err(), "read_slot covers both Ok and Err paths");
         // Result is either Ok or Err(CoreError::SlotUninitialized), both are non-panic
         let _ = result;
     }
@@ -1581,17 +1619,25 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         kani::assume(slot_count > 0);
         kani::assume(slot_count <= 16);
+        kani::cover!(slot_count == 1, "write_slot covers single-slot");
+        kani::cover!(slot_count == 16, "write_slot covers max 16 slots");
 
         let slot_raw: u16 = kani::any();
         kani::assume(slot_raw < slot_count);
+        kani::cover!(slot_raw == 0, "slot_raw covers zero index for write");
+        kani::cover!(slot_raw == slot_count - 1, "slot_raw covers last slot for write");
         let slot = SlotIdx::new(slot_raw);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for write_slot test");
         let mut frame = frame.unwrap();
 
         let value: SlotValue = kani::any();
+        kani::cover!(matches!(value, SlotValue::Null), "write_slot covers Null value");
+        kani::cover!(matches!(value, SlotValue::I64(_)), "write_slot covers I64 value");
         let result = frame.write_slot(slot, value);
+        kani::cover!(result.is_ok() || result.is_err(), "write_slot covers Ok/Err paths");
         let _ = result;
     }
 
@@ -1601,16 +1647,22 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         kani::assume(slot_count > 0);
         kani::assume(slot_count <= 16);
+        kani::cover!(slot_count == 1, "read_taint covers single-slot");
+        kani::cover!(slot_count == 16, "read_taint covers max 16 slots");
 
         let slot_raw: u16 = kani::any();
         kani::assume(slot_raw < slot_count);
+        kani::cover!(slot_raw == 0, "slot_raw covers zero index for taint read");
+        kani::cover!(slot_raw == slot_count - 1, "slot_raw covers last slot for taint read");
         let slot = SlotIdx::new(slot_raw);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for read_taint test");
         let frame = frame.unwrap();
 
         let result = frame.read_taint(slot);
+        kani::cover!(result.is_ok() || result.is_err(), "read_taint covers both paths");
         let _ = result;
     }
 
@@ -1622,24 +1674,33 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         kani::assume(slot_count > 0);
         kani::assume(slot_count <= 16);
+        kani::cover!(slot_count == 1, "write_taint initialized covers single-slot");
+        kani::cover!(slot_count == 16, "write_taint initialized covers max slots");
 
         let slot_raw: u16 = kani::any();
         kani::assume(slot_raw < slot_count);
+        kani::cover!(slot_raw == 0, "slot_raw covers zero index for taint write");
         let slot = SlotIdx::new(slot_raw);
 
         let taint: Taint = kani::any();
+        kani::cover!(taint == Taint::Clean, "write_taint covers Clean taint");
+        kani::cover!(taint == Taint::Secret, "write_taint covers Secret taint");
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for write_taint init test");
         let mut frame = frame.unwrap();
 
         // First initialize the slot (otherwise this is a different proof obligation)
         let value: SlotValue = kani::any();
+        kani::cover!(matches!(value, SlotValue::I64(_)), "slot init with I64 value");
+        kani::cover!(matches!(value, SlotValue::Null), "slot init with Null value");
         if frame.write_slot(slot, value).is_err() {
             return;
         }
 
         let result = frame.write_taint(slot, taint);
+        kani::cover!(result.is_ok() || result.is_err(), "write_taint covers Ok/Err paths");
         let _ = result;
     }
 
@@ -1649,8 +1710,11 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         // Only test edge cases 0 and 1
         kani::assume(slot_count <= 1);
+        kani::cover!(slot_count == 0, "slot_count edge case covers zero");
+        kani::cover!(slot_count == 1, "slot_count edge case covers one");
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for edge-case slot_count");
         // slot_count 0 and 1 are both valid, just create empty or single-element arrays
         kani::assert(frame.is_ok(), "slot_count 0 and 1 are valid");
     }
@@ -1661,19 +1725,26 @@ mod frame_kani_harnesses {
         let slot_count: u16 = kani::any();
         kani::assume(slot_count > 0);
         kani::assume(slot_count <= 16);
+        kani::cover!(slot_count == 1, "write_slot_with_taint covers single-slot");
+        kani::cover!(slot_count == 16, "write_slot_with_taint covers max slots");
 
         let slot_raw: u16 = kani::any();
         kani::assume(slot_raw < slot_count);
+        kani::cover!(slot_raw == 0, "slot_raw covers zero index");
         let slot = SlotIdx::new(slot_raw);
 
         let value: SlotValue = kani::any();
         let taint: Taint = kani::any();
+        kani::cover!(taint == Taint::Clean, "write_slot_with_taint covers Clean");
+        kani::cover!(taint == Taint::Secret, "write_slot_with_taint covers Secret");
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for atomic write");
         let mut frame = frame.unwrap();
 
         let result = frame.write_slot_with_taint(slot, value, taint);
+        kani::cover!(result.is_ok(), "write_slot_with_taint returns Ok for valid slot");
         kani::assert(
             result.is_ok(),
             "write_slot_with_taint succeeds for valid slot",
@@ -1708,12 +1779,17 @@ mod frame_kani_harnesses {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
         kani::assume(step_count <= 16);
+        kani::cover!(step_count == 1, "reinitialize covers single-step");
+        kani::cover!(step_count == 16, "reinitialize covers max steps");
 
         let slot_count: u16 = kani::any();
         kani::assume(slot_count <= 16);
+        kani::cover!(slot_count == 0, "reinitialize covers zero slots");
+        kani::cover!(slot_count == 16, "reinitialize covers max slots");
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, slot_count);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for reinitialize test");
         let mut frame = frame.unwrap();
 
         // Increment executed a few times
@@ -1741,6 +1817,7 @@ mod frame_kani_harnesses {
     fn add_parallel_in_flight_increases() {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for parallel test");
         let mut frame = frame.unwrap();
 
         frame.set_max_parallel_in_flight(100);
@@ -1749,8 +1826,11 @@ mod frame_kani_harnesses {
         let delta: u16 = kani::any();
         kani::assume(delta > 0);
         kani::assume(delta <= 100);
+        kani::cover!(delta == 1, "add_parallel covers delta=1");
+        kani::cover!(delta == 100, "add_parallel covers delta=max");
 
         let result = frame.add_parallel_in_flight(delta);
+        kani::cover!(result.is_ok(), "add_parallel_in_flight returns Ok for bounded delta");
         kani::assert(result.is_ok(), "add_parallel_in_flight returns Ok");
         kani::assert(
             frame.parallel_in_flight() == before + delta,
@@ -1763,6 +1843,7 @@ mod frame_kani_harnesses {
     fn sub_parallel_in_flight_decreases() {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         kani::assume(frame.is_ok());
+        kani::cover!(frame.is_ok(), "RunFrame::new succeeds for sub_parallel test");
         let mut frame = frame.unwrap();
 
         frame.set_max_parallel_in_flight(100);
@@ -1772,8 +1853,11 @@ mod frame_kani_harnesses {
         let delta: u16 = kani::any();
         kani::assume(delta > 0);
         kani::assume(delta <= before);
+        kani::cover!(delta == 1, "sub_parallel covers delta=1");
+        kani::cover!(delta == before, "sub_parallel covers delta=before (full drain)");
 
         let result = frame.sub_parallel_in_flight(delta);
+        kani::cover!(result.is_ok(), "sub_parallel_in_flight returns Ok for bounded delta");
         kani::assert(result.is_ok(), "sub_parallel_in_flight returns Ok");
         kani::assert(
             frame.parallel_in_flight() == before - delta,

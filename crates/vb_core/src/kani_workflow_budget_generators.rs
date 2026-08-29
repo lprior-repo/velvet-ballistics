@@ -174,6 +174,9 @@ pub(crate) fn budget_workflow_inputs() -> BudgetWorkflowInputs {
 fn budget_nodes() -> BudgetNodes {
     let choice: u8 = kani::any();
     kani::assume(choice <= 2);
+    kani::cover!(choice == 0, "budget nodes covers empty node list");
+    kani::cover!(choice == 1, "budget nodes covers single-node list");
+    kani::cover!(choice == 2, "budget nodes covers two-node list");
     match choice {
         0 => BudgetNodes::Empty,
         1 => BudgetNodes::One([budget_node(0, 1)]),
@@ -202,6 +205,12 @@ fn budget_node(position: u16, node_count: usize) -> CompiledNode {
 fn budget_node_kind() -> CompiledNodeKind {
     let choice: u8 = kani::any();
     kani::assume(choice <= 5);
+    kani::cover!(choice == 0, "budget node kind covers Nop");
+    kani::cover!(choice == 1, "budget node kind covers Do");
+    kani::cover!(choice == 2, "budget node kind covers WaitUntil");
+    kani::cover!(choice == 3, "budget node kind covers WaitEvent");
+    kani::cover!(choice == 4, "budget node kind covers Ask");
+    kani::cover!(choice == 5, "budget node kind covers Finish");
     match choice {
         0 => CompiledNodeKind::Nop,
         1 => CompiledNodeKind::Do {
@@ -259,5 +268,7 @@ fn bounded_two_node_step() -> StepIdx {
 fn bounded_slot() -> SlotIdx {
     let value: u8 = kani::any();
     kani::assume(value <= 3);
+    kani::cover!(value == 0, "bounded slot covers zero index");
+    kani::cover!(value == 3, "bounded slot covers max-bound index");
     SlotIdx::new(u16::from(value))
 }

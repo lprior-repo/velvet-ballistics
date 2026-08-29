@@ -24,10 +24,16 @@ impl kani::Arbitrary for WorkflowShape {
     fn any() -> Self {
         let node_count: u16 = kani::any();
         kani::assume((1..=2).contains(&node_count));
+        kani::cover!(node_count == 1, "workflow shape covers single-node");
+        kani::cover!(node_count == 2, "workflow shape covers two-node");
         let entry_raw: u16 = kani::any();
         kani::assume(entry_raw < node_count);
+        kani::cover!(entry_raw == 0, "entry_raw covers zero entry");
+        kani::cover!(entry_raw == node_count - 1, "entry_raw covers last entry");
         let slot_count: u16 = kani::any();
         kani::assume(slot_count <= 2);
+        kani::cover!(slot_count == 0, "workflow shape covers zero slots");
+        kani::cover!(slot_count == 2, "workflow shape covers two slots");
         Self {
             entry_raw,
             node_count,
@@ -50,10 +56,16 @@ impl kani::Arbitrary for FrameShape {
     fn any() -> Self {
         let step_count: u16 = kani::any();
         kani::assume((1..=2).contains(&step_count));
+        kani::cover!(step_count == 1, "frame shape covers single-step");
+        kani::cover!(step_count == 2, "frame shape covers two-step");
         let first_step_raw: u16 = kani::any();
         kani::assume(first_step_raw < step_count);
+        kani::cover!(first_step_raw == 0, "first_step_raw covers zero index");
+        kani::cover!(first_step_raw == step_count - 1, "first_step_raw covers last index");
         let slot_count: u16 = kani::any();
         kani::assume(slot_count <= 2);
+        kani::cover!(slot_count == 0, "frame shape covers zero slots");
+        kani::cover!(slot_count == 2, "frame shape covers two slots");
         Self {
             run_id: RunId::new(kani::any()),
             first_step: StepIdx::new(first_step_raw),
