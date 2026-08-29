@@ -46,7 +46,7 @@ fn empty_plan_with_expr(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|_| EngineError::InvalidCompiledWorkflow {
         reason: "workflow parts",
     })
@@ -1579,7 +1579,7 @@ mod proptests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|_| EngineError::InvalidCompiledWorkflow {
             reason: "workflow parts",
         })?;

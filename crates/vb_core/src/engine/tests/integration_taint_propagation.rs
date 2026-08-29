@@ -327,7 +327,7 @@ fn eval_workflow_with_slots(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|_| EngineError::InvalidCompiledWorkflow {
         reason: "workflow parts",
     })?;
@@ -715,7 +715,7 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
@@ -966,7 +966,7 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;
@@ -1253,7 +1253,7 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
 
     let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
@@ -1367,7 +1367,7 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;
@@ -1846,7 +1846,7 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;

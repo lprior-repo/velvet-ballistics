@@ -310,7 +310,7 @@ fn accessor_workflow_with_opts(
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 // =====================================================================

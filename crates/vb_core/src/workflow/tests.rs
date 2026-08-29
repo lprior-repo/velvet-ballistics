@@ -531,7 +531,7 @@ fn construction_parts_with_symbols(
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, max_slots, 0, 0, 0),
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 fn expect_resource_error(contract: ResourceContract, resource: &'static str) -> Result<(), String> {
@@ -576,7 +576,7 @@ fn finish_const_parts_with(
         entry: StepIdx::new(0),
         resource_contract,
         step_names: Box::default(),
-    }
+        input_slots: Box::default(),    }
 }
 
 fn choose_slot_parts(branches: Box<[SlotBranch]>, otherwise: Option<StepIdx>) -> WorkflowParts {
@@ -653,7 +653,7 @@ fn branch_parts(
         entry: StepIdx::new(0),
         resource_contract: resource_contract(3, validated_slot_count, 1, 1, 1),
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 const fn resource_contract(
@@ -701,7 +701,7 @@ fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 0, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::EmptyNodes) => Ok(()),
@@ -731,7 +731,7 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
         entry: StepIdx::new(5),
         resource_contract: resource_contract(1, 0, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::EntryOutOfBounds { entry }) if entry == StepIdx::new(5) => Ok(()),
@@ -761,7 +761,7 @@ fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 0, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::StepOutOfBounds { step }) if step == StepIdx::new(99) => Ok(()),
@@ -890,7 +890,7 @@ fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> 
         entry: StepIdx::new(0),
         resource_contract: resource_contract(0, 0, 0, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::EmptyNodes) => Ok(()),
@@ -922,7 +922,7 @@ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Resu
         entry: StepIdx::new(1), // exactly at len
         resource_contract: resource_contract(1, 0, 0, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::EntryOutOfBounds { entry }) if entry == StepIdx::new(1) => Ok(()),
@@ -1123,7 +1123,7 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
         entry: StepIdx::new(0),
         resource_contract: resource_contract(0, 0, 0, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
@@ -1446,7 +1446,7 @@ fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> Workfl
         entry: StepIdx::new(0),
         resource_contract: resource_contract(max_steps, slot_count, 1, 0, 0),
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 #[test]
@@ -1706,7 +1706,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(4, 3, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -1798,7 +1798,7 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(6, 5, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ImproperLoopNesting { inner, outer_done }) => {
             if inner == StepIdx::new(1) && outer_done == StepIdx::new(4) {
@@ -1899,7 +1899,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(6, 5, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -1935,7 +1935,7 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -1971,7 +1971,7 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -2018,7 +2018,7 @@ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(2, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::BackwardEdge { from, to })
@@ -2068,7 +2068,7 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
         entry: StepIdx::new(0),
         resource_contract: resource_contract(2, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::NodeIdMismatch { expected, actual })
@@ -2105,7 +2105,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99) => Ok(()),
@@ -2137,7 +2137,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> 
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 2, 0, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(50) => Ok(()),
@@ -2170,7 +2170,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(200) => Ok(()),
@@ -2215,7 +2215,7 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(2, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::UnreachableNode { step }) if step == StepIdx::new(1) => Ok(()),
@@ -2259,7 +2259,7 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
@@ -2298,7 +2298,7 @@ fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -2335,7 +2335,7 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
@@ -2378,7 +2378,7 @@ fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::AccessorPathTooDeep { depth, max }) => {
@@ -2425,7 +2425,7 @@ fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -2462,7 +2462,7 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -2495,7 +2495,7 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => Ok(()),
@@ -2527,7 +2527,7 @@ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -2558,7 +2558,7 @@ fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
@@ -2641,7 +2641,7 @@ fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::Expression(CoreError::InvalidCompiledWorkflow { reason })) => {
@@ -2692,7 +2692,7 @@ fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -2734,7 +2734,7 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
@@ -2768,7 +2768,7 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     if workflow.symbols_count() != 42 {
         return Err(format!(
@@ -2828,7 +2828,7 @@ fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> 
         entry: StepIdx::new(0),
         resource_contract: resource_contract(2, 1, 2, 0, 0),
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => Ok(()),
@@ -2868,7 +2868,7 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: contract,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
@@ -4046,7 +4046,7 @@ fn budget_parts(
         entry: StepIdx::new(0),
         resource_contract,
         step_names: Box::default(),
-    }
+        input_slots: Box::default(),    }
 }
 
 fn budget_node(index: u16, kind: CompiledNodeKind) -> CompiledNode {
@@ -4135,7 +4135,7 @@ mod proptests {
             entry: StepIdx::new(0),
             resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
             step_names: Box::new([]),
-        }
+        input_slots: Box::new([]),        }
     }
 
     fn chain_node(index: usize, total: usize) -> CompiledNode {
@@ -4240,7 +4240,7 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, slot_count, 1, 0, 0),
         step_names: Box::new([]),
-            };
+        input_slots: Box::new([]),            };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::SlotOutOfBounds { slot }) => {
@@ -4296,7 +4296,7 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(2, slot_count, 1, 0, 0),
         step_names: Box::new([]),
-            };
+        input_slots: Box::new([]),            };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::SlotOutOfBounds { slot }) => {
@@ -4341,7 +4341,7 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
         step_names: Box::new([]),
-            };
+        input_slots: Box::new([]),            };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::NodeIdMismatch { expected, actual }) => {
@@ -4390,7 +4390,7 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
         step_names: Box::new([]),
-            };
+        input_slots: Box::new([]),            };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::UnreachableNode { step }) => {
@@ -4470,7 +4470,7 @@ mod proptests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(1, declared_slots, 1, 0, 0),
         step_names: Box::new([]),
-            };
+        input_slots: Box::new([]),            };
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::ResourceContractExceeded { resource }) => {
@@ -4864,7 +4864,7 @@ fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> W
         entry,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 #[test]
@@ -4922,7 +4922,7 @@ fn blake3_digest_differs_when_node_count_differs() {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let node2 = CompiledNode {
         id: StepIdx::new(1),
         output: None,
@@ -4945,7 +4945,7 @@ fn blake3_digest_differs_when_node_count_differs() {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let hash1 = blake3::hash(&postcard::to_allocvec(&parts1).expect("serialize should succeed"));
     let hash2 = blake3::hash(&postcard::to_allocvec(&parts2).expect("serialize should succeed"));
     assert_ne!(

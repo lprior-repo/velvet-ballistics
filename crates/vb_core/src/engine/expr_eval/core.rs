@@ -175,7 +175,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|e| e.to_string())
     }
 
@@ -339,7 +339,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|e| e.to_string())?;
 
         let mut run = make_run(2)?;

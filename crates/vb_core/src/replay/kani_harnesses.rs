@@ -31,7 +31,7 @@ fn make_minimal_plan(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|_| CoreError::InvalidCompiledWorkflow {
         reason: "kani test workflow validation failed",
     })

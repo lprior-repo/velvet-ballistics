@@ -104,7 +104,7 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(113), &workflow)?;
     let mut store = test_store();
@@ -153,7 +153,7 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(114), &workflow)?;
     let mut store = test_store();
@@ -199,7 +199,7 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(115), &workflow)?;
     let mut store = test_store();
@@ -259,5 +259,5 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }

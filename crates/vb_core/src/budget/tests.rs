@@ -3859,7 +3859,7 @@ fn test_step_count_overflow() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     // Single-node workflow should compute without overflow
     let budget = crate::budget::WholeWorkflowBudget::compute(

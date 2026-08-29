@@ -295,7 +295,7 @@ fn choose_slot_workflow_with_otherwise(
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 fn choose_expr_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
@@ -372,7 +372,7 @@ fn choose_expr_workflow_with(
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 fn set_const_node(id: u16, output: u16, constant: u16) -> CompiledNode {

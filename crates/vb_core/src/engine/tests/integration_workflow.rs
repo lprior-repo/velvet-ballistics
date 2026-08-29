@@ -68,7 +68,7 @@ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(104), &workflow)?;
     let mut store = test_store();
@@ -117,7 +117,7 @@ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), Str
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(105), &workflow)?;
     let mut store = test_store();
@@ -157,7 +157,7 @@ fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(106), &workflow)?;
     let mut store = test_store();
@@ -250,7 +250,7 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(110), &workflow)?;
     let mut store = test_store();
@@ -286,7 +286,7 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(111), &workflow)?;
     let mut store = test_store();
@@ -323,7 +323,7 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(112), &workflow)?;
     let mut store = test_store();
@@ -376,7 +376,7 @@ fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Re
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(200), &workflow)?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
@@ -430,7 +430,7 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(201), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
@@ -505,7 +505,7 @@ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(202), &workflow)?;
     let mut store = test_store();
@@ -601,7 +601,7 @@ fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(203), &workflow)?;
     let mut store = test_store();
@@ -670,7 +670,7 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(204), &workflow)?;
     let mut store = test_store();
@@ -766,7 +766,7 @@ fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(205), &workflow)?;
     let mut store = test_store();
@@ -942,7 +942,7 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
@@ -980,5 +980,5 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }

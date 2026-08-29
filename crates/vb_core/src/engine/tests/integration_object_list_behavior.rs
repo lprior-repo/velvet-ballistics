@@ -676,7 +676,7 @@ fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::Work
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]
@@ -753,7 +753,7 @@ fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> 
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]
@@ -939,7 +939,7 @@ fn three_node_chain_workflow() -> Result<CompiledWorkflow, crate::WorkflowError>
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]
@@ -1024,7 +1024,7 @@ fn missing_output_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]
@@ -1062,7 +1062,7 @@ fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]

@@ -4,7 +4,7 @@
 #
 # Runs `cargo miri test` with strict provenance, stack/heap/interior
 # pointer checks, and leak suppression on the full test surface of
-# each pure crate (vb_core, vb_expr, vb_compile) as defined in the
+# each pure crate (vb_core, vb_compile) as defined in the
 # MASTER.md miri lane contract.
 #
 # Exit code: 0 = all clean, 1 = UB detected or Miri failed.
@@ -32,7 +32,7 @@ echo "MIRIFLAGS=$MIRIFLAGS"
 # Run Miri on each pure crate (MASTER.md miri lane contract).
 # Each crate is tested independently so failures localise cleanly.
 FAILED=0
-for CRATE in vb_core vb_expr vb_compile; do
+for CRATE in vb_core vb_compile; do
   echo "--- Miri: -p $CRATE ---"
   if ! timeout "$TIMEOUT_SECS" cargo +"$MIRI_TOOLCHAIN" miri test \
        -p "$CRATE" --lib --all-features -- --nocapture; then

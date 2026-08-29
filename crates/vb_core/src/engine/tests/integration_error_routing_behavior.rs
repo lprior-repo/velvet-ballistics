@@ -51,7 +51,7 @@ where
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
 
@@ -1298,7 +1298,7 @@ fn invalid_handler_step_workflow_result() -> Result<CompiledWorkflow, WorkflowEr
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     CompiledWorkflow::try_from_parts(parts)
 }
 
@@ -1425,7 +1425,7 @@ mod proptest_properties {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        };
+        input_slots: Box::new([]),        };
         CompiledWorkflow::try_from_parts(parts).expect("valid proptest workflow")
     }
 

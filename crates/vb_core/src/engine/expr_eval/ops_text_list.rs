@@ -375,7 +375,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|e| e.to_string())?;
         let mut run = crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, slot_count)
             .map_err(|e| e.to_string())?;

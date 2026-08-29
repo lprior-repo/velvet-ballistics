@@ -34,7 +34,7 @@ fn make_plan(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|_| CoreError::InvalidCompiledWorkflow {
         reason: "test workflow validation failed",
     })

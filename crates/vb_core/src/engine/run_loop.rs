@@ -88,7 +88,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|e| e.to_string())
     }
 
@@ -188,7 +188,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        })
+        input_slots: Box::new([]),        })
         .map_err(|e| e.to_string())?;
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();

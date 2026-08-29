@@ -235,7 +235,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        }
+        input_slots: Box::new([]),        }
     }
 
     fn test_parts_without_error_handler() -> WorkflowParts {
@@ -273,7 +273,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        }
+        input_slots: Box::new([]),        }
     }
 
     #[test]
@@ -379,7 +379,7 @@ mod tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        };
+        input_slots: Box::new([]),        };
         let plan = CompiledWorkflow::try_from_parts(parts)
             .ok()
             .expect("valid workflow");

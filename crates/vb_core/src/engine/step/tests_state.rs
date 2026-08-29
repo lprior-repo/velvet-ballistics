@@ -40,7 +40,7 @@ fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
@@ -136,7 +136,7 @@ fn single_do_workflow(name: &str, digest: [u8; 32]) -> Result<CompiledWorkflow, 
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 

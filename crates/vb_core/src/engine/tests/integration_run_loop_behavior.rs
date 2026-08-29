@@ -69,7 +69,7 @@ fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -96,7 +96,7 @@ fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -136,7 +136,7 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -163,7 +163,7 @@ fn wait_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -191,7 +191,7 @@ fn ask_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -238,7 +238,7 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -275,7 +275,7 @@ fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 

@@ -303,7 +303,7 @@ fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 fn missing_constant_workflow(constant: ConstIdx) -> Result<CompiledWorkflow, crate::WorkflowError> {
@@ -379,7 +379,7 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
@@ -451,5 +451,5 @@ fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }

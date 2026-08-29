@@ -68,7 +68,7 @@ fn valid_parts() -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 fn valid_parts_with_nodes(nodes: Vec<CompiledNode>) -> WorkflowParts {

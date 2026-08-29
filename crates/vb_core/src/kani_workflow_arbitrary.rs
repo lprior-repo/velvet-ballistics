@@ -386,7 +386,7 @@ impl kani::Arbitrary for WorkflowParts {
             },
             resource_contract: kani::any::<ResourceContract>(),
             step_names: step_names.into_boxed_slice(),
-        }
+        input_slots: step_names.clone().into_boxed_slice(),        }
     }
 }
 

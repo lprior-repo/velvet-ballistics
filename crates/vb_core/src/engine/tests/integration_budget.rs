@@ -62,7 +62,7 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
 }
 
 #[test]

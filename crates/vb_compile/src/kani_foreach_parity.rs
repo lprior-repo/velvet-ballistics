@@ -133,6 +133,7 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
             allows_secret_results: false,
         },
         step_names: step_names.into_boxed_slice(),
+        input_slots: Box::new([]),
     }
 }
 
@@ -463,6 +464,7 @@ fn foreach_rejects_malformed_ir() {
                 allows_secret_results: false,
             },
             step_names: Box::new([]),
+            input_slots: Box::new([]),
         };
 
         let result = CompiledWorkflow::try_from_parts(empty_parts);

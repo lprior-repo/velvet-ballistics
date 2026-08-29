@@ -64,7 +64,7 @@ pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -150,7 +150,7 @@ pub(super) fn single_do_workflow(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -181,7 +181,7 @@ pub(super) fn do_then_finish_workflow(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 
@@ -212,7 +212,7 @@ pub(super) fn do_with_error_handler_workflow(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }
 

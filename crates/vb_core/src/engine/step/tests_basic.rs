@@ -67,7 +67,7 @@ fn step_once_do_returns_awaiting_action() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     let mut store = ValueStore::new();
@@ -137,7 +137,7 @@ fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     let mut store = ValueStore::new();
@@ -194,6 +194,6 @@ fn single_node_workflow(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())
 }

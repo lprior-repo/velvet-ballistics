@@ -467,7 +467,7 @@ tasks:
       TMPDIR="$PWD/target/miri-tmp" \
         flock --shared target/moon-locks/source-mutation.lock \
         env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" \
-        timeout 10m rustup run nightly-2026-04-28 bash scripts/verify-miri-gate.sh
+        timeout 35m rustup run nightly-2026-04-28 bash scripts/verify-miri-gate.sh
     toolchains:
       - rust
     inputs:

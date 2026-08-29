@@ -77,7 +77,7 @@ fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    }
+        input_slots: Box::new([]),    }
 }
 
 // ============================================================
@@ -118,7 +118,7 @@ fn nop_advances_pc_to_next_step_with_continue_signal() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(201), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
@@ -170,7 +170,7 @@ fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), 
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(202), &workflow)?;
     let mut store = test_store();
@@ -209,7 +209,7 @@ fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String>
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(203), &workflow)?;
     run.write_slot_with_taint(
@@ -274,7 +274,7 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(204), &workflow)?;
     let mut store = test_store();
@@ -332,7 +332,7 @@ fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(205), &workflow)?;
     let mut store = test_store();
@@ -393,7 +393,7 @@ fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(206), &workflow)?;
     let mut store = test_store();
@@ -433,7 +433,7 @@ fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), Strin
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(207), &workflow)?;
     let mut store = test_store();
@@ -490,7 +490,7 @@ fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(208), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
@@ -544,7 +544,7 @@ fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<()
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(210), &workflow)?;
     let mut store = test_store();
@@ -581,7 +581,7 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(211), &workflow)?;
     let mut store = test_store();
@@ -618,7 +618,7 @@ fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String>
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(212), &workflow)?;
     let mut store = test_store();
@@ -678,7 +678,7 @@ fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(213), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
@@ -743,7 +743,7 @@ fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<()
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(214), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
@@ -808,7 +808,7 @@ fn choose_slot_false_takes_otherwise_target() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(215), &workflow)?;
     run.write_slot(SlotIdx::new(0), SlotValue::Bool(false))
@@ -903,7 +903,7 @@ fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), St
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(222), &workflow)?;
     let mut store = test_store();
@@ -995,7 +995,7 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|error| error.to_string())
 }
 
@@ -1184,7 +1184,7 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(243), &workflow)?;
     let mut store = test_store();
@@ -1240,7 +1240,7 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(244), &workflow)?;
     let mut store = test_store();
@@ -1308,7 +1308,7 @@ fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Resu
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(245), &workflow)?;
     let mut store = test_store();
@@ -1538,7 +1538,7 @@ fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -1605,7 +1605,7 @@ fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
         entry: StepIdx::new(99),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -1639,7 +1639,7 @@ fn jump_to_out_of_bounds_target_rejected_at_compilation() -> Result<(), String> 
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -1715,7 +1715,7 @@ fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    };
+        input_slots: Box::new([]),    };
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(274), &workflow)?;
     let mut store = test_store();
@@ -1833,7 +1833,7 @@ mod kani_boundedness {
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        }) {
+        input_slots: Box::new([]),        }) {
             Ok(w) => w,
             Err(_) => return,
         };
@@ -1889,7 +1889,7 @@ mod kani_boundedness {
             entry: StepIdx::new(0),
             resource_contract: crate::ResourceContract::DEFAULT,
             step_names: Box::new([]),
-        }) {
+        input_slots: Box::new([]),        }) {
             Ok(w) => w,
             Err(_) => return,
         };

@@ -47,7 +47,7 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     let mut store = ValueStore::new();
@@ -89,7 +89,7 @@ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     let mut store = ValueStore::new();
@@ -148,7 +148,7 @@ fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-    })
+        input_slots: Box::new([]),    })
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(&workflow)?;
     let mut store = ValueStore::new();
