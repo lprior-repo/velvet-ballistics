@@ -35,6 +35,11 @@
 #      drift: a production variant, field, function, or constant was
 #      added or renamed in a way the mirror has not been regenerated
 #      to reflect.
+#   6. [BODY PARITY] For each claim, extracts struct/enum declaration
+#      bodies from both production and mirror (brace-matched), normalizes
+#      them identically, and compares as strings. Reports drift when
+#      struct/enum bodies differ even if names are preserved. Function
+#      bodies are excluded because mirrors use intentional `loop {}` stubs.
 #
 # Sections explicitly marked `REMOVED:` are skipped (the mirror
 # intentionally omits that production range; flagging it as drift
@@ -354,6 +359,177 @@ filter_noise_words() {
 }
 
 # ---------------------------------------------------------------------------
+# Body-parity extraction and checking (GOD RULE 2: body-level drift detection)
+# ---------------------------------------------------------------------------
+# The identifier-set check (above) catches MISSING identifiers but cannot
+# detect that a struct/enum body has changed while keeping the same names.
+# Body parity compares the NORMALIZED declaration body of every struct
+# and enum that appears in both the production source range and the
+# entire mirror file.
+#
+# For each production struct/enum body, body-parity:
+#   1. Extracts the full declaration (name + body content).
+#   2. Finds the same-named struct/enum in the mirror.
+#   3. Normalizes both bodies identically (strip comments, attributes,
+#      pub(crate)→pub, collapse whitespace).
+#   4. Compares the normalized bodies as strings.
+#   5. Reports drift if the bodies differ.
+#
+# Function bodies are intentionally NOT checked for body parity because
+# mirrors deliberately replace production function bodies with no-op
+# `loop {}` stubs. Only struct and enum bodies carry verbatim surface
+# contracts that must stay in sync with production.
+
+# Extract struct/enum bodies from normalized source.
+# Input: normalized source (already passed through strip_noise).
+# Output: lines of the form "STRUCT<TAB>name<TAB>body_lines" or
+#         "ENUM<TAB>name<TAB>body_lines" where body_lines is everything
+#         between the outermost braces of the declaration (one line
+#         per body line, no surrounding braces).
+#
+# NOTE: The outer /g regex finds struct/enum declarations. The inner
+# brace-depth loop extracts the body. After extracting a body, pos()
+# is set past the closing brace so the /g loop does NOT re-enter the
+# body and match nested struct/enum declarations (e.g. `struct Foo`
+# nested inside a field type of an outer struct). The body scan
+# explicitly detects nested struct/enum keywords and skips their
+# entire bodies (brace-matched) to avoid depth-counting errors.
+extract_body_fragments() {
+  perl -0777 -ne '
+    while (/(?:\bpub\s+)?\b(struct|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*\{/g) {
+      my $decl_type = ($1 eq "struct" ? "STRUCT" : "ENUM");
+      my $name = $2;
+      my $pos = pos($_);
+      my $depth = 1;
+      my $body = "";
+      my $i = $pos;
+      my $len = length($_);
+      while ($i < $len && $depth > 0) {
+        my $ch = substr($_, $i, 1);
+        if ($ch eq "{") {
+          $depth++;
+        } elsif ($ch eq "}") {
+          $depth--;
+          if ($depth == 0) {
+            $i++;
+            last;
+          }
+        }
+        $body .= $ch;
+        $i++;
+        # Detect nested struct/enum declarations inside the body and
+        # skip their entire brace-matched bodies to avoid corrupting
+        # the depth counter of the outer struct/enum.
+        if ($depth > 0) {
+          my $rest = substr($_, $i);
+          if ($rest =~ /\b(?:struct|enum)\s+[A-Za-z_][A-Za-z0-9_]*/g) {
+            my $start = $i + $-[0];
+            my $brace_pos = $i + $-[0] + length($&);
+            if (substr($_, $brace_pos, 1) eq "{") {
+              my $inner_depth = 1;
+              my $j = $brace_pos + 1;
+              while ($j < $len && $inner_depth > 0) {
+                if (substr($_, $j, 1) eq "{") { $inner_depth++; }
+                elsif (substr($_, $j, 1) eq "}") { $inner_depth--; }
+                $j++;
+              }
+              $i = $j;
+              $rest = substr($_, $i);
+            }
+          }
+        }
+      }
+      pos($_) = $i;
+      my @lines = split /\n/, $body;
+      my @clean;
+      for my $line (@lines) {
+        $line =~ s/^\s+//;
+        $line =~ s/\s+$//;
+        $line =~ s/\s+/ /g;
+        next if $line eq "";
+        push @clean, $line;
+      }
+      if (@clean) {
+        print "$decl_type\t$name\t" . join("|", @clean) . "\n";
+      }
+    }
+  '
+}
+
+# Compare body fragments between production source and mirror.
+# Args: $1 = production body fragments file (from extract_body_fragments)
+#       $2 = mirror body fragments file
+#       $3 = production source relative path (for logging)
+#       $4 = mirror relative path (for logging)
+#       $5 = line range (e.g. `1437-1641`, for logging only)
+# Returns: 0 if body parity holds, 1 if drift detected.
+check_body_parity() {
+  local prod_bodies_file="$1"
+  local mirror_bodies_file="$2"
+  local prod_rel="$3"
+  local mirror_rel="$4"
+  local range="$5"
+
+  if [ ! -s "$prod_bodies_file" ]; then
+    return 0  # no structs/enums in production range — nothing to check
+  fi
+
+  local body_drift=0
+
+  # For each struct/enum in production, check if mirror has the same name
+  # with the same normalized body.
+  while IFS=$'\t' read -r decl_type name body; do
+    [ -z "$name" ] && continue
+
+    # Look for this name in the mirror bodies
+    local mirror_body
+    mirror_body=$(awk -F'\t' -v n="$name" '$2 == n { print $3; exit }' "$mirror_bodies_file")
+
+    if [ -z "$mirror_body" ]; then
+      # Mirror does not declare this name at all.
+      # The identifier check should have caught this, but body-parity
+      # provides an independent cross-check.
+      {
+        printf '\n=== %s ===\n' "$mirror_rel"
+        printf 'BODY DRIFT: %s `%s` declared in %s:%s but absent from mirror\n' \
+          "$decl_type" "$name" "${prod_rel}" "$range"
+      } | tee -a "$LOG"
+      body_drift=1
+      continue
+    fi
+
+    # Normalize field visibility on BOTH sides: mirrors intentionally
+    # make struct fields `pub` while production may declare them
+    # private. Strip field-level `pub` so the comparison focuses on
+    # structural content (field names, types) rather than documented
+    # visibility relaxation. This mirrors the existing `strip_noise`
+    # behavior that normalizes `pub(crate)` to `pub`.
+    body=$(printf '%s' "$body" | perl -pe 's/\bpub\s+([a-zA-Z_]\w*\s*:\s*)/$1/g')
+    mirror_body=$(printf '%s' "$mirror_body" | perl -pe 's/\bpub\s+([a-zA-Z_]\w*\s*:\s*)/$1/g')
+
+    # Normalize Vec<T> ↔ Box<[T]> substitutions: mirrors use
+    # `Vec<T>` instead of `Box<[T]>` to work around Verus
+    # single-file mode limitations. Normalize to `Box<[T]>` on
+    # both sides so the comparison focuses on structural content
+    # rather than documented type-shape substitutions.
+    body=$(printf '%s' "$body" | perl -pe 's/Vec<\s*([^>]+)\s*>/Box<[\1]>/g')
+    mirror_body=$(printf '%s' "$mirror_body" | perl -pe 's/Vec<\s*([^>]+)\s*>/Box<[\1]>/g')
+
+    # Compare bodies as normalized strings
+    if [ "$body" != "$mirror_body" ]; then
+      {
+        printf '\n=== %s ===\n' "$mirror_rel"
+        printf 'BODY DRIFT: %s `%s` body differs between %s:%s and mirror\n' \
+          "$decl_type" "$name" "${prod_rel}" "$range"
+      } | tee -a "$LOG"
+      body_drift=1
+    fi
+  done < "$prod_bodies_file"
+
+  return "$body_drift"
+}
+
+# ---------------------------------------------------------------------------
 # Per-mirror drift check
 # ---------------------------------------------------------------------------
 for mirror in "$MIRROR_DIR"/*.rs; do
@@ -451,6 +627,29 @@ for mirror in "$MIRROR_DIR"/*.rs; do
       } | tee -a "$LOG"
       claim_drift=1
     fi
+
+    # Body-parity check: compare struct/enum declaration bodies between
+    # production source and mirror. This catches semantic changes that
+    # the identifier-set check cannot — e.g. field renames within the
+    # same struct, variant value changes, or added/removed fields that
+    # happen to share names with stubs. Function bodies are excluded
+    # because mirrors intentionally replace them with no-op stubs.
+    _prod_bodies_tmp=$(mktemp)
+    sed -n "${start},${end}p" "$abs_path" \
+      | strip_noise \
+      | extract_body_fragments > "$_prod_bodies_tmp"
+
+    _mirror_bodies_tmp=$(mktemp)
+    strip_noise < "$mirror" \
+      | extract_body_fragments > "$_mirror_bodies_tmp"
+
+    if check_body_parity "$_prod_bodies_tmp" "$_mirror_bodies_tmp" \
+        "${abs_path#"$REPO_ROOT/"}" "$mirror_rel" "${start}-${end}"; then
+      : # body parity holds
+    else
+      claim_drift=1
+    fi
+    rm -f "$_prod_bodies_tmp" "$_mirror_bodies_tmp"
   done <<< "$claims"
 
   drift_count=$((drift_count + claim_drift))

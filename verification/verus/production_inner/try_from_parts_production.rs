@@ -322,10 +322,39 @@ pub enum CompiledNodeKind {
 }
 
 // ===========================================================================
+// VERBATIM PRODUCTION: `SlotBranch` struct and `InputSlotKind` enum
+// ===========================================================================
+//
+// Production `SlotBranch` at workflow/mod.rs:274-284 with
+// `condition` and `target` fields. Mirror preserves both field
+// names and types.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SlotBranch {
+    pub condition: SlotIdx,
+    pub target: StepIdx,
+}
+
+// ===========================================================================
+// VERBATIM PRODUCTION: `InputSlotKind` enum
+// ===========================================================================
+//
+// Production `InputSlotKind` at workflow/mod.rs:286-301 with
+// `#[non_exhaustive]`. Mirror preserves all variants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum InputSlotKind {
+    Null,
+    Bool,
+    I64,
+    F64,
+    Symbol,
+}
+
+// ===========================================================================
 // VERBATIM PRODUCTION: `WorkflowParts` struct declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:272-297
+// Source: crates/vb_core/src/workflow/mod.rs:319-348
 // Drift policy: any change to the field NAMES or TYPES in production
 // MUST be mirrored here. The `Box<[T]>` production fields are replaced
 // with `Vec<T>` because `Box<[T]>` requires the `alloc` crate to be
@@ -335,15 +364,16 @@ pub enum CompiledNodeKind {
 pub struct WorkflowParts {
     pub name: Box<str>,
     pub digest: WorkflowDigest,
-    pub nodes: Vec<CompiledNode>,
-    pub expressions: Vec<ExprProgram>,
-    pub accessors: Vec<AccessorProgram>,
-    pub constants: Vec<ConstValue>,
+    pub nodes: Box<[CompiledNode]>,
+    pub expressions: Box<[ExprProgram]>,
+    pub accessors: Box<[AccessorProgram]>,
+    pub constants: Box<[ConstValue]>,
     pub slot_count: u16,
     pub symbols_count: u32,
     pub entry: StepIdx,
     pub resource_contract: ResourceContract,
-    pub step_names: Vec<Box<str>>,
+    pub step_names: Box<[Box<str>]>,
+    pub input_slots: Box<[CompiledInputSlot]>,
 }
 
 // ===========================================================================
