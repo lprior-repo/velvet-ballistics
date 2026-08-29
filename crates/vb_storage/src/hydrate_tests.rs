@@ -36,7 +36,8 @@ mod hydrate_tests {
         assert!(
             matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
                 snapshot_run: sr,
-                snapshot_seq: _
+                snapshot_seq: _,
+                expected_run: _
             }) if sr == RunId::new(1)),
             "should reject mismatched run, got {:?}",
             result

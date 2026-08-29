@@ -29,6 +29,7 @@ fn workflow_parts_with_accessors(
         entry: StepIdx::new(0),
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     }
 }
 

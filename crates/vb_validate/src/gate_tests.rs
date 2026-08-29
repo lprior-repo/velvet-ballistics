@@ -25,6 +25,7 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         entry: StepIdx::new(0),
         step_names: Box::new([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     }
 }
 

@@ -75,6 +75,7 @@ mod durability_gate_tests {
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
+            input_slots: Box::new([]),
         };
 
         let hash_bytes = postcard::to_allocvec(&parts)

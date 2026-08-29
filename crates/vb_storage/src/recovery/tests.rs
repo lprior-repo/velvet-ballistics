@@ -41,6 +41,7 @@ fn deterministic_parts() -> WorkflowParts {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     }
 }
 
@@ -704,6 +705,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+            input_slots: Box::new([]),
     };
     let plan = CompiledWorkflow::try_from_parts(parts)?;
     let ticket = recovery_action_ticket(run, StepIdx::ZERO, action);
@@ -2750,8 +2752,8 @@ mod hydrate_run_frame_tests {
         let result = hydrate_run_frame(&snapshot, &[], run);
 
         assert!(
-            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
-            "expected CorruptSnapshot, got {:?}",
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence, got {:?}",
             result
         );
     }

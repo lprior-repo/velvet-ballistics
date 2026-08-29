@@ -20,6 +20,7 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::Workf
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     }
 }
 
