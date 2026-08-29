@@ -248,10 +248,8 @@ tasks:
 
   banned-token-gates:
     deps:
-      - 'panic-surface'
-      - 'workspace-assertions'
-      - 'ignored-fallible-results'
-      - 'unsafe-audit'
+      - 'lint-src'
+      - 'hot-cold-forbidden-apis'
     inputs:
       - '@globs(sources)'
       - '@globs(configs)'
@@ -983,7 +981,6 @@ tasks:
       - 'banned-token-gates'
       - 'source-length'
       - 'check'
-      - 'lint-src'
       - 'test'
       - 'doc-test'
       - 'doc'
