@@ -325,7 +325,7 @@ pub struct ActionId(pub u64);
 /// Mirror of `WorkflowDigest` (newtype over [u8; 32]) at
 /// `crates/vb_core/src/ids/mod.rs:80`. We model only the discriminant
 /// equality used by the digest comparison decision fns.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct WorkflowDigest(pub u64);
 
 /// Mirror of `EventSeq` (u64 newtype) at `crates/vb_core/src/ids/mod.rs:70`.
@@ -1178,4 +1178,117 @@ pub fn hydrate_dimensions_positive_pure(
     slot_count_positive: bool,
 ) -> bool {
     step_count_positive && slot_count_positive
+}
+
+// ============================================================================
+// Proper type-exercising exec wrappers — split from boolean wrapper proofs
+// ============================================================================
+//
+// These exec wrappers exercise the production decision surface using real
+// type structures (WorkflowDigest, ActionId, StepIdx, DigestVerificationRequest,
+// RecoveryError) instead of bare bool parameters. They replace the boolean
+// wrapper pattern where proofs took `matches: bool` and proved
+// `!matches → !matches` (a tautology over identity spec fns).
+//
+// Each wrapper is `#[verifier::external]` so Verus skips body verification;
+// contracts are attached via `assume_specification` in the companion spec file.
+
+/// Proper exec fn: compare two `WorkflowDigest` values directly.
+/// Mirrors `check_compiled_ir_digest` / `check_action_abi_digest` /
+/// `check_policy_digest` at `crates/vb_storage/src/recovery/recover.rs:53-88`.
+///
+/// Production body: `if expected == found { Ok(()) } else { Err(...) }`.
+/// Returns true iff the digests are equal.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn check_digest_equality(expected: WorkflowDigest, found: WorkflowDigest) -> bool {
+    expected == found
+}
+
+/// Proper exec fn: classify a `DigestVerificationRequest` into its
+/// verification level. Returns 0 for WorkflowSourceOnly, 1 for
+/// WorkflowAndIr, 2 for Full. Mirrors the production dispatch at
+/// `crates/vb_storage/src/recovery/recover.rs:101-123`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn classify_digest_request_level(request: DigestVerificationRequest) -> u8 {
+    match request {
+        DigestVerificationRequest::WorkflowSourceOnly { .. } => 0,
+        DigestVerificationRequest::WorkflowAndIr { .. } => 1,
+        DigestVerificationRequest::Full { .. } => 2,
+    }
+}
+
+/// Proper exec fn: classify a `RecoveryError` into its error class.
+/// Returns 0 for WorkflowSourceDigestMismatch, 1 for CompiledIrDigestMismatch,
+/// 2 for UnsupportedFrameSeed, 3 for FrameDimensionOverflow, 4 for other.
+/// Mirrors the error classification at
+/// `crates/vb_runtime/src/recovery.rs:73-115`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn classify_recovery_error_typed(error: RecoveryError) -> u8 {
+    match error {
+        RecoveryError::WorkflowSourceDigestMismatch { .. } => 0,
+        RecoveryError::CompiledIrDigestMismatch { .. } => 1,
+        RecoveryError::UnsupportedFrameSeed { .. } => 2,
+        RecoveryError::FrameDimensionOverflow { .. } => 3,
+        _ => 4,
+    }
+}
+
+/// Proper exec fn: determine if a `RecoveryError` collapses to
+/// hydration failure in the runtime layer. Returns true iff the error
+/// is UnsupportedFrameSeed or FrameDimensionOverflow (production
+/// runtime collapses these to `InvalidRecoveryHydration`). Mirrors
+/// `crates/vb_runtime/src/recovery.rs:73-115`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn recovery_error_collapse_hydration(error: RecoveryError) -> bool {
+    match error {
+        RecoveryError::UnsupportedFrameSeed { .. } | RecoveryError::FrameDimensionOverflow { .. } => true,
+        _ => false,
+    }
+}
+
+/// Proper exec fn: verify that a `RecoveryCannotResumeState` produced
+/// from `RecoveryFrameSeed::RESUMABLE` has all full-RunState-missing
+/// flags set. Mirrors the production `from_seed` at
+/// `crates/vb_storage/src/recovery/types.rs:748-757`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn seed_produces_full_missing(state: RecoveryCannotResumeState) -> bool {
+    state.workflow_missing
+        && state.store_missing
+        && state.action_attempts_missing
+        && state.admission_missing
+        && state.collect_states_missing
+        && state.action_contracts_missing
+        && state.action_abi_digests_missing
+}
+
+/// Proper exec fn: verify that a `RecoveryCannotResumeState` with all
+/// flags false is resumable. Mirrors `is_resumable` at
+/// `crates/vb_storage/src/recovery/types.rs:783-799`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn all_flags_false_is_resumable(state: RecoveryCannotResumeState) -> bool {
+    state.is_resumable()
+}
+
+/// Proper exec fn: check that a `RecoveryFrameSeed` with full
+/// missing state produces a non-resumable `RecoveryCannotResumeState`.
+/// Mirrors the `from_seed` + `is_resumable` chain at
+/// `crates/vb_storage/src/recovery/types.rs:748-757, 783-799`.
+///
+/// TRUST BOUNDARY: body is opaque to Verus (`#[verifier::external]`).
+#[verifier::external]
+pub fn seed_full_missing_is_non_resumable(seed: RecoveryFrameSeed) -> bool {
+    let state = RecoveryCannotResumeState::from_seed_pure(seed);
+    !state.is_resumable()
 }
