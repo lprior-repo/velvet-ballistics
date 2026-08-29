@@ -29,6 +29,8 @@ pub(crate) enum CliExitCode {
     /// Replay divergence detected, including domain-specific rule divergence
     /// after the internal error has been mapped to a public CLI status.
     ReplayDivergence = 8,
+    /// Lifecycle command rejected (e.g. resume on completed, retry on active).
+    LifecycleError = 9,
 }
 
 impl From<CliExitCode> for ExitCode {
@@ -49,6 +51,7 @@ impl From<CliExitCode> for u8 {
             CliExitCode::IpcError => 6,
             CliExitCode::ActionPolicyError => 7,
             CliExitCode::ReplayDivergence => 8,
+            CliExitCode::LifecycleError => 9,
         }
     }
 }
@@ -83,6 +86,7 @@ mod tests {
         assert_eq!(u8::from(CliExitCode::IpcError), 6);
         assert_eq!(u8::from(CliExitCode::ActionPolicyError), 7);
         assert_eq!(u8::from(CliExitCode::ReplayDivergence), 8);
+        assert_eq!(u8::from(CliExitCode::LifecycleError), 9);
     }
 
     #[test]
@@ -117,6 +121,10 @@ mod tests {
             ExitCode::from(CliExitCode::ReplayDivergence),
             ExitCode::from(8u8)
         );
+        assert_eq!(
+            ExitCode::from(CliExitCode::LifecycleError),
+            ExitCode::from(9u8)
+        );
     }
 
     #[test]
@@ -135,7 +143,7 @@ mod tests {
 
     #[test]
     fn all_variants_are_distinct() {
-        let values: [u8; 9] = [
+        let values: [u8; 10] = [
             u8::from(CliExitCode::Success),
             u8::from(CliExitCode::ValidationFailed),
             u8::from(CliExitCode::VerificationFailed),
@@ -145,6 +153,7 @@ mod tests {
             u8::from(CliExitCode::IpcError),
             u8::from(CliExitCode::ActionPolicyError),
             u8::from(CliExitCode::ReplayDivergence),
+            u8::from(CliExitCode::LifecycleError),
         ];
         let mut sorted: Vec<u8> = values.to_vec();
         sorted.sort_unstable();
@@ -153,8 +162,8 @@ mod tests {
     }
 
     #[test]
-    fn all_variants_are_public_range_0_to_8() {
-        let values: [u8; 9] = [
+    fn all_variants_are_public_range_0_to_9() {
+        let values: [u8; 10] = [
             u8::from(CliExitCode::Success),
             u8::from(CliExitCode::ValidationFailed),
             u8::from(CliExitCode::VerificationFailed),
@@ -164,8 +173,9 @@ mod tests {
             u8::from(CliExitCode::IpcError),
             u8::from(CliExitCode::ActionPolicyError),
             u8::from(CliExitCode::ReplayDivergence),
+            u8::from(CliExitCode::LifecycleError),
         ];
 
-        assert!(values.iter().all(|value| *value <= 8));
+        assert!(values.iter().all(|value| *value <= 9));
     }
 }

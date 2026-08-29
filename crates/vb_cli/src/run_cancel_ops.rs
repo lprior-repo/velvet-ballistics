@@ -8,27 +8,32 @@ use crate::app_impl::prelude::*;
 pub(crate) fn format_cancel_output(
     run_id: &str,
     reason: Option<&str>,
-    note: &str,
+    status_msg: &str,
     output: OutputFormat,
 ) -> ExitCode {
+    let detail = match reason {
+        Some(r) => format!(" (reason: {r})"),
+        None => String::new(),
+    };
+    let status_field = match status_msg {
+        "idempotent_no_op" => "idempotent_no_op",
+        "already_terminal" => "already_terminal",
+        _ => "cancelled",
+    };
     if output != OutputFormat::Text {
         emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "run_id": run_id,
-                "status": "cancelled",
+                "status": status_field,
                 "reason": reason,
-                "note": note,
+                "detail": status_msg,
             }),
             output,
         );
         ExitCode::SUCCESS
     } else {
-        let detail = match reason {
-            Some(r) => format!(" (reason: {r})"),
-            None => String::new(),
-        };
-        outln!("Run {run_id} cancelled{detail} ({note})");
+        outln!("Run {run_id} {status_msg}{detail}");
         ExitCode::SUCCESS
     }
 }
@@ -88,7 +93,7 @@ pub(crate) fn cmd_cancel(
         return format_cancel_output(
             run_id,
             reason.as_deref(),
-            "run not found, idempotent",
+            "not found (idempotent no-op)",
             output,
         );
     }
@@ -97,7 +102,7 @@ pub(crate) fn cmd_cancel(
         return format_cancel_output(
             run_id,
             reason.as_deref(),
-            "already terminal, idempotent",
+            "already terminal (idempotent no-op)",
             output,
         );
     }

@@ -60,6 +60,22 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
     }
 
     let report = commands_incident::build_incident_report(run_id, &events);
+
+    if !report.failure_found {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("run {run_id} has no failure event; not an incident")
+                }),
+                output,
+            );
+        } else {
+            errln!("run {run_id} has no failure event; not an incident");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
     let failed_step_val = match report.failed_at_step {
         Some(step) => serde_json::Value::Number(serde_json::Number::from(step)),
         None => serde_json::Value::Null,
@@ -105,20 +121,5 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
         }
     }
 
-    if report.failure_found {
-        CliExitCode::Success.into()
-    } else {
-        if output != OutputFormat::Text {
-            json_error(
-                &serde_json::json!({
-                    "success": false,
-                    "error": format!("run {run_id} has no failure event; not an incident")
-                }),
-                output,
-            );
-        } else {
-            errln!("run {run_id} has no failure event; not an incident");
-        }
-        CliExitCode::StorageError.into()
-    }
+    CliExitCode::Success.into()
 }

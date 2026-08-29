@@ -28,7 +28,7 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
         } else {
             errln!("run {run_id} {}", analysis.reason);
         }
-        return CliExitCode::ValidationFailed.into();
+        return CliExitCode::LifecycleError.into();
     }
     let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
     if output != OutputFormat::Text {

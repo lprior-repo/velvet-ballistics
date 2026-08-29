@@ -7,7 +7,7 @@
 
 use vb_storage::events::JournalEvent;
 use vb_storage::journal::incident::{
-    SideEffectCertainty, analyze_incident_events, build_repair_hints,
+    analyze_incident_events, build_repair_hints, SideEffectCertainty,
 };
 
 /// Structured incident report for CLI output.
@@ -224,4 +224,32 @@ mod tests {
     // T-009 through T-013 removed: build_repair_hints logic is now tested
     // in vb_storage::journal::incident (domain tests). CLI tests cover the
     // full build_incident_report pipeline which includes repair hints.
+
+    // ---- T-014: Completed run is not an incident ----
+    #[test]
+    fn t_014_completed_run_not_incident() {
+        let events = vec![
+            step_event(1),
+            action_completed(1, 10),
+            step_event(2),
+            action_completed(2, 20),
+            JournalEvent::RunFinished {
+                run: RunId::new(1),
+                seq: EventSeq::new(10),
+                attempt: 1,
+            },
+        ];
+        let report = build_incident_report("run-1", &events);
+        assert!(!report.failure_found);
+        assert_eq!(report.failure_code, "");
+    }
+
+    // ---- T-015: Cancelled run reports incident with correct code ----
+    #[test]
+    fn t_015_cancelled_run_incident() {
+        let events = vec![step_event(1), run_cancelled()];
+        let report = build_incident_report("run-1", &events);
+        assert!(report.failure_found);
+        assert_eq!(report.failure_code, "RunCancelled");
+    }
 }

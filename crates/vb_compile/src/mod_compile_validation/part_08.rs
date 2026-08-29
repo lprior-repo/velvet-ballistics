@@ -3,6 +3,7 @@ use super::*;
 use crate::limits::YamlLimits;
 use crate::mod_compile_errors::non_string_key_error;
 use crate::mod_compile_errors::{CompileError, CompileErrors, SourceMark};
+use crate::mod_compile_lowering::{required_branch_targets, required_slot};
 use saphyr::Yaml;
 use saphyr_parser::{Event, Parser, Span, StrInput};
 use std::collections::HashSet;

@@ -118,9 +118,9 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
             if output == OutputFormat::Text {
                 errln!("{message}");
             } else {
-                write_failure_message(&message, output, CliExitCode::StorageError);
+                write_failure_message(&message, output, CliExitCode::LifecycleError);
             }
-            CliExitCode::StorageError.into()
+            CliExitCode::LifecycleError.into()
         }
     }
 }

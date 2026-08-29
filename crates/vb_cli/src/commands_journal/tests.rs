@@ -3,8 +3,8 @@ use chrono::Utc;
 use proptest::proptest;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
-use vb_storage::JournalEvent;
 use vb_storage::types::EventSeq;
+use vb_storage::JournalEvent;
 
 fn make_run_id(v: u64) -> RunId {
     RunId::new(v)
@@ -717,4 +717,91 @@ proptest! {
         let entry = trace_one(idx, &event);
         assert_eq!(entry.index, idx, "trace_one index must match provided index");
     }
+}
+
+// -------------------------------------------------------------------------
+// analyze_retry — lifecycle constraint tests
+// -------------------------------------------------------------------------
+
+#[test]
+fn analyze_retry_completed_run_cannot_retry() {
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run: make_run_id(1),
+            seq: make_event_seq(0),
+            workflow: dummy_digest(),
+        },
+        JournalEvent::StepStarted {
+            run: make_run_id(1),
+            seq: make_event_seq(1),
+            step: make_step_idx(0),
+            attempt: 1,
+        },
+        JournalEvent::StepSucceeded {
+            run: make_run_id(1),
+            seq: make_event_seq(2),
+            step: make_step_idx(0),
+            output: make_slot_idx(0),
+        },
+        JournalEvent::RunFinished {
+            run: make_run_id(1),
+            seq: make_event_seq(3),
+            result: make_slot_idx(0),
+            attempt: 1,
+        },
+    ];
+    let analysis = analyze_retry(&events);
+    assert!(!analysis.can_retry);
+    assert!(analysis.reason.contains("did not fail"));
+}
+
+#[test]
+fn analyze_retry_failed_run_can_retry() {
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run: make_run_id(1),
+            seq: make_event_seq(0),
+            workflow: dummy_digest(),
+        },
+        JournalEvent::StepStarted {
+            run: make_run_id(1),
+            seq: make_event_seq(1),
+            step: make_step_idx(0),
+            attempt: 1,
+        },
+        JournalEvent::RunFailedEvent {
+            run: make_run_id(1),
+            seq: make_event_seq(2),
+            attempt: 1,
+        },
+    ];
+    let analysis = analyze_retry(&events);
+    assert!(analysis.can_retry);
+    assert_eq!(analysis.failed_at_step, Some(0));
+}
+
+#[test]
+fn analyze_retry_cancelled_run_cannot_retry() {
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run: make_run_id(1),
+            seq: make_event_seq(0),
+            workflow: dummy_digest(),
+        },
+        JournalEvent::RunCancelled {
+            run: make_run_id(1),
+            seq: make_event_seq(1),
+            attempt: 1,
+            reason: Some("user requested".to_string()),
+        },
+    ];
+    let analysis = analyze_retry(&events);
+    assert!(!analysis.can_retry);
+}
+
+#[test]
+fn analyze_retry_empty_events_cannot_retry() {
+    let events: Vec<JournalEvent> = vec![];
+    let analysis = analyze_retry(&events);
+    assert!(!analysis.can_retry);
 }
