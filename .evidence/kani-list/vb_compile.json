@@ -1,0 +1,27 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_compile/src/expr_proofs/f64_div.rs": [
+      "expr_proofs::f64_div::kani_f64_div_by_nonzero_finite_succeeds",
+      "expr_proofs::f64_div::kani_f64_div_by_zero_returns_non_finite_float",
+      "expr_proofs::f64_div::kani_i64_div_by_zero_returns_division_by_zero"
+    ],
+    "crates/vb_compile/src/expr_proofs/f64_ops.rs": [
+      "expr_proofs::f64_ops::kani_f64_add_preserves_finiteness",
+      "expr_proofs::f64_ops::kani_f64_mul_preserves_finiteness",
+      "expr_proofs::f64_ops::kani_f64_neg_preserves_finiteness",
+      "expr_proofs::f64_ops::kani_f64_sub_preserves_finiteness"
+    ],
+    "crates/vb_compile/src/yaml_kani/kani_yaml_error_code.rs": [
+      "yaml_kani::kani_yaml_error_code::harnesses::kani_yaml_error_code_registered"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 8,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}
