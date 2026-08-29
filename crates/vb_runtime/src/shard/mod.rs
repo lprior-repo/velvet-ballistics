@@ -9,6 +9,8 @@ pub mod lifecycle;
 pub mod snapshot;
 pub mod tests;
 pub mod timer_wheel;
+#[cfg(test)]
+mod timer_wheel_tests;
 pub mod transitions;
 pub mod types;
 

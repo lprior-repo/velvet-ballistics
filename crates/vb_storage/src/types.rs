@@ -430,3 +430,5 @@ pub enum PreviewPayload {
 // `flux_rs` is injected by `cargo flux` compiler plugin; no Cargo dependency.
 #[cfg(flux)]
 pub mod flux_sequence;
+#[cfg(all(test, flux))]
+mod flux_sequence_tests;
