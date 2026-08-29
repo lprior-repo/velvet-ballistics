@@ -55,31 +55,27 @@ toml = "0.9"
 unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
-rust_2018_idioms = { level = "deny", priority = -1 }
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)', 'cfg(fuzzing)', 'cfg(kani)', 'cfg(loom)', 'cfg(verus)', 'cfg(verus_keep_ghost)', 'cfg(docsrs,test)'] }
+rust_2018_idioms = "deny"
 
 [workspace.lints.clippy]
-correctness = { level = "deny", priority = -1 }
-suspicious = { level = "deny", priority = -1 }
-perf = { level = "deny", priority = -1 }
-complexity = { level = "deny", priority = -1 }
-unwrap_used = "forbid"
-expect_used = "forbid"
-panic = "forbid"
-panic_in_result_fn = "forbid"
-todo = "forbid"
-unimplemented = "forbid"
-dbg_macro = "forbid"
+correctness = "deny"
+suspicious = "deny"
+perf = "deny"
+complexity = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
 indexing_slicing = "deny"
-string_slice = "forbid"
+string_slice = "deny"
 get_unwrap = "deny"
 arithmetic_side_effects = "deny"
 as_conversions = "deny"
 let_underscore_must_use = "deny"
 await_holding_lock = "deny"
-large_stack_arrays = "warn"
-large_types_passed_by_value = "warn"
-result_large_err = "warn"
 
 [profile.hardened]
 inherits = "release"

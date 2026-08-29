@@ -24,11 +24,28 @@ test-util = []
 [lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
+unreachable_pub = "deny"
+rust_2018_idioms = "deny"
 
 [lints.clippy]
+correctness = "deny"
+suspicious = "deny"
+perf = "deny"
+complexity = "deny"
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+get_unwrap = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+let_underscore_must_use = "deny"
+await_holding_lock = "deny"
 
 [dependencies]
 libfuzzer-sys = "0.4"

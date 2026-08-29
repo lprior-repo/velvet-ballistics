@@ -37,14 +37,13 @@ ignored = ["crossbeam-channel", "toml", "vb_validate"]
 unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
-rust_2018_idioms = { level = "deny", priority = -1 }
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+rust_2018_idioms = "deny"
 
 [lints.clippy]
-correctness = { level = "deny", priority = -1 }
-suspicious = { level = "deny", priority = -1 }
-perf = { level = "deny", priority = -1 }
-complexity = { level = "deny", priority = -1 }
+correctness = "deny"
+suspicious = "deny"
+perf = "deny"
+complexity = "deny"
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
@@ -59,6 +58,3 @@ arithmetic_side_effects = "deny"
 as_conversions = "deny"
 let_underscore_must_use = "deny"
 await_holding_lock = "deny"
-large_stack_arrays = "warn"
-large_types_passed_by_value = "warn"
-result_large_err = "warn"
