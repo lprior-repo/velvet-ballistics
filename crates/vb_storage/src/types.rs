@@ -425,3 +425,8 @@ pub enum PreviewPayload {
     /// Raw value bytes (presented as hex in the CLI).
     Raw,
 }
+
+// Flux-rs compiler-injected refinements for sequence bounds.
+// `flux_rs` is injected by `cargo flux` compiler plugin; no Cargo dependency.
+#[cfg(flux)]
+pub mod flux_sequence;
