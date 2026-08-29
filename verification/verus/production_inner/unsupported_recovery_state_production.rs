@@ -6,7 +6,7 @@
 //
 // This file is a VERBATIM copy of the production
 // `UnsupportedRecoveryState` impl block from
-//   crates/vb_storage/src/recovery/types.rs:833-903
+//   crates/vb_storage/src/recovery/types.rs:831-905
 // with four minimal substitutions:
 //
 //   1. `#[derive(... Serialize, Deserialize)]` is dropped from the
@@ -47,7 +47,7 @@
 // the explicit drift-detection mechanism the user requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:833-903` whenever
+// `crates/vb_storage/src/recovery/types.rs:831-905` whenever
 // production changes. The mirror is annotated at the top of every
 // section with the originating production line range so regeneration
 // is mechanical.
@@ -66,7 +66,7 @@
 // VERBATIM PRODUCTION: UnsupportedRecoveryState struct
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:833-844
+// Source: crates/vb_storage/src/recovery/types.rs:831-842
 // Drift policy: any change to the production struct between these line
 // numbers MUST be mirrored here. Field names, field order, and field
 // types are matched exactly.
@@ -88,7 +88,7 @@ pub struct UnsupportedRecoveryState {
 // VERBATIM PRODUCTION: UnsupportedRecoveryState impl block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:844-903
+// Source: crates/vb_storage/src/recovery/types.rs:844-905
 // Drift policy: any change to the production impl block between these
 // line numbers MUST be mirrored here. Method signatures, body
 // structure, and `pub const` initializers are preserved.

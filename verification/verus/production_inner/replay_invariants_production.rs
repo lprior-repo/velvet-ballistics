@@ -30,10 +30,10 @@
 //      `crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34`.
 //
 //   3. The `JournalEvent` enum (24 variants) from
-//      `crates/vb_storage/src/events.rs:23-316`.
+//      `crates/vb_storage/src/events/event.rs:37-344`.
 //
 //   4. The `RecoveryFrameSeed` struct from
-//      `crates/vb_storage/src/recovery/types.rs:925-946`.
+//      `crates/vb_storage/src/recovery/types.rs:935-954`.
 //
 // ----------------------------------------------------------------------------
 // Substitutions relative to production source
@@ -50,6 +50,12 @@
 //     pending_actions / unsupported field TYPES are reduced to local
 //     stubs.
 //
+//   - `RecoveryRuntimeSummary` field TYPES are reduced to primitives
+//     (`u64` / `Option<u64>` / `Option<RecoveryTerminalState>`) and
+//     local stub types; field NAMEs are preserved byte-for-byte.
+//     `RecoveryTerminalState` and `RecoveredStepState` are declared
+//     as local stub enums.
+//
 // ----------------------------------------------------------------------------
 // DRIFT POLICY: `crates/vb_storage/src/recovery/replay/attempt.rs:1-60`
 // ============================================================================
@@ -64,9 +70,9 @@
 //     `recovery_seed_dimensions_positive`,
 //     `recovery_observed_dimension_is_positive`
 //                                       <- crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34
-//   - `JournalEvent` enum (24 variants) <- crates/vb_storage/src/events.rs:23-316
-//   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:460-487
-//   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:899-918
+//   - `JournalEvent` enum (24 variants) <- crates/vb_storage/src/events/event.rs:37-344
+//   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:165-193
+//   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:935-954
 // This file MUST be regenerated whenever production attempt.rs,
 // summary/derive.rs, events.rs, or recovery/types.rs changes. The
 // mirror is annotated at the top of each section with the
@@ -238,16 +244,44 @@ pub enum UnsupportedRecoveryState {
     Supported,
 }
 
+pub enum RecoveryTerminalState {
+    Cancelled,
+    Killed,
+    Finished { result: SlotIdx },
+    Failed,
+}
+
 pub struct RecoveryRuntimeSummary {
-    pub steps_written: u64,
+    pub run: RunId,
+    pub first_seq: EventSeq,
+    pub last_seq: EventSeq,
+    pub workflow: Option<WorkflowDigest>,
+    pub steps_started: u64,
+    pub steps_succeeded: u64,
+    pub actions_scheduled: u64,
+    pub actions_resolved: u64,
+    pub suspensions: u64,
+    pub slots_written: u64,
+    pub terminal: Option<RecoveryTerminalState>,
+}
+
+pub enum RecoveredStepState {
+    Running,
+    Succeeded,
+    Failed,
+    Waiting,
+    Asking,
 }
 
 pub struct RecoveredStepEntry {
     pub step: StepIdx,
+    pub state: RecoveredStepState,
 }
 
 pub struct RecoveredSlotEntry {
     pub slot: SlotIdx,
+    pub value: SlotValue,
+    pub taint: Taint,
 }
 
 pub struct RecoveredPendingAction {
@@ -259,8 +293,8 @@ pub struct RecoveredPendingAction {
 // VERBATIM PRODUCTION: JournalEvent enum + attempt() method
 // ============================================================================
 //
-// Source: crates/vb_storage/src/events.rs:23-316
-// Source: crates/vb_storage/src/events.rs:460-487
+// Source: crates/vb_storage/src/events/event.rs:37-344
+// Source: crates/vb_storage/src/events.rs:165-193
 // Drift policy: any change to the variant set, field names, or the
 // `attempt()` method body MUST be mirrored here.
 //
@@ -274,7 +308,7 @@ pub struct RecoveredPendingAction {
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 ///
-/// Production equivalent: `crates/vb_storage/src/events.rs:21-316`.
+/// Production equivalent: `crates/vb_storage/src/events/event.rs:37-344`.
 
 #[non_exhaustive]
 pub enum JournalEvent {
@@ -302,6 +336,12 @@ pub enum JournalEvent {
         step: StepIdx,
         output: SlotIdx,
     },
+    StepFailed {
+        run: RunId,
+        seq: EventSeq,
+        step: StepIdx,
+        attempt: u16,
+    },
     ActionScheduled {
         run: RunId,
         seq: EventSeq,
@@ -322,8 +362,9 @@ pub enum JournalEvent {
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
     },
-    ActionCompletedEnvelope {
+   ActionCompletedEnvelope {
         run: RunId,
         seq: EventSeq,
         ticket: ActionTicket,
@@ -333,6 +374,7 @@ pub enum JournalEvent {
         encoded_len: u32,
         taint: Taint,
         value_digest: [u8; 32],
+        action_abi_digest: WorkflowDigest,
     },
     ActionFailedEvent {
         run: RunId,
@@ -449,6 +491,7 @@ impl JournalEvent {
             | Self::WaitResolvedEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
+            | Self::StepFailed { attempt, .. }
             | Self::RunCancelled { attempt, .. }
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
@@ -471,13 +514,13 @@ impl JournalEvent {
 // VERBATIM PRODUCTION: RecoveryFrameSeed struct
 // ============================================================================
 //
-// Source: crates/vb_storage/src/recovery/types.rs:899-918
+// Source: crates/vb_storage/src/recovery/types.rs:935-954
 // Drift policy: any rename of `step_count` or `slot_count`, or any
 // change to their types, MUST be mirrored here.
 
 /// Minimal live-frame seed recovered from durable journal headers/events.
 ///
-/// Production equivalent: `crates/vb_storage/src/recovery/types.rs:899-918`.
+/// Production equivalent: `crates/vb_storage/src/recovery/types.rs:935-954`.
 
 pub struct RecoveryFrameSeed {
     pub summary: RecoveryRuntimeSummary,

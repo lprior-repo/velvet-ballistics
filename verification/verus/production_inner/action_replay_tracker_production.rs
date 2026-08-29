@@ -6,7 +6,7 @@
 //
 // This file is a VERBATIM copy of the production `ActionReplayTracker`
 // implementation block from
-//   crates/vb_storage/src/recovery/types.rs:1429-1634
+//   crates/vb_storage/src/recovery/types.rs:1437-1641
 // with two minimal substitutions:
 //
 //   1. The crate-internal `RecoveryError` and `RecoveryResult` aliases are
@@ -25,7 +25,7 @@
 //      shape, and same method surface (`new`, `get`). These are
 //      `Copy + PartialEq + Eq +
 //      Hash` so the `HashSet<(ActionId, StepIdx)>` operations in the
-//      production block at `types.rs:1433-1634` resolve
+//      production block at `types.rs:1437-1641` resolve
 //      identically.
 //
 // This file exists so that the companion `extern_idempotency_replay_tracker.rs`
@@ -37,7 +37,7 @@
 // the explicit drift-detection mechanism the user requires.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:1429-1634` whenever production
+// `crates/vb_storage/src/recovery/types.rs:1437-1641` whenever production
 // changes. The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -156,7 +156,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // VERBATIM PRODUCTION: ActionReplayTracker block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:1429-1634
+// Source: crates/vb_storage/src/recovery/types.rs:1437-1641
 // Drift policy: any change to the production block between these line
 // numbers MUST be mirrored here.
 
@@ -164,7 +164,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// re-execution of non-idempotent actions.
 ///
 /// Note on field visibility: the production struct at
-/// `crates/vb_storage/src/recovery/types.rs:1432-1437` has PRIVATE fields
+/// `crates/vb_storage/src/recovery/types.rs:1440-1445` has PRIVATE fields
 /// `scheduled_tickets`, `completed`, `failed`, and
 /// `completed_envelopes`. This in-tree mirror declares them as `pub`
 /// so the companion Verus spec can reason about the HashSet view
