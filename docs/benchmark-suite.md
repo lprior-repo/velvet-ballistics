@@ -19,7 +19,7 @@ Acceptance rule: runtime changes that claim latency or throughput improvements m
 
 ## Evidence: 2026-05-01 `vb-ws4m`
 
-Environment: local Linux workspace `/home/lewis/src/Velvet-ballistics-r3/vb-ws4m`, Cargo bench profile, Criterion 0.8. Gnuplot was not installed, so Criterion used the plotters backend.
+Environment: local Linux workspace `/home/lewis/src/velvet-ballistics-r3/vb-ws4m`, Cargo bench profile, Criterion 0.8. Gnuplot was not installed, so Criterion used the plotters backend.
 
 Build proof:
 

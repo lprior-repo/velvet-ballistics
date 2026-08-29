@@ -12,7 +12,7 @@
 
 This file, `/velvet-ballistics-MASTER.md`, is the authoritative build plan, lifecycle tracker, architecture contract, and implementation acceptance contract for this repository. Other docs provide context only and cannot override this document.
 
-Project spelling rule: any use of `velvet-ballistics` is invalid except for exactly these allowlisted legacy references: the current repository root path `/home/lewis/src/Velvet-ballistics`, the current master filename `/velvet-ballistics-MASTER.md`, and explicitly labeled migration references to pre-existing external artifacts. New code, docs, beads, crate names, package names, generated paths, CLI examples, diagnostics, and implementation artifacts must use the canonical names above.
+Project spelling rule: any use of `velvet-ballistics` is invalid except for exactly these allowlisted legacy references: the current repository root path `/home/lewis/src/velvet-ballistics`, the current master filename `/velvet-ballistics-MASTER.md`, and explicitly labeled migration references to pre-existing external artifacts. New code, docs, beads, crate names, package names, generated paths, CLI examples, diagnostics, and implementation artifacts must use the canonical names above.
 
 Agent workspace isolation rule: the main checkout at `/home/lewis/src/velvet-ballistics` is reserved for coordination only. Concurrent implementation agents MUST work in dedicated isolated Git worktrees and JJ workspaces under `~/src/isoloated/` (or another explicit non-main path named by the user), one worktree/workspace per agent/bead. Before workspace creation, rebasing, landing, or cleanup, agents must load the `jj`/`jujutsu` skill and use JJ workspace-isolation discipline instead of Git-only multi-agent workflows. Feature work, repairs, proof writing, test writing, broad verification, commits, and pushes must be performed from the assigned isolated workspace after verifying `git rev-parse --show-toplevel` and `jj root` both resolve to that workspace and not to the main coordination checkout. If JJ is not initialized, agents must stop and initialize the isolated workspace with JJ or ask for operator confirmation; they must not silently continue in plain Git. The main checkout may be used only for fetch/pull, worktree/JJ-workspace management, bead tracker coordination, explicit instruction/documentation updates, and emergency cleanup.
 
@@ -1892,7 +1892,7 @@ new velvet-ballistics spelling outside the exact allowlist
 The current `velvet-ballistics` backend milestone is done when all 24 points are satisfied:
 
 1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
-2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
+2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
 3. Every primitive validates, compiles, runs, persists, recovers, and replays.
 4. v1 supports both `manual` direct API submission and `ipc` binary IPC submission.
 5. Runtime never interprets YAML and recovery never reparses YAML for existing runs.

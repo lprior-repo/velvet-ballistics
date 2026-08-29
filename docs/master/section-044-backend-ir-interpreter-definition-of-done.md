@@ -10,7 +10,7 @@ parent: velvet-ballistics-MASTER.md
 The current `velvet-ballistics` backend milestone is done when all 24 points are satisfied:
 
 1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
-2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
+2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
 3. Every primitive validates, compiles, runs, persists, recovers, and replays.
 4. v1 supports both `manual` direct API submission and `ipc` binary IPC submission.
 5. Runtime never interprets YAML and recovery never reparses YAML for existing runs.
