@@ -10,6 +10,13 @@
 //! This crate owns the compiled workflow IR, numeric identifiers, runtime slot
 //! model, and synchronous state-machine loop. It intentionally has no async,
 //! no storage, no HTTP, and no YAML dependencies.
+//!
+//! ## Verification coverage
+//!
+//! - **Kani**: Arithmetic refinement, index access, budget bounds, workflow
+//!   arbitrary, step harnesses, state transitions, taint propagation.
+//! - **Miri**: RunId zero constant (`ids::tests::run_id_zero_constant`).
+//! - **Verus**: Proof kernels gated behind `verus-kernels` feature.
 
 pub mod action;
 pub mod budget;

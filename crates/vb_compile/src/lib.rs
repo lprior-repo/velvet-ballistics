@@ -10,6 +10,30 @@
 //!
 //! YAML enters the system only through this crate. The hot engine consumes only
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
+//!
+//! ## Expression modules (folded from `vb_expr`)
+//!
+//! The original `vb_expr` crate was folded into this crate. The expression
+//! pipeline is split across:
+//!
+//! - `lexer` — tokenisation of expression strings into `Token` streams.
+//!   Miri-tested in `expr_lexer/miri_tests.rs`.
+//! - `parser` — recursive-descent parser producing `ExprAst` from tokens.
+//!   Miri-tested in `expr_parser/miri_tests.rs`.
+//! - `bytecode` — constant-pool bytecode compiler for expressions.
+//! - `eval` — direct-stack evaluator (`eval_expr_program`, `eval_helper`).
+//! - `typecheck` — expression type inference.
+//! - `proofs` — Kani harnesses for expression bounds.
+//! - `stack_ops` — expression stack push/pop primitives.
+//!
+//! All expression sub-modules are `#[cfg(test)]`-gated property-test modules
+//! under `expr_property_tests` and `expr_builtin_eval`.
+//!
+//! ## YAML parsing layer (formerly `vb_yaml`)
+//!
+//! The `yaml_ast`, `yaml_events`, `yaml_profile`, `yaml_source_map`, and
+//! `yaml_error` modules implement the YAML parsing and validation layer that
+//! feeds the compiler.
 
 pub mod ast;
 

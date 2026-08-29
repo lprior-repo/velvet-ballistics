@@ -461,7 +461,23 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests::run_id_zero_constant
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation"
+      run_miri() {
+        package="$1"; shift
+        timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p "$package" "$@"
+      }
+      # vb_core: hot-path core execution lane
+      run_miri vb_core --lib --all-features ids::tests::run_id_zero_constant
+      # vb_compile: expression lane (folded from vb_expr) — lexer and parser Miri tests
+      run_miri vb_compile --lib --all-features expr_lexer::miri_tests
+      run_miri vb_compile --lib --all-features expr_parser::miri_tests
+      # vb_storage: storage lane — codec Miri tests for truncated/malformed data
+      run_miri vb_storage --lib --all-features codec_miri_tests
+      # vb_runtime: runtime engine lane — idempotency tracker Miri test
+      run_miri vb_runtime --lib --all-features
+      run_miri vb_runtime --test vb_ko29_7_idempotency_miri
+      # vb_ipc: IPC lane — frame/codec/ingress Miri tests
+      run_miri vb_ipc --lib --all-features miri_tests
     toolchains:
       - rust
     inputs:

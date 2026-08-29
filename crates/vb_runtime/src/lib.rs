@@ -46,6 +46,12 @@
 //!
 //! Owns shard scheduling, frame pools, action dispatch, timer wheels,
 //! bounded queues, and deterministic step execution.
+//!
+//! ## Verification coverage
+//!
+//! - **Miri**: Idempotency tracker data-structure paths exercised in
+//!   `vb_ko29_7_idempotency_miri.rs` — `IdempotencyTracker` tracks retries,
+//!   detects collisions, and evicts entries without UB.
 
 pub mod action;
 pub mod action_queue;

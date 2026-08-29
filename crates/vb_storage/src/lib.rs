@@ -12,6 +12,15 @@
 //! non-idempotent action blocking during recovery, replay divergence detection,
 //! snapshot-plus-tail journal recovery, and full journal recovery when no
 //! snapshot is available.
+//!
+//! ## Verification coverage
+//!
+//! - **Miri**: Codec decode functions exercise truncated/malformed data paths in
+//!   `codec_miri_tests.rs` — `decode_record_header`, `decode_record`, and
+//!   `verify_digest_match` are all panic-free on corrupted input.
+//! - **Kani**: Codec wire format, record magic, record schema, record kind,
+//!   record payload length, record CRC, digest checks, hydration proofs,
+//!   admission checks, postcard envelope wire, and typed partitioned IDs.
 
 // ============================================================================
 // Submodules

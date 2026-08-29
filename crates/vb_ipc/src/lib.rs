@@ -10,6 +10,12 @@
 //!
 //! This crate deliberately exposes memory/IPC-shaped primitives only. HTTP is
 //! not part of the hot control plane.
+//!
+//! ## Verification coverage
+//!
+//! - **Kani**: IPC header encoding/decoding, flag validation, decode order.
+//! - **Miri**: Frame header decode on truncated/bad-magic input, payload codec
+//!   panic-free on malformed Postcard data, and ingress bounded-read paths.
 
 pub mod action_output;
 pub mod bounded;
@@ -36,6 +42,9 @@ pub mod kani_ipc_decode_order;
 
 #[cfg(kani)]
 pub mod kani_flag_validation;
+
+#[cfg(miri)]
+pub mod miri_tests;
 
 pub use crate::action_output::IpcActionOutputPayload;
 pub use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
