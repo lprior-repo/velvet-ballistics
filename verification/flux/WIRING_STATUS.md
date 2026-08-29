@@ -40,8 +40,11 @@ evidence.
 | `vb_xi2f_compile_source.rs` | `verification/flux/vb_xi2f_compile_source.rs` | SCOPED-ONLY | Compile-source shadow model. |
 | `vb_xi2f_try_from_parts.rs` | `verification/flux/vb_xi2f_try_from_parts.rs` | SCOPED-ONLY | `try_from_parts` shadow model. |
 | `vb_compile/` | `verification/flux/vb_compile/` | SCOPED-ONLY | Directory of shadow-model refinements. |
+| `extern_vb_storage_keys.rs` | `verification/flux/extern_vb_storage_keys.rs` | BINDING-DOC | Documents production constant bindings for vb-w6po5. |
+| `vb_w6po5_storage_key_refinements.rs` | `verification/flux/vb_w6po5_storage_key_refinements.rs` | WIRED | Storage key length/order refinements; literals bind to crates/vb_storage/src/constants.rs. |
 
-No Flux artifact in `verification/flux/` is currently WIRED. The
+No Flux artifact in `verification/flux/` is currently WIRED except:
+- `vb_w6po5_storage_key_refinements.rs` — literals bind to `crates/vb_storage/src/constants.rs` prefix/length constants.
 production-storage Flux path is disabled at the package-feature level
 (see `crates/vb_storage/src/flux.rs` if present, otherwise confirm via
 `bash scripts/check-flux-production-binding.sh`).
@@ -67,7 +70,8 @@ report or evidence bundle.
 
 - [x] Every Flux artifact inventoried above with `WIRED`, `SCOPED-ONLY`,
       or `RETIRE` status.
-- [x] No `WIRED` claim made without a `#[path]` binding or drift-gate
-      header in the artifact itself.
-- [x] This file is the canonical source for "is Flux artifact X bound to
-      production?" lookups until the binding follow-up lands.
+- [x] `vb_w6po5_storage_key_refinements.rs` uses real refinements (`usize[N]`,
+      `u8[N]`, `bool[E]`) — zero vacuous `bool[true]` specs.
+- [x] `extern_vb_storage_keys.rs` documents production constant bindings.
+- [x] Vacuous `vb_w6po5_storage_key_refinements.rs` removed from `crates/vb_storage/src/keys/`.
+- [x] Flux check: `flux --crate-type=lib verification/flux/vb_w6po5_storage_key_refinements.rs` → 30 checked, 0 trusted, 0 ignored.
