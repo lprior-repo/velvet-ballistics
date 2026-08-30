@@ -560,10 +560,17 @@ tasks:
         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"
         rm -rf "${corpus}" "${artifacts}"
         mkdir -p "${corpus}" "${artifacts}"
+        # Load seed corpora from fuzz/corpus/${fuzz_target}
         if [ -d "fuzz/corpus/${fuzz_target}" ]; then
           cp -R "fuzz/corpus/${fuzz_target}/." "${corpus}/"
         fi
-        flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+        # Load fuzzing dictionary from fuzz/fuzz_targets/${fuzz_target}.dict
+        dict_flag=""
+        if [ -f "fuzz/fuzz_targets/${fuzz_target}.dict" ]; then
+          dict_flag="-dict fuzz/fuzz_targets/${fuzz_target}.dict"
+          echo "DICTIONARY: fuzz/fuzz_targets/${fuzz_target}.dict"
+        fi
+        flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 ${dict_flag} "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
       done
     toolchains:
       - rust
@@ -576,6 +583,7 @@ tasks:
       - 'fuzz/fuzz_targets.rs'
       - 'fuzz/fuzz_targets/**/*'
       - 'fuzz/src/**/*'
+      - 'fuzz/corpus/**/*'
       - 'crates/vb_core/**/*'
       - 'crates/vb_compile/**/*'
       - 'crates/vb_ipc/**/*'
