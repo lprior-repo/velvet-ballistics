@@ -24,7 +24,7 @@ const _BLACKHAT_SECURITY_TESTS_LOADED: () = ();
 )]
 mod tests {
     use crate::{
-        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        BlobDigest, BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
         WorkflowSourceRecord,
         codec::{
             decode_record, decode_record_header, encode_record, encode_record_header,
@@ -852,7 +852,7 @@ mod tests {
         assert_eq!(loaded_source.source, source);
 
         let loaded_blob = journal
-            .blob(blob_digest)
+            .blob(BlobDigest::from_bytes(blob_digest))
             .expect("read should succeed")
             .expect("record should exist");
         assert_eq!(loaded_blob.bytes, blob_bytes);

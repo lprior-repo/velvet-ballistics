@@ -84,8 +84,8 @@ pub(crate) fn verified_action_envelope_digest(
     outcome: DurableActionOutcome,
     value: &[u8],
     encoded_len: u32,
-    expected: [u8; 32],
-) -> RecoveryResult<[u8; 32]> {
+    expected: crate::types::digests::ValueDigest,
+) -> RecoveryResult<crate::types::digests::ValueDigest> {
     verify_action_ticket_event(run, ticket)?;
     match outcome {
         DurableActionOutcome::Ready => {}
@@ -102,7 +102,7 @@ pub(crate) fn verified_action_envelope_digest(
     }
 
     let found = *blake3::hash(value).as_bytes();
-    if found == expected {
+    if found == *expected.as_bytes() {
         Ok(expected)
     } else {
         Err(RecoveryError::ReplayDivergence {

@@ -193,7 +193,7 @@ fn completed_envelope(parts: CompletedEnvelopeParts) -> JournalEvent {
         value: tail.value,
         encoded_len: tail.encoded_len,
         taint: tail.taint,
-        value_digest: tail.value_digest,
+        value_digest: crate::types::digests::ValueDigest::from_bytes(tail.value_digest),
         action_abi_digest: tail.action_abi_digest,
     }
 }

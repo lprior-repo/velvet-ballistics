@@ -9,7 +9,7 @@ use crate::{
     journal::admission::{verify_compiled_ir_record_digest, verify_content_digest},
     keys::{compiled_ir_key, decode_storage_key, workflow_source_key},
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
-    types::StorageKey,
+    types::{StorageKey, digests::WorkflowSourceDigest, digests::CompiledIrDigest},
 };
 
 const MAX_COMPILED_IR_SOURCE_DIGEST_SCAN_RECORDS: usize = 65_536;
@@ -20,7 +20,7 @@ impl FjallJournal {
     /// The source bytes are verified against the claimed digest before storage.
     pub fn put_workflow_source(&self, record: &WorkflowSourceRecord) -> Result<(), JournalError> {
         verify_content_digest(&record.source, &record.digest.as_bytes())?;
-        let key = workflow_source_key(record.digest.as_bytes())?;
+        let key = workflow_source_key(WorkflowSourceDigest::from_bytes(record.digest.as_bytes()))?;
         let value = encode_record(
             MAGIC_WORKFLOW_SOURCE,
             RecordKind::WorkflowSource,
@@ -37,7 +37,7 @@ impl FjallJournal {
         &self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<Option<WorkflowSourceRecord>, JournalError> {
-        let key = workflow_source_key(digest.as_bytes())?;
+        let key = workflow_source_key(WorkflowSourceDigest::from_bytes(digest.as_bytes()))?;
         self.decode_optional_with(
             &self.workflow_source,
             key.as_slice(),
@@ -54,7 +54,7 @@ impl FjallJournal {
     /// the digest key (master §18 invariant 8: digest↔content binding).
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
         verify_compiled_ir_record_digest(record)?;
-        let key = compiled_ir_key(record.digest.as_bytes())?;
+        let key = compiled_ir_key(CompiledIrDigest::from_bytes(record.digest.as_bytes()))?;
         let value = encode_record(
             MAGIC_COMPILED_ARTIFACT,
             RecordKind::CompiledIr,
@@ -66,7 +66,7 @@ impl FjallJournal {
         Ok(())
     }
 
-    /// Loads compiled IR bytes by digest.
+   /// Loads compiled IR bytes by digest.
     pub fn compiled_ir(
         &self,
         digest: vb_core::WorkflowDigest,
@@ -77,7 +77,7 @@ impl FjallJournal {
         if self.consume_compiled_ir_readback_failure_for_test() {
             return Ok(None);
         }
-        let key = compiled_ir_key(digest.as_bytes())?;
+        let key = compiled_ir_key(CompiledIrDigest::from_bytes(digest.as_bytes()))?;
         self.decode_optional_with(
             &self.compiled_ir,
             key.as_slice(),
@@ -151,7 +151,9 @@ fn validate_compiled_ir_read(
 
 fn compiled_ir_digest_from_key(key: &[u8]) -> Result<vb_core::WorkflowDigest, JournalError> {
     match decode_storage_key(key) {
-        Ok(StorageKey::CompiledIr { digest }) => Ok(vb_core::WorkflowDigest::from_bytes(digest)),
+        Ok(StorageKey::CompiledIr { digest }) => {
+            Ok(vb_core::WorkflowDigest::from_bytes(digest.to_bytes()))
+        }
         Ok(_) | Err(_) => Err(JournalError::MalformedKeyspaceRow {
             prefix: PREFIX_COMPILED_IR,
             expected_len: DIGEST_KEY_BYTES,

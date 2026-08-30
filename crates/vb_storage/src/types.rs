@@ -1,9 +1,11 @@
 #![forbid(unsafe_code)]
-//! Core storage types: configuration, profiles, and sequencing.
+//! Core storage types: configuration, profiles, sequencing, digest newtypes, and status-byte wrappers.
 
 use std::num::NonZeroUsize;
 
 use vb_core::{ActionId, RunId, WorkflowId};
+
+pub mod digests;
 
 /// Storage write limits shared by direct and queued journal writers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,7 +242,7 @@ pub struct RecordHeader {
     /// Payload sequence number.
     pub sequence: u64,
     /// BLAKE3 digest of the payload bytes.
-    pub payload_digest: [u8; crate::constants::DIGEST_BYTES],
+    pub payload_digest: digests::PayloadDigest,
     /// CRC32C of the header prefix before the checksum field.
     pub header_checksum: u32,
 }
@@ -340,11 +342,11 @@ impl IndexStatusState {
 pub enum StorageKey {
     /// Workflow source bytes by digest.
     WorkflowSource {
-        digest: [u8; crate::constants::DIGEST_BYTES],
+        digest: digests::WorkflowSourceDigest,
     },
     /// Compiled IR bytes by digest.
     CompiledIr {
-        digest: [u8; crate::constants::DIGEST_BYTES],
+        digest: digests::CompiledIrDigest,
     },
     /// Run metadata by run id.
     RunHeader { run: RunId },
@@ -354,7 +356,7 @@ pub enum StorageKey {
     RunSnapshot { run: RunId, seq: EventSeq },
     /// Blob bytes by digest.
     Blob {
-        digest: [u8; crate::constants::DIGEST_BYTES],
+        digest: digests::BlobDigest,
     },
     /// Status index marker.
     IndexStatus {

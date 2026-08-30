@@ -1,4 +1,3 @@
-use crate::constants;
 use crate::error::JournalError;
 use crate::events::JournalEvent;
 use crate::journal::FjallJournal;
@@ -91,7 +90,7 @@ pub fn put_blob(journal: &FjallJournal, record: &BlobRecord) -> Result<(), Journ
 /// Reads a stored blob by digest.
 pub fn read_blob(
     journal: &FjallJournal,
-    digest: [u8; constants::DIGEST_BYTES],
+    digest: crate::BlobDigest,
 ) -> Result<Option<BlobRecord>, JournalError> {
     journal.blob(digest)
 }

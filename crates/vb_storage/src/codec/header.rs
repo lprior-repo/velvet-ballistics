@@ -8,6 +8,7 @@ use crate::{
     },
     error::JournalError,
     records::RecordKind,
+    types::digests::PayloadDigest,
     types::RecordHeader,
 };
 
@@ -87,7 +88,7 @@ pub(crate) fn decode_record_header_unchecked_len(
         header_len: read_u32(header, 8)?,
         payload_len: read_u32(header, 12)?,
         sequence: read_u64(header, 16)?,
-        payload_digest: digest_from_header(header)?,
+        payload_digest: PayloadDigest::from_bytes(digest_from_header(header)?),
         header_checksum: read_u32(header, CRC_OFFSET)?,
     })
 }

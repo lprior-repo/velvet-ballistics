@@ -1458,7 +1458,7 @@ struct ActionCompletionEvidence {
     output: SlotIdx,
     encoded_len: u32,
     taint: Taint,
-    value_digest: [u8; 32],
+    value_digest: crate::types::digests::ValueDigest,
     action_abi_digest: WorkflowDigest,
 }
 
@@ -1549,7 +1549,7 @@ impl ActionReplayTracker {
         output: SlotIdx,
         encoded_len: u32,
         taint: Taint,
-        value_digest: [u8; 32],
+        value_digest: crate::types::digests::ValueDigest,
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
@@ -1595,7 +1595,7 @@ impl ActionReplayTracker {
         output: SlotIdx,
         encoded_len: u32,
         taint: Taint,
-        value_digest: [u8; 32],
+        value_digest: crate::types::digests::ValueDigest,
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<()> {
         self.mark_completed_envelope_effect(

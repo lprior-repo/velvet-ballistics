@@ -12,10 +12,10 @@
 mod type_tests {
     use crate::keys::index_status_key;
     use crate::{
-        DurabilityProfile, EventSeq, FjallConfig, IndexStatusState, JournalBatchSize, JournalError,
-        JournalQueueCapacity, JournalWriterFlushReport, KeyspaceProfile, RecordEnvelope,
-        RecordHeader, StorageKey, StorageLimits,
-        constants::{DIGEST_BYTES, RECORD_HEADER_LEN},
+        BlobDigest, CompiledIrDigest, DurabilityProfile, EventSeq, FjallConfig, IndexStatusState,
+        JournalBatchSize, JournalError, JournalQueueCapacity, JournalWriterFlushReport,
+        KeyspaceProfile, PayloadDigest, RecordEnvelope, RecordHeader, StorageKey, StorageLimits,
+        WorkflowSourceDigest, constants::{DIGEST_BYTES, RECORD_HEADER_LEN},
     };
     use std::num::NonZeroUsize;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowId};
@@ -221,7 +221,7 @@ mod type_tests {
             header_len: RECORD_HEADER_LEN,
             payload_len: 100,
             sequence: 0,
-            payload_digest: [0u8; DIGEST_BYTES],
+            payload_digest: PayloadDigest::from_bytes([0u8; DIGEST_BYTES]),
             header_checksum: 0,
         };
         assert_eq!(header.header_len, RECORD_HEADER_LEN);
@@ -230,8 +230,12 @@ mod type_tests {
     #[test]
     fn storage_key_variants_can_be_constructed() {
         let digest = [0xAA_u8; 32];
-        let _ws = StorageKey::WorkflowSource { digest };
-        let _ci = StorageKey::CompiledIr { digest };
+        let _ws = StorageKey::WorkflowSource {
+            digest: WorkflowSourceDigest::from_bytes(digest),
+        };
+        let _ci = StorageKey::CompiledIr {
+            digest: CompiledIrDigest::from_bytes(digest),
+        };
         let _rh = StorageKey::RunHeader { run: RunId::new(1) };
         let _re = StorageKey::RunEvent {
             run: RunId::new(1),
@@ -241,7 +245,9 @@ mod type_tests {
             run: RunId::new(2),
             seq: EventSeq::new(3),
         };
-        let _bl = StorageKey::Blob { digest };
+        let _bl = StorageKey::Blob {
+            digest: BlobDigest::from_bytes(digest),
+        };
         let _is = StorageKey::IndexStatus {
             state: IndexStatusState::Active,
             timestamp: 100,

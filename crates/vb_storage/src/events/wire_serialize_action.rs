@@ -27,7 +27,7 @@ struct CompletedEnvelopeTail<'event> {
     value: &'event [u8],
     encoded_len: &'event u32,
     taint: &'event Taint,
-    value_digest: &'event [u8; 32],
+    value_digest: &'event crate::types::digests::ValueDigest,
     action_abi_digest: &'event WorkflowDigest,
 }
 

@@ -10,7 +10,7 @@
     clippy::unwrap_used
 )]
 mod blob_tests {
-    use crate::{BlobRecord, DIGEST_BYTES, FjallJournal, JournalError, keys::blob_key};
+    use crate::{BlobDigest, BlobRecord, DIGEST_BYTES, FjallJournal, JournalError, keys::blob_key};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -60,7 +60,7 @@ mod blob_tests {
         let (_temp, journal) = temp_journal();
         let missing_digest: [u8; DIGEST_BYTES] = [0xAB; 32];
         let result = journal
-            .blob(missing_digest)
+            .blob(BlobDigest::from_bytes(missing_digest))
             .expect("blob lookup should succeed");
         assert!(result.is_none(), "should return None for missing digest");
     }
@@ -149,7 +149,7 @@ mod blob_tests {
             .insert(fake_key.to_vec(), invalid_value)
             .expect("raw insert should succeed");
 
-        let result = journal.blob(digest);
+        let result = journal.blob(BlobDigest::from_bytes(digest));
         assert!(
             result.is_err() || result.map_or(false, |opt| opt.is_none()),
             "reading corrupt blob should error or return None"

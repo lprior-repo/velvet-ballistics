@@ -22,7 +22,7 @@ mod durability_gate_tests {
     };
     use crate::records::RecordKind;
     use crate::{
-        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent,
+        BlobDigest, BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent,
         WorkflowSourceRecord,
     };
     use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
@@ -980,7 +980,7 @@ mod durability_gate_tests {
         );
 
         let loaded_blob = journal
-            .blob(blob_digest)
+            .blob(BlobDigest::from_bytes(blob_digest))
             .map_err(|e| format!("read blob: {e}"))?;
         assert!(
             loaded_blob.is_some(),
@@ -1534,7 +1534,7 @@ mod durability_gate_tests {
         );
 
         let loaded_blob = journal
-            .blob(blob_digest)
+            .blob(BlobDigest::from_bytes(blob_digest))
             .map_err(|e| format!("read blob: {e}"))?;
         assert!(
             loaded_blob.is_some(),

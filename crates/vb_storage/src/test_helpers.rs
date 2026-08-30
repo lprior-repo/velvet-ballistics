@@ -59,7 +59,7 @@ pub fn read_blob(
     journal: &FjallJournal,
     digest: [u8; DIGEST_BYTES],
 ) -> Result<Option<BlobRecord>, JournalError> {
-    journal.blob(digest)
+    journal.blob(BlobDigest::from_bytes(digest))
 }
 
 pub fn read_run_events(

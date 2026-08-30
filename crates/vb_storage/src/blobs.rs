@@ -9,6 +9,7 @@ use crate::{
     error::JournalError,
     keys::blob_key,
     records::BlobRecord,
+    types::digests::BlobDigest,
 };
 
 use crate::journal::FjallJournal;
@@ -19,7 +20,7 @@ impl FjallJournal {
     /// The blob bytes are verified against the claimed digest before storage.
     pub fn put_blob(&self, record: &BlobRecord) -> Result<(), JournalError> {
         crate::journal::verify_content_digest(&record.bytes, &record.digest)?;
-        let key = blob_key(record.digest)?;
+        let key = blob_key(BlobDigest::from_bytes(record.digest))?;
         let value = encode_record(
             MAGIC_BLOB,
             crate::records::RecordKind::Blob,
@@ -32,17 +33,14 @@ impl FjallJournal {
     }
 
     /// Loads a bounded blob by digest.
-    pub fn blob(
-        &self,
-        digest: [u8; crate::constants::DIGEST_BYTES],
-    ) -> Result<Option<BlobRecord>, JournalError> {
+    pub fn blob(&self, digest: BlobDigest) -> Result<Option<BlobRecord>, JournalError> {
         let key = blob_key(digest)?;
         self.decode_optional_with(
             &self.blob,
             key.as_slice(),
             MAGIC_BLOB,
             MAX_BLOB_BYTES,
-            |_envelope, record| validate_blob_read(digest, record),
+            |_, record| validate_blob_read(digest, record),
         )
     }
 
@@ -50,15 +48,12 @@ impl FjallJournal {
     ///
     /// Returns `Ok(())` if the blob was successfully trimmed.
     /// Returns `Err(ArtifactNotFound)` if the blob does not exist.
-    pub fn trim_blob(
-        &self,
-        digest: [u8; crate::constants::DIGEST_BYTES],
-    ) -> Result<(), JournalError> {
+    pub fn trim_blob(&self, digest: BlobDigest) -> Result<(), JournalError> {
         let key = blob_key(digest)?;
         let exists = self.blob.contains_key(key.as_slice())?;
         if !exists {
             return Err(JournalError::ArtifactNotFound {
-                digest: vb_core::WorkflowDigest::from_bytes(digest),
+                digest: vb_core::WorkflowDigest::from_bytes(digest.to_bytes()),
             });
         }
         self.blob.remove(key.as_slice())?;
@@ -67,11 +62,11 @@ impl FjallJournal {
 }
 
 fn validate_blob_read(
-    requested_digest: [u8; crate::constants::DIGEST_BYTES],
+    requested_digest: BlobDigest,
     record: &BlobRecord,
 ) -> Result<(), JournalError> {
-    if record.digest != requested_digest {
+    if record.digest != requested_digest.to_bytes() {
         return Err(JournalError::PayloadDigestMismatch);
     }
-    crate::journal::verify_content_digest(record.bytes.as_slice(), &requested_digest)
+    crate::journal::verify_content_digest(record.bytes.as_slice(), &requested_digest.to_bytes())
 }

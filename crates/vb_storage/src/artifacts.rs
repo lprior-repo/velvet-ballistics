@@ -7,6 +7,7 @@ use crate::{
     constants::{DIGEST_BYTES, PREFIX_COMPILED_IR},
     error::JournalError,
     keys::compiled_ir_key,
+    types::digests::CompiledIrDigest,
 };
 
 use crate::journal::FjallJournal;
@@ -30,8 +31,11 @@ impl FjallJournal {
     }
 
     /// Removes a compiled IR artifact by digest.
-    pub fn remove_artifact(&self, digest: vb_core::WorkflowDigest) -> Result<(), JournalError> {
-        let key = compiled_ir_key(digest.as_bytes())?;
+    pub fn remove_artifact(
+        &self,
+        digest: vb_core::WorkflowDigest,
+    ) -> Result<(), JournalError> {
+        let key = compiled_ir_key(CompiledIrDigest::from_bytes(digest.as_bytes()))?;
         let exists = self.compiled_ir.contains_key(key.as_slice())?;
         if !exists {
             return Err(JournalError::ArtifactNotFound { digest });
@@ -41,8 +45,11 @@ impl FjallJournal {
     }
 
     /// Returns whether a compiled IR artifact is stored for the given digest.
-    pub fn artifact_exists(&self, digest: vb_core::WorkflowDigest) -> Result<bool, JournalError> {
-        let key = compiled_ir_key(digest.as_bytes())?;
+    pub fn artifact_exists(
+        &self,
+        digest: vb_core::WorkflowDigest,
+    ) -> Result<bool, JournalError> {
+        let key = compiled_ir_key(CompiledIrDigest::from_bytes(digest.as_bytes()))?;
         Ok(self.compiled_ir.contains_key(key.as_slice())?)
     }
 }

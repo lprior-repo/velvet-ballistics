@@ -19,7 +19,7 @@ mod tests {
     use crate::queue::BatchBuilder;
     use crate::recovery::{ActionReplayTracker, RunSnapshot};
     use crate::{
-        BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES, DurableActionOutcome,
+        BlobDigest, BlobRecord, CURRENT_SCHEMA_VERSION, CompiledIrRecord, DIGEST_BYTES, DurableActionOutcome,
         EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriterQueue,
         KeyspaceProfile, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME,
         MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
@@ -588,7 +588,7 @@ mod tests {
             .expect("action must succeed");
         batch.commit().expect("batch.commit must succeed");
 
-        let blob = journal.blob(digest).expect("blob roundtrip");
+        let blob = journal.blob(BlobDigest::from_bytes(digest)).expect("blob roundtrip");
         assert!(blob.is_some());
         assert_eq!(blob.unwrap().bytes, b"blob data".to_vec());
     }
@@ -800,7 +800,7 @@ mod tests {
         assert_eq!(found_snapshot, Some(snapshot));
 
         let found_blob = journal
-            .blob(blob_digest)
+            .blob(BlobDigest::from_bytes(blob_digest))
             .expect("blob lookup should succeed");
         assert_eq!(found_blob, Some(blob));
     }
@@ -1944,7 +1944,7 @@ mod tests {
             .put_blob(&record)
             .expect("journal.put_blob must succeed");
 
-        let retrieved = journal.blob(digest).expect("blob lookup should succeed");
+        let retrieved = journal.blob(BlobDigest::from_bytes(digest)).expect("blob lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
 
@@ -4044,7 +4044,7 @@ mod tests {
         journal
             .put_blob(&record)
             .expect("journal.put_blob must succeed");
-        let retrieved = journal.blob(digest).expect("lookup should succeed");
+        let retrieved = journal.blob(BlobDigest::from_bytes(digest)).expect("lookup should succeed");
         assert_eq!(retrieved, Some(record));
     }
 
@@ -4614,7 +4614,7 @@ mod tests {
         journal
             .put_blob(&record)
             .expect("journal.put_blob must succeed");
-        assert_eq!(journal.blob(digest).expect("ok"), Some(record));
+        assert_eq!(journal.blob(BlobDigest::from_bytes(digest)).expect("ok"), Some(record));
     }
 
     #[test]
@@ -6134,7 +6134,7 @@ mod tests {
             bytes: blob_bytes,
         };
         journal.put_blob(&record).expect("put_blob must succeed");
-        let found = journal.blob(digest).expect("blob must succeed");
+        let found = journal.blob(BlobDigest::from_bytes(digest)).expect("blob must succeed");
         assert_eq!(
             found,
             Some(record),
@@ -6649,7 +6649,7 @@ mod tests {
             .compiled_ir(ir_record.digest)
             .expect("compiled_ir must succeed");
         assert_eq!(ir.unwrap().ir, b"strict_ir".to_vec());
-        let bl = reopened.blob(blob_digest).expect("blob must succeed");
+        let bl = reopened.blob(BlobDigest::from_bytes(blob_digest)).expect("blob must succeed");
         assert_eq!(bl.unwrap().bytes, b"strict_blob".to_vec());
     }
 
@@ -6714,7 +6714,7 @@ mod tests {
         assert!(journal.workflow_source(digest_1).expect("ws").is_some());
         assert!(journal.compiled_ir(digest_2).expect("ir").is_some());
         assert!(journal.run_header(run).expect("rh").is_some());
-        assert!(journal.blob(blob_digest).expect("bl").is_some());
+        assert!(journal.blob(BlobDigest::from_bytes(blob_digest)).expect("bl").is_some());
         assert!(
             journal
                 .snapshot(run, EventSeq::new(0))
@@ -6876,7 +6876,7 @@ mod tests {
         let mut batch = journal.batch();
         batch.put_blob(&record).expect("put must succeed");
         batch.commit().expect("commit must succeed");
-        let found = journal.blob(digest).expect("lookup must succeed");
+        let found = journal.blob(BlobDigest::from_bytes(digest)).expect("lookup must succeed");
         let found_record = found.expect("record must exist");
         assert_eq!(
             found_record.bytes,
@@ -7033,7 +7033,7 @@ mod tests {
         assert!(source.is_some(), "workflow source must survive reopen");
         let header = journal2.run_header(run).expect("get header");
         assert!(header.is_some(), "run header must survive reopen");
-        let blob = journal2.blob(blob_digest).expect("get blob");
+        let blob = journal2.blob(BlobDigest::from_bytes(blob_digest)).expect("get blob");
         assert!(blob.is_some(), "blob must survive reopen");
     }
 
@@ -7188,7 +7188,7 @@ mod tests {
             bytes: bytes.clone(),
         };
         journal.put_blob(&record).expect("put");
-        let loaded = journal.blob(digest).expect("get").expect("must exist");
+        let loaded = journal.blob(BlobDigest::from_bytes(digest)).expect("get").expect("must exist");
         assert_eq!(loaded.bytes, bytes);
     }
 
@@ -7355,7 +7355,7 @@ mod tests {
         assert!(journal.workflow_source(d1).expect("g1").is_some());
         assert!(journal.compiled_ir(d2).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
-        assert!(journal.blob(blob_digest).expect("g4").is_some());
+        assert!(journal.blob(BlobDigest::from_bytes(blob_digest)).expect("g4").is_some());
     }
 
     #[test]

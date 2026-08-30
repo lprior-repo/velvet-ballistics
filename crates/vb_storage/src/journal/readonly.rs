@@ -74,7 +74,7 @@ impl ReadOnlyJournal {
     /// Reads a stored blob by digest.
     pub fn blob(
         &self,
-        digest: [u8; crate::constants::DIGEST_BYTES],
+        digest: crate::types::digests::BlobDigest,
     ) -> Result<Option<crate::records::BlobRecord>, JournalError> {
         self.0.blob(digest)
     }

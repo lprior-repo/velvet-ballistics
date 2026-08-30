@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 use super::*;
+use crate::BlobDigest;
 
 #[test]
 fn commit_with_single_event_is_readable() {
@@ -167,7 +168,7 @@ fn batch_put_blob_with_valid_digest_commits() {
     assert_eq!(batch.len(), 1);
     batch.commit().expect("commit should succeed");
 
-    let loaded = journal.blob(digest).expect("get should succeed");
+    let loaded = journal.blob(BlobDigest::from_bytes(digest)).expect("get should succeed");
     let Some(found) = loaded else {
         panic!("blob should be found after batch commit");
     };

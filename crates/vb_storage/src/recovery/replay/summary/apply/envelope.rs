@@ -19,7 +19,7 @@ pub(crate) struct ActionCompletionEnvelopeApply<'a> {
     pub(crate) value: &'a [u8],
     pub(crate) encoded_len: u32,
     pub(crate) taint: Taint,
-    pub(crate) value_digest: [u8; 32],
+    pub(crate) value_digest: crate::types::digests::ValueDigest,
     pub(crate) action_abi_digest: WorkflowDigest,
 }
 
@@ -91,8 +91,8 @@ fn verify_action_envelope_digest_for_apply(
     outcome: crate::DurableActionOutcome,
     value: &[u8],
     encoded_len: u32,
-    value_digest: [u8; 32],
-) -> RecoveryResult<[u8; 32]> {
+    value_digest: crate::types::digests::ValueDigest,
+) -> RecoveryResult<crate::types::digests::ValueDigest> {
     crate::recovery::hydrate_support::verified_action_envelope_digest(
         run,
         ticket,

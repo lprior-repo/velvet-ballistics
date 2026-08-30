@@ -38,7 +38,7 @@ impl<'j> JournalWriteBatch<'j> {
             self.aborted = true;
             return Err(e);
         }
-        let key = match workflow_source_key(record.digest.as_bytes()) {
+        let key = match workflow_source_key(crate::types::digests::WorkflowSourceDigest::from_bytes(record.digest.as_bytes())) {
             Ok(k) => k,
             Err(e) => {
                 self.aborted = true;
@@ -75,7 +75,7 @@ impl<'j> JournalWriteBatch<'j> {
             self.aborted = true;
             return Err(e);
         }
-        let key = match compiled_ir_key(record.digest.as_bytes()) {
+        let key = match compiled_ir_key(crate::types::digests::CompiledIrDigest::from_bytes(record.digest.as_bytes())) {
             Ok(k) => k,
             Err(e) => {
                 self.aborted = true;
@@ -185,7 +185,7 @@ impl<'j> JournalWriteBatch<'j> {
             self.aborted = true;
             return Err(e);
         }
-        let key = match blob_key(record.digest) {
+        let key = match blob_key(crate::types::digests::BlobDigest::from_bytes(record.digest)) {
             Ok(k) => k,
             Err(e) => {
                 self.aborted = true;

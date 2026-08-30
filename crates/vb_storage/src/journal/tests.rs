@@ -9,7 +9,7 @@
 )]
 use super::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
+    BlobDigest, BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
     RunHeaderRecord, WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -198,7 +198,7 @@ fn blob_roundtrip() {
         bytes: payload.clone(),
     };
     journal.put_blob(&record).expect("put should succeed");
-    let loaded = journal.blob(digest).expect("get should succeed");
+    let loaded = journal.blob(BlobDigest::from_bytes(digest)).expect("get should succeed");
     let Some(found) = loaded else {
         panic!("blob should be found");
     };
@@ -381,7 +381,7 @@ fn blob_read_rejects_payload_content_not_matching_digest() {
         .insert(key.to_vec(), value)
         .expect("raw corrupt blob insert should succeed");
 
-    let result = journal.blob(digest);
+    let result = journal.blob(BlobDigest::from_bytes(digest));
 
     assert!(
         matches!(result, Err(JournalError::PayloadDigestMismatch)),
@@ -1536,7 +1536,7 @@ fn batch_commits_across_multiple_keyspaces() {
     assert!(journal.run_header(run).expect("get header").is_some());
     let replayed = journal.events_for_run(run).expect("get events");
     assert_eq!(replayed.len(), 1);
-    assert!(journal.blob(blob_digest).expect("get blob").is_some());
+    assert!(journal.blob(BlobDigest::from_bytes(blob_digest)).expect("get blob").is_some());
 }
 
 #[test]
@@ -2660,7 +2660,7 @@ fn blob_large_payload_roundtrips() {
     };
     journal.put_blob(&record).expect("put should succeed");
     let loaded = journal
-        .blob(digest)
+        .blob(BlobDigest::from_bytes(digest))
         .expect("get should succeed")
         .expect("present");
     assert_eq!(loaded.bytes, payload);

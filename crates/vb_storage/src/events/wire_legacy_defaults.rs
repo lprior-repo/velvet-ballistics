@@ -79,7 +79,7 @@ impl LegacyJournalEventMissingDefaults {
                 value,
                 encoded_len,
                 taint,
-                value_digest,
+                value_digest: crate::types::digests::ValueDigest::from_bytes(value_digest),
                 action_abi_digest: zero_workflow_digest(),
             }),
             Self::SlotWrittenEvent {

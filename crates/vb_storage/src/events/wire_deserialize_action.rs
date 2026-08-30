@@ -14,7 +14,7 @@ type ActionCompletedEnvelopeFields = (
     Vec<u8>,
     u32,
     Taint,
-    [u8; 32],
+    crate::types::digests::ValueDigest,
     WorkflowDigest,
 );
 

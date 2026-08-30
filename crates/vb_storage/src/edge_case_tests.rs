@@ -11,7 +11,7 @@
 #[cfg(test)]
 mod edge_case_tests {
     use crate::{
-        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        BlobDigest, BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
         JournalEvent, JournalWriterQueue, MAGIC_BLOB, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, RecordKind, RunHeaderRecord,
         RunSnapshot, StorageLimits, WorkflowSourceRecord, decode_record, encode_record,
@@ -348,7 +348,7 @@ mod edge_case_tests {
         };
         journal.put_blob(&record).expect("large blob put");
         let loaded = journal
-            .blob(digest)
+            .blob(BlobDigest::from_bytes(digest))
             .expect("get should succeed")
             .expect("present");
         assert_eq!(loaded.bytes, large);

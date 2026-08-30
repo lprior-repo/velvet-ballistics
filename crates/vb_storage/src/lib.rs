@@ -214,6 +214,7 @@ pub use slot_extra::{
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
 };
 pub use types::*;
+pub use types::digests::{BlobDigest, CompiledIrDigest, PayloadDigest, StatusByte, ValueDigest, WorkflowSourceDigest};
 
 // Journal
 pub use journal::incident::{

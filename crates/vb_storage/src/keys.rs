@@ -17,7 +17,7 @@ use crate::{
         PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
     },
     error::KeyDecodeError,
-    types::{EventSeq, IndexStatusState, StorageKey},
+    types::{digests, EventSeq, IndexStatusState, StorageKey},
 };
 
 /// Policy that decides how a keyspace iteration handles rows whose key
@@ -60,16 +60,16 @@ impl KeyspaceScanPolicy {
 
 /// Encodes `[0x01][workflow_digest_32]`.
 pub fn workflow_source_key(
-    digest: [u8; crate::constants::DIGEST_BYTES],
+    digest: digests::WorkflowSourceDigest,
 ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
-    digest_key(PREFIX_WORKFLOW_SOURCE, digest)
+    digest_key(PREFIX_WORKFLOW_SOURCE, digest.to_bytes())
 }
 
 /// Encodes `[0x02][compiled_digest_32]`.
 pub fn compiled_ir_key(
-    digest: [u8; crate::constants::DIGEST_BYTES],
+    digest: digests::CompiledIrDigest,
 ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
-    digest_key(PREFIX_COMPILED_IR, digest)
+    digest_key(PREFIX_COMPILED_IR, digest.to_bytes())
 }
 
 /// Encodes `[0x10][run_id_u64_be]`.
@@ -92,9 +92,9 @@ pub fn run_snapshot_key(
 
 /// Encodes `[0x20][blob_digest_32]`.
 pub fn blob_key(
-    digest: [u8; crate::constants::DIGEST_BYTES],
+    digest: digests::BlobDigest,
 ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
-    digest_key(PREFIX_BLOB, digest)
+    digest_key(PREFIX_BLOB, digest.to_bytes())
 }
 
 /// Encodes `[0x30][state_u8][timestamp_u64_be][run_id_u64_be]`.
@@ -376,9 +376,15 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
                 1..DIGEST_KEY_BYTES,
             )?;
             match prefix {
-                KeyPrefix::WorkflowSource => Ok(StorageKey::WorkflowSource { digest }),
-                KeyPrefix::CompiledIr => Ok(StorageKey::CompiledIr { digest }),
-                _ => Ok(StorageKey::Blob { digest }),
+                KeyPrefix::WorkflowSource => Ok(StorageKey::WorkflowSource {
+                    digest: digests::WorkflowSourceDigest::from_bytes(digest),
+                }),
+                KeyPrefix::CompiledIr => Ok(StorageKey::CompiledIr {
+                    digest: digests::CompiledIrDigest::from_bytes(digest),
+                }),
+                _ => Ok(StorageKey::Blob {
+                    digest: digests::BlobDigest::from_bytes(digest),
+                }),
             }
         }
         KeyPrefix::RunHeader => {

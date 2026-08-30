@@ -150,7 +150,7 @@ pub enum JournalEvent {
         /// Taint written with the output value.
         taint: Taint,
         /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
-        value_digest: [u8; 32],
+        value_digest: crate::types::digests::ValueDigest,
         /// Digest of the persisted action ABI contract used for this action.
         action_abi_digest: WorkflowDigest,
     },
