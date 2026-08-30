@@ -99,3 +99,5 @@ debug-assertions = false
 lto = "fat"
 overflow-checks = true
 strip = "symbols"
+
+[workspace.metadata.cargo-vet]
