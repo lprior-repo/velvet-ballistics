@@ -23,11 +23,6 @@ pub mod types;
 #[cfg(kani)]
 pub mod kani;
 
-// Flux-rs compiler-injected refinements for replay bounds.
-// `flux_rs` is injected by `cargo flux` compiler plugin; no Cargo dependency.
-#[cfg(flux)]
-pub mod flux_replay;
-
 #[cfg(test)]
 mod tests;
 

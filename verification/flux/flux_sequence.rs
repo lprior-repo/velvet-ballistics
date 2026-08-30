@@ -1,8 +1,16 @@
-//! Flux-rs refinement annotations for sequence bounds in `vb_storage` types.
-//!
-//! This module binds EventSeq range invariants and contiguity models to the
-//! production storage types so that `cargo flux` can verify sequence ordering,
-//! contiguity, and replay bounds at the type level.
+// Flux-rs standalone demo refinements for sequence bounds in `vb_storage` types.
+//
+// NON-CLOSURE EVIDENCE — not bound to production code via `#[path]`.
+// This file is a standalone Flux demo that exercises refinement annotations
+// against hand-written shadow types. It provides model sketches for audit
+// and research only; it cannot be cited as production safety evidence.
+//
+// Domain models: EventSeq range invariants, sequence contiguity, step ordering,
+// replay bounds, and attempt filtering during replay.
+//
+// Obligation: Demos sequence contiguity and replay-bounds refinement models.
+// Verifier: flux-rs
+// Category: SCOPED-ONLY (non-closure evidence)
 
 #![forbid(unsafe_code)]
 

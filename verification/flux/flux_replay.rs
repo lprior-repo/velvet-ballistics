@@ -1,10 +1,17 @@
-//! Flux-rs refinement annotations for replay bounds in `vb_storage`.
-//!
-//! This module covers:
-//! - Sequence contiguity during journal replay
-//! - Step ordering invariant (monotonic non-decreasing)
-//! - Tail event bounds relative to snapshot sequence
-//! - Attempt filtering during replay (stale vs current)
+// Flux-rs standalone demo refinements for replay bounds in `vb_storage`.
+//
+// NON-CLOSURE EVIDENCE — not bound to production code via `#[path]`.
+// This file is a standalone Flux demo that exercises refinement annotations
+// against hand-written shadow models. It provides model sketches for audit
+// and research only; it cannot be cited as production safety evidence.
+//
+// Domain models: sequence contiguity during journal replay, step ordering
+// invariant, tail event bounds relative to snapshot sequence, and attempt
+// filtering during replay.
+//
+// Obligation: Demos replay-bounds and contiguity refinement models.
+// Verifier: flux-rs
+// Category: SCOPED-ONLY (non-closure evidence)
 
 #![forbid(unsafe_code)]
 

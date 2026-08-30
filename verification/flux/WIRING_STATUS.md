@@ -26,6 +26,8 @@ evidence.
 |---|---|---|---|
 | `choose_refinements.flux` | `verification/flux/choose_refinements.flux` | SCOPED-ONLY | Single-file Flux spec; not `#[path]`-bound to `crates/vb_core/src/expression/...`. |
 | `step_budget.rs` | `verification/flux/step_budget.rs` | SCOPED-ONLY | Refinement of a hand-written shadow `StepBudget`; not `#[path]`-bound to `crates/vb_core/src/budget/step.rs`. |
+| `flux_sequence.rs` | `verification/flux/flux_sequence.rs` | SCOPED-ONLY | Standalone demo — sequence bounds, contiguity, step ordering, replay bounds. Moved from `crates/vb_storage/src/types/flux_sequence.rs` (vb-hvxpe). |
+| `flux_replay.rs` | `verification/flux/flux_replay.rs` | SCOPED-ONLY | Standalone demo — replay contiguity, step ordering, tail bounds, attempt filtering. Moved from `crates/vb_storage/src/recovery/flux_replay.rs` (vb-hvxpe). |
 | `vb-vzcuf-PS-001.rs` | `verification/flux/vb-vzcuf-PS-001.rs` | SCOPED-ONLY | PS-001 obligation; shadow model only. |
 | `vb-vzcuf-PS-002.rs` | `verification/flux/vb-vzcuf-PS-002.rs` | SCOPED-ONLY | PS-002 obligation; shadow model only. |
 | `vb-vzcuf-PS-003.rs` | `verification/flux/vb-vzcuf-PS-003.rs` | SCOPED-ONLY | PS-003 obligation; shadow model only. |
@@ -66,8 +68,10 @@ report or evidence bundle.
 ## Acceptance Criteria (this bead)
 
 - [x] Every Flux artifact inventoried above with `WIRED`, `SCOPED-ONLY`,
-      or `RETIRE` status.
+       or `RETIRE` status.
 - [x] No `WIRED` claim made without a `#[path]` binding or drift-gate
-      header in the artifact itself.
+       header in the artifact itself.
 - [x] This file is the canonical source for "is Flux artifact X bound to
-      production?" lookups until the binding follow-up lands.
+       production?" lookups until the binding follow-up lands.
+- [x] `flux_sequence.rs` and `flux_replay.rs` downgraded from production
+       source to non-closure SCOPED-ONLY artifacts in `verification/flux/`.
