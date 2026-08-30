@@ -13,8 +13,8 @@ proofs). The CI baseline (`moon run :ci`) only gates on a small slice of each.
 | Verus spec files (`verification/verus/*.rs`) | 70 | 0 | 70 |
 
 Kani counts are sourced from `.evidence/kani-list/*.json` (regenerate with
-`bash scripts/kani-list.sh <pkg>`); see `kani-baseline` for the harness-to-
-claim map.
+`bash scripts/kani-list.sh <pkg>`); see `.evidence/kani/baseline/README.md`
+for the harness-to-claim map and current baseline status.
 
 ## CI Baseline
 
@@ -40,8 +40,16 @@ claim map.
 | 7 | `kani_gate_08_arbitrary_parts_symbol_oob_rejected` | gate-08 / structural-symbol-oob-rejection | 1 |
 | 8 | `kani_step_primitives::` | step-primitives / constant-content | 0 (orphan) |
 
-Baseline is fail-closed: each per-package log must contain
-`VERIFICATION:- SUCCESSFUL`; absence is BLOCKER.
+The `vb_validate.log` file exists but contains a compilation failure — not
+verification output. The `kani-baseline` and `kani-baseline-heavy` moon tasks
+are CI dependencies but cannot produce `VERIFICATION:- SUCCESSFUL` logs because
+vb_core Kani harnesses fail to compile under `cfg(kani)`. The root cause is
+missing `input_slots` field initializers in `WorkflowParts` builders in
+`crates/vb_core/src/replay/kani_harnesses.rs`,
+`crates/vb_core/src/kani_workflow_arbitrary.rs`, and
+`crates/vb_core/src/kani_step_harnesses.rs`. See
+`.evidence/kani/baseline/README.md` for the raw failure log. The fail-closed
+sentinel (`grep -q 'VERIFICATION:- SUCCESSFUL'`) would reject the existing log.
 
 ### TLA+ (2 specs, `moon run :verify-tlc`)
 
@@ -99,6 +107,13 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 - **323 of 331 harnesses are exploratory.** Only 8 short-circuit the PR gate;
   the rest depend on developer invocation of `cargo kani --harness <name>`
   per package.
+- **Baseline logs do not pass CI.** The `kani-baseline` and `kani-baseline-heavy`
+  moon tasks are listed as CI dependencies. `vb_validate.log` exists in the
+  baseline directory but contains compilation failure output (7
+  `missing field input_slots` errors); it does not contain the
+  `VERIFICATION:- SUCCESSFUL` sentinel that the fail-closed check requires.
+  vb_core.log and vb_core_heavy.log are not yet generated. The root blocker is
+  vb_core Kani harness compilation failures. See `.evidence/kani/baseline/README.md`.
 - **`vb_compile`, `vb_runtime`, `vb_storage`, `vb_yaml`, `vb_verification`
   have zero harnesses in `kani-baseline`.** The single-filter
   `cargo kani --harness <name>` form used in `.moon/tasks/kani.yml` (legacy
@@ -106,12 +121,12 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 - **Module-level filter granularity hides harnesses.** `kani_idempotency_gates::`
   emits 17 reachable harnesses in one CBMC run but they are not enumerated
   individually in the CI evidence.
-- **Orphan harness.** `kani_step_primitives::` resolves to 0 harnesses in
-  the current module graph; the file exists at
-  `crates/vb_validate/src/verification/kani_step_primitives.rs` but
-  `crates/vb_validate/src/verification/mod.rs` does not declare
-  `mod kani_step_primitives;`. Until wired, the baseline is effectively
-  7 reachable harnesses.
+- **Orphan harness (resolved).** `kani_step_primitives::` was previously
+  unreachable because `mod kani_step_primitives` was not declared in
+  `crates/vb_validate/src/verification/mod.rs`. The module is now declared
+  with `#[cfg(kani)]` (line 24) so the filter resolves to 4 harnesses. The
+  harness count in proof-coverage remains at 0 only until the baseline logs
+  are generated.
 
 ### TLA+
 
@@ -137,9 +152,20 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 Sequenced, low-risk steps that close the F-006 gap without changing
 production code:
 
-1. **Wire the orphan harness.** Add `mod kani_step_primitives;` (cfg `kani`)
-   to `crates/vb_validate/src/verification/mod.rs`. This promotes
-   `kani-baseline` from 7 reachable harnesses to 8 with zero moon edits.
+0. **Fix vb_core Kani compilation.** Add `input_slots: Default::default()` to
+   the `WorkflowParts` initializers in:
+   - `crates/vb_core/src/replay/kani_harnesses.rs:22`
+   - `crates/vb_core/src/kani_workflow_arbitrary.rs:369`
+   - `crates/vb_core/src/kani_step_harnesses.rs:53,158,230,291,436`
+   This unblocks the entire `kani-baseline` and `kani-baseline-heavy` CI
+   pipeline. Once fixed, re-run the baseline and commit the generated logs.
+
+1. **Wire the orphan harness.** The `mod kani_step_primitives;` declaration
+    already exists in `crates/vb_validate/src/verification/mod.rs` (line 24,
+    gated by `#[cfg(kani)]`). This was fixed in a prior bead. This step is
+    superseded; the baseline harness count for vb_validate is now 8
+    (4 gate-08 + 4 step-primitives) pending vb_core compilation fix.
+
 2. **Add per-package `kani-baseline-*` tasks** mirroring the existing
    `kani-baseline` task for `vb_compile`, `vb_runtime`, `vb_storage`,
    `vb_yaml`, and `vb_verification`. Promote one high-value harness per
