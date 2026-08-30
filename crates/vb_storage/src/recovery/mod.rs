@@ -61,7 +61,17 @@ pub use replay::{
     recover_full_journal, recover_raw_runtime_frame_seed_from_events,
     recover_raw_runtime_frame_seed_from_events_with_workflow,
     recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    recover_snapshot_plus_tail, replay_events, semantic_observation_signature,
+    summarize_recovery_events,
+};
+
+// ============================================================================
+// Re-exports - observation
+// ============================================================================
+
+pub use replay::observation::{
+    JournalObservation, JournalObservationSignature, ObservationSignatureError,
+    SEMANTIC_OBSERVATION_SCHEMA_VERSION,
 };
 
 // ============================================================================

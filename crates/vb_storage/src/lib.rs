@@ -208,7 +208,10 @@ pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
 };
-pub use recovery::{ActionReplayTracker, RunSnapshot};
+pub use recovery::{
+    ActionReplayTracker, RunSnapshot, JournalObservation, JournalObservationSignature,
+    ObservationSignatureError, semantic_observation_signature,
+};
 pub use slot_extra::{
     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,

@@ -12,9 +12,8 @@ use super::helpers::{
 
 use super::types::{
     AskObservation, DigestObservation, DigestSubject, JournalObservation,
-    JournalObservationSignature, LifecycleObservation, ObservationSignatureError,
-    SEMANTIC_OBSERVATION_SCHEMA_VERSION, StepObservation, TerminalObservation, TimerObservation,
-    WaitObservation,
+    JournalObservationSignature, LifecycleObservation, ObservationSignatureError, StepObservation,
+    TerminalObservation, TimerObservation, WaitObservation, SEMANTIC_OBSERVATION_SCHEMA_VERSION,
 };
 
 const MAX_OBSERVATIONS_PER_EVENT: usize = 2;
@@ -245,10 +244,12 @@ fn observe_admission(
     policy: vb_core::RuntimePolicy,
 ) -> Result<(), ObservationSignatureError> {
     push_digest(observations, DigestSubject::Artifact, artifact_digest);
+    let caps_bytes = postcard::to_allocvec(capabilities)
+        .map_err(|_| ObservationSignatureError::AllocationFailed)?;
     observations.push(JournalObservation::Lifecycle(
         LifecycleObservation::Admitted {
             policy,
-            capabilities_digest: serialized_digest(capabilities)?,
+            capabilities_digest: serialized_digest(&caps_bytes)?,
             capability_count: stable_len(capabilities.len())?,
         },
     ));
