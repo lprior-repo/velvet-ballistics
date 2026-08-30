@@ -1,4 +1,7 @@
 reviewer_skill: proof-reviewer
+> **RETIRED (vb-384vd):** STRONG count (3) in this report is stale. Current `check-verus-production-binding.sh`
+> shows **0 STRONG, 72 WEAK, 0 VACUUM**. See `.evidence/binding-retirement/stale-strong-binding-report.md`.
+
 reviewer_invocation_id: inv-proof-reviewer-r2-vb-xi2f-compile-source
 reviewer_state: 6
 round: 2
