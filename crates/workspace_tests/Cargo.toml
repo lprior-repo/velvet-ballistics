@@ -279,6 +279,12 @@ path = "tests/vb_ko29_5_public_idempotency.rs"
 name = "vb_doc_taint_regression"
 path = "tests/vb_doc_taint_regression.rs"
 
+# === vb-wy33p.17 Divergent Seed Exploration Tests ===
+
+[[test]]
+name = "vb_wy33p_divergent_seed_exploration"
+path = "tests/vb_wy33p_divergent_seed_exploration.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
