@@ -13,7 +13,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::len_zero)]
 
-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
+const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
 
 fn assert_typed_yaml_error(error: vb_compile::YamlError) {
     use vb_compile::YamlError;
