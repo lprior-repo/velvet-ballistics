@@ -30,7 +30,7 @@ crossbeam-channel = "0.5"
 crossbeam-queue = "0.3"
 criterion = "0.8"
 trybuild = "1"
-fjall = { version = "=3.1.4", default-features = false, features = ["lz4"] }
+fjall = { version = "=3.1.9", default-features = false, features = ["lz4"] }
 indoc = "2"
 indexmap = "2"
 logos = "0.15"
