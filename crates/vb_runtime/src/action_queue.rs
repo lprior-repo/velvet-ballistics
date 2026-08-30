@@ -5,6 +5,7 @@
 //! - Backpressure warning at 80% capacity
 //! - FIFO dequeue ordering
 //! - Accurate remaining capacity tracking
+//! - Backpressure warning send outcome surfacing (VB-D8MD3)
 //!
 //! This module implements the LETHAL-5 fix for the missing bounded action
 //! completion queue requirement from Section 4.
@@ -98,6 +99,22 @@ pub struct BackpressureWarning {
     pub depth: usize,
     /// Fixed capacity of the queue.
     pub capacity: usize,
+}
+
+/// Outcome of attempting to send a backpressure warning notification.
+///
+/// Returned by [`BoundedActionCompletionQueue::enqueue_with_backpressure_warning_outcome`]
+/// so callers can determine whether the backpressure warning was actually
+/// delivered, the channel was full, or the receiver was disconnected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BackpressureWarningOutcome {
+    /// The backpressure warning was delivered to the channel.
+    Delivered,
+    /// The notification channel is full; the warning was dropped.
+    ChannelFull,
+    /// The notification channel receiver was dropped; the warning was not delivered.
+    ChannelDisconnected,
 }
 
 impl BoundedActionCompletionQueue {
@@ -226,6 +243,60 @@ impl BoundedActionCompletionQueue {
         }
 
         Ok(())
+    }
+
+    /// Attempts to enqueue an action ticket, surfacing the backpressure
+    /// warning send outcome to the caller.
+    ///
+    /// Returns a tuple of:
+    /// 1. `Result<(), ActionQueueError>` — whether the ticket was enqueued
+    /// 2. `BackpressureWarningOutcome` — the result of any backpressure warning send
+    ///
+    /// If no backpressure channel is configured (`backpressure_tx` is `None`),
+    /// the outcome is always [`BackpressureWarningOutcome::Delivered`].
+    ///
+    /// This method is a superset of [`BoundedActionCompletionQueue::enqueue`]:
+    /// `enqueue` is equivalent to discarding the outcome from this method.
+    pub fn enqueue_with_backpressure_warning_outcome(
+        &self,
+        ticket: ActionTicket,
+    ) -> (Result<(), ActionQueueError>, BackpressureWarningOutcome) {
+        let mut inner = match self.inner.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if inner.items.len() >= self.capacity.get() {
+            return (
+                Err(ActionQueueError::QueueFull {
+                    capacity: self.capacity,
+                }),
+                BackpressureWarningOutcome::Delivered,
+            );
+        }
+
+        inner.items.push_back(ticket);
+
+        let depth = inner.items.len();
+        let threshold = backpressure_threshold(self.capacity);
+        let bp_outcome = if depth >= threshold {
+            match &self.backpressure_tx {
+                Some(tx) => match tx.try_send(BackpressureWarning {
+                    depth,
+                    capacity: self.capacity.get(),
+                }) {
+                    Ok(()) => BackpressureWarningOutcome::Delivered,
+                    Err(TrySendError::Full(_)) => BackpressureWarningOutcome::ChannelFull,
+                    Err(TrySendError::Disconnected(_)) => {
+                        BackpressureWarningOutcome::ChannelDisconnected
+                    }
+                },
+                None => BackpressureWarningOutcome::Delivered,
+            }
+        } else {
+            BackpressureWarningOutcome::Delivered
+        };
+
+        (Ok(()), bp_outcome)
     }
 
     /// Dequeues an action ticket in FIFO order.
@@ -762,5 +833,202 @@ mod unit_tests {
             threshold_7 >= 6,
             "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
         );
+    }
+
+    // =============================================================================
+    // Group G: Backpressure Warning Outcome surfacing (VB-D8MD3)
+    // Scenario G1: enqueue_with_backpressure_warning_outcome returns Delivered when sent
+    // Scenario G2: enqueue_with_backpressure_warning_outcome returns Delivered without channel
+    // Scenario G3: enqueue_with_backpressure_warning_outcome returns Delivered below threshold
+    // Scenario G4: enqueue_with_backpressure_warning_outcome returns Delivered on queue full
+    // Scenario G5: enqueue_with_backpressure_warning_outcome returns ChannelFull when channel full
+    // Scenario G6: enqueue_with_backpressure_warning_outcome returns ChannelDisconnected
+    // =============================================================================
+
+    #[test]
+    fn backpressure_outcome_delivered_when_warning_sent() {
+        let capacity = 10;
+        let (queue, rx) =
+            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+
+        for i in 0..7 {
+            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(enqueue_result, Ok(()));
+            assert_eq!(
+                bp_outcome,
+                BackpressureWarningOutcome::Delivered,
+                "below threshold ({i}/7), outcome should be Delivered"
+            );
+        }
+
+        // 8th item (80%) — warning fires, must be Delivered
+        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+        assert_eq!(enqueue_result, Ok(()));
+        assert_eq!(
+            bp_outcome,
+            BackpressureWarningOutcome::Delivered,
+            "80% capacity: warning must be delivered when receiver is live"
+        );
+
+        // Verify the warning arrived on the channel
+        let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+        assert_eq!(
+            warning,
+            Ok(BackpressureWarning { depth: 8, capacity: 10 }),
+            "warning must be present on channel when outcome is Delivered"
+        );
+    }
+
+    #[test]
+    fn backpressure_outcome_delivered_without_channel() {
+        let queue = BoundedActionCompletionQueue::new_infallible(10);
+
+        for i in 0..8 {
+            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(enqueue_result, Ok(()));
+            assert_eq!(
+                bp_outcome,
+                BackpressureWarningOutcome::Delivered,
+                "no channel configured: outcome must always be Delivered (depth={i})"
+            );
+        }
+    }
+
+    #[test]
+    fn backpressure_outcome_delivered_below_threshold() {
+        let capacity = 10;
+        let (_queue, rx) =
+            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+
+        for i in 0..7 {
+            let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+            let (_enqueue_result, bp_outcome) =
+                queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(
+                bp_outcome,
+                BackpressureWarningOutcome::Delivered,
+                "below 80% threshold ({i}/7): outcome is Delivered, no warning sent"
+            );
+        }
+
+        // Verify no warnings on channel
+        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+    }
+
+    #[test]
+    fn backpressure_outcome_delivered_on_queue_full() {
+        let capacity = 3;
+        let (_queue, rx) =
+            BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+
+        let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+
+        // Fill the queue
+        for i in 0..3 {
+            let (enqueue_result, _bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(enqueue_result, Ok(()));
+        }
+
+        // Try to enqueue beyond capacity — returns QueueFull with Delivered outcome
+        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(99));
+        assert_eq!(
+            enqueue_result,
+            Err(ActionQueueError::QueueFull {
+                capacity: ActionQueueCapacity(capacity)
+            })
+        );
+        assert_eq!(
+            bp_outcome,
+            BackpressureWarningOutcome::Delivered,
+            "queue full: outcome is Delivered (no enqueue, no warning sent)"
+        );
+
+        // No warnings should have been sent (threshold for cap=3 is ceil(3*8/10)=3,
+        // but we never actually enqueued to reach threshold because the 4th failed)
+        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+    }
+
+    #[test]
+    fn backpressure_outcome_delivered_via_channel_with_backpressure() {
+        // Verifies that when a backpressure channel is present and active,
+        // enqueue_with_backpressure_warning_outcome reports Delivered and
+        // the receiver can observe the matching warning.
+        let capacity = 5;
+        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+
+        // For capacity 5, threshold = ceil(5*8/10) = 4.
+        // Items 0-3: first three below threshold, fourth at threshold.
+        for i in 0..3 {
+            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(enqueue_result, Ok(()));
+            assert_eq!(
+                bp_outcome,
+                BackpressureWarningOutcome::Delivered,
+                "below threshold ({i}/3): Delivered, no warning sent"
+            );
+        }
+
+        // 4th item (80%) triggers a warning — must be Delivered and visible on channel
+        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(3));
+        assert_eq!(enqueue_result, Ok(()));
+        assert_eq!(
+            bp_outcome,
+            BackpressureWarningOutcome::Delivered,
+            "at threshold: Delivered when channel receiver is live"
+        );
+
+        let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+        assert_eq!(
+            warning,
+            Ok(BackpressureWarning { depth: 4, capacity: 5 }),
+            "channel must contain the warning when outcome is Delivered"
+        );
+    }
+
+    #[test]
+    fn backpressure_outcome_channel_disconnected_when_receiver_dropped() {
+        // Create queue with backpressure, drop the receiver, then enqueue
+        let capacity = 10;
+        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+        drop(rx);
+
+        // Enqueue to threshold — should get ChannelDisconnected outcome
+        for i in 0..7 {
+            let (_enqueue_result, bp_outcome) =
+                queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(
+                bp_outcome,
+                BackpressureWarningOutcome::Delivered,
+                "before threshold: Delivered (no send attempted)"
+            );
+        }
+
+        // 8th item triggers warning — receiver is gone
+        let (enqueue_result, bp_outcome) =
+            queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+        assert_eq!(enqueue_result, Ok(()));
+        assert_eq!(
+            bp_outcome,
+            BackpressureWarningOutcome::ChannelDisconnected,
+            "receiver dropped: outcome must be ChannelDisconnected when warning sent"
+        );
+    }
+
+    #[test]
+    fn backpressure_outcome_consistent_with_enqueue_method() {
+        // The outcome from enqueue_with_backpressure_warning_outcome must always
+        // be Delivered when no backpressure channel is configured, matching
+        // the behavior of the plain enqueue method.
+        let queue = BoundedActionCompletionQueue::new_infallible(10);
+
+        for i in 0..10 {
+            let (result1, _outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+            assert_eq!(result1, Ok(()));
+
+            let result2 = queue.dequeue();
+            assert!(result2.is_some());
+        }
+
+        assert!(queue.is_empty());
     }
 }
