@@ -3,6 +3,7 @@
 // Bead: vb-xi2f.4
 // Verifier: Flux
 // Command: cargo flux --package vb_compile
+// EVIDENCE: non-closure (downgraded vb-hvxpe; demonstration only)
 //
 // Proof obligations:
 // - PO-004: Flux refinement types enforce that CompiledWorkflow values in
@@ -11,6 +12,12 @@
 // NOTE: This is a standalone demonstration file. Full verification requires
 // annotating crates/vb_compile/src/mod_compile_lowering/part_01.rs, which
 // is blocked by the no-production-edit rule.
+//
+// EVIDENCE CLASS: non-closure
+// This artifact does NOT satisfy closure evidence requirements. It is a
+// shadow-model demonstration that exercises Flux refinement syntax against
+// the same external types as production, but it is not #[path]-bound to
+// any production source and cannot be cited as proof of production safety.
 
 #![forbid(unsafe_code)]
 

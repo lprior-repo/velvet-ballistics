@@ -22,24 +22,24 @@ evidence.
 
 ## Inventory
 
-| Artifact | Path | Status | Reason |
-|---|---|---|---|
-| `choose_refinements.flux` | `verification/flux/choose_refinements.flux` | SCOPED-ONLY | Single-file Flux spec; not `#[path]`-bound to `crates/vb_core/src/expression/...`. |
-| `step_budget.rs` | `verification/flux/step_budget.rs` | SCOPED-ONLY | Refinement of a hand-written shadow `StepBudget`; not `#[path]`-bound to `crates/vb_core/src/budget/step.rs`. |
-| `vb-vzcuf-PS-001.rs` | `verification/flux/vb-vzcuf-PS-001.rs` | SCOPED-ONLY | PS-001 obligation; shadow model only. |
-| `vb-vzcuf-PS-002.rs` | `verification/flux/vb-vzcuf-PS-002.rs` | SCOPED-ONLY | PS-002 obligation; shadow model only. |
-| `vb-vzcuf-PS-003.rs` | `verification/flux/vb-vzcuf-PS-003.rs` | SCOPED-ONLY | PS-003 obligation; shadow model only. |
-| `vb-vzcuf-PS-004.rs` | `verification/flux/vb-vzcuf-PS-004.rs` | SCOPED-ONLY | PS-004 obligation; shadow model only. |
-| `vb-vzcuf-PS-005.rs` | `verification/flux/vb-vzcuf-PS-005.rs` | SCOPED-ONLY | PS-005 obligation; shadow model only. |
-| `vb-vzcuf-PS-006.rs` | `verification/flux/vb-vzcuf-PS-006.rs` | SCOPED-ONLY | PS-006 obligation; shadow model only. |
-| `vb-vzcuf-PS-007.rs` | `verification/flux/vb-vzcuf-PS-007.rs` | SCOPED-ONLY | PS-007 obligation; shadow model only. |
-| `vb-vzcuf-PS-008.rs` | `verification/flux/vb-vzcuf-PS-008.rs` | SCOPED-ONLY | PS-008 obligation; shadow model only. |
-| `vb-vzcuf-PS-009.rs` | `verification/flux/vb-vzcuf-PS-009.rs` | SCOPED-ONLY | PS-009 obligation; shadow model only. |
-| `vb_rpch_flux_r8.rs` | `verification/flux/vb_rpch_flux_r8.rs` | SCOPED-ONLY | Recovery/hydration shadow model. |
-| `vb_rpch_flux_r9.rs` | `verification/flux/vb_rpch_flux_r9.rs` | SCOPED-ONLY | Recovery/hydration shadow model. |
-| `vb_xi2f_compile_source.rs` | `verification/flux/vb_xi2f_compile_source.rs` | SCOPED-ONLY | Compile-source shadow model. |
-| `vb_xi2f_try_from_parts.rs` | `verification/flux/vb_xi2f_try_from_parts.rs` | SCOPED-ONLY | `try_from_parts` shadow model. |
-| `vb_compile/` | `verification/flux/vb_compile/` | SCOPED-ONLY | Directory of shadow-model refinements. |
+| Artifact | Path | Status | Evidence | Reason |
+|---|---|---|---|---|
+| `choose_refinements.flux` | `verification/flux/choose_refinements.flux` | SCOPED-ONLY | non-closure | Standalone demo; not `#[path]`-bound to `crates/vb_core/src/expression/...`. Downgraded vb-hvxpe. |
+| `step_budget.rs` | `verification/flux/step_budget.rs` | SCOPED-ONLY | (unclassified) | Refinement of a hand-written shadow `StepBudget`; not `#[path]`-bound to `crates/vb_core/src/budget/step.rs`. |
+| `vb-vzcuf-PS-001.rs` | `verification/flux/vb-vzcuf-PS-001.rs` | SCOPED-ONLY | (unclassified) | PS-001 obligation; shadow model only. |
+| `vb-vzcuf-PS-002.rs` | `verification/flux/vb-vzcuf-PS-002.rs` | SCOPED-ONLY | (unclassified) | PS-002 obligation; shadow model only. |
+| `vb-vzcuf-PS-003.rs` | `verification/flux/vb-vzcuf-PS-003.rs` | SCOPED-ONLY | (unclassified) | PS-003 obligation; shadow model only. |
+| `vb-vzcuf-PS-004.rs` | `verification/flux/vb-vzcuf-PS-004.rs` | SCOPED-ONLY | (unclassified) | PS-004 obligation; shadow model only. |
+| `vb-vzcuf-PS-005.rs` | `verification/flux/vb-vzcuf-PS-005.rs` | SCOPED-ONLY | (unclassified) | PS-005 obligation; shadow model only. |
+| `vb-vzcuf-PS-006.rs` | `verification/flux/vb-vzcuf-PS-006.rs` | SCOPED-ONLY | (unclassified) | PS-006 obligation; shadow model only. |
+| `vb-vzcuf-PS-007.rs` | `verification/flux/vb-vzcuf-PS-007.rs` | SCOPED-ONLY | (unclassified) | PS-007 obligation; shadow model only. |
+| `vb-vzcuf-PS-008.rs` | `verification/flux/vb-vzcuf-PS-008.rs` | SCOPED-ONLY | (unclassified) | PS-008 obligation; shadow model only. |
+| `vb-vzcuf-PS-009.rs` | `verification/flux/vb-vzcuf-PS-009.rs` | SCOPED-ONLY | (unclassified) | PS-009 obligation; shadow model only. |
+| `vb_rpch_flux_r8.rs` | `verification/flux/vb_rpch_flux_r8.rs` | SCOPED-ONLY | (unclassified) | Recovery/hydration shadow model. |
+| `vb_rpch_flux_r9.rs` | `verification/flux/vb_rpch_flux_r9.rs` | SCOPED-ONLY | (unclassified) | Recovery/hydration shadow model. |
+| `vb_xi2f_compile_source.rs` | `verification/flux/vb_xi2f_compile_source.rs` | SCOPED-ONLY | non-closure | Standalone demo; not `#[path]`-bound to `crates/vb_compile/...`. Downgraded vb-hvxpe. |
+| `vb_xi2f_try_from_parts.rs` | `verification/flux/vb_xi2f_try_from_parts.rs` | SCOPED-ONLY | non-closure | Standalone demo; not `#[path]`-bound to `crates/vb_core/...`. Downgraded vb-hvxpe. |
+| `vb_compile/` | `verification/flux/vb_compile/` | SCOPED-ONLY | (unclassified) | Directory of shadow-model refinements. |
 
 No Flux artifact in `verification/flux/` is currently WIRED. The
 production-storage Flux path is disabled at the package-feature level
@@ -66,8 +66,10 @@ report or evidence bundle.
 ## Acceptance Criteria (this bead)
 
 - [x] Every Flux artifact inventoried above with `WIRED`, `SCOPED-ONLY`,
-      or `RETIRE` status.
+       or `RETIRE` status.
 - [x] No `WIRED` claim made without a `#[path]` binding or drift-gate
-      header in the artifact itself.
+       header in the artifact itself.
 - [x] This file is the canonical source for "is Flux artifact X bound to
-      production?" lookups until the binding follow-up lands.
+       production?" lookups until the binding follow-up lands.
+- [x] vb-hvxpe: Standalone demo refinements annotated with `EVIDENCE:
+       non-closure` and downgraded from any implied closure status.
