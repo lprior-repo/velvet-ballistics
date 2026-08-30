@@ -405,6 +405,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "fuzz_expr_bytecode_lowering"
+path = "fuzz_targets/fuzz_expr_bytecode_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_expr_parser"
+path = "fuzz_targets/fuzz_expr_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "fuzz_choose_depth"
 path = "fuzz_targets/fuzz_choose_depth.rs"
 test = false
