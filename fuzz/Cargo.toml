@@ -40,7 +40,6 @@ tempfile = "3"
 vb_core = { path = "../crates/vb_core" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
-vb_validate = { path = "../crates/vb_validate" }
 vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
 vb_ipc = { path = "../crates/vb_ipc" }
 

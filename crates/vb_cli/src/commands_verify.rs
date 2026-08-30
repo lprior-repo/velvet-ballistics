@@ -75,7 +75,7 @@ pub(crate) fn run_verification(
 
     // Phase 3: IR validation gates
     let parts = compiled.to_parts();
-    match vb_validate::shared::validate(&parts) {
+    match vb_storage::vb_validate::shared::validate(&parts) {
         Ok(()) => {
             checks.push("ir_validation");
         }

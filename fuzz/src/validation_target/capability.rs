@@ -5,7 +5,7 @@ use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, Side
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
-use vb_validate::ValidationError;
+use vb_storage::vb_validate::ValidationError;
 
 fn bounded_capability_name(name: &str) -> &str {
     let mut end = name.len().min(128);
@@ -105,7 +105,7 @@ pub fn fuzz_capability_name_schema(data: &[u8]) {
     ) else {
         return;
     };
-    let result = vb_validate::shared::validate_with_contracts(&parts, &[contract]);
+    let result = vb_storage::vb_validate::shared::validate_with_contracts(&parts, &[contract]);
     if bounded_name.is_empty() {
         assert!(matches!(
             result,
@@ -139,7 +139,7 @@ pub fn fuzz_capability_contract_schema(data: &[u8]) {
     ) else {
         return;
     };
-    let result = vb_validate::shared::validate_with_contracts(&parts, &[contract]);
+    let result = vb_storage::vb_validate::shared::validate_with_contracts(&parts, &[contract]);
     if name.is_empty() {
         assert!(matches!(
             result,

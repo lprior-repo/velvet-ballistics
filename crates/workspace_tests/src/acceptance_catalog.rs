@@ -191,7 +191,7 @@ const SCENARIOS: &[Scenario] = &[
         given: "compiled workflow parts with bounded slots, nodes, accessors, and contracts",
         when: "the validation public API runs all gates",
         then: "exact typed validation errors identify the violated gate",
-        public_surface: "vb_validate::shared::validate_with_contracts",
+        public_surface: "vb_storage::vb_validate::shared::validate_with_contracts",
         fixture: "isolated in-memory workflow fixtures",
         expected_outcome: Some("valid workflow accepted"),
         expected_error: Some("ValidationError gate variant"),

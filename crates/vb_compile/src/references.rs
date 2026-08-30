@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Reference validation for compiled workflow ASTs.
 //!
-//! Delegates core reference validation to `vb_validate::references` to avoid
+//! Delegates core reference validation to `vb_storage::vb_validate::references` to avoid
 //! duplicating validation logic. Handles compile-specific references (slot
 //! accessors) locally since those are not part of the standalone validator's
 //! surface.
@@ -9,7 +9,7 @@
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
-use vb_validate::references::{RefTables, validate_single_reference_with_context};
+use vb_storage::vb_validate::references::{RefTables, validate_single_reference_with_context};
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let tables = build_ref_tables(ast);
@@ -208,7 +208,7 @@ fn collect_references_from_value(
 /// Validates a reference from the compiler AST.
 ///
 /// Handles compile-specific references (`$slot.*`) locally and delegates
-/// everything else to `vb_validate::references::validate_single_reference_with_context`.
+/// everything else to `vb_storage::vb_validate::references::validate_single_reference_with_context`.
 fn validate_compile_reference(
     reference: &str,
     tables: &RefTables,
@@ -311,11 +311,11 @@ fn check_accessor_path(
     None
 }
 
-/// Maps a `vb_validate::ValidationError` from shared reference validation into
+/// Maps a `vb_storage::vb_validate::ValidationError` from shared reference validation into
 /// a `CompileError` with source-location context.
-fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -> CompileError {
+fn map_validation_error(reference: &str, error: &vb_storage::vb_validate::ValidationError) -> CompileError {
     match error {
-        vb_validate::ValidationError::UnknownReference { .. } => {
+        vb_storage::vb_validate::ValidationError::UnknownReference { .. } => {
             let Some(body) = reference.strip_prefix('$') else {
                 return CompileError::UnknownReferenceRoot {
                     reference: Box::from(reference),

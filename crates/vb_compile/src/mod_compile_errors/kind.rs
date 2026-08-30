@@ -53,7 +53,7 @@ pub enum CompileError {
     #[error("compiled workflow IR failed validation: {0}")]
     Workflow(#[from] WorkflowError),
     #[error("validation gate failure: {0}")]
-    Validation(#[from] vb_validate::ValidationError),
+    Validation(#[from] vb_storage::vb_validate::ValidationError),
     #[error("required workflow field is missing: {field}")]
     MissingField { field: &'static str },
     #[error("unknown top-level workflow field: {field}")]

@@ -18,7 +18,6 @@ const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_queue_semantics",
     "vb_runtime",
     "vb_storage",
-    "vb_validate",
     "vb_cli",
     "workspace_tests",
 ];

@@ -3,7 +3,7 @@ use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst}
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use crate::{CompileError, CompileErrors};
 use std::collections::HashMap;
-use vb_validate::type_taint::Taint;
+use vb_storage::vb_validate::type_taint::Taint;
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let mut facts = Facts::new(ast);

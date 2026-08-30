@@ -7,7 +7,6 @@ members = [
     "crates/vb_queue_semantics",
     "crates/vb_runtime",
     "crates/vb_storage",
-    "crates/vb_validate",
     "crates/workspace_tests",
 ]
 resolver = "2"

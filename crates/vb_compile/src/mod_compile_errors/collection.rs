@@ -149,15 +149,15 @@ pub(super) fn workflow_error_code(error: &WorkflowError) -> &'static str {
     }
 }
 
-pub(super) fn validation_error_code(error: &vb_validate::ValidationError) -> &'static str {
+pub(super) fn validation_error_code(error: &vb_storage::vb_validate::ValidationError) -> &'static str {
     match error {
-        vb_validate::ValidationError::ExpressionStackExceeded { .. }
-        | vb_validate::ValidationError::ExpressionStackMismatch { .. } => "LIMIT_EXCEEDED",
-        vb_validate::ValidationError::AccessorSlotOutOfRange { .. }
-        | vb_validate::ValidationError::AccessorPathInvalid { .. } => "TYPE_MISMATCH",
-        vb_validate::ValidationError::SlotReferenceOutOfRange { .. } => "TYPE_MISMATCH",
-        vb_validate::ValidationError::LoopBodyStepOutOfRange { .. } => "INVALID_THEN_TARGET",
-        vb_validate::ValidationError::SlotDependencyCycle { .. } => "INVALID_COMPILED_WORKFLOW",
+        vb_storage::vb_validate::ValidationError::ExpressionStackExceeded { .. }
+        | vb_storage::vb_validate::ValidationError::ExpressionStackMismatch { .. } => "LIMIT_EXCEEDED",
+        vb_storage::vb_validate::ValidationError::AccessorSlotOutOfRange { .. }
+        | vb_storage::vb_validate::ValidationError::AccessorPathInvalid { .. } => "TYPE_MISMATCH",
+        vb_storage::vb_validate::ValidationError::SlotReferenceOutOfRange { .. } => "TYPE_MISMATCH",
+        vb_storage::vb_validate::ValidationError::LoopBodyStepOutOfRange { .. } => "INVALID_THEN_TARGET",
+        vb_storage::vb_validate::ValidationError::SlotDependencyCycle { .. } => "INVALID_COMPILED_WORKFLOW",
         _ => "INVALID_COMPILED_WORKFLOW",
     }
 }

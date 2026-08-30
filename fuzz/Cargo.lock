@@ -1594,7 +1594,7 @@ dependencies = [
  "saphyr-parser",
  "thiserror",
  "vb_core",
- "vb_validate",
+ "vb_storage",
 ]
 
 [[package]]
@@ -1657,14 +1657,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_validate"
-version = "0.1.0"
-dependencies = [
- "thiserror",
- "vb_core",
-]
-
-[[package]]
 name = "velvet-ballistics-fuzz"
 version = "0.1.0"
 dependencies = [
@@ -1681,7 +1673,6 @@ dependencies = [
  "vb_ipc",
  "vb_runtime",
  "vb_storage",
- "vb_validate",
  "xtask",
 ]
 
@@ -1996,7 +1987,7 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "toml",
- "vb_validate",
+ "vb_storage",
 ]
 
 [[package]]

@@ -58,7 +58,7 @@ pub fn compile_source(
         step_names: step_names.into_boxed_slice(),
         input_slots: builder.input_slots.into_boxed_slice(),
     };
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    vb_storage::vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 

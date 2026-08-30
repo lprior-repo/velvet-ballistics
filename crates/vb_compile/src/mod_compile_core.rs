@@ -117,7 +117,7 @@ pub fn compile_workflow_with_contracts(
 ) -> Result<CompiledWorkflow, CompileErrors> {
     let workflow = compile_workflow(source)?;
     let parts = workflow.to_parts();
-    vb_validate::shared::validate_with_contracts(&parts, contracts)
+    vb_storage::vb_validate::shared::validate_with_contracts(&parts, contracts)
         .map_err(|e| CompileErrors(vec![e.into()]))?;
     check_idempotency_gates(contracts)?;
     Ok(workflow)

@@ -375,7 +375,7 @@ fn active_gates_validation_is_required_and_has_gate() {
     );
     assert_eq!(
         validation.get("gate").and_then(Value::as_str),
-        Some("vb_validate")
+        Some("vb_storage::vb_validate")
     );
 }
 

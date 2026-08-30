@@ -1906,7 +1906,7 @@ dependencies = [
  "saphyr-parser",
  "thiserror",
  "vb_core",
- "vb_validate",
+ "vb_storage",
 ]
 
 [[package]]
@@ -1973,22 +1973,13 @@ dependencies = [
  "blake3",
  "chrono",
  "crc32c",
+ "criterion",
  "fjall",
  "postcard",
  "proptest",
  "rustix",
  "serde",
  "tempfile",
- "thiserror",
- "vb_core",
-]
-
-[[package]]
-name = "vb_validate"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "proptest",
  "thiserror",
  "vb_core",
 ]
@@ -2012,7 +2003,6 @@ dependencies = [
  "vb_ipc",
  "vb_runtime",
  "vb_storage",
- "vb_validate",
 ]
 
 [[package]]
@@ -2043,7 +2033,6 @@ dependencies = [
  "vb_ipc",
  "vb_runtime",
  "vb_storage",
- "vb_validate",
  "velvet-ballistics",
  "xtask",
 ]
@@ -2413,7 +2402,7 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "toml",
- "vb_validate",
+ "vb_storage",
 ]
 
 [[package]]

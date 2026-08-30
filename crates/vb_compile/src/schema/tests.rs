@@ -137,7 +137,7 @@ steps:
 fn vb_yd5x_validate_via_compile(source: &[u8]) -> Result<(), CompileErrors> {
     let compiled = YamlCompiler::default().compile(source)?;
     let parts = compiled.to_parts();
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))
+    vb_storage::vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
 fn first_compile_code(source: &[u8]) -> Result<SymbolicCode, String> {

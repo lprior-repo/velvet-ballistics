@@ -1,8 +1,8 @@
 //! Diagnostic rendering fuzz target bodies.
 
 pub fn fuzz_diagnostic_from_error(data: &[u8]) {
-    use vb_validate::ValidationError;
-    use vb_validate::diagnostic::diagnostic_from_error;
+    use vb_storage::vb_validate::ValidationError;
+    use vb_storage::vb_validate::diagnostic::diagnostic_from_error;
 
     let Ok(payload) = std::str::from_utf8(data) else {
         return;

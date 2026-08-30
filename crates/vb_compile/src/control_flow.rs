@@ -5,9 +5,9 @@
 //! checks that all steps are reachable from the workflow entry.
 //!
 //! NOTE: This module performs the same *logical* checks as
-//! `vb_validate::control_flow`, but operates on the compiler's `StepKindAst`
+//! `vb_storage::vb_validate::control_flow`, but operates on the compiler's `StepKindAst`
 //! types with structured error diagnostics. The reference validation logic is
-//! shared through `vb_validate::references::RefTables`; control-flow
+//! shared through `vb_storage::vb_validate::references::RefTables`; control-flow
 //! validation remains compile-local because it needs structured step/target
 //! indices that the standalone validator's string-based error model cannot
 //! represent.

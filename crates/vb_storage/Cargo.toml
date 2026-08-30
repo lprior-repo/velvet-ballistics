@@ -17,6 +17,7 @@ thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 
 [dev-dependencies]
+criterion = { workspace = true }
 proptest = { workspace = true }
 tempfile.workspace = true
 
@@ -30,3 +31,7 @@ kani-vb-vzcuf = []
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "capability_schema"
+harness = false

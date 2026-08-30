@@ -10,7 +10,6 @@ vb_core = { path = "../vb_core" }
 vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
-vb_validate = { path = "../vb_validate" }
 postcard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["alloc"] }

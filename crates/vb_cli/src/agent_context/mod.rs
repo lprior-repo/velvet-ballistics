@@ -43,7 +43,7 @@ pub(crate) fn build(version: &str) -> Value {
 
 fn active_gates() -> Value {
     serde_json::json!({
-        "validation": {"required": true, "gate": "vb_validate"},
+        "validation": {"required": true, "gate": "vb_storage::vb_validate"},
         "verification": {"required": true, "gate": "vb_verify"},
         "compilation": {"required": true, "gate": "vb_compile"},
         "admission": {"required": true, "gate": "vb_storage::admission"},

@@ -118,7 +118,7 @@ impl ReportSummary {
 /// Full discovery report.
 ///
 /// errors is `Vec<String>` (not `Vec<ValidationError>`) because
-/// `ValidationError` from `vb_validate` does not implement Serialize/Deserialize.
+/// `ValidationError` from `vb_storage::vb_validate` does not implement Serialize/Deserialize.
 /// We store the Display representation instead.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiscoveryReport {

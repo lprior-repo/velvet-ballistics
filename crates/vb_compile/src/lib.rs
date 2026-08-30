@@ -250,7 +250,7 @@ pub(crate) use validation::validate_public_name;
 // Re-export the shared validation error types from `vb_validate` so that
 // downstream consumers of this crate can optionally use the standalone
 // validator's error domain without depending on `vb_validate` directly.
-pub use vb_validate::{ValidationError, ValidationResult};
+pub use vb_storage::vb_validate::{ValidationError, ValidationResult};
 
 // Re-export YAML parsing layer (formerly vb_yaml)
 pub use yaml_error::YamlError;

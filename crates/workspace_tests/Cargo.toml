@@ -42,7 +42,6 @@ vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
 vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
-vb_validate = { path = "../vb_validate" }
 xtask = { path = "../../xtask" }
 
 [[test]]

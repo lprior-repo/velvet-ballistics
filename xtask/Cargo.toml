@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 # vb_ui_snapshot is removed from current workspace scope.
-vb_validate = { path = "../crates/vb_validate" }
+vb_storage = { path = "../crates/vb_storage" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
@@ -31,7 +31,7 @@ proptest = "1"
 kani = "0.0.1"
 
 [package.metadata.cargo-machete]
-ignored = ["crossbeam-channel", "toml", "vb_validate"]
+ignored = ["crossbeam-channel", "toml", "vb_storage"]
 
 [lints.rust]
 unsafe_code = "forbid"

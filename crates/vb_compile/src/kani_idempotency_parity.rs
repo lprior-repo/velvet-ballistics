@@ -11,7 +11,7 @@
 use crate::is_compile_idempotency_gate_accepted;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
-use vb_validate::idempotency_contract::is_statically_idempotent_contract;
+use vb_storage::vb_validate::idempotency_contract::is_statically_idempotent_contract;
 
 /// KANI-PARITY-006: check_idempotency_gates and is_statically_idempotent_contract
 /// agree on Ok/Err for all 45 combinations.

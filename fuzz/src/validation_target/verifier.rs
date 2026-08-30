@@ -1,6 +1,6 @@
 //! Verifier-gate fuzz target body.
 
-use vb_validate::ValidationError;
+use vb_storage::vb_validate::ValidationError;
 
 const FUZZ_MAX_NODES: usize = 32;
 
@@ -109,7 +109,7 @@ fn choose_slot(
     }
 }
 
-fn assert_typed_validation_error(error: vb_validate::ValidationError) {
+fn assert_typed_validation_error(error: vb_storage::vb_validate::ValidationError) {
     match error {
         ValidationError::DuplicateKey
         | ValidationError::ForbiddenYamlFeature
@@ -209,11 +209,11 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
         step_names: Box::new([]),
     };
     for result in [
-        vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
-        vb_validate::gates::validate_gate_08_accessor_path_segments(&parts),
-        vb_validate::gates::validate_gate_09_slot_references(&parts),
-        vb_validate::gates::validate_gate_11_loop_body_graph(&parts),
-        vb_validate::gates::validate_gate_13_no_slot_cycles(&parts),
+        vb_storage::vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
+        vb_storage::vb_validate::gates::validate_gate_08_accessor_path_segments(&parts),
+        vb_storage::vb_validate::gates::validate_gate_09_slot_references(&parts),
+        vb_storage::vb_validate::gates::validate_gate_11_loop_body_graph(&parts),
+        vb_storage::vb_validate::gates::validate_gate_13_no_slot_cycles(&parts),
     ] {
         if let Err(e) = result {
             assert_typed_validation_error(e);

@@ -35,7 +35,7 @@ pub fn lower_steps_to_ir(
         step_names: Box::new([]),
         input_slots: Box::new([]),
     };
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    vb_storage::vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
