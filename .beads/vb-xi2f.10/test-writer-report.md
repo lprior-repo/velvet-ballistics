@@ -140,7 +140,7 @@
 
 | # | Target | File | Status |
 |---|--------|------|--------|
-| PO-022 | SymbolicCode deserialization | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | ✅ EXISTS (pending execution) |
+| PO-022 | SymbolicCode deserialization | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | ❌ MISSING — not in fuzz_targets/ or Cargo.toml. Ledger inconsistency. Compensating: PO-021 proptest_serde_roundtrip. |
 | NEW | DiagnosticCode from_str parsing | `fuzz/fuzz_targets/fuzz_diagnostic_code_from_str.rs` | ⚠️ NOT YET CREATED |
 
 The second fuzz target (`fuzz_diagnostic_code_from_str`) is specified in test-plan.md §5 but not yet created. This is a PENDING defense-in-depth task for State 10+.
@@ -329,8 +329,9 @@ cargo test -p velvet-ballistics-workspace-tests -- \
   e2e_diagnostic_chain \
   --nocapture
 
-# Fuzz (pending)
+# Fuzz (BLOCKED — target MISSING)
 # cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000
+# NOTE: fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs does NOT exist. Not in fuzz_targets/ or fuzz/Cargo.toml. Ledger reference is inconsistent.
 
 # Mutation (pending)
 # cargo mutants --in-package vb_core --in-package vb_validate --in-package vb_compile --in-package vb_yaml -- --test-dir tests/

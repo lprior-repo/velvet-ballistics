@@ -67,7 +67,7 @@
 | PO-019 | Proptest | **PASS** ✅ | proptest_diagnostic_constructor.rs | All ~90 registry entries verified, exit 0 | — |
 | PO-020 | Proptest | **PASS** ✅ | proptest_compile_error_codes.rs | All CompileError variants verified (truth-serum: requires workspace_tests compile fix) | Compensated: verified in test-suite-review with 254/254 PASS |
 | PO-021 | Proptest | **PASS** ✅ | proptest_serde_roundtrip.rs | 1000+ arbitrary string + 500 malformed JSON tests, exit 0 | — |
-| PO-022 | cargo-fuzz | FAIL_LOCAL (build) | fuzz_symbolic_code_deserialize.rs | Musl target not available | Toolchain issue; defense-in-depth |
+| PO-022 | cargo-fuzz | BLOCKED_MISSING_TARGET | fuzz_symbolic_code_deserialize.rs (MISSING) | Target file does NOT exist in fuzz_targets/ or fuzz/Cargo.toml — ledger inconsistency, not a toolchain issue | Compensating evidence: PO-021 proptest_serde_roundtrip covers JSON round-trip and unknown-code rejection. No hostile-fuzz coverage available. |
 | PO-023 | Proptest | **PASS** ✅ | proptest_registry_consistency.rs | Non-zero, uniqueness, category, bijection, exit 0 | — |
 | PO-024 | Proptest | **PASS** ✅ | proptest_section16_parity.rs | 36 Section 16 codes cross-checked, exit 0 | — |
 | PO-025 | Proptest | **PASS** ✅ | proptest_error_types_registration.rs | ~100 variants across 3 error types (truth-serum: requires workspace_tests compile fix) | Compensated: verified in test-suite-review |

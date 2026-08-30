@@ -123,19 +123,17 @@ The `velvet-ballastics-workspace-tests` crate depends on `xtask` (`xtask = { pat
 
 ---
 
-## 5. Fuzz Target — FAIL_LOCAL (Build Failure)
+## 5. Fuzz Target — BLOCKED_MISSING_TARGET (Target File Does Not Exist)
 
 ### PO-022 / RRO-022: fuzz_symbolic_code_deserialize
 
 **Command**: `cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000`
 
-**Result**: Build failure — the fuzz build targets `x86_64-unknown-linux-musl` and fails to compile.
+**Result**: BLOCKED — the fuzz target `fuzz_symbolic_code_deserialize.rs` does NOT exist. It is not present in `fuzz/fuzz_targets/` and is not listed as a `[[bin]]` entry in `fuzz/Cargo.toml`. This is a ledger inconsistency: evidence files, proof obligations, and test plans reference a non-existent target.
 
-**Error**: `ASAN_OPTIONS="detect_odr_violation=0" RUSTFLAGS="..." cargo build --manifest-path .../fuzz/Cargo.toml --target x86_64-unknown-linux-musl --release ...`
+**Error**: `cargo fuzz run` reports target not found.
 
-The musl target is not available in the current toolchain environment.
-
-**Status**: **FAIL_LOCAL** — toolchain configuration issue, not a contract violation.
+**Status**: **BLOCKED_MISSING_TARGET** — the target file is missing. This is not a toolchain issue. Compensating evidence: PO-021 `proptest_serde_roundtrip` (11 tests PASS) covers JSON round-trip identity and unknown-code rejection. Hostile arbitrary-JSON fuzz coverage is absent and cannot be provided until a target is created.
 
 ---
 

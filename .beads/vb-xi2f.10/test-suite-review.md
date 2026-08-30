@@ -233,7 +233,7 @@ Manual thought-experiment mutation analysis of 12 checkpoints:
 
 | Target | File | Status |
 |--------|------|--------|
-| fuzz_symbolic_code_deserialize | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | ✅ EXISTS (pre-existing) |
+| fuzz_symbolic_code_deserialize | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | ❌ MISSING — not present in fuzz_targets/ directory, not in fuzz/Cargo.toml [[bin]]. Ledger inconsistency. |
 | fuzz_diagnostic_code_from_str | `fuzz/fuzz_targets/fuzz_diagnostic_code_from_str.rs` | ✅ EXISTS (19 lines, NEW — created since prior review) |
 
 The `fuzz_diagnostic_code_from_str.rs` target is well-structured:

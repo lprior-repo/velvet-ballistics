@@ -621,8 +621,8 @@ For arbitrary unregistered strings, `serde_json::from_str::<SymbolicCode>(...)` 
 **Input type**: `&[u8]` — arbitrary byte sequences  
 **Risk**: Panic on malformed UTF-8, deeply nested JSON, extremely long strings, escape sequences, null bytes. `Deserialize` implementation must gracefully reject all hostile input without panic, OOM, or undefined behavior.  
 **Corpus seeds**: Valid JSON `"DUPLICATE_KEY"`, `"\"\"`, `"123"`, `"null"`, `"[]"`, `"{}"`, `"\"A\"*100000"`, UTF-8 BOM prefix.  
-**File**: `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` — EXISTS (pending execution since R2).  
-**Evidence command**: `cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000`
+**File**: `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` — MISSING (not present in fuzz_targets/ directory, not in fuzz/Cargo.toml [[bin]] entries). This is a ledger inconsistency: ledgers reference a non-existent fuzz target. Compensating evidence: PO-021 proptest_serde_roundtrip covers JSON round-trip identity and unknown-code rejection.
+**Evidence command**: `cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000` (CANNOT RUN — target MISSING)
 
 ### Fuzz Target: DiagnosticCode from_str parsing
 
@@ -675,7 +675,7 @@ All Kani harnesses are referenced by their proof obligation IDs (PO-001 through 
 
 | PO | Type | File | Status |
 |----|------|------|--------|
-| PO-022 | cargo-fuzz | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | PENDING since R2 |
+| PO-022 | cargo-fuzz | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` (MISSING) | BLOCKED — target file does not exist |
 | PO-027 | cargo-mutants | All diagnostic modules | PENDING since R2 |
 | PO-028 | moon-ci | `.moon/tasks.yml` | PENDING since R2 |
 

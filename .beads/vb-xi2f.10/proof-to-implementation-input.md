@@ -20,7 +20,7 @@
 | YamlError::code() | PO-006 | `crates/vb_yaml/src/error.rs` (YamlError enum, code() method) | Covered by PO-025 cross-crate test | `crates/vb_yaml/kani/kani_yaml_error_code.rs` |
 | Zero-allocation | PO-007 (waiver candidate) | `crates/vb_core/src/diagnostic.rs` (SymbolicCode, DiagnosticCode) | — | `crates/vb_core/kani/kani_zero_alloc.rs` |
 | Backward compat | PO-008 | `crates/vb_core/src/diagnostic.rs` (DiagnosticCode::from_str) | `crates/vb_core/tests/proptest_supported_codes.rs` | `crates/vb_core/kani/kani_from_str_compat.rs` |
-| Serialization | PO-009, PO-021, PO-022 | `crates/vb_core/src/diagnostic.rs` (Serialize/Deserialize impls) | `crates/vb_core/tests/proptest_serde_roundtrip.rs` | `crates/vb_core/kani/kani_serde_roundtrip.rs`, `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` |
+| Serialization | PO-009, PO-021, PO-022 | `crates/vb_core/src/diagnostic.rs` (Serialize/Deserialize impls) | `crates/vb_core/tests/proptest_serde_roundtrip.rs` | `crates/vb_core/kani/kani_serde_roundtrip.rs`, `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` (MISSING — not in fuzz_targets/ or Cargo.toml) |
 | Reverse lookup | PO-012 | `crates/vb_core/src/diagnostic.rs` (DiagnosticCode::symbolic_code) | Covered by PO-023 | `crates/vb_core/kani/kani_reverse_lookup.rs` |
 | Section 16 parity | PO-024 | `crates/vb_core/src/diagnostic.rs` (CODE_REGISTRY, public constants) | `crates/vb_core/tests/proptest_section16_parity.rs` | — |
 | HasSymbolicCode determinism | PO-013 | `crates/vb_core/src/diagnostic.rs` (HasSymbolicCode trait, implementations) | — | `crates/vb_core/kani/kani_determinism.rs` |
@@ -139,8 +139,9 @@ cargo test --test proptest_section16_parity -- --nocapture
 cargo test --test proptest_error_types_registration -- --nocapture
 cargo test --test proptest_diag_codes_promotion -- --nocapture
 
-# Fuzz
-cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000
+# Fuzz (BLOCKED — target MISSING)
+# cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000
+# NOTE: fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs does NOT exist. Not in fuzz_targets/ or fuzz/Cargo.toml.
 
 # Mutation
 cargo mutants --in-package vb_core --in-package vb_validate --in-package vb_compile --in-package vb_yaml -- --test-dir tests/

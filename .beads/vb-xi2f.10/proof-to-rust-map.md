@@ -332,10 +332,10 @@ This document maps every approved proof obligation (PO-001 through PO-028) to co
 | **Verifier** | cargo-fuzz |
 | **Source refs** | `crates/vb_core/src/diagnostic.rs::SymbolicCode` (Deserialize impl) |
 | **Behavior test refs** | — (fuzzing complements proptest; no dedicated behavior test) |
-| **Refinement harness refs** | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` |
+| **Refinement harness refs** | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` (MISSING — not present in fuzz_targets/ directory, not in fuzz/Cargo.toml [[bin]] entries) |
 | **Evidence command** | `cargo fuzz run fuzz_symbolic_code_deserialize -- -max_len=4096 -runs=100000` |
 | **Workdir** | `/home/lewis/src/velvet-ballistics` |
-| **Current status** | PENDING — not yet executed (backlog since R2). Defense-in-depth. |
+| **Current status** | BLOCKED — fuzz target file is MISSING from both fuzz_targets/ and fuzz/Cargo.toml. Compensating evidence: PO-021 proptest_serde_roundtrip covers JSON round-trip and unknown-code rejection. |
 | **Mapping status** | planned |
 
 ### PO-023 — CODE_REGISTRY unified consistency check

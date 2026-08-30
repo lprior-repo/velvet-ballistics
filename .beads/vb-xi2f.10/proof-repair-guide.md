@@ -127,13 +127,18 @@ Option B: Move `proptest_compile_error_codes.rs` and `proptest_error_types_regis
 - PO-021: Add `serde_json` dev-dependency to vb_core, add actual `serde_json::to_string`/`serde_json::from_str` roundtrip tests.
 - PO-023: Rename from `proptest_registry_consistency` to `proptest_from_str_determinism` or extend to test the equivalent registry properties through public API.
 
-### Repair R3-008: Verify Fuzz Dependencies and Build
+### Repair R3-008: Address Missing Fuzz Target PO-022
 
 **Resolves**: F-R2-008 (MEDIUM, PO-022)
 
-1. Verify `fuzz/Cargo.toml` contains `libfuzzer-sys` and `serde_json` dependencies
-2. Run `cargo fuzz build fuzz_symbolic_code_deserialize`
-3. Capture build output as evidence
+**Finding**: `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` does NOT exist. Not in `fuzz_targets/` directory and not in `fuzz/Cargo.toml` `[[bin]]` entries. This is a ledger inconsistency — multiple ledgers reference a non-existent target.
+
+**Remediation options**:
+1. Create the fuzz target file and `[[bin]]` entry in `fuzz/Cargo.toml` if hostile JSON testing is still required
+2. Waive PO-022 and rely on compensating evidence from PO-021 (`proptest_serde_roundtrip`), which already covers JSON round-trip identity and unknown-code rejection via proptest
+3. Update all ledgers to reflect the MISSING status (current repair)
+
+**Current status**: Ledgers updated to reflect MISSING status. Compensating evidence: PO-021 proptest provides JSON round-trip and unknown-code rejection coverage.
 
 ---
 

@@ -157,7 +157,7 @@ Every verifier-backed obligation must have a refinement harness ref mapping to a
 | PO-019 | proptest | — (proptest IS behavior test) | — | N/A |
 | PO-020 | proptest | — (proptest IS behavior test) | — | N/A |
 | PO-021 | proptest | — (proptest IS behavior test) | — | N/A |
-| PO-022 | cargo-fuzz | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` | fuzz target | ✅ (workspace only) |
+| PO-022 | cargo-fuzz | `fuzz/fuzz_targets/fuzz_symbolic_code_deserialize.rs` (MISSING — not in fuzz_targets/ or Cargo.toml [[bin]]) | fuzz target | ❌ MISSING |
 | PO-023 | proptest | — (proptest IS behavior test) | — | N/A |
 | PO-024 | proptest | — (proptest IS behavior test) | — | N/A |
 | PO-025 | proptest | — (proptest IS behavior test) | — | N/A |
@@ -201,7 +201,7 @@ All 28 RROs specify `evidence_workdir: "/home/lewis/src/velvet-ballistics"` (the
 | **vb_core proptest tests** | `proptest_symbolic_code.rs`, `proptest_registry_consistency.rs`, `proptest_supported_codes.rs`, `proptest_diagnostic_constructor.rs`, `proptest_serde_roundtrip.rs`, `proptest_section16_parity.rs` | PO-016, PO-018, PO-019, PO-021, PO-023, PO-024 | Workspace only |
 | **vb_validate proptest tests** | `proptest_validation_error_codes.rs`, `proptest_diag_codes_promotion.rs` | PO-017, PO-026 | Workspace only |
 | **workspace_tests proptest** | `proptest_compile_error_codes.rs`, `proptest_error_types_registration.rs` | PO-020, PO-025 | Workspace only |
-| **Fuzz target** | `fuzz_symbolic_code_deserialize.rs` | PO-022 | Workspace only |
+| **Fuzz target** | `fuzz_symbolic_code_deserialize.rs` (MISSING — not present in fuzz/fuzz_targets/ or fuzz/Cargo.toml) | PO-022 | ❌ MISSING |
 
 Evidence commands as written WILL FAIL when executed from `/home/lewis/src/velvet-ballistics` because the target test/harness files do not exist there. Correctable by either:
 1. Updating `evidence_workdir` to `/home/lewis/src/vb-workspaces/vb-xi2f.10` (temporary — valid while bead is in workspace), OR
@@ -318,9 +318,9 @@ All 28 `rust-refinement-obligation.jsonl` rows use `schema_version: rust-refinem
 **RRO IDs**: RRO-vb-xi2f10-016 through RRO-vb-xi2f10-026 (proptest), RRO-vb-xi2f10-022 (fuzz)
 **Artifact**: `proof-to-rust-map.md` & `rust-refinement-obligations.jsonl`
 
-**Description**: All 28 RROs specify `evidence_workdir: "/home/lewis/src/velvet-ballistics"` (canonical production tree). But the proptest test files (`proptest_symbolic_code.rs`, `proptest_registry_consistency.rs`, `proptest_supported_codes.rs`, `proptest_diagnostic_constructor.rs`, `proptest_serde_roundtrip.rs`, `proptest_section16_parity.rs`, `proptest_validation_error_codes.rs`, `proptest_diag_codes_promotion.rs`, `proptest_compile_error_codes.rs`, `proptest_error_types_registration.rs`) and the fuzz target (`fuzz_symbolic_code_deserialize.rs`) exist only in the workspace at `/home/lewis/src/vb-workspaces/vb-xi2f.10/crates/` and `/home/lewis/src/vb-workspaces/vb-xi2f.10/fuzz/`. They do NOT exist in the canonical production tree.
+**Description**: All 28 RROs specify `evidence_workdir: "/home/lewis/src/velvet-ballistics"` (canonical production tree). But the proptest test files (`proptest_symbolic_code.rs`, `proptest_registry_consistency.rs`, `proptest_supported_codes.rs`, `proptest_diagnostic_constructor.rs`, `proptest_serde_roundtrip.rs`, `proptest_section16_parity.rs`, `proptest_validation_error_codes.rs`, `proptest_diag_codes_promotion.rs`, `proptest_compile_error_codes.rs`, `proptest_error_types_registration.rs`) exist only in the workspace at `/home/lewis/src/vb-workspaces/vb-xi2f.10/crates/` and `/home/lewis/src/vb-workspaces/vb-xi2f.10/fuzz/`. They do NOT exist in the canonical production tree. Additionally, `fuzz_symbolic_code_deserialize.rs` does NOT exist in either location — it is a MISSING ledger reference (not in fuzz_targets/ and not in fuzz/Cargo.toml [[bin]] entries).
 
-**Evidence**: Verified via `ls` on both paths. Production `crates/vb_core/tests/` has `proptest_core_types.rs` but NOT the bead-specific proptest files. Production `fuzz/fuzz_targets/` does not contain `fuzz_symbolic_code_deserialize.rs`.
+**Evidence**: Verified via `ls` on both paths. Production `crates/vb_core/tests/` has `proptest_core_types.rs` but NOT the bead-specific proptest files. Production `fuzz/fuzz_targets/` does not contain `fuzz_symbolic_code_deserialize.rs`. Isolated workspace `fuzz/fuzz_targets/` also does not contain `fuzz_symbolic_code_deserialize.rs`. The reference is a ledger inconsistency — the target file was either deleted or never created.
 
 **Impact**: Evidence commands like `cargo test --test proptest_symbolic_code -- --nocapture` WILL FAIL when executed from `/home/lewis/src/velvet-ballistics`.
 
