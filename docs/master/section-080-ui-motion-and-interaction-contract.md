@@ -7,6 +7,8 @@ parent: velvet-ballistics-MASTER.md
 ## 80. UI Motion and Interaction Contract
 
 
+> **Removed.** Makepad UI is not part of the current core feature set. This section is historical residue only; no current backend bead may be blocked by UI motion, interaction, or animation gate requirements.
+
 ### Principle
 
 Animation must communicate state, causality, and replay timing. Decorative animation is rejected. Motion must be calm, bounded, and GPU-friendly.

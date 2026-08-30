@@ -7,6 +7,8 @@ parent: velvet-ballistics-MASTER.md
 ## 83. UI Testing, Benchmarking, and Acceptance Gates
 
 
+> **Removed.** Makepad UI is not part of the current core feature set. This section is historical residue only; no current backend bead may be blocked by UI testing, benchmarking, snapshot, token, or acceptance gate requirements.
+
 ### UI Tests
 
 Required tests:

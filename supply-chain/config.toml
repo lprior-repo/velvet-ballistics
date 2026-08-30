@@ -1,5 +1,8 @@
 
 # cargo-vet config file
+# Historical: Makepad UI crate policies and exemptions below are preserved for audit
+# continuity. Makepad was removed from current scope (phase 61-74 residue removal);
+# these entries are informational only and must not block current backend delivery.
 
 [cargo-vet]
 version = "0.10"

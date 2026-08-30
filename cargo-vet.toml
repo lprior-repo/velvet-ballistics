@@ -19,7 +19,8 @@
 
 
 # Git packages that match crates.io versions need explicit audit-as-crates-io = false
-# These are transitive dependencies from makepad platform and other git-sourced crates
+# Historical: many of these were transitives from the now-removed Makepad UI crate.
+# They remain in this file only for audit continuity; Makepad is no longer in current scope.
 [policy."ab_glyph_rasterizer:0.1.8@git:20b6c53b6f229b165fe7f813504ae93405159d27"]
 audit-as-crates-io = false
 

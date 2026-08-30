@@ -7,6 +7,8 @@ parent: velvet-ballistics-MASTER.md
 ## 79. UI Design System Tokens
 
 
+> **Removed.** Makepad UI is not part of the current core feature set. This section is historical residue only; no current backend bead may be blocked by UI token, Figma, or Makepad splash gate requirements.
+
 ### Design Token Source
 
 The design token source is:

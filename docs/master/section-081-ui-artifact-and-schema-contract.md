@@ -7,6 +7,8 @@ parent: velvet-ballistics-MASTER.md
 ## 81. UI Artifact and Schema Contract
 
 
+> **Removed.** Makepad UI is not part of the current core feature set. This section is historical residue only; no current backend bead may be blocked by UI artifact, schema, or CLI parity gate requirements.
+
 ### Shared Artifact Rule
 
 The UI and CLI render the same typed artifacts. A screen cannot display data unless the corresponding CLI command can emit it in structured form.

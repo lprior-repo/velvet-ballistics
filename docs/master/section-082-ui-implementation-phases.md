@@ -7,6 +7,8 @@ parent: velvet-ballistics-MASTER.md
 ## 82. UI Implementation Phases
 
 
+> **Removed.** Makepad UI is not part of the current core feature set. These phase rows are historical residue only; no current backend bead may be blocked by Makepad, UI model, screenshot, or UI perf gate requirements. The phase range 61-74 in Section 70 covers UI residue removal.
+
 The UI phase rows in Section 70 define the required delivery sequence after Phase 60:
 
 | Phase | Name | Required delivery |
