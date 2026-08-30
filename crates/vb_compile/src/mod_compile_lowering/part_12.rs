@@ -1,16 +1,8 @@
 #![allow(unused_imports)]
 use super::*;
-use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
-use crate::mod_compile_validation::{
-    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
-};
+use crate::mod_compile_errors::CompileError;
 use saphyr::Yaml;
-use std::collections::HashMap;
-use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
-};
+use vb_core::{SlotIdx, StepIdx};
 
 pub(super) fn optional_slot_field(
     body: &Yaml<'_>,
@@ -23,30 +15,11 @@ pub(super) fn optional_slot_field(
     }
 }
 
-#[allow(dead_code)]
-pub(super) fn required_next_step(
-    next: Option<StepIdx>,
-    index: usize,
-) -> Result<StepIdx, CompileError> {
-    next.ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
 pub(super) fn source_ir_start(starts: &[StepIdx], index: usize) -> Result<StepIdx, CompileError> {
     starts
         .get(index)
         .copied()
         .ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
-#[allow(dead_code)]
-pub(super) fn mapped_branch_target(
-    body: &Yaml<'_>,
-    step: usize,
-    field: &'static str,
-    source_ir_starts: &[StepIdx],
-) -> Result<StepIdx, CompileError> {
-    let source = required_branch_target(body, step, field)?;
-    source_ir_start(source_ir_starts, source.as_usize())
 }
 
 pub(super) fn reject_unknown_primitive_fields(
@@ -195,7 +168,6 @@ pub(crate) fn required_branch_targets(
     Ok(targets)
 }
 
-#[allow(dead_code)]
 pub(super) fn checked_step_offset(
     id: StepIdx,
     offset: u16,
@@ -209,14 +181,6 @@ pub(super) fn checked_step_offset(
             value: id.as_usize(),
             limit: usize::from(u16::MAX),
         })
-}
-
-#[allow(dead_code)]
-pub(super) fn alloc_workflow_slot(builder: &mut WorkflowBuilder) -> Result<SlotIdx, CompileError> {
-    let value = builder.slot_count()?;
-    let slot = SlotIdx::new(value);
-    builder.record_slot(slot);
-    Ok(slot)
 }
 
 pub(super) fn required_action(

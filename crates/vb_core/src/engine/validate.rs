@@ -410,29 +410,7 @@ mod tests {
         }
     }
 
-    #[allow(dead_code)]
-    fn small_contract() -> ResourceContract {
-        ResourceContract {
-            max_steps: 10,
-            max_slots: 10,
-            max_constants: 10,
-            max_accessors: 10,
-            max_expressions: 10,
-            max_expr_stack: 10,
-            max_step_budget_per_tick: 10,
-            max_transitions_per_tick: 10,
-            max_input_bytes: 100,
-            max_output_bytes: 100,
-            max_blob_bytes: 100,
-            max_ipc_payload_bytes: 100,
-            max_retry_attempts: 3,
-            max_fanout: 4,
-            max_collect_items: 10,
-            max_queue_depth: 10,
-            max_journal_batch_bytes: 100,
-            ..ResourceContract::DEFAULT
-        }
-    }
+ 
 
     // =========================================================================
     // validate_compiled_workflow

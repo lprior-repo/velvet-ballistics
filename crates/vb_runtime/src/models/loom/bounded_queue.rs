@@ -54,11 +54,6 @@ impl BoundedQueue {
         self.available.load(Ordering::SeqCst)
     }
 
-    #[allow(dead_code)]
-    fn capacity(&self) -> usize {
-        self.capacity
-    }
-
     fn check_invariants(&self) {
         let avail = self.available();
         assert!(

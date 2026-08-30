@@ -100,7 +100,6 @@ pub(crate) enum Command {
     },
     Validate {
         workflow: PathBuf,
-        #[allow(dead_code)]
         output: OutputFormat,
     },
     Compile {
@@ -171,7 +170,6 @@ pub(crate) enum Command {
     },
     Explain {
         workflow: PathBuf,
-        #[allow(dead_code)]
         output: OutputFormat,
     },
     Answer {

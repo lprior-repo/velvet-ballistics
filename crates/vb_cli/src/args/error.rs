@@ -4,7 +4,6 @@
 use super::VALID_COMMANDS;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub(crate) enum ParseError {
     MissingArgument(&'static str),
     UnknownEmitTarget(String),

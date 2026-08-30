@@ -8,7 +8,6 @@
 //! - POST-007: Postcard output validates magic + header length before payload decode
 
 #![forbid(unsafe_code)]
-#![allow(dead_code)]
 
 #[path = "cli_postcard/codec.rs"]
 mod codec;

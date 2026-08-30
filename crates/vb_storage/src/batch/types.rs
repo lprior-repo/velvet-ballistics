@@ -21,7 +21,6 @@ pub const DEFAULT_JOURNAL_BATCH_BYTE_LIMIT: u64 = 1_048_576;
 pub struct JournalWriteBatch<'j> {
     pub(super) inner: fjall::OwnedWriteBatch,
     pub(super) journal: &'j FjallJournal,
-    #[allow(dead_code)]
     pub(super) staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     pub(super) aborted: bool,
     pub(super) staged_bytes: u64,

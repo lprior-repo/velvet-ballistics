@@ -30,44 +30,6 @@ pub(crate) fn integer_error_value(value: i64) -> usize {
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn checked_step_offset(
-    id: StepIdx,
-    offset: u16,
-    primitive: &'static str,
-    field: &'static str,
-) -> Result<StepIdx, CompileError> {
-    id.checked_add(offset)
-        .ok_or(CompileError::PrimitiveLoweringLimitExceeded {
-            primitive,
-            field,
-            value: id.as_usize(),
-            limit: usize::from(u16::MAX),
-        })
-}
-
-#[allow(dead_code)]
-pub(crate) fn required_action(
-    body: &Yaml<'_>,
-    step: usize,
-    primitive: &'static str,
-) -> Result<vb_core::ActionId, CompileError> {
-    let node = required_step_field(body, step, "action")?;
-    let value = node.as_integer().ok_or(CompileError::StepFieldShape {
-        step,
-        field: "action",
-        expected: "an integer action id",
-    })?;
-    let raw = u16::try_from(value).map_err(|_| CompileError::PrimitiveLoweringLimitExceeded {
-        primitive,
-        field: "action",
-        value: integer_error_value(value),
-        limit: usize::from(u16::MAX),
-    })?;
-    Ok(vb_core::ActionId::new(raw))
-}
-
-#[allow(dead_code)]
 pub(crate) fn required_branch_target(
     body: &Yaml<'_>,
     step: usize,

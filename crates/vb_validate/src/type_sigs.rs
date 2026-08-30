@@ -184,7 +184,6 @@ pub struct WorkflowTypes {
 
 /// Step model for type/taint validation.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct StepTypes {
     /// Step ID for diagnostics.
     pub id: String,

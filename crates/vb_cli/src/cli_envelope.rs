@@ -41,7 +41,6 @@ pub(crate) mod kind {
 
 /// Kind enum representing all registered payload types.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub(crate) enum Kind {
     VerificationReport,
     DiagnosticReport,
@@ -87,31 +86,7 @@ impl Kind {
         }
     }
 
-    /// Parse a Kind from its string representation.
-    #[allow(dead_code)]
-    pub(crate) fn from_str(s: &str) -> Option<Kind> {
-        match s {
-            kind::VERIFICATION_REPORT => Some(Kind::VerificationReport),
-            kind::DIAGNOSTIC_REPORT => Some(Kind::DiagnosticReport),
-            kind::WORKFLOW_EXPLANATION => Some(Kind::WorkflowExplanation),
-            kind::WORKFLOW_GRAPH => Some(Kind::WorkflowGraph),
-            kind::SIMULATION_REPORT => Some(Kind::SimulationReport),
-            kind::SUBMIT_RUN_RESULT => Some(Kind::SubmitRunResult),
-            kind::RUN_INSPECTION => Some(Kind::RunInspection),
-            kind::RUN_EVENTS => Some(Kind::RunEvents),
-            kind::REPLAY_REPORT => Some(Kind::ReplayReport),
-            kind::INCIDENT_REPORT => Some(Kind::IncidentReport),
-            kind::ACTION_LIST => Some(Kind::ActionList),
-            kind::ACTION_DESCRIPTION => Some(Kind::ActionDescription),
-            kind::DOCTOR_REPORT => Some(Kind::DoctorReport),
-            kind::AI_CONTEXT_PACKET => Some(Kind::AiContextPacket),
-            kind::CLI_STATUS => Some(Kind::CliStatus),
-            kind::SYSTEM_STATUS => Some(Kind::SystemStatus),
-            kind::AGENT_CONTEXT => Some(Kind::AgentContext),
-            _ => None,
-        }
-    }
-}
+ }
 
 /// Builds a structured output envelope with schema_version and kind fields.
 /// All outputs from CLI commands use this envelope discipline.
@@ -123,24 +98,6 @@ impl Kind {
 /// # Returns
 /// A JSON Value representing the envelope with schema_version, kind, and data fields.
 ///
-/// # Invariants
-/// - INV-002: schema_version is never empty (proven by constant being non-empty string)
-/// - INV-003: kind matches registered constants (Kind enum only constructed via from_str)
-/// - POST-003: Output contains schema_version field
-/// - POST-004: Output contains kind field
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value {
-    let mut envelope = Map::new();
-    envelope.insert(
-        "schema_version".to_string(),
-        Value::String(SCHEMA_VERSION.to_string()),
-    );
-    envelope.insert("kind".to_string(), Value::String(kind.as_str().to_string()));
-    envelope.insert("data".to_string(), data);
-    Value::Object(envelope)
-}
-
 /// Serializes data with version envelope for JSON output.
 /// Adds schema_version and kind fields to the output JSON object.
 ///
@@ -164,25 +121,6 @@ pub(crate) fn serialize_with_version(data: &Value, kind: Kind) -> Value {
     Value::Object(envelope)
 }
 
-/// Error types for CLI envelope operations.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
-pub(crate) enum EnvelopeError {
-    SerializationFailed,
-    SchemaVersionMissing,
-    UnknownKind(String),
-}
-
-impl std::fmt::Display for EnvelopeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SerializationFailed => write!(f, "envelope serialization failed"),
-            Self::SchemaVersionMissing => write!(f, "schema_version field is missing or empty"),
-            Self::UnknownKind(k) => write!(f, "unknown kind: {k}"),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,41 +137,6 @@ mod tests {
         assert_eq!(Kind::SystemStatus.as_str(), "SystemStatus");
         assert_eq!(Kind::AiContextPacket.as_str(), "AiContextPacket");
         assert_eq!(Kind::VerificationReport.as_str(), "VerificationReport");
-    }
-
-    #[test]
-    fn test_kind_from_str() {
-        assert_eq!(Kind::from_str("CliStatus"), Some(Kind::CliStatus));
-        assert_eq!(Kind::from_str("SystemStatus"), Some(Kind::SystemStatus));
-        assert_eq!(
-            Kind::from_str("AiContextPacket"),
-            Some(Kind::AiContextPacket)
-        );
-        assert_eq!(Kind::from_str("Unknown"), None);
-    }
-
-    #[test]
-    fn test_build_envelope_has_schema_version() {
-        let data = serde_json::json!({"status": "ok"});
-        let envelope = build_envelope(data, Kind::CliStatus);
-        assert_eq!(
-            envelope.get("schema_version"),
-            Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
-        );
-    }
-
-    #[test]
-    fn test_build_envelope_has_kind() {
-        let data = serde_json::json!({"status": "ok"});
-        let envelope = build_envelope(data, Kind::CliStatus);
-        assert_eq!(envelope.get("kind"), Some(&serde_json::json!("CliStatus")));
-    }
-
-    #[test]
-    fn test_build_envelope_has_data() {
-        let data = serde_json::json!({"status": "ok", "count": 42});
-        let envelope = build_envelope(data.clone(), Kind::CliStatus);
-        assert_eq!(envelope.get("data"), Some(&data));
     }
 
     #[test]
@@ -281,7 +184,6 @@ mod tests {
         ];
         for (kind, expected_str) in kinds {
             assert_eq!(kind.as_str(), expected_str);
-            assert_eq!(Kind::from_str(expected_str), Some(kind));
         }
     }
 }

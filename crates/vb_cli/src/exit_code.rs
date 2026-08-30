@@ -8,7 +8,6 @@ use std::process::ExitCode;
 /// integration tests can match on the process exit status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-#[allow(dead_code)]
 pub(crate) enum CliExitCode {
     /// Operation completed successfully.
     Success = 0,

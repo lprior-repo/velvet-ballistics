@@ -1,28 +1,8 @@
 #![allow(unused_imports)]
 use super::*;
-use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
-use crate::mod_compile_validation::{
-    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
-};
+use crate::mod_compile_errors::CompileError;
 use saphyr::Yaml;
-use std::collections::HashMap;
-use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
-};
-
-#[allow(dead_code)]
-pub(super) fn required_choose_condition(
-    body: &Yaml<'_>,
-    step: usize,
-) -> Result<ChooseCondition, CompileError> {
-    let node = required_step_field(body, step, "condition")?;
-    if let Some(value) = node.as_bool() {
-        return Ok(ChooseCondition::Literal(value));
-    }
-    required_slot(body, step, "condition").map(ChooseCondition::Slot)
-}
+use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 pub(super) fn required_branch_target(
     body: &Yaml<'_>,

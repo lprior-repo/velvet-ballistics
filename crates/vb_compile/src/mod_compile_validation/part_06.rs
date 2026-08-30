@@ -2,7 +2,6 @@ use super::*;
 use crate::mod_compile_errors::CompileError;
 use crate::mod_compile_errors::non_string_key_error;
 use saphyr::Yaml;
-use vb_core::StepIdx;
 
 pub(super) fn reject_unknown_trigger_fields(
     trigger: &'static str,
@@ -109,15 +108,18 @@ pub(crate) fn required_step_field<'a>(
         .ok_or(CompileError::MissingStepField { step, field })
 }
 
-#[allow(dead_code)]
-pub(super) fn required_next_step(
-    next: Option<StepIdx>,
-    index: usize,
-) -> Result<StepIdx, CompileError> {
-    next.ok_or(CompileError::StepIndexOutOfRange { value: index })
+pub(super) fn primitive_body_mapping<'a>(
+    body: &'a Yaml<'a>,
+    step: usize,
+    primitive: &'static str,
+) -> Result<&'a saphyr::Mapping<'a>, CompileError> {
+    body.as_mapping().ok_or(CompileError::StepFieldShape {
+        step,
+        field: primitive,
+        expected: "a mapping",
+    })
 }
 
-#[allow(dead_code)]
 pub(crate) fn reject_unknown_primitive_fields(
     body: &Yaml<'_>,
     step: usize,
@@ -129,18 +131,6 @@ pub(crate) fn reject_unknown_primitive_fields(
         reject_unknown_primitive_field(key, step, primitive, allowed)?;
     }
     Ok(())
-}
-
-pub(super) fn primitive_body_mapping<'a>(
-    body: &'a Yaml<'a>,
-    step: usize,
-    primitive: &'static str,
-) -> Result<&'a saphyr::Mapping<'a>, CompileError> {
-    body.as_mapping().ok_or(CompileError::StepFieldShape {
-        step,
-        field: primitive,
-        expected: "a mapping",
-    })
 }
 
 pub(super) fn reject_unknown_primitive_field(

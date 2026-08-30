@@ -17,7 +17,6 @@ pub(crate) struct VerifyOk {
 }
 
 /// Structured error from the verification pipeline.
-#[allow(dead_code)]
 pub(crate) enum VerifyError {
     /// YAML source could not be parsed.
     YamlParse(String),
