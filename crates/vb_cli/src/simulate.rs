@@ -1,4 +1,35 @@
-//! Module: simulate
+//! Module: simulate — CLI entry point for static preflight.
+//!
+//! The `simulate` command is a **static preflight** analysis tool.
+//! It compiles a workflow YAML to IR and performs a read-only structural
+//! walk to produce a deterministic dry-run summary.
+//!
+//! ## Contract guarantees
+//!
+//! - **No execution**: Actions are never dispatched or run.
+//! - **No storage**: The Fjall database is never opened or accessed.
+//! - **No side effects**: No filesystem writes, no DB paths created.
+//!   (Proven by test: `cli_simulate_does_not_create_db_side_effects`)
+//! - **No I/O beyond IR input**: The only filesystem read is loading the
+//!   compiled workflow bytes; all analysis happens in memory.
+//!
+//! ## Boundary vs. live runtime
+//!
+//! This command lives in `vb_cli` and depends only on `vb_compile` and
+//! `vb_core::CompiledWorkflow`. It never imports or depends on `vb_runtime`
+//! or `vb_storage`. The live execution path (`run`, `run-compiled`) goes
+//! through `vb_runtime`'s multi-shard engine with full state management,
+//! action dispatch, and journal persistence.
+//!
+//! The workflow analysis path is:
+//! ```text
+//! YAML file → vb_compile::compile_bytes_json() → CompiledWorkflow
+//!           → commands_workflow::simulate_workflow() → SimulationResult
+//!           → emit to stdout (text/yaml/postcard)
+//! ```
+//!
+//! See `commands_workflow::simulate` module docs for the full boundary
+//! comparison table between static preflight and live runtime.
 
 use crate::app_impl::prelude::*;
 

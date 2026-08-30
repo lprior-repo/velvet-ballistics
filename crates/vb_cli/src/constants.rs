@@ -28,7 +28,7 @@ commands:
   diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
   incident   <run_id> --db <path> [--emit text|yaml|postcard]
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
-  simulate   <workflow.yaml> [--emit text|yaml|postcard]
+  simulate   <workflow.yaml> [--emit text|yaml|postcard]  (static preflight — dry-run analysis, no execution)
   system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]
   agent-context [--deliver stdout|file:<absolute-path>]
   ai-context <run_id> --db <path> [--emit text|yaml|postcard]
