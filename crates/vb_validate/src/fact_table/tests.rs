@@ -1,7 +1,7 @@
 //! Tests for fact_table
 
 use crate::ValidationError;
-use crate::type_sigs::{InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
+use crate::type_sigs::{InputDecl, InputSecret, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
 
 use super::*;
 
@@ -11,12 +11,12 @@ fn sample_workflow() -> WorkflowTypes {
             InputDecl {
                 name: "user".to_owned(),
                 schema_type: ValueType::Text,
-                is_secret: false,
+                secret: InputSecret::NonSecret,
             },
             InputDecl {
                 name: "token".to_owned(),
                 schema_type: ValueType::Text,
-                is_secret: true,
+                secret: InputSecret::Secret,
             },
         ],
         vars: vec![
@@ -325,12 +325,12 @@ fn facts_build_duplicate_input_last_wins() {
             InputDecl {
                 name: "x".to_owned(),
                 schema_type: ValueType::Text,
-                is_secret: false,
+                secret: InputSecret::NonSecret,
             },
             InputDecl {
                 name: "x".to_owned(),
                 schema_type: ValueType::Number,
-                is_secret: true,
+                secret: InputSecret::Secret,
             },
         ],
         ..WorkflowTypes::default()

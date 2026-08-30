@@ -21,7 +21,7 @@ fn encode_contract_bytes_is_deterministic_for_random_contract() {
     let mut contract = ResourceContract::DEFAULT;
     contract.max_steps = 500;
     contract.max_slots = 64;
-    contract.allows_secret_results = true;
+    contract.result_taint_policy = ResultTaintPolicy::Allow;
     let enc1 = encode_contract_bytes(&contract);
     let enc2 = encode_contract_bytes(&contract);
     assert_eq!(
@@ -64,7 +64,7 @@ fn encode_contract_bytes_contains_all_17_field_tags_in_order() {
         b"max_collect_items",
         b"max_queue_depth",
         b"max_journal_batch_bytes",
-        b"allows_secret_results",
+        b"result_taint_policy",
     ];
 
     // Each tag must appear in order
@@ -170,7 +170,7 @@ fn encode_contract_bytes_field_tags_are_unique() {
         b"max_collect_items",
         b"max_queue_depth",
         b"max_journal_batch_bytes",
-        b"allows_secret_results",
+        b"result_taint_policy",
     ];
 
     // All 17 field tags (plus header "resource_contract") must be unique
@@ -193,7 +193,7 @@ fn encode_contract_bytes_field_tags_are_unique() {
         b"max_collect_items",
         b"max_queue_depth",
         b"max_journal_batch_bytes",
-        b"allows_secret_results",
+        b"result_taint_policy",
     ];
 
     for (i, a) in all_tags.iter().enumerate() {
@@ -227,16 +227,16 @@ fn encode_contract_bytes_is_injective_for_distinct_contracts() {
 }
 
 #[test]
-fn encode_contract_bytes_differs_when_allows_secret_results_toggled() {
+fn encode_contract_bytes_differs_when_result_taint_policy_toggled() {
     let mut contract_true = ResourceContract::DEFAULT;
-    contract_true.allows_secret_results = true;
+    contract_true.result_taint_policy = ResultTaintPolicy::Allow;
     let mut contract_false = ResourceContract::DEFAULT;
-    contract_false.allows_secret_results = false;
+    contract_false.result_taint_policy = ResultTaintPolicy::Deny;
     let enc_true = encode_contract_bytes(&contract_true);
     let enc_false = encode_contract_bytes(&contract_false);
     assert_ne!(
         enc_true, enc_false,
-        "Contracts differing only in allows_secret_results must differ in encoding"
+        "Contracts differing only in result_taint_policy must differ in encoding"
     );
 }
 
@@ -279,7 +279,7 @@ fn encode_contract_bytes_does_not_panic_for_extreme_contract_values() {
     all_zero.max_collect_items = 0;
     all_zero.max_queue_depth = 0;
     all_zero.max_journal_batch_bytes = 0;
-    all_zero.allows_secret_results = false;
+    all_zero.result_taint_policy = ResultTaintPolicy::Deny;
     let _bytes_all_zero = encode_contract_bytes(&all_zero);
 
     // All max values
@@ -301,7 +301,7 @@ fn encode_contract_bytes_does_not_panic_for_extreme_contract_values() {
     all_max.max_collect_items = u32::MAX;
     all_max.max_queue_depth = u32::MAX;
     all_max.max_journal_batch_bytes = u32::MAX;
-    all_max.allows_secret_results = true;
+    all_max.result_taint_policy = ResultTaintPolicy::Allow;
     let _bytes_all_max = encode_contract_bytes(&all_max);
 
     // DEFAULT contract must always work
@@ -349,7 +349,7 @@ fn encode_contract_bytes_no_tag_is_prefix_of_another_tag() {
         "max_collect_items",
         "max_queue_depth",
         "max_journal_batch_bytes",
-        "allows_secret_results",
+        "result_taint_policy",
     ];
 
     for i in 0..tags.len() {

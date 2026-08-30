@@ -108,6 +108,29 @@ impl ValueFact {
 // Workflow model
 // ---------------------------------------------------------------------------
 
+/// Sealed contract for whether a workflow input is a secret.
+///
+/// Replaces the raw `bool` previously stored in `InputDecl.is_secret`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum InputSecret {
+    /// Input is a secret reference.
+    Secret,
+    /// Input is a normal (non-secret) value.
+    NonSecret,
+}
+
+impl InputSecret {
+    /// Returns the corresponding taint marker used in value facts.
+    #[must_use]
+    pub const fn to_taint(self) -> Taint {
+        match self {
+            Self::Secret => Taint::Secret,
+            Self::NonSecret => Taint::Clean,
+        }
+    }
+}
+
 /// Input schema type declaration.
 #[derive(Debug, Clone)]
 pub struct InputDecl {
@@ -115,8 +138,8 @@ pub struct InputDecl {
     pub name: String,
     /// Declared type.
     pub schema_type: ValueType,
-    /// Whether this input is a secret.
-    pub is_secret: bool,
+    /// Whether this input is a secret reference.
+    pub secret: InputSecret,
 }
 
 /// Resource contract limits for validation.
@@ -434,11 +457,7 @@ impl Facts {
 fn input_facts(inputs: &[InputDecl]) -> HashMap<String, ValueFact> {
     let mut facts = HashMap::with_capacity(inputs.len());
     for input in inputs {
-        let taint = if input.is_secret {
-            Taint::Secret
-        } else {
-            Taint::Clean
-        };
+        let taint = input.secret.to_taint();
         match facts.entry(input.name.clone()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 entry.insert(ValueFact {

@@ -1039,7 +1039,7 @@ fn validation_pipeline_selective_gates_skip_disabled() {
     let parts = make_parts(vec![node], 1);
     // When validate is called with gate 9 disabled
     let pipeline = ValidationPipeline {
-        gate_09_slot_references: false,
+        gate_09_slot_referencesvb_validate::shared::GateStatus::Disabled,
         ..ValidationPipeline::no_gates()
     };
     let result = pipeline.validate(&parts);

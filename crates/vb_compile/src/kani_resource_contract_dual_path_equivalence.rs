@@ -69,7 +69,7 @@ fn prove_dual_path_digest_equivalence_non_default() {
         max_collect_items: 16,
         max_queue_depth: 16,
         max_journal_batch_bytes: 128,
-        allows_secret_results: true,
+        result_taint_policy: ResultTaintPolicy::Allow,
     };
 
     let digest_direct = crate::mod_compile_lowering::canonical_digest(&source, contract);

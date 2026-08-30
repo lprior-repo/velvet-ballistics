@@ -198,6 +198,37 @@ impl CompiledWorkflow {
     }
 }
 
+/// Policy for whether secret-tainted results may appear in answer payloads.
+///
+/// Replaces the raw `bool` previously stored in `ResourceContract.result_taint_policy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum ResultTaintPolicy {
+    /// Secret-tainted results are rejected at answer assembly.
+    Deny,
+    /// Secret-tainted results are permitted in the output.
+    Allow,
+}
+
+impl core::ops::Not for ResultTaintPolicy {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        match self {
+            Self::Deny => Self::Allow,
+            Self::Allow => Self::Deny,
+        }
+    }
+}
+
+impl ResultTaintPolicy {
+    /// Returns true when this policy allows secret-tainted results.
+    #[must_use]
+    pub const fn allows_secrets(self) -> bool {
+        matches!(self, Self::Allow)
+    }
+}
+
 /// Explicit compiled resource bounds accepted at run admission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceContract {
@@ -235,8 +266,8 @@ pub struct ResourceContract {
     pub max_queue_depth: u32,
     /// Maximum journal batch bytes.
     pub max_journal_batch_bytes: u32,
-    /// Whether secret-tainted results are allowed in answer payloads.
-    pub allows_secret_results: bool,
+    /// Policy governing whether secret-tainted results may appear in answer payloads.
+    pub result_taint_policy: ResultTaintPolicy,
 }
 
 impl ResourceContract {
@@ -259,7 +290,7 @@ impl ResourceContract {
         max_collect_items: 1_024,
         max_queue_depth: 1_024,
         max_journal_batch_bytes: 1_048_576,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 }
 

@@ -3,9 +3,9 @@
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 //!
 //! Verifies that ResourceContract has exactly 17 fields including
-//! max_transitions_per_tick and allows_secret_results.
+//! max_transitions_per_tick and result_taint_policy.
 
-use vb_core::ResourceContract;
+use vb_core::{ResourceContract, ResultTaintPolicy};
 
 // ---------------------------------------------------------------------------
 // B1: Canonical type has exactly 17 fields
@@ -39,7 +39,7 @@ fn resource_contract_canonical_type_has_17_fields() {
         max_collect_items: 1,
         max_queue_depth: 1,
         max_journal_batch_bytes: 1,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     // Verify field values reflect what we set
@@ -60,7 +60,7 @@ fn resource_contract_canonical_type_has_17_fields() {
     assert_eq!(c.max_collect_items, 1);
     assert_eq!(c.max_queue_depth, 1);
     assert_eq!(c.max_journal_batch_bytes, 1);
-    assert_eq!(c.allows_secret_results, false);
+    assert_eq!(c.result_taint_policy, ResultTaintPolicy::Deny);
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
 
     let mut c = ResourceContract::DEFAULT;
     c.max_transitions_per_tick = 100;
-    c.allows_secret_results = true;
+    c.result_taint_policy = ResultTaintPolicy::Allow;
 
     let parts = WorkflowParts {
         name: Box::<str>::from("type_integrity_test"),
@@ -103,7 +103,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("CompiledWorkflow::try_from_parts must accept 17-field ResourceContract");
     assert_eq!(workflow.resource_contract().max_transitions_per_tick, 100);
-    assert_eq!(workflow.resource_contract().allows_secret_results, true);
+    assert_eq!(workflow.resource_contract().result_taint_policy, ResultTaintPolicy::Allow);
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
     c.max_slots = 7;
     c.max_step_budget_per_tick = 999;
     c.max_transitions_per_tick = 888;
-    c.allows_secret_results = true;
+    c.result_taint_policy = ResultTaintPolicy::Allow;
 
     let parts = WorkflowParts {
         name: Box::<str>::from("roundtrip_test"),
@@ -161,8 +161,8 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
         "max_transitions_per_tick roundtrip"
     );
     assert_eq!(
-        returned.allows_secret_results, true,
-        "allows_secret_results roundtrip"
+        returned.result_taint_policy, ResultTaintPolicy::Allow,
+        "result_taint_policy roundtrip"
     );
     // Spot-check a few more fields to ensure full roundtrip
     assert_eq!(
@@ -211,10 +211,10 @@ fn resource_contract_default_has_reasonable_values() {
         c.max_transitions_per_tick > 0,
         "DEFAULT max_transitions_per_tick must be > 0"
     );
-    // allows_secret_results defaults to false (conservative)
+    // result_taint_policy defaults to false (conservative)
     assert_eq!(
-        c.allows_secret_results, false,
-        "DEFAULT must be conservative: allows_secret_results=false"
+        c.result_taint_policy, ResultTaintPolicy::Deny,
+        "DEFAULT must be conservative: result_taint_policy=false"
     );
 }
 
@@ -255,6 +255,6 @@ fn resource_contract_all_17_fields_accessible() {
         c.max_collect_items,
         c.max_queue_depth,
         c.max_journal_batch_bytes,
-        c.allows_secret_results,
+        c.result_taint_policy,
     );
 }

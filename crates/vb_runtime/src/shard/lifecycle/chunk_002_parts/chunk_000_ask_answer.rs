@@ -132,7 +132,7 @@ impl Shard {
         answer: AskAnswer,
     ) -> RuntimeResult<()> {
         let contract = state.workflow.resource_contract();
-        if answer.taint == Taint::Secret && !contract.allows_secret_results {
+        if answer.taint == Taint::Secret && !contract.result_taint_policy {
             return Err(RuntimeError::SecretResultNotAllowed);
         }
         if answer.encoded_len > contract.max_ipc_payload_bytes {

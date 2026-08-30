@@ -20,7 +20,8 @@ use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, 
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, ResultTaintPolicy,
+    WorkflowParts,
 };
 use vb_core::{
     EngineSignal, ErrorHandlerOutcome, StepBudget, drive_deterministic, resume_action_completion,
@@ -1094,7 +1095,7 @@ mod resource_contract_admission {
         assert_eq!(contract.max_accessors, 8_192);
         assert_eq!(contract.max_expressions, 4_096);
         assert_eq!(contract.max_expr_stack, 64);
-        assert!(contract.allows_secret_results == false);
+        assert!(contract.result_taint_policy == ResultTaintPolicy::Deny);
     }
 
     #[test]
@@ -1119,7 +1120,7 @@ mod resource_contract_admission {
             max_collect_items: u32::MAX,
             max_queue_depth: u32::MAX,
             max_journal_batch_bytes: u32::MAX,
-            allows_secret_results: false,
+            result_taint_policy: ResultTaintPolicy::Deny,
         };
 
         // Validation happens in CompiledWorkflow::try_from_parts

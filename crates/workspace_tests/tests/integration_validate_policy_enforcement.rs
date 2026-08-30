@@ -419,7 +419,7 @@ fn validation_pipeline_selective_gate_disable() {
 
     // With gate 9 disabled, validation should pass
     let pipeline = ValidationPipeline {
-        gate_09_slot_references: false,
+        gate_09_slot_referencesvb_validate::shared::GateStatus::Disabled,
         ..ValidationPipeline::all_gates()
     };
     let result = pipeline.validate(&parts);

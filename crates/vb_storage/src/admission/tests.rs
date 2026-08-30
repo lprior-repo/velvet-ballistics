@@ -1070,7 +1070,7 @@ fn policy_buffer_fits_canonical_resource_contract() {
         max_collect_items: u32::MAX,
         max_queue_depth: u32::MAX,
         max_journal_batch_bytes: u32::MAX,
-        allows_secret_results: true,
+        result_taint_policy: ResultTaintPolicy::Allow,
     };
 
     let bound = resource_contract_policy_bytes_bound();

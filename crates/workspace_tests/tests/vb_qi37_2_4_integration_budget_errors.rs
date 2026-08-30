@@ -72,7 +72,7 @@ fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     }
 }
 
@@ -412,7 +412,7 @@ fn integration_policy_returns_total_slots_exceeded_when_slots_cross_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     let budget =
@@ -703,7 +703,7 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     let budget =
@@ -779,7 +779,7 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     let budget =
@@ -1219,7 +1219,7 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     let budget =
@@ -2219,7 +2219,7 @@ fn integration_policy_validates_result_bytes() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     };
 
     let budget =

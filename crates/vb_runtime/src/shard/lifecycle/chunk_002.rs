@@ -51,7 +51,7 @@ impl Shard {
         {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             let contract = state.workflow.resource_contract();
-            if answer.taint == Taint::Secret && !contract.allows_secret_results {
+            if answer.taint == Taint::Secret && !contract.result_taint_policy.allows_secrets() {
                 return Err(RuntimeError::SecretResultNotAllowed);
             }
             if answer.encoded_len > contract.max_ipc_payload_bytes {

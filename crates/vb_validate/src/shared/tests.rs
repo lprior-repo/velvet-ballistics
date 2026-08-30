@@ -101,7 +101,7 @@ fn selective_gates_skip_disabled() {
     };
     let parts = make_parts(vec![node], 1);
     let pipeline = ValidationPipeline {
-        gate_09_slot_references: false,
+        gate_09_slot_referencesvb_validate::shared::GateStatus::Disabled,
         ..ValidationPipeline::no_gates()
     };
     assert_eq!(pipeline.validate(&parts), Ok(()));

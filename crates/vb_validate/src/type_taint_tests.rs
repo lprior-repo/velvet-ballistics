@@ -3,8 +3,8 @@
 
 use crate::ValidationError;
 use crate::type_taint::{
-    InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
-    WorkflowTypes, validate_resource_limits, validate_taint, validate_types,
+    InputDecl, InputSecret, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact,
+    ValueType, WorkflowTypes, validate_resource_limits, validate_taint, validate_types,
 };
 
 fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
@@ -118,7 +118,7 @@ fn accepts_clean_input_finish() {
     wf.inputs.push(InputDecl {
         name: "user".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     assert_eq!(validate_taint(&wf), Ok(()));
 }
@@ -132,7 +132,7 @@ fn accepts_secret_input_finish() {
     wf.inputs.push(InputDecl {
         name: "key".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: true,
+        secret: InputSecret::Secret,
     });
     assert_eq!(validate_taint(&wf), Ok(()));
 }
@@ -459,7 +459,7 @@ fn validate_taint_accepts_clean_input_finish() {
     wf.inputs.push(InputDecl {
         name: "user".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     let result = validate_taint(&wf);
     assert_eq!(result, Ok(()));
@@ -474,7 +474,7 @@ fn validate_taint_accepts_secret_input_finish_exact() {
     wf.inputs.push(InputDecl {
         name: "key".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: true,
+        secret: InputSecret::Secret,
     });
     let result = validate_taint(&wf);
     assert_eq!(result, Ok(()));
@@ -561,7 +561,7 @@ fn adversarial_secret_leak_via_secret_input_is_accepted() {
     wf.inputs.push(InputDecl {
         name: "password".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: true,
+        secret: InputSecret::Secret,
     });
     let result = validate_taint(&wf);
     assert_eq!(result, Ok(()));
@@ -656,7 +656,7 @@ fn adversarial_clean_input_passes_taint_check() {
     wf.inputs.push(InputDecl {
         name: "username".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     let result = validate_taint(&wf);
     assert_eq!(result, Ok(()));
@@ -756,10 +756,14 @@ fn arb_workflow_types(max_steps: usize) -> impl Strategy<Value = WorkflowTypes> 
         .prop_flat_map(move |count| prop::collection::vec(arb_step_types(3, count), count..=count));
     let inputs = prop::collection::vec(
         ("[a-z][a-z0-9_]{0,15}", arb_value_type(), any::<bool>()).prop_map(
-            |(name, schema_type, is_secret)| InputDecl {
+            |(name, schema_type, is_secret_flag)| InputDecl {
                 name,
                 schema_type,
-                is_secret,
+                secret: if is_secret_flag {
+                    InputSecret::Secret
+                } else {
+                    InputSecret::NonSecret
+                },
             },
         ),
         0..4,
@@ -1144,12 +1148,12 @@ fn blackhat_composite_with_two_secret_inputs_leaks() {
     wf.inputs.push(InputDecl {
         name: "username".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     wf.inputs.push(InputDecl {
         name: "token".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: true,
+        secret: InputSecret::Secret,
     });
     assert_eq!(
         validate_taint(&wf),
@@ -1775,7 +1779,7 @@ fn blackhat_choose_with_boolean_from_secret_input_passes_type_check() {
     wf.inputs.push(InputDecl {
         name: "is_admin".to_owned(),
         schema_type: ValueType::Boolean,
-        is_secret: true,
+        secret: InputSecret::Secret,
     });
     assert_eq!(
         validate_types(&wf),
@@ -1813,7 +1817,7 @@ fn blackhat_input_reference_resolves_correct_type_and_taint() {
     wf.inputs.push(InputDecl {
         name: "name".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     assert_eq!(
         validate_taint(&wf),
@@ -1831,7 +1835,7 @@ fn blackhat_input_reference_with_nested_path_resolves() {
     wf.inputs.push(InputDecl {
         name: "user".to_owned(),
         schema_type: ValueType::Object,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     assert_eq!(
         validate_taint(&wf),
@@ -1958,7 +1962,7 @@ fn blackhat_input_and_secrets_same_name_different_taint() {
     wf.inputs.push(InputDecl {
         name: "key".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     wf.secrets.push("key".to_owned());
     assert_eq!(
@@ -1978,7 +1982,7 @@ fn blackhat_input_and_secrets_same_name_secret_finishes_tainted() {
     wf.inputs.push(InputDecl {
         name: "key".to_owned(),
         schema_type: ValueType::Text,
-        is_secret: false,
+        secret: InputSecret::NonSecret,
     });
     wf.secrets.push("key".to_owned());
     assert_eq!(

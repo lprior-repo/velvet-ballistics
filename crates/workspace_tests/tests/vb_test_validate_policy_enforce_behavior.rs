@@ -61,7 +61,7 @@ fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
 
 fn validate_gate_11_only(parts: &WorkflowParts) -> Result<(), ValidationError> {
     ValidationPipeline {
-        gate_11_loop_body_graph: true,
+        gate_11_loop_body_graphvb_validate::shared::GateStatus::Enabled,
         ..ValidationPipeline::no_gates()
     }
     .validate(parts)
@@ -1172,7 +1172,7 @@ fn enforcement_action_allows_bypass_when_gate_disabled() {
 
     // When validated with gate 9 disabled
     let pipeline = ValidationPipeline {
-        gate_09_slot_references: false,
+        gate_09_slot_referencesvb_validate::shared::GateStatus::Disabled,
         ..ValidationPipeline::all_gates()
     };
     let result = pipeline.validate(&parts);
@@ -1201,15 +1201,15 @@ fn enforcement_action_enforces_only_enabled_gates() {
 
     // When validated with ONLY gate 9 enabled
     let pipeline = ValidationPipeline {
-        gate_07_expression_stack: false,
-        gate_08_accessor_paths: false,
-        gate_09_slot_references: true,
-        gate_10_node_kind_specific: false,
-        gate_11_loop_body_graph: false,
-        gate_12_action_contracts: false,
-        gate_13_no_slot_cycles: false,
-        gate_14_slot_type_consistency: false,
-        gate_15_determinism_proof: false,
+        gate_07_expression_stack: vb_validate::shared::GateStatus::Disabled,
+        gate_08_accessor_pathsvb_validate::shared::GateStatus::Disabled,
+        gate_09_slot_referencesvb_validate::shared::GateStatus::Enabled,
+        gate_10_node_kind_specificvb_validate::shared::GateStatus::Disabled,
+        gate_11_loop_body_graphvb_validate::shared::GateStatus::Disabled,
+        gate_12_action_contractsvb_validate::shared::GateStatus::Disabled,
+        gate_13_no_slot_cyclesvb_validate::shared::GateStatus::Disabled,
+        gate_14_slot_type_consistencyvb_validate::shared::GateStatus::Disabled,
+        gate_15_determinism_proofvb_validate::shared::GateStatus::Disabled,
     };
     let result = pipeline.validate(&parts);
 

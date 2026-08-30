@@ -9,7 +9,7 @@
 //
 // Proof obligations:
 // - PO-K02: Changing any single contract field changes the canonical digest
-// - PO-K08: Changing allows_secret_results changes the canonical digest
+// - PO-K08: Changing result_taint_policy changes the canonical digest
 //
 // GOD RULE 1: Uses kani::any() for bounded contract pairs.
 // GOD RULE 2: Calls actual production encode_contract_bytes and canonical_digest.
@@ -39,7 +39,7 @@ fn base_contract() -> ResourceContract {
         max_collect_items: 16,
         max_queue_depth: 16,
         max_journal_batch_bytes: 128,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     }
 }
 
@@ -181,19 +181,19 @@ fn prove_single_field_changes_digest() {
     kani::cover!(field_idx < 17);
 }
 
-/// PO-K08: Prove that allows_secret_results changes the canonical digest.
+/// PO-K08: Prove that result_taint_policy changes the canonical digest.
 #[kani::proof]
 #[kani::unwind(2)]
 fn prove_secret_results_changes_digest() {
     let mut contract_true = base_contract();
-    contract_true.allows_secret_results = true;
+    contract_true.result_taint_policy = true;
 
     let mut contract_false = base_contract();
-    contract_false.allows_secret_results = false;
+    contract_false.result_taint_policy = false;
 
     assert_ne!(
-        contract_true.allows_secret_results, contract_false.allows_secret_results,
-        "Precondition: contracts must differ in allows_secret_results"
+        contract_true.result_taint_policy, contract_false.result_taint_policy,
+        "Precondition: contracts must differ in result_taint_policy"
     );
 
     // Encoding must differ
@@ -201,7 +201,7 @@ fn prove_secret_results_changes_digest() {
     let encoded_false = encode_contract_bytes(&contract_false);
     assert_ne!(
         encoded_true, encoded_false,
-        "allows_secret_results: true vs false must produce different encodings"
+        "result_taint_policy: ResultTaintPolicy::Allow vs false must produce different encodings"
     );
 
     // Digest must differ
@@ -210,7 +210,7 @@ fn prove_secret_results_changes_digest() {
     let digest_false = crate::mod_compile_lowering::canonical_digest(&source, contract_false);
     assert_ne!(
         digest_true, digest_false,
-        "canonical_digest must change when allows_secret_results changes"
+        "canonical_digest must change when result_taint_policy changes"
     );
 
     kani::cover!(digest_true != digest_false);

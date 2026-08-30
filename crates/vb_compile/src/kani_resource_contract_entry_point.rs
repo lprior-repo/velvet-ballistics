@@ -49,7 +49,7 @@ fn prove_contract_survives_compilation() {
         max_collect_items: 32,
         max_queue_depth: 32,
         max_journal_batch_bytes: 256,
-        allows_secret_results: true,
+        result_taint_policy: ResultTaintPolicy::Allow,
     };
 
     // Verify it's actually different from DEFAULT
@@ -92,7 +92,7 @@ fn prove_non_default_contract_encoding_differs() {
 
     let mut modified = default;
     modified.max_steps = 50;
-    modified.allows_secret_results = true;
+    modified.result_taint_policy = true;
 
     assert_ne!(default, modified);
 

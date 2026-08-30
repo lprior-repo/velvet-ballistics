@@ -5,7 +5,7 @@
 use vb_core::ids::ConstIdx;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
-    ResourceContract, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    ResourceContract, ResultTaintPolicy, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ fn contract(
         max_collect_items: 1,
         max_queue_depth: 1,
         max_journal_batch_bytes: 256,
-        allows_secret_results: false,
+        result_taint_policy: ResultTaintPolicy::Deny,
     }
 }
 
@@ -556,33 +556,33 @@ fn validation_accepts_when_actual_and_declared_are_both_zero() {
 }
 
 // ---------------------------------------------------------------------------
-// allows_secret_results field preservation
+// result_taint_policy field preservation
 // ---------------------------------------------------------------------------
 
 #[test]
-fn resource_contract_preserves_allows_secret_results_field() {
+fn resource_contract_preserves_result_taint_policy_field() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = true;
+    c.result_taint_policy = ResultTaintPolicy::Allow;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
-        .expect("valid contract with allows_secret_results=true");
+        .expect("valid contract with result_taint_policy=Allow");
     assert_eq!(
-        workflow.resource_contract().allows_secret_results,
-        true,
-        "allows_secret_results must be preserved through try_from_parts"
+        workflow.resource_contract().result_taint_policy,
+        ResultTaintPolicy::Allow,
+        "result_taint_policy must be preserved through try_from_parts"
     );
 }
 
 #[test]
-fn resource_contract_preserves_allows_secret_results_false() {
+fn resource_contract_preserves_result_taint_policy_false() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = false;
+    c.result_taint_policy = ResultTaintPolicy::Deny;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
-        .expect("valid contract with allows_secret_results=false");
+        .expect("valid contract with result_taint_policy=Deny");
     assert_eq!(
-        workflow.resource_contract().allows_secret_results,
-        false,
-        "allows_secret_results=false must be preserved through try_from_parts"
+        workflow.resource_contract().result_taint_policy,
+        ResultTaintPolicy::Deny,
+        "result_taint_policy=Deny must be preserved through try_from_parts"
     );
 }

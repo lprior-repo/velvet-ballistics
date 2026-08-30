@@ -50,7 +50,7 @@ fn validate_step_taint(
 mod tests {
     use super::*;
     use crate::ValidationError;
-    use crate::type_sigs::{InputDecl, StepTypes, TypedValue, ValueType};
+    use crate::type_sigs::{InputDecl, InputSecret, StepTypes, TypedValue, ValueType};
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -103,7 +103,7 @@ mod tests {
         wf.inputs.push(InputDecl {
             name: "user".to_owned(),
             schema_type: ValueType::Text,
-            is_secret: false,
+            secret: InputSecret::NonSecret,
         });
         assert_eq!(validate_taint(&wf), Ok(()));
     }
@@ -181,7 +181,7 @@ mod tests {
         wf.inputs.push(InputDecl {
             name: "key".to_owned(),
             schema_type: ValueType::Text,
-            is_secret: true,
+            secret: InputSecret::Secret,
         });
         assert!(matches!(
             validate_taint(&wf),

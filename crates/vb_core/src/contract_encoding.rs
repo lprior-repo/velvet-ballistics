@@ -9,7 +9,7 @@
 
 #![forbid(unsafe_code)]
 
-use crate::workflow::ResourceContract;
+use crate::workflow::{ResourceContract, ResultTaintPolicy};
 
 /// Produces the canonical, deterministic byte encoding of a `ResourceContract`
 /// suitable for feeding into `blake3::Hasher::update`.
@@ -80,8 +80,11 @@ pub fn encode_contract_bytes(contract: &ResourceContract) -> Vec<u8> {
     buf.extend_from_slice(b"max_journal_batch_bytes");
     buf.extend_from_slice(&contract.max_journal_batch_bytes.to_le_bytes());
 
-    buf.extend_from_slice(b"allows_secret_results");
-    buf.push(u8::from(contract.allows_secret_results));
+    buf.extend_from_slice(b"result_taint_policy");
+    buf.push(match contract.result_taint_policy {
+        ResultTaintPolicy::Deny => 0,
+        ResultTaintPolicy::Allow => 1,
+    });
 
     buf
 }

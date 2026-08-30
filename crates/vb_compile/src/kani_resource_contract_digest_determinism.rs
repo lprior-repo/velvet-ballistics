@@ -58,7 +58,7 @@ fn bounded_contract() -> ResourceContract {
     kani::assume(max_queue_depth >= 1 && max_queue_depth <= 256);
     let max_journal_batch_bytes: u32 = kani::any();
     kani::assume(max_journal_batch_bytes >= 1 && max_journal_batch_bytes <= 256);
-    let allows_secret_results: bool = kani::any();
+    let result_taint_policy: bool = kani::any();
 
     ResourceContract {
         max_steps,
@@ -78,7 +78,7 @@ fn bounded_contract() -> ResourceContract {
         max_collect_items,
         max_queue_depth,
         max_journal_batch_bytes,
-        allows_secret_results,
+        result_taint_policy,
     }
 }
 
@@ -173,7 +173,7 @@ fn prove_encoding_differentiates_default_from_modified() {
 
     let mut contract_b = ResourceContract::DEFAULT;
     contract_b.max_steps = 50;
-    contract_b.allows_secret_results = true;
+    contract_b.result_taint_policy = true;
     contract_b.max_step_budget_per_tick = 1;
 
     assert_ne!(contract_a, contract_b, "Contracts must differ");

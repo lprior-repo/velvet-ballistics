@@ -103,11 +103,7 @@ impl Facts {
 fn input_facts(inputs: &[InputDecl]) -> HashMap<String, ValueFact> {
     let mut facts = HashMap::with_capacity(inputs.len());
     for input in inputs {
-        let taint = if input.is_secret {
-            Taint::Secret
-        } else {
-            Taint::Clean
-        };
+        let taint = input.secret.to_taint();
         match facts.entry(input.name.clone()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 entry.insert(ValueFact {

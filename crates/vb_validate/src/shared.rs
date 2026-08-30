@@ -22,6 +22,53 @@ pub use gates::validate_gate_13_no_slot_cycles;
 pub use gates::validate_gate_14_slot_type_consistency;
 pub use gates::validate_gate_15_determinism_proof;
 
+/// Sealed gate-status type for validation pipeline configuration.
+///
+/// Replaces the raw `bool` fields previously stored in `ValidationPipeline`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum GateStatus {
+    /// The gate is active and will be executed.
+    Enabled,
+    /// The gate is skipped.
+    Disabled,
+}
+
+impl GateStatus {
+    /// Returns true when this gate should execute.
+    #[must_use]
+    pub const fn should_run(self) -> bool {
+        matches!(self, Self::Enabled)
+    }
+}
+
+impl core::ops::Not for GateStatus {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        match self {
+            Self::Enabled => Self::Disabled,
+            Self::Disabled => Self::Enabled,
+        }
+    }
+}
+
+impl From<bool> for GateStatus {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Enabled
+        } else {
+            Self::Disabled
+        }
+    }
+}
+
+impl From<GateStatus> for bool {
+    fn from(status: GateStatus) -> Self {
+        status.should_run()
+    }
+}
+
 /// Validation configuration controlling which gates are active.
 ///
 /// The default configuration enables all gates. Callers may selectively
@@ -30,23 +77,23 @@ pub use gates::validate_gate_15_determinism_proof;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ValidationPipeline {
     /// Run Gate 7: expression stack depth bounded.
-    pub gate_07_expression_stack: bool,
+    pub gate_07_expression_stack: GateStatus,
     /// Run Gate 8: accessor path segments valid.
-    pub gate_08_accessor_paths: bool,
+    pub gate_08_accessor_paths: GateStatus,
     /// Run Gate 9: slot references within bounds.
-    pub gate_09_slot_references: bool,
+    pub gate_09_slot_references: GateStatus,
     /// Run Gate 10: node-kind-specific constraints.
-    pub gate_10_node_kind_specific: bool,
+    pub gate_10_node_kind_specific: GateStatus,
     /// Run Gate 11: loop body graph well-formed.
-    pub gate_11_loop_body_graph: bool,
+    pub gate_11_loop_body_graph: GateStatus,
     /// Run Gate 12: action contract completeness.
-    pub gate_12_action_contracts: bool,
+    pub gate_12_action_contracts: GateStatus,
     /// Run Gate 13: no slot dependency cycles.
-    pub gate_13_no_slot_cycles: bool,
+    pub gate_13_no_slot_cycles: GateStatus,
     /// Run Gate 14: slot type consistency.
-    pub gate_14_slot_type_consistency: bool,
+    pub gate_14_slot_type_consistency: GateStatus,
     /// Run Gate 15: determinism proof.
-    pub gate_15_determinism_proof: bool,
+    pub gate_15_determinism_proof: GateStatus,
 }
 
 impl Default for ValidationPipeline {
@@ -60,15 +107,15 @@ impl ValidationPipeline {
     #[must_use]
     pub const fn all_gates() -> Self {
         Self {
-            gate_07_expression_stack: true,
-            gate_08_accessor_paths: true,
-            gate_09_slot_references: true,
-            gate_10_node_kind_specific: true,
-            gate_11_loop_body_graph: true,
-            gate_12_action_contracts: true,
-            gate_13_no_slot_cycles: true,
-            gate_14_slot_type_consistency: true,
-            gate_15_determinism_proof: true,
+            gate_07_expression_stack: GateStatus::Enabled,
+            gate_08_accessor_paths: GateStatus::Enabled,
+            gate_09_slot_references: GateStatus::Enabled,
+            gate_10_node_kind_specific: GateStatus::Enabled,
+            gate_11_loop_body_graph: GateStatus::Enabled,
+            gate_12_action_contracts: GateStatus::Enabled,
+            gate_13_no_slot_cycles: GateStatus::Enabled,
+            gate_14_slot_type_consistency: GateStatus::Enabled,
+            gate_15_determinism_proof: GateStatus::Enabled,
         }
     }
 
@@ -78,15 +125,15 @@ impl ValidationPipeline {
     #[must_use]
     pub const fn no_gates() -> Self {
         Self {
-            gate_07_expression_stack: false,
-            gate_08_accessor_paths: false,
-            gate_09_slot_references: false,
-            gate_10_node_kind_specific: false,
-            gate_11_loop_body_graph: false,
-            gate_12_action_contracts: false,
-            gate_13_no_slot_cycles: false,
-            gate_14_slot_type_consistency: false,
-            gate_15_determinism_proof: false,
+            gate_07_expression_stack: GateStatus::Disabled,
+            gate_08_accessor_paths: GateStatus::Disabled,
+            gate_09_slot_references: GateStatus::Disabled,
+            gate_10_node_kind_specific: GateStatus::Disabled,
+            gate_11_loop_body_graph: GateStatus::Disabled,
+            gate_12_action_contracts: GateStatus::Disabled,
+            gate_13_no_slot_cycles: GateStatus::Disabled,
+            gate_14_slot_type_consistency: GateStatus::Disabled,
+            gate_15_determinism_proof: GateStatus::Disabled,
         }
     }
 
@@ -99,28 +146,28 @@ impl ValidationPipeline {
     ///
     /// The first failing gate short-circuits the pipeline and returns its error.
     pub fn validate(&self, parts: &WorkflowParts) -> ValidationResult<()> {
-        if self.gate_07_expression_stack {
+        if self.gate_07_expression_stack.should_run() {
             gates::validate_gate_07_expression_stack_depth(parts)?;
         }
-        if self.gate_08_accessor_paths {
+        if self.gate_08_accessor_paths.should_run() {
             gates::validate_gate_08_accessor_path_segments(parts)?;
         }
-        if self.gate_09_slot_references {
+        if self.gate_09_slot_references.should_run() {
             gates::validate_gate_09_slot_references(parts)?;
         }
-        if self.gate_10_node_kind_specific {
+        if self.gate_10_node_kind_specific.should_run() {
             gates::validate_gate_10_node_kind_specific(parts)?;
         }
-        if self.gate_11_loop_body_graph {
+        if self.gate_11_loop_body_graph.should_run() {
             gates::validate_gate_11_loop_body_graph(parts)?;
         }
-        if self.gate_13_no_slot_cycles {
+        if self.gate_13_no_slot_cycles.should_run() {
             gates::validate_gate_13_no_slot_cycles(parts)?;
         }
-        if self.gate_14_slot_type_consistency {
+        if self.gate_14_slot_type_consistency.should_run() {
             gates::validate_gate_14_slot_type_consistency(parts)?;
         }
-        if self.gate_15_determinism_proof {
+        if self.gate_15_determinism_proof.should_run() {
             gates::validate_gate_15_determinism_proof(parts)?;
         }
         Ok(())
@@ -142,7 +189,7 @@ impl ValidationPipeline {
         self.validate(parts)?;
 
         // Then run the contract gate if enabled.
-        if self.gate_12_action_contracts {
+        if self.gate_12_action_contracts.should_run() {
             gates::validate_gate_12_action_contract_completeness(parts, action_contracts)?;
         }
         Ok(())

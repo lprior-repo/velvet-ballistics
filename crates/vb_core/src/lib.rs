@@ -125,6 +125,6 @@ pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts, check_expr_stack_bound,
+    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, ResultTaintPolicy,
+    SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound,
 };

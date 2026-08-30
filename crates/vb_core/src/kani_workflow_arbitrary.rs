@@ -323,6 +323,15 @@ impl kani::Arbitrary for CompiledNode {
     }
 }
 
+impl kani::Arbitrary for crate::workflow::ResultTaintPolicy {
+    fn any() -> Self {
+        match kani::any::<bool>() {
+            true => crate::workflow::ResultTaintPolicy::Allow,
+            false => crate::workflow::ResultTaintPolicy::Deny,
+        }
+    }
+}
+
 impl kani::Arbitrary for ResourceContract {
     fn any() -> Self {
         Self {
@@ -343,7 +352,7 @@ impl kani::Arbitrary for ResourceContract {
             max_collect_items: kani::any(),
             max_queue_depth: kani::any(),
             max_journal_batch_bytes: kani::any(),
-            allows_secret_results: kani::any(),
+            result_taint_policy: kani::any(),
         }
     }
 }
