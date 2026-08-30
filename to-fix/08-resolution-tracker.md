@@ -61,8 +61,8 @@ Direct checks run for this update: `bd status`, `bd show` for listed bead IDs, `
 | 04: TLC gate fail-open and path-broken | vb-481r.2 | P0 |
 | 04: Kani harnesses hardcode structural shapes | vb-481r.3 | P0 |
 | 04: Verus proofs not bound to production exec functions | vb-481r.4, vb-481r.5 | P0 |
-| 05: File-size drift (378 files over 300 lines) | need bead | P0 |
-| 05: Source-length gate too narrow | need bead | P0 |
+| 05: File-size drift (378 files over 300 lines) | vb-idxsn | P0 |
+| 05: Source-length gate too narrow | vb-swzty | P0 |
 | 05: Hot runtime dispatcher monolithic | vb-9kwz.1 | P0 |
 | 05: Hot shard tick command dispatch oversized | vb-9kwz.2 | P0 |
 | 06: Live IPC server buffers before validating magic | vb-k8ut.1 | P0 |
