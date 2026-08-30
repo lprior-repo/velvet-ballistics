@@ -1347,19 +1347,18 @@ The `ui` command and Makepad desktop application are removed from the current co
 ```toml
 [workspace]
 members = [
-  "crates/vb_core",
-  "crates/vb_yaml",
-  "crates/vb_validate",
-  "crates/vb_expr",
-  "crates/vb_compile",
-  "crates/vb_storage",
-  "crates/vb_runtime",
-  "crates/vb_ipc",
-  "crates/velvet_ballistics",
-  "crates/workspace_tests",
-  "fuzz",
+    "crates/vb_cli",
+    "crates/vb_compile",
+    "crates/vb_core",
+    "crates/vb_ipc",
+    "crates/vb_queue_semantics",
+    "crates/vb_runtime",
+    "crates/vb_storage",
+    "crates/vb_validate",
+    "crates/workspace_tests",
 ]
 resolver = "2"
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 
 [workspace.package]
 edition = "2024"
@@ -1367,60 +1366,86 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0"
 
 [workspace.dependencies]
-thiserror = "2"
-serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
-postcard = { version = "1", default-features = false, features = ["alloc"] }
-byteorder = "1.5"
-bytes = "1"
 arrayvec = "0.7"
+blake3 = "1"
+byteorder = "1.5"
+bytes = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+crc32c = "0.6"
+crc32fast = "1"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+criterion = "0.8"
+trybuild = "1"
+fjall = { version = "=3.1.4", default-features = false, features = ["lz4"] }
+indoc = "2"
 indexmap = "2"
 logos = "0.15"
-saphyr-parser = "0.0.6"
-fjall = "3.1"
-crossbeam-queue = "0.3"
-rtrb = "0.3"
+libfuzzer-sys = "0.4"
 mio = "1"
-criterion = "0.8"
-iai-callgrind = "0.16"
+postcard = { version = "1", features = ["alloc"] }
 proptest = "1"
+rand = "0.9"
+rtrb = "0.3"
+rustix = { version = "1", features = ["fs"] }
+saphyr = { version = "=0.0.6", default-features = false }
+saphyr-parser = "=0.0.6"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
+serde_yaml = "0.9"
+thiserror = "2"
+tempfile = "3"
+toml = "0.9"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
-rust_2018_idioms = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)', 'cfg(fuzzing)', 'cfg(kani)', 'cfg(loom)', 'cfg(verus)', 'cfg(verus_keep_ghost)', 'cfg(docsrs,test)'] }
 
 [workspace.lints.clippy]
-correctness = "deny"
-suspicious = "deny"
-perf = "deny"
-complexity = "deny"
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-panic_in_result_fn = "deny"
-todo = "deny"
-unimplemented = "deny"
-dbg_macro = "deny"
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+unwrap_used = "forbid"
+expect_used = "forbid"
+panic = "forbid"
+panic_in_result_fn = "forbid"
+todo = "forbid"
+unimplemented = "forbid"
+dbg_macro = "forbid"
 indexing_slicing = "deny"
-string_slice = "deny"
+string_slice = "forbid"
 get_unwrap = "deny"
 arithmetic_side_effects = "deny"
 as_conversions = "deny"
 let_underscore_must_use = "deny"
 await_holding_lock = "deny"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+result_large_err = "warn"
 
-[profile.release]
-opt-level = 3
-lto = "thin"
+[profile.hardened]
+inherits = "release"
 codegen-units = 1
+debug = "line-tables-only"
+lto = "thin"
+overflow-checks = true
+panic = "abort"
 strip = "symbols"
 
-[profile.bench]
+[profile.maxperf]
 inherits = "release"
-debug = true
-lto = "thin"
+opt-level = 3
 codegen-units = 1
+debug = false
+debug-assertions = false
+lto = "fat"
+overflow-checks = true
+strip = "symbols"
 ```
 
 Removed workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) must not be treated as current workspace acceptance requirements.
