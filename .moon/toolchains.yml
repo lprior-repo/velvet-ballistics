@@ -6,4 +6,11 @@ rust:
     - 'cargo-mutants'
     - 'cargo-llvm-cov'
     - 'cargo-fuzz'
+    - 'cargo-kani'
+    - 'cargo-verus'
+    - 'cargo-geiger'
+    - 'cargo-audit'
+    - 'cargo-deny'
+    - 'cargo-vet'
+    - 'cargo-machete'
   syncToolchainConfig: true
