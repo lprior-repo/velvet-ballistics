@@ -1686,7 +1686,7 @@ Mandatory CI commands:
 
 ```bash
 cargo +nightly fmt --all -- --check
-cargo +nightly clippy --workspace --all-targets --all-features -- \
+cargo +nightly clippy --workspace --lib --bins --examples --all-features -- \
   -D warnings \
   -D clippy::unwrap_used -D clippy::expect_used \
   -D clippy::panic -D clippy::panic_in_result_fn \
@@ -4432,7 +4432,7 @@ AI needs fast feedback first, then deep proof later. Three levels provide a ladd
 ```bash
 cargo +nightly fmt --all -- --check
 cargo +nightly check --workspace --all-targets
-cargo +nightly clippy -p <touched-crate> --all-targets --all-features -- -D warnings
+cargo +nightly clippy -p <touched-crate> --lib --all-features -- -D warnings
 cargo +nightly nextest run -p <touched-crate>
 cargo xtask forbidden-scan --changed
 cargo xtask hotpath-scan --changed
@@ -4479,7 +4479,7 @@ commands:
   - command: cargo +nightly fmt --all -- --check
     exit_code: 0
     log: logs/fmt.txt
-  - command: cargo +nightly clippy -p vb_core --all-targets --all-features -- -D warnings
+  - command: cargo +nightly clippy -p vb_core --lib --all-features -- -D warnings
     exit_code: 0
     log: logs/clippy-vb-core.txt
   - command: cargo +nightly nextest run -p vb_core

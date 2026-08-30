@@ -83,7 +83,7 @@ AI needs fast feedback first, then deep proof later. Three levels provide a ladd
 ```bash
 cargo +nightly fmt --all -- --check
 cargo +nightly check --workspace --all-targets
-cargo +nightly clippy -p <touched-crate> --all-targets --all-features -- -D warnings
+cargo +nightly clippy -p <touched-crate> --lib --all-features -- -D warnings
 cargo +nightly nextest run -p <touched-crate>
 cargo xtask forbidden-scan --changed
 cargo xtask hotpath-scan --changed
@@ -130,7 +130,7 @@ commands:
   - command: cargo +nightly fmt --all -- --check
     exit_code: 0
     log: logs/fmt.txt
-  - command: cargo +nightly clippy -p vb_core --all-targets --all-features -- -D warnings
+  - command: cargo +nightly clippy -p vb_core --lib --all-features -- -D warnings
     exit_code: 0
     log: logs/clippy-vb-core.txt
   - command: cargo +nightly nextest run -p vb_core

@@ -43,7 +43,7 @@ pub fn compile_source(
             &mut builder,
         )?;
     }
-    allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
     let parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: canonical_digest(source)?,

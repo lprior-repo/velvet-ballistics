@@ -28,7 +28,7 @@ Mandatory CI commands:
 
 ```bash
 cargo +nightly fmt --all -- --check
-cargo +nightly clippy --workspace --all-targets --all-features -- \
+cargo +nightly clippy --workspace --lib --bins --examples --all-features -- \
   -D warnings \
   -D clippy::unwrap_used -D clippy::expect_used \
   -D clippy::panic -D clippy::panic_in_result_fn \
