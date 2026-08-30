@@ -12,8 +12,20 @@ use crate::{RuntimeError, RuntimeResult};
 use crate::shard::types::{
     PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard,
 };
+use vb_core::ids::ActionId;
 
 impl Shard {
+    /// Stub: action ABI digest tracking is not yet wired.
+    fn action_abi_digests_remove(&mut self, _run: RunId) {}
+
+    /// Stub: returns the default digest because ABI digests are not tracked.
+    fn action_abi_digest_for_run_action(
+        &self,
+        _run: RunId,
+        _action: ActionId,
+    ) -> RuntimeResult<vb_core::WorkflowDigest> {
+        Ok(vb_core::WorkflowDigest::from_bytes([0u8; 32]))
+    }
     /// Applies a RuntimeEvent to mutate runtime_states.
     ///
     /// This is the single routing method for all runtime_states mutations,

@@ -968,6 +968,7 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }
@@ -989,6 +990,7 @@ fn compiled_from_nodes(
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }
@@ -1261,6 +1263,7 @@ fn taint_expr_workflow(
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }
@@ -1481,6 +1484,7 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }
@@ -1594,6 +1598,7 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }
@@ -1737,6 +1742,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
         symbols_count: 0,
+    input_slots: Box::from([]),
     })
     .ok()
 }

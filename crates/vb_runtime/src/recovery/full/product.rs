@@ -236,15 +236,11 @@ impl ResumableRecoveryProduct {
     }
 
     #[must_use]
-    pub(crate) fn into_recover_command(self) -> crate::shard::types::RecoverRunCommand {
-        crate::shard::types::RecoverRunCommand {
+    pub(crate) fn into_recover_command(self) -> crate::shard::ShardCommand {
+        crate::shard::ShardCommand::Recover {
             run: self.run,
             frame: self.frame,
-            artifact_digest: self.artifact_digest,
             workflow_digest: self.workflow_digest,
-            next_seq: self.next_seq,
-            collect_states: self.collect_states,
-            boundary: self.boundary,
         }
     }
 }

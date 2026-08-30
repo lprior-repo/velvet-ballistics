@@ -119,6 +119,9 @@ impl RuntimeError {
             Self::UnsupportedDurabilityProfile { .. } => {
                 vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
             }
+            Self::RuntimeInputSlotKindMismatch { .. } => {
+                vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
+            }
         }
     }
 
@@ -185,7 +188,8 @@ impl RuntimeError {
             | Self::UnsupportedDurabilityProfile { .. }
             | Self::RecoveryNotAvailable
             | Self::RecoveryCannotResume { .. }
-            | Self::Recovery { .. } => None,
+            | Self::Recovery { .. }
+            | Self::RuntimeInputSlotKindMismatch { .. } => None,
         }
     }
 

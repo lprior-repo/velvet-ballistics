@@ -282,3 +282,7 @@ path = "tests/vb_doc_taint_regression.rs"
 [[bench]]
 name = "rtrb"
 harness = false
+
+[[bench]]
+name = "vb_wy33p_observation_scheduler"
+harness = false

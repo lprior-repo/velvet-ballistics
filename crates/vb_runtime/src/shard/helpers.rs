@@ -67,6 +67,7 @@ fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
         SlotValue::List(_) => vb_core::InputSlotKind::List,
         SlotValue::Object(_) => vb_core::InputSlotKind::Object,
         SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+        _ => vb_core::InputSlotKind::Null,
     }
 }
 
