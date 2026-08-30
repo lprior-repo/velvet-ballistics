@@ -113,17 +113,17 @@ mod process_lock_tests {
     }
 
     #[test]
-    fn readonly_open_does_not_create_or_lock_writer_state() {
-        // The renamed `ReadOnlyJournal::open_inspect_view` must be
-        // honest about its contract: it is NOT a true read-only open
-        // (Fjall has no such mode), so it takes the same process lock
-        // as a writer. While a writer holds the lock it must surface
-        // `JournalError::ProcessLockHeld`, not succeed silently.
+    fn inspect_view_opens_with_writer_lock() {
+        // InspectView::open_inspect_view must be honest about its contract:
+        // it is NOT a true read-only open (Fjall has no such mode), so it
+        // takes the same process lock as a writer. While a writer holds the
+        // lock it must surface JournalError::ProcessLockHeld, not succeed
+        // silently.
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         let _writer =
             crate::FjallJournal::open(temp.path(), None).expect("writer should open successfully");
 
-        let result = crate::ReadOnlyJournal::open_inspect_view(temp.path());
+        let result = crate::InspectView::open_inspect_view(temp.path());
         match result {
             Err(crate::error::JournalError::ProcessLockHeld { .. }) => {}
             Err(crate::error::JournalError::Fjall(fjall::Error::Locked)) => {}
@@ -139,12 +139,12 @@ mod process_lock_tests {
         // After the writer is dropped, the lock is released and the
         // inspect-view must succeed.
         drop(_writer);
-        let _inspect = crate::ReadOnlyJournal::open_inspect_view(temp.path())
+        let _inspect = crate::InspectView::open_inspect_view(temp.path())
             .expect("open_inspect_view must succeed after the writer is dropped");
-        // Inspect-view is type-level read-only: only read methods are
+        // InspectView is type-level read-only: only read methods are
         // exposed. Touching the keyspace queries that the type-level
         // surface still works through the wrapper.
-        let _ = crate::ReadOnlyJournal::declared_keyspaces();
+        let _ = crate::InspectView::declared_keyspaces();
     }
     #[test]
     fn init_keyspaces_acquires_process_lock() {
