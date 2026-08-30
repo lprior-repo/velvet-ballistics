@@ -33,6 +33,22 @@ pub enum PendingTimerKind {
     Ask,
 }
 
+/// Logical-clock deadline for deterministic mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LogicalDeadline(pub u64);
+
+impl LogicalDeadline {
+    #[must_use]
+    pub const fn new(tick: u64) -> Self {
+        Self(tick)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PendingTimer {
     pub step: StepIdx,

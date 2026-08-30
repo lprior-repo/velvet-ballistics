@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use vb_core::ids::RunId;
 
-use super::types::PendingTimerKind;
+use super::types::{LogicalDeadline, PendingTimerKind};
 
 /// A single timer entry keyed by its deadline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +25,8 @@ pub struct TimerEntry {
     pub generation: u64,
     /// The deadline that keyed this entry.
     pub deadline: Instant,
+    /// Logical deadline captured when the timer was emitted.
+    pub logical_deadline: Option<LogicalDeadline>,
     /// The kind of timer (Wait or Ask).
     pub kind: PendingTimerKind,
 }
@@ -70,6 +72,7 @@ impl TimerWheel {
             run,
             generation,
             deadline,
+            logical_deadline: None,
             kind,
         };
         self.by_deadline.entry(deadline).or_default().push(entry);
@@ -327,6 +330,7 @@ mod tests {
             run: run(1),
             generation: u64::MAX,
             deadline,
+            logical_deadline: None,
             kind: PendingTimerKind::Wait,
         };
         wheel.by_deadline.entry(deadline).or_default().push(entry);

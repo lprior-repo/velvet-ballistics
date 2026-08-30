@@ -739,6 +739,7 @@ impl Shard {
                 run,
                 generation: timer.generation,
                 deadline: timer.deadline,
+                logical_deadline: None,
                 kind: timer.kind,
             })
     }

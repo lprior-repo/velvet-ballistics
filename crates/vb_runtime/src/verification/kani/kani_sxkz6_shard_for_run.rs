@@ -165,10 +165,11 @@ fn kani_sxkz6_timer_entry_fired_unknown_run_returns_not_found() {
     let run = any_run_id_bounded();
 
     use crate::shard::timer_wheel::TimerEntry;
-    let entry = TimerEntry {
+      let entry = TimerEntry {
         run,
         generation: 0,
         deadline: Instant::now(),
+        logical_deadline: None,
         kind: PendingTimerKind::Ask,
     };
     let result = runtime.timer_entry_fired(entry);
