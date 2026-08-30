@@ -103,3 +103,29 @@ pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
         output,
     })
 }
+
+pub(super) fn parse_harness(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_known_flags(args, "harness")?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow"))?;
+    let seed_str = named_flag(args, "--seed").ok_or(ParseError::MissingArgument("--seed"))?;
+    let seed: u64 = seed_str
+        .parse()
+        .map_err(|_| ParseError::InvalidArgument(format!("invalid seed value: {seed_str}")))?;
+    let step_bound_str =
+        named_flag(args, "--step-bound").ok_or(ParseError::MissingArgument("--step-bound"))?;
+    let step_bound: usize = step_bound_str.parse().map_err(|_| {
+        ParseError::InvalidArgument(format!("invalid step-bound value: {step_bound_str}"))
+    })?;
+    let fault_script = named_flag(args, "--fault-script").map(PathBuf::from);
+    let output_dir =
+        named_flag(args, "--output-dir").ok_or(ParseError::MissingArgument("--output-dir"))?;
+    let output = parse_output_format(args);
+    Ok(Command::Harness {
+        workflow,
+        seed,
+        step_bound,
+        fault_script,
+        output_dir: PathBuf::from(output_dir),
+        output,
+    })
+}

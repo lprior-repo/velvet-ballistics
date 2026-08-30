@@ -213,9 +213,17 @@ pub(crate) enum Command {
         reason: Option<String>,
         output: OutputFormat,
     },
+    Harness {
+        workflow: PathBuf,
+        seed: u64,
+        step_bound: usize,
+        fault_script: Option<PathBuf>,
+        output_dir: PathBuf,
+        output: OutputFormat,
+    },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel, harness";
 
 /// Optional diagnostic status values used when no live runtime handle exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

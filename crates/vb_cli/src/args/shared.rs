@@ -169,7 +169,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         "agent-context" | "ai-context" | "status" | "system" | "action" | "verify" | "validate"
         | "explain" | "compile" | "run" | "run-compiled" | "ipc-serve" | "inspect" | "events"
         | "replay" | "trace" | "retry" | "resume" | "bench-run" | "doctor" | "answer" | "graph"
-        | "diff" | "incident" | "simulate" | "submit" | "cancel"
+        | "diff" | "incident" | "simulate" | "submit" | "cancel" | "harness"
             if has_subcommand_help(args) =>
         {
             Ok(super::types::Command::Help)
@@ -201,6 +201,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         "simulate" => super::workflow::parse_simulate(args),
         "submit" => super::workflow::parse_submit(args),
         "cancel" => super::run_ops::parse_cancel(args),
+        "harness" => super::other::parse_harness(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }

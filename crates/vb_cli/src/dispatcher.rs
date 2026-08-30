@@ -5,7 +5,7 @@
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use crate::args::{Command, parse_args};
+use crate::args::{parse_args, Command};
 use crate::exit_code::CliExitCode;
 use crate::io_helpers::{
     exit_from_io, write_help_stdout, write_parse_error_stderr, write_version_stdout,
@@ -138,6 +138,21 @@ pub(crate) fn run_from_env() -> ExitCode {
             reason,
             output,
         }) => crate::run_cancel_ops::cmd_cancel(&run_id, &db, reason, output),
+        Ok(Command::Harness {
+            workflow,
+            seed,
+            step_bound,
+            fault_script,
+            output_dir,
+            output,
+        }) => crate::harness_bin::cmd_harness(
+            &workflow,
+            seed,
+            step_bound,
+            fault_script.as_deref(),
+            &output_dir,
+            output,
+        ),
         Err(e) => exit_from_io(
             &write_parse_error_stderr(&e, crate::args::OutputFormat::Text),
             CliExitCode::ValidationFailed.into(),

@@ -31,6 +31,8 @@ pub(crate) enum CliExitCode {
     ReplayDivergence = 8,
     /// Lifecycle command rejected (e.g. resume on completed, retry on active).
     LifecycleError = 9,
+    /// Autonomous harness iteration failed: detected divergence.
+    HarnessFailed = 10,
 }
 
 impl From<CliExitCode> for ExitCode {
@@ -52,6 +54,7 @@ impl From<CliExitCode> for u8 {
             CliExitCode::ActionPolicyError => 7,
             CliExitCode::ReplayDivergence => 8,
             CliExitCode::LifecycleError => 9,
+            CliExitCode::HarnessFailed => 10,
         }
     }
 }
@@ -87,6 +90,7 @@ mod tests {
         assert_eq!(u8::from(CliExitCode::ActionPolicyError), 7);
         assert_eq!(u8::from(CliExitCode::ReplayDivergence), 8);
         assert_eq!(u8::from(CliExitCode::LifecycleError), 9);
+        assert_eq!(u8::from(CliExitCode::HarnessFailed), 10);
     }
 
     #[test]
@@ -125,6 +129,10 @@ mod tests {
             ExitCode::from(CliExitCode::LifecycleError),
             ExitCode::from(9u8)
         );
+        assert_eq!(
+            ExitCode::from(CliExitCode::HarnessFailed),
+            ExitCode::from(10u8)
+        );
     }
 
     #[test]
@@ -143,7 +151,7 @@ mod tests {
 
     #[test]
     fn all_variants_are_distinct() {
-        let values: [u8; 10] = [
+        let values: [u8; 11] = [
             u8::from(CliExitCode::Success),
             u8::from(CliExitCode::ValidationFailed),
             u8::from(CliExitCode::VerificationFailed),
@@ -154,6 +162,7 @@ mod tests {
             u8::from(CliExitCode::ActionPolicyError),
             u8::from(CliExitCode::ReplayDivergence),
             u8::from(CliExitCode::LifecycleError),
+            u8::from(CliExitCode::HarnessFailed),
         ];
         let mut sorted: Vec<u8> = values.to_vec();
         sorted.sort_unstable();
@@ -162,8 +171,8 @@ mod tests {
     }
 
     #[test]
-    fn all_variants_are_public_range_0_to_9() {
-        let values: [u8; 10] = [
+    fn all_variants_are_public_range_0_to_10() {
+        let values: [u8; 11] = [
             u8::from(CliExitCode::Success),
             u8::from(CliExitCode::ValidationFailed),
             u8::from(CliExitCode::VerificationFailed),
@@ -174,8 +183,9 @@ mod tests {
             u8::from(CliExitCode::ActionPolicyError),
             u8::from(CliExitCode::ReplayDivergence),
             u8::from(CliExitCode::LifecycleError),
+            u8::from(CliExitCode::HarnessFailed),
         ];
 
-        assert!(values.iter().all(|value| *value <= 9));
+        assert!(values.iter().all(|value| *value <= 10));
     }
 }

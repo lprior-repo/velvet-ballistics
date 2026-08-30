@@ -73,6 +73,7 @@ mod submit;
 mod trace;
 mod validate;
 mod verify;
+pub(crate) mod harness_bin;
 
 pub(crate) use output::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
 
