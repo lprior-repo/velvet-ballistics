@@ -185,7 +185,7 @@ audit-as-crates-io = false
 # fjall — High-performance LSM-tree key-value store
 [[exemptions]]
 name = "fjall"
-version = "3.1.4"
+version = "3.1.9"
 kind = "direct"
 notes = "Performance-critical storage engine; well-audited OSS"
 
@@ -209,6 +209,41 @@ name = "postcard"
 version = "1.1.1"
 kind = "direct"
 notes = "Binary serialization for IPC frames"
+
+# crossbeam-epoch — Epoch-based garbage collection for concurrent programming
+[[exemptions]]
+name = "crossbeam-epoch"
+version = "0.9.20"
+kind = "indirect"
+notes = "Upgraded from 0.9.18 to resolve RUSTSEC-2026-0204 (NULL pointer deref in fmt::Pointer); brought in by fjall/lsm-tree"
+
+# crossbeam-channel — Concurrent channel implementations
+[[exemptions]]
+name = "crossbeam-channel"
+version = "0.5.*"
+kind = "indirect"
+notes = "Concurrent messaging for shard routing and task coordination"
+
+# crossbeam-deque — Work-stealing deque
+[[exemptions]]
+name = "crossbeam-deque"
+version = "0.8.*"
+kind = "indirect"
+notes = "Work-stealing scheduler support for parallel operations"
+
+# crossbeam-skiplist — Concurrent skip list map/set
+[[exemptions]]
+name = "crossbeam-skiplist"
+version = "0.1.*"
+kind = "indirect"
+notes = "Concurrent sorted map; brought in by fjall/lsm-tree"
+
+# crossbeam-utils — Concurrent primitives utilities
+[[exemptions]]
+name = "crossbeam-utils"
+version = "0.8.*"
+kind = "indirect"
+notes = "Base concurrency utilities for crossbeam ecosystem"
 
 # crossbeam-queue — Concurrent queue implementations
 [[exemptions]]
