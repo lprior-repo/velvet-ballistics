@@ -1,0 +1,42 @@
+# Flux refinement-type verification tasks
+# These tasks run formal verification using the flux-rs compiler plugin
+# via the canonical scripts/flux-check-package.sh entry point.
+
+fileGroups:
+  flux_sources:
+    - 'crates/vb_storage/src/**/*'
+  flux_scripts:
+    - 'scripts/flux-check-package.sh'
+
+tasks:
+  flux-check:
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock timeout 120m bash scripts/flux-check-package.sh vb_storage
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(flux_sources)'
+      - '@globs(flux_scripts)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: true
+      cache: false
+
+  flux-check-all:
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      flock --shared target/moon-locks/source-mutation.lock timeout 180m bash scripts/flux-check-package.sh --all
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(flux_sources)'
+      - '@globs(flux_scripts)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: false
+      cache: false

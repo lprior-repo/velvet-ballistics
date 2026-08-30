@@ -78,12 +78,7 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
         ],
         "verus" => verus_command(crate_name, workspace_root),
         "tla" => tla_command(crate_name, workspace_root),
-        "flux" => vec![
-            "cargo".into(),
-            "flux".into(),
-            "-p".into(),
-            crate_name.into(),
-        ],
+        "flux" => flux_command(crate_name, workspace_root),
         _ => vec!["echo".into(), format!("unknown lane: {}", lane.name)],
     }
 }
@@ -102,6 +97,15 @@ fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
         .join("tla")
         .join(format!("{crate_name}.tla"));
     vec!["tla2tools".into(), format!("{}", tla_file.display())]
+}
+
+fn flux_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+    let script = workspace_root.join("scripts/flux-check-package.sh");
+    vec![
+        "bash".into(),
+        format!("{}", script.display()),
+        crate_name.into(),
+    ]
 }
 
 pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {
