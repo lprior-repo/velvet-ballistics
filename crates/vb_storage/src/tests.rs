@@ -7674,4 +7674,313 @@ mod tests {
         }
         let _ = _exhaustive_match;
     }
+
+    // --- Section 5: Point-read exact field-level assertions (SC-001) ---
+
+    #[test]
+    fn workflow_source_point_read_verifies_digest_to_source_binding() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let source_bytes = b"exact-source-bytes-for-digest-binding-check";
+        let digest: WorkflowDigest = WorkflowDigest::from_bytes(blake3::hash(source_bytes).into());
+        let record = WorkflowSourceRecord {
+            digest,
+            source: source_bytes.to_vec(),
+        };
+
+        journal
+            .put_workflow_source(&record)
+            .expect("put_workflow_source must succeed");
+
+        let retrieved = journal
+            .workflow_source(digest)
+            .expect("workflow_source point-read must succeed")
+            .expect("record must exist");
+
+        assert_eq!(retrieved.digest, digest, "digest must match key exactly");
+        assert_eq!(
+            retrieved.source, source_bytes,
+            "source bytes must be byte-identical to stored bytes"
+        );
+        let recomputed: WorkflowDigest = WorkflowDigest::from_bytes(blake3::hash(&retrieved.source).into());
+        assert_eq!(retrieved.digest, recomputed, "digest must be blake3 of source");
+    }
+
+    #[test]
+    fn workflow_source_point_read_rejects_wrong_digest_key() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let source = b"source-payload";
+        let digest: WorkflowDigest = WorkflowDigest::from_bytes(blake3::hash(source).into());
+        journal
+            .put_workflow_source(&WorkflowSourceRecord {
+                digest,
+                source: source.to_vec(),
+            })
+            .expect("setup: put_workflow_source");
+
+        let wrong_digest: WorkflowDigest = WorkflowDigest::from_bytes([0xFF; 32]);
+        let result = journal
+            .workflow_source(wrong_digest)
+            .expect("lookup must succeed");
+        assert!(result.is_none(), "wrong digest key must return None");
+    }
+
+    #[test]
+    fn compiled_ir_point_read_verifies_digest_to_ir_binding() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let ir_bytes = b"compiled-ir-byte-sequence-for-binding-verification";
+        let digest: WorkflowDigest = WorkflowDigest::from_bytes(blake3::hash(ir_bytes).into());
+        let record = CompiledIrRecord {
+            digest,
+            ir: ir_bytes.to_vec(),
+        };
+
+        journal
+            .put_compiled_ir(&record)
+            .expect("put_compiled_ir must succeed");
+
+        let retrieved = journal
+            .compiled_ir(digest)
+            .expect("compiled_ir point-read must succeed")
+            .expect("record must exist");
+
+        assert_eq!(
+            retrieved.digest, digest,
+            "compiled_ir digest must match key exactly"
+        );
+        assert_eq!(
+            retrieved.ir, ir_bytes,
+            "compiled_ir bytes must be byte-identical to stored bytes"
+        );
+    }
+
+    #[test]
+    fn compiled_ir_point_read_rejects_wrong_digest_key() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let ir = b"ir-payload-data";
+        let digest: WorkflowDigest = WorkflowDigest::from_bytes(blake3::hash(ir).into());
+        journal
+            .put_compiled_ir(&CompiledIrRecord {
+                digest,
+                ir: ir.to_vec(),
+            })
+            .expect("setup: put_compiled_ir");
+
+        let wrong_digest: WorkflowDigest = WorkflowDigest::from_bytes([0xEE; 32]);
+        let result = journal
+            .compiled_ir(wrong_digest)
+            .expect("lookup must succeed");
+        assert!(result.is_none(), "wrong digest key must return None for compiled_ir");
+    }
+
+    #[test]
+    fn run_header_point_read_verifies_all_fields() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let run = RunId::new(42);
+        let workflow_id = WorkflowId::new(100);
+        let compiled_digest = WorkflowDigest::from_bytes([0xCA; DIGEST_BYTES]);
+        let status: u8 = 2;
+        let accepted_at_ms: u64 = 1_700_000_000;
+
+        let record = RunHeaderRecord {
+            run,
+            workflow_id,
+            compiled_digest,
+            status,
+            accepted_at_ms,
+        };
+
+        journal
+            .put_run_header(&record)
+            .expect("put_run_header must succeed");
+
+        let retrieved = journal
+            .run_header(run)
+            .expect("run_header point-read must succeed")
+            .expect("record must exist");
+
+        assert_eq!(retrieved.run, run, "run field must match");
+        assert_eq!(retrieved.workflow_id, workflow_id, "workflow_id must match");
+        assert_eq!(retrieved.compiled_digest, compiled_digest, "compiled_digest must match");
+        assert_eq!(retrieved.status, status, "status must match");
+        assert_eq!(
+            retrieved.accepted_at_ms, accepted_at_ms,
+            "accepted_at_ms must match"
+        );
+    }
+
+    #[test]
+    fn snapshot_point_read_verifies_all_fields() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let run = RunId::new(77);
+        let seq = EventSeq::new(5);
+        let workflow = WorkflowDigest::from_bytes([0xBB; DIGEST_BYTES]);
+        let slots = vec![0x01, 0x02, 0x03, 0x04];
+        let taint = vec![0x0A];
+
+        let record = RunSnapshot {
+            run,
+            seq,
+            workflow,
+            slots: slots.clone(),
+            taint: taint.clone(),
+        };
+
+        journal
+            .put_snapshot(&record)
+            .expect("put_snapshot must succeed");
+
+        let retrieved = journal
+            .snapshot(run, seq)
+            .expect("snapshot point-read must succeed")
+            .expect("record must exist");
+
+        assert_eq!(retrieved.run, run, "run field must match");
+        assert_eq!(retrieved.seq, seq, "seq field must match");
+        assert_eq!(retrieved.workflow, workflow, "workflow digest must match");
+        assert_eq!(
+            retrieved.slots, slots,
+            "slots bytes must be byte-identical to stored bytes"
+        );
+        assert_eq!(
+            retrieved.taint, taint,
+            "taint bytes must be byte-identical to stored bytes"
+        );
+    }
+
+    #[test]
+    fn events_for_run_point_read_verifies_event_count_and_fields() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let run = RunId::new(99);
+        let workflow = WorkflowDigest::from_bytes([0xDD; DIGEST_BYTES]);
+        let step = StepIdx::new(2);
+        let result = vb_core::SlotIdx::new(5);
+
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        };
+        let e1 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step,
+            attempt: 1,
+        };
+        let e2 = JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(2),
+            result,
+            attempt: 3,
+        };
+
+        journal
+            .append_strict(&e0)
+            .expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&e1)
+            .expect("journal.append_strict must succeed");
+        journal
+            .append_strict(&e2)
+            .expect("journal.append_strict must succeed");
+
+        let events = journal
+            .events_for_run(run)
+            .expect("events_for_run point-read must succeed");
+
+        assert_eq!(events.len(), 3, "must return exactly 3 events");
+
+        assert_eq!(events[0].run_id(), run, "event[0] run_id must match");
+        assert_eq!(events[0].seq(), EventSeq::new(0), "event[0] seq must be 0");
+        assert_eq!(
+            events[0], e0,
+            "event[0] must be byte-identical to stored event"
+        );
+
+        assert_eq!(events[1].run_id(), run, "event[1] run_id must match");
+        assert_eq!(events[1].seq(), EventSeq::new(1), "event[1] seq must be 1");
+        if let JournalEvent::StepStarted {
+            step: found_step,
+            attempt: found_attempt,
+            ..
+        } = &events[1]
+        {
+            assert_eq!(*found_step, step, "event[1] step must match");
+            assert_eq!(*found_attempt, 1, "event[1] attempt must match");
+        } else {
+            panic!("event[1] must be StepStarted");
+        }
+
+        assert_eq!(events[2].run_id(), run, "event[2] run_id must match");
+        assert_eq!(events[2].seq(), EventSeq::new(2), "event[2] seq must be 2");
+        if let JournalEvent::RunFinished {
+            result: found_result,
+            attempt: found_attempt,
+            ..
+        } = &events[2]
+        {
+            assert_eq!(*found_result, result, "event[2] result must match");
+            assert_eq!(*found_attempt, 3, "event[2] attempt must match");
+        } else {
+            panic!("event[2] must be RunFinished");
+        }
+    }
+
+    #[test]
+    fn events_for_run_point_read_empty_returns_empty_vec() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let events = journal
+            .events_for_run(RunId::new(1))
+            .expect("events_for_run must succeed on empty journal");
+        assert!(
+            events.is_empty(),
+            "events_for_run for a run with no events must return empty vec"
+        );
+    }
+
+    #[test]
+    fn multi_blob_point_read_isolates_digests() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+        let mut digests: Vec<[u8; DIGEST_BYTES]> = Vec::with_capacity(5);
+        let mut payloads: Vec<Vec<u8>> = Vec::with_capacity(5);
+
+        for i in 0u8..5 {
+            let payload: Vec<u8> = std::iter::repeat(i).take(64).collect();
+            let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
+            let record = BlobRecord { digest, bytes: payload.clone() };
+            journal.put_blob(&record).expect("put_blob must succeed");
+            digests.push(digest);
+            payloads.push(payload);
+        }
+
+        for (i, digest) in digests.iter().enumerate() {
+            let retrieved = journal
+                .blob(*digest)
+                .expect("blob point-read must succeed")
+                .expect("blob must exist");
+            assert_eq!(
+                retrieved.bytes, payloads[i],
+                "blob[{}] payload must match stored payload exactly",
+                i
+            );
+            assert_eq!(retrieved.digest, *digest, "blob[{}] digest must match key", i);
+        }
+    }
 }

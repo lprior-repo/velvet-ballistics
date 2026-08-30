@@ -155,4 +155,140 @@ mod blob_tests {
             "reading corrupt blob should error or return None"
         );
     }
+
+    // --- Section 2: Exact point-read byte/digest assertions ---
+
+    #[test]
+    fn put_blob_round_trips_digest_bytes_exact_match() {
+        let (_temp, journal) = temp_journal();
+        let payload = b"exact-digest-byte-match-payload-data";
+        let record = make_blob_record(payload);
+
+        let original_digest = record.digest;
+
+        journal.put_blob(&record).expect("put_blob should succeed");
+
+        let loaded = journal
+            .blob(original_digest)
+            .expect("blob lookup should succeed")
+            .expect("blob should exist");
+
+        assert_eq!(
+            loaded.digest, original_digest,
+            "point-read digest must match the request digest byte-for-byte"
+        );
+
+        let recomputed: [u8; DIGEST_BYTES] = blake3::hash(&loaded.bytes).into();
+        assert_eq!(
+            loaded.digest, recomputed,
+            "stored digest must be the blake3 hash of the stored bytes"
+        );
+    }
+
+    #[test]
+    fn put_blob_round_trips_payload_bytes_exact_match() {
+        let (_temp, journal) = temp_journal();
+        let payload: Vec<u8> = (0..=255).cycle().take(512).collect();
+        let record = make_blob_record(&payload);
+
+        journal.put_blob(&record).expect("put_blob should succeed");
+
+        let loaded = journal
+            .blob(record.digest)
+            .expect("blob lookup should succeed")
+            .expect("blob should exist");
+
+        assert_eq!(
+            loaded.bytes.len(),
+            payload.len(),
+            "round-tripped payload length must match original"
+        );
+        assert_eq!(
+            loaded.bytes, payload,
+            "round-tripped payload bytes must be byte-identical to original"
+        );
+    }
+
+    #[test]
+    fn put_blob_point_read_rejects_different_digest_key() {
+        let (_temp, journal) = temp_journal();
+        let payload = b"correct-blob-payload";
+        let record = make_blob_record(payload);
+        journal.put_blob(&record).expect("put_blob should succeed");
+
+        let wrong_digest: [u8; DIGEST_BYTES] = [0xEE; 32];
+        let result = journal.blob(wrong_digest);
+        let found = result.expect("blob lookup should succeed");
+        assert!(
+            found.is_none(),
+            "blob read with wrong digest must return None"
+        );
+    }
+
+    #[test]
+    fn trim_blob_removes_blob_and_point_read_returns_none() {
+        let (_temp, journal) = temp_journal();
+        let payload = b"trim-target-payload";
+        let record = make_blob_record(payload);
+
+        journal.put_blob(&record).expect("put_blob should succeed");
+
+        let before = journal
+            .blob(record.digest)
+            .expect("pre-trim lookup should succeed")
+            .expect("blob must exist before trim");
+        assert_eq!(before.digest, record.digest);
+        assert_eq!(before.bytes, record.bytes);
+
+        journal.trim_blob(record.digest).expect("trim_blob should succeed");
+
+        let after = journal
+            .blob(record.digest)
+            .expect("post-trim lookup should succeed");
+        assert!(
+            after.is_none(),
+            "blob must be None after successful trim"
+        );
+    }
+
+    #[test]
+    fn trim_blob_rejects_missing_digest() {
+        let (_temp, journal) = temp_journal();
+        let missing_digest: [u8; DIGEST_BYTES] = [0xCC; 32];
+
+        let result = journal.trim_blob(missing_digest);
+        assert!(
+            matches!(result, Err(JournalError::ArtifactNotFound { .. })),
+            "trim_blob of missing blob must return ArtifactNotFound, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn trim_blob_preserves_other_blobs() {
+        let (_temp, journal) = temp_journal();
+        let p1 = b"blob-one-to-be-trimmed";
+        let p2 = b"blob-two-should-persist";
+        let r1 = make_blob_record(p1);
+        let r2 = make_blob_record(p2);
+
+        journal.put_blob(&r1).expect("put r1");
+        journal.put_blob(&r2).expect("put r2");
+        journal.trim_blob(r1.digest).expect("trim r1");
+
+        assert!(
+            journal
+                .blob(r1.digest)
+                .expect("lookup r1")
+                .is_none(),
+            "trimmed blob must be None"
+        );
+
+        let surviving = journal
+            .blob(r2.digest)
+            .expect("lookup r2")
+            .expect("surviving blob must exist");
+        assert_eq!(surviving.digest, r2.digest);
+        assert_eq!(surviving.bytes, r2.bytes);
+    }
 }
