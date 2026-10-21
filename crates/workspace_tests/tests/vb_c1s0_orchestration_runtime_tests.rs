@@ -118,6 +118,62 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
     )
 }
 
+fn budget_chain_workflow() -> Result<CompiledWorkflow, String> {
+    workflow_from_parts(
+        "c1s0_budget_chain",
+        0x42,
+        Box::from([
+            node(
+                0,
+                Some(0),
+                Some(1),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            ),
+            node(
+                1,
+                Some(1),
+                Some(2),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(1),
+                },
+            ),
+            node(
+                2,
+                Some(2),
+                Some(3),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(2),
+                },
+            ),
+            node(
+                3,
+                Some(3),
+                Some(4),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(3),
+                },
+            ),
+            node(
+                4,
+                None,
+                None,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(3),
+                },
+            ),
+        ]),
+        Box::from([
+            ConstValue::I64(10),
+            ConstValue::I64(20),
+            ConstValue::I64(30),
+            ConstValue::I64(99),
+        ]),
+        4,
+    )
+}
+
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     workflow_from_parts(
         "c1s0_action_then_finish",
@@ -404,17 +460,24 @@ fn run_reaches_cancelled_state_when_cancel_called() -> Result<(), String> {
     Ok(())
 }
 
-// Scenario C4: Terminal run ignores subsequent commands
+// Scenario C4: Terminal run rejects a previously issued action ticket
 #[test]
 fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(2004);
 
-    // Submit and let it finish
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    // Submit a workflow and capture the real pending action ticket.
+    assert_eq!(
+        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    run_one_tick(&mut runtime)?;
+    let stale_ticket = action_ticket(&runtime, run)?;
+
+    // Cancel the run while that ticket is outstanding.
+    assert_eq!(runtime.cancel_run(run), Ok(()));
     run_one_tick(&mut runtime)?;
 
-    // Verify terminal state
     assert_eq!(
         runtime.snapshot_run(run, 99),
         Ok(InspectResponse::NotFound {
@@ -423,12 +486,33 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
         })
     );
 
-    // Subsequent tick_all for this run produce no side effects
+    // A real ticket issued before cancellation is stale after terminal cleanup.
     let counters_before = runtime.counters_snapshot();
-    run_one_tick(&mut runtime)?;
+    let events_before = runtime
+        .list_events(run)
+        .map_err(|error| format!("trace lookup failed: {error:?}"))?;
     assert_eq!(
-        runtime.counters_snapshot().runs_completed,
+        runtime.complete_action_with_output(
+            stale_ticket,
+            action_output(SlotValue::I64(999), Taint::Clean),
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.tick_all(),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    );
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_after.runs_completed,
         counters_before.runs_completed
+    );
+    assert_eq!(counters_after.runs_failed, counters_before.runs_failed);
+    assert_eq!(
+        runtime
+            .list_events(run)
+            .map_err(|error| format!("trace lookup failed: {error:?}"))?,
+        events_before
     );
     Ok(())
 }
@@ -781,6 +865,82 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn drive_step_budget_bounds_each_drive_and_preserves_final_output() -> Result<(), String> {
+    let workflow = budget_chain_workflow()?;
+    for (step_budget, expected_steps_per_drive) in [
+        (1_u64, vec![1_usize, 1, 1, 1, 1]),
+        (2_u64, vec![2_usize, 2, 1]),
+    ] {
+        let run = RunId::new(if step_budget == 1 { 6101 } else { 6102 });
+        let mut frame = vb_core::new_run_frame(run, &workflow)
+            .map_err(|error| format!("run frame creation failed: {error:?}"))?;
+        let mut store = vb_core::value_store::ValueStore::new();
+        let mut collect_states = vb_runtime::primitives::collect::CollectStates::new();
+        let mut completed_steps = 0_usize;
+        for expected_delta in expected_steps_per_drive {
+            let mut budget = vb_core::engine::StepBudget::new(step_budget);
+            let mut evidence = vb_runtime::engine::EvidenceCollector::new();
+            let signal = vb_runtime::engine::drive_deterministic_full(
+                &workflow,
+                &mut frame,
+                &mut budget,
+                &mut store,
+                &[],
+                vb_runtime::engine::RetryPolicy::NEVER,
+                &mut evidence,
+                &mut collect_states,
+                &vb_core::capability::CapabilitySet::empty(),
+            )
+            .map_err(|error| format!("workflow drive failed: {error:?}"))?;
+            let events = evidence.drain();
+            let succeeded_steps = events
+                .iter()
+                .filter(|event| {
+                    matches!(
+                        event,
+                        vb_runtime::engine::EvidenceEvent::StepSucceeded { .. }
+                    )
+                })
+                .count();
+            assert_eq!(
+                succeeded_steps, expected_delta,
+                "budget {step_budget} per drive"
+            );
+            completed_steps = completed_steps
+                .checked_add(succeeded_steps)
+                .ok_or_else(|| "completed-step count overflowed".to_owned())?;
+            assert_eq!(
+                frame.executed(),
+                u64::try_from(completed_steps).map_err(|error| format!(
+                    "completed-step count conversion failed: {error:?}"
+                ))?
+            );
+
+            if completed_steps == 5 {
+                assert_eq!(
+                    signal,
+                    vb_runtime::engine::RuntimeSignal::Finished(SlotValue::I64(99))
+                );
+                assert_eq!(
+                    frame.read_slot(SlotIdx::new(3)).map(|value| *value),
+                    Ok(SlotValue::I64(99))
+                );
+            } else {
+                assert_eq!(
+                    signal,
+                    vb_runtime::engine::RuntimeSignal::StepBudgetExhausted
+                );
+                let expected_pc = u16::try_from(completed_steps)
+                    .map_err(|error| format!("program-counter conversion failed: {error:?}"))?;
+                assert_eq!(frame.pc(), StepIdx::new(expected_pc));
+            }
+        }
+        assert_eq!(completed_steps, 5, "five workflow steps should complete");
+    }
+    Ok(())
+}
+
 // =============================================================================
 // Mutation checkpoints — these tests verify the mutations would be caught
 // =============================================================================
@@ -821,8 +981,20 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(7001);
 
-    // Submit and finish
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    // Complete an actual action ticket so the workflow reaches Finished.
+    assert_eq!(
+        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    run_one_tick(&mut runtime)?;
+    let stale_ticket = action_ticket(&runtime, run)?;
+    assert_eq!(
+        runtime.complete_action_with_output(
+            stale_ticket,
+            action_output(SlotValue::I64(42), Taint::Clean),
+        ),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
 
     // Verify terminal
@@ -834,15 +1006,35 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
         })
     );
 
-    // If terminal guard were removed, this would cause duplicate processing
+    // A duplicate completion with the old, genuine ticket must fail exactly and
+    // leave terminal state, counters, and trace history untouched.
     let counters_before = runtime.counters_snapshot();
-    run_one_tick(&mut runtime)?;
+    let events_before = runtime
+        .list_events(run)
+        .map_err(|error| format!("trace lookup failed: {error:?}"))?;
+    assert_eq!(
+        runtime.complete_action_with_output(
+            stale_ticket,
+            action_output(SlotValue::I64(77), Taint::Clean),
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.tick_all(),
+        Err(vb_runtime::RuntimeError::RunNotFound)
+    );
     let counters_after = runtime.counters_snapshot();
 
-    // If the mutation existed, counters might change (double-processing)
     assert_eq!(
         counters_before.runs_completed, counters_after.runs_completed,
-        "terminal state guard must prevent re-processing"
+        "stale completion must not affect completed-run count"
+    );
+    assert_eq!(counters_before.runs_failed, counters_after.runs_failed);
+    assert_eq!(
+        runtime
+            .list_events(run)
+            .map_err(|error| format!("trace lookup failed: {error:?}"))?,
+        events_before
     );
     Ok(())
 }

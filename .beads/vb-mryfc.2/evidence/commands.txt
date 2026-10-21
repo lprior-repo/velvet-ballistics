@@ -1,0 +1,25 @@
+Source candidate before repair: fa5e084c2ff3e25226b002f7bbb727f5530023f1
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna
+
+rustfmt --edition 2024 --check crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs
+exit code: 0
+
+git diff --check
+exit code: 0
+
+cargo test -p velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests -j 2 -- --test-threads=2
+exit code: 0; 30 passed; 0 failed; 0 ignored
+raw stdout/stderr: orchestration.stdout, orchestration.stderr
+
+cargo test -p velvet-ballistics-workspace-tests --test vb_test_runtime_lifecycle_state_behavior -j 2 -- --test-threads=2
+exit code: 0; 40 passed; 0 failed; 0 ignored
+raw stdout/stderr: lifecycle.stdout, lifecycle.stderr
+
+Counterfactual oracle check (temporary test-only mutation, restored before final focused runs):
+changed StepBudget::new(step_budget) to StepBudget::new(u64::MAX)
+cargo test -p velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests drive_step_budget_bounds_each_drive_and_preserves_final_output -j 2 -- --exact --nocapture
+expected result: failed, exit code 101; at budget 1 observed 5 succeeded steps instead of 1
+raw stdout/stderr: budget-limit-removed.stdout, budget-limit-removed.stderr
+
+cargo fmt -p velvet-ballistics-workspace-tests -- --check
+exit code: 1 due to pre-existing formatting differences in unrelated workspace_tests integration files. The touched file passes the scoped rustfmt check above.
