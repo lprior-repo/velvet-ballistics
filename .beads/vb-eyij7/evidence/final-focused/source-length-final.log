@@ -1,0 +1,15 @@
+FAIL crates/vb_expr/src/expression.rs [category=production] has 655 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_expr/src/expression_bytecode.rs [category=production] has 568 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_runtime/src/error/equality.rs [category=production] has 309 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+FAIL crates/vb_storage/src/types/flux_sequence.rs [category=production] has 318 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+source-length gate summary:
+  generated          scanned=1     excluded (no limit)
+  perf               scanned=0     excluded (no limit)
+  kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+  verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+  flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+  verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+  test_in_src        scanned=286   warn=50   over_limit=0    limit=1500 warn_at=1200
+  test_top_level     scanned=353   warn=6    over_limit=0    limit=3000 warn_at=2400
+  production         scanned=891   warn=194  over_limit=4    limit=300 warn_at=240
+  ledger rows used:    384

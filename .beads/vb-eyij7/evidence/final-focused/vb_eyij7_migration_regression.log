@@ -1,0 +1,59 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running tests/vb_eyij7_migration_regression.rs (target/debug/deps/vb_eyij7_migration_regression-4b73efc8ab068337)
+
+running 33 tests
+test expr_error_from_core_error_fallback_is_unexpected_eof ... ok
+test expr_division_by_zero_error_variant ... ok
+test expr_error_from_core_error_preserves_division_by_zero ... ok
+test expr_error_from_core_error_preserves_non_finite ... ok
+test expr_error_from_core_error_preserves_stack_overflow ... ok
+test expr_error_from_core_error_preserves_stack_underflow ... ok
+test expr_overflow_error_variant ... ok
+test expr_error_from_core_error_preserves_type_mismatch ... ok
+test expr_stack_underflow_via_bytecode ... ok
+test vb_compile_reexports_expr_error ... ok
+test fuzz_package_exists_and_is_member ... ok
+test fuzz_targets_exist ... ok
+test vb_compile_has_no_duplicate_expr_modules ... ok
+test vb_compile_has_no_duplicate_yaml_modules ... ok
+test vb_expr_compile_returns_bytecode ... ok
+test vb_expr_lex_returns_tokens ... ok
+test vb_expr_parse_returns_ast ... ok
+test vb_expr_eval_returns_result ... ok
+test vb_compile_reexports_parse_yaml_events ... ok
+test vb_yaml_parse_yaml_events_is_ok_for_valid_yaml ... ok
+test vb_yaml_rejects_anchors_with_specific_error ... ok
+test vb_yaml_rejects_duplicate_keys_with_specific_error ... ok
+test vb_yaml_rejects_multiple_documents_with_specific_error ... ok
+test vb_yaml_rejects_merge_keys_with_specific_error ... ok
+test vb_compile_reexports_parse_workflow_source ... ok
+test vb_yaml_source_map_builds_correctly ... ok
+test velvet_ballistics_lib_name_is_correct ... ok
+test velvet_ballistics_package_name_is_correct ... ok
+test velvet_ballistics_binary_name_is_correct ... ok
+test workspace_members_are_in_canonical_order ... ok
+test workspace_has_exactly_11_members ... ok
+test workspace_no_old_member_names ... ok
+test cargo_metadata_resolves_exactly_11_packages ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

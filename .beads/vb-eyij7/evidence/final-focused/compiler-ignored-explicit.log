@@ -1,0 +1,327 @@
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-774085096e2424b3)
+
+running 4 tests
+test proptest_finish_digest::canonical_digest_is_deterministic ... FAILED
+test proptest_finish_digest::finish_result_change_changes_digest_integer ... FAILED
+test proptest_finish_digest::finish_position_change_changes_digest ... FAILED
+test proptest_finish_digest::finish_result_change_changes_digest_string ... ok
+
+failures:
+
+---- proptest_finish_digest::canonical_digest_is_deterministic stdout ----
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:101:42:
+must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })])
+proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile/proptest-regressions/proptest_finish_digest.txt
+proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file. (You may need to create it.)
+cc 47761eb72846d039727a915abc77337b14dce9a3b240dd45e86cda30d4f1ebe8
+
+thread 'proptest_finish_digest::canonical_digest_is_deterministic' (4058710) panicked at crates/vb_compile/src/proptest_finish_digest.rs:79:1:
+Test failed: must compile: CompileErrors([Workflow(ResourceContractExceeded { resource: "max_slots" })]).
+minimal failing input: slot = 1024, id = "a"
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+---- proptest_finish_digest::finish_result_change_changes_digest_integer stdout ----
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile/proptest-regressions/proptest_finish_digest.txt
+proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file.
+cc 690c33fb8cffe18f5ec15f8e455c21a84f552b226b25a1d4a78b30b7948af594
+
+thread 'proptest_finish_digest::finish_result_change_changes_digest_integer' (4058712) panicked at crates/vb_compile/src/proptest_finish_digest.rs:112:1:
+Test failed: valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])".
+minimal failing input: id = "a", slot_a = 0, slot_b = 1024
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+---- proptest_finish_digest::finish_position_change_changes_digest stdout ----
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:37:28:
+valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])"
+proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile/proptest-regressions/proptest_finish_digest.txt
+proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file.
+cc 81dcaeb3466544d2c48c5d36242271f929fcab5394e9968cc3e04c3b2d6e0054
+
+thread 'proptest_finish_digest::finish_position_change_changes_digest' (4058711) panicked at crates/vb_compile/src/proptest_finish_digest.rs:177:1:
+Test failed: valid workflow must compile: "compile error: CompileErrors([Workflow(ResourceContractExceeded { resource: \"max_slots\" })])".
+minimal failing input: id1 = "a", id2 = "a0", slot = 1024
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+
+failures:
+    proptest_finish_digest::canonical_digest_is_deterministic
+    proptest_finish_digest::finish_position_change_changes_digest
+    proptest_finish_digest::finish_result_change_changes_digest_integer
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `-p vb_compile --lib`

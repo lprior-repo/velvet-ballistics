@@ -1,0 +1,52 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_expr)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_compile)
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/velvet_ballistics)
+warning: unused import: `INPUT_MAPPING_KIND_MISMATCH_MESSAGE`
+  --> crates/velvet_ballistics/src/app_impl.rs:24:46
+   |
+24 |         INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `INPUT_MAPPING_KIND_MISMATCH_MESSAGE` is never used
+  --> crates/velvet_ballistics/src/app_impl.rs:69:18
+   |
+69 | pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `SlotIndexOutOfRange` is never constructed
+  --> crates/velvet_ballistics/src/run_compiled.rs:82:5
+   |
+79 | pub(crate) enum InputMappingError {
+   |                 ----------------- variant in this enum
+...
+82 |     SlotIndexOutOfRange,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `InputMappingError` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `velvet-ballistics` (bin "velvet-ballistics") generated 3 warnings (run `cargo fix --bin "velvet-ballistics" -p velvet-ballistics` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.99s
