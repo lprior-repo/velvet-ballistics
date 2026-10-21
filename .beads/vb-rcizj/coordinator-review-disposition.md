@@ -1,0 +1,5 @@
+# Review disposition
+
+STATUS: REJECTED
+
+The independent review's owner_approved_debt for fixture panics is invented; no user waiver exists. AGENTS forbids panics in authored changes including test scaffolding. The wrong-identity/zero/capacity/key/sequence negative matrix is a contract coverage gap, not covered merely because source has a fallthrough. The report also misidentifies one changed test and claims a missing slot inspection interface despite public run_state_get and RunFrame::read_slot APIs. Full event-vector equality is not serialized byte equality. Actual24 tests pass, but these reports do not establish full contract parity. Contract error precedence claims must be checked against the unchanged preflight and master: missing run already returns RunNotFound; no evidence shows zero/capacity reached AttemptBeyondMax after ownership mismatch. Clarify the pre-existing behavior explicitly before writing new tests; do not change old assertions just to green them. No acceptance or closure.
