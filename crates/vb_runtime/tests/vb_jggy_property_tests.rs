@@ -80,6 +80,7 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
     }
 
     Ok(RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame,
         workflow,
         store,

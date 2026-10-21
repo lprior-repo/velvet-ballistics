@@ -87,9 +87,11 @@ impl Shard {
         };
         // Note: StepSucceeded for the Finish step is now emitted by the evidence
         // collector during flush_evidence, before apply_drive_result is called.
-        if let Err(error) =
-            self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })
-        {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFinished {
+            run,
+            result,
+            attempt: state.run_attempt.get(),
+        }) {
             return self.rollback_run_state_preserving_error("finish_run", run, state, error);
         }
         self.finish_run_after_journaled(run, state)
@@ -210,7 +212,10 @@ impl Shard {
     /// Marks a run as failed, releases its frame, and updates counters.
     /// Runtime state mutation is applied after the durable failure event is persisted.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed { run }) {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed {
+            run,
+            attempt: state.run_attempt.get(),
+        }) {
             return self.rollback_run_state_preserving_error("fail_run_state", run, state, error);
         }
         self.fail_run_state_after_journaled(run, state)

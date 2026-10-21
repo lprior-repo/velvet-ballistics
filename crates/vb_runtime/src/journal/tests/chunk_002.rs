@@ -458,8 +458,7 @@ fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
         adapter.append_sequenced(
             RuntimeJournalEvent::RunFinished {
                 run,
-                result: SlotIdx::new(3),
-            },
+                result: SlotIdx::new(3), attempt: 1},
             EventSeq::new(2),
         ),
         Ok(())
@@ -546,7 +545,7 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     .expect("journaled shared_journal already checked");
     assert_eq!(
         journaled.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())
@@ -569,7 +568,7 @@ fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavio
     .expect("strict shared_journal already checked");
     assert_eq!(
         strict.append_sequenced(
-            RuntimeJournalEvent::RunFailed { run: strict_run },
+            RuntimeJournalEvent::RunFailed { run: strict_run, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())

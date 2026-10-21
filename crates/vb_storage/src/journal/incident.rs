@@ -187,6 +187,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
     match event {
         JournalEvent::RunAccepted { .. } => LifecycleState::Active,
         JournalEvent::RunAdmission { .. } => LifecycleState::Active,
+        JournalEvent::RetryCheckpoint { .. } => LifecycleState::Active,
         JournalEvent::StepStarted { .. } => LifecycleState::Active,
         JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
         JournalEvent::StepFailed { .. } => LifecycleState::Failed,

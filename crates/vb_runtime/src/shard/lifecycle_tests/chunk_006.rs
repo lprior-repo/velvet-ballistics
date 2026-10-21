@@ -176,7 +176,7 @@ fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     let events = require_snapshot(&journal)?;
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None }),
+        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1}),
         "journal events should contain RunCancelled: {events:?}"
     );
     Ok(())

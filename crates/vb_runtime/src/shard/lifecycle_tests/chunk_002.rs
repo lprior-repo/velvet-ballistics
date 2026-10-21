@@ -268,7 +268,7 @@ fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
             action: ActionId::new(0),
             attempt: 1,
         },
-        RuntimeJournalEvent::RunFailed { run },
+        RuntimeJournalEvent::RunFailed { run, attempt: 1},
     );
 }
 

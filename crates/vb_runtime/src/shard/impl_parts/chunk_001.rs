@@ -842,6 +842,7 @@ impl Shard {
     pub(crate) fn prepare_evidence_events(
         &self,
         run: RunId,
+        attempt: u16,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<(Vec<RuntimeJournalEvent>, Vec<TraceEvent>)> {
         let event_count = evidence.len();
@@ -850,7 +851,13 @@ impl Shard {
         let mut trace_events = Vec::new();
         Self::reserve_drive_vec(&mut trace_events, event_count)?;
         for event in evidence.drain() {
-            Self::prepare_evidence_event(run, event, &mut journal_events, &mut trace_events)?;
+            Self::prepare_evidence_event(
+                run,
+                attempt,
+                event,
+                &mut journal_events,
+                &mut trace_events,
+            )?;
         }
         Ok((journal_events, trace_events))
     }
@@ -872,6 +879,7 @@ impl Shard {
 
     fn prepare_evidence_event(
         run: RunId,
+        attempt: u16,
         event: EvidenceEvent,
         journal_events: &mut Vec<RuntimeJournalEvent>,
         trace_events: &mut Vec<TraceEvent>,
@@ -880,7 +888,7 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step },
+                    RuntimeJournalEvent::StepStarted { run, step, attempt},
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
@@ -894,7 +902,7 @@ impl Shard {
                         Some(slot) => slot,
                         None => SlotIdx::ZERO,
                     },
-                    attempt: 1,
+                    attempt,
                 },
             ),
             EvidenceEvent::SlotWritten {

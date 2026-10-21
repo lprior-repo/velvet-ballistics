@@ -195,6 +195,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         Err(_) => return,
     };
     let mut state = RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::new(),

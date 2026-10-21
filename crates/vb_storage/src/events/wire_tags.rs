@@ -4,6 +4,7 @@ use crate::RecordKind;
 
 pub(super) const TAG_RUN_ACCEPTED: u16 = RecordKind::RunAccepted.id();
 pub(super) const TAG_RUN_ADMISSION: u16 = RecordKind::RunAdmission.id();
+pub(super) const TAG_RETRY_CHECKPOINT: u16 = RecordKind::RetryCheckpoint.id();
 pub(super) const TAG_STEP_STARTED: u16 = RecordKind::StepStarted.id();
 pub(super) const TAG_STEP_SUCCEEDED: u16 = RecordKind::StepSucceeded.id();
 pub(super) const TAG_STEP_FAILED: u16 = RecordKind::StepFailed.id();
@@ -31,6 +32,7 @@ pub(super) const TAG_ASK_TIMED_OUT: u16 = RecordKind::AskTimedOut.id();
 pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunAccepted",
     "RunAdmission",
+    "RetryCheckpoint",
     "StepStarted",
     "StepSucceeded",
     "StepFailed",

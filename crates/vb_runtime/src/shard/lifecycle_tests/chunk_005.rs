@@ -26,7 +26,7 @@ fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Res
             action: ActionId::new(0),
             attempt: 1,
         },
-        RuntimeJournalEvent::RunFailed { run },
+        RuntimeJournalEvent::RunFailed { run, attempt: 1},
     );
     Ok(())
 }
@@ -93,8 +93,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
         },
         RuntimeJournalEvent::StepStarted {
             run,
-            step: StepIdx::new(2),
-        },
+            step: StepIdx::new(2), attempt: 1},
     );
     Ok(())
 }

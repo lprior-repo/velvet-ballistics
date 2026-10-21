@@ -157,6 +157,8 @@ pub enum RecordKind {
     ActionCompleted = 14,
     /// Action completed event carrying the full durable completion envelope.
     ActionCompletedEnvelope = 35,
+    /// Full runtime state at a retry boundary.
+    RetryCheckpoint = 37,
     /// Action failed event.
     ActionFailed = 15,
     /// Wait scheduled event.
@@ -247,6 +249,7 @@ impl RecordKind {
             Self::StepSucceeded => 33,
             Self::ActionScheduledTicket => 34,
             Self::ActionCompletedEnvelope => 35,
+            Self::RetryCheckpoint => 37,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -285,6 +288,7 @@ impl RecordKind {
             33 => Some(Self::StepSucceeded),
             34 => Some(Self::ActionScheduledTicket),
             35 => Some(Self::ActionCompletedEnvelope),
+            37 => Some(Self::RetryCheckpoint),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -319,7 +323,8 @@ impl RecordKind {
             | Self::ActionAbandoned
             | Self::StepSucceeded
             | Self::ActionScheduledTicket
-            | Self::ActionCompletedEnvelope => true,
+            | Self::ActionCompletedEnvelope
+            | Self::RetryCheckpoint => true,
             Self::WorkflowSource
             | Self::CompiledIr
             | Self::RunHeader

@@ -66,6 +66,17 @@ fn all_journal_event_cases() -> Result<Vec<(JournalEvent, RecordKind)>, JournalE
             RecordKind::RunAdmission,
         ),
         (
+            JournalEvent::RetryCheckpoint {
+                run,
+                seq: EventSeq::new(2),
+                attempt: 2,
+                step: StepIdx::new(3),
+                payload_digest: [0x5A; 32],
+                payload: vec![1, 2, 3, 4],
+            },
+            RecordKind::RetryCheckpoint,
+        ),
+        (
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(2),
@@ -2570,6 +2581,7 @@ fn record_kind_ids_match_discriminant_values() {
     assert_eq!(RecordKind::StepSucceeded.id(), 33);
     assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
     assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
+    assert_eq!(RecordKind::RetryCheckpoint.id(), 37);
     assert_eq!(RecordKind::Blob.id(), 40);
     assert_eq!(RecordKind::IndexUpdate.id(), 50);
 }
@@ -3145,6 +3157,7 @@ fn kind_id_matches_wire_value_for_every_variant() {
     assert_eq!(RecordKind::StepSucceeded.id(), 33);
     assert_eq!(RecordKind::ActionScheduledTicket.id(), 34);
     assert_eq!(RecordKind::ActionCompletedEnvelope.id(), 35);
+    assert_eq!(RecordKind::RetryCheckpoint.id(), 37);
     assert_eq!(RecordKind::Blob.id(), 40);
     assert_eq!(RecordKind::IndexUpdate.id(), 50);
 }

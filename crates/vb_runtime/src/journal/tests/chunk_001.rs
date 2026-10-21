@@ -96,8 +96,7 @@ fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
         adapter.append_sequenced(
             RuntimeJournalEvent::RunFinished {
                 run,
-                result: SlotIdx::new(3),
-            },
+                result: SlotIdx::new(3), attempt: 1},
             EventSeq::new(1),
         ),
         Ok(())
@@ -253,7 +252,7 @@ fn storage_runtime_journal_maps_cancelled_and_failed_events() {
     );
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(1),
         ),
         Ok(())
@@ -287,7 +286,7 @@ fn storage_runtime_journal_maps_cancelled_and_failed_events() {
     let failed_run = RunId::new(43);
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunFailed { run: failed_run },
+            RuntimeJournalEvent::RunFailed { run: failed_run, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())

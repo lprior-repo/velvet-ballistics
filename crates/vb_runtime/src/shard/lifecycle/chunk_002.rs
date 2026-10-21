@@ -154,10 +154,12 @@ impl Shard {
         timer: PendingTimer,
     ) -> RuntimeResult<()> {
         match timer.kind {
-            PendingTimerKind::Wait => self.append_journal_event(RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            }),
+            PendingTimerKind::Wait => {
+                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
+                    run,
+                    step: timer.step,
+                })
+            }
             PendingTimerKind::Ask => self.append_journal_event(RuntimeJournalEvent::AskTimedOut {
                 run,
                 step: timer.step,
@@ -176,7 +178,11 @@ impl Shard {
         }
         if self.run_state_contains(run) {
             self.reserve_cancel_kill_terminalization(run)?;
-            self.append_cancel_terminal_events(run, reason)?;
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
+            self.append_cancel_terminal_events(run, reason, attempt)?;
             self.checked_out_run_insert(run)?;
             let _removed_timer = self.pending_timer_remove(run);
             let Some(state) = self.run_state_remove(run) else {
@@ -201,7 +207,11 @@ impl Shard {
         }
         if self.run_state_contains(run) {
             self.reserve_cancel_kill_terminalization(run)?;
-            self.append_kill_terminal_events(run)?;
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
+            self.append_kill_terminal_events(run, attempt)?;
             self.checked_out_run_insert(run)?;
             let _removed_timer = self.pending_timer_remove(run);
         }

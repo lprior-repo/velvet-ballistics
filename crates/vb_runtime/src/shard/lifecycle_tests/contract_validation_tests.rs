@@ -728,7 +728,7 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
         "exactly one RunFinished journal event expected"
     );
     assert!(matches!(run_finished.first(),
-        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result })
+        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result, attempt: 1})
             if *r == run && *result == SlotIdx::new(1)));
 
     let run_failed: Vec<_> = events
@@ -844,7 +844,7 @@ fn shard_boundary_accepts_valid_contract_with_seeded_input(
         "exactly one RunFinished journal event expected"
     );
     assert!(matches!(run_finished.first(),
-        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result })
+        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result, attempt: 1})
             if *r == run && *result == SlotIdx::new(1)));
 
     let run_failed: Vec<_> = events

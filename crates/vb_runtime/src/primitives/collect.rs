@@ -21,6 +21,9 @@ use vb_storage::JournalEvent;
 
 use super::helpers::{expect_list, jump_to, jump_to_body, jump_to_next, require_output};
 
+mod checkpoint;
+pub use checkpoint::{CollectStatesCheckpointV1, CollectStatesCheckpointV1Error};
+
 /// Per-run pagination state stored in a side table keyed by (RunId, SlotIdx).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CollectPaginationState {

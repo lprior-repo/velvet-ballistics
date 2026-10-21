@@ -25,6 +25,7 @@ impl JournalEvent {
         match self {
             Self::RunAccepted { run, .. }
             | Self::RunAdmission { run, .. }
+            | Self::RetryCheckpoint { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
             | Self::StepFailed { run, .. }
@@ -60,6 +61,7 @@ impl JournalEvent {
         match self {
             Self::RunAccepted { seq, .. }
             | Self::RunAdmission { seq, .. }
+            | Self::RetryCheckpoint { seq, .. }
             | Self::StepStarted { seq, .. }
             | Self::StepSucceeded { seq, .. }
             | Self::StepFailed { seq, .. }
@@ -92,6 +94,7 @@ impl JournalEvent {
         match self {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission { .. } => RecordKind::RunAdmission,
+            Self::RetryCheckpoint { .. } => RecordKind::RetryCheckpoint,
             Self::StepStarted { .. } => RecordKind::StepStarted,
             Self::StepSucceeded { .. } => RecordKind::StepSucceeded,
             Self::StepFailed { .. } => RecordKind::StepFailed,
@@ -179,6 +182,7 @@ impl JournalEvent {
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. }
+            | Self::RetryCheckpoint { attempt, .. }
             | Self::AskTimedOutEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }
@@ -228,6 +232,7 @@ impl JournalEvent {
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. }
+            | Self::RetryCheckpoint { attempt, .. }
             | Self::AskTimedOutEvent { attempt, .. } => *attempt != 0,
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }

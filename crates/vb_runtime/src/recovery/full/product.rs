@@ -244,6 +244,7 @@ impl ResumableRecoveryProduct {
             workflow_digest: self.workflow_digest,
             next_seq: self.next_seq,
             collect_states: self.collect_states,
+            retry_checkpoint: None,
             boundary: self.boundary,
         }
     }

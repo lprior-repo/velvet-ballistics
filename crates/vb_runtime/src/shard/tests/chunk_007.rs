@@ -184,6 +184,7 @@ fn run_state_equality() {
         Err(_) => return,
     };
     let state = RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame,
         workflow: wf.clone(),
         store: vb_core::value_store::ValueStore::new(),
@@ -202,6 +203,7 @@ fn run_state_equality() {
         Err(_) => return,
     };
     let state2 = RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame: frame2,
         workflow: wf,
         store: vb_core::value_store::ValueStore::new(),

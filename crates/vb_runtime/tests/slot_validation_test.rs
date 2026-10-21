@@ -43,6 +43,7 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
     )
     .expect("failed to create RunFrame");
     RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame,
         workflow: wf,
         store: ValueStore::new(),

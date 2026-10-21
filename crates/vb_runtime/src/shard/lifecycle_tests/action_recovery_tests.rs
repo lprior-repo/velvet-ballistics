@@ -229,7 +229,7 @@
         );
         // Verify the RunFinished event has the correct run id and result slot
         assert!(matches!(run_finished_events.first(),
-            Some(crate::journal::RuntimeJournalEvent::RunFinished { run, result })
+            Some(crate::journal::RuntimeJournalEvent::RunFinished { run, result, attempt: 1})
                 if *run == run_id && *result == vb_core::ids::SlotIdx::new(1)));
         let completed: Vec<_> = events.iter().filter_map(|event| match event {
             crate::journal::RuntimeJournalEvent::ActionCompletedEnvelope { ticket, output, value, .. }

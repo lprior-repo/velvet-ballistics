@@ -448,7 +448,7 @@ fn cancel_persists_before_ack() {
     let events = journal.snapshot().unwrap();
     let has_run_cancelled = events
         .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _ } if *r == run));
+        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _, attempt: 1} if *r == run));
     assert!(
         has_run_cancelled,
         "RunCancelled must be persisted before ack"

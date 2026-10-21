@@ -4,6 +4,7 @@ use super::super::super::JournalEvent;
 use super::super::tags::{
     TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
     TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+    TAG_RETRY_CHECKPOINT,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -15,6 +16,7 @@ where
     match event {
         JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
         JournalEvent::RunAdmission { .. } => serialize_admission(event, serializer),
+        JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
         JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
         JournalEvent::RunKilled { .. } => serialize_killed(event, serializer),
         JournalEvent::RunFinished { .. } => serialize_finished(event, serializer),
@@ -22,6 +24,28 @@ where
         JournalEvent::RunResumed { .. } => serialize_resumed(event, serializer),
         JournalEvent::RunRetried { .. } => serialize_retried(event, serializer),
         JournalEvent::RunAnswered { .. } => serialize_answered(event, serializer),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_retry_checkpoint<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RetryCheckpoint {
+            run,
+            seq,
+            attempt,
+            step,
+            payload_digest,
+            payload,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RETRY_CHECKPOINT,
+            "RetryCheckpoint",
+            &(run, seq, attempt, step, payload_digest, payload),
+        ),
         _ => serialize_routing_error::<S>(),
     }
 }

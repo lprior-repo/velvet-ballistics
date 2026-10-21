@@ -115,6 +115,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).expect("proptest: valid frame");
 
     RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
         frame,
         workflow,
         store: ValueStore::new(),

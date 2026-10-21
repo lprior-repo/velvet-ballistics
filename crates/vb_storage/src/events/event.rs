@@ -57,6 +57,21 @@ pub enum JournalEvent {
         /// Policy used to admit this run.
         policy: RuntimePolicy,
     },
+    /// Full runtime checkpoint persisted immediately before a retry attempt.
+    RetryCheckpoint {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// New run attempt authorized by this checkpoint.
+        attempt: u16,
+        /// Failed step to be re-executed.
+        step: StepIdx,
+        /// BLAKE3 digest of the encoded checkpoint payload.
+        payload_digest: [u8; 32],
+        /// Versioned checkpoint payload encoded by the runtime.
+        payload: Vec<u8>,
+    },
     /// Step began execution.
     StepStarted {
         /// Run identifier.

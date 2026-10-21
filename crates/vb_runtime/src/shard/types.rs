@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+use core::num::NonZeroU16;
 use crossbeam_queue::ArrayQueue;
 use indexmap::{IndexMap, IndexSet};
 use std::time::Instant;
@@ -189,9 +190,7 @@ pub enum ShardCommand {
     /// replay and validated full recovery context. The typed
     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
     /// collect pagination, and boundary classification in a single value.
-    Recover {
-        command: RecoverRunCommand,
-    },
+    Recover { command: RecoverRunCommand },
 }
 
 /// Typed recovery command carrying full recovery context from journal replay.
@@ -212,6 +211,8 @@ pub struct RecoverRunCommand {
     pub next_seq: EventSeq,
     /// Collect pagination states to resume after recovery.
     pub collect_states: CollectStates,
+    /// Validated full state to restore for a durable retry, when present.
+    pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
 }
@@ -235,8 +236,19 @@ impl RecoverRunCommand {
             workflow_digest,
             next_seq,
             collect_states,
+            retry_checkpoint: None,
             boundary,
         }
+    }
+
+    /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
+    #[must_use]
+    pub fn with_retry_checkpoint(
+        mut self,
+        checkpoint: crate::run_checkpoint::RunCheckpointV1,
+    ) -> Self {
+        self.retry_checkpoint = Some(checkpoint);
+        self
     }
 }
 
@@ -303,6 +315,8 @@ impl AskAnswer {
 pub struct RunState {
     /// Active run frame.
     pub frame: RunFrame,
+    /// Current durable run attempt. Attempt one is used only for newly admitted runs.
+    pub run_attempt: NonZeroU16,
     /// Compiled workflow for this run.
     pub workflow: CompiledWorkflow,
     /// Cold value store for list, object, and blob handles.

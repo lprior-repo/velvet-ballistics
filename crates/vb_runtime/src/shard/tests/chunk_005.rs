@@ -203,7 +203,7 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
     // Then cancellation is a distinct journal/trace event, while the legacy failed counter
     // still counts the non-successful terminal lifecycle.
     assert!(
-        matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}))
+        matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1}))
     );
     assert!(
         shard

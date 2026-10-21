@@ -272,6 +272,7 @@ pub fn make_run_state(
     let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;
     Some(crate::shard::types::RunState {
         frame,
+        run_attempt: core::num::NonZeroU16::MIN,
         workflow,
         store: ValueStore::new(),
         action_attempts: new_action_attempts(step_count),
