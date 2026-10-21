@@ -228,7 +228,7 @@ fn legacy_and_unknown_schema_fail_closed() -> TestResult {
     rebind(&mut artifact)?;
     assert!(matches!(
         verify_accepted_artifact(&artifact),
-        Err(JournalError::MigrationRequired { from: 1, to: 2 })
+        Err(JournalError::MigrationRequired { from: 1, to: 3 })
     ));
     let mut artifact = prepare_compiled_artifact(&workflow()?, RuntimePolicy::Journaled, &[])?;
     let ArtifactEvidence::Verified(evidence) = &mut artifact.verification.evidence else {
@@ -270,3 +270,6 @@ fn persisted_artifact_reopens_with_checked_identity_and_runtime_admission() -> T
     assert_eq!(admission.artifact_digest(), digest);
     Ok(())
 }
+
+#[path = "artifact_evidence_support/schema3_cases.rs"]
+mod schema3_cases;

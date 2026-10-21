@@ -7,7 +7,7 @@ use vb_core::artifact::{
 };
 use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
 
-const EVIDENCE_VERSION: u16 = 2;
+const EVIDENCE_VERSION: u16 = 3;
 
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
@@ -91,6 +91,12 @@ fn checked_evidence_schema(
             from: 1,
             to: EVIDENCE_VERSION,
         }),
+        ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
+            Err(JournalError::MigrationRequired {
+                from: 2,
+                to: EVIDENCE_VERSION,
+            })
+        }
         ArtifactEvidence::Verified(evidence) if evidence.schema_version == EVIDENCE_VERSION => {
             Ok(evidence)
         }
