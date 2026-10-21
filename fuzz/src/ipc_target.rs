@@ -11,25 +11,26 @@
 #![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::len_zero)]
 
-fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
+#[must_use]
+pub fn assert_typed_ipc_error(error: vb_ipc::IpcError) -> bool {
     use vb_ipc::IpcError;
-    match error {
+    matches!(
+        error,
         IpcError::Full
-        | IpcError::Disconnected
-        | IpcError::PayloadTooLarge { .. }
-        | IpcError::InvalidMagic { .. }
-        | IpcError::UnsupportedVersion { .. }
-        | IpcError::UnknownCommand(_)
-        | IpcError::ReservedNonZero { .. }
-        | IpcError::PayloadLengthMismatch { .. }
-        | IpcError::HeaderEncodeFailed
-        | IpcError::HeaderDecodeFailed
-        | IpcError::PayloadLengthOutOfRange { .. }
-        | IpcError::PayloadEncodeFailed
-        | IpcError::PayloadDecodeFailed
-        | IpcError::ResponseDecodeFailed => {}
-        _ => {}
-    }
+            | IpcError::Disconnected
+            | IpcError::PayloadTooLarge { .. }
+            | IpcError::InvalidMagic { .. }
+            | IpcError::UnsupportedVersion { .. }
+            | IpcError::UnknownCommand(_)
+            | IpcError::ReservedNonZero { .. }
+            | IpcError::PayloadLengthMismatch { .. }
+            | IpcError::HeaderEncodeFailed
+            | IpcError::HeaderDecodeFailed
+            | IpcError::PayloadLengthOutOfRange { .. }
+            | IpcError::PayloadEncodeFailed
+            | IpcError::PayloadDecodeFailed
+            | IpcError::ResponseDecodeFailed
+    )
 }
 
 pub fn fuzz_ipc_frame(data: &[u8]) {
@@ -93,7 +94,7 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                     _ => {}
                 }
             }
-            Err(e) => assert_typed_ipc_error(e),
+            Err(e) => assert!(assert_typed_ipc_error(e)),
         }
     }
 }
@@ -178,11 +179,56 @@ pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
             if payload.len() != expected_len && !payload.is_empty() {}
         }
         Err(e) => {
-            assert_typed_ipc_error(e);
+            assert!(assert_typed_ipc_error(e));
         }
     }
 
     if data.len() >= IPC_HEADER_LEN {
         let _ = decode_frame_header(&header_bytes);
+    }
+}
+
+#[cfg(test)]
+mod typed_ipc_error_tests {
+    use super::*;
+
+    #[test]
+    fn test_all_14_explicit_variants_match() {
+        let variants = [
+            vb_ipc::IpcError::Full,
+            vb_ipc::IpcError::Disconnected,
+            vb_ipc::IpcError::PayloadTooLarge {
+                actual: 1,
+                limit: 0,
+            },
+            vb_ipc::IpcError::InvalidMagic { actual: 0 },
+            vb_ipc::IpcError::UnsupportedVersion { actual: 0 },
+            vb_ipc::IpcError::UnknownCommand(0),
+            vb_ipc::IpcError::ReservedNonZero { actual: 1 },
+            vb_ipc::IpcError::PayloadLengthMismatch {
+                header: 1,
+                actual: 0,
+            },
+            vb_ipc::IpcError::HeaderEncodeFailed,
+            vb_ipc::IpcError::HeaderDecodeFailed,
+            vb_ipc::IpcError::PayloadLengthOutOfRange { actual: 0 },
+            vb_ipc::IpcError::PayloadEncodeFailed,
+            vb_ipc::IpcError::PayloadDecodeFailed,
+            vb_ipc::IpcError::ResponseDecodeFailed,
+        ];
+        for variant in variants {
+            assert!(assert_typed_ipc_error(variant));
+        }
+    }
+
+    #[test]
+    fn test_malformed_header_decode() -> Result<(), Box<dyn std::error::Error>> {
+        let header = [0u8; vb_ipc::IPC_HEADER_LEN];
+        let error = vb_ipc::frame::decode_frame_header(&header)
+            .err()
+            .ok_or("expected malformed header rejection")?;
+        assert_eq!(error, vb_ipc::IpcError::InvalidMagic { actual: 0 });
+        assert!(assert_typed_ipc_error(error));
+        Ok(())
     }
 }

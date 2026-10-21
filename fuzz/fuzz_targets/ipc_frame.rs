@@ -58,11 +58,11 @@ fuzz_target!(|data: &[u8]| {
                     );
                 }
                 Err(encode_error) => {
-                    fuzz_lib::assert_typed_ipc_error(encode_error);
+                    assert!(fuzz_lib::assert_typed_ipc_error(encode_error));
                 }
             },
             Err(decode_error) => {
-                fuzz_lib::assert_typed_ipc_error(decode_error);
+                assert!(fuzz_lib::assert_typed_ipc_error(decode_error));
             }
         }
     }

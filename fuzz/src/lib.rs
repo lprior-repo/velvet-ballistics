@@ -69,6 +69,7 @@ pub use workflow_target::fuzz_slot_value_roundtrip;
 pub use workflow_target::fuzz_collect_page_pagination;
 pub use workflow_target::fuzz_step_budget_new;
 
+pub use ipc_target::assert_typed_ipc_error;
 pub use ipc_target::fuzz_ipc_frame;
 pub use ipc_target::fuzz_ipc_decode;
 pub use ipc_target::fuzz_ipc_frame_boundary;
