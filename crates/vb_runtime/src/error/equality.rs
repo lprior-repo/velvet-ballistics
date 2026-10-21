@@ -154,6 +154,32 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::EngineDriveFailed { run: a, source: s1 },
             RuntimeError::EngineDriveFailed { run: b, source: s2 },
         ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
+        (
+            RuntimeError::Recovery { error: a },
+            RuntimeError::Recovery { error: b },
+        ) => a == b,
+        (
+            RuntimeError::RuntimeInputSlotKindMismatch {
+                slot: a_slot,
+                expected: a_exp,
+                actual: a_act,
+            },
+            RuntimeError::RuntimeInputSlotKindMismatch {
+                slot: b_slot,
+                expected: b_exp,
+                actual: b_act,
+            },
+        ) => a_slot == b_slot && a_exp == b_exp && a_act == b_act,
+        (
+            RuntimeError::ContractValidationError {
+                action: a_act,
+                error: a_err,
+            },
+            RuntimeError::ContractValidationError {
+                action: b_act,
+                error: b_err,
+            },
+        ) => a_act == b_act && a_err == b_err,
         _ => false,
     }
 }

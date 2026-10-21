@@ -7,7 +7,7 @@
 // ============================================================================
 //
 // This file is a MIRROR of the relevant production surface from
-//   crates/vb_cli/src/commands_ai_context.rs:399-422
+//   crates/velvet_ballistics/src/commands_ai_context.rs:399-422
 //   crates/vb_core/src/value.rs:14-25
 //   xtask/src/evidence/release_contract.rs:54-64
 // with SUBSTITUTIONS required to compile under
@@ -20,7 +20,7 @@
 //     with verbatim `#[repr(u8)]` discriminants).
 //   - The production `slot_is_secret_or_derived(slot: SlotIdx, snapshot:
 //     Option<&RunSnapshot>) -> bool` at
-//     `crates/vb_cli/src/commands_ai_context.rs:415-422` is mirrored
+//     `crates/velvet_ballistics/src/commands_ai_context.rs:415-422` is mirrored
 //     as `slot_is_secret_or_derived_mirror(slot_idx: usize, taint_byte:
 //     usize) -> bool`. Production's `slot: SlotIdx` is abstracted to
 //     `slot_idx: usize`; production's
@@ -30,7 +30,7 @@
 //     `#[verifier::external]`.
 //   - The production `redacted_slot_value(slot: SlotIdx, value:
 //     Option<&Vec<u8>>, snapshot: Option<&RunSnapshot>) -> Value` at
-//     `crates/vb_cli/src/commands_ai_context.rs:399-413` is mirrored
+//     `crates/velvet_ballistics/src/commands_ai_context.rs:399-413` is mirrored
 //     as `redacted_slot_value_mirror(slot_idx: usize, taint_byte:
 //     usize, has_value: bool, decode_succeeds: bool,
 //     decoded_value_string_len: usize) -> SpecRedactedSlotValueProduction`.
@@ -172,7 +172,7 @@ pub open spec fn spec_redacted_marker_len(class_name_len: int) -> int {
 //
 // Mirror of production
 // `slot_is_secret_or_derived(slot: SlotIdx, snapshot: Option<&RunSnapshot>)
-// -> bool` at `crates/vb_cli/src/commands_ai_context.rs:415-422`.
+// -> bool` at `crates/velvet_ballistics/src/commands_ai_context.rs:415-422`.
 //
 // Production body (lines 418-422):
 //
@@ -200,7 +200,7 @@ pub fn slot_is_secret_or_derived_mirror(slot_idx: usize, taint_byte: usize) -> b
 // ============================================================================
 //
 // Mirror of the production `redacted_slot_value` output structure at
-// `crates/vb_cli/src/commands_ai_context.rs:399-413`.
+// `crates/velvet_ballistics/src/commands_ai_context.rs:399-413`.
 //
 // Production builds a `serde_json::Value` with one of four shapes:
 //
@@ -278,7 +278,7 @@ impl SpecRedactedSlotValueProduction {
 // Mirror of production
 // `redacted_slot_value(slot: SlotIdx, value: Option<&Vec<u8>>, snapshot:
 // Option<&RunSnapshot>) -> Value` at
-// `crates/vb_cli/src/commands_ai_context.rs:399-413`.
+// `crates/velvet_ballistics/src/commands_ai_context.rs:399-413`.
 //
 // Production body (lines 404-412):
 //

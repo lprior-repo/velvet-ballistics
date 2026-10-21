@@ -19,4 +19,7 @@ mod tests {
     include!("lifecycle_tests/chunk_008.rs");
     include!("lifecycle_tests/chunk_009.rs");
     include!("lifecycle_tests/chunk_010.rs");
+    include!("lifecycle_tests/recovery_context_tests.rs");
+    include!("lifecycle_tests/contract_validation_tests.rs");
+    include!("lifecycle_tests/action_recovery_tests.rs");
 }

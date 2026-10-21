@@ -17,6 +17,7 @@ pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'st
         crate::StepPrimitive::Wait { .. } => "wait",
         crate::StepPrimitive::Ask { .. } => "ask",
         crate::StepPrimitive::Finish { .. } => "finish",
+        _ => "",
     }
 }
 
@@ -38,6 +39,7 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
             hasher.update(event_type.as_bytes())
         }
         crate::TriggerAst::Webhook => hasher.update(b"webhook"),
+        _ => hasher.update(b"unknown"),
     };
     for step in source.steps() {
         hasher.update(step.id.as_bytes());
@@ -137,6 +139,7 @@ fn digest_finish(hasher: &mut blake3::Hasher, result: &crate::ScalarValue) {
     match result {
         crate::ScalarValue::String(value) => hasher.update(value.as_bytes()),
         crate::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+        _ => hasher.update(b"null"),
     };
 }
 

@@ -2,7 +2,7 @@
 
 pub(crate) use std::path::PathBuf;
 
-pub(crate) use vb_cli::naming_scan::{
+pub(crate) use velvet_ballistics::naming_scan::{
     AllowlistPolicy, CanonicalEntry, CanonicalNameKind, CanonicalSpellingTable, ColumnNumber,
     LegacyAllowRule, LegacyException, LineNumber, NamingFinding, NamingScanError, OccurrenceClass,
     RawScanConfig, RenderedReport, RepoPath, RepoRoot, ScanConfig, ScanInput, ScanReport,
@@ -11,7 +11,7 @@ pub(crate) use vb_cli::naming_scan::{
 };
 
 pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
-pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
+pub(crate) const CANONICAL_UNDERSCORE: &str = "velvet_ballistics";
 pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
 pub(crate) const LEGACY_LANGUAGE_VERSION: &str = concat!("velvet-", "ballastics/v1");
 pub(crate) const LEGACY_PROJECT: &str = concat!("velvet-", "ballastics");

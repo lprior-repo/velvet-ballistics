@@ -10,7 +10,7 @@
 //   1. A `#[path]` inclusion of the in-tree production-source mirror
 //      at `verification/verus/production_inner/_exit_code_production.rs`.
 //      That mirror is a VERBATIM copy of the production
-//      `crates/vb_cli/src/exit_code.rs:1-68` with three substitutions
+//      `crates/velvet_ballistics/src/exit_code.rs:1-68` with three substitutions
 //      to compile under `verus --crate-type=lib` without
 //      `vb_core` / `vb_storage` extern crate registration (no
 //      installs allowed by the task brief):
@@ -57,15 +57,15 @@
 // BINDING LEDGER
 // =============================================================================
 //   - `CliExitCode` enum (9 variants, repr(u8))
-//                            <- crates/vb_cli/src/exit_code.rs:9-32
+//                            <- crates/velvet_ballistics/src/exit_code.rs:9-32
 //   - `From<CliExitCode> for u8` (production impl)
-//                            <- crates/vb_cli/src/exit_code.rs:40-54
+//                            <- crates/velvet_ballistics/src/exit_code.rs:40-54
 //   - `From<CliExitCode> for ExitCode` (production impl)
-//                            <- crates/vb_cli/src/exit_code.rs:34-38
+//                            <- crates/velvet_ballistics/src/exit_code.rs:34-38
 //   - `From<vb_core::errors::CoreError> for CliExitCode` (production)
-//                            <- crates/vb_cli/src/exit_code.rs:56-61
+//                            <- crates/velvet_ballistics/src/exit_code.rs:56-61
 //   - `From<vb_storage::error::JournalError> for CliExitCode` (production)
-//                            <- crates/vb_cli/src/exit_code.rs:63-68
+//                            <- crates/velvet_ballistics/src/exit_code.rs:63-68
 //
 // Spec-side projection into mathematical Set algebra:
 //   - `spec_cli_exit_code_discriminant(code)` -> u8
@@ -107,7 +107,7 @@ verus! {
 // The mirror is marked `#[verifier::external]` so Verus treats the
 // production bodies as opaque; only structural resolution is
 // checked. Drift between the mirror and the production source at
-// `crates/vb_cli/src/exit_code.rs:1-68` breaks the Verus build.
+// `crates/velvet_ballistics/src/exit_code.rs:1-68` breaks the Verus build.
 //
 // The mirror declares its own local `CoreError` and `JournalError`
 // enum stubs inline (instead of referencing the production
@@ -125,7 +125,7 @@ pub mod production_exit_code;
 // Re-declared inside `verus!` so spec proofs and `assume_specification`
 // bridges can use it in spec mode. The variant set, variant order,
 // and repr(u8) discriminant tags match the production enum at
-// `crates/vb_cli/src/exit_code.rs:9-32` byte-for-byte:
+// `crates/velvet_ballistics/src/exit_code.rs:9-32` byte-for-byte:
 //
 //   Success           -> 0
 //   RuntimeFailed     -> 1
@@ -168,7 +168,7 @@ pub enum CliExitCode {
 // ---------------------------------------------------------------------------
 //
 // Mirror of the production `From<CliExitCode> for u8` impl at
-// `crates/vb_cli/src/exit_code.rs:40-54`. The body is the trivial
+// `crates/velvet_ballistics/src/exit_code.rs:40-54`. The body is the trivial
 // match expression mapping each variant to its repr(u8) tag.
 //
 // Body skipped by Verus (`#[verifier::external]`); the spec contract
@@ -196,7 +196,7 @@ pub fn cli_exit_code_to_u8(code: CliExitCode) -> u8 {
 //
 // Mirror of the production
 // `From<vb_core::errors::CoreError> for CliExitCode` impl at
-// `crates/vb_cli/src/exit_code.rs:56-61`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:56-61`. The production body always
 // returns `CliExitCode::RuntimeFailed` regardless of the input
 // variant.
 //
@@ -217,7 +217,7 @@ pub fn core_error_to_cli_exit_code(err: production_exit_code::CoreError) -> CliE
 //
 // Mirror of the production
 // `From<vb_storage::error::JournalError> for CliExitCode` impl at
-// `crates/vb_cli/src/exit_code.rs:63-68`. The production body always
+// `crates/velvet_ballistics/src/exit_code.rs:63-68`. The production body always
 // returns `CliExitCode::StorageError` regardless of the input
 // variant.
 //

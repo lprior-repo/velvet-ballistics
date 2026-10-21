@@ -19,7 +19,7 @@
 //
 //   1. `extern_vb_ahfl_metadata_envelope_production.rs` (the extern
 //      surface) — mirrors production `vb_cli::cli_envelope` at
-//      `crates/vb_cli/src/cli_envelope.rs` byte-for-byte:
+//      `crates/velvet_ballistics/src/cli_envelope.rs` byte-for-byte:
 //
 //        - `SCHEMA_VERSION` constant (line 18)
 //        - `Kind` 17-variant enum (line 45-63)
@@ -88,28 +88,28 @@
 //
 //   - `pub(crate) const SCHEMA_VERSION: &str =
 //          "velvet-ballistics/cli-output/v1"`
-//          crates/vb_cli/src/cli_envelope.rs:18
+//          crates/velvet_ballistics/src/cli_envelope.rs:18
 //          -> mirrored as `production::SPEC_SCHEMA_VERSION` (literal
 //             preserved byte-for-byte).
 //
 //   - `pub(crate) enum Kind { 17 variants }`
-//          crates/vb_cli/src/cli_envelope.rs:45-63
+//          crates/velvet_ballistics/src/cli_envelope.rs:45-63
 //          -> mirrored as `production::SpecKindProduction` (all 17
 //             variants preserved with identical names + identical
 //             source ordering).
 //
 //   - `pub(crate) fn Kind::as_str(&self) -> &'static str`
-//          crates/vb_cli/src/cli_envelope.rs:68-88
+//          crates/velvet_ballistics/src/cli_envelope.rs:68-88
 //          -> mirrored as `production::SpecKindProduction::as_str`
 //             (body copied verbatim).
 //
 //   - `pub(crate) fn Kind::from_str(s: &str) -> Option<Kind>`
-//          crates/vb_cli/src/cli_envelope.rs:92-113
+//          crates/velvet_ballistics/src/cli_envelope.rs:92-113
 //          -> mirrored as `production::SpecKindProduction::from_str`
 //             (body copied verbatim).
 //
 //   - `pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value`
-//          crates/vb_cli/src/cli_envelope.rs:133-142
+//          crates/velvet_ballistics/src/cli_envelope.rs:133-142
 //          -> mirrored as `production::build_envelope_mirror` (input
 //             abstracted from `serde_json::Value` to `data_present:
 //             bool`; body is `#[verifier::external]`; contract is
@@ -117,12 +117,12 @@
 //
 //   - `pub(crate) fn serialize_with_version(data: &Value, kind: Kind)
 //          -> Value`
-//          crates/vb_cli/src/cli_envelope.rs:154-165
+//          crates/velvet_ballistics/src/cli_envelope.rs:154-165
 //          -> mirrored as `production::serialize_with_version_mirror`
 //             (same treatment as `build_envelope_mirror`).
 //
 //   - `pub(crate) enum EnvelopeError { ... }`
-//          crates/vb_cli/src/cli_envelope.rs:170-174
+//          crates/velvet_ballistics/src/cli_envelope.rs:170-174
 //          -> mirrored as `production::SpecEnvelopeErrorProduction`
 //             (verbatim 3-variant enum; `String` payload mirrored as
 //             `usize` length because no string content is read by

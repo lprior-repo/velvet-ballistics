@@ -108,6 +108,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).expect("proptest: valid workflow parts");
     let frame =

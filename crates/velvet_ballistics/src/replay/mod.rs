@@ -98,7 +98,7 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         }
     };
 
-    match vb_cli::lifecycle::resume(rid, &journal) {
+    match velvet_ballistics::lifecycle::resume(rid, &journal) {
         Ok(()) => match output {
             OutputFormat::Text => {
                 outln!("resumed run {run_id}");

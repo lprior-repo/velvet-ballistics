@@ -11,7 +11,7 @@
 // a direct `#[path]` inclusion of the in-tree mirror at
 // `verification/verus/production_inner/vb_ahfl_metadata_envelope_production_inner.rs`,
 // which is a verbatim copy of the relevant production surface from
-// `crates/vb_cli/src/cli_envelope.rs:18-174` with `serde_json`-dependent
+// `crates/velvet_ballistics/src/cli_envelope.rs:18-174` with `serde_json`-dependent
 // items abstracted (no installs allowed by the task brief).
 //
 // The mirror is included via `#[path]` from inside `verus!` (WITHOUT
@@ -34,7 +34,7 @@
 // `vb_ui_model::envelope::types::MetadataEnvelope` and
 // `vb_ui_model::envelope::types::EnvelopeKind`. As of this writing,
 // the `vb_ui_model` crate has been REMOVED from the workspace (see
-// `crates/vb_cli/Cargo.toml`:
+// `crates/velvet_ballistics/Cargo.toml`:
 //     `# vb_ui_model is removed from the current workspace scope.`).
 // A repo-wide grep for `MetadataEnvelope`, `EnvelopeKind`,
 // `canonicalize_ui_artifact` returns ONLY references inside the
@@ -104,7 +104,7 @@ verus! {
 //
 // Direct `#[path]` inclusion of the in-tree mirror at
 // `production_inner/vb_ahfl_metadata_envelope_production_inner.rs`.
-// The mirror is a verbatim copy of `crates/vb_cli/src/cli_envelope.rs:18-174`
+// The mirror is a verbatim copy of `crates/velvet_ballistics/src/cli_envelope.rs:18-174`
 // with `serde_json`-dependent items abstracted: the `Value` return
 // types of `build_envelope` and `serialize_with_version` are replaced
 // by typed `SpecEnvelopeProduction` structs. Any drift in field NAME

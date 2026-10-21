@@ -26,7 +26,7 @@ use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
 
 // Test helpers for lifecycle state setup
-use vb_cli::lifecycle::test_helpers::create_run_header;
+use velvet_ballistics::lifecycle::test_helpers::create_run_header;
 
 // ============================================================================
 // Test Fixtures
@@ -66,6 +66,7 @@ fn finished_workflow() -> CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).expect("finished workflow must compile")
 }
@@ -202,7 +203,7 @@ fn cancel_succeeds_when_bead_is_active() {
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         result.is_ok(),
         "cancel from Active state must succeed: {result:?}"
@@ -224,7 +225,7 @@ fn cancel_succeeds_when_bead_is_active() {
     );
 
     // POST-002: verify state transition via replay
-    let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let run_state = states.iter().find(|s| s.run_id == run);
     assert!(
         run_state.is_some(),
@@ -250,7 +251,7 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         result.is_ok(),
         "cancel from WaitingAnswer state must succeed: {result:?}"
@@ -272,7 +273,7 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
     );
 
     // POST-002: verify state transition via replay
-    let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let run_state = states.iter().find(|s| s.run_id == run);
     assert!(
         run_state.is_some(),
@@ -297,7 +298,7 @@ fn resume_succeeds_when_bead_is_cancelled() {
     // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
     write_cancelled(&journal, run);
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         result.is_ok(),
         "resume from Cancelled state must succeed: {result:?}"
@@ -319,7 +320,7 @@ fn resume_succeeds_when_bead_is_cancelled() {
     );
 
     // POST-002: verify state transition to Active via replay
-    let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let run_state = states.iter().find(|s| s.run_id == run);
     assert!(
         run_state.is_some(),
@@ -344,7 +345,7 @@ fn retry_succeeds_when_bead_is_failed() {
     // Write journal events to derive Failed state (replaces set_lifecycle_state)
     write_failed(&journal, run);
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         result.is_ok(),
         "retry from Failed state must succeed: {result:?}"
@@ -366,7 +367,7 @@ fn retry_succeeds_when_bead_is_failed() {
     );
 
     // POST-002: verify state transition to Active via replay
-    let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let run_state = states.iter().find(|s| s.run_id == run);
     assert!(
         run_state.is_some(),
@@ -392,7 +393,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
 
-    let result = vb_cli::lifecycle::answer(run, answer_content, &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, answer_content, &journal);
     assert!(
         result.is_ok(),
         "answer from WaitingAnswer state must succeed: {result:?}"
@@ -414,7 +415,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
     );
 
     // POST-002: verify state transition to Completed via replay
-    let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let run_state = states.iter().find(|s| s.run_id == run);
     assert!(
         run_state.is_some(),
@@ -443,7 +444,7 @@ fn cancel_returns_invalid_transition_when_bead_is_pending() {
     let run = RunId::new(10);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         matches!(
             result,
@@ -471,7 +472,7 @@ fn cancel_returns_invalid_transition_when_bead_is_completed() {
     let run = RunId::new(11);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         matches!(
             result,
@@ -499,7 +500,7 @@ fn cancel_returns_invalid_transition_when_bead_is_failed() {
     let run = RunId::new(12);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         matches!(
             result,
@@ -527,7 +528,7 @@ fn resume_returns_invalid_transition_when_bead_is_pending() {
     let run = RunId::new(13);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -555,7 +556,7 @@ fn resume_returns_invalid_transition_when_bead_is_active() {
     let run = RunId::new(14);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -583,7 +584,7 @@ fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
     let run = RunId::new(15);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -611,7 +612,7 @@ fn resume_returns_invalid_transition_when_bead_is_completed() {
     let run = RunId::new(16);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -639,7 +640,7 @@ fn resume_returns_invalid_transition_when_bead_is_failed() {
     let run = RunId::new(17);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -667,7 +668,7 @@ fn retry_returns_invalid_transition_when_bead_is_pending() {
     let run = RunId::new(18);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -695,7 +696,7 @@ fn retry_returns_invalid_transition_when_bead_is_active() {
     let run = RunId::new(19);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -723,7 +724,7 @@ fn retry_returns_invalid_transition_when_bead_is_cancelled() {
     let run = RunId::new(20);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -751,7 +752,7 @@ fn retry_returns_invalid_transition_when_bead_is_completed() {
     let run = RunId::new(21);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -779,7 +780,7 @@ fn retry_returns_invalid_transition_when_bead_is_waiting_answer() {
     let run = RunId::new(22);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -807,7 +808,7 @@ fn answer_returns_invalid_transition_when_bead_is_pending() {
     let run = RunId::new(23);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -835,7 +836,7 @@ fn answer_returns_invalid_transition_when_bead_is_active() {
     let run = RunId::new(24);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -863,7 +864,7 @@ fn answer_returns_invalid_transition_when_bead_is_cancelled() {
     let run = RunId::new(25);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -891,7 +892,7 @@ fn answer_returns_invalid_transition_when_bead_is_completed() {
     let run = RunId::new(26);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -919,7 +920,7 @@ fn answer_returns_invalid_transition_when_bead_is_failed() {
     let run = RunId::new(27);
     create_run_header(&journal, run).expect("create_run_header for test setup");
 
-    let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -957,11 +958,11 @@ fn cancel_returns_duplicate_request_when_called_twice() {
     write_run_accepted(&journal, run);
 
     // First cancel - should succeed
-    let first = vb_cli::lifecycle::cancel(run, &journal);
+    let first = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(first.is_ok(), "first cancel must succeed: {first:?}");
 
     // Second cancel in same state - must return E_DUPLICATE_REQUEST
-    let second = vb_cli::lifecycle::cancel(run, &journal);
+    let second = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         matches!(
             second,
@@ -995,7 +996,7 @@ fn resume_returns_duplicate_request_when_called_twice() {
     // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
     write_cancelled(&journal, run);
 
-    let first = vb_cli::lifecycle::resume(run, &journal);
+    let first = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(first.is_ok(), "first resume must succeed: {first:?}");
 
     // POST-004: verify exactly one event after first resume (3 total: setup + cancel + resume)
@@ -1008,7 +1009,7 @@ fn resume_returns_duplicate_request_when_called_twice() {
         "first resume must append exactly 1 event (setup + cancel + resume)"
     );
 
-    let second = vb_cli::lifecycle::resume(run, &journal);
+    let second = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             second,
@@ -1039,7 +1040,7 @@ fn retry_returns_duplicate_request_when_called_twice() {
     // Write journal events to derive Failed state (replaces set_lifecycle_state)
     write_failed(&journal, run);
 
-    let first = vb_cli::lifecycle::retry(run, &journal);
+    let first = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(first.is_ok(), "first retry must succeed: {first:?}");
 
     // POST-004: verify exactly one event after first retry (3 total: setup + Failed + retry)
@@ -1052,7 +1053,7 @@ fn retry_returns_duplicate_request_when_called_twice() {
         "first retry must append exactly 1 event (setup + Failed + retry)"
     );
 
-    let second = vb_cli::lifecycle::retry(run, &journal);
+    let second = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             second,
@@ -1083,7 +1084,7 @@ fn answer_returns_duplicate_request_when_called_twice() {
     // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
     write_waiting_answer(&journal, run);
 
-    let first = vb_cli::lifecycle::answer(run, "answer1".to_string(), &journal);
+    let first = velvet_ballistics::lifecycle::answer(run, "answer1".to_string(), &journal);
     assert!(first.is_ok(), "first answer must succeed: {first:?}");
 
     // POST-004: verify exactly one event after first answer (3 total: setup + AskScheduled + answer)
@@ -1096,7 +1097,7 @@ fn answer_returns_duplicate_request_when_called_twice() {
         "first answer must append exactly 1 event (setup + AskScheduled + answer)"
     );
 
-    let second = vb_cli::lifecycle::answer(run, "answer2".to_string(), &journal);
+    let second = velvet_ballistics::lifecycle::answer(run, "answer2".to_string(), &journal);
     assert!(
         matches!(
             second,
@@ -1133,7 +1134,7 @@ fn cancel_returns_stale_request_when_state_already_advanced() {
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         matches!(
             result,
@@ -1153,7 +1154,7 @@ fn resume_returns_stale_request_when_not_in_cancelled_state() {
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
 
-    let result = vb_cli::lifecycle::resume(run, &journal);
+    let result = velvet_ballistics::lifecycle::resume(run, &journal);
     assert!(
         matches!(
             result,
@@ -1173,7 +1174,7 @@ fn retry_returns_stale_request_when_not_in_failed_state() {
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
 
-    let result = vb_cli::lifecycle::retry(run, &journal);
+    let result = velvet_ballistics::lifecycle::retry(run, &journal);
     assert!(
         matches!(
             result,
@@ -1201,7 +1202,7 @@ fn answer_returns_stale_request_when_not_in_waiting_answer_state() {
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
 
-    let result = vb_cli::lifecycle::answer(run, "stale answer".to_string(), &journal);
+    let result = velvet_ballistics::lifecycle::answer(run, "stale answer".to_string(), &journal);
     assert!(
         matches!(
             result,
@@ -1229,7 +1230,7 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
     // Reset tracker to ensure clean state - the replay() function returns
     // in-memory tracker state, not journal-derived state in minimal impl.
 
-    let result = vb_cli::lifecycle::replay(&journal);
+    let result = velvet_ballistics::lifecycle::replay(&journal);
     assert!(
         result.is_ok(),
         "replay from empty journal must succeed: {result:?}"
@@ -1260,10 +1261,10 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
 
     // Drive run through Pending -> Active -> Cancelled via journal events
     write_run_accepted(&journal, run);
-    let _ = vb_cli::lifecycle::cancel(run, &journal);
+    let _ = velvet_ballistics::lifecycle::cancel(run, &journal);
 
     // Capture pre-crash state via replay
-    let pre_crash_states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
+    let pre_crash_states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let pre_crash_run_state = pre_crash_states
         .iter()
         .find(|s| s.run_id == run)
@@ -1280,7 +1281,7 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
 
     // Replay after crash
     let post_crash_states =
-        vb_cli::lifecycle::replay(&journal).expect("replay after crash must succeed");
+        velvet_ballistics::lifecycle::replay(&journal).expect("replay after crash must succeed");
     let post_crash_run_state = post_crash_states
         .iter()
         .find(|s| s.run_id == run)
@@ -1313,7 +1314,7 @@ fn replay_with_malformed_event_returns_replay_corruption() {
     write_run_accepted(&journal, run);
 
     // Write a valid cancel event at seq=1
-    let _ = vb_cli::lifecycle::cancel(run, &journal);
+    let _ = velvet_ballistics::lifecycle::cancel(run, &journal);
 
     // Inject malformed bytes at seq=1
     // This corrupts the journal - decode_record will fail on these bytes
@@ -1326,7 +1327,7 @@ fn replay_with_malformed_event_returns_replay_corruption() {
         )
         .expect("malformed event injection must succeed");
 
-    let result = vb_cli::lifecycle::replay(&journal);
+    let result = velvet_ballistics::lifecycle::replay(&journal);
 
     // CONTRACT ASSERTION: replay with malformed event must return ReplayCorruption
     assert!(
@@ -1356,7 +1357,7 @@ fn replay_with_missing_event_returns_replay_corruption() {
         .inject_seq_gap(run, EventSeq::new(0))
         .expect("sequence gap injection must succeed");
 
-    let result = vb_cli::lifecycle::replay(&journal);
+    let result = velvet_ballistics::lifecycle::replay(&journal);
 
     // CONTRACT ASSERTION: replay with missing event must return ReplayCorruption
     assert!(
@@ -1409,7 +1410,7 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
         write_run_accepted(&journal, run);
 
         // This should succeed because journal IS connected
-        let result = vb_cli::lifecycle::cancel(run, &journal);
+        let result = velvet_ballistics::lifecycle::cancel(run, &journal);
         assert!(
             result.is_ok(),
             "lifecycle command must succeed with connected journal: {result:?}"
@@ -1435,7 +1436,7 @@ fn lifecycle_command_returns_journal_write_failure_on_io_error() {
     // Note: I/O fault injection not implemented in test - this documents expected behavior.
     // Test will pass if cancel succeeds (no I/O error). To test JournalWriteFailure,
     // a fault-injection wrapper on the journal would be needed.
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         result.is_ok()
             || matches!(
@@ -1459,7 +1460,7 @@ fn invalid_transition_error_includes_structured_diagnostics() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(70);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
         code,
         context,
@@ -1486,9 +1487,9 @@ fn duplicate_request_error_includes_structured_diagnostics() {
     // Write journal events to derive Active state (replaces set_lifecycle_state)
     write_run_accepted(&journal, run);
 
-    let _ = vb_cli::lifecycle::cancel(run, &journal);
+    let _ = velvet_ballistics::lifecycle::cancel(run, &journal);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
         code,
         context,
@@ -1515,7 +1516,7 @@ fn stale_request_error_includes_structured_diagnostics() {
     // Write journal events to derive Completed state (replaces set_lifecycle_state)
     write_completed(&journal, run);
 
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
         code,
         context,
@@ -1561,7 +1562,7 @@ fn valid_transition_graph_contains_all_expected_edges() {
     let run = RunId::new(80);
 
     // Valid: cancel from Active
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         result.is_ok()
             || matches!(
@@ -1583,7 +1584,7 @@ fn no_state_has_self_loop_transition() {
     let run = RunId::new(81);
 
     // Cancelling a Pending bead should error, not leave it Pending
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     assert!(
         result.is_err(),
         "cancel from Pending must not succeed (no self-loop)"
@@ -1607,7 +1608,7 @@ fn each_successful_command_appends_exactly_one_event() {
     let initial_count = initial_events.len();
 
     // Execute cancel
-    let result = vb_cli::lifecycle::cancel(run, &journal);
+    let result = velvet_ballistics::lifecycle::cancel(run, &journal);
     if result.is_ok() {
         let final_events = journal
             .events_for_run(run)

@@ -266,6 +266,13 @@ pub enum RuntimeError {
         /// Actual kind of the supplied value.
         actual: vb_core::InputSlotKind,
     },
+    /// Action contract validation failed during submit admission.
+    ContractValidationError {
+        /// Action ID for the contract that failed validation.
+        action: vb_core::ids::ActionId,
+        /// Human-readable validation error.
+        error: String,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {
@@ -284,6 +291,8 @@ mod equality;
 
 #[cfg(test)]
 mod tests_basic;
+#[cfg(test)]
+mod tests_equality;
 #[cfg(test)]
 mod tests_conversion_refinement;
 #[cfg(test)]

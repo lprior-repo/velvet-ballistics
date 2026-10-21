@@ -4,7 +4,7 @@ use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_erro
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
 };
-use crate::yaml_ast::types::{AuthorValue, InputField};
+use crate::{AuthorValue, InputField, WorkflowSource};
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
@@ -15,7 +15,7 @@ use vb_core::{
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(
-    source: &crate::yaml_ast::WorkflowSource,
+    source: &WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     validate_branch_counts(source)?;
@@ -101,6 +101,7 @@ pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
         AuthorValue::Text(_) => InputSlotKind::Symbol,
         AuthorValue::Sequence(_) => InputSlotKind::List,
         AuthorValue::Mapping(_) => InputSlotKind::Object,
+        _ => InputSlotKind::Null,
     }
 }
 

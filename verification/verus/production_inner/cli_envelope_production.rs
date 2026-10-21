@@ -6,7 +6,7 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the relevant production surface from
-//   crates/vb_cli/src/cli_envelope.rs:1-114
+//   crates/velvet_ballistics/src/cli_envelope.rs:1-114
 // with the `serde_json`-dependent items REMOVED because `serde_json`
 // is not in scope under a standalone `verus --crate-type=lib`
 // invocation (no installs allowed by the task brief). The removed
@@ -29,7 +29,7 @@
 // crate, which is the verification crate itself).
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_cli/src/cli_envelope.rs:1-114` whenever production
+// `crates/velvet_ballistics/src/cli_envelope.rs:1-114` whenever production
 // changes. The mirror is annotated at the top of every section with
 // the originating production line range so regeneration is mechanical.
 // Drift that changes the `Kind` discriminant set, the
@@ -51,7 +51,7 @@
 #![allow(non_snake_case)]
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/cli_envelope.rs:1-12`
+// Production `crates/velvet_ballistics/src/cli_envelope.rs:1-12`
 // ---------------------------------------------------------------------------
 //
 //   //! CLI Envelope Module
@@ -72,7 +72,7 @@
 // (line 14 `use serde_json::{Map, Value};` REMOVED — see header)
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/cli_envelope.rs:16-18` — SCHEMA_VERSION
+// Production `crates/velvet_ballistics/src/cli_envelope.rs:16-18` — SCHEMA_VERSION
 // ---------------------------------------------------------------------------
 /// Schema version for all CLI output envelopes.
 /// Verified non-empty by construction.
@@ -84,7 +84,7 @@
 pub const SCHEMA_VERSION: &str = "velvet-ballistics/cli-output/v1";
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/cli_envelope.rs:22-40` — `kind` module
+// Production `crates/velvet_ballistics/src/cli_envelope.rs:22-40` — `kind` module
 // ---------------------------------------------------------------------------
 /// Registered kind constants for envelope payloads.
 /// Kept in sync with the registry in contract.md.
@@ -117,7 +117,7 @@ pub mod kind {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/cli_envelope.rs:42-63` — `Kind` enum
+// Production `crates/velvet_ballistics/src/cli_envelope.rs:42-63` — `Kind` enum
 // ---------------------------------------------------------------------------
 /// Kind enum representing all registered payload types.
 ///
@@ -158,13 +158,13 @@ pub enum Kind {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/cli_envelope.rs:65-114` — `impl Kind`
+// Production `crates/velvet_ballistics/src/cli_envelope.rs:65-114` — `impl Kind`
 // ---------------------------------------------------------------------------
 impl Kind {
     /// Returns the string representation of this kind.
     ///
     /// Body is copied verbatim from
-    /// `crates/vb_cli/src/cli_envelope.rs:68-88`. The whole module is
+    /// `crates/velvet_ballistics/src/cli_envelope.rs:68-88`. The whole module is
     /// `#[verifier::external]` so the body is opaque to Verus; the
     /// companion spec file attaches the contract via
     /// `assume_specification`.
@@ -194,7 +194,7 @@ impl Kind {
     /// Parse a Kind from its string representation.
     ///
     /// Body is copied verbatim from
-    /// `crates/vb_cli/src/cli_envelope.rs:91-114`. The whole module is
+    /// `crates/velvet_ballistics/src/cli_envelope.rs:91-114`. The whole module is
     /// `#[verifier::external]` so the body is opaque to Verus; the
     /// companion spec file attaches the contract via
     /// `assume_specification`.

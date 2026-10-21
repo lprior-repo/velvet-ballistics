@@ -119,6 +119,8 @@ impl RuntimeError {
             Self::UnsupportedDurabilityProfile { .. } => {
                 vb_core::errors::CoreError::INTERNAL_INVARIANT_CODE
             }
+            Self::RuntimeInputSlotKindMismatch { .. } => Self::UNSUPPORTED_OPERATION_CODE,
+            Self::ContractValidationError { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
         }
     }
 
@@ -185,7 +187,9 @@ impl RuntimeError {
             | Self::UnsupportedDurabilityProfile { .. }
             | Self::RecoveryNotAvailable
             | Self::RecoveryCannotResume { .. }
-            | Self::Recovery { .. } => None,
+            | Self::Recovery { .. }
+            | Self::ContractValidationError { .. } => None,
+            Self::RuntimeInputSlotKindMismatch { .. } => None,
         }
     }
 

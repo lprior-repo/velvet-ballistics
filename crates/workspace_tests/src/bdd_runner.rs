@@ -185,7 +185,7 @@ fn discover_scenario_files_impl(
 pub fn run_bdd_suite() -> Result<BddSuiteResult, BddRunnerError> {
     let workspace_root = find_workspace_root()?;
     let scenarios_path = workspace_root.join("crates/workspace_tests/tests");
-    let cli_scenarios_path = workspace_root.join("crates/vb_cli/tests");
+    let cli_scenarios_path = workspace_root.join("crates/velvet_ballistics/tests");
 
     let mut all_results: Vec<BddScenarioResult> = Vec::new();
 

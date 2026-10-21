@@ -6,7 +6,7 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the relevant production surface from
-//   crates/vb_cli/src/exit_code.rs:1-68
+//   crates/velvet_ballistics/src/exit_code.rs:1-68
 // with three SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without `vb_core` / `vb_storage` extern
 // crate registration (no installs allowed by the task brief):
@@ -40,7 +40,7 @@
 // verbatim from production.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_cli/src/exit_code.rs:1-68` whenever production changes.
+// `crates/velvet_ballistics/src/exit_code.rs:1-68` whenever production changes.
 // The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 // Drift that changes the `CliExitCode` discriminant set or the
@@ -121,14 +121,14 @@ pub enum JournalError {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/exit_code.rs:3` — use ExitCode
+// Production `crates/velvet_ballistics/src/exit_code.rs:3` — use ExitCode
 // ---------------------------------------------------------------------------
 //
 // Production line 3: `use std::process::ExitCode;`. Retained verbatim.
 use std::process::ExitCode;
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/exit_code.rs:5-32` — `CliExitCode` enum
+// Production `crates/velvet_ballistics/src/exit_code.rs:5-32` — `CliExitCode` enum
 // ---------------------------------------------------------------------------
 //
 // Production lines 5-32: `CliExitCode` enum declaration with 9
@@ -161,7 +161,7 @@ pub enum CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/exit_code.rs:34-38` —
+// Production `crates/velvet_ballistics/src/exit_code.rs:34-38` —
 //   `impl From<CliExitCode> for ExitCode`
 // ---------------------------------------------------------------------------
 //
@@ -173,7 +173,7 @@ impl From<CliExitCode> for ExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/vb_cli/src/exit_code.rs:40-54` —
+// Production `crates/velvet_ballistics/src/exit_code.rs:40-54` —
 //   `impl From<CliExitCode> for u8`
 // ---------------------------------------------------------------------------
 //
@@ -198,7 +198,7 @@ impl From<CliExitCode> for u8 {
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/vb_cli/src/exit_code.rs:56-61` —
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:56-61` —
 //   `impl From<vb_core::errors::CoreError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
@@ -226,7 +226,7 @@ impl From<CoreError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/vb_cli/src/exit_code.rs:63-68` —
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:63-68` —
 //   `impl From<vb_storage::error::JournalError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
@@ -250,7 +250,7 @@ impl From<JournalError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// REMOVED: Production `crates/vb_cli/src/exit_code.rs:70-171` —
+// REMOVED: Production `crates/velvet_ballistics/src/exit_code.rs:70-171` —
 //   `#[cfg(test)] mod tests`
 // ---------------------------------------------------------------------------
 //

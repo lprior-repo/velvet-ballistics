@@ -141,6 +141,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
             step_names: Box::from([Box::from("s0")]),
         };
         let wf = CompiledWorkflow::from_parts_unchecked(parts);

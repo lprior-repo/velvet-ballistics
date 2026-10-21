@@ -9,7 +9,7 @@ fn crate_name(case: u8) -> &'static str {
         1 => "vb_runtime",
         2 => "vb_storage",
         3 => "vb_ipc",
-        _ => "vb_cli",
+        _ => "velvet_ballistics",
     }
 }
 
