@@ -11,11 +11,12 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
     };
     let run = super::RunId::new(802);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -36,11 +37,12 @@ fn bh_shd_03_action_failure_trace_events_count() {
     };
     let run = super::RunId::new(803);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -173,7 +175,7 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
             run,
             workflow,
             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]),
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -226,11 +228,12 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
     };
     let run = super::RunId::new(808);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

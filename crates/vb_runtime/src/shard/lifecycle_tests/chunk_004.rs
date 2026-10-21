@@ -7,10 +7,11 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
     };
     let run = RunId::new(40_001);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -49,10 +50,11 @@ fn future_attempt_completion_mismatch_is_action_failed_code() {
     };
     let run = RunId::new(40_002);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -89,10 +91,11 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
     };
     let run = RunId::new(41);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -192,10 +195,11 @@ fn legacy_action_completed_on_suspended_run_succeeds() {
     };
     let run = RunId::new(50);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -281,10 +285,11 @@ fn legacy_action_completion_journal_first() {
     };
     let run = RunId::new(50_010);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -620,10 +625,11 @@ fn handle_action_completion_journal_first() {
     };
     let run = RunId::new(50_020);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -767,10 +773,11 @@ fn handle_action_failure_journal_first() {
     };
     let run = RunId::new(50_030);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -1296,10 +1303,11 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     let workflow = require_workflow("suspended", suspended_workflow())?;
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: workflow.clone(),
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -1370,10 +1378,11 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -1778,10 +1787,11 @@ fn handle_action_completion_returns_run_not_found_when_run_finished() {
     };
     let run = RunId::new(422);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

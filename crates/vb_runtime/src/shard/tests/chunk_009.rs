@@ -46,11 +46,12 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
     };
     let run = super::RunId::new(302);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -88,11 +89,12 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
     };
     let run = super::RunId::new(303);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -119,11 +121,12 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
     };
     let run = super::RunId::new(304);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -151,11 +154,12 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(305);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -177,11 +181,12 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(306);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -211,7 +216,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(401),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -223,7 +228,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(402),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -235,7 +240,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(403),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -247,7 +252,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(404),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())

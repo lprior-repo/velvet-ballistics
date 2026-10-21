@@ -1,6 +1,8 @@
 //! Tests for the shard module.
 #![allow(dead_code, unused_imports)]
 
+pub(crate) mod test_fixtures;
+
 include!("tests/chunk_001.rs");
 include!("tests/chunk_002.rs");
 include!("tests/chunk_003.rs");

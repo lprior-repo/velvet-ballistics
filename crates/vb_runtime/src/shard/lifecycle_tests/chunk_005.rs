@@ -37,10 +37,11 @@
         let wf = require_workflow("error_handler", error_handler_workflow())?;
         let run = RunId::new(61);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -130,10 +131,11 @@
         };
         let run = RunId::new(70);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -181,10 +183,11 @@
         };
         let run = RunId::new(80);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -204,10 +207,11 @@
         };
         let run = RunId::new(81);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -234,10 +238,11 @@
         };
         let run = RunId::new(90);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -276,10 +281,11 @@
         };
         let run = RunId::new(500);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -385,10 +391,11 @@
         let wf = require_workflow("error_handler", error_handler_workflow())?;
         let run = RunId::new(504);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );

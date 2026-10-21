@@ -1,6 +1,7 @@
 use vb_core::ActionFailureCode;
 use vb_core::action::RetryPolicy as VbRetryPolicy;
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
+use vb_core::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
 use crate::counters::ShardCounters;
@@ -236,11 +237,12 @@ fn action_failed_routes_to_nearby_error_handler() {
     let run = super::RunId::new(301);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -268,11 +270,12 @@ fn action_failed_without_error_handler_fails_run() {
     let run = super::RunId::new(302);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -301,17 +304,18 @@ fn submit_rejects_duplicate_run_id() {
         shard.enqueue(ShardCommand::Submit {
             run,
             workflow: workflow.clone(),
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
 

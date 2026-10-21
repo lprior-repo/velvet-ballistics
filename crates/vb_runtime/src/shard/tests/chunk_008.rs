@@ -21,11 +21,12 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
     assert_eq!(shard.tick(), Ok(true));
     // When re-submitting the same run ID
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     // Then it succeeds (run was removed by cancel)
@@ -42,11 +43,12 @@ fn shard_snapshot_run_for_active_run_returns_found() {
     };
     let run = super::RunId::new(202);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -150,11 +152,12 @@ fn shard_submit_two_runs_same_id_second_fails() {
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID without cancelling
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     // Then tick returns RunAlreadyExists
@@ -178,11 +181,12 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
     let run = super::RunId::new(204);
     // When submitting a run with zero budget
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -217,11 +221,12 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
     };
     let run = super::RunId::new(205);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -252,7 +257,7 @@ fn shard_submit_after_shutdown_is_rejected_and_never_processed() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(300),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Err(RuntimeError::ShutdownInProgress)

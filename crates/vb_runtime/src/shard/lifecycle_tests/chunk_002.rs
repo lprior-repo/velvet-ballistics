@@ -215,10 +215,12 @@
 
     fn submit_run(shard: &mut Shard, run: RunId, workflow: CompiledWorkflow) {
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+                inputs: Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
                 run,
                 workflow,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -279,10 +281,11 @@
         };
         let run = RunId::new(1);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );

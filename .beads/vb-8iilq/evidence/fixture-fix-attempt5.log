@@ -1,0 +1,370 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:7:24
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+...
+7 |     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+  |                        ^^^^^^^^--
+  |                        |
+  |                        `ActionId` reimported here
+  |                        help: remove unnecessary import
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_006.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_007.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ActionId` is defined multiple times
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_010.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^ `ActionId` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ---------------------- previous import of the type `ActionId` here
+  |
+  = note: `ActionId` must be defined only once in the type namespace of this module
+
+error[E0603]: module `test_fixtures` is private
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs:223:56
+    |
+223 |                 action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+    |                                                        ^^^^^^^^^^^^^  ----------------- function `contracts_through` is not publicly re-exported
+    |                                                        |
+    |                                                        private module
+    |
+note: the module `test_fixtures` is defined here
+   --> crates/vb_runtime/src/shard/tests.rs:4:1
+    |
+  4 | mod test_fixtures;
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `test_fixtures` is private
+  --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs:64:52
+   |
+64 |             action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+   |                                                    ^^^^^^^^^^^^^  ----------------- function `contracts_through` is not publicly re-exported
+   |                                                    |
+   |                                                    private module
+   |
+note: the module `test_fixtures` is defined here
+  --> crates/vb_runtime/src/shard/tests.rs:4:1
+   |
+ 4 | mod test_fixtures;
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `test_fixtures` is private
+    --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1378:48
+     |
+1378 |         action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+     |                                                ^^^^^^^^^^^^^  ----------------- function `contracts_through` is not publicly re-exported
+     |                                                |
+     |                                                private module
+     |
+note: the module `test_fixtures` is defined here
+    --> crates/vb_runtime/src/shard/tests.rs:4:1
+     |
+   4 | mod test_fixtures;
+     | ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:7:24
+  |
+7 |     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+  |                        ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_006.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_007.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::ActionId`
+ --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_010.rs:1:5
+  |
+1 | use vb_core::ids::ActionId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:765:13
+    |
+765 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:349:13
+    |
+349 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:388:13
+    |
+388 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+Some errors have detailed explanations: E0252, E0603.
+For more information about an error, try `rustc --explain E0252`.
+warning: `vb_runtime` (lib test) generated 26 warnings
+error: could not compile `vb_runtime` (lib test) due to 13 previous errors; 26 warnings emitted

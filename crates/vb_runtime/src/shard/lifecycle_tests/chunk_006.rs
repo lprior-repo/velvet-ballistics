@@ -7,10 +7,11 @@
         };
         let run = RunId::new(91);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -29,10 +30,11 @@
         };
         let run = RunId::new(100);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -87,10 +89,11 @@
         };
         let run = RunId::new(110);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -111,10 +114,11 @@
         };
         let run = RunId::new(111);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -137,10 +141,11 @@
         let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(112);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -161,10 +166,11 @@
         let wf = require_workflow("finished", finished_workflow())?;
         let run = RunId::new(113);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -213,10 +219,11 @@
         };
         let run = RunId::new(300);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf.clone(),
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -224,10 +231,11 @@
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -243,10 +251,11 @@
         };
         let run = RunId::new(400);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );

@@ -1,0 +1,214 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+error[E0433]: cannot find `shard` in `super`
+   --> crates/vb_runtime/src/runtime_tests.rs:278:27
+    |
+278 |             super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+    |                           ^^^^^ could not find `shard` in `super`
+    |
+help: consider importing this module
+    |
+ 21 +     use crate::shard::tests::test_fixtures;
+    |
+help: if you import `test_fixtures`, refer to it directly
+    |
+278 -             super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+278 +             test_fixtures::contracts_through(ActionId::new(0)),
+    |
+
+error[E0433]: cannot find `shard` in `super`
+   --> crates/vb_runtime/src/runtime_tests.rs:415:125
+    |
+415 | ...lity::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0)))
+    |                                                ^^^^^ could not find `shard` in `super`
+    |
+help: consider importing this module
+    |
+ 21 +     use crate::shard::tests::test_fixtures;
+    |
+help: if you import `test_fixtures`, refer to it directly
+    |
+415 -         runtime.submit_direct_with_grants_and_contracts(run, wf, vb_core::capability::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0)))
+415 +         runtime.submit_direct_with_grants_and_contracts(run, wf, vb_core::capability::CapabilitySet::empty(), test_fixtures::contracts_through(ActionId::new(0)))
+    |
+
+error[E0433]: cannot find `shard` in `super`
+    --> crates/vb_runtime/src/runtime_tests.rs:1059:136
+     |
+1059 | ...lity::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |                                                ^^^^^ could not find `shard` in `super`
+     |
+help: consider importing this module
+     |
+  21 +     use crate::shard::tests::test_fixtures;
+     |
+help: if you import `test_fixtures`, refer to it directly
+     |
+1059 -         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run, wf, vb_core::capability::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+1059 +         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run, wf, vb_core::capability::CapabilitySet::empty(), test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |
+
+error[E0433]: cannot find `shard` in `super`
+    --> crates/vb_runtime/src/runtime_tests.rs:2374:138
+     |
+2374 | ...lity::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |                                                ^^^^^ could not find `shard` in `super`
+     |
+help: consider importing this module
+     |
+  21 +     use crate::shard::tests::test_fixtures;
+     |
+help: if you import `test_fixtures`, refer to it directly
+     |
+2374 -         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run1, wf1, vb_core::capability::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+2374 +         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run1, wf1, vb_core::capability::CapabilitySet::empty(), test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |
+
+error[E0433]: cannot find `shard` in `super`
+    --> crates/vb_runtime/src/runtime_tests.rs:2376:138
+     |
+2376 | ...lity::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |                                                ^^^^^ could not find `shard` in `super`
+     |
+help: consider importing this module
+     |
+  21 +     use crate::shard::tests::test_fixtures;
+     |
+help: if you import `test_fixtures`, refer to it directly
+     |
+2376 -         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run2, wf2, vb_core::capability::CapabilitySet::empty(), super::super::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+2376 +         assert_eq!(runtime.submit_direct_with_grants_and_contracts(run2, wf2, vb_core::capability::CapabilitySet::empty(), test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+     |
+
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:767:13
+    |
+767 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:349:13
+    |
+349 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:388:13
+    |
+388 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+For more information about this error, try `rustc --explain E0433`.
+warning: `vb_runtime` (lib test) generated 16 warnings
+error: could not compile `vb_runtime` (lib test) due to 5 previous errors; 16 warnings emitted

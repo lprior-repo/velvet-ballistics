@@ -17,22 +17,24 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
 
     // Submit wait workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run: run_wait,
-            workflow: wait_workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+    run: run_wait,
+    workflow: wait_workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
 
     // Submit ask workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run: run_ask,
-            workflow: ask_workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+    run: run_ask,
+    workflow: ask_workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

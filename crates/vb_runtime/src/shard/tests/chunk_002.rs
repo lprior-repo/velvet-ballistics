@@ -13,18 +13,19 @@ fn shard_rejects_active_run_capacity_overflow() {
         return;
     };
 
-    let first = shard.enqueue(ShardCommand::Submit {
+    let first = shard.enqueue(ShardCommand::SubmitWithContracts {
         run: super::RunId::new(1),
         workflow: workflow.clone(),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
     });
     assert_eq!(first, Ok(()));
     assert_eq!(shard.tick(), Ok(true));
 
     let second = shard.enqueue(ShardCommand::Submit {
         run: super::RunId::new(2),
-        workflow,
-        caps: vb_core::capability::CapabilitySet::empty(),
+        workflow: workflow,
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     });
     assert_eq!(second, Ok(()));
     assert_eq!(
@@ -48,10 +49,11 @@ fn inspect_command_stores_retrievable_snapshot() {
     };
     let run = super::RunId::new(7);
 
-    let submitted = shard.enqueue(ShardCommand::Submit {
-        run,
-        workflow,
-        caps: vb_core::capability::CapabilitySet::empty(),
+    let submitted = shard.enqueue(ShardCommand::SubmitWithContracts {
+        run: run,
+        workflow: workflow,
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
     });
     assert_eq!(submitted, Ok(()));
     assert_eq!(shard.tick(), Ok(true));
@@ -122,11 +124,12 @@ fn counters_reflect_submitted_after_submit_tick() {
     };
     let run = super::RunId::new(1);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

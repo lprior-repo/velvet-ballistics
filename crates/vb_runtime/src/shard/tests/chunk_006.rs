@@ -9,11 +9,12 @@ fn shard_inspect_captures_executed_count() {
     };
     let run = super::RunId::new(81);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -34,19 +35,21 @@ fn shard_tick_processes_commands_in_fifo_order() {
     };
     // When submitting two runs
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run: super::RunId::new(100),
-            workflow: wf1,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+    run: super::RunId::new(100),
+    workflow: wf1,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run: super::RunId::new(101),
-            workflow: wf2,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+    run: super::RunId::new(101),
+    workflow: wf2,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     // Then both ticks succeed in FIFO order
@@ -68,11 +71,12 @@ fn shard_resume_continues_suspended_run() {
     };
     let run = super::RunId::new(90);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -103,11 +107,12 @@ fn shard_take_inspect_response_clears_after_take() {
     };
     let run = super::RunId::new(95);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -190,12 +195,12 @@ fn shard_command_equality_submit() {
     let a = ShardCommand::Submit {
         run: super::RunId::new(1),
         workflow: wf.clone(),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     let b = ShardCommand::Submit {
         run: super::RunId::new(1),
         workflow: wf,
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     assert_eq!(a, b);
 }

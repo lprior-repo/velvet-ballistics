@@ -7,10 +7,11 @@
         };
         let run = RunId::new(500);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -65,10 +66,11 @@
         let wf = require_workflow("ask", ask_workflow())?;
         let run = RunId::new(2);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -96,10 +98,11 @@
         let max_size = wf.resource_contract().max_ipc_payload_bytes;
         let run = RunId::new(12);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run,
                 workflow: wf,
-                caps: CapabilitySet::empty(),
+                caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );

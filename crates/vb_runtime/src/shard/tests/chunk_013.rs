@@ -150,11 +150,12 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static s
     let wf1 = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let wf2 = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run: super::RunId::new(1),
-            workflow: wf1,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+    run: super::RunId::new(1),
+    workflow: wf1,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -259,11 +260,12 @@ fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistenc
     );
     let run = super::RunId::new(712);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
 
@@ -287,11 +289,12 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
     );
     let run = super::RunId::new(713);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
 
@@ -325,11 +328,12 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<()
         timed_wait_then_finish_workflow().ok_or("timed wait workflow fixture construction failed")?;
     let run = super::RunId::new(710);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -369,11 +373,12 @@ fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment(
     let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(720);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+}),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
