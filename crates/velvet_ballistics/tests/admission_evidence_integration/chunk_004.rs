@@ -87,6 +87,7 @@ fn budget_validation_rejects_oversized_workflow() {
     let oversized_parts = WorkflowParts {
         name: Box::from("oversized"),
         digest: WorkflowDigest::from_bytes([5u8; 32]),
+        input_slots: Box::from([]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -121,6 +122,7 @@ fn budget_validation_rejects_oversized_workflow() {
     let slot_parts = WorkflowParts {
         name: Box::from("slot_exceeded"),
         digest: WorkflowDigest::from_bytes([6u8; 32]),
+        input_slots: Box::from([]),
         nodes: Box::from([single_node]),
         expressions: Box::from([]),
         accessors: Box::from([]),

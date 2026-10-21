@@ -1,0 +1,306 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling libc v0.2.186
+   Compiling syn v2.0.117
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling serde_core v1.0.228
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.228
+   Compiling serde_derive v1.0.228
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+   Compiling equivalent v1.0.2
+   Compiling crossbeam-utils v0.8.21
+   Compiling once_cell v1.21.4
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling getrandom v0.4.2
+   Compiling rustix v1.1.4
+   Compiling bitflags v2.11.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling hashbrown v0.17.1
+   Compiling getrandom v0.3.4
+   Compiling iana-time-zone v0.1.65
+   Compiling indexmap v2.14.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling spin v0.9.8
+   Compiling shlex v1.3.0
+   Compiling smallvec v1.15.1
+   Compiling find-msvc-tools v0.1.9
+   Compiling fastrand v2.4.1
+   Compiling cc v1.2.62
+   Compiling tempfile v3.27.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_core)
+   Compiling heapless v0.7.17
+   Compiling byteorder v1.5.0
+   Compiling parking_lot_core v0.9.12
+   Compiling arrayvec v0.7.6
+   Compiling zerocopy v0.8.48
+   Compiling fnv v1.0.7
+   Compiling log v0.4.29
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling crossbeam-epoch v0.9.18
+   Compiling logos-codegen v0.15.1
+   Compiling compare v0.0.6
+   Compiling foldhash v0.1.5
+   Compiling byteorder-lite v0.1.0
+   Compiling hashbrown v0.16.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling regex-syntax v0.8.10
+   Compiling twox-hash v2.1.2
+   Compiling arraydeque v0.5.1
+   Compiling xxhash-rust v0.8.15
+   Compiling sfa v1.0.0
+   Compiling lz4_flex v0.13.1
+   Compiling quick_cache v0.6.22
+   Compiling hashbrown v0.15.5
+   Compiling interval-heap v0.0.5
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling enum_dispatch v0.3.13
+   Compiling cobs v0.3.0
+   Compiling crc32c v0.6.8
+   Compiling lazy_static v1.5.0
+   Compiling varint-rs v2.2.0
+   Compiling constant_time_eq v0.4.2
+   Compiling rustc-hash v2.1.2
+   Compiling cpufeatures v0.3.0
+   Compiling byteview v0.10.1
+   Compiling arrayref v0.3.9
+   Compiling self_cell v1.2.2
+   Compiling hashbrown v0.14.5
+   Compiling beef v0.5.2
+   Compiling dashmap v6.2.1
+   Compiling lsm-tree v3.1.4
+   Compiling postcard v1.1.3
+   Compiling hashlink v0.10.0
+   Compiling flume v0.12.0
+   Compiling version_check v0.9.5
+   Compiling zmij v1.0.21
+   Compiling fjall v3.1.4
+   Compiling ahash v0.8.12
+   Compiling saphyr-parser v0.0.6
+   Compiling logos-derive v0.15.1
+   Compiling ordered-float v5.3.0
+   Compiling logos v0.15.1
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_storage)
+   Compiling saphyr v0.0.6
+   Compiling rand_core v0.9.5
+   Compiling crossbeam-queue v0.3.12
+   Compiling encoding_rs v0.8.35
+   Compiling crc32fast v1.5.0
+   Compiling anstyle v1.0.14
+   Compiling serde_json v1.0.150
+   Compiling unicode-width v0.2.2
+   Compiling rtrb v0.3.4
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_runtime)
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_yaml)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_expr)
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_validate)
+   Compiling mio v1.2.0
+   Compiling crossbeam-channel v0.5.15
+   Compiling nohash-hasher v0.2.0
+   Compiling memchr v2.8.0
+   Compiling base64 v0.22.1
+   Compiling itoa v1.0.18
+   Compiling serde-saphyr v0.0.25
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_ipc)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/vb_compile)
+   Compiling ppv-lite86 v0.2.21
+   Compiling wait-timeout v0.2.1
+   Compiling quick-error v1.2.3
+   Compiling bit-vec v0.8.0
+   Compiling bit-set v0.8.0
+   Compiling rusty-fork v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5yt79-cli-fixtures-3090/crates/velvet_ballistics)
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling unarray v0.1.4
+   Compiling proptest v1.11.0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 20.19s
+     Running tests/admission_evidence_integration.rs (target/debug/deps/admission_evidence_integration-a186395269f19b19)
+
+running 24 tests
+test budget_validation_rejects_action_ticket_limit_exceeded ... ok
+test budget_validation_accepts_budget_policy_within_limits ... ok
+test budget_validation_rejects_oversized_workflow ... ok
+test budget_validation_rejects_result_bytes_exceeded ... ok
+test capability_check_rejects_any_action_when_empty_grant_set ... ok
+test capability_check_rejects_unauthorized_action ... ok
+test multiple_runs_concurrent_produce_correct_completion_counters ... ok
+test storage_failure_before_header_prevents_ack ... ok
+test evidence_chain_preserves_event_ordering_across_restarts ... ok
+test evidence_chain_after_execution ... ok
+test runtime_rejects_submission_when_capacity_exceeded ... ok
+test evidence_chain_captures_action_timeout_and_failure ... FAILED
+test taint_clean_propagates_preserved_through_set_const ... ok
+test submit_with_tainted_input_propagates_taint_through_runtime ... ok
+test taint_propagates_through_expression_eval ... ok
+test taint_secret_propagates_through_finish_signal ... ok
+test compiled_ir_query_returns_none_for_missing_digest ... ok
+test submit_artifact_then_run_succeeds ... ok
+test run_without_artifact_under_relaxed_policy ... ok
+test run_without_artifact_under_strict_policy_rejects_unverified_workflow ... ok
+test submit_artifact_yaml_compiled_then_run_with_inputs_taints ... ok
+test submit_artifact_under_strict_policy_requires_matching_digest ... ok
+test restart_lookup_finds_persisted_header ... ok
+test journal_persistence_survives_runtime_drop_and_reopen ... ok
+
+failures:
+
+---- evidence_chain_captures_action_timeout_and_failure stdout ----
+
+thread 'evidence_chain_captures_action_timeout_and_failure' (1030712) panicked at crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs:311:13:
+tick_all after action failure failed: invalid action completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    evidence_chain_captures_action_timeout_and_failure
+
+test result: FAILED. 23 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+
+error: test failed, to rerun pass `-p velvet-ballistics --test admission_evidence_integration`
+     Running tests/cli_integration.rs (target/debug/deps/cli_integration-fcae7c71bd11db8d)
+
+running 123 tests
+test cli_action_list_empty_registry_reports_no_actions ... ok
+test cli_action_list_missing_registry_value_fails_with_action_args_diagnostic ... ok
+test cli_action_inspect_unregistered_action_fails ... ok
+test cli_action_list_uninitialized_registry_fails ... ok
+test cli_action_inspect_text_output_has_contract_details ... ok
+test cli_action_list_json_output_has_exact_actions ... ok
+test cli_action_list_jsonl_output_has_exact_lines ... ok
+test cli_action_list_unknown_flag_fails_with_exact_diagnostic ... ok
+test cli_postcard::tests::decode_rejects_corrupted_crc_before_exposure ... ok
+test cli_postcard::tests::decode_rejects_max_plus_one_payload_before_exposure ... ok
+test cli_postcard::tests::decode_rejects_old_and_future_versions ... ok
+test cli_action_inspect_json_output_has_full_contract ... ok
+test cli_postcard::tests::decode_rejects_truncated_header ... ok
+test cli_postcard::tests::decode_rejects_wrong_kind ... ok
+test cli_postcard::tests::test_decode_data_too_short ... ok
+test cli_postcard::tests::test_decode_invalid_header_length ... ok
+test cli_action_list_unknown_registry_fails_with_exact_diagnostic ... ok
+test cli_action_list_trailing_argument_fails ... ok
+test cli_postcard::tests::test_decode_invalid_magic ... ok
+test cli_postcard::tests::decode_rejects_corrupted_digest_before_exposure ... ok
+test cli_postcard::tests::test_decode_payload_too_large ... ok
+test cli_postcard::tests::test_decode_valid_postcard ... ok
+test cli_postcard::tests::test_encode_postcard ... ok
+test cli_action_list_table_output_has_exact_fields ... ok
+test cli_postcard::tests::test_header_size ... ok
+test cli_postcard::tests::test_max_payload ... ok
+test cli_postcard::tests::test_postcard_header_from_bytes ... ok
+test cli_postcard::tests::test_roundtrip ... ok
+test cli_postcard::tests::test_valid_magic ... ok
+test cli_help_is_bounded_and_non_interactive ... ok
+test cli_doctor_returns_storage_error_for_unreadable_path ... ok
+test cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested ... ok
+test cli_compile_invalid_syntax_fails_with_clear_error ... ok
+test cli_compile_without_out_flag_outputs_digest_only ... ok
+test cli_compile_valid_workflow_produces_ir ... ok
+test cli_explain_invalid_workflow_reports_errors ... ok
+test cli_compile_preserves_workflow_digest ... ok
+test cli_explain_valid_workflow_outputs_valid_status ... ok
+test cli_run_reports_exact_input_mapping_decode_failure ... ok
+test cli_run_invalid_workflow_returns_error_exit_code ... ok
+test cli_run_nonexistent_workflow_file_fails_with_diagnostic ... ok
+test cli_simulate_invalid_workflow_reports_diagnostic ... ok
+test cli_status_default_succeeds ... ok
+test cli_run_maps_postcard_slot_values_from_input_bin ... ok
+test cli_simulate_does_not_create_db_side_effects ... ok
+test cli_run_minimal_workflow_completes ... ok
+test cli_run_no_durability_works_without_db_flag ... ok
+test cli_status_rejects_nonnumeric_known_flag ... ok
+test cli_submit_rejects_unknown_durability ... ok
+test cli_system_status_legacy_json_flag_reports_degraded_text_when_no_backend_is_attached ... ok
+test cli_system_status_legacy_jsonl_flag_emits_status_text ... ok
+test cli_system_status_rejects_unprobed_server_modes ... ok
+test cli_system_status_yaml_reports_degraded_no_backend ... ok
+test cli_status_rejects_missing_trace_dropped_value ... ok
+test cli_unknown_command_returns_stderr_diagnostic_without_stack_trace ... ok
+test cli_status_rejects_unknown_flag ... ok
+test cli_status_json_succeeds ... ok
+test cli_submit_rejects_missing_input_bin ... ok
+test cli_status_jsonl_succeeds ... ok
+test cli_status_rejects_extra_positional_argument ... ok
+test cli_status_rejects_missing_queue_depth_value ... ok
+test cli_status_rejects_missing_active_runs_value ... ok
+test compile_rejects_empty_input ... ok
+test cli_events_unknown_flag_fails_without_creating_storage_path ... ok
+test compile_rejects_non_utf8_input ... ok
+test core_workflow_rejects_invalid_jump_target ... ok
+test compile_rejects_invalid_yaml ... ok
+test cli_status_json_writes_payload_to_stdout_only ... ok
+test cli_simulate_json_emits_deterministic_trace ... ok
+test cli_system_status_rejects_unknown_server_mode ... ok
+test core_workflow_rejects_out_of_bounds_step ... ok
+test expr_boolean_logic ... ok
+test expr_lex_and_parse_simple_addition ... ok
+test expr_rejects_division_by_zero ... ok
+test expr_bytecode_compile_and_eval ... ok
+test ipc_all_commands_have_distinct_codes ... ok
+test expr_variable_reference ... ok
+test ipc_frame_roundtrip ... ok
+test limits_max_expression_stack_is_bounded ... ok
+test limits_max_steps_per_workflow_is_bounded ... ok
+test cli_run_with_missing_db_path_for_strict_durability_fails_gracefully ... ok
+test runtime_signal_debug_format ... ok
+test runtime_slot_value_copy_trait ... ok
+test taint_clean_stays_clean_for_pure_actions ... ok
+test storage_corrupt_record_fails_decode ... ok
+test taint_derived_propagates ... ok
+test storage_encode_decode_roundtrip ... ok
+test taint_secret_propagates_through_deterministic_action ... ok
+test validate_schema_rejects_bad_version ... ok
+test yaml_parse_binary_bytes_returns_error ... ok
+test cli_validate_help_short_circuits_missing_workflow_io ... ok
+test cli_validate_nonexistent_file_fails_with_diagnostic ... ok
+test cli_simulate_valid_workflow_reports_dry_run_summary ... ok
+test yaml_parse_empty_source_returns_error ... ok
+test yaml_parse_broken_yaml_returns_error ... ok
+test yaml_profile_rejects_anchors ... ok
+test yaml_parse_missing_version_returns_error ... ok
+test yaml_parse_missing_name_returns_error ... ok
+test yaml_parse_step_missing_do_action_returns_error ... ok
+test cli_validate_unknown_flag_fails_before_workflow_io ... ok
+test yaml_parse_valid_minimal_workflow ... ok
+test yaml_parse_set_missing_output_returns_error ... ok
+test cli_validate_invalid_yaml_returns_parse_error ... ok
+test cli_validate_undefined_step_reference_returns_validation_error ... ok
+test cli_validate_type_mismatch_returns_typed_error ... ok
+test cli_validate_valid_minimal_workflow_succeeds ... ok
+test cli_inspect_nonexistent_run_shows_no_events ... ok
+test cli_events_nonexistent_run_reports_empty_or_not_found ... ok
+test cli_doctor_text_reports_trim_eligibility ... ok
+test cli_submit_json_returns_structured_identifiers ... ok
+test cli_doctor_returns_success_for_healthy_journal_with_trim_recommended ... ok
+test cli_ai_context_reports_missing_and_invalid_run_ids ... ok
+test cli_submit_persists_ledger_before_success ... ok
+test cli_run_json_output_reports_structured_run_result ... ok
+test cli_doctor_json_includes_trim_eligibility_check ... ok
+test cli_run_journaled_then_events_and_inspect_read_temp_db ... ok
+test cli_inspect_compiled_run_shows_status_and_event_count ... ok
+test cli_run_strict_durability_writes_journal_events ... ok
+test cli_diff_identical_runs_reports_zero_differences ... ok
+test cli_replay_journaled_run_produces_deterministic_output ... ok
+test cli_ai_context_for_journaled_run_emits_compiled_ir_summary ... ok
+test cli_canonical_emit_yaml_covers_required_output_contract_commands ... ok
+test cli_canonical_emit_postcard_frames_required_output_contract_commands ... ok
+
+test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+error: 1 target failed:
+    `-p velvet-ballistics --test admission_evidence_integration`

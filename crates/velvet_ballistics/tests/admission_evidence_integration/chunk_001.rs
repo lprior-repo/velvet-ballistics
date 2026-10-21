@@ -51,6 +51,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
     let parts = WorkflowParts {
         name: Box::from("set_finish"),
         digest,
+        input_slots: Box::from([]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -90,6 +91,7 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let parts = WorkflowParts {
         name: Box::from("do_action"),
         digest,
+        input_slots: Box::from([]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -138,6 +140,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
     let parts = WorkflowParts {
         name: Box::from("taint_expr"),
         digest,
+        input_slots: Box::from([]),
         nodes: Box::from([node0, node1]),
         expressions: Box::from([expr_program]),
         accessors: Box::from([]),
