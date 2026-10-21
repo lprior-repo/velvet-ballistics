@@ -1,0 +1,10 @@
+Previous draft rejected: invented keys server_mode/database_name/hyphen-existing and wrong workflow. Return concise contract with EXACT actual names. Remove only dolt_server_port from isolatedtrackedmetadata; keep all other exact key/value pairs. Actualactivehealthy bd-managedserver127.0.0.1:44101 and canonicalmain .beads/dolt-server.port44101. Worktree bd routingmain. NO serverrestart/delete/dbrename/remoteschanges. Scope metadataonefile plusbeadevidence/tests. Actualworkflow Rustcontract -> implementation -> tests -> code review -> testreview. Actual metadata:
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_server_port": 44101,
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}
