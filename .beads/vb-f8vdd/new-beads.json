@@ -1,0 +1,32 @@
+[
+  {
+    "id": "vb-7r7jv",
+    "title": "V1-min: bind executor conformance and recovery classes to accepted action packs",
+    "status": "open"
+  },
+  {
+    "id": "vb-hk1j8",
+    "title": "V1-min: enforce scoped capability grant lifecycle before live dispatch",
+    "status": "open"
+  },
+  {
+    "id": "vb-ny068",
+    "title": "V1-min: separate replay policy from live-effect decisions and emergency denial",
+    "status": "open"
+  },
+  {
+    "id": "vb-ifn5b",
+    "title": "V1-min: persist accountable manual gate decisions and approval receipts",
+    "status": "open"
+  },
+  {
+    "id": "vb-f8lko",
+    "title": "V1-min: enforce and journal compatibility algebra at trust boundaries",
+    "status": "open"
+  },
+  {
+    "id": "vb-8vknz",
+    "title": "V1-min: account for missing run tenant and global resource budgets",
+    "status": "open"
+  }
+]

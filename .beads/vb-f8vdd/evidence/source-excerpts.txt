@@ -1,0 +1,584 @@
+
+crates/vb_storage/src/admission.rs
+61: ///
+62: /// GAP-001 FIX: Fields ending in `_claimed` are set unconditionally by
+63: /// `VerificationProof::new()` because the actual verification gates are not
+64: /// yet implemented. The `_claimed` suffix makes the intent explicit: these
+65: /// are unverified claims, not proven facts. When proper verification is
+66: /// implemented, the suffix should be removed and flags set based on results.
+67: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+68: pub struct VerificationProof {
+69:     /// Confirmed digest of the verified artifact.
+70:     pub digest: vb_core::WorkflowDigest,
+71:     /// Number of verification gates that passed.
+72:     pub gate_count: u8,
+73:     /// Whether the proof was durably persisted (SyncAll).
+74:     pub durable: bool,
+75:     /// Artifact IR is size-bounded (CLAIMED - actual verification not yet implemented).
+76:     pub bounded_claimed: bool,
+77:     /// Artifact does not propagate taint (CLAIMED - actual verification not yet implemented).
+78:     pub taint_safe_claimed: bool,
+79:     /// Artifact actions are safe to retry (CLAIMED - actual verification not yet implemented).
+80:     pub retry_safe_claimed: bool,
+81:     /// Artifact idempotency evidence was verified by the acceptance gate (CLAIMED).
+82:     pub idempotency_verified_claimed: bool,
+83:     /// Artifact can be replayed (CLAIMED - actual verification not yet implemented).
+84:     pub replayable_claimed: bool,
+85:     /// Actions keyed by idempotency key.
+86:     pub idempotency_keyed: Box<[vb_core::ActionId]>,
+87:     /// Actions with idempotency attested.
+88:     pub idempotency_attested: Box<[vb_core::ActionId]>,
+89:     /// Soft verification failures encountered during admission.
+90:     pub warnings: Vec<VerificationWarning>,
+91: }
+92: 
+93: /// Allocation-free core of [`VerificationProof`] construction.
+94: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+95: pub(crate) struct VerificationProofCore {
+96:     /// Confirmed digest of the verified artifact.
+97:     pub(crate) digest: vb_core::WorkflowDigest,
+98:     /// Number of verification gates that passed.
+99:     pub(crate) gate_count: u8,
+100:     /// Whether the proof was durably persisted.
+101:     pub(crate) durable: bool,
+102:     /// Artifact IR is size-bounded claim flag.
+103:     pub(crate) bounded_claimed: bool,
+104:     /// Artifact taint-safety claim flag.
+105:     pub(crate) taint_safe_claimed: bool,
+106:     /// Artifact retry-safety claim flag.
+107:     pub(crate) retry_safe_claimed: bool,
+108:     /// Artifact idempotency claim flag.
+109:     pub(crate) idempotency_verified_claimed: bool,
+110:     /// Artifact replayability claim flag.
+111:     pub(crate) replayable_claimed: bool,
+112: }
+113: 
+114: pub(crate) const fn verification_proof_core(
+115:     digest: vb_core::WorkflowDigest,
+116:     gate_count: u8,
+117:     durable: bool,
+118: ) -> VerificationProofCore {
+119:     VerificationProofCore {
+120:         digest,
+121:         gate_count,
+122:         durable,
+123:         bounded_claimed: true,
+124:         taint_safe_claimed: true,
+125:         retry_safe_claimed: true,
+126:         idempotency_verified_claimed: true,
+127:         replayable_claimed: true,
+128:     }
+129: }
+130: 
+131: impl VerificationProof {
+132:     /// Creates a new verification proof with all proof flags set to true.
+133:     ///
+134:     /// GAP-001 NOTE: All `_claimed` flags are unconditionally set to `true`
+135:     /// because actual per-gate verification is not yet implemented. The flags
+136:     /// are named with `_claimed` suffix to indicate they represent unverified
+137:     /// claims, not proven facts. See `VerificationProof` struct docs.
+138:     #[must_use]
+139:     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
+140:         let core = verification_proof_core(digest, gate_count, durable);
+141:         Self {
+142:             digest: core.digest,
+143:             gate_count: core.gate_count,
+144:             durable: core.durable,
+145:             bounded_claimed: core.bounded_claimed,
+146:             taint_safe_claimed: core.taint_safe_claimed,
+147:             retry_safe_claimed: core.retry_safe_claimed,
+148:             idempotency_verified_claimed: core.idempotency_verified_claimed,
+149:             replayable_claimed: core.replayable_claimed,
+150:             idempotency_keyed: Box::new([]),
+151:             idempotency_attested: Box::new([]),
+152:             warnings: Vec::new(),
+153:         }
+154:     }
+155: }
+156: 
+157: fn zero_workflow_digest() -> vb_core::WorkflowDigest {
+
+crates/vb_storage/src/admission.rs
+204: pub struct AcceptedArtifact {
+205:     /// The compiled artifact's content hash (matches `source_digest` when
+206:     /// artifact is produced directly from compilation without separate source).
+207:     pub digest: vb_core::WorkflowDigest,
+208:     /// Digest of the original workflow source that was compiled to produce this artifact.
+209:     /// For directly compiled workflows, this equals `digest`.
+210:     pub source_digest: vb_core::WorkflowDigest,
+211:     /// Digest of the resource/policy contract that governed this artifact's admission.
+212:     /// Derived from the `resource_contract` field of the compiled workflow.
+213:     pub policy_digest: vb_core::WorkflowDigest,
+214:     /// Serialized compiled IR (postcard).
+215:     pub ir: Vec<u8>,
+216:     /// Proof that verification passed.
+217:     pub verification: VerificationProof,
+218:     /// Journal sequence when accepted.
+219:     ///
+220:     /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+221:     /// because actual sequence tracking is not implemented. The field is retained
+222:     /// as a placeholder for future implementation of proper sequence tracking.
+223:     /// When actual tracking is implemented, replace the placeholder with the real
+224:     /// sequence number from the journal at admission time.
+225:     pub accepted_at_seq: EventSeq,
+226:     /// Required capabilities for actions in this artifact.
+227:     pub required_capabilities: Box<[vb_core::capability::Capability]>,
+228:     /// Validated action contracts bound into this accepted artifact.
+
+crates/vb_storage/src/admission.rs
+417:                 return Err(JournalError::ArtifactChecksumMismatch);
+418:             }
+419: 
+420:             let durable = policy == vb_core::RuntimePolicy::Strict;
+421: 
+422:             let mut proof =
+423:                 VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
+424:             proof.idempotency_keyed = idempotency_evidence.keyed;
+425:             proof.idempotency_attested = idempotency_evidence.attested;
+426: 
+427:             let ir_bytes =
+428:                 postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+429: 
+430:             let mut artifact = AcceptedArtifact {
+431:                 digest: zero_workflow_digest(),
+432:                 source_digest: workflow.digest(),
+433:                 policy_digest: compute_policy_digest(workflow)?,
+434:                 ir: ir_bytes,
+435:                 verification: proof,
+436:                 accepted_at_seq: EventSeq::new(0),
+437:                 required_capabilities,
+438:                 action_contracts: action_contracts.to_vec().into_boxed_slice(),
+439:             };
+440:             bind_artifact_digest(&mut artifact)?;
+441: 
+442:             let artifact_bytes =
+443:                 postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+444:             let record = CompiledIrRecord {
+445:                 digest: artifact.digest,
+446:                 ir: artifact_bytes,
+447:             };
+448:             journal.put_compiled_ir(&record)?;
+449: 
+450:             if durable {
+451:                 journal.persist_strict()?;
+452:             }
+453: 
+454:             verify_artifact_persisted(journal, artifact.digest)?;
+455: 
+456:             Ok(artifact)
+457:         }
+458:         // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
+459:         // fail closed rather than silently accept malformed artifacts.
+
+crates/vb_core/src/capability.rs
+8: /// Capability grant controlling which actions a workflow may invoke.
+9: #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+10: pub struct Capability {
+11:     pub name: Box<str>,
+12:     pub action: ActionId,
+13: }
+14: 
+15: impl Capability {
+16:     pub fn new(name: Box<str>, action: ActionId) -> Self {
+17:         Self { name, action }
+18:     }
+19: 
+20:     pub const fn name(&self) -> &str {
+21:         &self.name
+22:     }
+23: 
+24:     pub const fn action_id(&self) -> ActionId {
+25:         self.action
+26:     }
+27: }
+28: 
+29: /// Bounded set of capability grants.
+30: #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+31: pub struct CapabilitySet {
+32:     grants: Vec<Capability>,
+33: }
+34: 
+35: impl CapabilitySet {
+36:     pub fn empty() -> Self {
+37:         Self { grants: Vec::new() }
+38:     }
+39: 
+40:     pub fn from_grants(grants: Box<[Capability]>) -> Self {
+41:         Self {
+42:             grants: grants.into_vec(),
+43:         }
+44:     }
+45: 
+46:     pub fn grants(&self, required: &Capability) -> bool {
+47:         let mut i = 0;
+48:         while i < self.grants.len() {
+49:             if let Some(grant) = self.grants.get(i) {
+50:                 if grant.name().is_empty() {
+51:                     i = match i.checked_add(1) {
+52:                         Some(next) => next,
+53:                         None => break,
+54:                     };
+55:                     continue;
+
+crates/vb_core/src/action/contract.rs
+8: #[repr(u8)]
+9: #[non_exhaustive]
+10: pub enum Idempotency {
+11:     /// Pure deterministic computation with no side effects.
+12:     DeterministicPure = 0,
+13:     /// External call that is idempotent when retried with the same key.
+14:     IdempotentExternal = 1,
+15:     /// External call that may execute more than once; at-least-once delivery.
+16:     AtLeastOnceExternal = 2,
+17: }
+18: 
+19: /// Classifies the observable side effects of an action.
+20: #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+21: #[repr(u8)]
+22: #[non_exhaustive]
+23: pub enum SideEffect {
+24:     /// No observable side effects (pure computation).
+25:     None = 0,
+26:     /// Writes to external state (database, file, API).
+27:     Writes = 1,
+28:     /// Sends a message or notification.
+29:     Sends = 2,
+30:     /// Creates a resource (provision, allocate).
+31:     Creates = 3,
+32:     /// Destroys a resource (deprovision, delete).
+33:     Destroys = 4,
+34: }
+35: 
+36: /// Classifies whether an action can be safely retried.
+37: #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+38: #[repr(u8)]
+39: #[non_exhaustive]
+40: pub enum RetrySafety {
+41:     /// Always safe to retry (pure/idempotent).
+42:     Safe = 0,
+43:     /// Safe to retry IF an idempotency key is present.
+44:     KeyRequired = 1,
+45:     /// Never safe to retry (destructive side-effect with no key).
+46:     Unsafe = 2,
+47: }
+48: 
+49: /// Policy for whether an action failure can be retried.
+50: #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+51: #[repr(u8)]
+52: #[non_exhaustive]
+53: pub enum RetryPolicy {
+54:     /// Failure can be retried.
+55:     Retryable = 0,
+56:     /// Failure cannot be retried.
+57:     NonRetryable = 1,
+
+crates/vb_core/src/action/contract.rs
+81: /// Static contract describing an action's resource and correctness bounds.
+82: #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+83: pub struct ActionContract {
+84:     /// Numeric action identifier used for dispatch.
+85:     pub id: ActionId,
+86:     /// Action name used for name-based lookup.
+87:     pub name: ActionName,
+88:     /// Number of input slots consumed.
+89:     pub input_slot_count: u16,
+90:     /// Number of output slots produced.
+91:     pub output_slot_count: u16,
+92:     /// Maximum encoded input byte length.
+93:     pub max_input_bytes: u32,
+94:     /// Maximum encoded output byte length.
+95:     pub max_output_bytes: u32,
+96:     /// Maximum wall-clock time for one attempt in milliseconds.
+97:     pub timeout_ms: u64,
+98:     /// Idempotency classification for retry and taint propagation.
+99:     pub idempotency: Idempotency,
+100:     /// Side-effect classification for retry safety decisions.
+101:     pub side_effect: SideEffect,
+102:     /// Retry safety classification for the verification gate.
+103:     pub retry_safety: RetrySafety,
+104:     /// Required capabilities for this action.
+105:     pub required_capabilities: Box<[Capability]>,
+106: }
+
+crates/vb_core/src/workflow/mod.rs
+203: pub struct ResourceContract {
+204:     /// Maximum node count admitted for this workflow.
+205:     pub max_steps: u16,
+206:     /// Maximum runtime slot count admitted for this workflow.
+207:     pub max_slots: u16,
+208:     /// Maximum constant-pool entries admitted for this workflow.
+209:     pub max_constants: u16,
+210:     /// Maximum accessor programs admitted for this workflow.
+211:     pub max_accessors: u16,
+212:     /// Maximum expression programs admitted for this workflow.
+213:     pub max_expressions: u16,
+214:     /// Maximum expression stack entries admitted for this workflow.
+215:     pub max_expr_stack: u8,
+216:     /// Maximum deterministic transitions per runtime tick.
+217:     pub max_step_budget_per_tick: u64,
+218:     /// Maximum transitions per runtime tick.
+219:     pub max_transitions_per_tick: u64,
+220:     /// Maximum input bytes accepted at admission.
+221:     pub max_input_bytes: u32,
+222:     /// Maximum output bytes produced by a run.
+223:     pub max_output_bytes: u32,
+224:     /// Maximum blob payload bytes.
+225:     pub max_blob_bytes: u64,
+226:     /// Maximum IPC payload bytes.
+227:     pub max_ipc_payload_bytes: u32,
+228:     /// Maximum retry attempts for action policies.
+229:     pub max_retry_attempts: u16,
+230:     /// Maximum branch fanout.
+231:     pub max_fanout: u16,
+232:     /// Maximum collect items.
+233:     pub max_collect_items: u32,
+234:     /// Maximum runtime queue depth.
+235:     pub max_queue_depth: u32,
+236:     /// Maximum journal batch bytes.
+237:     pub max_journal_batch_bytes: u32,
+238:     /// Whether secret-tainted results are allowed in answer payloads.
+239:     pub allows_secret_results: bool,
+240: }
+241: 
+242: impl ResourceContract {
+243:     /// Conservative default used until policy profiles become user-configurable.
+244:     pub const DEFAULT: Self = Self {
+245:         max_steps: 10_000,
+246:         max_slots: 1_024,
+247:         max_constants: u16::MAX,
+248:         max_accessors: 8_192,
+249:         max_expressions: 4_096,
+250:         max_expr_stack: 64,
+251:         max_step_budget_per_tick: 10_000,
+252:         max_transitions_per_tick: 10_000,
+253:         max_input_bytes: 1_048_576,
+254:         max_output_bytes: 262_144,
+255:         max_blob_bytes: 16_777_216,
+256:         max_ipc_payload_bytes: 1_048_576,
+257:         max_retry_attempts: 3,
+258:         max_fanout: 64,
+259:         max_collect_items: 1_024,
+260:         max_queue_depth: 1_024,
+261:         max_journal_batch_bytes: 1_048_576,
+262:         allows_secret_results: false,
+263:     };
+264: }
+265: 
+266: /// Expression branch target used by final choose IR scaffolding.
+
+crates/vb_core/src/budget.rs
+9: 
+10: /// Computed budget for an entire workflow, derived by walking the IR.
+11: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+12: pub struct WholeWorkflowBudget {
+13:     /// Sum of all step budgets across all branches.
+14:     pub max_total_steps: u64,
+15:     /// Maximum slot count across all paths.
+16:     pub max_total_slots: u64,
+17:     /// Maximum concurrent branches (fanout).
+18:     pub max_fanout: u16,
+19:     /// Maximum loop nesting depth.
+20:     pub max_nesting_depth: u16,
+21:     /// Maximum executable step count per workflow admission.
+22:     pub max_steps_executable: u32,
+23:     /// Maximum action tickets (Do nodes) in the workflow.
+24:     pub max_action_tickets: u32,
+25:     /// Maximum parallel in-flight actions.
+26:     pub max_parallel_in_flight: u16,
+27:     /// Maximum retries per action.
+28:     pub max_retries_per_action: u16,
+29:     /// Maximum gather pages across all CollectStart nodes.
+30:     pub max_gather_pages: u32,
+31:     /// Maximum gather items across all CollectStart nodes.
+32:     pub max_gather_items: u32,
+33:     /// Maximum for-each loop iterations.
+34:     pub max_for_each_iterations: u32,
+35:     /// Maximum together branches in any TogetherStart.
+36:     pub max_together_branches: u16,
+37:     /// Maximum repeat attempts in any RepeatStart.
+38:     pub max_repeat_attempts: u16,
+39:     /// Maximum run time in seconds.
+40:     pub max_run_time_seconds: u64,
+41:     /// Maximum result bytes.
+42:     pub max_result_bytes: u32,
+43:     /// Maximum total slots written.
+44:     pub max_total_slots_written: u32,
+45:     /// Maximum timer entries reserved for waits, asks, retries, and repeat checks.
+46:     pub max_timer_entries: u32,
+47:     /// Maximum trace events reserved for deterministic execution.
+48:     pub max_trace_events: u64,
+49:     /// Maximum journal batch bytes required by reachable journal-producing operations.
+50:     pub max_journal_batch_bytes: u32,
+51:     /// Maximum queue entries required by reachable suspension/admission operations.
+52:     pub max_queue_depth: u32,
+53:     /// Maximum IPC payload bytes required by reachable IPC operations.
+54:     pub max_ipc_payload_bytes: u32,
+55:     /// Maximum blob bytes required by reachable blob/resource operations.
+56:     pub max_blob_bytes: u64,
+57:     /// Maximum input bytes required by reachable input operations.
+58:     pub max_input_bytes: u32,
+
+crates/vb_runtime/src/shard/types.rs
+242: 
+243: /// Ticket identifying where an ask answer must resume execution.
+244: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+245: pub struct AskTicket {
+246:     /// Owning run.
+247:     pub run: RunId,
+248:     /// Step that issued the ask and is currently marked asking.
+249:     pub ask_step: StepIdx,
+250:     /// Step that consumes the answer slot, usually an AskResume node.
+251:     pub resume_step: StepIdx,
+252: }
+253: 
+254: /// Explicit ask answer contract. The caller supplies both payload and destination slot.
+255: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+256: pub struct AskAnswer {
+257:     /// Ask ticket proving the intended resume point.
+258:     pub ticket: AskTicket,
+259:     /// Slot that receives the answer before resuming.
+260:     pub answer_slot: SlotIdx,
+261:     /// Answer payload.
+262:     pub value: SlotValue,
+263:     /// Answer taint marker.
+264:     pub taint: Taint,
+265:     /// Encoded length of the answer payload in bytes.
+266:     pub encoded_len: u32,
+267: }
+268: 
+
+crates/velvet_ballistics/src/run_ops.rs
+5: pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+6:     let events = match read_journal_events(run_id, db, output) {
+7:         Ok(ev) => ev,
+8:         Err(code) => return code,
+9:     };
+10:     if events.is_empty() {
+11:         if output != OutputFormat::Text {
+12:             json_error(
+13:                 &serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }),
+14:                 output,
+15:             );
+16:         } else {
+17:             errln!("run {run_id}: no events found");
+18:         }
+19:         return CliExitCode::StorageError.into();
+20:     }
+21:     let analysis = commands_journal::analyze_retry(&events);
+22:     if !analysis.can_retry {
+23:         if output != OutputFormat::Text {
+24:             json_error(
+25:                 &serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }),
+26:                 output,
+27:             );
+28:         } else {
+29:             errln!("run {run_id} {}", analysis.reason);
+30:         }
+31:         return CliExitCode::LifecycleError.into();
+32:     }
+33:     let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
+34:     if output != OutputFormat::Text {
+35:         emit_json_or_return!(
+36:             &serde_json::json!({
+37:                 "run_id": run_id, "failed_at_step": analysis.failed_at_step,
+38:                 "last_successful_step": analysis.last_successful_step,
+39:                 "resume_from_step": resume_step, "events": events.len()
+40:             }),
+41:             output,
+42:         );
+43:     } else {
+44:         match (analysis.failed_at_step, analysis.last_successful_step) {
+45:             (Some(fail), Some(last)) => {
+46:                 outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
+47:             }
+48:             (Some(fail), None) => {
+49:                 outln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
+50:             }
+51:             (None, Some(last)) => outln!("Run {run_id} failed. Last successful: step {last}."),
+52:             (None, None) => outln!("Run {run_id} failed. No step progress recorded."),
+53:         }
+54:         match resume_step {
+55:             Some(step) => outln!("Retry would resume from step {step} with recovered state."),
+56:             None => outln!("Retry would resume from the beginning."),
+57:         }
+58:     }
+59:     ExitCode::SUCCESS
+60: }
+
+crates/velvet_ballistics/src/submit.rs
+39:             }
+40:             return CliExitCode::CompileFailed.into();
+41:         }
+42:     };
+43: 
+44:     if let Err(error) = map_runtime_inputs(&compiled, &input_data) {
+45:         write_failure_message(&error.to_string(), output, CliExitCode::ValidationFailed);
+46:         return CliExitCode::ValidationFailed.into();
+47:     }
+48: 
+49:     let digest = compiled.digest();
+50:     let digest_hex: String = digest
+51:         .as_bytes()
+52:         .iter()
+53:         .map(|b| format!("{b:02x}"))
+54:         .collect();
+55:     let step_count = compiled.node_count();
+56: 
+57:     // Generate run_id from timestamp
+58:     let run_id_num = generate_submit_run_id();
+59:     let run_id = vb_core::RunId::new(run_id_num);
+60: 
+61:     // Open storage journal and record workflow source + run header
+62:     let journal = match vb_storage::FjallJournal::open(db, None) {
+63:         Ok(j) => j,
+64:         Err(e) => {
+65:             write_failure_message(
+
+crates/velvet_ballistics/src/submit.rs
+98:             Ok(ms) => ms,
+99:             Err(_) => {
+100:                 errln!("warning: system clock value does not fit in u64; using 0");
+101:                 0_u64
+102:             }
+103:         },
+104:         Err(_) => 0_u64,
+105:     };
+106:     let header = vb_storage::RunHeaderRecord {
+107:         run: run_id,
+108:         workflow_id: vb_core::WorkflowId::new(0),
+109:         compiled_digest: digest,
+110:         status: 0,
+111:         accepted_at_ms,
+112:     };
+113:     if let Err(e) = vb_storage::put_run_header(&journal, &header) {
+114:         if output != OutputFormat::Text {
+115:             json_error(
+116:                 &serde_json::json!({
+117:                     "success": false,
+118:                     "error": format!("run header write error: {e}")
+119:                 }),
+120:                 output,
+121:             );
+122:         } else {
+123:             errln!("run header write error: {e}");
+124:         }
+125:         return CliExitCode::StorageError.into();
+126:     }
+127:     // Also record submission for durability-aware runbooks before releasing the metadata journal.
+128:     if durability != DurabilityMode::None {
+129:         let event = vb_storage::JournalEvent::RunAccepted {
+130:             run: run_id,
+131:             seq: vb_storage::EventSeq::new(0),
+132:             workflow: digest,
+133:         };
+134:         if let Err(e) = journal.append_strict_batch(&[event]) {
+135:             if output != OutputFormat::Text {
+136:                 json_error(
+137:                     &serde_json::json!({
+138:                         "success": false,
+139:                         "error": format!("journal append error: {e}")
+140:                     }),
+141:                     output,
+142:                 );
+143:             } else {
+144:                 errln!("journal append error: {e}");

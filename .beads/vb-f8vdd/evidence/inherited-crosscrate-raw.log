@@ -1,0 +1,457 @@
+
+running 18 tests
+ii. 3/18
+action_completion_after_cancel_returns_error --- FAILED
+action_failure_after_cancel_returns_error --- FAILED
+action_completion_after_kill_returns_error --- FAILED
+cancel_after_kill_is_idempotent --- FAILED
+hp1_cancel_running_run_transitions_to_cancelled --- FAILED
+cancel_terminal_run_produces_no_side_effects --- FAILED
+kill_on_cancelled_run_is_idempotent --- FAILED
+. 11/18
+second_kill_after_first_kill_produces_no_extra_event --- FAILED
+ec1_terminal_cancelled_state_does_not_regress --- FAILED
+stale_action_after_cancel_does_not_mutate_state --- FAILED
+kill_live_run_produces_runkilled_journal_event --- FAILED
+second_cancel_after_first_cancel_retains_one_event --- FAILED
+. 17/18
+inv1_terminal_never_regresses_after_cancel --- FAILED
+
+failures:
+
+---- action_completion_after_cancel_returns_error stdout ----
+
+thread 'action_completion_after_cancel_returns_error' (1774860) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:640:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- action_failure_after_cancel_returns_error stdout ----
+
+thread 'action_failure_after_cancel_returns_error' (1774862) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:675:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- action_completion_after_kill_returns_error stdout ----
+
+thread 'action_completion_after_kill_returns_error' (1774861) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:918:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- cancel_after_kill_is_idempotent stdout ----
+
+thread 'cancel_after_kill_is_idempotent' (1774863) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:953:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- hp1_cancel_running_run_transitions_to_cancelled stdout ----
+
+thread 'hp1_cancel_running_run_transitions_to_cancelled' (1774867) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:260:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- cancel_terminal_run_produces_no_side_effects stdout ----
+
+thread 'cancel_terminal_run_produces_no_side_effects' (1774865) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:544:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- kill_on_cancelled_run_is_idempotent stdout ----
+
+thread 'kill_on_cancelled_run_is_idempotent' (1774872) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:833:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- second_kill_after_first_kill_produces_no_extra_event stdout ----
+
+thread 'second_kill_after_first_kill_produces_no_extra_event' (1774874) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:876:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- ec1_terminal_cancelled_state_does_not_regress stdout ----
+
+thread 'ec1_terminal_cancelled_state_does_not_regress' (1774866) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:382:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- stale_action_after_cancel_does_not_mutate_state stdout ----
+
+thread 'stale_action_after_cancel_does_not_mutate_state' (1774875) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:714:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- kill_live_run_produces_runkilled_journal_event stdout ----
+
+thread 'kill_live_run_produces_runkilled_journal_event' (1774870) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:769:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- second_cancel_after_first_cancel_retains_one_event stdout ----
+
+thread 'second_cancel_after_first_cancel_retains_one_event' (1774873) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:593:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- inv1_terminal_never_regresses_after_cancel stdout ----
+
+thread 'inv1_terminal_never_regresses_after_cancel' (1774869) panicked at crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:423:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+
+failures:
+    action_completion_after_cancel_returns_error
+    action_completion_after_kill_returns_error
+    action_failure_after_cancel_returns_error
+    cancel_after_kill_is_idempotent
+    cancel_terminal_run_produces_no_side_effects
+    ec1_terminal_cancelled_state_does_not_regress
+    hp1_cancel_running_run_transitions_to_cancelled
+    inv1_terminal_never_regresses_after_cancel
+    kill_live_run_produces_runkilled_journal_event
+    kill_on_cancelled_run_is_idempotent
+    second_cancel_after_first_cancel_retains_one_event
+    second_kill_after_first_kill_produces_no_extra_event
+    stale_action_after_cancel_does_not_mutate_state
+
+test result: FAILED. 3 passed; 13 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test cancel_kill_lattice_tests`
+
+running 15 tests
+...............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 26 tests
+..........................
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+..........
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 19 tests
+runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist --- FAILED
+strict_submit_rejects_unbound_action_abi_before_ticket_persist --- FAILED
+.... 6/19
+runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest --- FAILED
+... 10/19
+recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen --- FAILED
+. 12/19
+recovered_fjall_open_ask_can_answer_after_reopen --- FAILED
+......
+failures:
+
+---- runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist stdout ----
+Error: ""
+
+---- strict_submit_rejects_unbound_action_abi_before_ticket_persist stdout ----
+Error: "expected AdmissionActionAbiDigestMismatch, got Ok(())"
+
+---- runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest stdout ----
+
+thread 'runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest' (1774947) panicked at crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:694:5:
+assertion `left == right` failed
+  left: WorkflowDigest([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+ right: WorkflowDigest([211, 73, 50, 255, 241, 53, 13, 107, 150, 244, 36, 27, 183, 187, 66, 195, 87, 1, 150, 18, 237, 75, 101, 107, 46, 17, 148, 240, 251, 155, 193, 233])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen stdout ----
+Error: "invalid action completion"
+
+---- recovered_fjall_open_ask_can_answer_after_reopen stdout ----
+Error: "run not found"
+
+
+failures:
+    recovered_fjall_open_ask_can_answer_after_reopen
+    recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen
+    runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest
+    runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist
+    strict_submit_rejects_unbound_action_abi_before_ticket_persist
+
+test result: FAILED. 14 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test runtime_fjall_pending_action_recovery`
+
+running 16 tests
+................
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 21 tests
+.....................
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 29 tests
+i.... 5/29
+fail_action_transitions_run_to_failed_state --- FAILED
+run_reaches_cancelled_state_when_cancel_called --- FAILED
+complete_action_returns_invalid_ticket_error_when_ticket_unknown --- FAILED
+run_reaches_failed_state_when_action_fails --- FAILED
+.. 11/29
+runtime_respects_step_budget_per_tick --- FAILED
+.................
+failures:
+
+---- fail_action_transitions_run_to_failed_state stdout ----
+
+thread 'fail_action_transitions_run_to_failed_state' (1775186) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:538:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "c1s0.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "c1s0.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- run_reaches_cancelled_state_when_cancel_called stdout ----
+
+thread 'run_reaches_cancelled_state_when_cancel_called' (1775189) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:387:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "c1s0.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "c1s0.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- complete_action_returns_invalid_ticket_error_when_ticket_unknown stdout ----
+
+thread 'complete_action_returns_invalid_ticket_error_when_ticket_unknown' (1775185) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:495:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "c1s0.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "c1s0.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- run_reaches_failed_state_when_action_fails stdout ----
+
+thread 'run_reaches_failed_state_when_action_fails' (1775190) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:346:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "c1s0.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "c1s0.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- runtime_respects_step_budget_per_tick stdout ----
+
+thread 'runtime_respects_step_budget_per_tick' (1775192) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:749:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "c1s0.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "c1s0.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+
+failures:
+    complete_action_returns_invalid_ticket_error_when_ticket_unknown
+    fail_action_transitions_run_to_failed_state
+    run_reaches_cancelled_state_when_cancel_called
+    run_reaches_failed_state_when_action_fails
+    runtime_respects_step_budget_per_tick
+
+test result: FAILED. 23 passed; 5 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests`
+
+running 16 tests
+................
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.35s
+
+
+running 9 tests
+.........
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.48s
+
+
+running 22 tests
+......................
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+running 24 tests
+........................
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+
+running 52 tests
+....................................................
+test result: ok. 52 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 39 tests
+.......................................
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 37 tests
+.....................................
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+running 35 tests
+...................................
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 40 tests
+iii. 4/40
+cancel_run_transitions_run_to_failed --- FAILED
+fail_action_transitions_run_to_failed --- FAILED
+counters_updated_on_failure --- FAILED
+run_failed_lifecycle_event_recorded --- FAILED
+.................. 26/40
+snapshot_run_returns_found_with_exact_fields --- FAILED
+. 28/40
+step_started_lifecycle_event_recorded --- FAILED
+...........
+failures:
+
+---- cancel_run_transitions_run_to_failed stdout ----
+
+thread 'cancel_run_transitions_run_to_failed' (1781159) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:420:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fail_action_transitions_run_to_failed stdout ----
+
+thread 'fail_action_transitions_run_to_failed' (1781165) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:374:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- counters_updated_on_failure stdout ----
+
+thread 'counters_updated_on_failure' (1781162) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:757:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- run_failed_lifecycle_event_recorded stdout ----
+
+thread 'run_failed_lifecycle_event_recorded' (1781169) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:613:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- snapshot_run_returns_found_with_exact_fields stdout ----
+
+thread 'snapshot_run_returns_found_with_exact_fields' (1781182) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:881:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- step_started_lifecycle_event_recorded stdout ----
+
+thread 'step_started_lifecycle_event_recorded' (1781184) panicked at crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs:561:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "test.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "test.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+
+failures:
+    cancel_run_transitions_run_to_failed
+    counters_updated_on_failure
+    fail_action_transitions_run_to_failed
+    run_failed_lifecycle_event_recorded
+    snapshot_run_returns_found_with_exact_fields
+    step_started_lifecycle_event_recorded
+
+test result: FAILED. 31 passed; 6 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_test_runtime_lifecycle_state_behavior`
+
+running 62 tests
+..............i...............................................
+test result: ok. 61 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 14 tests
+i 1/14
+test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run --- FAILED
+test_direct_api_action_failure_records_typed_failure --- FAILED
+test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted --- FAILED
+test_direct_api_cancel_known_run_records_cancellation --- FAILED
+. 6/14
+test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run --- FAILED
+test_direct_api_inspect_known_and_unknown_run_returns_exact_state --- FAILED
+test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run --- FAILED
+.....
+failures:
+
+---- test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run stdout ----
+
+thread 'test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run' (1781262) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:792:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_direct_api_action_failure_records_typed_failure stdout ----
+
+thread 'test_direct_api_action_failure_records_typed_failure' (1781258) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:533:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted stdout ----
+
+thread 'test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted' (1781260) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:733:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- test_direct_api_cancel_known_run_records_cancellation stdout ----
+
+thread 'test_direct_api_cancel_known_run_records_cancellation' (1781264) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:425:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run stdout ----
+
+thread 'test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run' (1781261) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:673:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- test_direct_api_inspect_known_and_unknown_run_returns_exact_state stdout ----
+
+thread 'test_direct_api_inspect_known_and_unknown_run_returns_exact_state' (1781267) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:370:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+---- test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run stdout ----
+
+thread 'test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run' (1781259) panicked at crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:574:5:
+assertion `left == right` failed
+  left: Err(AdmissionCapabilityDenied { action: ActionId(0), required: Capability { name: "vt2f.contract.required", action: ActionId(0) }, granted: CapabilitySet { grants: [Capability { name: "vt2f.contract.required", action: ActionId(7) }] } })
+ right: Ok(())
+
+
+failures:
+    test_direct_api_action_failure_records_typed_failure
+    test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run
+    test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted
+    test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run
+    test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run
+    test_direct_api_cancel_known_run_records_cancellation
+    test_direct_api_inspect_known_and_unknown_run_returns_exact_state
+
+test result: FAILED. 6 passed; 7 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`
+error: 5 targets failed:
+    `-p velvet-ballistics-workspace-tests --test cancel_kill_lattice_tests`
+    `-p velvet-ballistics-workspace-tests --test runtime_fjall_pending_action_recovery`
+    `-p velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests`
+    `-p velvet-ballistics-workspace-tests --test vb_test_runtime_lifecycle_state_behavior`
+    `-p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`

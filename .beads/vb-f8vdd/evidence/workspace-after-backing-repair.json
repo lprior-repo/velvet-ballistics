@@ -1,0 +1,11 @@
+{
+  "kind": "workspace_after_coordinator_backing_repair",
+  "git_root": "/home/lewis/src/isoloated/velvet-ballistics-v1-gap-review-sol-20261021",
+  "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-v1-gap-review-sol-20261021",
+  "git_target": "../../../.git",
+  "resolved_target": "/home/lewis/src/isoloated/velvet-ballistics-v1-gap-review-sol-20261021/.git",
+  "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-v1-gap-review-sol-20261021",
+  "inspected_source_hashes_unchanged": 12,
+  "expected_source_parent": "856603b8001c26a199afb91fc9a410bb5715f532",
+  "note": "Coordinator lifted VCS hold and repaired store target; auditor made no source/store repair. Diff only assigned audit files."
+}

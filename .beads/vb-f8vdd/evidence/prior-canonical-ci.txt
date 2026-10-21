@@ -1,0 +1,13 @@
+# Forced canonical CI execution
+
+Command: systemd-run --user --scope --collect -p MemoryHigh=20G -p MemoryMax=24G -p MemorySwapMax=0 env RUSTC_WRAPPER= CARGO_BUILD_JOBS=2 timeout --kill-after=10 180 moon ci --force --concurrency 2
+Source: eaa1062c, isolated verified Git/JJ root. Exit124 after180seconds. Moon summary:13completed,14failed,8skipped, interrupted. Full gate did not pass or finish. Raw moon-ci.log and ciReport.json retained.
+
+Current failures include8fuzz constructor input_slots omissions (vb-bwdf0),5source-length failures (vb-idxsn),4runtime lint errors (vb-3dlcn), pinned Beads metadata port, stale sccache references in Kani/Loom tasks, existing production mirror drift and Flux/Rust syntax formatting issue. Supply-chain findings remain advisory under existing master waiver; remote cache upload failures were warnings. No newwaiver, proof closure, exhaustive fuzz or benchmark speed claim follows from this run. Root goal remains active.
+# Post integration canonical CI
+
+Command: RUSTC_WRAPPER= CARGO_BUILD_JOBS=2 timeout240 moon ci --force --concurrency2 in isolated root mwutouml,20G high/24G max memory. Exit124, interrupted at4m1s. Reported12 completed,9failed,1skipped. Full raw log and current ciReport retained; no full CI pass or v1 readiness claim. Source integration checkpoint5601ba50.
+
+Additional full CLI package attempt exited101 at compile: crates/velvet_ballistics/tests/ir_artifact_admission.rs WorkflowParts fixture lacks input_slots. Targeted reviewed27tests remaingreen; raw cli-package.log. This compile failure blocks full CLI test execution, no runtime result inferred.
+Bounded canonical moon ci after reviewed retry/storage integration: exit124 at240seconds. cgroup MemoryHigh20G/MemoryMax24G/Swap0; scope run-p1161993-i17821219.scope observed inactive after timeout (no lingering CI scope). Raw moon-ci-retry-storage-refresh.log.
+Independent CLI package989pass0fail0ignore; storage lib1596pass0fail0ignore. FullCI NOTpassed. New errors include115core test fixture input_slots omissions (vb-fgq4b), snapshot_restore benchmark missing input_slots. Prior known failures remain beadsportpin, stale sccache wrapper in Kani/Loom, invalidFlux literal formatting, Verusrecovery, waivedsupplychain gate. No proofclosure or releaseclaim.

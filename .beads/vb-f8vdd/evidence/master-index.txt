@@ -1,0 +1,101 @@
+21:## 0. Prime Directive
+74:## 1. Naming Contract
+90:## 2. Non-Negotiable Rust Rules
+118:## 3. Holzmann Compliance Matrix
+135:## 4. Mandatory Rust Tooling
+207:## 5. Library Choices
+244:## 6. Current Performance Rules — IR Interpreter Scope
+267:## 7. Nightly Governance
+281:## 8. Language Specification
+331:## 9. Trigger Contract
+363:## 10. Step Primitive Contract
+391:## 11. Hot/Cold Data Layout
+413:## 12. Forbidden Hot-Path APIs
+453:## 13. Resource Contracts
+500:## 14. Core Rust Types
+626:## 15. Final IR Contract
+677:## 16. Validation Error Codes
+722:## 17. Runtime Error Codes
+761:## 18. Fjall Persistence Behavior
+900:## 19. Action ABI
+1030:## 20. Runtime and Shard Design
+1060:## 21. Binary IPC Protocol
+1123:## 22. Removed Rust Codegen and Maxperf
+1140:## 23. Workspace Structure
+1174:## 24. Mandatory Function Surface: `vb_core`
+1192:## 25. Mandatory Function Surface: `vb_yaml`
+1207:## 26. Mandatory Function Surface: `vb_validate`
+1224:## 27. Mandatory Function Surface: `vb_expr`
+1240:## 28. Mandatory Function Surface: `vb_compile`
+1257:## 29. Mandatory Function Surface: `vb_storage`
+1277:## 30. Mandatory Function Surface: `vb_runtime`
+1296:## 31. Mandatory Function Surface: `vb_ipc`
+1311:## 32. Removed Function Surface: `vb_codegen`
+1317:## 33. CLI Commands
+1345:## 34. Workspace Cargo Contract
+1430:## 35. Implementation Phases
+1501:## 36. Mandatory Test Coverage
+1579:## 37. Fuzz Targets
+1593:## 38. Property Tests
+1612:## 39. Mandatory Benchmarks
+1666:## 40. CI Gate
+1725:## 41. Removed PGO and Maxperf Build
+1731:## 42. Bead Work Breakdown
+1848:## 43. AI Agent Acceptance Contract
+1890:## 44. Backend / IR Interpreter Definition of Done
+1921:## 45. Normative Runtime Semantics
+2402:## 46. Expression Grammar, Type System, and Helper Signatures
+2463:## 47. Taint Lattice and Propagation Rules
+2507:## 48. Value Arena, Handle Lifetime, and Blob Contract
+2536:## 49. Journal Event Payload Schemas and Crash-Consistency Ordering
+2589:## 50. IPC Transport, Backpressure, and Error Codes
+2642:## 51. Digest Canonicalization and Schema Versioning
+2670:## 52. Fallible Allocation and No-Panic Enforcement
+2686:## 53. Hot/Cold Module Classification
+2722:## 54. Single-Server Ownership and Database Locking
+2732:## 55. Action Worker Model and Shard Non-Blocking Contract
+2744:## 56. Runtime Profile Defaults
+2788:## 57. Feature Flag Policy
+2798:## 58. Platform Support
+2804:## 59. Security and Threat Model
+2832:## 60. Evidence Artifact Format
+2862:## 61. Fjall Storage Contract
+2900:## 62. No-Async Rule
+2906:## 63. Plan Verifier and Accepted Artifacts
+3023:## 64. Whole-Workflow Boundedness Analysis
+3109:## 65. Idempotency Verification Gate
+3217:## 66. Runtime Admission Gate
+3300:## 67. Architectural Drift Register
+3398:## 68. Durable Execution Architecture Contract
+3487:## 69. Operator CLI Contract
+3627:## 70. Phase Extension: Operator Features
+3647:## 71. Competitive Performance Targets
+3693:## 72. Execution Attempt Tracking
+3710:## 73. Journal Trimming
+3726:## 74. Converged Binary Design
+3757:## 75. AI-Native CLI Control Plane
+4357:## 76. AI-Safe Quality Infrastructure
+4981:## 77. Formal Trust Semantics and Adaptive Platform Contract
+4985:### 77.0 Requirement Tiers `[NORMATIVE-V1]`
+4998:### 77.1 North Star `[NORMATIVE-V1]`
+5006:### 77.2 Semantic Object Taxonomy `[NORMATIVE-V1]`
+5018:### 77.3 Formal Execution and Dispatch Model `[NORMATIVE-V1]`
+5066:### 77.4 Verification Obligation Ledger `[V1-MIN]`
+5089:### 77.5 IR Semantics and Runtime Verifier Spec `[NORMATIVE-V1]`
+5108:### 77.6 Idempotency and Recovery Classes `[V1-MIN]`
+5134:### 77.7 Action Manifest and Executor Conformance Profiles `[V1-MIN] [STRICT-PROFILE] [TARGET]`
+5164:### 77.8 Artifact Provenance Profiles `[TARGET] [STRICT-PROFILE]`
+5178:### 77.9 Hermetic Authoring and Source Spec Generation `[NORMATIVE-V1 for future SDK work]`
+5191:### 77.10 Capability Grant Lifecycle `[V1-MIN]`
+5207:### 77.11 Policy Versioning, Replay, and Emergency Override `[V1-MIN]`
+5220:### 77.12 Journal Integrity, Privacy, and Evidence Products `[V1-MIN] [TARGET]`
+5236:### 77.13 Adaptive Evidence Loop Semantics `[V1-MIN for AEL-v0] [DEFERRED for AEL-v1+]`
+5247:### 77.14 Threat Model `[NORMATIVE-V1]`
+5255:### 77.15 Manual Gate Semantics `[V1-MIN for deploy/runbook wedge]`
+5263:### 77.16 Composition Semantics `[DEFERRED]`
+5269:### 77.17 Version Compatibility Algebra `[V1-MIN]`
+5277:### 77.18 Resource Budget Model `[V1-MIN]`
+5283:### 77.19 Assurance Tiers `[NORMATIVE-V1]`
+5297:### 77.20 AI Evidence Taint Policy `[V1-MIN]`
+5301:### 77.21 First Wedge Definition `[V1-MIN]`
+5313:### 77.22 Required Spec Artifacts Before Broad Adaptive Claims `[TARGET]`

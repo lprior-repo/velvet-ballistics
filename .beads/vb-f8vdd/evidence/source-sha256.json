@@ -1,0 +1,14 @@
+{
+  "velvet-ballistics-MASTER.md": "28f0c988130ac4df5bd2ce668c2df45bafc21d84c10d4e9bdae6795dc49a7d5c",
+  "Cargo.toml": "a4473b5cefa7086c5f974f38aa745b3a616dea6a34b56c7a3da02369399049eb",
+  "crates/vb_storage/src/admission.rs": "e7afc757579b139b002f60ed7234ad08518001e848180677a0eabeccbfa469f1",
+  "crates/vb_core/src/capability.rs": "f1e0ccb0c4d26044f824343623465e7e41434ce51d9cd1e1b6e9ad4d788b17e8",
+  "crates/vb_core/src/action/contract.rs": "ffe26304f079a57aada696bd2339b3f3f16e7202281a23de055ea01d4dce8269",
+  "crates/vb_core/src/workflow/mod.rs": "cc92edb357946effaddfcddab5b7db7fcc56216620c2928db63838cda08c095f",
+  "crates/vb_core/src/budget.rs": "1eee11eda56c9951688bd9d14554eca2e1818496deb1070317cb51ee673cbb10",
+  "crates/vb_runtime/src/shard/types.rs": "f4b71d0304a2f85123725f50866dbbb1ad547a0018786761827b281223b18d94",
+  "crates/vb_runtime/src/admission/parts/chunk_004_validation.rs": "072a272b184bf12e75bb5436bc1b156075ec551919577257b84f8af2c353ba14",
+  "crates/velvet_ballistics/src/run_ops.rs": "82491231fa50c6284825c87b088422ace35dc79f6b7542c9815908afc2674fdd",
+  "crates/velvet_ballistics/src/submit.rs": "ea029a4073550b23d6648a1b86af64c058a7f2facec6a74ff333c5156aaa6d24",
+  "crates/vb_compile/src/mod_compile_lowering/part_01.rs": "fea482219bb57f08f782bab396834dd801572fd2c188aeb7f48e61a12f4d4be3"
+}

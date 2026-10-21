@@ -1,0 +1,19 @@
+{
+  "kind": "audit_artifact_consistency",
+  "exit_code": 0,
+  "selected_read_only_commands": 14,
+  "source_hashes_unchanged": 12,
+  "assignment_lanes": 12,
+  "new_beads": 6,
+  "ignore_annotations": 41,
+  "unconditional": 35,
+  "miri_conditional": 6,
+  "inherited_results": {
+    "passed": 775,
+    "failed": 36,
+    "ignored": 8
+  },
+  "production_tests_run_by_auditor": false,
+  "scope": "artifact consistency only; not implementation verification",
+  "validator_repair": "Initial row-count regex included master section77; narrowed to assignment rows1-12. No source/evidence contract changed."
+}

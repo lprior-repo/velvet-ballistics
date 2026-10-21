@@ -1,0 +1,116 @@
+[
+  {
+    "id": "vb-f8vdd",
+    "title": "Audit full v1 acceptance gaps and route 8-12 bounded delivery assignments",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-ezymz",
+    "title": "CLI submit must validate and retain typed run inputs before acknowledging submission",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-3ruqy",
+    "title": "Bind declared input references to numeric slots during canonical YAML lowering",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-t36e0",
+    "title": "Resolve runtime lifecycle and recovery failures exposed by cross-crate fixture repair",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-16jfp",
+    "title": "Repair cancel/kill lattice and restore suspended-action cancellation cases",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-netau",
+    "title": "Repair five Fjall pending-action ABI and reopened ask regressions",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-mryfc",
+    "title": "Repair orchestration and lifecycle cross-crate behavior regressions",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-cvuau",
+    "title": "Repair seven direct API authority regressions and execute ignored completion case",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-r5c1c",
+    "title": "Implement durable CLI retry execution and observed-step resume selection",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-9agmk",
+    "title": "Replace unconditional accepted-artifact verification claims with actual checked evidence",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-xx331",
+    "title": "vb-wm2z2 audit blocker: master \u00a740 CI gate full-pipeline verification not run from this audit",
+    "status": "in_progress",
+    "priority": 0
+  },
+  {
+    "id": "vb-tdzi6",
+    "title": "TEST-S0-03: Un-ignore 14 IPC flag matrix tests + other bare #[ignore] tests",
+    "status": "open",
+    "priority": 1
+  },
+  {
+    "id": "vb-014sy",
+    "title": "Restore ignored YAML event trigger behavior case with actual parser contract",
+    "status": "in_progress",
+    "priority": 1
+  },
+  {
+    "id": "vb-7r7jv",
+    "title": "V1-min: bind executor conformance and recovery classes to accepted action packs",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-hk1j8",
+    "title": "V1-min: enforce scoped capability grant lifecycle before live dispatch",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-ny068",
+    "title": "V1-min: separate replay policy from live-effect decisions and emergency denial",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-ifn5b",
+    "title": "V1-min: persist accountable manual gate decisions and approval receipts",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-f8lko",
+    "title": "V1-min: enforce and journal compatibility algebra at trust boundaries",
+    "status": "open",
+    "priority": 0
+  },
+  {
+    "id": "vb-8vknz",
+    "title": "V1-min: account for missing run tenant and global resource budgets",
+    "status": "open",
+    "priority": 0
+  }
+]

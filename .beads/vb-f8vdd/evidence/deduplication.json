@@ -1,0 +1,12 @@
+{
+  "issues_searched": 2746,
+  "includes_closed": true,
+  "pattern": "VerificationLedger|ObligationClosure|grant lifecycle|revocation epoch|executor conformance|DuplicateTicketTest|manual gate semantics|compatibility algebra|emergency deny|policy versioning|tenant quota|cost units",
+  "matches": [
+    {
+      "id": "vb-7va96",
+      "status": "closed",
+      "title": "Build formal adaptive vision into master"
+    }
+  ]
+}
