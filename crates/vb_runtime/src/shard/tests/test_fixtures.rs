@@ -6,7 +6,7 @@ use vb_core::ids::ActionId;
 
 /// Create action contracts for all action IDs from 0 through the given maximum.
 pub(crate) fn contracts_through(max_action: ActionId) -> Box<[ActionContract]> {
-    let target = u16::from(max_action.get());
+    let target = max_action.get();
     let mut contracts = Vec::new();
     let mut id = 0u16;
     loop {
