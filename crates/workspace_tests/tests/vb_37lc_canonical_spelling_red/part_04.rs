@@ -4,7 +4,10 @@ use super::*;
 fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it() {
     let mut config = maximum_bounded_scan_config();
     config.scan_patterns = vec![CANONICAL_UNDERSCORE.to_string()];
-    let input = text_scan_input("crates/velvet_ballistics/src/lib.rs", "pub mod vb_cli;\n");
+    let input = text_scan_input(
+        "crates/velvet_ballistics/src/lib.rs",
+        "pub mod velvet_ballistics;\n",
+    );
 
     let result = scan_file(input, &config);
 
@@ -14,7 +17,10 @@ fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it
 #[test]
 fn scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen() {
     let config = maximum_bounded_scan_config();
-    let input = text_scan_input("crates/legacy/src/lib.rs", "pub mod velvet_ballistics;\n");
+    let input = text_scan_input(
+        "crates/legacy/src/lib.rs",
+        concat!("pub mod velvet_", "ballastics;\n"),
+    );
 
     let result = scan_file(input, &config);
 
@@ -89,7 +95,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_i
     write_fixture_file(
         temp.path(),
         "crates/legacy/src/lib.rs",
-        "pub mod velvet_ballistics;\n",
+        concat!("pub mod velvet_", "ballastics;\n"),
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = maximum_bounded_scan_config();

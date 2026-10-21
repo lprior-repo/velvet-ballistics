@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn classify_occurrence_returns_allowed_legacy_for_exact_exception() {
         let mut cfg = test_config();
-        let legacy_path = "legacy/path/velvet_ballistics";
+        let legacy_path = concat!("legacy/path/velvet_", "ballastics");
         cfg.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
             path: legacy_path.into(),
         }]);

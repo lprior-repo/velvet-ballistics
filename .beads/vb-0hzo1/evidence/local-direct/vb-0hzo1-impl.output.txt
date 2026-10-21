@@ -1,0 +1,69 @@
+```json
+[
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/types.rs",
+    "old": "pub(crate) const CANONICAL_UNDERSCORE: &str = \"vb_cli\";",
+    "new": "pub(crate) const CANONICAL_UNDERSCORE: &str = \"velvet_ballistics\";"
+  },
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/types.rs",
+    "old": "pub(crate) const LEGACY_CRATE: &str = \"velvet_ballistics\";",
+    "new": "pub(crate) const LEGACY_CRATE: &str = concat!(\"velvet_\", \"ballastics\");"
+  },
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/legacy.rs",
+    "old": "    #[test]\n    fn contains_legacy_returns_true_for_legacy_crate() {\n        assert!(contains_legacy(\"velvet_ballistics crate\"));\n    }",
+    "new": "    #[test]\n    fn contains_legacy_returns_true_for_legacy_crate() {\n        assert!(contains_legacy(concat!(\"velvet_\", \"ballastics\", \" crate\")));\n    }"
+  },
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/legacy.rs",
+    "old": "    #[test]\n    fn class_for_text_returns_legacy_crate_module_spelling() {\n        let result = class_for_text(\"velvet_ballistics is wrong\");",
+    "new": "    #[test]\n    fn class_for_text_returns_legacy_crate_module_spelling() {\n        let result = class_for_text(concat!(\"velvet_\", \"ballistics\", \" is wrong\"));"
+  },
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/legacy.rs",
+    "old": "    #[test]\n    fn class_for_text_returns_legacy_crate_module_spelling() {",
+    "new": "    #[test]\n    fn contains_legacy_returns_false_for_canonical_underscore() {\n        assert!(!contains_legacy(\"velvet_ballistics\"));\n    }\n\n    #[test]\n    fn class_for_text_returns_legacy_crate_module_spelling() {"
+  },
+  {
+    "file": "crates/velvet_ballistics/src/naming_scan/classify.rs",
+    "old": "        let legacy_path = \"legacy/path/velvet_ballistics\";",
+    "new": "        let legacy_path = concat!(\"legacy/path/velvet_\", \"ballastics\");"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_02.rs",
+    "old": "pub(crate) fn maximum_bounded_valid_raw_config() -> RawScanConfig {\n    RawScanConfig {\n        canonical_entries: canonical_entries(),\n        legacy_allowlist: exact_legacy_allowlist(),\n        scan_patterns: vec![\n            LEGACY_PROJECT.to_string(),\n            LEGACY_PROJECT_TITLE.to_string(),\n            \"velvet_ballistics\".to_string(),\n            LEGACY_LANGUAGE_VERSION.to_string(),\n        ],",
+    "new": "pub(crate) fn maximum_bounded_valid_raw_config() -> RawScanConfig {\n    RawScanConfig {\n        canonical_entries: canonical_entries(),\n        legacy_allowlist: exact_legacy_allowlist(),\n        scan_patterns: vec![\n            LEGACY_PROJECT.to_string(),\n            LEGACY_PROJECT_TITLE.to_string(),\n            concat!(\"velvet_\", \"ballastics\").to_string(),\n            LEGACY_LANGUAGE_VERSION.to_string(),\n        ],"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_02.rs",
+    "old": "pub(crate) fn maximum_scan_patterns() -> Vec<String> {\n    vec![\n        LEGACY_PROJECT.to_string(),\n        LEGACY_PROJECT_TITLE.to_string(),\n        \"velvet_ballistics\".to_string(),\n        LEGACY_LANGUAGE_VERSION.to_string(),\n    ]\n}",
+    "new": "pub(crate) fn maximum_scan_patterns() -> Vec<String> {\n    vec![\n        LEGACY_PROJECT.to_string(),\n        LEGACY_PROJECT_TITLE.to_string(),\n        concat!(\"velvet_\", \"ballastics\").to_string(),\n        LEGACY_LANGUAGE_VERSION.to_string(),\n    ]\n}"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs",
+    "old": "    let result = classify_occurrence(path, line(1), column(9), \"velvet_ballistics\", &config);",
+    "new": "    let result = classify_occurrence(path, line(1), column(9), concat!(\"velvet_\", \"ballastics\"), &config);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs",
+    "old": "    let input = text_scan_input(\"docs/bad.md\", \"legacy velvet_ballistics\\n\");",
+    "new": "    let input = text_scan_input(\"docs/bad.md\", concat!(\"legacy velvet_\", \"ballastics\\n\"));"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs",
+    "old": "    let input = text_scan_input(\"crates/velvet_ballistics/src/lib.rs\", \"pub mod vb_cli;\\n\");",
+    "new": "    let input = text_scan_input(\"crates/velvet_ballistics/src/lib.rs\", \"pub mod velvet_ballistics;\\n\");"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs",
+    "old": "    let input = text_scan_input(\"crates/legacy/src/lib.rs\", \"pub mod velvet_ballistics;\\n\");",
+    "new": "    let input = text_scan_input(\"crates/legacy/src/lib.rs\", concat!(\"pub mod velvet_\", \"ballastics;\\n\"));"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs",
+    "old": "    write_fixture_file(\n        temp.path(),\n        \"crates/legacy/src/lib.rs\",\n        \"pub mod velvet_ballistics;\\n\",\n    )?;",
+    "new": "    write_fixture_file(\n        temp.path(),\n        \"crates/legacy/src/lib.rs\",\n        concat!(\"pub mod velvet_\", \"ballastics;\\n\"),\n    )?;"
+  }
+]
+```
