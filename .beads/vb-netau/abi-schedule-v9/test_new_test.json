@@ -1,0 +1,5 @@
+{
+  "returncode": 0,
+  "stdout_tail": "\nrunning 1 test\ntest runtime_records_actual_action_abi_at_schedule_boundary ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.01s\n\n",
+  "stderr_tail": "   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-recovery-5090/crates/vb_runtime)\n   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-recovery-5090/crates/vb_ipc)\n   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-recovery-5090/crates/velvet_ballistics)\n   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-recovery-5090/crates/workspace_tests)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.88s\n     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-810ab5c9f4028ce1)\n"
+}
