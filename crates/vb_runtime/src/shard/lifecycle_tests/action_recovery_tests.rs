@@ -228,18 +228,16 @@
             "exactly one RunFinished journal event expected"
         );
         // Verify the RunFinished event has the correct run id and result slot
-        let run_finished = &run_finished_events[0];
-        match run_finished {
-            crate::journal::RuntimeJournalEvent::RunFinished { run, result } => {
-                assert_eq!(*run, run_id, "RunFinished run id must match");
-                assert_eq!(
-                    *result,
-                    vb_core::ids::SlotIdx::new(1),
-                    "RunFinished result slot must match workflow finish node"
-                );
-            }
-            _ => panic!("run_finished_events filter is incorrect"),
-        }
+        assert!(matches!(run_finished_events.first(),
+            Some(crate::journal::RuntimeJournalEvent::RunFinished { run, result })
+                if *run == run_id && *result == vb_core::ids::SlotIdx::new(1)));
+        let completed: Vec<_> = events.iter().filter_map(|event| match event {
+            crate::journal::RuntimeJournalEvent::ActionCompletedEnvelope { ticket, output, value, .. }
+                => Some((*ticket, *output, value.clone())),
+            _ => None,
+        }).collect();
+        assert_eq!(completed, vec![(ticket, vb_core::ids::SlotIdx::new(1),
+            postcard::to_allocvec(&vb_core::value::SlotValue::I64(42))?)]);
 
         // Phase 4: Duplicate completion must NOT produce a second RunFinished
         // After the run is terminal, a duplicate ActionCompleted is rejected
@@ -257,12 +255,10 @@
         // tick() should return Err because the duplicate completion targets
         // a run that has already finished (terminal)
         let tick_result = shard.tick();
-        assert!(
-            tick_result.is_err(),
-            "duplicate action completion for terminal run should produce an error"
-        );
+        assert_eq!(tick_result, Err(crate::RuntimeError::RunNotFound));
 
         let events2 = journal.snapshot()?;
+        assert_eq!(events2, events, "duplicate completion must preserve the entire journal");
         let run_finished_count_after_dup = events2
             .iter()
             .filter(|e| matches!(e, crate::journal::RuntimeJournalEvent::RunFinished { .. }))

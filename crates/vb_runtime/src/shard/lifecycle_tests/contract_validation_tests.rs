@@ -48,16 +48,10 @@
             caps,
             &contracts,
         );
-        match result {
-            Err(crate::RuntimeError::ContractValidationError { error, .. }) => {
-                assert!(
-                    error.contains("duplicate"),
-                    "duplicate action id error must mention 'duplicate': {error}"
-                );
-            }
-            Err(other) => panic!("expected ContractValidationError, got {other:?}"),
-            Ok(()) => panic!("duplicate action ids must be rejected"),
-        }
+        assert_eq!(result, Err(crate::RuntimeError::ContractValidationError {
+            action: vb_core::ids::ActionId::new(0),
+            error: "duplicate action ID".to_string(),
+        }));
         Ok(())
     }
 
