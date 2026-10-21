@@ -1,0 +1,34 @@
+Review Miri gate implementation independently. Return APPROVED or REJECTED with concrete defects. Contract: exactly one actual pinned Miri test, reject zero/missing/duplicate/malformed/failed/ignored summaries and command errors. Existing flags and lock preserved. No claim wholecrate UB proof. Inspect code, do not claim tool execution.
+
+scripts/run-miri-smoke.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p target/miri-tmp target/moon-locks
+
+TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests_and_verification::run_id_zero_constant -- --exact 2>&1 | tee target/miri-smoke.log
+
+bash scripts/check-miri-smoke-result.sh target/miri-smoke.log
+
+scripts/check-miri-smoke-result.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 1 ] || [ ! -r "$1" ]; then
+    exit 2
+fi
+
+awk '
+BEGIN { running_count = 0; result_count = 0; ok = 1 }
+/^running / {
+    running_count++
+    if ($0 != "running 1 test") { ok = 0 }
+}
+/^test result:/ {
+    result_count++
+    if ($0 !~ /^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out; finished in [0-9]+\.[0-9]+s$/) { ok = 0 }
+}
+END {
+    if (running_count != 1 || result_count != 1 || ok != 1) { exit 1 }
+}
+' "$1"

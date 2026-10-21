@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p target/miri-tmp target/moon-locks
+
+TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests_and_verification::run_id_zero_constant -- --exact 2>&1 | tee target/miri-smoke.log
+
+bash scripts/check-miri-smoke-result.sh target/miri-smoke.log
