@@ -1,0 +1,1 @@
+Rejected before application: response generated hemlock fence, invalid anonymous Rust record types/record literals, C-style loops, panic, stringlycases, wrong key array vsu128, nonexistent RunState pc/slots APIs and missing value/taint assertions. No source code applied. Smaller exact Rust function generation or alternate local3090 needed.
