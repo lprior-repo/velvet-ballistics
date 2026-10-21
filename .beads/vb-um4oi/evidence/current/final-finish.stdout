@@ -1,0 +1,20 @@
+
+running 15 tests
+test canonical_legacy_digest_equivalence ... ignored, BLOCKED: legacy canonical_digest is not accessible from integration test crate
+test digest_is_computed_before_validation_error ... ok
+test finish_result_type_changes_compiled_digest ... ok
+test compiled_digest_stable_across_independent_compilations ... ok
+test multi_step_workflow_step_ordering_changes_compiled_digest ... ok
+test workflow_version_changes_compiled_digest ... ok
+test finish_step_id_changes_compiled_digest ... ok
+test trigger_schedule_param_changes_compiled_digest ... ok
+test finish_result_value_changes_compiled_digest_integer ... ok
+test trigger_type_changes_compiled_digest ... ok
+test trigger_schedule_vs_manual_changes_compiled_digest ... ok
+test workflow_name_changes_compiled_digest ... ok
+test finish_result_value_changes_compiled_digest_string ... ok
+test compiled_digest_matches_on_recompile ... ok
+test trigger_event_type_changes_compiled_digest ... ok
+
+test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

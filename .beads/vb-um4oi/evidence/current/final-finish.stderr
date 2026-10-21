@@ -1,0 +1,6 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-source-identity-code-review-sol/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/finish_digest_integration.rs (target/debug/deps/finish_digest_integration-ba9f56374276dd3a)

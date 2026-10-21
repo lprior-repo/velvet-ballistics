@@ -1,0 +1,3 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-source-identity-code-review-sol/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-62b55af1031046c1)

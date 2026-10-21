@@ -1,0 +1,4 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-source-identity-code-review-sol/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running tests/vb_ssei_verification_admission_acceptance.rs (target/debug/deps/vb_ssei_verification_admission_acceptance-3703d2bafdebd6b9)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance`
