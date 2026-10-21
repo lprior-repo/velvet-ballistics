@@ -1,0 +1,417 @@
+Independent CODE REVIEW of only final vb-8iilq regression additions. Earlier five reviews covered all40 sourcefiles, production unchanged since review. Contract no fabricated inputs/contracts/caps. New helper Nop->Do with stepbudget1 leaves state beforeDo; exact absent input, suppliedI647, emptycontracts and nonemptycaller grants asserted. Review possible vacuity, newlyintroducedunsafe/panic, API or silentfixturefail. Actual full package2454passed0failed1unchanged parent-crashmarkerignore;5regressionpass. Input-onlymutant killed1assertion; contracts-onlymutant killed2assertions; first contracts attempt compilerfailedActionIdqualification, notcounted, correctedexperimentactualassertionfailures; sourcefinallyrestored5pass. No ownerwaivers. Return STATUS APPROVED only no open findings; elseREJECTED, max600finalwords.
+# VB-8IILQ: Remove Test-Only Shard Submission Fabrication
+
+## Contract
+
+ONE production implementation of `handle_submit` and `handle_submit_with_inputs` in all builds, no silently substituted action contracts/caps/I64(0) input. Legitimate action tests must explicitly supply typed contracts/grants/inputs at test fixture calls; real production missing/invalid inputs/contracts/caps remain rejected. No all-in-one test wrapper secretly overrides restricted grants; retain negative admission and actual API semantics.
+
+## Scope
+
+- `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs` (production handlers)
+- Test fixtures/call-sites in `crates/vb_runtime/src/shard/tests/` and `crates/vb_runtime/src/shard/lifecycle_tests/`
+- `crates/vb_runtime/src/runtime_tests.rs` (runtime-level submit helpers)
+
+## Acceptance Criteria
+
+1. No `#[cfg(test)]` alternative implementations of `handle_submit` or `handle_submit_with_inputs`
+2. No orphan `#[cfg(test)]` fabrication helpers (`test_first_do_action`, `test_contract_required_capability`, `test_contract_grants`, `test_action_contract`, `test_contracts_through`) in production lifecycle file
+3. All shard tests compile and pass with explicit fixture calls
+4. All runtime tests compile and pass with explicit fixture calls
+5. No new `expect`/`unwrap`/`panic`/index/cast/ignored results in test code (except where explicitly required by existing test patterns)
+6. Negative admission tests (missing/invalid contracts, denied capabilities) unchanged in expectation
+
+NEW DIFF
+diff --git a/crates/vb_runtime/src/shard/tests/submission_parity.rs b/crates/vb_runtime/src/shard/tests/submission_parity.rs
+index c52152d7f8..b06496cda8 100644
+--- a/crates/vb_runtime/src/shard/tests/submission_parity.rs
++++ b/crates/vb_runtime/src/shard/tests/submission_parity.rs
+@@ -110,3 +110,128 @@
+ 
+     Ok(())
+ }
++
++fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
++    let nop_node = super::CompiledNode {
++        id: vb_core::ids::StepIdx::ZERO,
++        output: None,
++        next: Some(vb_core::ids::StepIdx::new(1)),
++        on_error: None,
++        error_slot: None,
++        kind: super::CompiledNodeKind::Nop,
++    };
++    let do_node = super::CompiledNode {
++        id: vb_core::ids::StepIdx::new(1),
++        output: Some(SlotIdx::ZERO),
++        next: None,
++        on_error: None,
++        error_slot: None,
++        kind: super::CompiledNodeKind::Do {
++            action: ActionId::new(0),
++            input: SlotIdx::ZERO,
++        },
++    };
++    let parts = super::WorkflowParts {
++        name: Box::from("nop_then_do"),
++        digest: vb_core::ids::WorkflowDigest::from_bytes([2; 32]),
++        nodes: Box::from([nop_node, do_node]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 1,
++        symbols_count: 0,
++        entry: vb_core::ids::StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: super::ResourceContract::DEFAULT,
++        input_slots: Box::from([]),
++    };
++    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(Into::into)
++}
++
++#[test]
++fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
++    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
++    let shared: SharedRuntimeJournal = journal.clone();
++
++    let mut config = small_config();
++    config.step_budget_per_tick = 1;
++
++    let mut shard = Shard::new_with_journal(config, shared);
++
++    let run = RunId::new(10);
++    let workflow = nop_then_do()?;
++
++    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
++
++    shard.enqueue(ShardCommand::Submit {
++        run,
++        workflow,
++        caps: caps.clone(),
++    })?;
++
++    assert_eq!(shard.tick(), Ok(true));
++
++    let state = shard.run_state_get(run).ok_or("run state missing")?;
++
++    assert_eq!(
++        state.frame.read_slot(SlotIdx::ZERO),
++        Err(vb_core::errors::CoreError::SlotUninitialized {
++            slot: SlotIdx::ZERO
++        })
++    );
++
++    assert!(state.action_contracts.is_empty());
++
++    assert_eq!(
++        state
++            .admission
++            .as_ref()
++            .ok_or("missing admission")?
++            .granted_capabilities(),
++        &caps
++    );
++
++    Ok(())
++}
++
++#[test]
++fn submit_with_inputs_no_fabrication() -> Result<(), Box<dyn Error>> {
++    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
++    let shared: SharedRuntimeJournal = journal.clone();
++
++    let mut config = small_config();
++    config.step_budget_per_tick = 1;
++
++    let mut shard = Shard::new_with_journal(config, shared);
++
++    let run = RunId::new(11);
++    let workflow = nop_then_do()?;
++
++    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
++
++    shard.enqueue(ShardCommand::SubmitWithInputs {
++        run,
++        workflow,
++        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
++        caps: caps.clone(),
++    })?;
++
++    assert_eq!(shard.tick(), Ok(true));
++
++    let state = shard.run_state_get(run).ok_or("run state missing")?;
++
++    assert_eq!(state.frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(7)));
++
++    assert!(state.action_contracts.is_empty());
++
++    assert_eq!(
++        state
++            .admission
++            .as_ref()
++            .ok_or("missing admission")?
++            .granted_capabilities(),
++        &caps
++    );
++
++    Ok(())
++}
+
+FULL REGISTERED5TESTS
+use std::error::Error;
+
+use vb_core::SlotValue;
+use vb_core::capability::CapabilitySet;
+use vb_core::ids::{ActionId, RunId, SlotIdx};
+
+use super::{Shard, ShardCommand, small_config, suspended_workflow};
+use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
+
+#[test]
+fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(1);
+    let workflow = suspended_workflow().ok_or("missing fixture")?;
+
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: CapabilitySet::empty(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = journal.snapshot()?;
+    let admissions: Vec<CapabilitySet> = events
+        .iter()
+        .filter_map(|event| match event {
+            RuntimeJournalEvent::RunAdmission { admission } if admission.run_id() == run => {
+                Some(admission.granted_capabilities().clone())
+            }
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(admissions, vec![CapabilitySet::empty()]);
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_inputs_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(2);
+    let workflow = suspended_workflow().ok_or("missing fixture")?;
+
+    shard.enqueue(ShardCommand::SubmitWithInputs {
+        run,
+        workflow,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps: CapabilitySet::empty(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = journal.snapshot()?;
+    let admissions: Vec<CapabilitySet> = events
+        .iter()
+        .filter_map(|event| match event {
+            RuntimeJournalEvent::RunAdmission { admission } if admission.run_id() == run => {
+                Some(admission.granted_capabilities().clone())
+            }
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(admissions, vec![CapabilitySet::empty()]);
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_contracts_empty_caps_denied() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(3);
+    let workflow = suspended_workflow().ok_or("missing fixture")?;
+
+    shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run,
+        workflow,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps: CapabilitySet::empty(),
+        action_contracts: super::test_fixtures::contracts_through(ActionId::new(0)),
+    })?;
+
+    assert_eq!(
+        shard.tick(),
+        Err(crate::RuntimeError::AdmissionCapabilityDenied {
+            action: ActionId::new(0),
+            required: vb_core::capability::Capability::new(
+                "__contract_required__".into(),
+                ActionId::new(0),
+            ),
+            granted: CapabilitySet::empty(),
+        }),
+    );
+
+    let events = journal.snapshot()?;
+    assert!(events.is_empty());
+    assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(shard.counters().snapshot().runs_submitted, 0);
+
+    Ok(())
+}
+
+fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
+    let nop_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Nop,
+    };
+    let do_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let parts = super::WorkflowParts {
+        name: Box::from("nop_then_do"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([nop_node, do_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: super::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(Into::into)
+}
+
+#[test]
+fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(10);
+    let workflow = nop_then_do()?;
+
+    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
+
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: caps.clone(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    assert_eq!(
+        state.frame.read_slot(SlotIdx::ZERO),
+        Err(vb_core::errors::CoreError::SlotUninitialized {
+            slot: SlotIdx::ZERO
+        })
+    );
+
+    assert!(state.action_contracts.is_empty());
+
+    assert_eq!(
+        state
+            .admission
+            .as_ref()
+            .ok_or("missing admission")?
+            .granted_capabilities(),
+        &caps
+    );
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_inputs_no_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(11);
+    let workflow = nop_then_do()?;
+
+    let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
+
+    shard.enqueue(ShardCommand::SubmitWithInputs {
+        run,
+        workflow,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps: caps.clone(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    assert_eq!(state.frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(7)));
+
+    assert!(state.action_contracts.is_empty());
+
+    assert_eq!(
+        state
+            .admission
+            .as_ref()
+            .ok_or("missing admission")?
+            .granted_capabilities(),
+        &caps
+    );
+
+    Ok(())
+}
+
+ACTUAL MUTATIONS
+[
+  {
+    "mutation": "input-only",
+    "exit": 101,
+    "assertion_failure": true,
+    "log": ".beads/vb-8iilq/evidence/regressions/input-only-mutation.log"
+  },
+  {
+    "mutation": "contracts-only",
+    "exit": 101,
+    "assertion_failure": false,
+    "log": ".beads/vb-8iilq/evidence/regressions/contracts-only-mutation.log"
+  },
+  {
+    "mutation": "contracts-only-corrected-qualified-action-id",
+    "exit": 101,
+    "assertion_failure": true,
+    "log": ".beads/vb-8iilq/evidence/regressions/contracts-only-mutation-corrected.log"
+  }
+]

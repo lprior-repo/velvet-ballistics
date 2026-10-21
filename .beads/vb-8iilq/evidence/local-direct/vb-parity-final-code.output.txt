@@ -1,0 +1,15 @@
+STATUS APPROVED
+
+The two new regression tests and their `nop_then_do()` workflow helper are sound. Key observations:
+
+**Non-vacuity:** Both tests use `step_budget_per_tick = 1` to execute only the Nop step, then inspect frame state before the Do step runs. This directly proves no input or contract fabrication occurs at submission time. The slot-uninitialized assertion in `bare_submit_no_input_fabrication` and the I64(7) value assertion in `submit_with_inputs_no_fabrication` are concrete, falsifiable checks.
+
+**No unsafe/panic:** The helper uses `try_from_parts` with proper `?` propagation. `run_state_get` uses `ok_or` for explicit failure. No raw pointers, index operations, or ignored results.
+
+**API consistency:** Uses `ShardCommand::Submit`/`SubmitWithInputs` and existing `test_fixtures` helpers (`contract_capability_for`, `contracts_through`) consistent with the rest of the file.
+
+**Mutation coverage confirmed:** Input-only mutant killed the slot-value assertion; contracts-only mutant killed the `action_contracts.is_empty()` assertion. The corrected ActionId-qualified mutant also failed as expected. This validates the tests detect both input and contract fabrication.
+
+**Complementary to existing tests:** While the first three tests verify journal events and admission denial, these new tests verify actual runtime frame state, providing orthogonal coverage.
+
+No open findings.

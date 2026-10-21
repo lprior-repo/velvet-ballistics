@@ -1,0 +1,120 @@
+Correct your generated Rust code using exact actual APIs. Return complete code only fencedRust. Do not use casts. Corrections: WorkflowDigest is vb_core::ids::WorkflowDigest, not workflow module. CoreError::SlotUninitialized.slot is SlotIdx; use assert_eq!(state.frame.read_slot(SlotIdx::ZERO),Err(vb_core::errors::CoreError::SlotUninitialized{slot:SlotIdx::ZERO})); explicit slot use assert_eq!(...,Ok(&SlotValue::I64(7))). try_from_parts(parts).map_err(Into::into) no as cast. Both tests must use caps=super::test_fixtures::contract_capability_for(ActionId::new(0)), a CapabilitySet directly. No CapabilitySet::from_iter, no vb_core::capability::contract_capability_for. Clone caps when passed to command and assert state.admission.as_ref().ok_or("missing admission")?.granted_capabilities() == &caps so nonemptycaps preserved. super::CompiledNode/Kind/WorkflowParts/ResourceContract are imported in tests parent and valid. Use allactualtypes; no invented APIs.
+```rust
+fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
+    let nop_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Nop,
+    };
+    let do_node = super::CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: super::CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let parts = super::WorkflowParts {
+        name: Box::from("nop_then_do"),
+        digest: vb_core::workflow::WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([nop_node, do_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: super::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| Box::new(e) as Box<dyn Error>)
+}
+
+#[test]
+fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(10);
+    let workflow = nop_then_do()?;
+
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: CapabilitySet::empty(),
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    let slot_result = state.frame.read_slot(SlotIdx::ZERO);
+    match slot_result {
+        Err(vb_core::errors::CoreError::SlotUninitialized { slot }) => {
+            assert_eq!(slot, 0);
+        }
+        other => {
+            return Err(format!("expected SlotUninitialized, got {:?}", other).into());
+        }
+    }
+
+    assert!(state.action_contracts.is_empty());
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_inputs_no_fabrication() -> Result<(), Box<dyn Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+
+    let mut config = small_config();
+    config.step_budget_per_tick = 1;
+
+    let mut shard = Shard::new_with_journal(config, shared);
+
+    let run = RunId::new(11);
+    let workflow = nop_then_do()?;
+
+    let cap = vb_core::capability::contract_capability_for(ActionId::new(0));
+    let caps = CapabilitySet::from_iter(std::iter::once(cap));
+
+    shard.enqueue(ShardCommand::SubmitWithInputs {
+        run,
+        workflow,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps,
+    })?;
+
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get(run).ok_or("run state missing")?;
+
+    let slot_result = state.frame.read_slot(SlotIdx::ZERO);
+    match slot_result {
+        Ok(value) => {
+            assert_eq!(value, &SlotValue::I64(7));
+        }
+        other => {
+            return Err(format!("expected Ok(I64(7)), got {:?}", other).into());
+        }
+    }
+
+    assert!(state.action_contracts.is_empty());
+
+    Ok(())
+}
+```

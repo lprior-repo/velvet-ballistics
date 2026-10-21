@@ -1,0 +1,115 @@
+```hemlock
+// tests/submission_parity.rs
+// Parity tests: submission paths must not fabricate test-only grants.
+// Each test uses a fresh journal; no shared state between tests.
+
+import { CapabilitySet } from "@stdlib/capability";
+import { ActionId, RunId, SlotIdx } from "@stdlib/ids";
+import { SlotValue } from "@stdlib/slot";
+
+import {
+    Shard,
+    ShardCommand,
+    small_config,
+    suspended_workflow,
+} from "../src/shard";
+import {
+    RuntimeJournalEvent,
+    SharedRuntimeJournal,
+    VolatileRuntimeJournal,
+} from "../src/journal";
+import { RuntimeError } from "../src/error";
+import { contracts_through } from "../src/test_fixtures";
+
+fn make_shard() {
+    let journal = VolatileRuntimeJournal::new();
+    let shared: SharedRuntimeJournal = journal;
+    let shard = Shard::new_with_journal(small_config(), shared);
+    return { shard, journal };
+}
+
+fn collect_admission_caps(journal, run_id) {
+    let events = journal.snapshot();
+    let admissions = [];
+    for (let i = 0; i < events.length; i++) {
+        let event = events[i];
+        if (event.type == "RunAdmission" && event.admission.run_id == run_id) {
+            admissions.push(event.admission.granted_capabilities);
+        }
+    }
+    return admissions;
+}
+
+test("submit empty caps grants nothing", async fn() {
+    let { shard, journal } = make_shard();
+    let run = RunId::new(1);
+    let workflow = suspended_workflow();
+
+    let cmd = ShardCommand::Submit({
+        run: run,
+        workflow: workflow,
+        caps: CapabilitySet::empty(),
+    });
+    shard.enqueue(cmd);
+
+    let advanced = shard.tick();
+    assert(advanced, "tick should advance");
+
+    let admissions = collect_admission_caps(journal, run);
+    assert(admissions.length == 1, "exactly one admission");
+    assert(admissions[0].is_empty(), "caps must be empty");
+});
+
+test("submit with inputs empty caps grants nothing", async fn() {
+    let { shard, journal } = make_shard();
+    let run = RunId::new(2);
+    let workflow = suspended_workflow();
+
+    let inputs = [{ slot: SlotIdx::ZERO, value: SlotValue::I64(7) }];
+    let cmd = ShardCommand::SubmitWithInputs({
+        run: run,
+        workflow: workflow,
+        inputs: inputs,
+        caps: CapabilitySet::empty(),
+    });
+    shard.enqueue(cmd);
+
+    let advanced = shard.tick();
+    assert(advanced, "tick should advance");
+
+    let admissions = collect_admission_caps(journal, run);
+    assert(admissions.length == 1, "exactly one admission");
+    assert(admissions[0].is_empty(), "caps must be empty");
+});
+
+test("contracts without caps denied at admission", async fn() {
+    let { shard, journal } = make_shard();
+    let run = RunId::new(3);
+    let workflow = suspended_workflow();
+
+    let inputs = [{ slot: SlotIdx::ZERO, value: SlotValue::I64(7) }];
+    let contracts = contracts_through(ActionId::new(0));
+    let cmd = ShardCommand::SubmitWithInputsAndContracts({
+        run: run,
+        workflow: workflow,
+        inputs: inputs,
+        caps: CapabilitySet::empty(),
+        action_contracts: contracts,
+    });
+    shard.enqueue(cmd);
+
+    let result = shard.tick();
+    assert(result.is_err(), "tick should fail");
+
+    let err = result.unwrap_err();
+    assert(err.type == "AdmissionCapabilityDenied", "wrong error type");
+    assert(err.action == ActionId::new(0), "wrong action");
+    assert(err.required.name == "__contract_required__", "wrong required cap");
+    assert(err.granted.is_empty(), "granted should be empty");
+
+    let events = journal.snapshot();
+    assert(events.length == 0, "no journal events on denial");
+    assert(shard.active_run_count() == 0, "no active runs");
+    assert(shard.counters().runs_submitted == 0, "no submitted runs");
+});
+```
