@@ -1,0 +1,37 @@
+Generate full Rust CLI integration testfile only (fenced rust). Save crates/workspace_tests/tests/cli/verify_budget_profiles.rs registered in owningCLI Cargo.toml. No panic/unwrap/expect/index/as. Tests Result<(),Box<dyn std::error::Error>>. Use tempfile,fs,Command env!(CARGO_BIN_EXE_velvet-ballistics). serde_yaml::Value parse stdout .get("success").and_then(Value::as_bool) no indexing. One test validworkflow Quick/Standard/Full all exit0, success true, profile actualstr, warnings emptyarray, checks exactVec strings [yaml_parse,compilation,ir_validation] Quick, plusbudget_computation,boundedness_policy StandardFull. Canserde_yaml::from_value::<Vec<String>>(doc.get("checks").ok_or("missing checks")?.clone())?. assert_eq! exitstatuscode0. Secondtest overflowforeachfixture all3profiles rejects compilation exit2, YAML successfalse, message contains "budget step count overflow: 8589934593 cannot be represented". This is existing compiler rejection, NOTnewfullhelper publicrepro. Read actualtwoYAMLfixturesfromprompt, encodeconstantsasRustmultilinestring. CLI args verify filepath --profile profile --emit yaml. Standard/Quick oversized IR still compilerrejectexisting. No toolclaims. Positive YAML:
+version: velvet-ballistics/v1
+name: budget_positive
+when:
+  manual: {}
+steps:
+  - id: save
+    save:
+      output: saved
+      value: '42'
+  - id: done
+    finish:
+      result: saved
+
+NegativeYAML:
+version: velvet-ballistics/v1
+name: budget_overflow
+when:
+  manual: {}
+steps:
+  - id: seed
+    save:
+      output: seeded
+      value: '1'
+  - id: loop
+    for_each:
+      variable: item
+      input: '0'
+      at_once: 4294967295
+      steps:
+        - id: body
+          save:
+            output: item
+            value: '1'
+  - id: done
+    finish:
+      result: 1

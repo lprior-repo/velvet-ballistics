@@ -1,0 +1,21 @@
+
+running 2 tests
+overflow_fixture_all_profiles --- FAILED
+.
+failures:
+
+---- overflow_fixture_all_profiles stdout ----
+
+thread 'overflow_fixture_all_profiles' (1639005) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:124:9:
+assertion `left == right` failed: profile quick success
+  left: None
+ right: Some(false)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    overflow_fixture_all_profiles
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p velvet-ballistics --test verify_budget_profiles`

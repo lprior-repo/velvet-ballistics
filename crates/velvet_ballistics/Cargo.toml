@@ -43,3 +43,7 @@ path = "../workspace_tests/tests/cli/submit_input_boundary.rs"
 [[test]]
 name = "finish_input_execution"
 path = "../workspace_tests/tests/cli/finish_input_execution.rs"
+
+[[test]]
+name = "verify_budget_profiles"
+path = "../workspace_tests/tests/cli/verify_budget_profiles.rs"

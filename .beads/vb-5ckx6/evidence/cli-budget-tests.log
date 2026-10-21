@@ -1,0 +1,110 @@
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+  --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:45:51
+   |
+45 |         let success = doc.get("success").and_then(serde_yaml::Value::as_bool);
+   |                                                   ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+   |
+   = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+help: consider importing this enum
+   |
+ 1 + use serde_json::Value;
+   |
+help: if you import `Value`, refer to it directly
+   |
+45 -         let success = doc.get("success").and_then(serde_yaml::Value::as_bool);
+45 +         let success = doc.get("success").and_then(Value::as_bool);
+   |
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+  --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:48:58
+   |
+48 |         let actual_profile = doc.get("profile").and_then(serde_yaml::Value::as_str);
+   |                                                          ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+   |
+   = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+help: consider importing this enum
+   |
+ 1 + use serde_json::Value;
+   |
+help: if you import `Value`, refer to it directly
+   |
+48 -         let actual_profile = doc.get("profile").and_then(serde_yaml::Value::as_str);
+48 +         let actual_profile = doc.get("profile").and_then(Value::as_str);
+   |
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+   --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:123:51
+    |
+123 |         let success = doc.get("success").and_then(serde_yaml::Value::as_bool);
+    |                                                   ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+    |
+    = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+help: consider importing this enum
+    |
+  1 + use serde_json::Value;
+    |
+help: if you import `Value`, refer to it directly
+    |
+123 -         let success = doc.get("success").and_then(serde_yaml::Value::as_bool);
+123 +         let success = doc.get("success").and_then(Value::as_bool);
+    |
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+   --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:126:51
+    |
+126 |         let message = doc.get("message").and_then(serde_yaml::Value::as_str);
+    |                                                   ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+    |
+    = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+help: consider importing this enum
+    |
+  1 + use serde_json::Value;
+    |
+help: if you import `Value`, refer to it directly
+    |
+126 -         let message = doc.get("message").and_then(serde_yaml::Value::as_str);
+126 +         let message = doc.get("message").and_then(Value::as_str);
+    |
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+  --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:44:38
+   |
+44 |         let doc: serde_yaml::Value = serde_yaml::from_slice(&output.stdout)?;
+   |                                      ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+   |
+   = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+  --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:61:35
+   |
+61 |         let checks: Vec<String> = serde_yaml::from_value(checks_value.clone())?;
+   |                                   ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+   |
+   = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+   --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:122:38
+    |
+122 |         let doc: serde_yaml::Value = serde_yaml::from_slice(&output.stdout)?;
+    |                                      ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+    |
+    = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+  --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:44:18
+   |
+44 |         let doc: serde_yaml::Value = serde_yaml::from_slice(&output.stdout)?;
+   |                  ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+   |
+   = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `serde_yaml` in this scope
+   --> crates/velvet_ballistics/../workspace_tests/tests/cli/verify_budget_profiles.rs:122:18
+    |
+122 |         let doc: serde_yaml::Value = serde_yaml::from_slice(&output.stdout)?;
+    |                  ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_yaml`
+    |
+    = help: if you wanted to use a crate named `serde_yaml`, use `cargo add serde_yaml` to add it to your `Cargo.toml`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `velvet-ballistics` (test "verify_budget_profiles") due to 9 previous errors

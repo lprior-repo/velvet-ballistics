@@ -100,29 +100,8 @@ pub(crate) fn run_verification(
             result
         };
         let contract = compiled.resource_contract();
-        match vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract) {
-            Ok(_budget) => {
-                checks.push("budget_computation");
-                let policy = vb_core::budget::BoundednessPolicy::DEFAULT;
-                match policy.validate(&_budget) {
-                    Ok(()) => {
-                        checks.push("boundedness_policy");
-                    }
-                    Err(e) => {
-                        if profile == VerifyProfile::Full {
-                            return Err(VerifyError::BudgetPolicy(format!(
-                                "budget policy violation: {e}"
-                            )));
-                        }
-                        warnings.push(format!("budget policy warning: {e}"));
-                        checks.push("boundedness_policy_check");
-                    }
-                }
-            }
-            Err(e) => {
-                warnings.push(format!("budget computation note: {e}"));
-            }
-        }
+        let budget_result = vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract);
+        record_budget_result(profile, budget_result, &mut checks, &mut warnings)?;
     }
 
     Ok(VerifyOk {
@@ -131,6 +110,43 @@ pub(crate) fn run_verification(
         checks,
         warnings,
     })
+}
+
+fn record_budget_result(
+    profile: VerifyProfile,
+    result: Result<vb_core::budget::WholeWorkflowBudget, vb_core::WorkflowError>,
+    checks: &mut Vec<&'static str>,
+    warnings: &mut Vec<String>,
+) -> Result<(), VerifyError> {
+    match result {
+        Ok(budget) => {
+            checks.push("budget_computation");
+            let policy = vb_core::budget::BoundednessPolicy::DEFAULT;
+            match policy.validate(&budget) {
+                Ok(()) => {
+                    checks.push("boundedness_policy");
+                }
+                Err(e) => {
+                    if profile == VerifyProfile::Full {
+                        return Err(VerifyError::BudgetPolicy(format!(
+                            "budget policy violation: {e}"
+                        )));
+                    }
+                    warnings.push(format!("budget policy warning: {e}"));
+                    checks.push("boundedness_policy_check");
+                }
+            }
+        }
+        Err(e) => {
+            if profile == VerifyProfile::Full {
+                return Err(VerifyError::BudgetPolicy(format!(
+                    "budget computation failed: {e}"
+                )));
+            }
+            warnings.push(format!("budget computation note: {e}"));
+        }
+    }
+    Ok(())
 }
 
 /// Map a [`VerifyError`] to a [`CliExitCode`].
@@ -212,3 +228,7 @@ mod tests {
         assert_eq!(ok.node_count, 0);
     }
 }
+
+#[cfg(test)]
+#[path = "commands_verify_budget_tests.rs"]
+mod budget_tests;
