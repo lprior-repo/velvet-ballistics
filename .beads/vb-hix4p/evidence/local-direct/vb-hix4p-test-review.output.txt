@@ -1,0 +1,3 @@
+APPROVE
+
+The change adds the required `input_slots` field to two test fixture constructors with empty `Box::new([])` values. All 573 tests pass (42 policy + 531 ipc-lib). No production code, behavior, or assertions were modified. The empty input slots are appropriate for these minimal test fixtures.

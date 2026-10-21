@@ -1,0 +1,30 @@
+I'll add the missing `input_slots` field to the `WorkflowParts` construction in the IPC trace fixture, then compile and test.
+
+```bash
+cd /home/user/vibecore
+```
+
+```bash
+# Add input_slots field to WorkflowParts in chain_workflow fixture
+sed -i 's/step_names: Box::from(\[\]),/step_names: Box::from([]),\n            input_slots: Box::new([]),/' vb_runtime/src/trace/fixture.rs
+```
+
+```bash
+# Verify the edit
+grep -A 3 "step_names" vb_runtime/src/trace/fixture.rs
+```
+
+```bash
+# Compile to confirm E0063 is resolved
+cargo build --package vb_runtime 2>&1 | tail -5
+```
+
+```bash
+# Run the IPC trace tests
+cargo test --package vb_runtime --lib trace::fixture 2>&1 | tail -15
+```
+
+```bash
+# Run full runtime test suite to confirm no regressions
+cargo test --package vb_runtime 2>&1 | grep -E "(test result|FAILED|error)" | head -10
+```

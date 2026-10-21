@@ -43,6 +43,7 @@ fn make_parts(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::new([]),
     }
 }
 

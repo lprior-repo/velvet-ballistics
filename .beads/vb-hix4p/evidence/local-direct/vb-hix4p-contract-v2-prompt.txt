@@ -1,0 +1,61 @@
+Contract extension before implementation: include one more compile error, IPC trace fixture chain_workflow missing input_slots. No changes to runtime code, assertions, or existing legacy test expects. Prior accepted policy fixture contract:
+The `make_parts` fixture omits the `input_slots` field required by `WorkflowParts`. All tests construct parts through this single helper, so adding an empty `input_slots` there fixes E0063 and preserves every existing assertion.
+
+**Contract:** `make_parts` must initialize all `WorkflowParts` fields; `input_slots` is an empty boxed slice for these fixtures.
+
+**Edit:** In `make_parts`, add `input_slots: Box::new([]),` to the struct initializer (after `step_names`).
+Actual IPC fixture plus usages line numbers:
+170:         config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+171:         Runtime::new_for_tests_and_benchmarks_only(NonZeroUsize::MIN, config)
+172:     }
+173: 
+174:     fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
+175:         use vb_core::WorkflowDigest;
+176:         use vb_core::ids::{SlotIdx, StepIdx};
+177:         use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+178: 
+179:         let mut nodes = Vec::new();
+180:         for i in 0..10 {
+181:             nodes.push(CompiledNode {
+182:                 id: StepIdx::new(i),
+183:                 output: None,
+184:                 next: Some(StepIdx::new(i + 1)),
+185:                 on_error: None,
+186:                 error_slot: None,
+187:                 kind: CompiledNodeKind::Nop,
+188:             });
+189:         }
+190:         nodes.push(CompiledNode {
+191:             id: StepIdx::new(10),
+192:             output: None,
+193:             next: None,
+194:             on_error: None,
+195:             error_slot: None,
+196:             kind: CompiledNodeKind::Finish {
+197:                 result: SlotIdx::ZERO,
+198:             },
+199:         });
+200:         let parts = WorkflowParts {
+201:             name: Box::from("chain"),
+202:             digest: WorkflowDigest::from_bytes([4; 32]),
+203:             nodes: Box::from(nodes),
+204:             expressions: Box::from([]),
+205:             accessors: Box::from([]),
+206:             constants: Box::from([]),
+207:             slot_count: 1,
+208:             symbols_count: 0,
+209:             entry: StepIdx::ZERO,
+210:             step_names: Box::from([]),
+211:             resource_contract: ResourceContract::DEFAULT,
+212:         };
+213:         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
+214:     }
+215: 
+216:     fn submit_and_tick(runtime: &mut Runtime, run_id: RunId) {
+217:         runtime
+218:             .submit_direct(run_id, chain_workflow())
+219:             .expect("submit");
+220:         runtime.tick_all().expect("tick");
+221:     }
+222: 
+Return concise final contract covering exactly both fixtures. No code rewrites. Empty schema appropriate only if no external inputs. Test each package/suite and disclose failures honestly.
