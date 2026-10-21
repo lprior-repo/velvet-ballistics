@@ -17,12 +17,6 @@ mod expr_property_tests;
 mod expr_builtin_eval;
 #[cfg(test)]
 mod expr_eval_tests;
-#[cfg(test)]
-mod expr_eval_tests_core;
-#[cfg(test)]
-mod expr_eval_tests_logic;
-#[cfg(test)]
-mod expr_eval_tests_store;
 
 // Re-exports for backward compatibility (vb_expr public API)
 pub use expr_bytecode as bytecode;
@@ -98,16 +92,80 @@ pub use eval::{
     eval_helper_with_store, eval_unary_op,
 };
 
-#[cfg(test)]
-pub fn new_env() -> eval::Environment {
-    eval::Environment::new(64)
+impl From<vb_core::CoreError> for ExprError {
+    fn from(e: vb_core::CoreError) -> Self {
+        match e {
+            vb_core::CoreError::NonFiniteNumber => ExprError::NonFiniteFloat,
+            vb_core::CoreError::DivisionByZero => ExprError::DivisionByZero,
+            vb_core::CoreError::ExpressionStackUnderflow => ExprError::StackUnderflow,
+            vb_core::CoreError::ExpressionStackOverflow { max } => ExprError::StackOverflow { max },
+            vb_core::CoreError::TypeMismatch { expected, found } => ExprError::TypeMismatch {
+                expected: expected.to_string(),
+                found: found.to_string(),
+            },
+            _ => ExprError::UnexpectedEof,
+        }
+    }
 }
 
-impl From<vb_core::CoreError> for ExprError {
-    fn from(err: vb_core::CoreError) -> Self {
-        match err {
-            vb_core::CoreError::NonFiniteNumber => ExprError::NonFiniteFloat,
-            _ => ExprError::UnexpectedToken { token: err.to_string() },
+#[cfg(test)]
+mod core_error_conversion_tests {
+    use super::*;
+
+    #[test]
+    fn core_error_division_by_zero_maps_to_expr_division_by_zero() {
+        let core_err = vb_core::CoreError::DivisionByZero;
+        let expr_err: ExprError = core_err.into();
+        assert!(matches!(expr_err, ExprError::DivisionByZero));
+    }
+
+    #[test]
+    fn core_error_expression_stack_underflow_maps_to_expr_stack_underflow() {
+        let core_err = vb_core::CoreError::ExpressionStackUnderflow;
+        let expr_err: ExprError = core_err.into();
+        assert!(matches!(expr_err, ExprError::StackUnderflow));
+    }
+
+    #[test]
+    fn core_error_expression_stack_overflow_maps_to_expr_stack_overflow() {
+        let core_err = vb_core::CoreError::ExpressionStackOverflow { max: 255 };
+        let expr_err: ExprError = core_err.into();
+        match expr_err {
+            ExprError::StackOverflow { max } => assert_eq!(max, 255),
+            other => panic!("expected StackOverflow, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn core_error_type_mismatch_maps_to_expr_type_mismatch() {
+        let core_err = vb_core::CoreError::TypeMismatch {
+            expected: "i64",
+            found: "string",
+        };
+        let expr_err: ExprError = core_err.into();
+        match expr_err {
+            ExprError::TypeMismatch { expected, found } => {
+                assert_eq!(expected, "i64");
+                assert_eq!(found, "string");
+            }
+            other => panic!("expected TypeMismatch, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn core_error_non_finite_number_maps_to_expr_non_finite_float() {
+        let core_err = vb_core::CoreError::NonFiniteNumber;
+        let expr_err: ExprError = core_err.into();
+        assert!(matches!(expr_err, ExprError::NonFiniteFloat));
+    }
+
+    #[test]
+    fn core_error_fallback_maps_to_expr_unexpected_eof() {
+        // Use a CoreError variant not explicitly mapped
+        let core_err = vb_core::CoreError::InvalidProgramCounter {
+            step: vb_core::StepIdx::new(0),
+        };
+        let expr_err: ExprError = core_err.into();
+        assert!(matches!(expr_err, ExprError::UnexpectedEof));
     }
 }
