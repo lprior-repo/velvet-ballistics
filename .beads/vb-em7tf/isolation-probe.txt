@@ -1,0 +1,1 @@
+Unique per-worktree JJ Git backing isolation probe. No production source changed.
