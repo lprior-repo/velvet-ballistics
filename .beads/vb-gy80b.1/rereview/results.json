@@ -1,0 +1,68 @@
+[
+  {
+    "name": "lib",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--lib",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "doc",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "broken-import-negative",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc",
+      "-j",
+      "2"
+    ],
+    "exit": 101
+  },
+  {
+    "name": "restored-doc",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "fmt",
+    "argv": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/vb_compile/src/lib.rs",
+      "crates/vb_compile/src/migration_compat.rs"
+    ],
+    "exit": 0
+  }
+]
