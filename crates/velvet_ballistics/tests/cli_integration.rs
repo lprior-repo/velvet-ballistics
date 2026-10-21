@@ -40,6 +40,10 @@ fn input_slot_parts() -> WorkflowParts {
     WorkflowParts {
         name: Box::from("cli-input"),
         digest: WorkflowDigest::from_bytes([7u8; 32]),
+        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::I64,
+        }]),
         nodes: Box::from([finish]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -60,6 +64,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
+        input_slots: Box::from([]),
         nodes,
         expressions: Box::from([]),
         accessors: Box::from([]),

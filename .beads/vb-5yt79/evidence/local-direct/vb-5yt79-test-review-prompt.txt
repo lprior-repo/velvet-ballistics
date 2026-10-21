@@ -1,0 +1,256 @@
+Independent TEST SUITE REVIEW vb-5yt79 seven WorkflowParts schema declarations. Onlyone externalCLI I64slot0; sixdirect/internal/noexternal fixtures empty. No production/assertionchanges. Actual cli123pass0fail; admission23pass1fail atdummyActionTicket, separately fixedvb-oqd41 and24pass there. FullCLIpackagecompiles but2retryanalysisunitfails trackedvb-nn1yo plusdummyfailure. No fullpackagepass. Return STATUS APPROVED onlynoopenfindingselseREJECTED max500words.
+# Scope
+
+Seven missing `WorkflowParts.input_slots` declarations across three CLI test fixture files: `crates/velvet_ballistics/tests/cli_integration.rs`, `admission_evidence_integration/chunk_001.rs`, and `chunk_004.rs`. One fixture requires a declared slot; six require explicit empty declarations.
+
+# Domain
+
+Test fixture correctness only. No production code, no API invention, no proof planning. The CLI binary already accepts positional I64 payloads; fixtures must declare matching input slots to satisfy the workflow type system.
+
+# Behavior
+
+`cli-input` fixture declares `slot0` as I64 for the external positional payload. The CLI minimal helper, admission `SetConst42->Finish`, direct `Do7`, direct taint expression, and both invalid resource fixtures declare empty `input_slots` arrays since they expose no CLI external ports. All existing assertions, negative resource/admission outcomes, and CLI binary input success paths remain unchanged.
+
+# Errors
+
+Fixtures that omit required slot declarations fail workflow type checking. Fixtures that invent slots for internal-only ports break admission or resource validation. Incorrect slot types cause I64 payload binding failures.
+
+# Acceptance
+
+All existing test assertions pass unchanged. Negative resource and admission behaviors remain exact. CLI binary input succeeds with declared I64 slot. Tests not yet run; this contract precedes implementation.
+DIFF
+diff --git a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs
+index d7512ef16..a33b05b59 100644
+--- a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs
++++ b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs
+@@ -51,6 +51,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
+     let parts = WorkflowParts {
+         name: Box::from("set_finish"),
+         digest,
++        input_slots: Box::from([]),
+         nodes: Box::from([node0, node1]),
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+@@ -90,6 +91,7 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
+     let parts = WorkflowParts {
+         name: Box::from("do_action"),
+         digest,
++        input_slots: Box::from([]),
+         nodes: Box::from([node0, node1]),
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+@@ -138,6 +140,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
+     let parts = WorkflowParts {
+         name: Box::from("taint_expr"),
+         digest,
++        input_slots: Box::from([]),
+         nodes: Box::from([node0, node1]),
+         expressions: Box::from([expr_program]),
+         accessors: Box::from([]),
+diff --git a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs
+index e74fbdc74..dd60b9d53 100644
+--- a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs
++++ b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs
+@@ -87,6 +87,7 @@ fn budget_validation_rejects_oversized_workflow() {
+     let oversized_parts = WorkflowParts {
+         name: Box::from("oversized"),
+         digest: WorkflowDigest::from_bytes([5u8; 32]),
++        input_slots: Box::from([]),
+         nodes: Box::from([node0, node1]),
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+@@ -121,6 +122,7 @@ fn budget_validation_rejects_oversized_workflow() {
+     let slot_parts = WorkflowParts {
+         name: Box::from("slot_exceeded"),
+         digest: WorkflowDigest::from_bytes([6u8; 32]),
++        input_slots: Box::from([]),
+         nodes: Box::from([single_node]),
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+diff --git a/crates/velvet_ballistics/tests/cli_integration.rs b/crates/velvet_ballistics/tests/cli_integration.rs
+index d6ea04236..200ea03a6 100644
+--- a/crates/velvet_ballistics/tests/cli_integration.rs
++++ b/crates/velvet_ballistics/tests/cli_integration.rs
+@@ -40,6 +40,10 @@ fn input_slot_parts() -> WorkflowParts {
+     WorkflowParts {
+         name: Box::from("cli-input"),
+         digest: WorkflowDigest::from_bytes([7u8; 32]),
++        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
++            slot: SlotIdx::ZERO,
++            kind: vb_core::workflow::InputSlotKind::I64,
++        }]),
+         nodes: Box::from([finish]),
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+@@ -60,6 +64,7 @@ fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
+     WorkflowParts {
+         name: Box::from("test"),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
++        input_slots: Box::from([]),
+         nodes,
+         expressions: Box::from([]),
+         accessors: Box::from([]),
+
+CLI context
+#![forbid(unsafe_code)]
+#![cfg(not(miri))]
+//! CLI integration tests — truth serum adversarial audit as executable tests.
+//!
+//! These tests encode the exact scenarios from the manual truth-serum audit
+//! so they run on every `cargo test` invocation.
+
+use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::SlotValue;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+#[path = "../src/cli_postcard.rs"]
+mod cli_postcard;
+
+const CLI_WORKFLOW: &str = r"version: velvet-ballistics/v1
+name: cli_subprocess
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      output: saved
+      value: '42'
+  - id: done
+    finish:
+      result: saved
+";
+
+fn input_slot_parts() -> WorkflowParts {
+    let finish = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    };
+    WorkflowParts {
+        name: Box::from("cli-input"),
+        digest: WorkflowDigest::from_bytes([7u8; 32]),
+        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::I64,
+        }]),
+        nodes: Box::from([finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        input_slots: Box::from([]),
+        nodes,
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    }
+}
+
+fn resolve_test_reference(reference: &str) -> Option<vb_core::ids::SlotIdx> {
+    match reference {
+        "$x" => Some(vb_core::ids::SlotIdx::new(0)),
+        _ => None,
+    }
+}
+
+fn forced_assertion_failure() -> bool {
+    false
+}
+
+Validbinarypayload
+        None => return,
+    };
+    assert_eq!(missing_output.status.code(), Some(2));
+    let stderr = output_stderr(&missing_output);
+    assert!(stderr.contains("RUN_NOT_FOUND"), "missing code: {stderr}");
+    assert!(stderr.contains("77"), "missing run id: {stderr}");
+}
+
+#[test]
+fn cli_run_maps_postcard_slot_values_from_input_bin() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.vbir");
+    let input_path = dir.path().join("input.bin");
+
+    let workflow_payload = match postcard::to_allocvec(&input_slot_parts()) {
+        Ok(payload) => payload,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to encode workflow payload: {err}"
+            );
+            return;
+        }
+    };
+    if !write_test_file(&workflow_path, &workflow_payload) {
+        return;
+    }
+    let values: Box<[SlotValue]> = Box::from([SlotValue::I64(7)]);
+    let payload = match postcard::to_allocvec(&values) {
+        Ok(payload) => payload,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to encode input payload: {err}"
+            );
+            return;
+        }
+    };
+    if !write_test_file(&input_path, &payload) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run-compiled"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run-compiled --durability none with input-bin");
+    let run_stdout = output_stdout(&run_output);
+    assert!(
+        run_stdout.contains("run completed"),
+        "run stdout should report completion: {run_stdout}"
+    );
+}
+
+#[test]
+fn cli_run_reports_exact_input_mapping_decode_failure() {
+    let dir = match cli_tempdir() {
+Assess schemafixtures preserve existing exacterror/publicbinaryinput behavior and source registration. Actual cli123pass, admission24pass after separatelycodereviewedticketfixturevb-oqd41. Require nozero-testcount/lax empty schema forrealinput. Source seven additionsonly.

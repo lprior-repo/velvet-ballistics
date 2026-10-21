@@ -1,0 +1,111 @@
+Implement accepted fixture contract as exact JSON [{path,old,new}], no prose. Scope only thisfunction below. Replace dummy ticket with actual lookup Option, missing branchfail_assert! thenreturn consistentexistingstyle. ReplaceweakcounterORwithexactcounts(submitted1failed1completed0). Replace has_failedboolean with events matching RunFailed forrun count==1 and lookup_pending_action_ticket(run_id,0)==None after failure. Do not changeActionFailure orproduction. Actual API lookup_pending_action_ticket(&self,run:RunId,ticket_wire:u64)->Option<ActionTicket>.
+# Test Contract: evidence_chain_captures_action_timeout_and_failure
+
+**Location:** `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs`
+
+## Precondition
+Runtime initialized; run submitted with timeout-prone action; runtime ticked.
+
+## Ticket Retrieval
+Call `runtime.lookup_pending_action_ticket(run_id, 0)` → `Option<ActionTicket>`.
+- `Some(t)`: proceed
+- `None`: fail fixture explicitly (missing ticket)
+
+## Ticket Field Invariants
+Verify `t.issued`, `t.seq`, `t.action`, `t.attempt`, `t.idempotency_key`, `t.capacity` match submission.
+
+## Failure Injection
+Submit `NonRetryable Timeout ActionFailure` for retrieved ticket.
+
+## Postcondition Assertions
+- `runs_submitted == 1`
+- `runs_completed == 0`
+- `runs_failed == 1`
+- `lookup_pending_action_ticket(run_id, 0)` → `None` (ticket consumed)
+- Journal contains exactly one `RunFailed` event for the run
+
+## Constraints
+- No production code changes
+- No assertion weakening
+- No fabricated tickets
+- API matches step 0: `Option<ActionTicket>` return type
+FUNCTION
+fn evidence_chain_captures_action_timeout_and_failure() {
+    let digest = WorkflowDigest::from_bytes([0x10u8; 32]);
+    let Some(workflow) = do_action_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new(shard_count, test_config(), journal.clone());
+    let run_id = RunId::new(10);
+
+    match submit_do_action_run(&runtime, run_id, workflow) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let ticket = vb_core::action::ActionTicket {
+        run: run_id,
+        step: StepIdx::new(0),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(7),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let failure = vb_core::action::ActionFailure {
+        code: vb_core::action::ActionFailureCode::Timeout,
+        retry_policy: vb_core::action::RetryPolicy::NonRetryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    match runtime.fail_action(ticket, failure) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("fail_action_with_code failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all after action failure failed: {err}");
+            return;
+        }
+    }
+
+    let snap = runtime.counters_snapshot();
+    assert_eq!(snap.runs_completed, 0, "run should not complete on action timeout");
+    assert!(snap.runs_failed > 0 || snap.runs_submitted > snap.runs_completed,
+        "run should be in failed/suspended state after action timeout: runs_submitted={} runs_failed={}",
+        snap.runs_submitted, snap.runs_failed);
+
+    let events = match journal.snapshot() {
+        Ok(events) => events,
+        Err(err) => {
+            fail_assert!("journal snapshot failed: {err}");
+            return;
+        }
+    };
+    let has_failed = events.iter().any(|e| {
+        matches!(e, vb_runtime::journal::RuntimeJournalEvent::RunFailed { run, .. } if *run == run_id)
+    });
+    assert!(has_failed, "journal should contain RunFailed after action timeout");
+}
