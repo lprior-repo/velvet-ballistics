@@ -1,0 +1,11 @@
+
+running 6 tests
+test server::reactor_tests::pending_response_cannot_be_replaced ... ok
+test server::reactor_tests::invalid_magic_stops_after_four_buffered_bytes ... ok
+test server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written ... ok
+test server::reactor_tests::complete_frame_larger_than_read_chunk_makes_progress ... ok
+test server::reactor_tests::listener_drains_a_preconnected_burst ... ok
+test server::reactor_tests::overload_rejects_extra_peer_and_existing_client_stays_usable ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 531 filtered out; finished in 0.05s
+
