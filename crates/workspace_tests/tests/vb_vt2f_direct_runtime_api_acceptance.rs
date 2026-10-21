@@ -8,17 +8,17 @@ use vb_core::action::{
     Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig};
 use vb_runtime::trace::TraceEvent;
-use vb_runtime::{RuntimeError, RuntimeResult};
 
 const DIRECT_API_TARGET: &str =
     "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs";
@@ -198,10 +198,15 @@ fn required_capability(action: ActionId) -> Capability {
     Capability::new(Box::from("vt2f.contract.required"), action)
 }
 
-fn action_contract(action: ActionId, output_slots: u16) -> ActionContract {
-    ActionContract {
+fn action_contract(
+    action: ActionId,
+    output_slots: u16,
+    requires_capability: bool,
+) -> Result<ActionContract, String> {
+    Ok(ActionContract {
         id: action,
-        name: ActionName::new("test-action").unwrap(),
+        name: ActionName::new("test-action")
+            .map_err(|error| format!("action name fixture invalid: {error:?}"))?,
         input_slot_count: 1,
         output_slot_count: output_slots,
         max_input_bytes: 1024,
@@ -210,21 +215,27 @@ fn action_contract(action: ActionId, output_slots: u16) -> ActionContract {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
-        required_capabilities: Box::from([required_capability(action)]),
-    }
+        required_capabilities: if requires_capability {
+            Box::from([required_capability(action)])
+        } else {
+            Box::new([])
+        },
+    })
 }
 
-fn action_contracts_through(action: ActionId, output_slots: u16) -> Box<[ActionContract]> {
+fn action_contracts_through(
+    action: ActionId,
+    output_slots: u16,
+) -> Result<Box<[ActionContract]>, String> {
     let target = action.get();
-    let mut contracts = Vec::new();
-    let mut id = 0u16;
-    while id <= target {
-        let current = ActionId::new(id);
-        let outputs = if id == target { output_slots } else { 0 };
-        contracts.push(action_contract(current, outputs));
-        id = id.saturating_add(1);
-    }
-    contracts.into_boxed_slice()
+    (0..=target)
+        .map(|id| {
+            let current = ActionId::new(id);
+            let outputs = if id == target { output_slots } else { 0 };
+            action_contract(current, outputs, id == target)
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Vec::into_boxed_slice)
 }
 
 fn action_grants(action: ActionId) -> CapabilitySet {
@@ -235,50 +246,73 @@ fn submit_action_workflow(
     runtime: &Runtime,
     run: RunId,
     workflow: CompiledWorkflow,
-) -> RuntimeResult<()> {
+) -> Result<(), String> {
     let action = ActionId::new(7);
-    runtime.submit_direct_with_inputs_grants_and_contracts(
-        run,
-        workflow,
-        Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
-        action_grants(action),
-        action_contracts_through(action, 1),
-    )
+    runtime
+        .submit_direct_with_inputs_grants_and_contracts(
+            run,
+            workflow,
+            Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_grants(action),
+            action_contracts_through(action, 1)?,
+        )
+        .map_err(|error| format!("submit action workflow for {run:?} failed: {error:?}"))
 }
 
-fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
-    ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: SeqNo::ZERO,
-        action,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    }
+fn issued_action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
+    runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or_else(|| format!("runtime did not issue a pending action ticket for {run:?}"))
 }
 
-fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
-    ActionOutputReady {
+fn action_output(value: SlotValue, taint: Taint) -> Result<ActionOutputReady, String> {
+    let encoded_len = u32::try_from(encoded(&value)?.len())
+        .map_err(|error| format!("action output fixture length does not fit u32: {error}"))?;
+    Ok(ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
-    }
+        encoded_len,
+    })
 }
 
-fn ask_answer(run: RunId, value: SlotValue, taint: Taint) -> AskAnswer {
-    AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+fn observed_ask_ticket_from_pending_state(
+    runtime: &Runtime,
+    run: RunId,
+    workflow: &CompiledWorkflow,
+) -> Result<AskTicket, String> {
+    // Runtime currently exposes pending run/ask_step but no issued AskTicket.
+    // This pairs that observation with the fixture's compiled next edge; it cannot prove
+    // runtime-issued resume-step or answer-slot authority.
+    let boundary = runtime.pending_boundary_snapshot(16);
+    let pending = boundary
+        .shards()
+        .iter()
+        .flat_map(|shard| shard.pending_asks().iter())
+        .find(|ask| ask.run_id() == run)
+        .ok_or_else(|| format!("runtime did not report a pending ask for {run:?}"))?;
+    let ask_step = pending.ask_step();
+    let resume_step = workflow
+        .node(ask_step)
+        .and_then(|node| node.next)
+        .ok_or_else(|| format!("ask fixture has no resume step at {ask_step:?}"))?;
+    Ok(AskTicket {
+        run,
+        ask_step,
+        resume_step,
+    })
+}
+
+fn ask_answer(ticket: AskTicket, value: SlotValue, taint: Taint) -> Result<AskAnswer, String> {
+    let encoded_len = u32::try_from(encoded(&value)?.len())
+        .map_err(|error| format!("ask answer fixture length does not fit u32: {error}"))?;
+    Ok(AskAnswer {
+        ticket,
         answer_slot: SlotIdx::new(2),
         value,
         taint,
-        encoded_len: 8,
-    }
+        encoded_len,
+    })
 }
 
 fn run_one_tick(runtime: &mut Runtime) -> Result<(), String> {
@@ -455,7 +489,6 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 }
 
 #[test]
-#[ignore]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -472,6 +505,7 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
     );
     run_one_tick(&mut runtime)?;
     run_one_tick(&mut runtime)?;
+    let ticket = issued_action_ticket(&runtime, run)?;
     let unrelated_before = runtime.snapshot_run(unrelated, 44);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let expected_value = SlotValue::I64(4242);
@@ -480,10 +514,8 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
 
     // When: the matching ticket completes with exact output value and taint.
     assert_eq!(
-        runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(expected_value, expected_taint)
-        ),
+        runtime
+            .complete_action_with_output(ticket, action_output(expected_value, expected_taint)?,),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -499,27 +531,48 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
         }),
         true
     );
-    let expected_slot_event = RuntimeJournalEvent::SlotWritten {
-        run,
-        slot: SlotIdx::new(1),
-        value: expected_bytes,
+    let expected_completion_event = RuntimeJournalEvent::ActionCompletedEnvelope {
+        ticket,
+        output: SlotIdx::new(1),
+        value: expected_bytes.clone(),
+        encoded_len: u32::try_from(expected_bytes.len())
+            .map_err(|error| format!("encoded output length does not fit u32: {error}"))?,
         taint: expected_taint,
-        extra: None,
+        value_digest: *blake3::hash(&expected_bytes).as_bytes(),
+        action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
     };
     assert_eq!(
-        journal_events(&journal)?.contains(&expected_slot_event),
+        journal_events(&journal)?.contains(&expected_completion_event),
         true
     );
 
-    // And: a mismatched action ticket is rejected with the exact public error and does not mutate the unrelated run.
+    // And: tickets altered to target another run or action fail exactly without changing journal or run state.
+    let journal_before_rejections = journal_events(&journal)?;
+    let counters_before_rejections = runtime.counters_snapshot();
     assert_eq!(
         runtime.complete_action_with_output(
-            action_ticket(unrelated, ActionId::new(99)),
-            action_output(SlotValue::I64(9), Taint::Clean)
+            ActionTicket {
+                run: unrelated,
+                ..ticket
+            },
+            action_output(SlotValue::I64(9), Taint::Clean)?
+        ),
+        Err(RuntimeError::InvalidActionCompletion)
+    );
+    assert_eq!(
+        runtime.complete_action_with_output(
+            ActionTicket {
+                run: unrelated,
+                action: ActionId::new(99),
+                ..issued_action_ticket(&runtime, unrelated)?
+            },
+            action_output(SlotValue::I64(9), Taint::Clean)?
         ),
         Err(RuntimeError::InvalidActionCompletion)
     );
     assert_eq!(runtime.tick_all(), Ok(true));
+    assert_eq!(journal_events(&journal)?, journal_before_rejections);
+    assert_eq!(runtime.counters_snapshot(), counters_before_rejections);
     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     Ok(())
@@ -528,13 +581,15 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
 #[test]
 fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> {
     // Given: SCN-VT2F-005 a suspended action workflow.
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1005);
     assert_eq!(
         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    let ticket = issued_action_ticket(&runtime, run)?;
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: RetryPolicy::NonRetryable,
@@ -544,10 +599,7 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
     };
 
     // When: fail_action is called with a typed non-retryable failure.
-    assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
-        Ok(())
-    );
+    assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
     run_one_tick(&mut runtime)?;
 
     // Then: the failure type is visible and the run does not complete successfully.
@@ -561,6 +613,19 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
         }),
         true
     );
+    assert_eq!(
+        journal_events(&journal)?.contains(&RuntimeJournalEvent::ActionFailed {
+            run,
+            step: StepIdx::ZERO,
+            action: ActionId::new(7),
+            attempt: 1,
+        }),
+        true
+    );
+    assert_eq!(
+        journal_events(&journal)?.contains(&RuntimeJournalEvent::RunFailed { run }),
+        true
+    );
     Ok(())
 }
 
@@ -568,7 +633,8 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
 fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let unrelated = RunId::new(2505);
     let absent = RunId::new(9505);
     assert_eq!(
@@ -576,9 +642,11 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    let issued = issued_action_ticket(&runtime, unrelated)?;
     let unrelated_before = runtime.snapshot_run(unrelated, 505);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let counters_before = runtime.counters_snapshot();
+    let journal_before = journal_events(&journal)?;
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: RetryPolicy::NonRetryable,
@@ -589,7 +657,13 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
 
     // When: fail_action is enqueued for a wrong/absent run id.
     assert_eq!(
-        runtime.fail_action(action_ticket(absent, ActionId::new(7)), failure),
+        runtime.fail_action(
+            ActionTicket {
+                run: absent,
+                ..issued
+            },
+            failure,
+        ),
         Ok(())
     );
 
@@ -608,24 +682,24 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
         vec![unrelated]
     );
     assert_eq!(tick_result, Err(RuntimeError::InvalidActionCompletion));
+    assert_eq!(journal_events(&journal)?, journal_before);
     Ok(())
 }
 
 #[test]
 fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
-    // Given: SCN-VT2F-006 a run suspended on Ask with an exact public AskTicket.
+    // Given: SCN-VT2F-006 a run suspended on Ask with its observed pending ask state.
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1006);
-    assert_eq!(
-        runtime.submit_direct(run, ask_then_finish_workflow()?),
-        Ok(())
-    );
+    let workflow = ask_then_finish_workflow()?;
+    assert_eq!(runtime.submit_direct(run, workflow.clone()), Ok(()));
     run_one_tick(&mut runtime)?;
+    let ticket = observed_ask_ticket_from_pending_state(&runtime, run, &workflow)?;
     let answer_value = SlotValue::I64(6060);
     let answer_taint = Taint::DerivedFromSecret;
     let answer_bytes = encoded(&answer_value)?;
-    let answer = ask_answer(run, answer_value, answer_taint);
+    let answer = ask_answer(ticket, answer_value, answer_taint)?;
 
     // When: answer_ask resumes the run.
     assert_eq!(runtime.answer_ask(answer), Ok(()));
@@ -665,16 +739,24 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
 #[test]
 fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
-    // Given: SCN-VT2F-006 / ERR-004 a terminal stale run id and one unrelated suspended run.
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    // Given: SCN-VT2F-006 / ERR-004 one formerly valid ask ticket and an unrelated suspended run.
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let stale = RunId::new(1606);
     let unrelated = RunId::new(2606);
-    assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
+    let workflow = ask_then_finish_workflow()?;
+    assert_eq!(runtime.submit_direct(stale, workflow.clone()), Ok(()));
     assert_eq!(
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    run_one_tick(&mut runtime)?;
+    let ticket = observed_ask_ticket_from_pending_state(&runtime, stale, &workflow)?;
+    assert_eq!(
+        runtime.answer_ask(ask_answer(ticket, SlotValue::I64(6060), Taint::Clean)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
     assert_eq!(
         runtime.snapshot_run(stale, 606),
@@ -692,20 +774,17 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
         .collect::<Vec<_>>();
     let counters_before = runtime.counters_snapshot();
 
-    // When: a stale ask ticket is answered after its run is no longer active.
-    // RA-030: terminal_runs membership is the routing key. The stale run is
-    // in terminal_runs (it finished after two ticks), so answer_ask routes
-    // to the terminal shard for no-op processing rather than failing.
+    // When: the previously issued ask ticket is replayed after its run is terminal.
+    let journal_before_stale_replay = journal_events(&journal)?;
     assert_eq!(
-        runtime.answer_ask(ask_answer(
-            stale,
-            SlotValue::I64(6060),
-            Taint::DerivedFromSecret
-        )),
+        runtime.answer_ask(ask_answer(ticket, SlotValue::I64(6061), Taint::Clean)?),
         Ok(())
     );
+    assert_eq!(journal_events(&journal)?, journal_before_stale_replay);
+    assert_eq!(runtime.tick_all(), Err(RuntimeError::RunNotFound));
+    assert_eq!(journal_events(&journal)?, journal_before_stale_replay);
 
-    // Then: stale answer_ask enqueues onto the terminal shard and unrelated observable state is unchanged.
+    // Then: terminal replay fails exactly and unrelated observable state is unchanged.
     assert_eq!(runtime.snapshot_run(unrelated, 607), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(
@@ -723,18 +802,25 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
 #[test]
 fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted()
 -> Result<(), String> {
-    // Given: SCN-VT2F-006 / ERR-004 a terminal stale run whose bounded trace ring cannot retain
-    // terminal evidence, plus one unrelated suspended run that must remain unchanged.
-    let mut runtime =
-        Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, trace_starved_config());
+    // Given: SCN-VT2F-006 / ERR-004 a previously valid ask ticket whose run is terminal and
+    // whose trace evidence has been evicted, plus one unrelated suspended run.
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, trace_starved_config(), journal.clone());
     let stale = RunId::new(1616);
     let unrelated = RunId::new(2616);
-    assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
+    let workflow = ask_then_finish_workflow()?;
+    assert_eq!(runtime.submit_direct(stale, workflow.clone()), Ok(()));
     assert_eq!(
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    run_one_tick(&mut runtime)?;
+    let ticket = observed_ask_ticket_from_pending_state(&runtime, stale, &workflow)?;
+    assert_eq!(
+        runtime.answer_ask(ask_answer(ticket, SlotValue::I64(6160), Taint::Clean)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
     assert_eq!(
         runtime.snapshot_run(stale, 616),
@@ -743,10 +829,7 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
             correlation: 616
         })
     );
-    assert_eq!(
-        trace_events(&runtime, stale)?,
-        vec![TraceEvent::RunSubmitted { run: stale }]
-    );
+    assert_eq!(trace_events(&runtime, stale)?.len(), 1);
     let unrelated_before = runtime.snapshot_run(unrelated, 617);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let active_before = runtime
@@ -756,18 +839,15 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
         .collect::<Vec<_>>();
     let counters_before = runtime.counters_snapshot();
 
-    // When: the stale ask ticket is answered after terminal trace evidence was dropped/evicted.
-    let answer_result = runtime.answer_ask(ask_answer(
-        stale,
-        SlotValue::I64(6160),
-        Taint::DerivedFromSecret,
-    ));
+    // When: the previously issued ask ticket is replayed after terminal trace evidence was evicted.
+    let journal_before_stale_replay = journal_events(&journal)?;
+    let answer_result = runtime.answer_ask(ask_answer(ticket, SlotValue::I64(6161), Taint::Clean)?);
 
-    // Then: RA-030 routes to the terminal shard (terminal_runs membership
-    // is independent of trace retention), so answer_ask enqueues onto the
-    // terminal shard for no-op processing. Err(RunNotFound) is reserved
-    // for runs that live on NO shard (unknown runs).
+    // Then: the ticket is rejected at processing time with an exact typed error and no journal write.
     assert_eq!(answer_result, Ok(()));
+    assert_eq!(journal_events(&journal)?, journal_before_stale_replay);
+    assert_eq!(runtime.tick_all(), Err(RuntimeError::RunNotFound));
+    assert_eq!(journal_events(&journal)?, journal_before_stale_replay);
     assert_eq!(runtime.snapshot_run(unrelated, 617), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(
@@ -785,15 +865,21 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 #[test]
 fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
-    // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    // Given: SCN-VT2F-006 / ERR-004 an authentic pending ask ticket and a different active run.
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let wrong = RunId::new(9606);
+    let ask_owner = RunId::new(1607);
     let unrelated = RunId::new(2607);
+    let workflow = ask_then_finish_workflow()?;
+    assert_eq!(runtime.submit_direct(ask_owner, workflow.clone()), Ok(()));
     assert_eq!(
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    run_one_tick(&mut runtime)?;
+    let ticket = observed_ask_ticket_from_pending_state(&runtime, ask_owner, &workflow)?;
     let unrelated_before = runtime.snapshot_run(unrelated, 608);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let active_before = runtime
@@ -802,15 +888,21 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
         .map(|summary| summary.run_id)
         .collect::<Vec<_>>();
     let counters_before = runtime.counters_snapshot();
+    let journal_before = journal_events(&journal)?;
 
-    // When: an ask answer is enqueued for an absent run id while another run remains active.
-    // RA-030: answer_ask fails closed at the boundary when the run lives on
-    // no shard, rather than enqueueing onto the home shard and surfacing the
-    // error at tick time.
+    // When: a valid ticket's run id is changed to an absent run while another run remains active.
     assert_eq!(
-        runtime.answer_ask(ask_answer(wrong, SlotValue::I64(6061), Taint::Clean)),
+        runtime.answer_ask(ask_answer(
+            AskTicket {
+                run: wrong,
+                ..ticket
+            },
+            SlotValue::I64(6061),
+            Taint::Clean
+        )?),
         Err(RuntimeError::RunNotFound)
     );
+    assert_eq!(journal_events(&journal)?, journal_before);
 
     // Then: tick is not affected and unrelated observable state is unchanged.
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -825,6 +917,7 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
         active_before
     );
     assert_eq!(runtime.counters_snapshot(), counters_before);
+    assert_eq!(journal_events(&journal)?, journal_before);
     Ok(())
 }
 
