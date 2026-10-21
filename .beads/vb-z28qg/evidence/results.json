@@ -1,0 +1,37 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_storage",
+      "--lib",
+      "inputs::"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_storage",
+      "--lib",
+      "codec::tests::"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics",
+      "--test",
+      "submit_input_boundary",
+      "--test",
+      "submit_retained_inputs"
+    ],
+    "exit": 0
+  }
+]
