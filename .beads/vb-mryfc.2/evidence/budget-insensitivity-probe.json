@@ -1,0 +1,19 @@
+{
+  "candidate": "fa5e084c2",
+  "probe": "replace budget2 by u64::MAX in the exact named test fixture; no production mutation",
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_c1s0_orchestration_runtime_tests",
+    "runtime_respects_step_budget_per_tick",
+    "--",
+    "--exact",
+    "--test-threads=1"
+  ],
+  "exit": 0,
+  "source_restored": true,
+  "sha256": "7cae5e6a93aaea15a110add3ada5504ce0d175359ce20a14988acd21d75bba9f"
+}

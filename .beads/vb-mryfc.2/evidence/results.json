@@ -1,0 +1,32 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "vb_c1s0_orchestration_runtime_tests",
+      "--",
+      "--test-threads=2"
+    ],
+    "exit": 0,
+    "duration_seconds": 17.81987166404724,
+    "log": "/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-test-review-root/.beads/vb-mryfc.2/evidence/vb_c1s0_orchestration_runtime_tests.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "vb_test_runtime_lifecycle_state_behavior",
+      "--",
+      "--test-threads=2"
+    ],
+    "exit": 0,
+    "duration_seconds": 0.45726585388183594,
+    "log": "/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-test-review-root/.beads/vb-mryfc.2/evidence/vb_test_runtime_lifecycle_state_behavior.log"
+  }
+]
