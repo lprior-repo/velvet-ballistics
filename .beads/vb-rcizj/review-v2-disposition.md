@@ -1,0 +1,3 @@
+# Review v2 disposition
+
+Independent local3090code review approved current implementation but the separate test review REJECTED advancement: no genuine old-attempt ticket with an advanced sequence tests the stale-branch sequence guard. Current attempt1matrix mutations do not exercise attempt<current. No waiver is granted. Repair tests for every meaningful stale guard (canonical key, sequence, capacity, action and step), preserve genuine old2/current3 positive stale cases, both success/failure delivery paths and full journal/pending/frame invariance. Rename the encode_failed_completion happy-path scenario to avoid false encode-failure coverage. Existing weaker slot preservation assertions are not counted as covered. No productionsecurity weakening.

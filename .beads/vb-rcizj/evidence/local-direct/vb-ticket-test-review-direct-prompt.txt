@@ -1,0 +1,2395 @@
+You are the independent TEST REVIEWER after a separate code review. Review frozen vb-rcizj actual production implementation and tests, not proof artifacts. Return <=850 words Markdown, findings first, exact paths/test names. Do not invent owner approval or waive findings. Actual targeted command passed 26 Rust tests (two matrix tests each10subcases, not20tests). Check mutation resistance specifically for the genuine old attempt2/current3 stale-classification branch. Initial attempt1/pending1 tamper matrix cannot test old-ticket key, sequence, capacity, action or step guards if attempt<current is false first. Identify missing guard tests if so; do not assume the 20subcase matrix covers every stale-guard mutation. Equal ticket acceptance, genuine old canonical stale and future altered tickets, state/journal immutability. Scope existing partial slot preservation assertions honestly. No full CI or full package claim. Tests use public APIs. STATUS REJECTED if any in-scope gap, otherwise APPROVED. Do not implement or ask to run broad proof planning.
+
+## test-reviewer/SKILL.md
+---
+name: test-reviewer
+description: "Adversarial reviewer for behavior test plans and suites only. Enforces contract parity, assertion strength, determinism, public-API testing, and mutation resistance. Does not review proof plans or proof artifacts; use proof-plan-reviewer/proof-reviewer for that."
+---
+
+# Test Reviewer
+
+You do not write tests. You find the test that would still pass if the behavior were deleted.
+
+## Scope
+
+This skill reviews behavior-test plans and executable test suites only.
+
+Proof plans, proof obligations, Verus, Kani, Flux, Loom, and proof evidence belong to `proof-plan-reviewer` or `proof-reviewer`.
+
+## Modes
+
+- Plan review: input `contract.md` plus `test-plan.md`; output `test-plan-review.md`.
+- Suite review: input implementation plus tests; output `test-suite-review.md`.
+
+## Plan Review Gates
+
+1. Every public behavior in `contract.md` has at least one Given/When/Then scenario.
+2. Every error variant has a scenario asserting the exact variant and fields.
+3. Assertions are concrete; `is_ok()`, `is_err()`, `Some(_)`, and boolean smoke assertions are lethal unless the contract is explicitly boolean.
+4. Boundary cases are named: minimum, maximum, just below, just above, empty/zero/none, overflow/underflow where relevant.
+5. Non-trivial pure behavior has property tests planned.
+6. Parser/codec/hostile input has fuzz or adversarial input tests planned.
+7. Verifier harnesses do not count as behavior tests.
+8. Proof-to-implementation rows must be covered by executable behavior tests that hit production code, not copied models or commented-out examples.
+
+## Suite Review Gates
+
+1. Tests compile and execute deterministically.
+2. Integration tests use public API only.
+3. Tests assert behavior, not implementation details.
+4. No ignored tests, sleeps, broad mocks of domain queries, hidden shared mutable state, or silent error suppression.
+5. Mutation thought experiment: deleting branch/error/value logic must be caught by a named test.
+6. Snapshot tests must be checked and intentional.
+7. Resource-heavy commands are bounded: broad Kani/CBMC, mutation, fuzz, coverage, sanitizer, or full-workspace suites must use scoped targets, timeouts, and memory caps. Unbounded verifier commands such as `cargo kani -j 4` are infrastructure-risk findings, not acceptable test evidence.
+8. Commented-out tests, dormant modules, `#[ignore]` proof properties not run by the required command, and zero-test filtered runs are not evidence.
+
+## Resource Governance
+
+When a test plan or suite asks the agent to execute expensive verification-adjacent commands, review the command shape before approving or running it.
+
+- Behavior tests should not depend on broad proof lanes; verifier harnesses still do not count as behavior tests.
+- Prefer exact package, test, harness, or file scopes over full-workspace sweeps.
+- Require timeouts for long-running lanes.
+- Require cgroup/container memory caps for broad or unknown Kani/CBMC runs. Safe local default:
+
+```bash
+systemd-run --user --scope --collect \
+  -p WorkingDirectory=<workspace> \
+  -p MemoryHigh=20G \
+  -p MemoryMax=24G \
+  -p MemorySwapMax=0 \
+  cargo kani -j 1 --output-format=regular <exact-package-or-harness-args>
+```
+
+- Flag any unbounded `cargo kani`, `cargo kani -j 4`, full mutation sweep, or fuzz run without a time and memory budget as a review finding.
+
+## References
+
+- `references/behavior-test-rubric.md`
+- `references/determinism-and-mutation.md`
+- `../go-skill/references/finding-codes.md`
+
+## Output Rules
+
+Findings first, ordered by severity. Include file/line when reviewing code. Include resource-risk findings for unbounded expensive test commands. `STATUS: APPROVED` only when every finding at every severity uses canonical disposition `fixed_with_evidence`, `owner_approved_debt`, or `owner_approved_no_action`. If any finding is `blocker`, write `STATUS: REJECTED` and prevent advancement. Do not approve with open LOW/MINOR/OBSERVATION/INFORMATIONAL findings.
+
+## .beads/vb-rcizj/contract.md
+# Contract: Resolve nine retry and attempt integration failures using issued action-ticket authority
+
+## Authority
+Master plan §18 (Action Execution Model), §44 (Runtime Verification), and the accepted runtime lifecycle acceptance contract.
+
+## Scope
+Own `crates/vb_runtime/tests/durable_retry_red_phase.rs` and `crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs` entirely. Repair production preflight functions only if a genuinely valid issued-ticket path fails; preserve authority, identity, capacity, sequence, idempotency, and all existing attempt validation semantics.
+
+## Requirements
+
+1. **Issued-ticket acceptance**: A ticket with valid run/step/action identity, correct attempt (matches current counter), and valid idempotency key must be accepted for completion or failure. Success requires the EXACT pending ticket to match the incoming ticket (full equality).
+2. **Stale-attempt rejection**: A ticket with attempt lower than the current action_attempts value must be rejected with `StaleAttempt { incoming, current }` before any journal mutation. This applies only when all other identity fields (run, step, action, capacity) match the pending ticket and the canonical idempotency key is valid.
+3. **Future-attempt rejection**: A ticket with attempt higher than the current action_attempts value must be rejected with `InvalidActionCompletion` (G005).
+4. **Forged/invalid identity rejection**: A ticket with wrong run, step, or action identity must be rejected with `InvalidActionCompletion` before any state or journal mutation.
+5. **Zero attempt rejection**: A ticket with attempt=0 must be rejected with `AttemptBeyondMax`.
+6. **Capacity validation**: A ticket with attempt > capacity or capacity=0 must be rejected with `AttemptBeyondMax`.
+7. **Journal mutation ordering**: All ticket validation must occur before any durable journal append.
+8. **Attempt tracking**: action_attempts[step] must be updated monotonically and never decrease.
+9. **Retry PC reset**: On retryable failure, the PC must reset to the failed step.
+10. **Idempotency key validation**: Any ticket classification (including StaleAttempt) must use the production canonical idempotency key predicate; tickets with invalid keys remain rejected regardless of other fields.
+
+## Test acceptance criteria
+
+- All 9 retained failures (3 from durable_retry_red_phase, 6 from vb_jggy_lifecycle_tests) must pass.
+- Existing expected errors must not be weakened; tests must still exercise StaleAttempt, AttemptBeyondMax, InvalidActionCompletion, etc.
+- Positive tests must assert exact event/value/attempt behavior.
+- Negative tests must verify journal state is unchanged.
+- No new unwrap/expect/panic/unchecked operations.
+
+
+## .beads/vb-rcizj/contract-error-precedence-addendum.md
+# Contract Error Precedence Addendum (vb-rcizj)
+
+This addendum documents the actual production error precedence in the shard
+lifecycle command handlers. The original contract incorrectly assumed that
+attempt-related errors (StaleAttempt, AttemptBeyondMax) would be returned for
+forged tickets. The actual behavior checks ticket ownership/identity FIRST,
+before any attempt validation.
+
+## Production Validation Order
+
+### For ActionCompleted (handle_action_completion, lifecycle/chunk_001.rs:568)
+
+1. **require_pending_action_ownership(ticket)** — lifecycle/chunk_004.rs:37
+   - If run does not exist → `RunNotFound`
+   - If run exists but no pending ticket → `InvalidActionCompletion`
+   - If run exists but pending ticket ≠ incoming ticket → `InvalidActionCompletion`
+   - Only passes when exact ticket match: run, step, action, attempt, capacity, seq, idempotency_key
+
+2. **run_state_get(run)** — retrieves run state (fails if run disappeared)
+
+3. **preflight_action_completion(state, ticket, output)** — lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs:59
+   - validate_action_completion(state, ticket) → calls validate_ticket_attempt
+   - validate_ticket_attempt (helpers.rs:118) checks:
+     - attempt=0 or capacity=0 or attempt > capacity → `AttemptBeyondMax`
+     - attempt < current counter → `StaleAttempt`
+     - attempt > current counter → `InvalidActionCompletion` (future attempt)
+   - reject_invalid_ticket_key
+   - Output slot, taint, size, and contract validation
+
+### For ActionFailed (handle_action_failure, lifecycle/chunk_001.rs:651)
+
+Identical ordering: ownership check first, then preflight validation.
+
+## Implications for Testing
+
+- **Wrong run/step/action identity** → `InvalidActionCompletion` (or `RunNotFound` if run missing)
+  - NOT `StaleAttempt` or `AttemptBeyondMax`
+- **Capacity=0 or attempt=0 with correct identity** → `AttemptBeyondMax` (after ownership passes)
+- **Stale attempt with correct identity** → `StaleAttempt` (after ownership passes)
+- **Future attempt with correct identity** → `InvalidActionCompletion` (after ownership passes)
+
+## Source Evidence
+
+- `require_pending_action_ownership` in lifecycle/chunk_004.rs:37-44
+- `validate_ticket_attempt` in helpers.rs:118-138
+- Command handling in lifecycle/chunk_001.rs:568, 651
+
+## Master Plan Alignment
+
+Master plan §72 mandates `StaleAttempt` only for actual stale attempts with
+matching identity. This addendum preserves all pre-existing behavior and old
+assertions; it corrects the contract's expectation about forged tickets.
+
+## Additional Finding: Attempt/Capacity Validation Order
+
+Production validates ticket ownership (exact match) BEFORE attempt/capacity
+validation. This means:
+
+- Forged tickets with attempt=0 → `InvalidActionCompletion` (ownership fails first)
+- Forged tickets with capacity=0 → `InvalidActionCompletion` (ownership fails first)
+- Forged tickets with attempt > capacity → `InvalidActionCompletion` (ownership fails first)
+
+`AttemptBeyondMax` is only returned for tickets that PASS ownership validation
+(exact pending ticket match) but have invalid attempt/capacity values. This
+scenario requires the exact same run/step/action/seq/idempotency_key as the
+pending ticket, differing only in attempt or capacity.
+
+This means the contract's assertion that "a ticket with attempt=0 must be
+rejected with AttemptBeyondMax" is only true for the exact pending ticket with
+attempt=0, not for any forged ticket with attempt=0.
+
+## Updated Test Expectations
+
+For the three failing ticket_authority_matrix tests, the expected errors are:
+- action_completed_attempt_zero_returns_beyond_max → expects `InvalidActionCompletion` (not `AttemptBeyondMax`)
+- action_completed_capacity_zero_returns_beyond_max → expects `InvalidActionCompletion` (not `AttemptBeyondMax`)
+- action_failed_attempt_zero_returns_beyond_max → expects `InvalidActionCompletion` (not `AttemptBeyondMax`)
+
+These tests will be renamed and updated to reflect the actual production
+behavior.
+
+
+## crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+impl Shard {
+    fn reserve_cancel_kill_terminalization(&mut self, run: RunId) -> RuntimeResult<()> {
+        self.reserve_checked_out_run_slot(run)?;
+        self.reserve_terminal_run_slot(run)
+    }
+
+    fn append_cancel_terminal_events(
+        &mut self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
+        self.append_terminal_events_with_pending_action(
+            run,
+            RuntimeJournalEvent::RunCancelled { run, reason },
+        )
+    }
+
+    fn append_kill_terminal_events(&mut self, run: RunId) -> RuntimeResult<()> {
+        self.append_terminal_events_with_pending_action(run, RuntimeJournalEvent::RunKilled { run })
+    }
+
+    fn append_terminal_events_with_pending_action(
+        &mut self,
+        run: RunId,
+        terminal: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        match self.pending_action_get(run) {
+            Some(ticket) if ticket.run == run => self.append_journal_events_atomically([
+                RuntimeJournalEvent::ActionAbandoned { ticket },
+                terminal,
+            ]),
+            Some(_) => Err(RuntimeError::InvalidActionCompletion),
+            None => self.append_journal_event(terminal),
+        }
+    }
+
+    fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+        if !self.run_state_contains(ticket.run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        match self.pending_action_get(ticket.run) {
+            Some(pending) if pending == ticket => Ok(()),
+            Some(pending)
+                if ticket.attempt > 0
+                    && ticket.attempt < pending.attempt
+                    && ticket.run == pending.run
+                    && ticket.step == pending.step
+                    && ticket.action == pending.action
+                    && ticket.capacity == pending.capacity
+                    && vb_core::action::action_ticket_has_valid_key(ticket)
+                    && ticket.seq <= pending.seq =>
+            {
+                Err(RuntimeError::StaleAttempt {
+                    incoming: ticket.attempt,
+                    current: pending.attempt,
+                })
+            }
+            Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+        }
+    }
+
+    fn require_legacy_pending_action_ownership(
+        &self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<ActionTicket> {
+        if !self.run_state_contains(run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        match self.pending_action_get(run) {
+            Some(pending) if pending.run == run && pending.step == step => Ok(pending),
+            Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+        }
+    }
+}
+
+
+## crates/vb_runtime/tests/ticket_authority_matrix.rs
+#![forbid(unsafe_code)]
+use std::error::Error;
+use std::sync::Arc;
+use vb_core::action::{
+    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy as VbRetryPolicy,
+};
+use vb_core::capability::CapabilitySet;
+use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::{ConstValue, SlotValue, Taint};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
+use vb_runtime::RuntimeError;
+use vb_runtime::journal::VolatileRuntimeJournal;
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+type TestResult<T> = Result<T, Box<dyn Error>>;
+
+fn make_contract(
+    id: u16,
+    name: &str,
+) -> Result<vb_core::action::ActionContract, Box<dyn std::error::Error>> {
+    Ok(vb_core::action::ActionContract {
+        id: ActionId::new(id),
+        name: vb_core::action::ActionName::new(name)?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: vb_core::action::Idempotency::DeterministicPure,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    })
+}
+
+fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let set = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let do_node = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(action_id),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(1),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("setconst-do"),
+        digest: WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([set, do_node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    })
+    .map_err(|e| format!("workflow must compile: {}", e).into())
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        retry_policy: VbRetryPolicy::NonRetryable,
+        code: ActionFailureCode::Timeout,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+#[derive(Clone, Copy, Debug)]
+enum Tamper {
+    MissingRun,
+    OtherRun,
+    Step,
+    Action,
+    ZeroAttempt,
+    FutureAttempt,
+    ZeroCapacity,
+    Capacity,
+    Key,
+    Sequence,
+}
+const CASES: [Tamper; 10] = [
+    Tamper::MissingRun,
+    Tamper::OtherRun,
+    Tamper::Step,
+    Tamper::Action,
+    Tamper::ZeroAttempt,
+    Tamper::FutureAttempt,
+    Tamper::ZeroCapacity,
+    Tamper::Capacity,
+    Tamper::Key,
+    Tamper::Sequence,
+];
+#[derive(Clone, Copy, Debug)]
+enum Delivery {
+    Completion,
+    Failure,
+}
+fn submit(shard: &mut Shard, run: RunId) -> TestResult<ActionTicket> {
+    shard.enqueue(ShardCommand::SubmitWithContracts {
+        run,
+        workflow: setconst_do_workflow(0)?,
+        caps: CapabilitySet::empty(),
+        action_contracts: Box::from([make_contract(0, "valid")?]),
+    })?;
+    assert_eq!(shard.tick(), Ok(true));
+    shard
+        .pending_action_get(run)
+        .ok_or_else(|| "missing issued ticket".into())
+}
+fn corrupted(mut ticket: ActionTicket, case: Tamper, other: RunId) -> TestResult<ActionTicket> {
+    match case {
+        Tamper::MissingRun => ticket.run = RunId::new(99999),
+        Tamper::OtherRun => ticket.run = other,
+        Tamper::Step => ticket.step = StepIdx::new(99),
+        Tamper::Action => ticket.action = ActionId::new(99),
+        Tamper::ZeroAttempt => ticket.attempt = 0,
+        Tamper::FutureAttempt => {
+            ticket.attempt = ticket.attempt.checked_add(1).ok_or("attempt overflow")?
+        }
+        Tamper::ZeroCapacity => ticket.capacity = 0,
+        Tamper::Capacity => {
+            ticket.capacity = ticket.capacity.checked_add(1).ok_or("capacity overflow")?
+        }
+        Tamper::Key => ticket.idempotency_key ^= 1,
+        Tamper::Sequence => {
+            ticket.seq = SeqNo::new(ticket.seq.get().checked_add(1).ok_or("sequence overflow")?);
+            ticket.idempotency_key = vb_core::action::compute_action_idempotency_key(
+                ticket.run,
+                ticket.seq,
+                ticket.action,
+            );
+        }
+    }
+    Ok(ticket)
+}
+fn check_case(case: Tamper, delivery: Delivery) -> TestResult<()> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        },
+        journal.clone(),
+    );
+    let run = RunId::new(500);
+    let other = RunId::new(501);
+    let original = submit(&mut shard, run)?;
+    let second = submit(&mut shard, other)?;
+    let before = journal.snapshot()?;
+    let state = shard
+        .run_state_get(run)
+        .ok_or("missing run before rejection")?;
+    let pc = state.frame.pc();
+    let value = *state.frame.read_slot(SlotIdx::ZERO)?;
+    let taint = state.frame.read_taint(SlotIdx::ZERO)?;
+    let ticket = corrupted(original, case, other)?;
+    let command = match delivery {
+        Delivery::Completion => ShardCommand::ActionCompleted {
+            ticket,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(1),
+                value: SlotValue::I64(100),
+                taint: Taint::Clean,
+                encoded_len: 3,
+            },
+        },
+        Delivery::Failure => ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        },
+    };
+    shard.enqueue(command)?;
+    let expected = match case {
+        Tamper::MissingRun => RuntimeError::RunNotFound,
+        _ => RuntimeError::InvalidActionCompletion,
+    };
+    assert_eq!(shard.tick(), Err(expected), "{case:?} via {delivery:?}");
+    assert_eq!(journal.snapshot()?, before, "{case:?} via {delivery:?}");
+    assert_eq!(shard.pending_action_get(run), Some(original));
+    assert_eq!(shard.pending_action_get(other), Some(second));
+    let state = shard
+        .run_state_get(run)
+        .ok_or("missing run after rejection")?;
+    assert_eq!(state.frame.pc(), pc);
+    assert_eq!(state.frame.read_slot(SlotIdx::ZERO)?, &value);
+    assert_eq!(state.frame.read_taint(SlotIdx::ZERO)?, taint);
+    Ok(())
+}
+#[test]
+fn completion_rejects_tampering_without_journal_or_run_mutation() -> TestResult<()> {
+    for case in CASES {
+        check_case(case, Delivery::Completion)?;
+    }
+    Ok(())
+}
+#[test]
+fn failure_rejects_tampering_without_journal_or_run_mutation() -> TestResult<()> {
+    for case in CASES {
+        check_case(case, Delivery::Failure)?;
+    }
+    Ok(())
+}
+
+
+## crates/vb_runtime/tests/durable_retry_red_phase.rs
+// Red-phase tests for durable retry vb-qi37.16.3
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
+// These tests define expected behavior that is NOT yet implemented or not yet exposed.
+// They are written in RED-phase TDD style: tests FAIL until production code implements/exposes behavior.
+// This file is Cargo-discovered evidence of the gap between contract and implementation.
+
+use vb_core::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionTicket, Idempotency,
+    RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
+};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::{ConstValue, Taint};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
+
+use vb_runtime::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+
+fn retry_workflow() -> Option<CompiledWorkflow> {
+    let set_policy = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let action = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let retry = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            exhausted: StepIdx::new(3),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("retry"),
+        digest: WorkflowDigest::from_bytes([8; 32]),
+        nodes: Box::from([set_policy, action, retry, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(2)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .ok()
+}
+
+fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
+    let guard = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(1),
+            handler: StepIdx::new(2),
+            error_slot: Some(SlotIdx::new(1)),
+        },
+    };
+    let action = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(3)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let handler = CompiledNode {
+        id: StepIdx::new(2),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(3)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(1),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("error_handler_with_slot"),
+        digest: WorkflowDigest::from_bytes([0xBB; 32]),
+        nodes: Box::from([guard, action, handler, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(false)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .ok()
+}
+
+fn run_exists(shard: &mut Shard, run: RunId) -> bool {
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 999
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    matches!(
+        shard.take_inspect_response(),
+        Some(vb_runtime::shard::InspectResponse::Found(_))
+    )
+}
+
+fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("suspended"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .ok()
+}
+
+fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
+    // Workflow: SetConst -> Do -> RetryCheck -> Finish
+    // SetConst sets slot 2 (policy_slot) to 3 (max_attempts)
+    // Do writes output to slot 0
+    // RetryCheck reads policy from slot 2
+    let set_policy = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(2)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let do_node = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let retry_check = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(2),
+            body: StepIdx::new(1),
+            exhausted: StepIdx::new(3),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("slot_preservation"),
+        digest: WorkflowDigest::from_bytes([0xCC; 32]),
+        nodes: Box::from([set_policy, do_node, retry_check, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(3)]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .ok()
+}
+
+fn small_config() -> ShardConfig {
+    ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    }
+}
+
+fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
+    let seq = SeqNo::ZERO;
+    let action = ActionId::new(0);
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        capacity,
+    }
+}
+
+fn retryable_failure() -> ActionFailure {
+    ActionFailure {
+        retry_policy: VbRetryPolicy::Retryable,
+        code: ActionFailureCode::Unknown,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        retry_policy: VbRetryPolicy::NonRetryable,
+        code: ActionFailureCode::Timeout,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+fn submit_run(shard: &mut Shard, run: RunId, workflow: CompiledWorkflow) {
+    let action = first_do_action(&workflow).unwrap_or(ActionId::new(0));
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: contracts_through(action),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+}
+
+fn first_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    while index < count {
+        if let Some(node) = workflow.node(StepIdx::new(index)) {
+            if let CompiledNodeKind::Do { action, .. } = node.kind {
+                return Some(action);
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    None
+}
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+// ===== RED-PHASE TEST 1: POST-005 - ticket_with_retry_capacity expands capacity =====
+// RED: This test FAILS at runtime because ticket_with_retry_capacity is private
+// Expected: When retry_metadata_exists and policy is Retryable,
+//          returned ticket.capacity = max(original.capacity, policy.max_attempts)
+// Actual: No public interface to test this behavior - function is private
+// This test FAILS (exits nonzero) to prove the RED phase contract gap exists.
+#[test]
+fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = retry_workflow() else {
+        panic!("retry workflow must exist");
+    };
+    let run = RunId::new(7000);
+
+    submit_run(&mut shard, run, wf);
+
+    // POST-005: ticket_with_retry_capacity expands capacity when retry metadata exists
+    let ticket = make_ticket(run, StepIdx::new(1), 1, 1);
+    let result = shard.ticket_with_retry_capacity(ticket, VbRetryPolicy::Retryable);
+    let expanded = result.expect("ticket_with_retry_capacity must succeed");
+    // retry_workflow has ConstValue::I64(2) at index 0, policy_slot = SlotIdx::new(1)
+    // max_attempts = 2, so capacity should be max(1, 2) = 2
+    assert_eq!(
+        expanded.capacity, 2,
+        "POST-005: capacity must expand to max(original=1, policy.max_attempts=2)"
+    );
+}
+
+// ===== RED-PHASE TEST 2: POST-005 - ticket unchanged when no retry metadata =====
+// RED: This test FAILS because ticket_with_retry_capacity is private
+// This test FAILS (exits nonzero) to prove the RED phase contract gap exists.
+#[test]
+fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = suspended_workflow_no_retry() else {
+        panic!("workflow must exist");
+    };
+
+    let run = RunId::new(7001);
+    submit_run(&mut shard, run, wf);
+
+    // POST-005: ticket_with_retry_capacity returns unchanged when no retry metadata
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 5);
+    let result = shard.ticket_with_retry_capacity(ticket, VbRetryPolicy::Retryable);
+    let unchanged = result.expect("ticket_with_retry_capacity must succeed");
+    assert_eq!(
+        unchanged.capacity, 5,
+        "POST-005: ticket must be returned unchanged when retry_metadata_exists is false"
+    );
+}
+
+// ===== RED-PHASE TEST 3: INV-003 - Journal replay idempotency =====
+// RED: No journal replay function exposed for testing.
+// This test documents that handle_action_failure removes run from self.runs on FailRun,
+// so a second ActionFailed for the same run returns RunNotFound.
+// True journal replay (simulating restart + replay) is not possible without
+// a journal_replay(ticket, events) function.
+#[test]
+fn journal_replay_idempotent_action_failed() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = suspended_workflow_no_retry() else {
+        panic!("suspended workflow must exist");
+    };
+    let run = RunId::new(7002);
+    submit_run(&mut shard, run, wf);
+
+    // Enqueue first ActionFailed (NonRetryable so no retry logic)
+    let ticket1 = make_ticket(run, StepIdx::ZERO, 1, 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Capture journal after first ActionFailed
+    let events_after_first = journal.snapshot().expect("journal must snapshot");
+    let action_failed_count = events_after_first
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::ActionFailed { .. }))
+        .count();
+
+    // Replay the same ActionFailed event by enqueuing again
+    // NOTE: After FailRun, the run is removed from self.runs,
+    // so tick() returns Err(RunNotFound)
+    let ticket2 = make_ticket(run, StepIdx::ZERO, 1, 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    // tick() fails because run was already removed
+    let tick_result = shard.tick();
+
+    // RED gap: True journal replay would allow appending events to a failed run.
+    // Currently, after FailRun the run is removed, so tick() returns Err(RunNotFound).
+    // This is NOT the same as journal replay - journal replay would restart the shard
+    // and process stored events, not call handle_action_failure on a live run.
+    assert!(
+        tick_result.is_err(),
+        "After FailRun, run is removed, so tick() returns RunNotFound"
+    );
+
+    // Journal should have exactly 1 ActionFailed (the first one)
+    assert_eq!(
+        action_failed_count, 1,
+        "journal should have exactly 1 ActionFailed event"
+    );
+
+    // RED gap: To test INV-003 (journal replay idempotency), we need:
+    // 1. A journal_replay(ticket, events) function that replays events without removing the run
+    // 2. Or a test mode where FailRun doesn't remove the run
+    // Without this, we cannot verify that duplicate ActionFailed appends to journal
+    // in a true replay scenario.
+}
+
+// ===== RED-PHASE TEST 4: INV-004 - Slot preservation on action failure =====
+// RED: No public interface to read individual slot values.
+// The slot preservation invariant (INV-004) cannot be verified from integration tests.
+// This test documents the gap: no InspectSlot command exists.
+#[test]
+fn action_failure_preserves_action_completed_slots_integration_gap() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = slot_preservation_workflow() else {
+        panic!("workflow must exist");
+    };
+
+    let run = RunId::new(7003);
+    submit_run(&mut shard, run, wf);
+
+    // The workflow: SetConst (sets policy slot 2), then Do (outputs to slot 0)
+    // After submit, step 1 (Do) is running, waiting for action completion
+    // To verify INV-004 (slot preservation), we would need to:
+    // 1. Complete the action at step 1 (write slot 0 = 42)
+    // 2. Fail the action at step 1
+    // 3. Inspect slot 0 to verify it still = 42
+
+    // RED gap: Cannot manually set action completion state from integration tests.
+    // We can only test through public enqueue interface.
+    // The run either completed (if retry worked) or failed
+    // But we cannot verify the slot preservation invariant.
+
+    // For now, we verify the run still exists (retry worked) or failed
+    let run_exists = run_exists(&mut shard, run);
+    let failed_count = shard.counters().snapshot().runs_failed;
+
+    // RED: This test documents the gap - we cannot verify INV-004 from integration tests
+    // because no public interface exists to read individual slot values.
+    // The assertion below is not testing INV-004, just that the run state is accessible.
+    assert!(
+        run_exists || failed_count > 0,
+        "run should either exist (retry) or be failed"
+    );
+}
+
+// ===== RED-PHASE TEST 5: INV-5 - PC reset semantics on retry =====
+// RED: No public interface to inspect PC after action failure.
+// This test uses Inspect command to verify PC, but Inspect only returns current PC,
+// not the PC after a specific command. The gap is in PC tracking after failure.
+#[test]
+fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
+-> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = retry_workflow() else {
+        return Err("fixture missing".into());
+    };
+    let run = RunId::new(7004);
+    submit_run(&mut shard, run, wf);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let resp = shard.take_inspect_response();
+    assert!(matches!(
+        resp,
+        Some(vb_runtime::shard::InspectResponse::Found(_))
+    ));
+    if let Some(vb_runtime::shard::InspectResponse::Found(snap)) = resp {
+        assert_eq!(
+            snap.pc,
+            StepIdx::new(1),
+            "initial PC should be at action step"
+        );
+    }
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 2,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let resp = shard.take_inspect_response();
+
+    assert!(
+        matches!(resp, Some(vb_runtime::shard::InspectResponse::Found(_))),
+        "run should still exist after retry"
+    );
+    if let Some(vb_runtime::shard::InspectResponse::Found(snap)) = resp {
+        assert_eq!(
+            snap.pc,
+            StepIdx::new(1),
+            "INV-5: PC must reset to failed step on retry, not advanced"
+        );
+    }
+    Ok(())
+}
+
+// ===== RED-PHASE TEST 6: POST-002 - Error handler writes correct slot value =====
+// RED: No public interface to read slot values after error handler runs.
+// This test documents the gap: no InspectSlot command exists to verify error_slot content.
+#[test]
+fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = error_handler_with_slot_workflow() else {
+        return Err("fixture missing".into());
+    };
+    let run = RunId::new(7005);
+    submit_run(&mut shard, run, wf);
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 3,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let resp = shard.take_inspect_response();
+
+    let snap = match resp {
+        Some(vb_runtime::shard::InspectResponse::Found(snapshot)) => snapshot,
+        _ => return Err("expected Found inspect response".into()),
+    };
+    assert_eq!(
+        snap.pc,
+        StepIdx::new(2),
+        "PC should be at handler step after error handling"
+    );
+
+    let handler_ticket = shard
+        .pending_action_get(run)
+        .ok_or("missing handler ticket")?;
+    assert_eq!(handler_ticket.step, StepIdx::new(2));
+    assert_eq!(handler_ticket.action, ActionId::new(0));
+    assert_eq!(handler_ticket.attempt, 1);
+    let frame = shard.run_state_get(run).ok_or("missing run")?;
+    let slot_value = frame.frame.read_slot(SlotIdx::new(1))?;
+    assert_eq!(
+        slot_value,
+        &vb_core::value::SlotValue::I64(1),
+        "POST-002: error slot should contain I64 of failed step index"
+    );
+
+    Ok(())
+}
+
+// ===== RED-PHASE TEST 7: PRE-004 - retry_is_available requires Retryable policy =====
+// This test PASSES - proves indirect coverage of NonRetryable behavior.
+// RED gap: retry_is_available is private, but behavior is testable indirectly.
+#[test]
+fn retry_is_available_returns_false_for_nonretryable_policy()
+-> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = retry_workflow() else {
+        return Err("fixture missing".into());
+    };
+    let run = RunId::new(7006);
+    submit_run(&mut shard, run, wf);
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert!(
+        !run_exists(&mut shard, run),
+        "NonRetryable without handler should fail the run"
+    );
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
+}
+
+// ===== RED-PHASE TEST 8: PRE-004 - retry_is_available returns false when no retry metadata =====
+// This test PASSES - proves indirect coverage of missing retry metadata.
+#[test]
+fn retry_is_available_returns_false_when_no_retry_metadata() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = suspended_workflow_no_retry() else {
+        panic!("workflow must exist");
+    };
+
+    let run = RunId::new(7007);
+    submit_run(&mut shard, run, wf);
+
+    // Even with Retryable policy, no retry should happen
+    // because there's no retry metadata (no RetryCheck node)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Run should fail because retry is not available
+    // (no RetryCheck node follows step 0)
+    assert!(
+        !run_exists(&mut shard, run),
+        "Retryable without retry_metadata should fail the run"
+    );
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+// ===== RED-PHASE TEST 9: POST-006 - record_retry_attempt boundary =====
+// RED: Cannot construct RunState in integration tests due to private fields.
+// record_retry_attempt is pub fn but requires RunState which has private fields.
+// This test documents the integration test gap for boundary testing.
+#[test]
+fn record_retry_attempt_integration_gap() {
+    // RED gap: record_retry_attempt(state, ticket, policy) is public in helpers,
+    // but RunState has private fields (action_attempts, frame, workflow, store).
+    // Integration tests cannot construct RunState to test record_retry_attempt boundary.
+    // Unit tests in helpers.rs (#[cfg(test)]) cover this, but not from integration path.
+    // POST-006 boundary (max_attempts) is tested in unit tests only.
+}
+
+
+## crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs
+#![forbid(unsafe_code)]
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
+//! Integration tests for vb-jggy: Persist execution attempt numbers and reject stale completions.
+//!
+//! These tests verify:
+//! - POST-001: `RunState::action_attempts` is zero-initialized at admission
+//! - POST-003: `RuntimeJournalEvent::StepSucceeded` and `RuntimeJournalEvent::ActionFailed` carry `attempt: u16`
+//! - POST-004/INV-003: `validate_ticket_attempt` is called BEFORE journal mutation
+//! - POST-005: Stale completions return `Err(RuntimeError::StaleAttempt)` BEFORE any state mutation
+//! - POST-006: `record_scheduled_attempt` is called when ticket is issued
+//!
+//! These tests are expected to FAIL until vb-jggy implementation is complete.
+
+use vb_core::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
+};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::{ConstValue, SlotValue, Taint};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
+
+use vb_runtime::RuntimeError;
+use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn max_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    let mut max_action: Option<ActionId> = None;
+    while index < count {
+        if let Some(node) = workflow.node(StepIdx::new(index)) {
+            if let CompiledNodeKind::Do { action, .. } = node.kind {
+                max_action = match max_action {
+                    Some(current) if current.get() >= action.get() => Some(current),
+                    _ => Some(action),
+                };
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    max_action
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+fn submit_with_contracts(shard: &Shard, run: RunId, workflow: CompiledWorkflow) {
+    submit_with_inputs_and_contracts(
+        shard,
+        run,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+    );
+}
+
+fn submit_with_inputs_and_contracts(
+    shard: &Shard,
+    run: RunId,
+    workflow: CompiledWorkflow,
+    inputs: Box<[(SlotIdx, SlotValue)]>,
+) {
+    let action = max_do_action(&workflow).unwrap_or(ActionId::new(0));
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: contracts_through(action),
+        })
+        .expect("contracted submit enqueues");
+}
+
+fn suspended_workflow() -> Option<CompiledWorkflow> {
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("suspended"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    };
+    CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
+    let node0 = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let node1 = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(1),
+            input: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("suspended_2step"),
+        digest: WorkflowDigest::from_bytes([2; 32]),
+        nodes: Box::from([node0, node1]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    };
+    CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn retry_workflow() -> Option<CompiledWorkflow> {
+    let set_policy = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let action = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::ZERO),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    let retry = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            exhausted: StepIdx::new(3),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("retry"),
+        digest: WorkflowDigest::from_bytes([3; 32]),
+        nodes: Box::from([set_policy, action, retry, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(3)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    };
+    CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn small_config() -> ShardConfig {
+    ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    }
+}
+
+fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
+    let seq = SeqNo::ZERO;
+    let action = ActionId::new(0);
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        capacity,
+    }
+}
+
+fn retryable_failure() -> ActionFailure {
+    ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        code: ActionFailureCode::Rejected,
+        retry_policy: VbRetryPolicy::NonRetryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+// =============================================================================
+// POST-001: RunState::action_attempts records first scheduled attempt after the first tick
+// =============================================================================
+
+/// B17: handle_submit_with_inputs records first scheduled action attempts
+#[test]
+fn handle_submit_with_inputs_records_first_action_attempts() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow_2step() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(1);
+
+    submit_with_inputs_and_contracts(
+        &shard,
+        run,
+        wf,
+        Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Verify action_attempts records scheduled attempt state after tick.
+    let Some(state) = shard.run_state_get_mut(run) else {
+        panic!("run should exist");
+    };
+    assert_eq!(state.action_attempts.len(), 2, "workflow has 2 steps");
+    assert_eq!(
+        state.action_attempts.get(0).copied(),
+        Some(1),
+        "step 0 attempt counter is 1 after first scheduling"
+    );
+    assert_eq!(
+        state.action_attempts.get(1).copied(),
+        Some(0),
+        "step 1 attempt counter remains 0 before scheduling"
+    );
+}
+
+/// B17 variant: single step workflow records first scheduled action attempt
+#[test]
+fn handle_submit_records_first_action_attempt_single_step() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(2);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let Some(state) = shard.run_state_get_mut(run) else {
+        panic!("run should exist");
+    };
+    assert_eq!(state.action_attempts.len(), 1, "workflow has 1 step");
+    assert_eq!(
+        state.action_attempts.get(0).copied(),
+        Some(1),
+        "step 0 attempt counter is 1 after first scheduling"
+    );
+}
+
+// =============================================================================
+// POST-003: RuntimeJournalEvent carries attempt field
+// =============================================================================
+
+/// B30: RuntimeJournalEvent::StepSucceeded carries attempt field
+#[test]
+fn step_succeeded_carries_attempt_field() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(10);
+
+    // Submit and drive to action
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete action with attempt=1
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Check durable action completion envelope carries attempt.
+    let events = journal.snapshot().expect("journal snapshot should work");
+    let completion_attempts: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e {
+            RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. }
+                if ticket.run == run && ticket.step == StepIdx::ZERO =>
+            {
+                Some(ticket.attempt)
+            }
+            _ => None,
+        })
+        .collect();
+
+    assert!(
+        !completion_attempts.is_empty(),
+        "ActionCompletedEnvelope event should be in journal"
+    );
+    assert_eq!(
+        completion_attempts[0], 1,
+        "ActionCompletedEnvelope ticket should carry attempt=1"
+    );
+}
+
+/// B31: RuntimeJournalEvent::ActionFailed carries attempt field
+#[test]
+fn action_failed_carries_attempt_field() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        return Err("missing workflow fixture".into());
+    };
+    let run = RunId::new(11);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = journal.snapshot()?;
+    let action_failed_events: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e {
+            RuntimeJournalEvent::ActionFailed {
+                run: r,
+                step: s,
+                action: _,
+                attempt: a,
+            } if *r == run && *s == StepIdx::ZERO => Some(*a),
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(
+        action_failed_events,
+        vec![1],
+        "ActionFailed should carry attempt=1 from ticket"
+    );
+
+    Ok(())
+}
+
+/// Verify StepSucceeded with higher attempt number is persisted correctly
+#[test]
+fn step_succeeded_carries_retry_attempt_number() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
+    };
+    let run = RunId::new(12);
+
+    // Submit and drive to first action
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail ticket 1 (retryable)
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Fail ticket 2 (retryable)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete ticket 3 (matching attempt=3)
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(99),
+        taint: Taint::Clean,
+        encoded_len: 3,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: ticket3,
+            output,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Check attempt=3 was persisted in the durable action completion envelope.
+    let events = journal.snapshot()?;
+    let completion_with_attempt_3: bool = events.iter().any(|e| {
+        matches!(
+            e,
+            RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. }
+                if ticket.run == run && ticket.step == StepIdx::new(1) && ticket.attempt == 3
+        )
+    });
+    assert!(
+        completion_with_attempt_3,
+        "ActionCompletedEnvelope ticket should carry attempt=3"
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// POST-004/INV-003: validate_ticket_attempt called BEFORE journal mutation
+// =============================================================================
+
+/// B21: handle_action_completion rejects stale attempt BEFORE journal write
+#[test]
+fn stale_attempt_completion_rejected_before_journal_write() -> Result<(), Box<dyn std::error::Error>>
+{
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
+    };
+    let run = RunId::new(20);
+
+    // Submit and drive to first action
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Drive failure to advance to ticket 2
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Capture real ticket 2 (will become stale)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    let ticket2_attempt = ticket2.attempt;
+    assert_eq!(ticket2_attempt, 2, "ticket2 should have attempt=2");
+
+    // Drive failure to advance to ticket 3
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Now current attempt is 3, but we'll try to complete with the saved ticket 2 attempt
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
+
+    // Capture state before stale completion attempt
+    let journal_before = journal.snapshot()?;
+    let counters_before = shard.counters().snapshot();
+
+    // Attempt stale completion with saved ticket 2 attempt number
+    let stale_ticket = ticket2;
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(7),
+        taint: Taint::Clean,
+        encoded_len: 3,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: stale_ticket,
+            output,
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::StaleAttempt {
+            incoming: ticket2_attempt,
+            current: ticket3.attempt,
+        })
+    );
+
+    // Verify NO new journal events were written
+    let journal_after = journal.snapshot()?;
+    assert_eq!(
+        journal_before, journal_after,
+        "Journal must not be mutated when stale attempt is rejected"
+    );
+
+    // Verify counters unchanged
+    let counters_after = shard.counters().snapshot();
+    assert_eq!(
+        counters_before.runs_completed, counters_after.runs_completed,
+        "runs_completed counter must not change on stale rejection"
+    );
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "runs_failed counter must not change on stale rejection"
+    );
+
+    Ok(())
+}
+
+/// B28: handle_action_failure rejects stale attempt BEFORE journal write
+#[test]
+fn stale_attempt_failure_rejected_before_journal_write() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
+    };
+    let run = RunId::new(21);
+
+    // Submit and drive to first action
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Drive failure to advance to ticket 2
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Capture real ticket 2 (will become stale)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    let ticket2_attempt = ticket2.attempt;
+    assert_eq!(ticket2_attempt, 2, "ticket2 should have attempt=2");
+
+    // Drive failure to advance to ticket 3
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Now current attempt is 3, but we'll try to fail with the saved ticket 2 attempt
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
+
+    // Capture state before stale failure attempt
+    let journal_before = journal.snapshot()?;
+
+    // Attempt stale failure with saved ticket 2 attempt number
+    let stale_ticket = ticket2;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: stale_ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::StaleAttempt {
+            incoming: ticket2_attempt,
+            current: ticket3.attempt,
+        })
+    );
+
+    // Verify NO new journal events were written
+    let journal_after = journal.snapshot()?;
+    assert_eq!(
+        journal_before, journal_after,
+        "Journal must not be mutated when stale attempt is rejected"
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// POST-006: record_scheduled_attempt is called when ticket is issued
+// =============================================================================
+
+/// Verify action_attempts advances when action is scheduled (via drive_run)
+#[test]
+fn action_attempts_advances_after_scheduling() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(30);
+
+    // Initially action_attempts[0] = 0
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard.run_state_get_mut(run).expect("run should exist");
+    assert_eq!(
+        state.action_attempts.get(0).copied(),
+        Some(1),
+        "action_attempts[0] should be 1 after first action scheduling (drive_run calls record_scheduled_attempt)"
+    );
+}
+
+/// Verify action_attempts monotonically advances on retry scheduling
+#[test]
+fn action_attempts_monotonically_advances_on_retry() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
+    };
+    let run = RunId::new(31);
+
+    // Submit and drive to action (step 1)
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // action_attempts[1] should be 1 after first scheduling
+    {
+        let state = shard.run_state_get_mut(run).ok_or("run should exist")?;
+        assert_eq!(
+            state.action_attempts.get(1).copied(),
+            Some(1),
+            "action_attempts[1] should be 1 after first scheduling"
+        );
+    }
+
+    // Fail with retryable policy - this should trigger a retry
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // action_attempts[1] should now be 2 (retry scheduled)
+    {
+        let state = shard
+            .run_state_get_mut(run)
+            .ok_or("run should exist after retry")?;
+        assert_eq!(
+            state.action_attempts.get(1).copied(),
+            Some(2),
+            "action_attempts[1] should be 2 after retry scheduling"
+        );
+    }
+
+    // Fail again with retry using real issued ticket
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // action_attempts[1] should now be 3
+    {
+        let state = shard.run_state_get_mut(run).ok_or("run should exist")?;
+        assert_eq!(
+            state.action_attempts.get(1).copied(),
+            Some(3),
+            "action_attempts[1] should be 3 after second retry scheduling"
+        );
+    }
+
+    Ok(())
+}
+
+// =============================================================================
+// INV-004: Monotonicity - action_attempts never decreases
+// =============================================================================
+
+/// Verify action_attempts for a step never decreases over multiple operations
+#[test]
+fn action_attempts_never_decreases_across_operations() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(40);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let initial_attempt = shard
+        .run_state_get(run)
+        .expect("run exists")
+        .action_attempts
+        .get(0)
+        .copied()
+        .expect("step 0 exists");
+
+    // Verify normal scheduling did not create a zero/underflowed attempt.
+    let final_attempt = shard
+        .run_state_get(run)
+        .expect("run exists")
+        .action_attempts
+        .get(0)
+        .copied()
+        .expect("step 0 exists");
+    assert!(
+        final_attempt >= initial_attempt,
+        "action_attempts[0] should never decrease below initial value"
+    );
+}
+
+// =============================================================================
+// Error cases: EncodeFailed on completion/failure paths
+// =============================================================================
+
+/// EncodeFailed: completion returns error and leaves state unchanged
+#[test]
+fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
+    // This test would require forcing postcard serialization to fail.
+    // We test the error path exists and state is unchanged on error.
+    // Note: Actual EncodeFailed forcing would require a custom encoder or oversized value.
+    // This test documents the expected behavior.
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(50);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Verify run is active and in correct state
+    let _state_before = shard
+        .run_state_get_mut(run)
+        .expect("run should exist")
+        .clone();
+
+    // Complete action normally (happy path to verify event structure)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    // The tick processes the completion - we just verify it doesn't panic
+    assert_eq!(shard.tick(), Ok(true));
+}
+
+// =============================================================================
+// BDD Scenario: validate_ticket_attempt accepts valid ticket
+// =============================================================================
+
+/// B7: validate_ticket_attempt accepts valid ticket (current=1, attempt=2)
+#[test]
+fn validate_ticket_attempt_accepts_valid_ticket() -> Result<(), Box<dyn std::error::Error>> {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        return Err("missing workflow fixture".into());
+    };
+    let run = RunId::new(60);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete with real issued ticket (attempt=1, equal to current=1 — valid)
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket")?;
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(100),
+        taint: Taint::Clean,
+        encoded_len: 3,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true), "valid ticket should be accepted");
+
+    Ok(())
+}
+
+// =============================================================================
+// BDD Scenario: equal attempt is not stale
+// =============================================================================
+
+/// Equal attempt (current=1, incoming=1) is NOT stale
+#[test]
+fn equal_attempt_is_not_stale() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(70);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // action_attempts[0] = 1 after scheduling
+    // Try to complete with attempt=1 (equal, not stale)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(7),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    // Equal attempt should NOT return StaleAttempt error
+    let result = shard.tick();
+    assert!(
+        !matches!(result, Err(RuntimeError::StaleAttempt { .. })),
+        "Equal attempt should not be rejected as stale"
+    );
+}
+
+// =============================================================================
+// BDD Scenario: future attempt when current > 0 is rejected (G005 fixed)
+// =============================================================================
+
+/// Future attempt within ticket capacity is rejected.
+#[test]
+fn future_attempt_within_capacity_is_rejected() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow() else {
+        panic!("missing workflow fixture");
+    };
+    let run = RunId::new(80);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // action_attempts[0] = 1
+    // Try to complete with attempt=3 (future but within ticket capacity — must be rejected).
+    let ticket = make_ticket(run, StepIdx::ZERO, 3, 5);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(7),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    // G005: future attempt within capacity must be rejected with InvalidActionCompletion
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::InvalidActionCompletion),
+        "future attempt within capacity must be rejected"
+    );
+}
+
+// =============================================================================
+// Multiple steps: verify attempt counters are independent
+// =============================================================================
+
+/// Verify each step has independent attempt counter
+#[test]
+fn each_step_has_independent_attempt_counter() {
+    let mut shard = Shard::new(small_config());
+    let Some(wf) = suspended_workflow_2step() else {
+        panic!("missing 2-step workflow fixture");
+    };
+    let run = RunId::new(90);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Step 0 should have attempt=1 (first action scheduled)
+    // Step 1 should have attempt=0 (not yet reached)
+    let state = shard.run_state_get_mut(run).expect("run should exist");
+    assert_eq!(
+        state.action_attempts.get(0).copied(),
+        Some(1),
+        "step 0 attempt should be 1"
+    );
+    assert_eq!(
+        state.action_attempts.get(1).copied(),
+        Some(0),
+        "step 1 attempt should be 0 (not yet reached)"
+    );
+}
+
+
+## .beads/vb-rcizj/evidence/independent-targeted-v2.log
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/vb_runtime)
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.43s
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-7e75e2a13304ade0)
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test journal_replay_idempotent_action_failed ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-37b62807c1c1a5ed)
+
+running 2 tests
+test completion_rejects_tampering_without_journal_or_run_mutation ... ok
+test failure_rejects_tampering_without_journal_or_run_mutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-01f06dea8d9c1fee)
+
+running 15 tests
+test action_attempts_never_decreases_across_operations ... ok
+test action_attempts_advances_after_scheduling ... ok
+test future_attempt_within_capacity_is_rejected ... ok
+test action_failed_carries_attempt_field ... ok
+test action_attempts_monotonically_advances_on_retry ... ok
+test equal_attempt_is_not_stale ... ok
+test each_step_has_independent_attempt_counter ... ok
+test handle_submit_records_first_action_attempt_single_step ... ok
+test handle_submit_with_inputs_records_first_action_attempts ... ok
+test encode_failed_completion_returns_error_and_leaves_state_unchanged ... ok
+test validate_ticket_attempt_accepts_valid_ticket ... ok
+test step_succeeded_carries_attempt_field ... ok
+test stale_attempt_failure_rejected_before_journal_write ... ok
+test stale_attempt_completion_rejected_before_journal_write ... ok
+test step_succeeded_carries_retry_attempt_number ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
