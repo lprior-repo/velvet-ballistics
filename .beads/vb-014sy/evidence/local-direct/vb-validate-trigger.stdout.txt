@@ -1,17 +1,21 @@
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
      Running unittests src/lib.rs (target/debug/deps/vb_validate-aa9feb3038d1ae93)
 
 running 13 tests
 test schema_support::schema_fields::fields_tests::trigger::validate_trigger_accepts_supported_triggers ... ok
-test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_empty_or_missing ... ok
 test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_event_with_legacy_name_field ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_empty_or_missing ... ok
 test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_multiple_triggers ... ok
+test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_unsupported_trigger_shapes ... ok
+test schema_support::schema_tests::validate_trigger_accepts_event_trigger ... ok
 test schema_support::schema_tests::validate_trigger_accepts_manual_trigger ... ok
+test schema_support::schema_tests::validate_trigger_accepts_schedule_trigger ... ok
 test schema_support::schema_tests::validate_trigger_accepts_webhook_trigger ... ok
 test schema_support::schema_tests::validate_trigger_rejects_empty_when_mapping ... ok
-test schema_support::schema_tests::validate_trigger_accepts_event_trigger ... ok
-test schema_support::schema_fields::fields_tests::trigger::validate_trigger_rejects_unsupported_trigger_shapes ... ok
-test schema_support::schema_tests::validate_trigger_accepts_schedule_trigger ... ok
 test schema_support::schema_tests::validate_trigger_rejects_ipc_trigger ... ok
 test schema_support::schema_tests::validate_trigger_rejects_schedule_without_cron ... ok
 test schema_support::schema_tests::validate_trigger_rejects_unsupported_trigger ... ok
@@ -66,4 +70,3 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; fini
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
-

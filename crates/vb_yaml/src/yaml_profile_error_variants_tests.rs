@@ -7,6 +7,7 @@
 //! Target: 5x density (215 tests / 43 pub fns).
 
 use crate::parse_workflow_source;
+use crate::yaml_ast::types::TriggerAst;
 use crate::yaml_error::YamlError;
 use crate::yaml_events::{EventSpan, ScalarStyle, YamlEvent};
 use crate::yaml_profile::reject_anchors_aliases_merges;
@@ -175,6 +176,73 @@ fn parse_error_unclosed_double_quote() {
             assert!(line > 0, "ParseError line should be > 0, got {line}");
         }
         other => fail_assert!("expected ParseError, got {other:?}"),
+    }
+}
+
+#[test]
+fn raw_yaml_event_trigger_parses_type_field() {
+    let source = "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    type: job.created\nsteps: []\n";
+
+    assert_eq!(
+        parse_workflow_source(source).map(|workflow| workflow.trigger().clone()),
+        Ok(TriggerAst::Event {
+            event_type: "job.created".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn raw_yaml_event_trigger_rejects_invalid_shapes_with_exact_paths() {
+    let cases = [
+        (
+            "missing type",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  event: {}\nsteps: []\n",
+            YamlError::MissingField {
+                field: "when.event.type",
+            },
+        ),
+        (
+            "scalar body",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  event: job.created\nsteps: []\n",
+            YamlError::FieldShape {
+                field: "when.event",
+                expected: "mapping",
+            },
+        ),
+        (
+            "non-string type",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    type: 42\nsteps: []\n",
+            YamlError::FieldShape {
+                field: "when.event.type",
+                expected: "non-empty string",
+            },
+        ),
+        (
+            "empty type",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    type: ''\nsteps: []\n",
+            YamlError::FieldShape {
+                field: "when.event.type",
+                expected: "non-empty string",
+            },
+        ),
+        (
+            "extra event field",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    type: job.created\n    name: legacy\nsteps: []\n",
+            YamlError::UnknownField {
+                field: "name".into(),
+            },
+        ),
+        (
+            "unknown trigger",
+            "version: velvet-ballistics/v1\nname: test\nwhen:\n  queue: {}\nsteps: []\n",
+            YamlError::UnknownField {
+                field: "queue".into(),
+            },
+        ),
+    ];
+
+    for (case, source, expected) in cases {
+        assert_eq!(parse_workflow_source(source), Err(expected), "case: {case}");
     }
 }
 

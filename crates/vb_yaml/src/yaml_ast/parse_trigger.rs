@@ -3,7 +3,7 @@
 
 use crate::yaml_error::{YamlError, YamlResult};
 
-use super::parse::{lookup, mapping, reject_unknown_fields};
+use super::parse::{lookup, mapping, reject_unknown_fields, require_str_in};
 use super::types::*;
 
 /// Parse the trigger declaration from a workflow node.
@@ -78,19 +78,8 @@ fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
 }
 
 fn parse_event(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    mapping(body, "when.event")?;
     reject_unknown_fields(body, &["type"])?;
-    let Some(event_name) = lookup(body, "type").and_then(saphyr::Yaml::as_str) else {
-        return Err(YamlError::MissingField {
-            field: "when.event.type",
-        });
-    };
-    if event_name.is_empty() {
-        return Err(YamlError::FieldShape {
-            field: "when.event.name",
-            expected: "non-empty string",
-        });
-    }
-    Ok(TriggerAst::Event {
-        event_type: event_name.to_string(),
-    })
+    let event_type = require_str_in(body, "type", "when.event.type")?;
+    Ok(TriggerAst::Event { event_type })
 }

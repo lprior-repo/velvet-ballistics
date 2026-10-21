@@ -7,12 +7,15 @@ The v1 trigger contract is `when.event.type`; see `velvet-ballistics-MASTER.md` 
 Raw outputs and actual process exit codes are recorded under `local-direct/`:
 
 - `CARGO_BUILD_JOBS=2 cargo test -p vb_validate validate_trigger` — exit 0. Validator library: 13 passed, 0 failed, 857 filtered. Other package targets were also launched by Cargo; their selected counts are in the raw log.
-- `CARGO_BUILD_JOBS=2 cargo test -p velvet-ballistics-workspace-tests --test vb_test_validate_yaml_parsing_behavior validate_trigger_accepts_event_trigger_with_name` — exit 0, 1 passed, 0 failed, 61 filtered.
+- `CARGO_BUILD_JOBS=2 cargo test -p velvet-ballistics-workspace-tests --test vb_test_validate_yaml_parsing_behavior validate_trigger_accepts_event_trigger_with_type` — exit 0, 1 passed, 0 failed, 61 filtered.
+- `CARGO_BUILD_JOBS=2 cargo test -p vb_yaml raw_yaml_event_trigger -- --test-threads=2` — exit 0, 2 passed, 0 failed, 158 filtered. The raw YAML parser API tests accept `when.event.type` and reject missing type, scalar event body, non-string type, empty type, extra event field, and unknown trigger with exact `YamlError` variants and field paths.
+
+The test stdout files preserve their command output; one surplus trailing blank line was removed from Cargo stdout files so `git diff --check` is clean.
 
 ## Local CLI review routes
 
-- OMP v18.12.1: `local-5090-ninfer/qwen3.8-27b-uncensored` ran without a custom profile. It reported the assigned workspace path and accurately returned the section 9 grammar. The initial invocation's output is in the task transcript; a second captured invocation was interrupted after remaining at `Working...` and exited 130.
+- OMP v18.12.1: `local-5090-ninfer/qwen3.8-27b-uncensored` ran without a custom profile and returned the assigned workspace path plus the correct section 9 grammar. The retained output has no separate tool-call event record, so bash invocation is unverified and this is partial review evidence only. A later invocation remained at `Working...` and was interrupted (exit 130).
 - A custom OMP profile `vb014sy-yaml-review` did not contain the selected model route and returned exit 1; no credentials or configuration were inspected.
-- OpenCode's catalog listed local Qwen models, but review invocations to both `qwen36-5090/Qwen3.6-35B-A3B-UD-Q5_K_XL` (with and without `.gguf`) and `qwen36-3090/Qwen3.6-35B-A3B-UD-Q4_K_XL` failed before a tool call. The 5090 route returned model-not-found / then an unexpected server error; the 3090 route returned an unexpected server error. OpenCode review is therefore not evidence of acceptance.
+- OpenCode's catalog listed local Qwen models, but invocations to `qwen36-5090/Qwen3.6-35B-A3B-UD-Q5_K_XL` (with and without `.gguf`) and `qwen36-3090/Qwen3.6-35B-A3B-UD-Q4_K_XL` all failed before a tool call. The `.gguf` route returned model-not-found; the other routes returned unexpected server errors. OpenCode review is not evidence of acceptance.
 
-No independent code-review or test-review approval is claimed here; this candidate is published for that review.
+The first independent review rejected the initial candidate because it had no raw YAML parser API coverage and the empty-event diagnostic pointed to `when.event.name`. This revision addresses those findings. The revised candidate still requires independent code and test review.
