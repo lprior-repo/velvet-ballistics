@@ -455,14 +455,11 @@ fn snapshot_input_violation_to_error(
     match violation {
         SnapshotRecoveryInputViolation::SnapshotRunMismatch {
             expected_run,
-            snapshot_run,
             snapshot_seq,
-        } => RecoveryError::ReplayDivergence {
-            step: vb_core::StepIdx::ZERO,
-            detail: format!(
-                "snapshot run_id mismatch: expected {:?}, found {:?} (snapshot at seq {:?})",
-                expected_run, snapshot_run, snapshot_seq
-            ),
+            ..
+        } => RecoveryError::CorruptSnapshot {
+            run: expected_run,
+            seq: snapshot_seq,
         },
         SnapshotRecoveryInputViolation::TailRunMismatch { expected, actual } => {
             RecoveryError::ReplayDivergence {
