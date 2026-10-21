@@ -1,0 +1,15 @@
+Reviewer: Codex test-suite reviewer agent /root/artifact_test_rereview_729
+Candidate: 729778e06599b1d1bc1f3f6655a47e375c928903
+Parent: 6311991293c539d3016419acea3bb5c2e1f4f843
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-test-rereview-729778-gitjj
+Git root: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-test-rereview-729778-gitjj
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-test-rereview-729778-gitjj
+
+cargo test -p velvet-ballistics-workspace-tests --test vb_9agmk_artifact_evidence -j 2 -- --test-threads=2
+Exit status: 0 (artifact-evidence.exit)
+
+cargo test -p vb_runtime --test vb_wave16_mqa -j 2 -- --test-threads=2
+Exit status: 0 (wave16.exit)
+
+cargo test -p velvet-ballistics-workspace-tests --test runtime_version_barrier_tests -j 2 -- --test-threads=2
+Exit status: 0 (version-barrier.exit)

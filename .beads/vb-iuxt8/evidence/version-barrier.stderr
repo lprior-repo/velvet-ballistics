@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-test-rereview-729778-gitjj/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/runtime_version_barrier_tests.rs (target/debug/deps/runtime_version_barrier_tests-37350439ff6155a5)
