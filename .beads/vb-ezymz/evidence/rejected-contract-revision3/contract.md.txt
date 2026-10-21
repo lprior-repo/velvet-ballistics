@@ -1,0 +1,148 @@
+# Rust Contract: CLI Submit Input Validation and Persistence (vb-ezymz)
+
+**Bead:** vb-ezymz
+**Product:** velvet-ballistics
+**Language version:** velvet-ballistics/v1
+**Type:** Bug fix — admission and persistence defect
+
+---
+
+## Ubiquitous Language
+
+- **submit:** CLI command that compiles a YAML workflow, validates and maps runtime inputs against declared input slots, persists the compiled artifact and run metadata, and returns a `run_id`.
+- **input slot:** A declared entry point on a compiled workflow (`CompiledInputSlot`) pairing a `SlotIdx` with an `InputSlotKind`.
+- **input mapping:** A collection of `(SlotIdx, SlotValue)` pairs produced by decoding raw postcard bytes and validating against declared input slots.
+- **compiled artifact:** The postcard-encoded `AcceptedArtifact` containing the IR bytes and verification metadata, persisted by digest.
+- **durable acceptance:** The point at which the compiled artifact and validated inputs are persisted to storage such that process restart can recover them.
+- **recovery hydration:** The process of reconstructing a live `RunFrame` from persistent storage records, including slot values seeded by the persisted input mapping.
+
+---
+
+## Entities and Value Objects
+
+### Entities
+
+| Name | Type | Lifecycle |
+|------|------|-----------|
+| Run | `RunId` (u64) | Created on submit, terminal on finish/fail/cancel |
+| CompiledArtifact | `CompiledIrRecord` | Created on submit, read by recovery |
+
+### Value Objects
+
+| Name | Fields | Invariants |
+|------|--------|------------|
+| `CompiledInputSlot` | `slot: SlotIdx`, `kind: InputSlotKind` | `slot` in range `[0, slot_count)` |
+| `InputMapping` | `Box<[(SlotIdx, SlotValue)]>` | Each `SlotIdx` unique, matches declared slots |
+| `InputMappingError` | Tagged enum: `DecodeFailed`, `SlotCountExceeded`, `KindMismatch`, `SlotIndexOutOfRange` | Discriminates input validation failures |
+| `CompiledIrRecord` | `digest: WorkflowDigest`, `ir: Vec<u8>` | Digest is BLAKE3 of postcard-encoded `AcceptedArtifact` |
+
+### Commands
+
+| Name | Input | Output |
+|------|-------|--------|
+| `cmd_submit(workflow_path, input_bin_path, db_path, durability, output)` | Paths, durability, output format | `ExitCode`, side effects: storage writes, JSON or text response |
+| `map_runtime_inputs(compiled, input_bytes)` | `CompiledWorkflow`, raw bytes | `Result<Box<[(SlotIdx, SlotValue)]>, InputMappingError>` |
+
+### Policies
+
+- Input bytes are decoded and validated **before** any durable writes.
+- If validation fails, no durable state is written.
+- If the workflow declares no input slots, a non-empty postcard encoding of an empty list is valid (user explicitly sent no inputs).
+- Empty raw bytes is always valid and produces an empty `InputMapping`.
+- Non-empty raw bytes must be valid postcard encoding of a positional `Box<[SlotValue]>` array.
+- Decoded value count must not exceed the number of declared input slots.
+- Each decoded value's kind must match the declared slot's `InputSlotKind`.
+
+---
+
+## State Transitions
+
+```
+User provides workflow + input bytes
+  → compile YAML to CompiledWorkflow
+  → validate/map raw input bytes against compiled.input_slots()
+  → on mapping error: report error, exit, no durable writes
+  → on mapping success: persist compiled artifact (AcceptedArtifact + CompiledIrRecord)
+  → persist run header
+  → persist validated input mapping (NEW)
+  → persist RunAccepted journal event
+  → return run_id to user
+```
+
+---
+
+## Durable Acceptance Atomicity
+
+Durable acceptance requires the following to be persisted before returning `run_id`:
+
+1. **Workflow source** (`put_workflow_source`) — existing
+2. **Compiled artifact** (`submit_cli_compiled_artifact` → `put_compiled_ir`) — existing
+3. **Run header** (`put_run_header`) — existing
+4. **Validated InputMapping** (NEW: `put_run_input`)
+5. **RunAccepted journal event** (`append_strict_batch`) — existing
+
+Under `DurabilityMode::Strict`, items are fsynced. Under `DurabilityMode::Journaled`, items are queued for durability. Under `DurabilityMode::None`, no persistence occurs — the CLI opens no storage and returns immediately after in-memory validation.
+
+**No transaction across storage operations:** If a write fails mid-sequence, some partial state may be persisted. This is an existing architectural limitation. The contract specifies that validation errors must prevent any durable writes; write failures after validation are acceptable partial states requiring manual cleanup or idempotent resubmission.
+
+---
+
+## Process Reopen Behavior
+
+When the velvet-ballistics process restarts and needs to recover a submitted run:
+
+1. Recovery reads the `RunHeaderRecord` to get `run_id` and `compiled_digest`.
+2. Recovery loads the compiled artifact from the artifact store by digest (`get_compiled_ir`), decodes the `CompiledIrRecord` into a `CompiledWorkflow`. **No YAML recompilation occurs for existing runs.**
+3. Recovery reads the persisted `InputMapping` for the run (`get_run_input`).
+4. Recovery hydrates a `RunFrame` using the `InputMapping` to seed input slots via `seed_input_slots`.
+5. Recovery continues execution from the recovered frame state.
+
+The persisted `InputMapping` is essential: without it, recovery cannot reconstruct the user's original input values, and the run cannot be resumed from a pre-execution state.
+
+---
+
+## Bounded Implementation Changes
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `crates/velvet_ballistics/src/submit.rs` | Call `map_runtime_inputs` after compile; on success, pass mapping to persistence layer; on error, exit before durable writes |
+| `crates/velvet_ballistics/src/app_impl.rs` | Export `InputMappingError` variants for CLI error handling |
+| `crates/velvet_ballistics/src/run_compiled.rs` | Fix `map_runtime_inputs` to distinguish empty bytes from malformed non-empty bytes |
+
+### Files Added
+
+| File | Purpose |
+|------|---------|
+| `crates/vb_storage/src/inputs.rs` (new) | `RunInputRecord` type and `put_run_input`/`get_run_input`/`remove_run_input` operations on `FjallJournal` |
+| `crates/vb_storage/src/records.rs` (add) | `RunInputRecord` struct: `{ run: RunId, inputs: Box<[(SlotIdx, SlotValue)]> }` |
+
+### Functions Added
+
+| Module | Function | Signature |
+|--------|----------|-----------|
+| `vb_storage::inputs` | `put_run_input` | `fn put_run_input(&self, record: &RunInputRecord) -> Result<(), JournalError>` |
+| `vb_storage::inputs` | `get_run_input` | `fn get_run_input(&self, run: RunId) -> Result<Option<RunInputRecord>, JournalError>` |
+| `vb_storage::inputs` | `remove_run_input` | `fn remove_run_input(&self, run: RunId) -> Result<(), JournalError>` |
+| `vb_core::slot_value` | `input_mapping_empty` | `fn input_mapping_empty(inputs: &[(SlotIdx, SlotValue)]) -> bool` |
+| `vb_storage::recovery::hydrate` | (extend `hydrate_run_frame`) | Accept optional `inputs` parameter for slot seeding |
+
+### No Changes To
+
+- Workflow YAML format
+- Compiled IR format
+- Runtime execution loop
+- IPC protocol
+- Existing run/run-compiled commands' input handling
+
+---
+
+## Hazards
+
+- **Malformed bytes accepted:** If `map_runtime_inputs` returns `Ok` for malformed bytes, the user believes submission succeeded but the run cannot execute. Fixed by strict decoding.
+- **No-input workflow given bytes:** If a workflow has no input slots, non-empty bytes that decode to values must be an error (`SlotCountExceeded`), not silently ignored. However, empty postcard-encoded arrays are valid.
+- **Recovery input drift:** If recovery does not re-apply the persisted `InputMapping`, the resumed run has different initial slot values than originally submitted.
+- **Duplicate slot mapping:** If raw bytes decode to duplicate `SlotIdx` entries, only the last survives; this should be detected and rejected.
+- **Kind mismatch:** If a value's runtime kind does not match the declared `InputSlotKind`, the mismatch is detected at submit time, not execution time.
+- **Non-transactional persistence:** A failure between `put_workflow_source` and `put_run_input` leaves partial state. Users must resubmit idempotently or clean up manually. This is an existing limitation, not introduced by this bead.

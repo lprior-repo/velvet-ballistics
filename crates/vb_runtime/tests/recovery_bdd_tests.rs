@@ -1291,9 +1291,11 @@ fn corrupt_snapshot_returns_corrupt_snapshot_error() {
 
     // GA-012a: Snapshot run_id mismatch returns CorruptSnapshot (contract B-012, POST-008)
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    let Err(RecoveryError::CorruptSnapshot { run: _, seq: _ }) = result else {
-        panic!("expected CorruptSnapshot for snapshot run_id mismatch, got: {result:?}");
-    };
+    assert!(matches!(
+        result,
+        Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+            if err_run == run && err_seq == EventSeq::new(1)
+    ));
 }
 
 // ---------------------------------------------------------------------------

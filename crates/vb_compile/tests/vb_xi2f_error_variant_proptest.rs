@@ -46,6 +46,7 @@ fn minimal_valid_parts() -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: vec![Box::from("finish")].into_boxed_slice(),
+        input_slots: Box::new([]),
     }
 }
 
@@ -162,6 +163,7 @@ fn unreachable_node_returns_error() {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: vec![Box::from("finish"), Box::from("orphan")].into_boxed_slice(),
+        input_slots: Box::new([]),
     };
 
     let result = CompiledWorkflow::try_from_parts(parts);
@@ -208,6 +210,7 @@ fn backward_edge_returns_error() {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: vec![Box::from("nop"), Box::from("finish")].into_boxed_slice(),
+        input_slots: Box::new([]),
     };
 
     let result = CompiledWorkflow::try_from_parts(parts);

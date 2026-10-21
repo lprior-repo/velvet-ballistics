@@ -1,0 +1,13 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error: unexpected closing delimiter: `}`
+   --> crates/vb_runtime/src/shard/types.rs:212:5
+    |
+ 60 | pub enum ShardCommand {
+    |                       - this opening brace...
+...
+211 | }
+    | - ...matches this closing brace
+212 |     },
+    |     ^ unexpected closing delimiter
+
+error: could not compile `vb_runtime` (lib) due to 1 previous error

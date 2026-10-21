@@ -82,6 +82,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -142,6 +143,7 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -185,6 +187,7 @@ fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -249,6 +252,7 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -538,7 +542,8 @@ fn action_failure_preserves_action_completed_slots_integration_gap() {
 // This test uses Inspect command to verify PC, but Inspect only returns current PC,
 // not the PC after a specific command. The gap is in PC tracking after failure.
 #[test]
-fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() {
+fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -571,8 +576,10 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() {
         );
     }
 
-    // Now fail at step 1 with retryable policy
-    let ticket = make_ticket(run, StepIdx::new(1), 1, 2);
+    // Fail at step 1 with retryable policy using runtime-issued ticket
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -605,13 +612,15 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() {
             "INV-5: PC must reset to failed step on retry, not advanced"
         );
     }
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 6: POST-002 - Error handler writes correct slot value =====
 // RED: No public interface to read slot values after error handler runs.
 // This test documents the gap: no InspectSlot command exists to verify error_slot content.
 #[test]
-fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() {
+fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -625,7 +634,9 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() {
     // Failed step is StepIdx::new(1)
 
     // Fail the action at step 1 (NonRetryable to skip retry)
-    let ticket = make_ticket(run, StepIdx::new(1), 1, 1);
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -660,13 +671,15 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() {
     // - No ReadSlot command exists
     // POST-002 requires error_slot contains I64(failed_step), but this cannot
     // be verified from integration tests without a slot inspection interface.
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 7: PRE-004 - retry_is_available requires Retryable policy =====
 // This test PASSES - proves indirect coverage of NonRetryable behavior.
 // RED gap: retry_is_available is private, but behavior is testable indirectly.
 #[test]
-fn retry_is_available_returns_false_for_nonretryable_policy() {
+fn retry_is_available_returns_false_for_nonretryable_policy()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -678,7 +691,9 @@ fn retry_is_available_returns_false_for_nonretryable_policy() {
 
     // Even though the policy is Retryable and metadata exists,
     // using NonRetryable should bypass retry logic
-    let ticket = make_ticket(run, StepIdx::new(1), 1, 2);
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -695,6 +710,7 @@ fn retry_is_available_returns_false_for_nonretryable_policy() {
         "NonRetryable without handler should fail the run"
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 8: PRE-004 - retry_is_available returns false when no retry metadata =====

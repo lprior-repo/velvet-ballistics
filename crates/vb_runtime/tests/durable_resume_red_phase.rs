@@ -689,6 +689,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }

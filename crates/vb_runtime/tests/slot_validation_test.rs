@@ -74,6 +74,7 @@ fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<Compiled
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }

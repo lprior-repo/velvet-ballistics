@@ -1,0 +1,33 @@
+All work is complete. Here's a summary:
+
+## Changes Made
+
+### Implementation (`crates/vb_runtime/src/shard/contract_validation.rs`)
+Rewrote validation to use separate global passes with explicit precedence:
+1. `check_duplicate_ids` — global duplicate detection
+2. `check_empty_names` — global empty-name check
+3. `check_dense_index` — global index==ID check
+4. `validate_contract_capabilities` — capability coverage
+5. `validate_workflow_action_binding` — workflow Do binding
+
+Each helper is ≤25 logical lines. No unsafe, unwrap, expect, panic, or ignored Result.
+
+### Contract Addendum
+Added explicit "Validation Order (First Error Wins)" section documenting the six-step sequence.
+
+### Tests (17 tests)
+Addressed all review findings:
+- **BLOCKER fixed:** Both negative shard boundary tests now attach a real `VolatileRuntimeJournal`, snapshot before the command, and assert exact equality after failure
+- **MINOR fixed:** All negative tests use exact error string matching via `assert_eq!`
+- **MINOR fixed:** Positive shard boundary tests use real workflows, capture actual tickets, complete with real values
+- **7 new tests:** empty name, multiple distinct IDs, missing referenced action, unused dense entries, sparse registry, duplicate-precedes-index-mismatch
+- All existing meaningful tests preserved
+
+## Test Results
+- **Lifecycle tests:** 120 passed, 0 failed
+- **Full vb_runtime --lib:** 1909 passed, 0 failed
+
+## Evidence
+- `.beads/vb-3l40a/evidence/admission-review-fix/lifecycle-tests.log`
+- `.beads/vb-3l40a/evidence/admission-review-fix/full-lib-tests.log`
+- `.beads/vb-3l40a/evidence/admission-review-fix/review-fix-admission-report.md`

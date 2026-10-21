@@ -1,0 +1,48 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.82s
+  Executable unittests src/lib.rs (target/debug/deps/vb_compile-8066491fa4d2ba78)
+  Executable tests/digest_ask_determinism.rs (target/debug/deps/digest_ask_determinism-600f030f9ccf3494)
+  Executable tests/digest_ask_empty_prompt.rs (target/debug/deps/digest_ask_empty_prompt-15b15201f204f425)
+  Executable tests/digest_ask_explicit_arm.rs (target/debug/deps/digest_ask_explicit_arm-d1b380bdbf988e89)
+  Executable tests/digest_ask_prompt_sensitivity.rs (target/debug/deps/digest_ask_prompt_sensitivity-95a15463b35d09a8)
+  Executable tests/digest_ask_timeout_sensitivity.rs (target/debug/deps/digest_ask_timeout_sensitivity-817dd1949be2fa7b)
+  Executable tests/digest_compilation_pipeline.rs (target/debug/deps/digest_compilation_pipeline-6d530936976c5587)
+  Executable tests/digest_duplicate_parity.rs (target/debug/deps/digest_duplicate_parity-564e08204222cf64)
+  Executable tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-6c7fdba028a76425)
+  Executable tests/digest_set_finish_regression.rs (target/debug/deps/digest_set_finish_regression-ba0e6cf2eaceff06)
+  Executable tests/digest_structural_fields.rs (target/debug/deps/digest_structural_fields-9e662360fd6f25df)
+  Executable tests/digest_yaml_e2e.rs (target/debug/deps/digest_yaml_e2e-ba5755e0b9c0a170)
+  Executable tests/finish_digest_integration.rs (target/debug/deps/finish_digest_integration-abc861962ff1c07c)
+  Executable tests/finish_digest_structural.rs (target/debug/deps/finish_digest_structural-4e2629d5b2e62269)
+  Executable tests/idempotency_parity.rs (target/debug/deps/idempotency_parity-a619d588e31414da)
+  Executable tests/integration_choose_body.rs (target/debug/deps/integration_choose_body-d46fb6b6bb9736f6)
+  Executable tests/proptest/proptest_choose_depth.rs (target/debug/deps/proptest_choose_depth-20e2d950097f4a64)
+  Executable tests/proptest/proptest_choose_emission.rs (target/debug/deps/proptest_choose_emission-1010c21370cb93e2)
+  Executable tests/proptest/proptest_choose_fallthrough.rs (target/debug/deps/proptest_choose_fallthrough-212d2e88c2ffa586)
+  Executable tests/proptest/proptest_choose_otherwise.rs (target/debug/deps/proptest_choose_otherwise-d9b58c18abf91263)
+  Executable tests/proptest/proptest_choose_width.rs (target/debug/deps/proptest_choose_width-b581a7b2cdb18837)
+  Executable tests/proptest_digest_ask_ordering.rs (target/debug/deps/proptest_digest_ask_ordering-55acb3ae289c23d2)
+  Executable tests/proptest_digest_ask_prompt_sensitivity.rs (target/debug/deps/proptest_digest_ask_prompt_sensitivity-8b4d6777fdce1c23)
+  Executable tests/proptest_digest_ask_timeout_sensitivity.rs (target/debug/deps/proptest_digest_ask_timeout_sensitivity-c999195b93be65cc)
+  Executable tests/proptest_digest_determinism.rs (target/debug/deps/proptest_digest_determinism-2fcb3e360d71a5a7)
+  Executable tests/proptest_digest_foreach.rs (target/debug/deps/proptest_digest_foreach-4b78bdceba1ca063)
+  Executable tests/proptest_secret_results_digest_sensitivity.rs (target/debug/deps/proptest_secret_results_digest_sensitivity-a44999855d3f2870)
+  Executable tests/repeat_digest_integration.rs (target/debug/deps/repeat_digest_integration-b9721df0eb83bd5b)
+  Executable tests/repeat_digest_proptest.rs (target/debug/deps/repeat_digest_proptest-408c201136acb9b8)
+  Executable tests/together_digest_sensitivity.rs (target/debug/deps/together_digest_sensitivity-e1b68865adaec0ca)
+  Executable tests/v1_primitive_lowering.rs (target/debug/deps/v1_primitive_lowering-82dd82f3ed72a98e)
+  Executable tests/vb_8mdp_7_collect_lowering_props.rs (target/debug/deps/vb_8mdp_7_collect_lowering_props-45c615e6ccdfec67)
+  Executable tests/vb_a001_for_each_topology.rs (target/debug/deps/vb_a001_for_each_topology-db00b4de4351c8ac)
+  Executable tests/vb_core_yaml_e2e_chain_strict_yaml.rs (target/debug/deps/vb_core_yaml_e2e_chain_strict_yaml-29f6f9536dc119d9)
+  Executable tests/vb_xi2f_compile_source_proptest.rs (target/debug/deps/vb_xi2f_compile_source_proptest-c18b6e609bf126df)
+  Executable tests/vb_xi2f_error_variant_proptest.rs (target/debug/deps/vb_xi2f_error_variant_proptest-ac60453674a5099c)
+  Executable tests/vb_xi2f_nested_do_lowering.rs (target/debug/deps/vb_xi2f_nested_do_lowering-29499730041ab6d1)

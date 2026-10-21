@@ -1,0 +1,30 @@
+test verification::proptest::sxkz6_proptest::sxkz6_timer_fired_routing ... ok
+test trace::tests::trace_ring_fill_pct_f32_f64_within_one_ulp_for_general_caps ... ok
+test journal::tests::storage_journal_strict_profile_persists_on_each_append ... ok
+test journal::tests::storage_journal_run_admission_event_maps_to_journal_event_correctly ... ok
+test journal::tests::storage_journal_events_for_run_bounded_enforces_limit ... ok
+test journal::tests::storage_runtime_journal_rejects_unsequenced_append ... ok
+test journal::tests::storage_journal_returns_empty_events_for_unknown_run ... ok
+test journal::tests::storage_journal_replays_events_for_run_in_sequence_order ... ok
+test journal::tests::storage_runtime_journal_maps_cancelled_and_failed_events ... ok
+test journal::tests::strict_storage_resume_persists_run_resumed_not_run_failed ... ok
+test journal::tests::storage_runtime_journal_maps_run_admission_event ... ok
+test journal::tests::verify_digests_detects_compiled_ir_mismatch ... ok
+test journal::tests::storage_runtime_journal_probe_delegates_to_fjall_health ... ok
+test journal::tests::trim_eligibility_diagnostic_reports_no_runs_when_empty ... ok
+test shard::lifecycle::tests::kill_append_failure_preserves_action_suspension ... ok
+test shard::lifecycle::tests::submit_drive_queue_full_after_admission_leaves_resumable_retry ... ok
+test journal::tests::trim_events_for_run_succeeds_after_snapshot_is_written ... ok
+test primitives::collect::tests::collect_pagination_extra_recovered_journal_rejects_corrupt_bytes ... ok
+test journal::tests::storage_runtime_journal_maps_lifecycle_events_in_sequence ... ok
+test journal::tests::trim_events_for_run_requires_durable_snapshot ... ok
+test journal::tests::storage_runtime_journal_maps_action_wait_and_ask_events ... ok
+test shard::lifecycle::tests::cancel_append_failure_preserves_action_suspension ... ok
+test shard::lifecycle::tests::retry_now_action_failure_queue_full_preserves_post_failure_state ... ok
+test primitives::collect::tests::collect_pagination_extra_recovered_journal_rejects_identity_mismatch ... ok
+test primitives::collect::tests::collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page ... ok
+test shard::lifecycle::tests::drive_handler_action_failure_queue_full_preserves_post_failure_state ... ok
+test shard::lifecycle::tests::fail_run_action_failure_queue_full_keeps_state_and_allows_retry ... ok
+
+test result: ok. 1878 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+

@@ -761,9 +761,11 @@ fn corrupt_snapshot_run_mismatch_rejected() {
     }];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    let Err(RecoveryError::CorruptSnapshot { .. }) = result else {
-        panic!("expected CorruptSnapshot for run mismatch, got: {result:?}");
-    };
+    assert!(matches!(
+        result,
+        Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+            if err_run == run && err_seq == EventSeq::new(1)
+    ));
 }
 
 /// Given a snapshot with non-empty slots but empty taint vector

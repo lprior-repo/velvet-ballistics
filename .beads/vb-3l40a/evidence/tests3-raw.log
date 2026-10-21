@@ -1,0 +1,101 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_runtime/src/engine/execute_tests.rs:53:17
+   |
+53 |     let parts = WorkflowParts {
+   |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+   --> crates/vb_runtime/src/engine/tests.rs:822:17
+    |
+822 |     let parts = vb_core::workflow::WorkflowParts {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/engine/tests.rs:1016:17
+     |
+1016 |     let parts = vb_core::workflow::WorkflowParts {
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/engine/tests.rs:1085:17
+     |
+1085 |     let parts = vb_core::workflow::WorkflowParts {
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/engine/tests.rs:1160:17
+     |
+1160 |     let parts = vb_core::workflow::WorkflowParts {
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/engine/tests.rs:1608:21
+     |
+1608 |         let parts = WorkflowParts {
+     |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/engine/tests.rs:2116:21
+     |
+2116 |         let parts = WorkflowParts {
+     |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_runtime/src/runtime_tests.rs:95:21
+   |
+95 |         let parts = WorkflowParts {
+   |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+   --> crates/vb_runtime/src/runtime_tests.rs:133:21
+    |
+133 |         let parts = WorkflowParts {
+    |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+   --> crates/vb_runtime/src/runtime_tests.rs:329:21
+    |
+329 |         let parts = WorkflowParts {
+    |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+   --> crates/vb_runtime/src/runtime_tests.rs:387:21
+    |
+387 |         let parts = WorkflowParts {
+    |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+   --> crates/vb_runtime/src/runtime_tests.rs:659:21
+    |
+659 |         let parts = WorkflowParts {
+    |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+    --> crates/vb_runtime/src/runtime_tests.rs:2929:21
+     |
+2929 |         let parts = WorkflowParts {
+     |                     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> crates/vb_runtime/src/shard/helpers/tests.rs:620:18
+    |
+620 |     let result = seed_input_slots(&mut frame, &inputs);
+    |                  ^^^^^^^^^^^^^^^^--------------------- argument #3 of type `&vb_core::CompiledWorkflow` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/shard/helpers.rs:19:8
+    |
+ 19 | pub fn seed_input_slots(
+    |        ^^^^^^^^^^^^^^^^
+...
+ 22 |     workflow: &CompiledWorkflow,
+    |     ---------------------------
+help: provide the argument
+    |
+620 |     let result = seed_input_slots(&mut frame, &inputs, /* &vb_core::CompiledWorkflow */);
+    |                                                      ++++++++++++++++++++++++++++++++++
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `vb_runtime` (lib test) due to 14 previous errors
