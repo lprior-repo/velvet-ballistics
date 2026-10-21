@@ -254,7 +254,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
         shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
@@ -344,7 +344,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
         shard.enqueue(ShardCommand::SubmitWithInputs {
             run,
             workflow,

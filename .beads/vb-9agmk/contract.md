@@ -12,3 +12,15 @@ C6 Runtime consumers independently validate hostile payload and evidence. Existi
 artifacts require explicit migration/fail-closed behavior when schema changes.
 Compiler work owns C1-C4; C5-C6 need shared storage/runtime coordination and remain
 part of bead acceptance. No full proof-planning pipeline is invoked.
+
+C7 The checked action registry must match numeric runtime dispatch: dense ordered
+IDs, unique IDs, and validated names. A sparse or duplicate registry cannot mint
+a compiler candidate or accepted envelope.
+C8 Strict/Journaled execution binds the supplied serialized WorkflowParts and
+exact supplied contracts to the independently verified accepted artifact before
+public enqueue and again before processing allocates run state.
+
+Independent review repairs preserve all existing validation order and gates;
+new binding checks run after those checks. Runtime source scope was granted by
+parent for runtime.rs, shard/lifecycle.rs, shard/lifecycle/chunk_001.rs and new
+shard/lifecycle/execution_binding.rs. Runtime recovery production is untouched.

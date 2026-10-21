@@ -3,48 +3,19 @@
 
 #[cfg(test)]
 mod artifact_envelope_bdd_tests {
+    use crate::admission::{
+        AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
+        admit_artifact_run, admit_run_with_budget, validate_accepted_artifact_envelope,
+    };
     use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
     use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ActionId, RunId, WorkflowDigest};
     use vb_core::policy::RuntimePolicy;
-    use crate::admission::{
-        admit_artifact_run, admit_run_with_budget, validate_accepted_artifact_envelope,
-        AcceptedArtifactStore, AdmissionError,
-        ArtifactEnvelopeError, ArtifactStore, REQUIRED_GATE_COUNT,
-    };
-    use vb_storage::admission::{AcceptedArtifact, VerificationProof};
-    use vb_storage::types::EventSeq;
+    use vb_storage::admission::AcceptedArtifact;
 
-    /// Helper to build a minimal valid VerificationProof with all flags true.
-    fn valid_proof(digest: WorkflowDigest) -> VerificationProof {
-        VerificationProof {
-            digest,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
-        }
-    }
-
-    /// Helper to build a minimal valid AcceptedArtifact.
-    fn valid_artifact(digest: WorkflowDigest) -> AcceptedArtifact {
-        AcceptedArtifact {
-            digest,
-            source_digest: digest,
-            policy_digest: digest,
-            ir: Vec::new(),
-            verification: valid_proof(digest),
-            accepted_at_seq: EventSeq::new(0),
-            required_capabilities: Box::new([]),
-            action_contracts: Box::new([]),
-        }
+    fn valid_artifact() -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        crate::admission::tests::evidence_test_support::accepted_artifact_with_caps(Box::new([]))
+            .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)
     }
 
     /// Store that always returns ArtifactNotFound.
@@ -84,28 +55,19 @@ mod artifact_envelope_bdd_tests {
     impl AcceptedArtifactStore for WrongGateCountStore {
         fn load_accepted_artifact(
             &self,
-            digest: WorkflowDigest,
+            _digest: WorkflowDigest,
         ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut proof = valid_proof(digest);
+            let mut artifact = valid_artifact()?;
+            let proof = &mut artifact.verification;
             proof.gate_count = self.gate_count;
-            let artifact = AcceptedArtifact {
-                digest,
-                source_digest: digest,
-                policy_digest: digest,
-                ir: Vec::new(),
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
-                action_contracts: Box::new([]),
-            };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;
             Ok(artifact)
         }
     }
 
-    /// Store that returns an artifact with one proof flag set to false.
-    struct ProofFlagFalseStore {
+    /// Store that changes one checked metadata field in a valid artifact.
+    struct TamperedProofStore {
         flag: ProofFlagVariant,
     }
     enum ProofFlagVariant {
@@ -116,35 +78,26 @@ mod artifact_envelope_bdd_tests {
         Replayable,
         IdempotencyVerified,
     }
-    impl ProofFlagFalseStore {
+    impl TamperedProofStore {
         fn new(flag: ProofFlagVariant) -> Self {
             Self { flag }
         }
     }
-    impl AcceptedArtifactStore for ProofFlagFalseStore {
+    impl AcceptedArtifactStore for TamperedProofStore {
         fn load_accepted_artifact(
             &self,
-            digest: WorkflowDigest,
+            _digest: WorkflowDigest,
         ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut proof = valid_proof(digest);
+            let mut artifact = valid_artifact()?;
+            let proof = &mut artifact.verification;
             match self.flag {
                 ProofFlagVariant::Bounded => proof.bounded_claimed = false,
-                ProofFlagVariant::TaintSafe => proof.taint_safe_claimed = false,
-                ProofFlagVariant::RetrySafe => proof.retry_safe_claimed = false,
-                ProofFlagVariant::Durable => proof.durable = false,
-                ProofFlagVariant::Replayable => proof.replayable_claimed = false,
+                ProofFlagVariant::TaintSafe => proof.taint_safe_claimed = true,
+                ProofFlagVariant::RetrySafe => proof.retry_safe_claimed = true,
+                ProofFlagVariant::Durable => proof.durable = true,
+                ProofFlagVariant::Replayable => proof.replayable_claimed = true,
                 ProofFlagVariant::IdempotencyVerified => proof.idempotency_verified_claimed = false,
             }
-            let artifact = AcceptedArtifact {
-                digest,
-                source_digest: digest,
-                policy_digest: digest,
-                ir: Vec::new(),
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
-                action_contracts: Box::new([]),
-            };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;
             Ok(artifact)
@@ -164,21 +117,12 @@ mod artifact_envelope_bdd_tests {
     impl AcceptedArtifactStore for MissingAttestationStore {
         fn load_accepted_artifact(
             &self,
-            digest: WorkflowDigest,
+            _digest: WorkflowDigest,
         ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut proof = valid_proof(digest);
+            let mut artifact = valid_artifact()?;
+            let proof = &mut artifact.verification;
             proof.idempotency_keyed = self.keyed.clone();
             proof.idempotency_attested = self.attested.clone();
-            let artifact = AcceptedArtifact {
-                digest,
-                source_digest: digest,
-                policy_digest: digest,
-                ir: Vec::new(),
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
-                action_contracts: Box::new([]),
-            };
             // Validate envelope - this is what StorageArtifactStore does
             validate_accepted_artifact_envelope(&artifact)?;
             Ok(artifact)
@@ -186,12 +130,10 @@ mod artifact_envelope_bdd_tests {
     }
 
     /// Store that returns an artifact with a different digest inside than requested.
-    struct DigestMismatchStore {
-        inner_digest: WorkflowDigest,
-    }
+    struct DigestMismatchStore;
     impl DigestMismatchStore {
-        fn new(inner_digest: WorkflowDigest) -> Self {
-            Self { inner_digest }
+        fn new(_inner_digest: WorkflowDigest) -> Self {
+            Self
         }
     }
     impl AcceptedArtifactStore for DigestMismatchStore {
@@ -199,7 +141,7 @@ mod artifact_envelope_bdd_tests {
             &self,
             _requested_digest: WorkflowDigest,
         ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-            Ok(valid_artifact(self.inner_digest))
+            valid_artifact()
         }
     }
 
@@ -260,123 +202,117 @@ mod artifact_envelope_bdd_tests {
     // Test 3: load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15() {
+    fn load_accepted_artifact_rejects_fabricated_gate_count() {
         let store = WrongGateCountStore::new(7);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(
-                result,
-                Err(ArtifactEnvelopeError::InvalidGateCount {
-                    found: 7,
-                    required: REQUIRED_GATE_COUNT
-                })
-            ),
-            "expected InvalidGateCount {{ found: 7, required: 15 }}, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 4: load_accepted_artifact_returns_missing_bounded_flag
+    // Test 4: load_accepted_artifact_rejects_changed_bounded_metadata
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_bounded_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::Bounded);
+    fn load_accepted_artifact_rejects_changed_bounded_metadata() {
+        let store = TamperedProofStore::new(ProofFlagVariant::Bounded);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded)),
-            "expected MissingRequiredProofFlagBounded, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field Bounded, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 5: load_accepted_artifact_returns_missing_taint_safe_flag
+    // Test 5: load_accepted_artifact_rejects_forged_taint_safe_claim
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_taint_safe_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::TaintSafe);
+    fn load_accepted_artifact_rejects_forged_taint_safe_claim() {
+        let store = TamperedProofStore::new(ProofFlagVariant::TaintSafe);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe)),
-            "expected MissingRequiredProofFlagTaintSafe, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field TaintSafe, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 6: load_accepted_artifact_returns_missing_retry_safe_flag
+    // Test 6: load_accepted_artifact_rejects_forged_retry_safe_claim
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_retry_safe_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::RetrySafe);
+    fn load_accepted_artifact_rejects_forged_retry_safe_claim() {
+        let store = TamperedProofStore::new(ProofFlagVariant::RetrySafe);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe)),
-            "expected MissingRequiredProofFlagRetrySafe, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field RetrySafe, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 7: load_accepted_artifact_returns_missing_durable_flag
+    // Test 7: load_accepted_artifact_rejects_forged_durable_claim
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_durable_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::Durable);
+    fn load_accepted_artifact_rejects_forged_durable_claim() {
+        let store = TamperedProofStore::new(ProofFlagVariant::Durable);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable)),
-            "expected MissingRequiredProofFlagDurable, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field Durable, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 8: load_accepted_artifact_returns_missing_replayable_flag
+    // Test 8: load_accepted_artifact_rejects_forged_replayable_claim
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_replayable_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::Replayable);
+    fn load_accepted_artifact_rejects_forged_replayable_claim() {
+        let store = TamperedProofStore::new(ProofFlagVariant::Replayable);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable)),
-            "expected MissingRequiredProofFlagReplayable, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field Replayable, got {:?}",
             result
         );
     }
 
     // =====================================================================
-    // Test 9: load_accepted_artifact_returns_missing_idempotency_verified_flag
+    // Test 9: load_accepted_artifact_rejects_changed_idempotency_verified_metadata
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_idempotency_verified_flag() {
-        let store = ProofFlagFalseStore::new(ProofFlagVariant::IdempotencyVerified);
+    fn load_accepted_artifact_rejects_changed_idempotency_verified_metadata() {
+        let store = TamperedProofStore::new(ProofFlagVariant::IdempotencyVerified);
         let digest = WorkflowDigest::from_bytes([0x42_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified)),
-            "expected MissingRequiredProofFlagIdempotencyVerified, got {:?}",
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
+            "expected ArtifactEvidenceInvalid (legacy field IdempotencyVerified, got {:?}",
             result
         );
     }
@@ -385,9 +321,10 @@ mod artifact_envelope_bdd_tests {
     // Test 10: admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs
     // =====================================================================
     #[test]
-    fn admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs() {
+    fn admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs() -> Result<(), String>
+    {
         let requested_digest = WorkflowDigest::from_bytes([0xAA_u8; 32]);
-        let stored_digest = WorkflowDigest::from_bytes([0xBB_u8; 32]);
+        let stored_digest = valid_artifact().map_err(|e| format!("{e:?}"))?.digest;
         let store = DigestMismatchStore::new(stored_digest);
         let run_id = RunId::new(1);
         let caps = CapabilitySet::empty();
@@ -411,6 +348,7 @@ mod artifact_envelope_bdd_tests {
             "expected ArtifactDigestMismatch with requested={requested_digest:?}, found={stored_digest:?}, got {:?}",
             result
         );
+        Ok(())
     }
 
     // =====================================================================
@@ -494,26 +432,19 @@ mod artifact_envelope_bdd_tests {
     }
 
     // =====================================================================
-    // Test 12: load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested
+    // Test 12: load_accepted_artifact_rejects_unbound_idempotency_attestation
     // =====================================================================
     #[test]
-    fn load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested() {
+    fn load_accepted_artifact_rejects_unbound_idempotency_attestation() {
         let action = ActionId::new(99);
         // keyed = [action], attested = []  => action is keyed but NOT attested
-        let store = MissingAttestationStore::new(
-            Box::new([action]),
-            Box::new([]),
-        );
+        let store = MissingAttestationStore::new(Box::new([action]), Box::new([]));
         let digest = WorkflowDigest::from_bytes([0xDD_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(
-                result,
-                Err(ArtifactEnvelopeError::MissingIdempotencyAttestation { action: a })
-                if a == action
-            ),
+            matches!(result, Err(ArtifactEnvelopeError::ArtifactEvidenceInvalid)),
             "expected MissingIdempotencyAttestation for action {action:?}, got {:?}",
             result
         );

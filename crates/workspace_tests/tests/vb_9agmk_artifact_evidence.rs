@@ -11,8 +11,12 @@ use vb_storage::admission::{
 use vb_storage::{JournalError, VerificationProof};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[path = "artifact_evidence_support/admission_cases.rs"]
+mod admission_cases;
 #[path = "artifact_evidence_support/compiler_cases.rs"]
 mod compiler_cases;
+#[path = "artifact_evidence_support/runtime_cases.rs"]
+mod runtime_cases;
 #[path = "artifact_evidence_support/tamper_cases.rs"]
 mod tamper_cases;
 
@@ -24,13 +28,13 @@ fn storage_rejects_missing_and_orphan_action_contracts() -> TestResult {
                 action_id,
                 node_index,
             },
-        )) => assert_eq!((action_id, node_index), (7, 1)),
+        )) => assert_eq!((action_id, node_index), (0, 1)),
         other => return Err(format!("expected missing contract, got {other:?}").into()),
     }
     match prepare_compiled_artifact(&workflow()?, RuntimePolicy::Journaled, &[contract()?]) {
         Err(JournalError::ArtifactValidation(
             vb_validate::ValidationError::ActionContractOrphan { action_id },
-        )) => assert_eq!(action_id, 7),
+        )) => assert_eq!(action_id, 0),
         other => return Err(format!("expected orphan contract, got {other:?}").into()),
     }
     Ok(())
@@ -86,16 +90,30 @@ fn accepted_ledger_distinguishes_executed_checks_and_unproved_runtime_assumption
                 ObligationKind::PolicyBinding
             ]
         );
-        for entry in evidence.ledger {
+        let verifier = admission_cases::expected_verifier_digest();
+        assert_eq!(evidence.verifier_digest, verifier);
+        let validated = ObligationClosure::RuntimeValidated {
+            verifier_digest: verifier,
+        };
+        let closures = [
+            validated,
+            validated,
+            validated,
+            validated,
+            admission_cases::expected_assumption(AssumptionId::RuntimeReplayEffectSeparation)?,
+            validated,
+            validated,
+            admission_cases::expected_assumption(AssumptionId::RuntimeRecoverySemantics)?,
+            admission_cases::expected_assumption(AssumptionId::RuntimeTaintEnforcement)?,
+            validated,
+        ];
+        for (entry, expected_closure) in evidence.ledger.iter().zip(closures) {
             assert_eq!(entry.policy_digest, artifact.policy_digest);
-            if entry.obligation == ObligationKind::ReplayEffectSeparation {
-                match entry.closure {
-                    ObligationClosure::ExternalAssumption { assumption_id, .. } => {
-                        assert_eq!(assumption_id, AssumptionId::RuntimeReplayEffectSeparation)
-                    }
-                    other => return Err(format!("fabricated replay proof: {other:?}").into()),
-                }
-            }
+            assert_eq!(
+                entry.closure, expected_closure,
+                "closure for {:?}",
+                entry.obligation
+            );
         }
     }
     Ok(())

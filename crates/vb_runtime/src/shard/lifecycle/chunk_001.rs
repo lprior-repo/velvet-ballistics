@@ -112,9 +112,12 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
-        self.prepare_run_slots(run)?;
         let digest = workflow.digest();
         let admission = self.build_admission(run, digest, caps)?;
+        execution_binding::validate(
+            self.artifact_store.as_ref(), self.policy, &workflow, action_contracts,
+        )?;
+        self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
@@ -227,9 +230,7 @@ impl Shard {
                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
             Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
-                Err(RuntimeError::AdmissionArtifactInvalid {
-                    digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-                })
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
             Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
@@ -256,10 +257,11 @@ impl Shard {
     pub(crate) fn validate_submit_admission(
         &self,
         run: RunId,
-        digest: vb_core::ids::WorkflowDigest,
+        workflow: &CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.build_admission(run, digest, caps)?;
+        self.build_admission(run, workflow.digest(), caps)?;
+        execution_binding::validate(self.artifact_store.as_ref(), self.policy, workflow, &[])?;
         Ok(())
     }
 
@@ -281,6 +283,9 @@ impl Shard {
         super::contract_validation::validate_contract_ids(action_contracts)?;
         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+        execution_binding::validate(
+            self.artifact_store.as_ref(), self.policy, workflow, action_contracts,
+        )?;
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {

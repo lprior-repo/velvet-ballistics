@@ -26,6 +26,8 @@ pub enum CompilerCheck {
     SharedIrGatesWithContracts,
     /// Static retry/idempotency contract declarations; no executor guarantee.
     IdempotencyDeclarations,
+    /// Registry IDs and names satisfy numeric runtime dispatch.
+    ActionRegistry,
     /// Recomputed canonical workflow digest equals the claimed workflow digest.
     CanonicalWorkflowDigest,
     /// Whole-workflow budget computed from the checked IR.
@@ -53,6 +55,9 @@ pub enum ArtifactVerificationError {
     /// A shared IR gate failed.
     #[error("compiled IR gate failed: {0}")]
     Validation(#[from] vb_validate::ValidationError),
+    /// Registry cannot be consumed by numeric runtime dispatch.
+    #[error("action registry invalid: {0}")]
+    ActionRegistry(#[from] vb_core::action::ActionRegistryError),
     /// Canonical encoding failed.
     #[error("artifact evidence encoding failed: {0}")]
     Encoding(#[from] postcard::Error),
@@ -136,11 +141,12 @@ impl VerifiedCompilation {
 
     /// Exactly the checks executed by the compiled-artifact verifier.
     #[must_use]
-    pub const fn checks(&self) -> [CompilerCheck; 5] {
+    pub const fn checks(&self) -> [CompilerCheck; 6] {
         [
             CompilerCheck::WorkflowReconstruction,
             CompilerCheck::SharedIrGatesWithContracts,
             CompilerCheck::IdempotencyDeclarations,
+            CompilerCheck::ActionRegistry,
             CompilerCheck::CanonicalWorkflowDigest,
             CompilerCheck::WholeWorkflowBudget,
         ]
@@ -166,6 +172,7 @@ pub fn verify_compiled_artifact(
     let mut parts = workflow.to_parts();
     let workflow = CompiledWorkflow::try_from_parts(parts.clone())?;
     vb_validate::shared::validate_with_contracts(&parts, contracts)?;
+    vb_core::action::validate_action_registry(contracts)?;
     check_idempotency_gates(contracts)?;
     let payload = postcard::to_allocvec(&parts)?.into_boxed_slice();
     parts.digest = WorkflowDigest::from_bytes([0; 32]);

@@ -131,6 +131,8 @@ fn checked_parts(
         .map_err(JournalError::WorkflowReconstruction)?;
     vb_validate::shared::validate_with_contracts(&parts, contracts)
         .map_err(JournalError::ArtifactValidation)?;
+    vb_core::action::validate_action_registry(contracts)
+        .map_err(JournalError::ArtifactActionRegistry)?;
     validate_idempotency_contracts(contracts)?;
     check_executor_profile(policy, contracts)?;
     parts.digest = zero_workflow_digest();
@@ -257,6 +259,7 @@ fn verifier_digest() -> WorkflowDigest {
     hasher.update(include_bytes!("verification.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
+    hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/shared.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates.rs"));
     WorkflowDigest::from_bytes(hasher.finalize().into())

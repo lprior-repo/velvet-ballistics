@@ -1,0 +1,10 @@
+{
+  "command": [
+    "bash",
+    "scripts/check-source-length.sh"
+  ],
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol",
+  "exit": 1,
+  "duration_seconds": 4.1803364753723145,
+  "cargo_build_jobs": 2
+}
