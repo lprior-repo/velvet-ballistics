@@ -143,6 +143,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -182,6 +183,7 @@ fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -242,6 +244,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }

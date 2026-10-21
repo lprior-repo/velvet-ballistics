@@ -82,6 +82,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -142,6 +143,7 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -185,6 +187,7 @@ fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }
@@ -249,6 +252,7 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     })
     .ok()
 }

@@ -37,6 +37,7 @@ fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<Compiled
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
         step_names: Box::new([]),
     })
     .map_err(|error| error.to_string())
@@ -76,6 +77,7 @@ fn const_then_finish_workflow(value: ConstValue) -> Result<CompiledWorkflow, Str
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
         step_names: Box::new([]),
     })
     .map_err(|error| error.to_string())
