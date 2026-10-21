@@ -1,0 +1,531 @@
+Second adversarial test review. Return STATUS: APPROVED only no openfindings or concrete REJECTED. Previous rejection: Standard failure didnotassertsuccessfulchecksabsence. Fixedbyextractingentire actual production compute-result/policy dispatch into record_budget_result(profile,Result<WholeWorkflowBudget,WorkflowError>,checks,warnings). It is calledfrom realpipeline withrealcomputedResult. Unit usesreal computeempty nodes exact EntryOutOfBounds thenpassesErr todispatch; asserts exact baselinechecks forFull ANDStandard plusmessages/exit4/warnings. Valid publicCLInegativecompileguardpreemptsbudgeterror; documented no fullpipelinebudgetcomputeerrorrepro available and no fakeinjection. Samecontractactualinternalboundarycoveragehonest. Actualcode andlogs:
+
+crates/velvet_ballistics/src/commands_verify.rs
+//! Pure verification logic extracted from cmd_verify.
+#![forbid(unsafe_code)]
+
+use crate::args::VerifyProfile;
+use crate::exit_code::CliExitCode;
+
+/// Structured result of a successful verification.
+pub(crate) struct VerifyOk {
+    /// Hex-encoded workflow digest.
+    pub digest_hex: String,
+    /// Number of compiled workflow nodes.
+    pub node_count: u16,
+    /// Check names that passed.
+    pub checks: Vec<&'static str>,
+    /// Non-fatal warnings produced during verification.
+    pub warnings: Vec<String>,
+}
+
+/// Structured error from the verification pipeline.
+#[allow(dead_code)]
+pub(crate) enum VerifyError {
+    /// YAML source could not be parsed.
+    YamlParse(String),
+    /// Compilation failed with one or more errors.
+    Compile(Vec<String>),
+    /// IR validation failed.
+    IrValidation(String),
+    /// Budget policy violation (fatal in full profile).
+    BudgetPolicy(String),
+    /// Storage operation failed.
+    StorageError(String),
+    /// Replay divergence detected.
+    ReplayDivergence(String),
+}
+
+/// Run the full verification pipeline on a workflow source text.
+///
+/// This performs:
+/// 1. Strict YAML parse
+/// 2. Compilation (schema, references, control flow, type/taint)
+/// 3. IR validation
+/// 4. Profile-dependent budget and boundedness checks (standard/full)
+///
+/// Returns structured data suitable for formatting by the caller.
+pub(crate) fn run_verification(
+    text: &str,
+    bytes: &[u8],
+    profile: VerifyProfile,
+) -> Result<VerifyOk, VerifyError> {
+    // Phase 1: strict YAML parse
+    if let Err(e) = vb_compile::parse_workflow_source(text) {
+        return Err(VerifyError::YamlParse(format!("YAML parse error: {e}")));
+    }
+
+    // Phase 2: compilation pipeline
+    let compiled = match vb_compile::compile_workflow(bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+            return Err(VerifyError::Compile(error_msgs));
+        }
+    };
+
+    let digest = compiled.digest();
+    let digest_hex: String = digest
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let mut checks: Vec<&'static str> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    checks.push("yaml_parse");
+    checks.push("compilation");
+
+    // Phase 3: IR validation gates
+    let parts = compiled.to_parts();
+    match vb_validate::shared::validate(&parts) {
+        Ok(()) => {
+            checks.push("ir_validation");
+        }
+        Err(e) => {
+            return Err(VerifyError::IrValidation(format!(
+                "IR validation failed: {e}"
+            )));
+        }
+    }
+
+    // Phase 4: profile-dependent checks (standard and full)
+    if profile == VerifyProfile::Standard || profile == VerifyProfile::Full {
+        let entry = compiled.entry();
+        let nodes: Vec<vb_core::CompiledNode> = {
+            let mut result = Vec::new();
+            for i in 0..compiled.node_count() {
+                let step = vb_core::StepIdx::new(i);
+                if let Some(node) = compiled.node(step) {
+                    result.push(node.clone());
+                }
+            }
+            result
+        };
+        let contract = compiled.resource_contract();
+        let budget_result = vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract);
+        record_budget_result(profile, budget_result, &mut checks, &mut warnings)?;
+    }
+
+    Ok(VerifyOk {
+        digest_hex,
+        node_count: compiled.node_count(),
+        checks,
+        warnings,
+    })
+}
+
+fn record_budget_result(
+    profile: VerifyProfile,
+    result: Result<vb_core::budget::WholeWorkflowBudget, vb_core::WorkflowError>,
+    checks: &mut Vec<&'static str>,
+    warnings: &mut Vec<String>,
+) -> Result<(), VerifyError> {
+    match result {
+        Ok(budget) => {
+            checks.push("budget_computation");
+            let policy = vb_core::budget::BoundednessPolicy::DEFAULT;
+            match policy.validate(&budget) {
+                Ok(()) => {
+                    checks.push("boundedness_policy");
+                }
+                Err(e) => {
+                    if profile == VerifyProfile::Full {
+                        return Err(VerifyError::BudgetPolicy(format!(
+                            "budget policy violation: {e}"
+                        )));
+                    }
+                    warnings.push(format!("budget policy warning: {e}"));
+                    checks.push("boundedness_policy_check");
+                }
+            }
+        }
+        Err(e) => {
+            if profile == VerifyProfile::Full {
+                return Err(VerifyError::BudgetPolicy(format!(
+                    "budget computation failed: {e}"
+                )));
+            }
+            warnings.push(format!("budget computation note: {e}"));
+        }
+    }
+    Ok(())
+}
+
+/// Map a [`VerifyError`] to a [`CliExitCode`].
+pub(crate) fn exit_code_for_error(err: &VerifyError) -> CliExitCode {
+    match err {
+        VerifyError::YamlParse(_) => CliExitCode::ValidationFailed,
+        VerifyError::Compile(_) => CliExitCode::ValidationFailed,
+        VerifyError::IrValidation(_) => CliExitCode::VerificationFailed,
+        VerifyError::BudgetPolicy(_) => CliExitCode::VerificationFailed,
+        VerifyError::StorageError(_) => CliExitCode::StorageError,
+        VerifyError::ReplayDivergence(_) => CliExitCode::ReplayDivergence,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exit_code_for_yaml_parse_is_validation_failed() {
+        let err = VerifyError::YamlParse("bad yaml".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ValidationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_compile_is_validation_failed() {
+        let err = VerifyError::Compile(vec!["err1".into()]);
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ValidationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_ir_validation_is_verification_failed() {
+        let err = VerifyError::IrValidation("bad ir".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::VerificationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_budget_policy_is_verification_failed() {
+        let err = VerifyError::BudgetPolicy("over budget".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::VerificationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_storage_error_is_storage_error() {
+        let err = VerifyError::StorageError("disk full".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::StorageError);
+    }
+
+    #[test]
+    fn exit_code_for_replay_divergence_is_replay_divergence() {
+        let err = VerifyError::ReplayDivergence("diverged".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ReplayDivergence);
+    }
+
+    #[test]
+    fn verify_ok_holds_all_fields() {
+        let ok = VerifyOk {
+            digest_hex: "abcdef".into(),
+            node_count: 5,
+            checks: vec!["yaml_parse", "compilation"],
+            warnings: vec!["note: old format".into()],
+        };
+        assert_eq!(ok.digest_hex, "abcdef");
+        assert_eq!(ok.node_count, 5);
+        assert_eq!(ok.checks.len(), 2);
+        assert_eq!(ok.warnings.len(), 1);
+    }
+
+    #[test]
+    fn verify_ok_empty_checks_and_warnings() {
+        let ok = VerifyOk {
+            digest_hex: "00".into(),
+            node_count: 0,
+            checks: vec![],
+            warnings: vec![],
+        };
+        assert!(ok.checks.is_empty());
+        assert!(ok.warnings.is_empty());
+        assert_eq!(ok.node_count, 0);
+    }
+}
+
+#[cfg(test)]
+#[path = "commands_verify_budget_tests.rs"]
+mod budget_tests;
+
+crates/velvet_ballistics/src/commands_verify_budget_tests.rs
+use super::*;
+
+fn real_budget_error() -> Result<vb_core::WorkflowError, String> {
+    let nodes: Vec<vb_core::CompiledNode> = vec![];
+    let entry = vb_core::StepIdx::new(0);
+    let contract = vb_core::ResourceContract::DEFAULT;
+    match vb_core::budget::WholeWorkflowBudget::compute(&nodes, entry, &contract) {
+        Err(e) => {
+            assert_eq!(
+                e,
+                vb_core::WorkflowError::EntryOutOfBounds {
+                    entry: vb_core::StepIdx::new(0)
+                }
+            );
+            Ok(e)
+        }
+        Ok(_) => Err("expected budget computation to fail".to_string()),
+    }
+}
+
+#[test]
+fn budget_error_fatal_in_full_profile() -> Result<(), String> {
+    let error = real_budget_error()?;
+    let mut checks = vec!["yaml_parse", "compilation", "ir_validation"];
+    let mut warnings: Vec<String> = vec![];
+    let result = record_budget_result(VerifyProfile::Full, Err(error), &mut checks, &mut warnings);
+    assert_eq!(checks, vec!["yaml_parse", "compilation", "ir_validation"]);
+    match result {
+        Err(VerifyError::BudgetPolicy(message)) => {
+            let expected = format!(
+                "budget computation failed: {}",
+                vb_core::WorkflowError::EntryOutOfBounds {
+                    entry: vb_core::StepIdx::new(0)
+                }
+            );
+            if message != expected {
+                return Err(format!("unexpected message: {}", message));
+            }
+            let exit = exit_code_for_error(&VerifyError::BudgetPolicy(message));
+            if u8::from(exit) != 4 {
+                return Err(format!("unexpected exit code: {}", u8::from(exit)));
+            }
+            if !warnings.is_empty() {
+                return Err("warnings should be empty".to_string());
+            }
+            Ok(())
+        }
+        _ => Err("unexpected result".to_owned()),
+    }
+}
+
+#[test]
+fn budget_error_warning_in_standard_profile() -> Result<(), String> {
+    let error = real_budget_error()?;
+    let mut checks = vec!["yaml_parse", "compilation", "ir_validation"];
+    let mut warnings: Vec<String> = vec![];
+    let result = record_budget_result(
+        VerifyProfile::Standard,
+        Err(error),
+        &mut checks,
+        &mut warnings,
+    );
+    assert_eq!(checks, vec!["yaml_parse", "compilation", "ir_validation"]);
+    match result {
+        Ok(()) => {
+            if warnings.len() != 1 {
+                return Err(format!("expected 1 warning, got {}", warnings.len()));
+            }
+            let expected = format!(
+                "budget computation note: {}",
+                vb_core::WorkflowError::EntryOutOfBounds {
+                    entry: vb_core::StepIdx::new(0)
+                }
+            );
+            if let Some(w) = warnings.first() {
+                if *w != expected {
+                    return Err(format!("unexpected warning: {}", w));
+                }
+            } else {
+                return Err("no warning found".to_string());
+            }
+            Ok(())
+        }
+        _ => Err("unexpected result".to_owned()),
+    }
+}
+
+#[test]
+fn full_verification_pipeline_succeeds() -> Result<(), String> {
+    let yaml = "version: velvet-ballistics/v1\nname: budget_positive\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+    let bytes = yaml.as_bytes();
+    for profile in [
+        VerifyProfile::Quick,
+        VerifyProfile::Standard,
+        VerifyProfile::Full,
+    ] {
+        match run_verification(yaml, bytes, profile) {
+            Ok(result) => {
+                if profile == VerifyProfile::Quick {
+                    let expected = vec!["yaml_parse", "compilation", "ir_validation"];
+                    if result.checks != expected {
+                        return Err(format!(
+                            "Quick profile checks mismatch: {:?}",
+                            result.checks
+                        ));
+                    }
+                } else {
+                    let expected = vec![
+                        "yaml_parse",
+                        "compilation",
+                        "ir_validation",
+                        "budget_computation",
+                        "boundedness_policy",
+                    ];
+                    if result.checks != expected {
+                        return Err(format!("profile checks mismatch: {:?}", result.checks));
+                    }
+                }
+                if !result.warnings.is_empty() {
+                    return Err(format!("unexpected warnings: {:?}", result.warnings));
+                }
+            }
+            Err(VerifyError::YamlParse(msg)) => return Err(format!("yaml parse failed: {}", msg)),
+            Err(VerifyError::Compile(msgs)) => return Err(format!("compile failed: {:?}", msgs)),
+            Err(VerifyError::IrValidation(msg)) => {
+                return Err(format!("ir validation failed: {}", msg));
+            }
+            Err(VerifyError::BudgetPolicy(msg)) => {
+                return Err(format!("budget policy failed: {}", msg));
+            }
+            Err(VerifyError::StorageError(msg)) => return Err(format!("storage error: {}", msg)),
+            Err(VerifyError::ReplayDivergence(msg)) => {
+                return Err(format!("replay divergence: {}", msg));
+            }
+        }
+    }
+    Ok(())
+}
+
+crates/workspace_tests/tests/cli/verify_budget_profiles.rs
+use std::fs;
+use std::process::Command;
+
+fn run_verify(
+    path: &str,
+    profile: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["verify", path, "--profile", profile, "--emit", "yaml"])
+        .output()?;
+    Ok(output)
+}
+
+#[test]
+fn valid_workflow_all_profiles() -> Result<(), Box<dyn std::error::Error>> {
+    let positive_yaml = r#"version: velvet-ballistics/v1
+name: budget_positive
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      output: saved
+      value: '42'
+  - id: done
+    finish:
+      result: saved
+"#;
+
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("positive.yaml");
+    fs::write(&path, positive_yaml)?;
+
+    let profiles = ["quick", "standard", "full"];
+    for profile in profiles {
+        let output = run_verify(path.to_str().ok_or("path")?, profile)?;
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "profile {} exit code",
+            profile
+        );
+
+        let doc: serde_json::Value = serde_saphyr::from_str(std::str::from_utf8(&output.stdout)?)?;
+        let success = doc.get("success").and_then(serde_json::Value::as_bool);
+        assert_eq!(success, Some(true), "profile {} success", profile);
+
+        let actual_profile = doc.get("profile").and_then(serde_json::Value::as_str);
+        assert_eq!(actual_profile, Some(profile), "profile {} actual", profile);
+
+        let warnings = doc.get("warnings").ok_or("missing warnings")?;
+        assert!(warnings.is_array(), "profile {} warnings array", profile);
+        assert_eq!(
+            warnings.as_array().ok_or("warnings array")?.len(),
+            0,
+            "profile {} warnings empty",
+            profile
+        );
+
+        let checks_value = doc.get("checks").ok_or("missing checks")?;
+        let checks: Vec<String> = serde_json::from_value(checks_value.clone())?;
+
+        if profile == "quick" {
+            assert_eq!(checks, vec!["yaml_parse", "compilation", "ir_validation"]);
+        } else {
+            assert_eq!(
+                checks,
+                vec![
+                    "yaml_parse",
+                    "compilation",
+                    "ir_validation",
+                    "budget_computation",
+                    "boundedness_policy"
+                ]
+            );
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn overflow_fixture_all_profiles() -> Result<(), Box<dyn std::error::Error>> {
+    let overflow_yaml = r#"version: velvet-ballistics/v1
+name: budget_overflow
+when:
+  manual: {}
+steps:
+  - id: seed
+    save:
+      output: seeded
+      value: '1'
+  - id: loop
+    for_each:
+      variable: item
+      input: '0'
+      at_once: 4294967295
+      steps:
+        - id: body
+          save:
+            output: item
+            value: '1'
+  - id: done
+    finish:
+      result: 1
+"#;
+
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("overflow.yaml");
+    fs::write(&path, overflow_yaml)?;
+
+    let profiles = ["quick", "standard", "full"];
+    for profile in profiles {
+        let output = run_verify(path.to_str().ok_or("path")?, profile)?;
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "profile {} exit code",
+            profile
+        );
+
+        assert!(output.stdout.is_empty());
+        let doc: serde_json::Value = serde_saphyr::from_str(std::str::from_utf8(&output.stderr)?)?;
+        let success = doc.get("success").and_then(serde_json::Value::as_bool);
+        assert_eq!(success, Some(false), "profile {} success", profile);
+
+        let message = doc.get("message").and_then(serde_json::Value::as_str);
+        assert!(message.is_some(), "profile {} message", profile);
+        let msg = message.ok_or("message")?;
+        assert!(
+            msg.contains("budget step count overflow: 8589934593 cannot be represented"),
+            "profile {} message content",
+            profile
+        );
+    }
+
+    Ok(())
+}
+
+.beads/vb-5ckx6/evidence/budget-tests-v3.log
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 349 filtered out; finished in 0.00s
+
+
+.beads/vb-5ckx6/evidence/cli-budget-tests-v4.log
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
