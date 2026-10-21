@@ -1,0 +1,694 @@
+Independent code review vb-ifax6. Review semantic safety and dead private enum/constant removal. Return STATUS APPROVED only no actionable findings else REJECTED. No invented waivers. Max500 final words.
+# vb-ifax6: Rust Lint Cleanup — Compiler Borrow + CLI Dead Declarations
+
+**Status:** Contract stage (source/test to follow)
+**Packages:** `vb_compile`, `velvet-ballistics`
+**Files:** 3 (1 compiler, 2 CLI)
+
+## Scope
+
+Fix canonical source lints blocking advancement. No behavioral change, no new validation, no wire format change.
+
+## Changes
+
+### 1. Compiler: needless borrow (vb_compile)
+
+**File:** `crates/vb_compile/src/mod_compile_lowering/part_01.rs:46`
+
+```diff
+- allocate_input_slots(&source.inputs(), &mut builder)
++ allocate_input_slots(source.inputs(), &mut builder)
+```
+
+`source.inputs()` already returns a borrowed slice; the explicit `&` is redundant.
+
+### 2. CLI: prune dead private declarations (velvet_ballistics)
+
+**File:** `crates/velvet_ballistics/src/run_compiled.rs`
+
+Remove never-constructed enum variant and its display arm:
+
+```diff
+ pub(crate) enum InputMappingError {
+     DecodeFailed,
+     SlotCountExceeded,
+-    SlotIndexOutOfRange,
+     KindMismatch { slot, expected_kind },
+ }
+```
+
+```diff
+- Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
+```
+
+**File:** `crates/velvet_ballistics/src/app_impl.rs`
+
+Remove unused constant and its re-export:
+
+```diff
+- pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
+-     "INPUT_MAPPING_FAILED: input slot index out of range";
+```
+
+```diff
+- INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+```
+
+## Preserved (explicitly not changed)
+
+- Active `KindMismatch` Display literal with slot and expected kind is unchanged. The generic `INPUT_MAPPING_KIND_MISMATCH_MESSAGE` constant and import are unused and are removed.
+- `InputMappingError::KindMismatch` variant with typed `slot`/`expected_kind` fields
+- All active CLI diagnostic strings and exit codes
+- `CompiledWorkflow::try_from_parts` out-of-range IR metadata rejection
+- Positional `Box<[SlotValue]>` wire format — no indexed wire invented
+
+## Rationale
+
+- `SlotIndexOutOfRange` is never constructed: the mapper zips positional values against validated slots; `try_from_parts` already rejects malformed IR metadata before mapping.
+- Removing a private, unreachable variant carries no public API compatibility obligation.
+- The variant currently exists but is dead code; this is cleanup, not a claim it never existed.
+
+## Verification
+
+- `moon run :lint-src` — no remaining needless-borrow or unused-declaration lints
+- Compiler unit tests pass
+- mapper16 + public CLI 10 subcases pass
+- No proof planning required; changes are mechanical lint fixes
+## Source-grounded correction
+
+Both local draft versions mislabeled the unused generic kind-mismatch constant as active, contrary to the actual Display literal; coordinator corrected that claim above before implementation. No source depended on the mistaken assertion. Frozen current source and rg callsite search show only definition/import for the generic constant. Existing executable detailed KindMismatch text remains unchanged.
+
+DIFF
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_01.rs b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+index 4429a93fde..b2934adae9 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_01.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+@@ -8,15 +8,13 @@
+ use saphyr::Yaml;
+ use std::collections::HashMap;
+ use vb_core::{
+-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+-    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
+-    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
++    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
++    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
++    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+ };
+ 
+ /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
+-pub fn compile_source(
+-    source: &WorkflowSource,
+-) -> Result<CompiledWorkflow, CompileErrors> {
++pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
+     validate_canonical_compile_scope(source)?;
+     validate_branch_counts(source)?;
+     let steps = source.steps();
+@@ -43,7 +41,7 @@
+             &mut builder,
+         )?;
+     }
+-    allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
++    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+     let parts = WorkflowParts {
+         name: Box::from(source.name()),
+         digest: canonical_digest(source)?,
+@@ -74,17 +72,17 @@
+ ) -> Result<(), CompileError> {
+     let base = builder.slot_count()?;
+     for (declaration_index, input) in inputs.iter().enumerate() {
+-        let declaration_index = u16::try_from(declaration_index).map_err(|_| {
+-            CompileError::SlotIndexOutOfRange {
+-                value: i64::MAX,
+-            }
+-        })?;
++        let declaration_index = u16::try_from(declaration_index)
++            .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+         let base_usize = usize::from(base);
+         let declaration_usize = usize::from(declaration_index);
+         let slot_index_usize = base_usize
+             .checked_add(declaration_usize)
+             .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+-        let slot = SlotIdx::new(u16::try_from(slot_index_usize).map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?);
++        let slot = SlotIdx::new(
++            u16::try_from(slot_index_usize)
++                .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
++        );
+         builder.record_slot(slot);
+         let kind = kind_from_author_value(&input.value);
+         builder.record_input_slot(slot, kind);
+diff --git a/crates/velvet_ballistics/src/app_impl.rs b/crates/velvet_ballistics/src/app_impl.rs
+index 543faa6276..a3544dd0c1 100644
+--- a/crates/velvet_ballistics/src/app_impl.rs
++++ b/crates/velvet_ballistics/src/app_impl.rs
+@@ -21,9 +21,8 @@
+         action_contract_detail, action_table_rows, registered_cli_actions,
+     };
+     pub(crate) use crate::app_impl::{
+-        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+-        VERSION, compile_errors_message,
++        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, VERSION,
++        compile_errors_message,
+     };
+     pub(crate) use crate::args::{
+         self, ActionRegistryMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat, StepTarget,
+@@ -64,10 +63,6 @@
+     "INPUT_MAPPING_FAILED: input-bin decode failed";
+ pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
+     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
+-pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
+-    "INPUT_MAPPING_FAILED: input slot index out of range";
+-pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+-    "INPUT_MAPPING_FAILED: slot value kind mismatch";
+ 
+ pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
+     crate::validate::compile_errors_message(errors)
+diff --git a/crates/velvet_ballistics/src/run_compiled.rs b/crates/velvet_ballistics/src/run_compiled.rs
+index 32b7634e05..237a1412e2 100644
+--- a/crates/velvet_ballistics/src/run_compiled.rs
++++ b/crates/velvet_ballistics/src/run_compiled.rs
+@@ -79,7 +79,6 @@
+ pub(crate) enum InputMappingError {
+     DecodeFailed,
+     SlotCountExceeded,
+-    SlotIndexOutOfRange,
+     KindMismatch {
+         slot: vb_core::SlotIdx,
+         expected_kind: vb_core::InputSlotKind,
+@@ -90,9 +89,13 @@
+     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         match self {
+             Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+-            Self::SlotCountExceeded => formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE),
+-            Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
+-            Self::KindMismatch { slot, expected_kind } => write!(
++            Self::SlotCountExceeded => {
++                formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE)
++            }
++            Self::KindMismatch {
++                slot,
++                expected_kind,
++            } => write!(
+                 formatter,
+                 "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+             ),
+
+CURRENT crates/vb_compile/src/mod_compile_lowering/part_01.rs
+#![allow(unused_imports)]
+use super::*;
+use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
+use crate::mod_compile_validation::{
+    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
+};
+use crate::{AuthorValue, InputField, WorkflowSource};
+use saphyr::Yaml;
+use std::collections::HashMap;
+use vb_core::{
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+};
+
+/// Compile the canonical cold YAML authoring AST into numeric runtime IR.
+pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
+    validate_canonical_compile_scope(source)?;
+    validate_branch_counts(source)?;
+    let steps = source.steps();
+    let last = steps
+        .len()
+        .checked_sub(1)
+        .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
+    let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
+    let mut builder = SlotCompiler::new();
+    let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut step_names =
+        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
+    for (index, step) in steps.iter().enumerate() {
+        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        lower_canonical_step(
+            step,
+            index,
+            last,
+            id,
+            next,
+            &mut outputs,
+            &mut step_names,
+            &mut builder,
+        )?;
+    }
+    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    let parts = WorkflowParts {
+        name: Box::from(source.name()),
+        digest: canonical_digest(source)?,
+        slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+        symbols_count: 0,
+        nodes: builder.nodes.into_boxed_slice(),
+        expressions: builder.expressions.into_boxed_slice(),
+        accessors: builder.accessors.into_boxed_slice(),
+        constants: builder.constants.into_boxed_slice(),
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: step_names.into_boxed_slice(),
+        input_slots: builder.input_slots.into_boxed_slice(),
+    };
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+}
+
+/// Allocate declared input slots after all steps are lowered.
+///
+/// Reads the base slot count from the builder, checked-adds the declaration
+/// index for each input field in source order, creates the `SlotIdx`, calls
+/// `record_slot` and `record_input_slot`.  Source names are intentionally
+/// excluded from the emitted IR.
+pub(super) fn allocate_input_slots(
+    inputs: &[InputField],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileError> {
+    let base = builder.slot_count()?;
+    for (declaration_index, input) in inputs.iter().enumerate() {
+        let declaration_index = u16::try_from(declaration_index)
+            .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+        let base_usize = usize::from(base);
+        let declaration_usize = usize::from(declaration_index);
+        let slot_index_usize = base_usize
+            .checked_add(declaration_usize)
+            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+        let slot = SlotIdx::new(
+            u16::try_from(slot_index_usize)
+                .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+        );
+        builder.record_slot(slot);
+        let kind = kind_from_author_value(&input.value);
+        builder.record_input_slot(slot, kind);
+    }
+    Ok(())
+}
+
+/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
+pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
+    match value {
+        AuthorValue::Null => InputSlotKind::Null,
+        AuthorValue::Bool(_) => InputSlotKind::Bool,
+        AuthorValue::I64(_) => InputSlotKind::I64,
+        AuthorValue::Text(_) => InputSlotKind::Symbol,
+        AuthorValue::Sequence(_) => InputSlotKind::List,
+        AuthorValue::Mapping(_) => InputSlotKind::Object,
+        _ => InputSlotKind::Null,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct CanonicalStepLayout {
+    start: StepIdx,
+    width: usize,
+}
+
+pub(super) fn canonical_layout(
+    steps: &[crate::StepAst],
+) -> Result<Vec<CanonicalStepLayout>, CompileError> {
+    let mut layout = Vec::with_capacity(steps.len());
+    let mut cursor = 0usize;
+    for step in steps {
+        let width = canonical_step_width(&step.primitive)?;
+        layout.push(CanonicalStepLayout {
+            start: step_idx(cursor)?,
+            width,
+        });
+        cursor = cursor
+            .checked_add(width)
+            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
+    }
+    Ok(layout)
+}
+
+pub(super) fn canonical_step_width(
+    primitive: &crate::StepPrimitive,
+) -> Result<usize, CompileError> {
+    match primitive {
+        crate::StepPrimitive::Set { .. }
+        | crate::StepPrimitive::Finish { .. }
+        | crate::StepPrimitive::Wait { .. } => Ok(1),
+        crate::StepPrimitive::Ask { .. } => Ok(2),
+        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        crate::StepPrimitive::Collect { body, .. }
+        | crate::StepPrimitive::Aggregate { body, .. }
+        | crate::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Together { branches } => together_width(branches),
+        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
+        _ => Ok(1),
+    }
+}
+
+pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
+    let mut width = overhead;
+    for step in body {
+        width = width
+            .checked_add(canonical_body_step_width(&step.primitive)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
+    // ChooseSlot node itself (1) + sum of body widths across all branches.
+    // body_width uses canonical_body_step_width, so each step contributes 1
+    // (Set or Do) and unsupported primitives produce Err.
+    let mut width = 1usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 0)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize, CompileError> {
+    let mut width = 2usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 1)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+pub(super) fn canonical_body_step_width(
+    primitive: &crate::StepPrimitive,
+) -> Result<usize, CompileError> {
+    match primitive {
+        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => Ok(1),
+        other => Err(CompileError::UnsupportedStepPrimitive {
+            step: 0,
+            primitive: canonical_primitive_name(other),
+        }),
+    }
+}
+
+pub(super) fn canonical_step_names(
+    steps: &[crate::StepAst],
+    layout: &[CanonicalStepLayout],
+) -> Result<Vec<Box<str>>, CompileError> {
+    let total = layout
+        .last()
+        .map(|entry| {
+            entry.start.as_usize().checked_add(entry.width).ok_or(
+                CompileError::StepIndexOutOfRange {
+                    value: entry.start.as_usize(),
+                },
+            )
+        })
+        .transpose()?
+        .unwrap_or(0);
+    let mut names = Vec::with_capacity(total);
+    for (index, step) in steps.iter().enumerate() {
+        let width = layout_width(layout, index)?;
+        for _ in 0..width {
+            names.push(Box::from(step.id.as_str()));
+        }
+    }
+    Ok(names)
+}
+
+pub(super) fn layout_start(
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> Result<StepIdx, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.start)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+pub(super) fn layout_width(
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> Result<usize, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.width)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+pub(super) fn next_layout_start(
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> Result<Option<StepIdx>, CompileError> {
+    let next = index
+        .checked_add(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+    Ok(layout.get(next).map(|entry| entry.start))
+}
+
+CURRENT crates/velvet_ballistics/src/run_compiled.rs
+//! Module: run_compiled
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_run_compiled(
+    vbir_path: &std::path::Path,
+    input_bin: &std::path::Path,
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> ExitCode {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let ir_bytes = match read_file(vbir_path, output, CliExitCode::CompileFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled: vb_core::CompiledWorkflow =
+        match postcard::from_bytes::<vb_core::WorkflowParts>(&ir_bytes) {
+            Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
+                Ok(c) => c,
+                Err(e) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("compiled IR validation error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("compiled IR validation error: {e}");
+                    }
+                    return CliExitCode::CompileFailed.into();
+                }
+            },
+            Err(e) => {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error deserializing compiled IR: {e}")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error deserializing compiled IR: {e}");
+                }
+                return CliExitCode::CompileFailed.into();
+            }
+        };
+
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": error.to_string()
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{error}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InputMappingError {
+    DecodeFailed,
+    SlotCountExceeded,
+    KindMismatch {
+        slot: vb_core::SlotIdx,
+        expected_kind: vb_core::InputSlotKind,
+    },
+}
+
+impl std::fmt::Display for InputMappingError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+            Self::SlotCountExceeded => {
+                formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE)
+            }
+            Self::KindMismatch {
+                slot,
+                expected_kind,
+            } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+            ),
+        }
+    }
+}
+
+pub(crate) fn map_runtime_inputs(
+    compiled: &vb_core::CompiledWorkflow,
+    input_data: &[u8],
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    let input_slots = compiled.input_slots();
+    if input_data.is_empty() {
+        return Ok(Box::from([]));
+    }
+    let (values, remainder) = postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+        .map_err(|_| InputMappingError::DecodeFailed)?;
+    if !remainder.is_empty() {
+        return Err(InputMappingError::DecodeFailed);
+    }
+    if values.len() > input_slots.len() {
+        return Err(InputMappingError::SlotCountExceeded);
+    }
+    input_slots
+        .iter()
+        .zip(values.iter())
+        .map(|(slot, value)| {
+            let value_kind = match value {
+                vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+                vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+                vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+                vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+                vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+                vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+                vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+                vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+                _ => return Err(InputMappingError::DecodeFailed),
+            };
+            if value_kind != slot.kind {
+                return Err(InputMappingError::KindMismatch {
+                    slot: slot.slot,
+                    expected_kind: slot.kind,
+                });
+            }
+            Ok((slot.slot, *value))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Vec::into_boxed_slice)
+}
+
+pub(crate) fn runtime_journal_for_mode(
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    match durability {
+        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
+    }
+}
+
+pub(crate) fn runtime_config_for_durability(
+    durability: DurabilityMode,
+) -> vb_runtime::shard::ShardConfig {
+    let mut config = vb_runtime::shard::ShardConfig::default();
+    if durability == DurabilityMode::None {
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    }
+    config
+}
+
+#[cfg(test)]
+#[path = "run_compiled_input_tests.rs"]
+mod input_tests;
+
+CURRENT crates/velvet_ballistics/src/app_impl.rs
+//! CLI dispatcher and shared implementation prelude.
+//!
+//! This module re-exports the items used by `main.rs` and by the split
+//! submodules under `use crate::app_impl::prelude::*;` so that the
+//! `prelude::*` glob import keeps resolving.
+
+#![forbid(unsafe_code)]
+
+use std::process::ExitCode;
+
+pub(crate) mod prelude {
+    pub(crate) use std::num::NonZeroUsize;
+    pub(crate) use std::process::ExitCode;
+    pub(crate) use std::sync::Arc;
+    pub(crate) use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+    pub(crate) use crate::action::{
+        write_action_inspect, write_action_registry, write_action_registry_uninitialized,
+    };
+    pub(crate) use crate::action_specs::{
+        action_contract_detail, action_table_rows, registered_cli_actions,
+    };
+    pub(crate) use crate::app_impl::{
+        INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, VERSION,
+        compile_errors_message,
+    };
+    pub(crate) use crate::args::{
+        self, ActionRegistryMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat, StepTarget,
+    };
+    pub(crate) use crate::exit_code::CliExitCode;
+    pub(crate) use crate::file_io::{
+        parse_run_id, read_file, read_journal_events, report_storage_open_error,
+    };
+    pub(crate) use crate::io_helpers::unique_doctor_run_id;
+    pub(crate) use crate::output::{
+        json_error, json_out_exit, output_error_exit, write_contract_error_json,
+        write_failure_message, write_json_pretty_stdout,
+    };
+    pub(crate) use crate::run::report_compiled_ir_store_error;
+    pub(crate) use crate::run_cancel::run_is_terminal;
+    pub(crate) use crate::run_compiled::{
+        map_runtime_inputs, runtime_config_for_durability, runtime_journal_for_mode,
+    };
+    pub(crate) use crate::run_compiled_runtime::{
+        open_storage_runtime_journal, run_compiled_workflow,
+    };
+    pub(crate) use crate::step_helpers::{
+        compile_bytes_json, decode_step_inputs, execute_step_isolated,
+    };
+    pub(crate) use crate::step_helpers_display::{error_name, print_step_result};
+    pub(crate) use crate::{
+        agent_context, cli_envelope, commands_diff, commands_incident, commands_journal,
+        commands_status, commands_system_status, commands_workflow, deliver_sink,
+    };
+    pub(crate) use vb_ipc::client::IpcClient;
+    pub(crate) use vb_ipc::{IpcCommand, IpcPayload};
+    pub(crate) use vb_runtime::action::ActionRegistry;
+}
+
+pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input-bin decode failed";
+pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
+
+pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
+    crate::validate::compile_errors_message(errors)
+}
+
+pub(crate) fn run_from_env() -> ExitCode {
+    crate::dispatcher::run_from_env()
+}
+
+SLOT INDEX REFERENCES

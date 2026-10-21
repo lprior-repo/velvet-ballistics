@@ -48,6 +48,10 @@ fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
+        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::I64,
+        }]),
     }
 }
 

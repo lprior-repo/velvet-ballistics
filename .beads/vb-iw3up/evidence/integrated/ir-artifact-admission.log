@@ -1,0 +1,20 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_runtime)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.18s
+     Running tests/ir_artifact_admission.rs (target/debug/deps/ir_artifact_admission-c2dfda5eb233251c)
+
+running 9 tests
+test run_compiled_rejects_handcrafted_backward_edge_ir ... ok
+test run_compiled_rejects_handcrafted_bad_accessor_path_ir ... ok
+test run_compiled_rejects_handcrafted_bad_accessor_reference_ir ... ok
+test run_compiled_rejects_handcrafted_unreachable_node_ir ... ok
+test run_compiled_rejects_handcrafted_bad_build_object_symbol_ir ... ok
+test run_compiled_accepts_valid_handcrafted_ir_artifact ... ok
+test run_compiled_rejects_handcrafted_bad_constant_reference_ir ... ok
+test run_compiled_rejects_non_postcard_ir_artifact ... ok
+test run_compiled_for_each_corpus_artifact_reaches_runtime_semantics ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
