@@ -1,0 +1,20 @@
+
+running 1 test
+test runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority ... FAILED
+
+failures:
+
+---- runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority stdout ----
+
+thread 'runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority' (2959365) panicked at crates/vb_runtime/src/runtime/shutdown_tests.rs:33:5:
+assertion `left == right` failed: a failed durable shutdown must not erase its pending timer authority
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1914 filtered out; finished in 0.01s
+

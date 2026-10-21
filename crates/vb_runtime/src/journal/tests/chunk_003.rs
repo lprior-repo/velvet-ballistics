@@ -91,7 +91,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
         queue.pending_profile_counts(),
         Ok(ref c) if c.journaled >= 2 && c.strict == 0
     ));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert!(matches!(
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
@@ -204,7 +204,9 @@ fn queued_batch_append_waits_behind_pending_predecessor() -> Result<(), String> 
         Ok(report) if report.drained == 1 && report.written == 1
     ));
     assert_eq!(
-        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string())?,
         vec![JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(0),
@@ -219,7 +221,9 @@ fn queued_batch_append_waits_behind_pending_predecessor() -> Result<(), String> 
     let expected_extra = vb_storage::encode_slot_written_extra(Taint::Clean, None)
         .map_err(|error| format!("{error:?}"))?;
     assert_eq!(
-        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string())?,
         vec![
             JournalEvent::StepStarted {
                 run,
@@ -293,7 +297,9 @@ fn queued_batch_append_returns_typed_error_when_batch_would_overfill_queue() -> 
         Ok(report) if report.drained == 1 && report.written == 1
     ));
     assert_eq!(
-        journal.events_for_run(run).map_err(|error| error.to_string())?,
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string())?,
         vec![JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(0),

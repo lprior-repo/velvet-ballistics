@@ -621,7 +621,7 @@ fn tick_all_returns_false_when_any_shard_shutting_down() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     // Shutdown first
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // Then: tick_all returns false
     assert_eq!(runtime.tick_all(), Ok(false));
@@ -1184,7 +1184,7 @@ fn tick_all_returns_false_after_graceful_shutdown() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     // When: graceful shutdown is initiated
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // Then: tick_all returns false (shard shutting down)
     let result = runtime.tick_all();

@@ -1,0 +1,4 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-aaqp7-shutdown-sol/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.13s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+error: test failed, to rerun pass `-p vb_runtime --lib`

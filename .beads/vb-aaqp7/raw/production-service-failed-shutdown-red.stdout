@@ -1,0 +1,15 @@
+
+running 1 test
+test ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_keeps_service_available ... FAILED
+
+failures:
+
+---- ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_keeps_service_available stdout ----
+Error: Storage(DuplicateEvent { run: RunId(505), seq: EventSeq(64) })
+
+
+failures:
+    ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_keeps_service_available
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 355 filtered out; finished in 0.01s
+

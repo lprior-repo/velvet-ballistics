@@ -81,3 +81,58 @@ fn idempotent_visible_event_requires_barrier_before_durable_drain() -> TestResul
     assert_eq!(journal.events_for_run(RunId::new(900))?, vec![event(0)]);
     Ok(())
 }
+
+#[test]
+fn shutdown_commit_failure_retains_batch_closes_admission_and_retries() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
+    let queue = JournalWriterQueue::new(3, 2, StorageLimits::DEFAULT)?;
+    for seq in 0..3 {
+        queue.enqueue_journaled(event(seq))?;
+    }
+    journal.fail_next_batch_commit_for_test();
+    assert!(matches!(
+        queue.shutdown_durable(&journal),
+        Err(JournalError::Fjall(_))
+    ));
+    assert_eq!(queue.pending_profile_counts()?.journaled, 3);
+    assert!(journal.events_for_run(RunId::new(900))?.is_empty());
+    assert!(matches!(
+        queue.enqueue_journaled(event(3)),
+        Err(JournalError::QueueShutdown)
+    ));
+    let retry = queue.shutdown_durable(&journal)?;
+    assert_eq!((retry.drained, retry.written), (3, 3));
+    assert_eq!(
+        journal.events_for_run(RunId::new(900))?,
+        vec![event(0), event(1), event(2)]
+    );
+    assert_eq!(queue.pending_profile_counts()?.journaled, 0);
+    assert_eq!(queue.shutdown_durable(&journal)?.drained, 0);
+    Ok(())
+}
+
+#[test]
+fn shutdown_idempotent_barrier_failure_retains_ownership_for_retry() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
+    let queue = JournalWriterQueue::new(2, 1, StorageLimits::DEFAULT)?;
+    journal.append_journaled(&event(0))?;
+    queue.enqueue_journaled(event(0))?;
+    queue.enqueue_journaled(event(1))?;
+    journal.fail_next_persist_for_test();
+    assert!(matches!(
+        queue.shutdown_durable(&journal),
+        Err(JournalError::StrictDurabilityFailed)
+    ));
+    assert_eq!(queue.pending_profile_counts()?.journaled, 2);
+    assert_eq!(journal.events_for_run(RunId::new(900))?, vec![event(0)]);
+    let retry = queue.shutdown_durable(&journal)?;
+    assert_eq!((retry.drained, retry.written), (2, 2));
+    assert_eq!(
+        journal.events_for_run(RunId::new(900))?,
+        vec![event(0), event(1)]
+    );
+    assert_eq!(queue.pending_profile_counts()?.journaled, 0);
+    Ok(())
+}

@@ -1,0 +1,15 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-aaqp7-shutdown-sol/crates/vb_runtime)
+error[E0599]: no associated function or constant named `ZERO` found for struct `vb_core::ConstIdx` in the current scope
+  --> crates/vb_runtime/src/runtime/shutdown_fixtures.rs:88:63
+   |
+88 |         node(0, CompiledNodeKind::SetConst { value: ConstIdx::ZERO }, Some(SlotIdx::ZERO), Some(StepIdx::new(1))),
+   |                                                               ^^^^ associated function or constant not found in `vb_core::ConstIdx`
+
+error[E0599]: no variant named `WaitScheduled` found for enum `JournalEvent`
+  --> crates/vb_runtime/src/runtime/shutdown_tests.rs:77:69
+   |
+77 |     assert!(events.iter().any(|event| matches!(event, JournalEvent::WaitScheduled { .. })));
+   |                                                                     ^^^^^^^^^^^^^ variant not found in `JournalEvent`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors

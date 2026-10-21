@@ -876,7 +876,7 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
             .map(|shard| shard.command_queue_depth),
         Some(1)
     );
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // Then: queued work drains exactly once and further deterministic progress is inactive.
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);

@@ -822,7 +822,7 @@ fn shutdown_drains_before_journal_drain() -> Result<(), String> {
 
     // Submit a run that will complete
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // false = all shards shut down
 
     // Run must have completed during shutdown drain
@@ -934,7 +934,7 @@ fn tick_all_returns_exact_true_when_alive() -> Result<(), String> {
 fn tick_all_returns_exact_false_after_shutdown() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
 
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(
         runtime.tick_all(),
         Ok(false),
@@ -1234,7 +1234,7 @@ fn shutdown_processes_all_shards() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(3)?, test_config());
 
     // Shutdown all shards
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(
         runtime.tick_all(),
         Ok(false),

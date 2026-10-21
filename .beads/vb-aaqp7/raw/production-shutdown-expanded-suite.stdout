@@ -1,0 +1,14 @@
+
+running 9 tests
+test runtime::shutdown_tests::explicit_shutdown_sentinel_reports_commands_it_did_not_process ... ok
+test runtime::shutdown_tests::failure_tests::shard_failure_reports_completed_prefix_and_keeps_other_timer_authorities ... ok
+test runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority ... ok
+test runtime::shutdown_tests::suspended_action_report_keeps_actual_ticket_and_frame ... ok
+test runtime::shutdown_tests::failure_tests::journal_port_failure_preserves_timer_then_retry_drains_actual_fjall_queue ... ok
+test runtime::shutdown_tests::successful_shutdown_reports_suspended_authority_without_cancelling_run ... ok
+test runtime::shutdown_tests::full_command_queue_drains_exact_count_and_completes_real_runs ... ok
+test runtime::shutdown_tests::failure_tests::full_journal_queue_is_durably_drained_after_nonwriting_command ... ok
+test runtime::shutdown_tests::report_bounds_details_without_losing_actual_totals ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1914 filtered out; finished in 0.01s
+

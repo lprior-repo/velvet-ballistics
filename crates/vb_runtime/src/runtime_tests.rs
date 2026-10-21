@@ -476,7 +476,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
 
@@ -510,7 +510,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
 
@@ -527,7 +527,7 @@ mod tests {
         let run = vb_core::ids::RunId::new(31);
         assert_eq!(runtime.submit_direct(run, wf), Ok(()));
 
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         let encoded_bool = postcard::to_allocvec(&SlotValue::Bool(true))
             .map_err(|err| format!("bool slot serialization failed: {err:?}"))?;
 
@@ -965,7 +965,7 @@ mod tests {
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When shutting down only one shard
         // Use shutdown_graceful which enqueues to all shards
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -1493,7 +1493,7 @@ mod tests {
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When shutting down gracefully
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -1505,7 +1505,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
         // When ticking again
         assert_eq!(runtime.tick_all(), Ok(false));
@@ -1616,7 +1616,7 @@ mod tests {
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
         // When shutting down
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false (all shards shut down)
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -1686,7 +1686,7 @@ mod tests {
         assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When shutting down with a pending run
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -2016,7 +2016,7 @@ mod tests {
             return;
         };
         // Shutdown first (processes shutdown tick)
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // When trying to submit after shutdown, admission is rejected at the boundary.
         assert_eq!(
             runtime.submit_direct(vb_core::ids::RunId::new(402), wf),
@@ -2296,7 +2296,7 @@ mod tests {
 
         // When submitting a suspended run and initiating graceful shutdown
         assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // drain_for_shutdown processes queued commands
         // Then tick_all returns false (shutdown complete)
         assert_eq!(runtime.tick_all(), Ok(false));
@@ -2331,7 +2331,7 @@ mod tests {
 
         // When submitting a finished workflow and initiating shutdown
         assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
-        assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
 
         // Then the run completed during drain

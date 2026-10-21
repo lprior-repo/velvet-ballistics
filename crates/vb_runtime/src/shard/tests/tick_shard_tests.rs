@@ -13,8 +13,8 @@
 //!    (shard alive) from `Ok(false)` (shard dead) with separate explicit assertions.
 
 use vb_core::action::{
-    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety,
-    SideEffect,
+    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -22,10 +22,10 @@ use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+use crate::RuntimeError;
 use crate::counters::ShardCounters;
 use crate::runtime::Runtime;
 use crate::shard::{Shard, ShardCommand, ShardConfig, ShardDirective};
-use crate::RuntimeError;
 
 // =============================================================================
 // Workflow helpers (matching existing test infrastructure in runtime.rs)
@@ -270,7 +270,10 @@ fn shard_directive_continue_not_equals_suspend() {
 
 #[test]
 fn shard_directive_continue_not_equals_migrate() {
-    assert_ne!(ShardDirective::Continue, ShardDirective::Migrate { target: 0 });
+    assert_ne!(
+        ShardDirective::Continue,
+        ShardDirective::Migrate { target: 0 }
+    );
 }
 
 #[test]
@@ -280,7 +283,10 @@ fn shard_directive_continue_not_equals_shutdown() {
 
 #[test]
 fn shard_directive_suspend_not_equals_migrate() {
-    assert_ne!(ShardDirective::Suspend, ShardDirective::Migrate { target: 0 });
+    assert_ne!(
+        ShardDirective::Suspend,
+        ShardDirective::Migrate { target: 0 }
+    );
 }
 
 #[test]
@@ -290,7 +296,10 @@ fn shard_directive_suspend_not_equals_shutdown() {
 
 #[test]
 fn shard_directive_migrate_not_equals_shutdown() {
-    assert_ne!(ShardDirective::Migrate { target: 0 }, ShardDirective::Shutdown);
+    assert_ne!(
+        ShardDirective::Migrate { target: 0 },
+        ShardDirective::Shutdown
+    );
 }
 
 #[test]
@@ -805,7 +814,7 @@ fn runtime_tick_shard_shutdown_idempotent() {
     let run = RunId::new(80);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // First shutdown tick
 
     // When: tick_shard(Shutdown) is called a second time.
@@ -838,7 +847,7 @@ fn runtime_tick_shard_shutdown_returns_false_on_dead_shard_continue_rejected() {
     let run = RunId::new(90);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // Shutdown complete
 
     // When: tick_shard(Continue) is called on dead shard.
@@ -1073,7 +1082,7 @@ fn runtime_tick_shard_shutdown_is_stable_idempotent() {
     let run = RunId::new(400);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // First call returns false
 
     // Get state after first shutdown

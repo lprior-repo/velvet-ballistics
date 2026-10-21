@@ -703,7 +703,7 @@ fn connection_shutdown_drains_pending_commands_before_termination() {
     assert_eq!(runtime.submit_direct(RunId::new(1), wf), Ok(()));
 
     // Initiate graceful shutdown
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // First tick after shutdown processes drain
     assert_eq!(runtime.tick_all(), Ok(false)); // false = shard terminated
@@ -723,7 +723,7 @@ fn connection_shutdown_affects_all_shards() {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
 
     // Initiate graceful shutdown
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // All shards should be down
     assert_eq!(runtime.tick_all(), Ok(false));
@@ -1142,7 +1142,7 @@ fn edge_shutdown_with_pending_runs_processes_all_during_drain() {
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
 
     // Shutdown before any tick
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // Drain tick processes the pending submit
     assert_eq!(runtime.tick_all(), Ok(false)); // false = all shards down
@@ -1168,7 +1168,7 @@ fn edge_submit_after_shutdown_enqueues_but_does_not_process() {
     };
 
     // Shutdown first
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
 
     // Submit after shutdown fails closed at the shard boundary.
     // The shard's enqueue path checks `shutting_down` before accepting any
