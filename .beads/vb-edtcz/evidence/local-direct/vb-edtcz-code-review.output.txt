@@ -1,0 +1,15 @@
+APPROVED
+
+The implementation satisfies all contract requirements:
+
+1. **Exactly one pinned test**: `--exact` with specific test path `ids::tests_and_verification::run_id_zero_constant` and pinned toolchain `nightly-2026-04-28`.
+
+2. **Summary validation**: The awk checker enforces exactly one `running 1 test` line and one `test result:` line matching a strict regex requiring `ok. 1 passed; 0 failed; 0 ignored`. This rejects zero, duplicate, malformed, failed, and ignored cases.
+
+3. **Command error handling**: `set -euo pipefail` in the run script catches failures from `cargo miri test`, `timeout`, or the check script. Exit code 1 propagates correctly.
+
+4. **Flags and lock preserved**: Uses `flock --shared target/moon-locks/source-mutation.lock`, `MIRIFLAGS="-Zmiri-disable-isolation"`, `RUSTFLAGS="-Dwarnings"`, and `env -u RUSTC_WRAPPER` — consistent with existing setup.
+
+5. **No wholecrate UB claim**: Runs a single targeted test; no overreaching assertions.
+
+No concrete defects found.

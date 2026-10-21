@@ -1,0 +1,17 @@
+PASS: valid_exactly1
+PASS: zero
+PASS: zero_match_summary
+PASS: failed1
+PASS: ignored1
+PASS: missing_running
+PASS: missing_result
+PASS: duplicate_running
+PASS: duplicate_result
+PASS: malformed_running_prefix
+PASS: malformed_result_prefix
+PASS: trailing_junk
+PASS: empty_file
+PASS: nonexistent_file
+PASS: no_argument
+PASS: extra_args
+Tests: 16 passed, 0 failed, 16 total
