@@ -1,0 +1,347 @@
+Independent TEST REVIEW ONLY (freshcontext) for vb-yx3ux, a behavior-preserving Rust lint repair. Findings first, STATUS:APPROVED only no actionable findings. No invented owner waivers or commands/results. User requires Rust contract -> implement -> tests -> code review -> test reviewer, no Go or proof planning. This is existing test suite validation of semantic-equivalent lint edits, no new parser/algorithm/errors. Code reviewer3090approved, source implementation5090. Evaluate actual2449runtime tests+clippy-Dwarnings for bounded changes: getterremovals(no callsites),same declaredkindguard,errorvariantok_orunit,docseparator. Other fullworkspacecompilerlint remains trackedvb-3dlcn. Newtests/properties needed only if a changed behavior requires them. Existing1ignore intentional crash-child marker invoked by parenttest, no newignores. No wholeCI/v1claim.
+CONTRACT:
+# vb-yx3ux Rust Contract
+
+## Scope
+Fix four exact clippy blockers in `crates/vb_runtime/src/` without behavior changes or lint allowances.
+
+## Blockers
+
+1. **Unused crate-private getters** (`recovery/full.rs`): `RecoveredPendingActionTicket::input()`, `::output()`, `::action_abi_digest()` are never called. Remove the three getter methods only; preserve the struct fields, `new()` constructor, `ticket()`, and `event_seq()`.
+
+2. **Collapsible if** (`shard/helpers.rs`): `slot_value_matches_kind` uses nested `if let Some(kind) = declared { if !slot_value_matches_kind(...) }`. Collapse to a single match expression over `declared`.
+
+3. **`.ok_or_else` → `.ok_or`** (`shard/impl_parts/chunk_001.rs`): `action_abi_digest_for_run_action` uses `.ok_or_else(|| RuntimeError::RunNotFound)`. Replace with `.ok_or(RuntimeError::RunNotFound)`.
+
+4. **Doc list continuation** (`shard/lifecycle/chunk_001.rs`): `handle_recover` doc comment has list items without blank doc lines between them. Insert blank `///` lines between list items.
+
+## Preservation Requirements
+- All `RecoveredPendingActionTicket` stored fields remain unchanged
+- `new()` constructor signature and behavior unchanged
+- `ticket()` and `event_seq()` getters unchanged
+- All production validation logic in `recovery/full/pending.rs` unchanged
+- No arbitrary getter calls added solely to suppress warnings
+
+## Observational Equivalence
+- Identical error types, messages, and precedence
+- Identical recovery outcomes for all valid and invalid inputs
+- No changes to public API surface or crate-internal call graphs
+
+## Test Scope
+- Compile with `cargo clippy -- -D warnings`
+- Verify no new warnings introduced
+- Existing test suite passes unchanged
+## Source-grounded clarification
+
+The nested if is in seed_input_slots, not in slot_value_matches_kind itself. Use the clippy suggested let-chain equivalent. Doc fix is the blank paragraph separator immediately before handle_recover descriptive paragraph following a numbered list, not a semantic rewrite of list items. The canonical source lint command is moon run :lint-src; existing unrelated blockers must be reported distinctly. No new source check or gate weakening.
+
+RESULTS:
+# Lint repair test stage
+
+Runtime clippy: cargo clippy -p vb_runtime --lib -- -Dwarnings exit0. Full bounded cargo test -p vb_runtime --no-fail-fast exit0: 2449 passed,0 failed,1 intentional parent-invoked crash marker ignored. Raw evidence retained. No new runtime behavior, fields/constructors/checks preserved; existing tests unchanged. moon run :lint-src fails on next existing compiler needless_borrow, not the4 repaired runtime blockers; tracked parent vb-3dlcn. No full CI pass claim.
+
+CODE REVIEW:
+**Findings:** None.
+
+All four clippy blockers are addressed correctly with no behavior changes:
+
+1. **recovery/full.rs**: Three unused crate-private getters (`input()`, `output()`, `action_abi_digest()`) removed; struct fields, `new()`, `ticket()`, and `event_seq()` preserved. Import reordering is cosmetic.
+
+2. **shard/helpers.rs**: Nested `if let` collapsed to let-chain `if let Some(kind) = declared && !slot_value_matches_kind(value, kind)` — clippy-suggested equivalent, identical error path.
+
+3. **shard/impl_parts/chunk_001.rs**: `.ok_or_else(|| RuntimeError::RunNotFound)` replaced with `.ok_or(RuntimeError::RunNotFound)` — equivalent for unit variant. Remaining changes are formatter line-wrapping.
+
+4. **shard/lifecycle/chunk_001.rs**: Blank `///` separator added before the descriptive paragraph following the numbered list. Remaining changes are formatter line-wrapping.
+
+No public API changes. No new getter calls added. No changes to `recovery/full/pending.rs` validation. Tests pass (2449 passed, clippy clean). The `moon run :lint-src` failure is on an unrelated existing `needless_borrow` (tracked vb-3dlcn), outside this patch's scope.
+
+STATUS: APPROVED
+DIFF:
+diff --git a/crates/vb_runtime/src/recovery/full.rs b/crates/vb_runtime/src/recovery/full.rs
+index 21d6f49a9..000ecc34c 100644
+--- a/crates/vb_runtime/src/recovery/full.rs
++++ b/crates/vb_runtime/src/recovery/full.rs
+@@ -12,9 +12,8 @@ use vb_core::{CompiledNodeKind, CompiledWorkflow};
+ use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
+ 
+ pub(crate) use admission::{
+-    action_contract_abi_digest,
+     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
+-    validate_recovered_admission_evidence,
++    action_contract_abi_digest, validate_recovered_admission_evidence,
+ };
+ pub(crate) use pending::pending_action_ticket_from_events;
+ pub(crate) use product::ResumableRecoveryParts;
+@@ -61,21 +60,6 @@ impl RecoveredPendingActionTicket {
+     pub(crate) const fn event_seq(self) -> vb_storage::EventSeq {
+         self.event_seq
+     }
+-
+-    #[must_use]
+-    pub(crate) const fn input(self) -> SlotIdx {
+-        self.input
+-    }
+-
+-    #[must_use]
+-    pub(crate) const fn output(self) -> SlotIdx {
+-        self.output
+-    }
+-
+-    #[must_use]
+-    pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+-        self.action_abi_digest
+-    }
+ }
+ 
+ /// Hydrates a frame for the full runtime recovery path.
+diff --git a/crates/vb_runtime/src/shard/helpers.rs b/crates/vb_runtime/src/shard/helpers.rs
+index 81eb2c2db..8e062513d 100644
+--- a/crates/vb_runtime/src/shard/helpers.rs
++++ b/crates/vb_runtime/src/shard/helpers.rs
+@@ -27,15 +27,15 @@ pub fn seed_input_slots(
+             .iter()
+             .find(|cs| cs.slot == *slot)
+             .map(|cs| cs.kind);
+-        if let Some(kind) = declared {
+-            if !slot_value_matches_kind(value, kind) {
++        if let Some(kind) = declared
++            && !slot_value_matches_kind(value, kind)
++        {
+             return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                 slot: *slot,
+                 expected: kind,
+                 actual: slot_value_kind(value),
+             });
+         }
+-        }
+         frame
+             .write_slot_with_taint(*slot, *value, Taint::Clean)
+             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+diff --git a/crates/vb_runtime/src/shard/impl_parts/chunk_001.rs b/crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+index 7ff2b89ce..52205065c 100644
+--- a/crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
++++ b/crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+@@ -381,9 +381,7 @@ impl Shard {
+         run: RunId,
+         action: ActionId,
+     ) -> RuntimeResult<WorkflowDigest> {
+-        let state = self
+-            .run_state_get(run)
+-            .ok_or_else(|| RuntimeError::RunNotFound)?;
++        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+         // Find the contract for this action
+         let contract = state
+             .action_contracts
+@@ -532,12 +530,8 @@ impl Shard {
+         run_id: RunId,
+         timer: PendingTimer,
+     ) -> RuntimeResult<Option<PendingTimer>> {
+-        self.run_aggregate.pending_timer_insert(
+-            &self.runs,
+-            self.max_active_runs,
+-            run_id,
+-            timer,
+-        )
++        self.run_aggregate
++            .pending_timer_insert(&self.runs, self.max_active_runs, run_id, timer)
+     }
+ 
+     /// Returns the pending timer for the given run ID, if it exists.
+@@ -577,20 +571,13 @@ impl Shard {
+         run_id: RunId,
+         ticket: vb_core::action::ActionTicket,
+     ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
+-        self.run_aggregate.pending_action_insert(
+-            &self.runs,
+-            self.max_active_runs,
+-            run_id,
+-            ticket,
+-        )
++        self.run_aggregate
++            .pending_action_insert(&self.runs, self.max_active_runs, run_id, ticket)
+     }
+ 
+     /// Returns the in-flight action ticket for the given run, if any.
+     #[must_use]
+-    pub fn pending_action_get(
+-        &self,
+-        run_id: RunId,
+-    ) -> Option<vb_core::action::ActionTicket> {
++    pub fn pending_action_get(&self, run_id: RunId) -> Option<vb_core::action::ActionTicket> {
+         self.run_aggregate.pending_action_get(run_id)
+     }
+ 
+@@ -898,8 +885,7 @@ impl Shard {
+                 trace_events.push(TraceEvent::StepStarted { run, step });
+                 Ok(())
+             }
+-            EvidenceEvent::StepSucceeded { step, output } => {
+-                Self::push_drive_journal_event(
++            EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
+                 journal_events,
+                 RuntimeJournalEvent::StepSucceeded {
+                     run,
+@@ -910,8 +896,7 @@ impl Shard {
+                     },
+                     attempt: 1,
+                 },
+-                )
+-            }
++            ),
+             EvidenceEvent::SlotWritten {
+                 slot,
+                 value,
+diff --git a/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs b/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+index 87b71436b..cd94f8c6f 100644
+--- a/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
++++ b/crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+@@ -331,18 +331,11 @@ impl Shard {
+         let digest = workflow.digest();
+         self.build_admission(run, digest, caps.clone())?;
+         super::contract_validation::validate_contract_ids(action_contracts)?;
+-        super::contract_validation::validate_contract_capabilities(
+-            action_contracts,
+-            &caps,
+-        )?;
+-        super::contract_validation::validate_workflow_action_binding(
+-            workflow,
+-            action_contracts,
+-        )?;
++        super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
++        super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+         Ok(())
+     }
+     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+-
+         self.validate_run_exists(run)?;
+         let current_state = self.get_runtime_state_or_running(run);
+         if current_state == RuntimeState::Running {
+@@ -384,6 +377,7 @@ impl Shard {
+     /// - Admission is built with empty capabilities (caps are not persisted
+     ///   per-run in the journal; runs requiring non-empty caps will fail
+     ///   admission during recovery, which is the correct fail-closed behavior).
++    ///
+     /// Recovers a run from full recovery context provided by journal replay.
+     ///
+     /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+@@ -428,14 +422,15 @@ impl Shard {
+             })?;
+ 
+         // Step 2: Deserialize and compile workflow from artifact IR
+-        let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)
+-            .map_err(|_| RuntimeError::Recovery {
++        let parts: vb_core::workflow::WorkflowParts =
++            postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
+                 error: "artifact IR decode failed".to_string(),
+             })?;
+ 
+-        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+-            .map_err(|e| RuntimeError::Recovery {
++        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
++            RuntimeError::Recovery {
+                 error: format!("workflow compile failed: {e}"),
++            }
+         })?;
+ 
+         // Step 3: Verify workflow identity matches command workflow_digest
+@@ -453,9 +448,7 @@ impl Shard {
+ 
+         // Step 5: Build admission with artifact's required capabilities
+         let granted_caps =
+-            vb_core::capability::CapabilitySet::from_grants(
+-                artifact.required_capabilities.clone(),
+-            );
++            vb_core::capability::CapabilitySet::from_grants(artifact.required_capabilities.clone());
+         let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
+ 
+         // Step 6: Prepare run slots and construct RunState with restored collect_states
+@@ -481,9 +474,7 @@ impl Shard {
+             crate::recovery::RecoveredRunBoundaryKind::None => {}
+             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+                 // Re-inject pending action ticket from boundary
+-                let ticket = boundary
+-                    .pending_action_ticket()
+-                    .map(|t| t.ticket());
++                let ticket = boundary.pending_action_ticket().map(|t| t.ticket());
+                 if let Some(t) = ticket {
+                     self.reinject_pending_action(run, t)?;
+                 }
+
+Raw result rows:
+test result: ok. 1909 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 43 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.23s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Clippylog:
+ Checking hashbrown v0.16.1
+    Checking xxhash-rust v0.8.15
+    Checking fastrand v2.4.1
+    Checking quick_cache v0.6.22
+    Checking tempfile v3.27.0
+   Compiling enum_dispatch v0.3.13
+    Checking sfa v1.0.0
+    Checking lz4_flex v0.13.1
+   Compiling blake3 v1.8.5
+    Checking interval-heap v0.0.5
+    Checking hash32 v0.2.1
+    Checking crossbeam-skiplist v0.1.3
+   Compiling crc32c v0.6.8
+    Checking hashbrown v0.17.1
+    Checking iana-time-zone v0.1.65
+    Checking self_cell v1.2.2
+    Checking hashbrown v0.14.5
+    Checking varint-rs v2.2.0
+    Checking rustc-hash v2.1.2
+    Checking byteview v0.10.1
+    Checking stable_deref_trait v1.2.1
+    Checking lsm-tree v3.1.4
+    Checking dashmap v6.2.1
+    Checking indexmap v2.14.0
+    Checking chrono v0.4.44
+    Checking cobs v0.3.0
+    Checking bytes v1.11.1
+    Checking flume v0.12.0
+    Checking arrayref v0.3.9
+    Checking constant_time_eq v0.4.2
+    Checking arrayvec v0.7.6
+    Checking cpufeatures v0.3.0
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-yx3ux-lint-5090/crates/vb_core)
+    Checking fjall v3.1.4
+    Checking postcard v1.1.3
+    Checking crossbeam-queue v0.3.12
+    Checking rtrb v0.3.4
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-yx3ux-lint-5090/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-yx3ux-lint-5090/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.32s
