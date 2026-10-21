@@ -79,7 +79,6 @@ pub(crate) fn cmd_run_compiled(
 pub(crate) enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,
-    SlotIndexOutOfRange,
     KindMismatch {
         slot: vb_core::SlotIdx,
         expected_kind: vb_core::InputSlotKind,
@@ -90,9 +89,13 @@ impl std::fmt::Display for InputMappingError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
-            Self::SlotCountExceeded => formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE),
-            Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
-            Self::KindMismatch { slot, expected_kind } => write!(
+            Self::SlotCountExceeded => {
+                formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE)
+            }
+            Self::KindMismatch {
+                slot,
+                expected_kind,
+            } => write!(
                 formatter,
                 "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
             ),

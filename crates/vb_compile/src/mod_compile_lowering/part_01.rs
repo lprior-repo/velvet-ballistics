@@ -8,15 +8,13 @@ use crate::{AuthorValue, InputField, WorkflowSource};
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
-    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
-pub fn compile_source(
-    source: &WorkflowSource,
-) -> Result<CompiledWorkflow, CompileErrors> {
+pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     validate_branch_counts(source)?;
     let steps = source.steps();
@@ -43,7 +41,7 @@ pub fn compile_source(
             &mut builder,
         )?;
     }
-    allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
     let parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: canonical_digest(source)?,
@@ -74,17 +72,17 @@ pub(super) fn allocate_input_slots(
 ) -> Result<(), CompileError> {
     let base = builder.slot_count()?;
     for (declaration_index, input) in inputs.iter().enumerate() {
-        let declaration_index = u16::try_from(declaration_index).map_err(|_| {
-            CompileError::SlotIndexOutOfRange {
-                value: i64::MAX,
-            }
-        })?;
+        let declaration_index = u16::try_from(declaration_index)
+            .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
         let base_usize = usize::from(base);
         let declaration_usize = usize::from(declaration_index);
         let slot_index_usize = base_usize
             .checked_add(declaration_usize)
             .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
-        let slot = SlotIdx::new(u16::try_from(slot_index_usize).map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?);
+        let slot = SlotIdx::new(
+            u16::try_from(slot_index_usize)
+                .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+        );
         builder.record_slot(slot);
         let kind = kind_from_author_value(&input.value);
         builder.record_input_slot(slot, kind);
