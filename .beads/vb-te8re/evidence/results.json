@@ -1,0 +1,42 @@
+[
+  {
+    "name": "focused",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "cancel_kill_lattice_tests",
+      "--",
+      "--test-threads=2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "fmt",
+    "command": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs"
+    ],
+    "exit": 1
+  },
+  {
+    "name": "whitespace",
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "e72b905d",
+      "1e12ef61",
+      "--",
+      "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs"
+    ],
+    "exit": 0
+  }
+]

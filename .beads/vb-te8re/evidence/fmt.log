@@ -1,0 +1,148 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:18:
+ use std::sync::Arc;
+ 
+ use vb_core::action::{
+-    ActionFailure, ActionFailureCode, ActionOutputReady, Idempotency, RetryPolicy,
+-    RetrySafety, SideEffect,
++    ActionFailure, ActionFailureCode, ActionOutputReady, Idempotency, RetryPolicy, RetrySafety,
++    SideEffect,
+ };
+ use vb_core::capability::{Capability, CapabilitySet};
+ use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:183:
+     loop {
+         let current = ActionId::new(id);
+         if id == target {
+-            contracts.push(action_contract(current, input_slots, output_slots, Some(required_capability(current)))?);
++            contracts.push(action_contract(
++                current,
++                input_slots,
++                output_slots,
++                Some(required_capability(current)),
++            )?);
+             break;
+         }
+         // Padding contracts must not declare required capabilities — only
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:211:
+         workflow,
+         Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+         action_grants(action),
+-        action_contracts_through(action, 1, 1)
+-            .map_err(|err| vb_runtime::RuntimeError::ContractValidationError {
+-                action,
+-                error: err,
+-            })?,
+-
+-
++        action_contracts_through(action, 1, 1).map_err(|err| {
++            vb_runtime::RuntimeError::ContractValidationError { action, error: err }
++        })?,
+     )
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:224:
+-
+-
+ fn action_output(value: SlotValue) -> ActionOutputReady {
+     ActionOutputReady {
+         output_slot: SlotIdx::new(1),
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:351:
+     assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
+     let tick_result = runtime.tick_all();
+     // Exact typed error: InvalidActionCompletion for fail_action on cancelled run.
+-    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::InvalidActionCompletion));
++    assert_eq!(
++        tick_result,
++        Err(vb_runtime::RuntimeError::InvalidActionCompletion)
++    );
+ 
+     // Journal invariant: stale action attempt after cancel must not append events.
+     let journal_after = journal
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:608:
+         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+     let event_count_before = journal_before.len();
+ 
+-
+     // Second cancel on already-cancelled run
+     assert_eq!(runtime.cancel_run(run), Ok(()));
+     tick_and_drain(&mut runtime)?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:717:
+ 
+     // C4: enqueue succeeds; exact typed error is returned during tick processing.
+     assert_eq!(
+-        runtime.complete_action_with_output(
+-            ticket,
+-            action_output(SlotValue::I64(42)),
+-        ),
++        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(42)),),
+         Ok(())
+     );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:781:
+         encoded_len: 0,
+     };
+     // C4: enqueue succeeds; exact typed error is returned during tick processing.
+-    assert_eq!(
+-        runtime.fail_action(ticket, failure),
+-        Ok(())
+-    );
++    assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
+ 
+     let tick_result = runtime.tick_all();
+     // Exact typed error: InvalidActionCompletion for fail_action on cancelled run.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:791:
+-    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::InvalidActionCompletion));
++    assert_eq!(
++        tick_result,
++        Err(vb_runtime::RuntimeError::InvalidActionCompletion)
++    );
+ 
+     // Journal invariant: stale action attempt after cancel must not append events.
+     let journal_after = journal
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:835:
+         .snapshot()
+         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+ 
+-
+     // Stale action completion — enqueue succeeds; tick returns error.
+     assert_eq!(
+-        runtime.complete_action_with_output(
+-            ticket,
+-            action_output(SlotValue::I64(99)),
+-        ),
++        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(99)),),
+         Ok(())
+     );
+     let tick_result = runtime.tick_all();
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:862:
+         .snapshot()
+         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+     assert_eq!(
+-        journal_after,
+-        journal_before,
++        journal_after, journal_before,
+         "journal unchanged after stale action attempt"
+     );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:1053:
+ 
+     // C4: enqueue succeeds; exact typed error returned during tick processing.
+     assert_eq!(
+-        runtime.complete_action_with_output(
+-            ticket,
+-            action_output(SlotValue::I64(42)),
+-        ),
++        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(42)),),
+         Ok(())
+     );
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests/tests/cancel_kill_lattice_tests.rs:1069:
+         .snapshot()
+         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+     assert_eq!(
+-        journal_after,
+-        journal_before,
++        journal_after, journal_before,
+         "journal must be unchanged after stale action completion on killed run"
+     );
+ 
