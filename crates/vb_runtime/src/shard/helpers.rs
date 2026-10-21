@@ -27,14 +27,14 @@ pub fn seed_input_slots(
             .iter()
             .find(|cs| cs.slot == *slot)
             .map(|cs| cs.kind);
-        if let Some(kind) = declared {
-            if !slot_value_matches_kind(value, kind) {
-                return Err(RuntimeError::RuntimeInputSlotKindMismatch {
-                    slot: *slot,
-                    expected: kind,
-                    actual: slot_value_kind(value),
-                });
-            }
+        if let Some(kind) = declared
+            && !slot_value_matches_kind(value, kind)
+        {
+            return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                slot: *slot,
+                expected: kind,
+                actual: slot_value_kind(value),
+            });
         }
         frame
             .write_slot_with_taint(*slot, *value, Taint::Clean)
