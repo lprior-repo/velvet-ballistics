@@ -1,0 +1,3 @@
+Local5090lowtemperature0.2Highreasoning generated public CLI5payloads x2commands test. Coordinator mechanically repaired moved encoded_empty clone order, replaced lossy string pathconversion with direct OSpath arguments and captured compile output with failurediagnostics. No assertion weakened. OneRusttest,10subcases,1public compile invocation. Correct positional Box<[SlotValue]> wire used. Earlier unsafe/wrong-path public draft rejected.
+
+First executed CLItest exposed modelinventedstdoutvalue42 expectation: actualCLI text contract prints counters/traces/terminalstatus, notresult value. Corrected to exact submitted1/completed1/failed0/steps2 summary and terminalcompletedline, stderr empty. No numerical result42verification is claimed.
