@@ -1,0 +1,11 @@
+    Blocking waiting for file lock on package cache
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-474c9cd6c61a1255)
+
+thread 'drive_step_budget_bounds_each_drive_and_preserves_final_output' (2774058) panicked at crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:906:13:
+assertion `left == right` failed: budget 1 per drive
+  left: 5
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests`

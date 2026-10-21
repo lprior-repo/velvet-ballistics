@@ -1,0 +1,34 @@
+
+running 30 tests
+test action_queue_dequeue_respects_fifo_order_with_values ... ok
+test answer_ask_returns_run_not_found_for_terminal_run ... ok
+test action_completion_resumes_at_correct_step_when_valid_ticket ... ok
+test answer_ask_returns_run_not_found_for_unknown_run ... ok
+test drive_step_budget_bounds_each_drive_and_preserves_final_output ... ok
+test complete_action_returns_invalid_ticket_error_when_ticket_unknown ... ok
+test fifo_queue_dequeue_content_matches_enqueue_order ... ok
+test migrate_shard_to_self_returns_migrate_self_error ... ok
+test fail_action_transitions_run_to_failed_state ... ok
+test run_reaches_cancelled_state_when_cancel_called ... ok
+test run_reaches_failed_state_when_action_fails ... ok
+test run_reaches_finished_state_when_workflow_complete ... ok
+test runtime_respects_step_budget_per_tick ... ok
+test runtime_routes_run_to_correct_shard_by_run_id_modulo ... ok
+test same_run_id_routes_to_same_shard_always ... ok
+test snapshot_run_returns_not_found_for_unknown_run ... ok
+test shard_commands_processed_in_fifo_order ... ok
+test snapshot_run_returns_shard_not_found_for_invalid_run ... ok
+test step_budget_decrements_correctly_on_each_step ... ok
+test submit_direct_returns_admission_rejected_for_missing_capability ... ok
+test terminal_run_ignores_subsequent_commands ... ok
+test terminal_state_guard_mutation_would_be_caught ... ok
+test tick_all_returns_false_after_graceful_shutdown ... ok
+test tick_all_returns_false_when_any_shard_shutting_down ... ok
+test tick_all_processes_at_most_one_command_per_shard ... ok
+test tick_all_returns_true_when_all_shards_alive ... ok
+test tick_shard_migrate_directive_transfers_commands ... ok
+test tick_shard_continue_directive_processes_command ... ok
+test tick_shard_returns_shard_not_found_for_invalid_index ... ok
+test tick_shard_shutdown_directive_returns_false ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

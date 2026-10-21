@@ -21,7 +21,7 @@ use vb_core::action::{
     RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -181,7 +181,9 @@ fn action_contracts_through(
             contracts.push(action_contract(current, input_slots, output_slots));
             break;
         }
-        contracts.push(action_contract(current, 0, 0));
+        let mut contract = action_contract(current, 0, 0);
+        contract.required_capabilities = Box::new([]);
+        contracts.push(contract);
         id = id.saturating_add(1);
     }
     contracts.into_boxed_slice()
@@ -206,25 +208,23 @@ fn submit_action_then_finish(
     )
 }
 
-fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
-    ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: SeqNo::ZERO,
-        action,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    }
+fn action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
+    runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or_else(|| format!("run {run:?} has no pending action ticket for step 0"))
 }
 
-fn action_output(value: SlotValue) -> ActionOutputReady {
-    ActionOutputReady {
+fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
+    let encoded =
+        postcard::to_allocvec(&value).map_err(|error| format!("slot encoding failed: {error}"))?;
+    let encoded_len = u32::try_from(encoded.len())
+        .map_err(|error| format!("encoded slot length overflowed u32: {error}"))?;
+    Ok(ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
-        encoded_len: 8,
-    }
+        encoded_len,
+    })
 }
 
 fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
@@ -282,9 +282,7 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
 }
 
 /// L1-2: Action suspension transitions run from Running to Resumable
-// Pre-existing issue: test fails with assertion on step state
 #[test]
-#[ignore]
 fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
@@ -303,8 +301,12 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
         events.iter().any(
-            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, .. }
-            if *r == run && *step == StepIdx::ZERO)
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduledTicket { ticket, input, output, .. }
+            if ticket.run == run
+                && ticket.step == StepIdx::ZERO
+                && ticket.action == ActionId::new(7)
+                && *input == SlotIdx::ZERO
+                && *output == SlotIdx::new(1))
         ),
         "journal must contain ActionScheduled event for step 0"
     );
@@ -320,9 +322,7 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
 }
 
 /// L1-3: Action completion transitions run from Resumable to Running then Finished
-// Pre-existing issue: test fails with InvalidActionCompletion
 #[test]
-#[ignore]
 fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
@@ -338,8 +338,8 @@ fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), 
     // Complete the action
     assert_eq!(
         runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(SlotValue::I64(42)),
+            action_ticket(&runtime, run)?,
+            action_output(SlotValue::I64(42))?,
         ),
         Ok(())
     );
@@ -386,7 +386,7 @@ fn fail_action_transitions_run_to_failed() -> Result<(), String> {
         encoded_len: 0,
     };
     assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        runtime.fail_action(action_ticket(&runtime, run)?, failure),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -521,9 +521,7 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
 }
 
 /// L2-2: ActionScheduled lifecycle event is recorded when action is triggered
-// Pre-existing issue: test fails with ActionScheduled not journaled
 #[test]
-#[ignore]
 fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
@@ -542,8 +540,12 @@ fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
         events.iter().any(
-            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, action: a }
-            if *r == run && *step == StepIdx::ZERO && *a == ActionId::new(7))
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduledTicket { ticket, input, output, .. }
+            if ticket.run == run
+                && ticket.step == StepIdx::ZERO
+                && ticket.action == ActionId::new(7)
+                && *input == SlotIdx::ZERO
+                && *output == SlotIdx::new(1))
         ),
         "ActionScheduled must be journaled for action_id=7, step=0"
     );
@@ -624,7 +626,7 @@ fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
         encoded_len: 0,
     };
     assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        runtime.fail_action(action_ticket(&runtime, run)?, failure),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -768,7 +770,7 @@ fn counters_updated_on_failure() -> Result<(), String> {
         encoded_len: 0,
     };
     assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        runtime.fail_action(action_ticket(&runtime, run)?, failure),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;

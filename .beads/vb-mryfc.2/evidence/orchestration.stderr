@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-474c9cd6c61a1255)

@@ -1,0 +1,42 @@
+[
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-c6-recovery-5090",
+    "bookmark": "codex/vb-mdi3w-retained-input-recovery-wip-stop",
+    "sha": "45693ea51b5376f3299f06e719dbd59609047e89",
+    "push_exit": 0,
+    "message": "Changes to push to origin:\n  bookmark: codex/vb-mdi3w-retained-input-recovery-wip-stop [add to 45693ea51b53]\nremote: \nremote: Create a pull request for 'codex/vb-mdi3w-retained-input-recovery-wip-stop' on GitHub by visiting:        \nremote:      https://github.com/lprior-repo/velvet-ballistics/pull/new/codex/vb-mdi3w-retained-input-recovery-wip-stop        \nremote: \n"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-artifact-fixtures-3090",
+    "bookmark": "codex/vb-clp3q-artifact-fixtures-wip-stop",
+    "sha": "6fc6e0ed1a96dd4be2821054e6e579d6178d757e",
+    "push_exit": 0,
+    "message": "Changes to push to origin:\n  bookmark: codex/vb-clp3q-artifact-fixtures-wip-stop [add to 6fc6e0ed1a96]\nremote: \nremote: Create a pull request for 'codex/vb-clp3q-artifact-fixtures-wip-stop' on GitHub by visiting:        \nremote:      https://github.com/lprior-repo/velvet-ballistics/pull/new/codex/vb-clp3q-artifact-fixtures-wip-stop        \nremote: \n"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-r5c1c-retry-luna",
+    "bookmark": "codex/vb-r5c1c-checkpoint-wip-stop",
+    "sha": "de13504f655d7b5e2f7276e59b961eb4b80eae34",
+    "push_exit": 0,
+    "message": "Changes to push to origin:\n  bookmark: codex/vb-r5c1c-checkpoint-wip-stop [add to de13504f655d]\nremote: \nremote: Create a pull request for 'codex/vb-r5c1c-checkpoint-wip-stop' on GitHub by visiting:        \nremote:      https://github.com/lprior-repo/velvet-ballistics/pull/new/codex/vb-r5c1c-checkpoint-wip-stop        \nremote: \n"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-qzxto-ask-ticket-5090",
+    "bookmark": "codex/vb-qzxto-ask-ticket-wip-stop",
+    "sha": "afb002df44934e12d78e0fb7a7aee7953cdad9f6",
+    "push_exit": 0,
+    "status": "WIP, not integrated; described empty parent to permit publication without source edits"
+  },
+  {
+    "bookmark": "codex/vb-7r7jv-wip-stop",
+    "sha": "da2da5e2eb723b2b8a2cf724a7e5fdb2a9156901",
+    "push_exit": 0,
+    "status": "unaccepted executor conformance WIP"
+  },
+  {
+    "bookmark": "codex/vb-idxsn-source-length-wip-20261021",
+    "sha": "eba9e5fe8ae22fccfd003706907c9fbb7f2e1dd8",
+    "push_exit": 0,
+    "status": "unreviewed source-length WIP"
+  }
+]
