@@ -8,6 +8,11 @@
 #![allow(clippy::return_self_not_must_use)]
 //! Cold-path YAML compiler boundary.
 //!
+//! ```
+//! // Verify old public expr_proofs migration path still resolves
+//! use vb_compile::expr_proofs;
+//! ```
+//!
 //! YAML enters the system only through this crate. The hot engine consumes only
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
