@@ -1,0 +1,80 @@
+[
+  {
+    "name": "positive",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "runtime_fjall_pending_action_recovery",
+      "-j",
+      "2",
+      "--",
+      "runtime_records_actual_action_abi_at_schedule_boundary",
+      "--exact"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "zero-digest-negative",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "runtime_fjall_pending_action_recovery",
+      "-j",
+      "2",
+      "--",
+      "runtime_records_actual_action_abi_at_schedule_boundary",
+      "--exact"
+    ],
+    "exit": 101
+  },
+  {
+    "name": "restored",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "runtime_fjall_pending_action_recovery",
+      "-j",
+      "2",
+      "--",
+      "runtime_records_actual_action_abi_at_schedule_boundary",
+      "--exact"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "runtime-lib",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--lib",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "fmt",
+    "argv": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/vb_runtime/src/shard/lifecycle/chunk_005.rs",
+      "crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs"
+    ],
+    "exit": 0
+  }
+]

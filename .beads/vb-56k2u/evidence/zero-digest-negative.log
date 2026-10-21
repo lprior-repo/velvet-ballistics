@@ -1,0 +1,36 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-test-review-root/crates/vb_runtime)
+warning: function `schedule_action_abi_digest` is never used
+ --> crates/vb_runtime/src/shard/lifecycle/chunk_005.rs:3:4
+  |
+3 | fn schedule_action_abi_digest(
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-test-review-root/crates/vb_ipc)
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-test-review-root/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-netau-test-review-root/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.79s
+     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-810ab5c9f4028ce1)
+
+running 1 test
+test runtime_records_actual_action_abi_at_schedule_boundary ... FAILED
+
+failures:
+
+---- runtime_records_actual_action_abi_at_schedule_boundary stdout ----
+
+thread 'runtime_records_actual_action_abi_at_schedule_boundary' (3108916) panicked at crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:1518:5:
+assertion `left == right` failed
+  left: WorkflowDigest([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+ right: WorkflowDigest([211, 73, 50, 255, 241, 53, 13, 107, 150, 244, 36, 27, 183, 187, 66, 195, 87, 1, 150, 18, 237, 75, 101, 107, 46, 17, 148, 240, 251, 155, 193, 233])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    runtime_records_actual_action_abi_at_schedule_boundary
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test runtime_fjall_pending_action_recovery`
