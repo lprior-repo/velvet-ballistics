@@ -1,0 +1,1721 @@
+You are local5090 RUST CONTRACT designer revising vb-ezymz. HARD OUTPUT LIMIT: at most 1100 words total in JSON. No proof plans or proof seeds (user explicitly skips that stage). No long source code. Make routine design decisions, list only actual unresolved domain decisions. Previous attempt truncated because too verbose and was REJECTED for these material errors: accepted_artifact_digest is an existing canonical function, NOT blake3 of self-referential full encoded envelope; CompiledIrRecord is keyed by artifact digest and verified via accepted artifact decoding, do not store raw parts under compiled.digest. Do not invent existing InputMappingError::SlotIndexOutOfRange (only DecodeFailed,SlotCountExceeded,KindMismatch exist). RunAccepted must actually be staged before inputs/admission, with strictly successive checked per-run event sequences, never same seq reused. Journaled has queued durable ACK semantics in master; do not claim batch.commit without strict already fsyncs WAL or that None guarantees data loss. Distinguish guarantee from possibility. Current --durability none metadata storage is incidental persistence without durability promise. Accepted artifact creation must be pure before atomic batch staging, no existing independently writing helper call inside transaction. Proposed new event decoder/replayer must seed initial inputs BEFORE later replay slot writes; do not put reseeding after finished replay. Bound inputs to actual known value-store lifetime constraints; handle variants containing List/Object/Symbol/Blob are not self-contained payloads. Existing scalar-only input limitations must be surfaced or properly persist backing data. Identify any real unsupported requirement as blocker instead of inventing success.
+ DO NOT CALL TOOLS. Exact actual source excerpts follow. Return JSON only {"contract_markdown":"...","boundary_map_markdown":"...","remaining_domain_decisions":[...]}. No XML. No code/tests/proof plans. User workflow Rust contract->implementation->tests->code review->test review. Previous contract was rejected for invented APIs and contradicting master; read review and replace those claims. Propose smallest concrete durable admission design using actual APIs where possible; any new API/type must be explicitly PROPOSED, never existing. Distinguish source digest, canonical workflow digest, accepted-artifact digest. Preserve exact positional Box<[SlotValue]> wire format; no invented indexed-input format or duplicate wire slots. Decode nonempty bytes even if no declared slots, accept legitimate encoded empty list, reject malformed/count/kind mismatch. Empty raw bytes preserve existing empty-list convention, specify what omission means. For schema duplicates/out-of-range explain validated CompiledWorkflow constructor boundary. No runtime YAML recovery: persist accepted IR/artifact plus granted admission metadata and validated initial inputs at acknowledged boundary. Existing submit writes source/header/RunAccepted but does not run engine; contract must bind stored inputs to actual recovery/resume consumption, not orphan record. Artifact submission helper currently writes independently with accepted_at_seq0; do not pretend it is atomic. JournalWriteBatch strict supports source+IR+header+events atomically but snapshot batch method cfg(test). Existing durability None still writes metadata: define honest semantics grounded in master, do not claim it writes nothing without explicit implementation change. Strict must not acknowledge until durable atomic commit, no partial visible run headers/acceptance on validation/staging error. Journaled durability acknowledged boundary must be explicit, no fake crash durability. Runtime direct recovery lacks persisted initial inputs today; propose concrete production read/seed path preserving replayed later writes, preventing initial input overwrite of post-execution values. No broad Go/proof detour. Master is authoritative. Address what genuine tests must observe in contract acceptance, but no test code.
+
+---
+name: rust-contract
+description: "Turn a Rust bead or feature request into a Fowler/Wlaschin domain model and type-level contract: ubiquitous language, value objects, typestates, workflows, railway error taxonomy, functional-core/imperative-shell boundary, hazards, and proof seeds. Use before proof planning, tests, or implementation. Does not write verifier artifacts, tests, implementation, or final proof plans."
+---
+
+# Rust Contract
+
+Model the domain before anyone writes proofs, tests, or production Rust. Make illegal states unrepresentable and emit proof seeds, not proof obligations.
+
+## Owns
+
+- Ubiquitous language, entities, value objects, aggregates, commands, events, policies.
+- Type contracts: newtypes, smart constructors, typestates, parsers at boundaries, railway errors.
+- Workflow model: legal states, transitions, guards, outcomes, terminal states.
+- Boundary map: pure core, imperative shell, async shell, storage/network/time/FFI/unsafe/parser boundaries.
+- Hazard analysis and proof seeds.
+
+## Does Not Own
+
+- Verus, Kani, Flux, Loom, proptest, fuzz, or proof artifacts.
+- Final proof obligations or verifier commands.
+- Test plans, test code, production code, or review approval.
+
+## Inputs
+
+- Bead ID or feature request.
+- Existing docs, source context, API boundaries, and `delivery-scope.jsonl` when present.
+- Domain language and constraints from the user or repository.
+
+## Outputs
+
+- `domain-model.md`
+- `type-contracts.md`
+- `workflow-model.md`
+- `error-taxonomy.md`
+- `boundary-map.md`
+- `hazard-analysis.md`
+- `contract.md`
+- `proof-seeds.jsonl`
+- `traceability-matrix.jsonl`
+
+## Workflow
+
+1. Extract domain language and reject primitive obsession, boolean behavior flags, stringly IDs, and `Option` lifecycle state.
+2. Define value objects and parsers so invalid external input cannot enter the core unchecked.
+3. Define workflows as typed state transitions with explicit outcomes and semantic errors.
+4. Split pure core from imperative shell, async shell, storage, network, time, FFI, unsafe, and parser boundaries.
+5. Write hazards: temporal, Rust-core invariant, bounded state, refinement, concurrency, unsafe/provenance, hostile input, performance, release/API.
+6. Classify each proof seed's intended lane profile: Rust-local implementation, temporal workflow/protocol, concurrency, unsafe/provenance, hostile input, or performance/release. This is a hint only; proof-planner owns final lane decisions.
+7. Emit `proof-seeds.jsonl` using `proof-seed/v1`; do not choose final commands or claim proof coverage.
+8. Stop if the model cannot make illegal states unrepresentable; report the missing domain decision instead of papering over it.
+
+## Proof Seed Intent
+
+- Rust-local implementation seeds should point toward Verus/Kani/Flux/proptest by default.
+- Temporal workflow/protocol/replay/recovery/lifecycle seeds should name the Rust events, states, or APIs that will need bridge evidence later.
+- Hostile input seeds should mention fuzz/proptest surfaces.
+- Concurrency seeds should mention Loom or equivalent schedule exploration.
+- Unsafe/provenance seeds should mark the risk explicitly and require specialist review only when that risk is present.
+
+## References
+
+- `references/domain-model-template.md`
+- `references/type-contract-checklist.md`
+- `references/workflow-hazard-template.md`
+- `references/proof-seed-guide.md`
+- `../go-skill/references/proof-schemas.md`
+
+## Final Response
+
+List artifacts written, open domain questions, illegal-state risks that remain representable, and proof seeds emitted. Never say proof is complete.
+
+# Contract review
+
+STATUS: REJECTED
+
+The proposed contract cannot authorize implementation yet. Master sections 27 and 44 require existing runs to recover from stored numeric IR without YAML recompilation. The draft explicitly omits IR and permits recompiling source. It also rejects every nonempty encoding for a zero-input workflow, including the legitimate postcard encoding of an empty list, instead of decoding first and distinguishing malformed payload from excess values. It invents an indexed wire format although the actual CLI decodes positional SlotValue arrays, and invents nonexistent error variants/files. A separate RunInputRecord is only a proposal, not an existing API. Finally, the draft claims acceptance atomicity while permitting partial accepted run state on write failure, and says None writes nothing despite the current CLI always opening storage. These decisions require correction against actual master and code; no owner waiver exists. No implementation based on this draft is accepted.
+
+
+MASTER lines 1740-1945
+hot-path impact
+storage impact
+IPC impact
+tests required
+benchmarks required
+acceptance commands
+rollback/migration notes
+```
+
+Required bead groups:
+
+```text
+naming-migration
+toolchain-ci
+core-types
+yaml-parser
+validator
+expression-engine
+compiler-ir
+runtime-engine
+fjall-storage
+recovery-replay
+action-abi
+shard-scheduler
+ipc-protocol
+cli
+observability
+tests-fuzz
+benchmarks
+release-gates
+```
+
+Every phase requires a parent bead. Every function cluster requires a child bead. The benchmark suite requires dedicated beads. Each fuzz target requires its own bead. Every P0 blocker requires a dedicated bead.
+
+Dependency-scoping beads are mandatory when a library is added to reduce code footprint. They must record the removed handwritten code, semantic parity tests, hot-path allocation impact, and rollback decision. Current required dependency-scope beads:
+
+```text
+byteorder-ipc-little-endian-helpers
+logos-expression-lexer-parity
+indexmap-valuestore-object-field-index
+ordered-float-finitef64-rejection-record
+```
+
+Round 2 black-hat findings remediated in this master document:
+
+```text
+hot-slotvalue-handle-only-model
+finish-copy-out-compatible-with-copy-slotvalue
+runframe-constructor-and-taint-api-contract
+narrow-canonical-spelling-allowlist
+hot-function-length-hard-gate
+choose-ir-final-variant-disambiguation
+action-abi-type-and-binary-semantics
+persistence-record-envelope-byte-contract
+mvp-wording-removed-from-final-ir-contract
+```
+
+Current black-hat/test-review gaps that are not optional phase polish require dedicated beads before final acceptance:
+
+```text
+compiler-full-v1-primitive-source-lowering
+runtime-collect-next-pagination-state
+runtime-admission-run-header-persistence
+runtime-journal-sequence-hydration
+runtime-full-live-frame-recovery-hydration
+unsafe-fuzz-cabi-isolation
+workspace-exact-assertion-sharpness
+rust-test-loop-removal
+silent-discard-elimination
+test-plan-current-api-mutation-refresh
+full-gate-evidence-refresh
+```
+
+Codegen and UI gaps are cleanup debt unless a bead explicitly deletes or quarantines residue. They are not reactivation tracks in the current master scope.
+
+The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in `tests/error_variant_completeness_test.rs` and `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
+
+Required first beads:
+
+```text
+naming
+crate-package-folder-rebaseline
+optional-language-removal
+manual-ipc-triggers
+slotvalue-handle-model
+stepbudget-setconst-corrections
+primitive-subphases
+toolchain-nightly-governance
+holzmann-matrix
+forbidden-hot-path-apis
+```
+
+UI beads are limited to deletion or quarantine of residue unless the master scope is explicitly amended.
+
+Example bead commands:
+
+```bash
+bd create --title="P0: canonical naming rebaseline" --description="Align product, binary, package, crate, bead rig, bead database, and language version spelling." --type=task --priority=0
+bd create --title="Phase 13: deterministic engine MVP" --description="Implement SetConst/Copy/Choose/Finish with StepBudget and invariant tests." --type=feature --priority=0
+bd dep add <child-bead> <phase-parent-bead>
+bd update <bead-id> --claim
+bd close <bead-id> --reason="Completed with tests, benchmarks, and CI evidence"
+```
+
+No phase is complete until all beads for that phase are closed with test/benchmark evidence and `bd dolt push` has synced the bead database.
+
+---
+
+## 43. AI Agent Acceptance Contract
+
+Every implementation PR or handoff must report:
+
+```text
+1. Phase implemented.
+2. Beads touched.
+3. Files changed.
+4. New public functions/types.
+5. Error model.
+6. Resource bounds.
+7. Allocation behavior.
+8. Hot-path behavior.
+9. Fjall persistence behavior if touched.
+10. IPC behavior if touched.
+11. Tests added.
+12. Benchmarks added.
+13. Commands run.
+14. Remaining follow-up work filed as beads.
+```
+
+Automatic rejection triggers:
+
+```text
+uses unsafe
+uses unwrap/expect/panic/todo/unimplemented/dbg
+unchecked indexing/slicing
+unchecked arithmetic/casts
+ignored Result
+unbounded queue/loop/retry/fanout
+YAML interpreted at runtime
+JSON inserted into runtime core
+HTTP inserted into runtime core
+HashMap<String, Value> runtime state
+one task per step
+no tests for new code
+speed claim without real benchmark baseline/result evidence
+new velvet-ballistics spelling outside the exact allowlist
+```
+
+---
+
+## 44. Backend / IR Interpreter Definition of Done
+
+The current `velvet-ballistics` backend milestone is done when all 24 points are satisfied:
+
+1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
+2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
+3. Every primitive validates, compiles, runs, persists, recovers, and replays.
+4. v1 supports both `manual` direct API submission and `ipc` binary IPC submission.
+5. Runtime never interprets YAML and recovery never reparses YAML for existing runs.
+6. JSON and HTTP are absent from `vb_core`, `vb_runtime`, `vb_storage`, and `vb_ipc`.
+7. Runtime state uses numeric workflow, run, action, step, slot, expression, accessor, constant, and sequence IDs.
+8. Action dispatch uses numeric `ActionId`; no runtime string action lookup exists.
+9. Hot values use handle-based `SlotValue` with `SymbolId`, `ListId`, `ObjectId`, `BlobId`, and finite numbers.
+10. Each run is owned by exactly one shard; no global mutable run map exists.
+11. Queues, stacks, buffers, retries, fanout, timers, traces, batches, IPC frames, and resource contracts are bounded.
+12. Turbo-style admission preallocates or reserves hot resources; deterministic transitions allocate nothing after acceptance unless a documented resource contract permits it.
+13. Fjall stores workflow source, compiled IR, run headers, journals, snapshots, blobs, and indexes with magic/schema/version/kind/length envelopes.
+14. Recovery and replay detect workflow, action, and policy digest mismatch and fail typed without default substitution.
+15. Direct API implements submit, inspect, cancel, list events, answer ask, complete action, fail action, drain trace, health, and shutdown equivalents.
+16. Binary IPC implements `SubmitRun`, `SubmitRunInline`, `CancelRun`, `InspectRun`, `ListEvents`, `AnswerAsk`, `CompleteAction`, `FailAction`, `DrainTrace`, `Health`, and `Shutdown`.
+17. IR-interpreter execution covers every active final IR node and is the accepted execution mode.
+18. Diagnostics include stable code, path, source span, message, and cold side-table context.
+19. Validation, compile, runtime, storage, IPC, action, and replay failures are typed and graceful.
+20. Forbidden constructs are absent: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
+21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party code.
+22. Every speed claim is backed by real benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata; compileable scaffold placeholders do not count.
+23. Full current-scope gates pass: fmt, clippy hard denies, tests, nextest, Miri, coverage, fuzz smoke, mutants smoke, feature powerset, docs, benchmark build, storage/recovery evidence, IPC evidence, and direct API evidence. Supply-chain/dependency unsafe reports are advisory under the owner waiver unless a bead opts in.
+24. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead in the current backend scope is closed with evidence, and mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed.
+
+---
+
+## 45. Normative Runtime Semantics
+
+Every `CompiledNodeKind` variant has exact behavior defined here. The current IR interpreter must produce the specified terminal result, typed error variant and fields, final pc, slot values, slot taints, step states, journal event sequence, action tickets, retry counts, wait/ask scheduling, and replay behavior.
+
+### StepState Transition Contract
+
+Valid transitions:
+
+```text
+Pending    → Running, Succeeded, Failed, Cancelled, Skipped
+Running    → Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
+Waiting    → Running
+Asking     → Running
+Succeeded  → Pending (bounded loop body re-entry), Succeeded
+Failed     → (terminal)
+Cancelled  → (terminal)
+Skipped    → (terminal)
+```
+
+Idempotent re-mark (`state == next`) is valid. `Succeeded → Pending` is valid only for interpreter-controlled bounded loop body re-entry through `jump_to_body`; it is not a general run-terminal reset. All other transitions return `InternalInvariantViolation { reason: "invalid_state_transition" }`.
+
+### EngineSignal / RuntimeSignal
+
+Core engine signals: `Continue`, `Finished(SlotValue, Taint)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk`.
+
+
+MASTER lines 2536-2680
+## 49. Journal Event Payload Schemas and Crash-Consistency Ordering
+
+### TraceEvent Variants (hot ring)
+
+```text
+StepStarted   { run: RunId, step: StepIdx }
+StepEnded     { run: RunId, step: StepIdx }
+SlotWritten   { run: RunId, slot: SlotIdx }
+ActionScheduled { run: RunId, step: StepIdx }
+ActionCompleted { run: RunId, step: StepIdx }
+ActionFailed  { run: RunId, step: StepIdx, code: ActionFailureCode }
+AskAnswered   { run: RunId, step: StepIdx, slot: SlotIdx }
+RunSubmitted  { run: RunId }
+RunFinished   { run: RunId }
+RunFailed     { run: RunId }
+RunCancelled  { run: RunId }
+```
+
+### Runtime Journal Events (durable)
+
+```text
+RunSubmitted     { run: RunId, workflow: WorkflowDigest }
+SlotWritten      { run: RunId, slot: SlotIdx }
+ActionScheduled  { run: RunId, step: StepIdx, action: ActionId }
+ActionCompleted  { run: RunId, step: StepIdx, action: ActionId }
+WaitScheduled    { run: RunId, step: StepIdx }
+AskScheduled     { run: RunId, step: StepIdx }
+WaitResolved     { run: RunId, step: StepIdx }
+AskAnswered      { run: RunId, step: StepIdx, slot: SlotIdx }
+RunFinished      { run: RunId, result: SlotIdx }
+RunFailed        { run: RunId }
+RunCancelled     { run: RunId }
+```
+
+### Ordering Invariants
+
+1. `RunSubmitted` before any `StepStarted` or `SlotWritten`.
+2. `StepStarted` before `SlotWritten` for that step.
+3. `ActionScheduled` before external action dispatch.
+4. `ActionCompleted` before frame mutation on resume.
+5. `RunFinished` after final result slot is persisted.
+6. Timer resume: step marked `Running` then `Succeeded` before continuing drive loop.
+
+### Crash-Consistency Rule
+
+External side effects must not be dispatched until `ActionScheduled` is durably recorded under strict durability. For journaled mode, dispatch may occur after queue admission.
+
+### Trace Ring
+
+SPSC ring via `rtrb::RingBuffer`. On full, events are dropped and `dropped` counter incremented. `history: VecDeque` stores all successfully pushed events for snapshot queries. `drain_for_run` consumes non-matching events silently.
+
+---
+
+## 50. IPC Transport, Backpressure, and Error Codes
+
+### Transport
+
+- Socket type: Unix stream socket.
+- Max concurrent clients: 256.
+- Read chunk: 4096 bytes.
+- Backpressure: Bounded command queue (`ArrayQueue`). Queue full → `IpcError::Full` (E3001).
+- Per-connection: Non-blocking writes with writable-event polling via `mio`.
+- Pipelining: Not supported in v1 — one command per connection, response before next command.
+- Shutdown: `Shutdown` acknowledged. Pending runs are not forcibly cancelled.
+
+### IpcResponse Variants
+
+```text
+AcceptedRun { run_id: u64 }
+Healthy
+ShuttingDown
+TraceCount { count: u32 }
+Events { events: Vec<IpcTraceEvent> }
+Inspected { run_id: u64 }
+BadRequest
+PayloadError { diagnostic: u16, message: String }
+CommandPayloadMismatch
+WorkflowResolutionRequired
+WorkflowResolutionUnsupported
+WorkflowDigestMismatch
+CountOutOfRange { actual: usize, limit: u32 }
+FrameError { message: String }
+RuntimeError { message: String }
+```
+
+### IpcError Variants with Diagnostic Codes
+
+```text
+E3001  Full
+E3002  Disconnected
+E3003  PayloadTooLarge { actual, limit }
+E3004  InvalidMagic { actual }
+E3005  UnsupportedVersion { actual }
+E3006  UnknownCommand(u16)
+E3007  ReservedNonZero { actual }
+E3008  PayloadLengthMismatch { header, actual }
+E3009  HeaderEncodeFailed
+E300A  HeaderDecodeFailed
+E300B  PayloadLengthOutOfRange { actual }
+E300C  PayloadEncodeFailed
+E300D  PayloadDecodeFailed
+E300E  ResponseDecodeFailed
+```
+
+---
+
+## 51. Digest Canonicalization and Schema Versioning
+
+### Required Digests
+
+```text
+workflow_source_digest = BLAKE3(raw source bytes)
+compiled_digest       = BLAKE3(canonical compiled artifact payload)
+action_abi_digest     = BLAKE3(canonical sorted action contracts)
+policy_digest         = BLAKE3(canonical resource/durability/runtime policy)
+payload_digest        = BLAKE3(postcard payload bytes)
+```
+
+### Canonical Ordering for Stable Digests
+
+- Symbol IDs in definition order (index-based).
+- Constant pool in index order.
+- Accessor table in index order.
+- Compiled nodes in `StepIdx` order.
+- Object fields in insertion order (no sorting).
+- Action contracts sorted by `ActionId`.
+- `ResourceContract` fields in struct field order, encoded via Postcard.
+
+### Libraries
+
+`blake3 = "1"` and `crc32c = "0.6"` are required workspace dependencies for envelope digests and header checksums.
+
+---
+
+## 52. Fallible Allocation and No-Panic Enforcement
+
+### OOM Policy
+
+- Admission-time allocations must use fallible reservation paths where available.
+- Hot runtime code must not call allocation APIs that can grow implicitly.
+- OOM during admission returns `CoreError::AllocationFailed`.
+- OOM after run admission is a bug and must be prevented by reservation in turbo mode.
+- `vec![StepState::Pending; states_len]` in `RunFrame::new` can panic on OOM — acceptable for cold-path construction only if the frame is preallocated in turbo mode.
+
+### `FiniteF64` Deserialization
+
+MASTER lines 4028-4053
+**Submit:**
+
+```text
+velvet-ballistics submit issue_triage --input-bin input.vbin --emit yaml
+```
+
+```yaml
+kind: SubmitRunResult
+status: accepted
+run_id: 123
+workflow:
+  name: issue_triage
+  compiled_digest: blake3:...
+durability:
+  profile: strict
+  run_accepted_durable: true
+```
+
+**Inspect:**
+
+```text
+velvet-ballistics inspect run_123 --emit yaml
+```
+
+```yaml
+kind: RunInspection
+
+SOURCE crates/velvet_ballistics/src/submit.rs
+1: //! Module: submit
+2: 
+3: use crate::app_impl::prelude::*;
+4: 
+5: pub(crate) fn cmd_submit(
+6:     workflow: &std::path::Path,
+7:     input_bin: &std::path::Path,
+8:     db: &std::path::Path,
+9:     durability: DurabilityMode,
+10:     output: OutputFormat,
+11: ) -> ExitCode {
+12:     let _input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+13:         Ok(b) => b,
+14:         Err(code) => return code,
+15:     };
+16: 
+17:     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
+18:         Ok(b) => b,
+19:         Err(code) => return code,
+20:     };
+21: 
+22:     let compiled = match vb_compile::compile_workflow(&bytes) {
+23:         Ok(c) => c,
+24:         Err(errors) => {
+25:             let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
+26:             if output != OutputFormat::Text {
+27:                 json_error(
+28:                     &serde_json::json!({
+29:                         "success": false,
+30:                         "error": "compilation failed",
+31:                         "errors": error_msgs
+32:                     }),
+33:                     output,
+34:                 );
+35:             } else {
+36:                 for err in &errors.0 {
+37:                     errln!("compile error: {err}");
+38:                 }
+39:             }
+40:             return CliExitCode::CompileFailed.into();
+41:         }
+42:     };
+43: 
+44:     let digest = compiled.digest();
+45:     let digest_hex: String = digest
+46:         .as_bytes()
+47:         .iter()
+48:         .map(|b| format!("{b:02x}"))
+49:         .collect();
+50:     let step_count = compiled.node_count();
+51: 
+52:     // Generate run_id from timestamp
+53:     let run_id_num = generate_submit_run_id();
+54:     let run_id = vb_core::RunId::new(run_id_num);
+55: 
+56:     // Open storage journal and record workflow source + run header
+57:     let journal = match vb_storage::FjallJournal::open(db, None) {
+58:         Ok(j) => j,
+59:         Err(e) => {
+60:             write_failure_message(
+61:                 &format!("error opening journal at {}: {e}", db.display()),
+62:                 output,
+63:                 CliExitCode::StorageError,
+64:             );
+65:             return CliExitCode::StorageError.into();
+66:         }
+67:     };
+68: 
+69:     // Store the workflow source
+70:     let source_digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
+71:     let source_record = vb_storage::WorkflowSourceRecord {
+72:         digest: source_digest,
+73:         source: bytes,
+74:     };
+75:     if let Err(e) = vb_storage::put_workflow_source(&journal, &source_record) {
+76:         if output != OutputFormat::Text {
+77:             json_error(
+78:                 &serde_json::json!({
+79:                     "success": false,
+80:                     "error": format!("workflow source write error: {e}")
+81:                 }),
+82:                 output,
+83:             );
+84:         } else {
+85:             errln!("workflow source write error: {e}");
+86:         }
+87:         return CliExitCode::StorageError.into();
+88:     }
+89: 
+90:     // Record the run header
+91:     let accepted_at_ms: u64 = match SystemTime::now().duration_since(UNIX_EPOCH) {
+92:         Ok(d) => match u64::try_from(d.as_millis()) {
+93:             Ok(ms) => ms,
+94:             Err(_) => {
+95:                 errln!("warning: system clock value does not fit in u64; using 0");
+96:                 0_u64
+97:             }
+98:         },
+99:         Err(_) => 0_u64,
+100:     };
+101:     let header = vb_storage::RunHeaderRecord {
+102:         run: run_id,
+103:         workflow_id: vb_core::WorkflowId::new(0),
+104:         compiled_digest: digest,
+105:         status: 0,
+106:         accepted_at_ms,
+107:     };
+108:     if let Err(e) = vb_storage::put_run_header(&journal, &header) {
+109:         if output != OutputFormat::Text {
+110:             json_error(
+111:                 &serde_json::json!({
+112:                     "success": false,
+113:                     "error": format!("run header write error: {e}")
+114:                 }),
+115:                 output,
+116:             );
+117:         } else {
+118:             errln!("run header write error: {e}");
+119:         }
+120:         return CliExitCode::StorageError.into();
+121:     }
+122:     // Also record submission for durability-aware runbooks before releasing the metadata journal.
+123:     if durability != DurabilityMode::None {
+124:         let event = vb_storage::JournalEvent::RunAccepted {
+125:             run: run_id,
+126:             seq: vb_storage::EventSeq::new(0),
+127:             workflow: digest,
+128:         };
+129:         if let Err(e) = journal.append_strict_batch(&[event]) {
+130:             if output != OutputFormat::Text {
+131:                 json_error(
+132:                     &serde_json::json!({
+133:                         "success": false,
+134:                         "error": format!("journal append error: {e}")
+135:                     }),
+136:                     output,
+137:                 );
+138:             } else {
+139:                 errln!("journal append error: {e}");
+140:             }
+141:             return CliExitCode::StorageError.into();
+142:         }
+143:     }
+144:     drop(journal);
+145: 
+146:     if output != OutputFormat::Text {
+147:         emit_json_or_return!(
+148:             &serde_json::json!({
+149:                 "run_id": run_id.get(),
+150:                 "digest": digest_hex,
+151:                 "status": "submitted",
+152:                 "step_count": step_count
+153:             }),
+154:             output,
+155:         );
+156:     } else {
+157:         outln!("submitted run {}", run_id.get());
+158:         outln!("  digest:     {digest_hex}");
+159:         outln!("  steps:      {step_count}");
+160:         outln!("  durability: {}", durability_as_str(durability));
+161:         outln!("  status:     submitted");
+162:     }
+163: 
+164:     CliExitCode::Success.into()
+165: }
+166: 
+167: pub(crate) fn durability_as_str(mode: DurabilityMode) -> &'static str {
+168:     match mode {
+169:         DurabilityMode::Strict => "strict",
+170:         DurabilityMode::Journaled => "journaled",
+171:         DurabilityMode::None => "none",
+172:     }
+173: }
+174: 
+175: pub(crate) fn generate_submit_run_id() -> u64 {
+176:     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+177:         return u64::MAX;
+178:     };
+179:     match u64::try_from(now.as_nanos()) {
+180:         Ok(value) => value,
+181:         Err(_) => now.as_secs(),
+182:     }
+183: }
+
+SOURCE crates/velvet_ballistics/src/run.rs
+1: //! Module: run
+2: 
+3: use crate::app_impl::prelude::*;
+4: 
+5: pub(crate) fn cmd_run(
+6:     workflow: &std::path::Path,
+7:     input_bin: &std::path::Path,
+8:     durability: DurabilityMode,
+9:     db: Option<&std::path::Path>,
+10:     output: OutputFormat,
+11: ) -> ExitCode {
+12:     let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+13:         Ok(b) => b,
+14:         Err(code) => return code,
+15:     };
+16: 
+17:     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
+18:         Ok(b) => b,
+19:         Err(code) => return code,
+20:     };
+21: 
+22:     let compiled = match vb_compile::compile_workflow(&bytes) {
+23:         Ok(c) => c,
+24:         Err(errors) => {
+25:             if output != OutputFormat::Text {
+26:                 write_failure_message(
+27:                     &compile_errors_message(&errors.0),
+28:                     output,
+29:                     CliExitCode::CompileFailed,
+30:                 );
+31:             } else {
+32:                 for err in &errors.0 {
+33:                     errln!("compile error: {err}");
+34:                 }
+35:             }
+36:             return CliExitCode::CompileFailed.into();
+37:         }
+38:     };
+39: 
+40:     let inputs = match map_runtime_inputs(&compiled, &input_data) {
+41:         Ok(inputs) => inputs,
+42:         Err(error) => {
+43:             if output != OutputFormat::Text {
+44:                 write_failure_message(&error.to_string(), output, CliExitCode::RuntimeFailed);
+45:             } else {
+46:                 errln!("{error}");
+47:             }
+48:             return CliExitCode::RuntimeFailed.into();
+49:         }
+50:     };
+51: 
+52:     match durability {
+53:         DurabilityMode::None => {}
+54:         _ => {
+55:             if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output) {
+56:                 return code;
+57:             }
+58:         }
+59:     }
+60: 
+61:     run_compiled_workflow(&compiled, inputs, durability, db, output)
+62: }
+63: 
+64: pub(crate) fn store_workflow_artifacts(
+65:     compiled: &vb_core::CompiledWorkflow,
+66:     source: &[u8],
+67:     db: Option<&std::path::Path>,
+68:     output: OutputFormat,
+69: ) -> Result<(), ExitCode> {
+70:     let Some(db) = db else {
+71:         return Ok(());
+72:     };
+73:     let journal = match vb_storage::FjallJournal::open(db, None) {
+74:         Ok(journal) => journal,
+75:         Err(e) => {
+76:             report_compiled_ir_store_error(
+77:                 format_args!("error opening journal at {}: {e}", db.display()),
+78:                 output,
+79:             );
+80:             return Err(CliExitCode::StorageError.into());
+81:         }
+82:     };
+83:     let source_record = vb_storage::WorkflowSourceRecord {
+84:         digest: vb_core::WorkflowDigest::from_bytes(blake3::hash(source).into()),
+85:         source: source.to_vec(),
+86:     };
+87:     if let Err(e) = journal.put_workflow_source(&source_record) {
+88:         report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
+89:         return Err(CliExitCode::StorageError.into());
+90:     }
+91:     submit_cli_compiled_artifact(&journal, compiled)
+92:         .map_err(|e| {
+93:             report_compiled_ir_store_error(
+94:                 format_args!("compiled artifact admission error: {e}"),
+95:                 output,
+96:             );
+97:             CliExitCode::StorageError.into()
+98:         })
+99:         .map(|_| ())
+100: }
+101: 
+102: pub(crate) fn submit_cli_compiled_artifact(
+103:     journal: &vb_storage::FjallJournal,
+104:     compiled: &vb_core::CompiledWorkflow,
+105: ) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
+106:     let parts = compiled.to_parts();
+107:     let ir =
+108:         postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+109:     let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+110:     let mut artifact = vb_storage::AcceptedArtifact {
+111:         digest: zero,
+112:         source_digest: compiled.digest(),
+113:         policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
+114:         ir,
+115:         verification: vb_storage::VerificationProof::new(
+116:             zero,
+117:             vb_runtime::admission::REQUIRED_GATE_COUNT,
+118:             true,
+119:         ),
+120:         accepted_at_seq: vb_storage::EventSeq::new(0),
+121:         required_capabilities: Box::new([]),
+122:         action_contracts: Box::new([]),
+123:     };
+124:     let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
+125:     artifact.digest = digest;
+126:     artifact.verification.digest = digest;
+127:     let bytes =
+128:         postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+129:     journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
+130:     Ok(artifact)
+131: }
+132: 
+133: pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+134:     if output != OutputFormat::Text {
+135:         write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
+136:     } else {
+137:         errln!("{args}");
+138:     }
+139: }
+
+SOURCE crates/velvet_ballistics/src/run_compiled.rs
+65:                     }),
+66:                     output,
+67:                 );
+68:             } else {
+69:                 errln!("{error}");
+70:             }
+71:             return CliExitCode::CompileFailed.into();
+72:         }
+73:     };
+74: 
+75:     run_compiled_workflow(&compiled, inputs, durability, db, output)
+76: }
+77: 
+78: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+79: pub(crate) enum InputMappingError {
+80:     DecodeFailed,
+81:     SlotCountExceeded,
+82:     SlotIndexOutOfRange,
+83:     KindMismatch {
+84:         slot: vb_core::SlotIdx,
+85:         expected_kind: vb_core::InputSlotKind,
+86:     },
+87: }
+88: 
+89: impl std::fmt::Display for InputMappingError {
+90:     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+91:         match self {
+92:             Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+93:             Self::SlotCountExceeded => formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE),
+94:             Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
+95:             Self::KindMismatch { slot, expected_kind } => write!(
+96:                 formatter,
+97:                 "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+98:             ),
+99:         }
+100:     }
+101: }
+102: 
+103: pub(crate) fn map_runtime_inputs(
+104:     compiled: &vb_core::CompiledWorkflow,
+105:     input_data: &[u8],
+106: ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+107:     let input_slots = compiled.input_slots();
+108:     if input_slots.is_empty() {
+109:         return Ok(Box::from([]));
+110:     }
+111:     if input_data.is_empty() {
+112:         return Ok(Box::from([]));
+113:     }
+114:     let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+115:         .map_err(|_| InputMappingError::DecodeFailed)?;
+116:     if values.len() > input_slots.len() {
+117:         return Err(InputMappingError::SlotCountExceeded);
+118:     }
+119:     input_slots
+120:         .iter()
+121:         .zip(values.iter())
+122:         .map(|(slot, value)| {
+123:             let value_kind = match value {
+124:                 vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+125:                 vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+126:                 vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+127:                 vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+128:                 vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+129:                 vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+130:                 vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+131:                 vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+132:                 _ => return Err(InputMappingError::DecodeFailed),
+133:             };
+134:             if value_kind != slot.kind {
+135:                 return Err(InputMappingError::KindMismatch {
+136:                     slot: slot.slot,
+137:                     expected_kind: slot.kind,
+138:                 });
+139:             }
+140:             Ok((slot.slot, *value))
+141:         })
+142:         .collect::<Result<Vec<_>, _>>()
+143:         .map(Vec::into_boxed_slice)
+144: }
+145: 
+146: pub(crate) fn runtime_journal_for_mode(
+147:     durability: DurabilityMode,
+148:     db: Option<&std::path::Path>,
+149:     output: OutputFormat,
+150: ) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+151:     match durability {
+152:         DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+153:         DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+154:         DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
+155:     }
+
+SOURCE crates/vb_runtime/src/shard/helpers.rs
+1: #![forbid(unsafe_code)]
+2: //! Pure helper functions for shard operations.
+3: 
+4: use vb_core::action::ActionTicket;
+5: use vb_core::frame::{RunFrame, StepState};
+6: use vb_core::ids::{RunId, SlotIdx, StepIdx};
+7: use vb_core::value::{SlotValue, Taint};
+8: use vb_core::value_store::ValueStore;
+9: use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+10: 
+11: use crate::primitives::collect::CollectStates;
+12: 
+13: use crate::engine::RetryPolicy;
+14: use crate::{RuntimeError, RuntimeResult};
+15: 
+16: use crate::shard::types::{InspectSnapshot, PendingTimer, PendingTimerKind};
+17: 
+18: /// Seeds input slots on a frame before deterministic execution.
+19: pub fn seed_input_slots(
+20:     frame: &mut RunFrame,
+21:     inputs: &[(SlotIdx, SlotValue)],
+22:     workflow: &CompiledWorkflow,
+23: ) -> RuntimeResult<()> {
+24:     for (slot, value) in inputs {
+25:         let declared = workflow
+26:             .input_slots()
+27:             .iter()
+28:             .find(|cs| cs.slot == *slot)
+29:             .map(|cs| cs.kind);
+30:         if let Some(kind) = declared {
+31:             if !slot_value_matches_kind(value, kind) {
+32:                 return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+33:                     slot: *slot,
+34:                     expected: kind,
+35:                     actual: slot_value_kind(value),
+36:                 });
+37:             }
+38:         }
+39:         frame
+40:             .write_slot_with_taint(*slot, *value, Taint::Clean)
+41:             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+42:     }
+43:     Ok(())
+44: }
+45: 
+46: fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
+47:     matches!(
+48:         (value, kind),
+49:         (SlotValue::Null, vb_core::InputSlotKind::Null)
+50:             | (SlotValue::Bool(_), vb_core::InputSlotKind::Bool)
+51:             | (SlotValue::I64(_), vb_core::InputSlotKind::I64)
+52:             | (SlotValue::F64(_), vb_core::InputSlotKind::F64)
+53:             | (SlotValue::Symbol(_), vb_core::InputSlotKind::Symbol)
+54:             | (SlotValue::List(_), vb_core::InputSlotKind::List)
+55:             | (SlotValue::Object(_), vb_core::InputSlotKind::Object)
+56:             | (SlotValue::Blob(_), vb_core::InputSlotKind::Blob)
+57:     )
+58: }
+59: 
+60: fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
+61:     match value {
+62:         SlotValue::Null => vb_core::InputSlotKind::Null,
+63:         SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+64:         SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+65:         SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+66:         SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+67:         SlotValue::List(_) => vb_core::InputSlotKind::List,
+68:         SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+69:         SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+70:         &_ => vb_core::InputSlotKind::Blob,
+71:     }
+72: }
+73: 
+74: /// Validates that an action completion matches the expected ticket.
+75: pub fn validate_action_completion(
+
+SOURCE crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+150:     fn handle_submit_with_inputs_contracts_and_header_mode(
+151:         &mut self,
+152:         run: RunId,
+153:         workflow: CompiledWorkflow,
+154:         inputs: &[(SlotIdx, SlotValue)],
+155:         caps: CapabilitySet,
+156:         action_contracts: &[vb_core::action::ActionContract],
+157:         persist_header: bool,
+158:     ) -> RuntimeResult<()> {
+159:         if self.run_state_contains(run) {
+160:             return Err(RuntimeError::RunAlreadyExists);
+161:         }
+162:         if self.active_run_count() >= self.max_active_runs {
+163:             return Err(RuntimeError::ActiveRunCapacityExceeded {
+164:                 capacity: self.max_active_runs,
+165:             });
+166:         }
+167:         self.prepare_run_slots(run)?;
+168:         let digest = workflow.digest();
+169:         let admission = self.build_admission(run, digest, caps)?;
+170:         let mut frame = self.take_frame_for(run, &workflow)?;
+171:         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+172:         self.trace_ring.push(TraceEvent::RunSubmitted { run });
+173:         if persist_header {
+174:             self.append_admission_header_journal_event(
+175:                 run,
+176:                 RuntimeJournalEvent::RunSubmitted {
+177:                     run,
+178:                     workflow: digest,
+179:                 },
+180:             )?;
+181:         }
+182:         if let Some(admission) = admission.as_ref() {
+183:             self.append_admission_header_journal_event(
+184:                 run,
+185:                 RuntimeJournalEvent::RunAdmission {
+186:                     admission: admission.clone(),
+187:                 },
+188:             )?;
+189:         }
+190:         self.counters.inc_submitted();
+191:         let frame_step_count = frame.step_count();
+192:         let max_slots = workflow.resource_contract().max_slots;
+193:         let state = RunState {
+194:             frame,
+195:             workflow,
+196:             store: ValueStore::with_max_slots(max_slots),
+197:             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+198:             admission,
+199:             collect_states: CollectStates::new(),
+200:             action_contracts: action_contracts.to_vec().into_boxed_slice(),
+201:         };
+202:         self.terminal_runs_remove(run);
+203:         if let Err(error) = self.admit_run_state(run, state, RuntimeState::Initial) {
+204:             let removed = self.run_state_remove(run);
+205:             if let Some(state) = removed {
+206:                 self.release_frame(state.frame);
+207:             }
+208:             self.discard_journal_sequence(run);
+209:             return Err(error);
+210:         }
+211:         match self.drive_run(run) {
+212:             Ok(()) => Ok(()),
+213:             Err(error) => {
+214:                 if !self.run_state_contains(run) {
+215:                     self.discard_journal_sequence(run);
+216:                 }
+217:                 Err(error)
+218:             }
+219:         }
+220:     }
+
+SOURCE crates/vb_storage/src/batch/putters.rs
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::codec::encode_record;
+4: use crate::constants::{
+5:     MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
+6:     MAX_COMPILED_IR_BYTES, MAX_RUN_HEADER_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+7: };
+8: use crate::error::JournalError;
+9: use crate::keys::{
+10:     blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
+11:     run_header_key, workflow_source_key,
+12: };
+13: use crate::records::{
+14:     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+15: };
+16: // Snapshot-only imports. These are the sole non-test consumers of the
+17: // `#[cfg(test)]`-gated `JournalWriteBatch::put_snapshot` (vb-o6qcf.4). They
+18: // are gated to match so the production lib build stays warning-free under
+19: // `-D warnings` (Holzman Rule 10) once that method leaves the public API.
+20: #[cfg(test)]
+21: use crate::{
+22:     constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
+23:     keys::run_snapshot_key,
+24:     recovery::RunSnapshot,
+25: };
+26: 
+27: impl<'j> JournalWriteBatch<'j> {
+28:     /// Inserts a workflow source record into the batch.
+29:     ///
+30:     /// The source bytes are verified against the claimed digest before staging.
+31:     pub fn put_workflow_source(
+32:         &mut self,
+33:         record: &WorkflowSourceRecord,
+34:     ) -> Result<(), JournalError> {
+35:         if let Err(e) =
+36:             crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())
+37:         {
+38:             self.aborted = true;
+39:             return Err(e);
+40:         }
+41:         let key = match workflow_source_key(record.digest.as_bytes()) {
+42:             Ok(k) => k,
+43:             Err(e) => {
+44:                 self.aborted = true;
+45:                 return Err(e);
+46:             }
+47:         };
+48:         let value = match encode_record(
+49:             MAGIC_WORKFLOW_SOURCE,
+50:             RecordKind::WorkflowSource,
+51:             0,
+52:             record,
+53:             MAX_WORKFLOW_SOURCE_BYTES,
+54:         ) {
+55:             Ok(v) => v,
+56:             Err(e) => {
+57:                 self.aborted = true;
+58:                 return Err(e);
+59:             }
+60:         };
+61:         self.inner.insert(&self.journal.workflow_source, key, value);
+62:         Ok(())
+63:     }
+64: 
+65:     /// Inserts a compiled IR record into the batch.
+66:     ///
+67:     /// The IR bytes are verified against the claimed digest before staging
+68:     /// so a forged `CompiledIrRecord { digest, ir }` cannot be persisted
+69:     /// under the digest key (master §18 invariant 8: digest↔content binding).
+70:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+71:     /// and [`Self::put_blob`]: every fallible step sets
+72:     /// `self.aborted = true` before propagating the typed error.
+73:     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+74:         if let Err(e) = crate::journal::verify_compiled_ir_record_digest(record) {
+75:             self.aborted = true;
+76:             return Err(e);
+77:         }
+78:         let key = match compiled_ir_key(record.digest.as_bytes()) {
+79:             Ok(k) => k,
+80:             Err(e) => {
+81:                 self.aborted = true;
+82:                 return Err(e);
+83:             }
+84:         };
+85:         let value = match encode_record(
+86:             MAGIC_COMPILED_ARTIFACT,
+87:             RecordKind::CompiledIr,
+88:             0,
+89:             record,
+90:             MAX_COMPILED_IR_BYTES,
+91:         ) {
+92:             Ok(v) => v,
+93:             Err(e) => {
+94:                 self.aborted = true;
+95:                 return Err(e);
+96:             }
+97:         };
+98:         self.inner.insert(&self.journal.compiled_ir, key, value);
+99:         Ok(())
+100:     }
+101: 
+102:     /// Inserts a run header record into the batch.
+103:     ///
+104:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+105:     /// and [`Self::put_blob`]: every fallible step sets
+106:     /// `self.aborted = true` before propagating the typed error, so a
+107:     /// subsequent `commit()` cannot persist a partial batch.
+108:     pub fn put_run_header(&mut self, record: &RunHeaderRecord) -> Result<(), JournalError> {
+109:         let key = match run_header_key(record.run) {
+110:             Ok(k) => k,
+111:             Err(e) => {
+112:                 self.aborted = true;
+113:                 return Err(e);
+114:             }
+115:         };
+116:         let value = match encode_record(
+117:             MAGIC_INDEX_RECORD,
+118:             RecordKind::RunHeader,
+119:             record.run.get(),
+120:             record,
+121:             MAX_RUN_HEADER_BYTES,
+122:         ) {
+123:             Ok(v) => v,
+124:             Err(e) => {
+125:                 self.aborted = true;
+126:                 return Err(e);
+127:             }
+128:         };
+129:         self.inner.insert(&self.journal.run_header, key, value);
+130:         Ok(())
+131:     }
+132: 
+133:     /// Inserts a run snapshot record into the batch.
+134:     ///
+135:     /// **TEST-ONLY (vb-o6qcf.4 / master §49 Crash-Consistency Rule).**
+136:     /// This method is gated behind `#[cfg(test)]` so it cannot appear in
+137:     /// the production public API. Unlike [`crate::snapshots::FjallJournal::put_snapshot`],
+138:     /// this batch putter stages the snapshot into the `OwnedWriteBatch`
+139:     /// **without** `PersistMode::SyncAll`; durability here depends on the
+140:     /// caller invoking [`Self::strict`] / a strict commit. A non-strict
+141:     /// commit would let `latest_durable_snapshot_seq` name a snapshot the
+142:     /// WAL has not flushed, and a subsequent trim would delete the
+143:     /// pre-snapshot events that snapshot was meant to cover — the exact
+144:     /// b09dm bug class. The type system must make that path
+145:     /// unreachable in production, not a "no production caller" convention
+146:     /// (Holzman Rule 5: invariants live in types). Production writes a
+147:     /// snapshot only via [`crate::snapshots::FjallJournal::put_snapshot`],
+148:     /// which commits the insert and the `SyncAll` barrier atomically.
+149:     ///
+150:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+151:     /// and [`Self::put_blob`]: every fallible step sets
+152:     /// `self.aborted = true` before propagating the typed error, so a
+153:     /// subsequent `commit()` cannot persist a partial batch.
+154:     #[cfg(test)]
+155:     pub fn put_snapshot(&mut self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+156:         let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
+157:             Ok(k) => k,
+158:             Err(e) => {
+159:                 self.aborted = true;
+160:                 return Err(e);
+161:             }
+162:         };
+163:         let value = match encode_record(
+164:             MAGIC_SNAPSHOT,
+165:             RecordKind::Snapshot,
+166:             snapshot.seq.get(),
+167:             snapshot,
+168:             MAX_SNAPSHOT_BYTES,
+169:         ) {
+170:             Ok(v) => v,
+171:             Err(e) => {
+172:                 self.aborted = true;
+173:                 return Err(e);
+174:             }
+175:         };
+176:         self.inner.insert(&self.journal.run_snapshot, key, value);
+177:         Ok(())
+178:     }
+179: 
+180:     /// Inserts a blob record into the batch.
+
+SOURCE crates/vb_storage/src/batch/commit.rs
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::error::JournalError;
+4: 
+5: impl<'j> JournalWriteBatch<'j> {
+6:     /// Sets strict durability for the commit.
+7:     pub fn strict(mut self) -> Self {
+8:         self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll));
+9:         self
+10:     }
+11: 
+12:     /// Commits the batch atomically.
+13:     ///
+14:     /// Returns `Err(JournalError::BatchAborted)` when a prior `put_*` /
+15:     /// `append_event` staging step set `self.aborted = true`. The batch
+16:     /// is **never** committed in this case — neither the staged records
+17:     /// nor any partial state are made durable. Master §49
+18:     /// Crash-Consistency Rule forbids silent success on a partial
+19:     /// barrier; the typed error is the only honest return value.
+20:     pub fn commit(self) -> Result<(), JournalError> {
+21:         if self.aborted {
+22:             return Err(JournalError::BatchAborted);
+23:         }
+24:         // Test-only fault injection: return a synthetic `JournalError::Fjall`
+25:         // BEFORE the real `OwnedWriteBatch` reaches the storage engine. This
+26:         // proves the `append_strict` commit-failure contract (vb-o6qcf.3): the
+27:         // staged event is never made visible because the batch never commits,
+28:         // and a retry re-stages and commits cleanly (idempotent Ok). The hook
+29:         // is consumed exactly once, so a subsequent real commit succeeds.
+30:         // cfg(test) guarantees this path is absent from non-test builds.
+31:         #[cfg(test)]
+32:         if self.journal.consume_batch_commit_failure_for_test() {
+33:             return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+34:                 std::io::ErrorKind::Other,
+35:                 "injected batch commit failure (test hook)",
+36:             ))));
+37:         }
+38:         self.inner.commit()?;
+39:         Ok(())
+40:     }
+41: }
+
+SOURCE crates/vb_storage/src/events/event.rs
+1: #![forbid(unsafe_code)]
+2: //! Journal event enum types and outcome discriminant.
+3: //!
+4: //! Extracted from the parent `events` module so the impl-block host stays
+5: //! below the production source-length limit while preserving the public
+6: //! API contract (`pub use events::{JournalEvent, DurableActionOutcome}`).
+7: 
+8: use crate::EventSeq;
+9: use chrono::{DateTime, Utc};
+10: use vb_core::{
+11:     ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
+12:     Taint, WorkflowDigest,
+13: };
+14: 
+15: /// Terminal action outcome captured by durable completion envelopes.
+16: #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+17: #[repr(u8)]
+18: #[non_exhaustive]
+19: pub enum DurableActionOutcome {
+20:     /// Action completed successfully and wrote an output slot.
+21:     Ready = 1,
+22: }
+23: 
+24: /// Compact binary journal event. JSONL is a projection, not this durable format.
+25: ///
+26: /// The postcard payload wire format is a stable newtype variant whose encoded
+27: /// variant index is the unique `RecordKind` tag, followed by that event
+28: /// variant's fields in documented order. Persisted schema-1 legacy ordinal
+29: /// payloads are decoded as an exact-consumption compatibility fallback while
+30: /// new writes use these stable record-kind tags. For schema-1 records written
+31: /// before the split, `StepSucceeded`, `ActionScheduledTicket`, and
+32: /// `ActionCompletedEnvelope` may still appear under their old shared envelope
+33: /// kinds; those are accepted only through the named schema-one shared-envelope
+34: /// compatibility path.
+35: #[derive(Debug, Clone, PartialEq, Eq)]
+36: #[non_exhaustive]
+37: pub enum JournalEvent {
+38:     /// Run was accepted after input mapping.
+39:     RunAccepted {
+40:         /// Run identifier.
+41:         run: RunId,
+42:         /// Per-run sequence.
+43:         seq: EventSeq,
+44:         /// Compiled workflow digest.
+45:         workflow: WorkflowDigest,
+46:     },
+47:     /// Run admission metadata persisted after admission control succeeds.
+48:     RunAdmission {
+49:         /// Run identifier.
+50:         run: RunId,
+51:         /// Per-run sequence.
+52:         seq: EventSeq,
+53:         /// Compiled artifact digest admitted for this run.
+54:         artifact_digest: WorkflowDigest,
+55:         /// Capabilities granted for this run.
+56:         granted_capabilities: CapabilitySet,
+57:         /// Policy used to admit this run.
+58:         policy: RuntimePolicy,
+59:     },
+60:     /// Step began execution.
+61:     StepStarted {
+62:         /// Run identifier.
+63:         run: RunId,
+64:         /// Per-run sequence.
+65:         seq: EventSeq,
+66:         /// Step index.
+67:         step: StepIdx,
+68:         /// Attempt number (1-based).
+69:         attempt: u16,
+70:     },
+71:     /// Step completed and wrote an output slot.
+72:     StepSucceeded {
+73:         /// Run identifier.
+74:         run: RunId,
+75:         /// Per-run sequence.
+76:         seq: EventSeq,
+77:         /// Step index.
+78:         step: StepIdx,
+79:         /// Output slot index.
+80:         output: SlotIdx,
+81:     },
+82:     /// Step failed and recovery must retain the failed step identity.
+83:     StepFailed {
+84:         /// Run identifier.
+85:         run: RunId,
+
+SOURCE crates/vb_runtime/src/runtime.rs
+370:         let shard = self.shard_for(run)?;
+371:         shard.enqueue(ShardCommand::Resume { run })
+372:     }
+373:     /// Recovers a run from durable Fjall journal evidence and enqueues it for resumption.
+374:     ///
+375:     /// This is the end-to-end recovery entry point: it reads the journal,
+376:     /// replays events to reconstruct a typed `RecoveryFrameSeedProduct`,
+377:     /// hydrates the recoverable live-frame portion, restores durable
+378:     /// pending-action authority when present, and enqueues
+379:     /// `ShardCommand::Recover` on the owning shard.
+380:     ///
+381:     /// Recovery crosses the bead `vb-w25-runtime-a2` FINDING-001/FINDING-002
+382:     /// typestate boundary: the storage layer never hands back a raw
+383:     /// `RecoveryFrameSeed`. It returns the typed
+384:     /// `vb_storage::recovery::RecoveryFrameSeedProduct` (the storage
+385:     /// cannot-resume/resumable witness, FINDING-002), which
+386:     /// `recover_product` classifies through the parallel runtime boundary
+387:     /// into a `crate::recovery::RuntimeRecoveryProduct`
+388:     /// (`SummaryOnly` / `CannotResume { reason }` / `Resumable`,
+389:     /// FINDING-001). `recover_and_resume` enqueues only the `Resumable`
+390:     /// product and rejects the rest with a typed error.
+391:     ///
+392:     /// Returns `RuntimeError::RecoveryNotAvailable` when the runtime's
+393:     /// journal is not storage-backed (noop or volatile journals cannot
+394:     /// be replayed for crash recovery).
+395:     ///
+396:     /// Returns `RuntimeError::Recovery` when the recovery operation fails
+397:     /// the journal replay fails (missing data, corrupt snapshot, digest
+398:     /// mismatch, or unsupported recovery state).
+399:     pub fn recover_and_resume(&self, run: RunId) -> RuntimeResult<()> {
+400:         match self.recover_product(run)? {
+401:             crate::recovery::RuntimeRecoveryProduct::Resumable(product) => {
+402:                 self.enqueue_recovered_product(*product)
+403:             }
+404:             other => Err(Self::rejected_recovery_product_error(other)),
+405:         }
+406:     }
+407: 
+408:     fn rejected_recovery_product_error(
+409:         product: crate::recovery::RuntimeRecoveryProduct,
+410:     ) -> RuntimeError {
+411:         match product {
+412:             crate::recovery::RuntimeRecoveryProduct::CannotResume(product) => {
+413:                 RuntimeError::RecoveryCannotResume {
+414:                     reason: String::from(product.reason()),
+415:                 }
+416:             }
+417:             crate::recovery::RuntimeRecoveryProduct::SummaryOnly(_)
+418:             | crate::recovery::RuntimeRecoveryProduct::Resumable(_) => {
+419:                 RuntimeError::UnsupportedFullRecoveryHydration
+420:             }
+421:         }
+422:     }
+423: 
+424:     /// Builds a typed durable recovery product without mutating shard state.
+425:     pub fn recover_product(
+426:         &self,
+427:         run: RunId,
+428:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+429:         let fjall_journal = self.recovery_storage_journal()?;
+430:         let prefix = Self::load_recovery_prefix_evidence(fjall_journal.as_ref(), run)?;
+431:         let recovered = Self::load_recovery_artifact_and_workflow(
+432:             fjall_journal,
+433:             prefix.admission.artifact_digest(),
+434:         )?;
+435:         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
+436:         Self::build_runtime_recovery_product(run, prefix, recovered)
+437:     }
+438: 
+439:     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
+440:         self.journal
+441:             .storage_journal()
+442:             .ok_or(RuntimeError::RecoveryNotAvailable)
+443:     }
+444: 
+445:     fn load_recovery_prefix_evidence(
+446:         journal: &vb_storage::FjallJournal,
+447:         run: RunId,
+448:     ) -> RuntimeResult<RecoveryPrefixEvidence> {
+449:         let events = Self::load_recovery_events(journal, run)?;
+450:         let seed = Self::recover_frame_seed_from_events(&events)?;
+451:         let workflow_digest = Self::recovery_workflow_digest(&seed)?;
+452:         let next_seq = Self::next_recovery_sequence(&seed.summary())?;
+453:         let admission = crate::recovery::hydrate_run_admission_from_events(&events).ok_or(
+454:             RuntimeError::RecoveryCannotResume {
+455:                 reason: String::from("admission_missing"),
+456:             },
+457:         )?;
+458:         Ok(RecoveryPrefixEvidence {
+459:             events,
+460:             admission,
+461:             workflow_digest,
+462:             next_seq,
+463:         })
+464:     }
+465: 
+466:     fn load_recovery_events(
+467:         journal: &vb_storage::FjallJournal,
+468:         run: RunId,
+469:     ) -> RuntimeResult<Vec<vb_storage::JournalEvent>> {
+470:         journal
+471:             .events_for_run_full(run)
+472:             .map_err(|error| RuntimeError::Recovery {
+473:                 error: error.to_string(),
+474:             })
+475:     }
+476: 
+477:     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+478:     /// from the durable event slice.
+479:     ///
+480:     /// **FINDING-002 typestate closure.** This helper no longer accepts
+481:     /// the raw [`vb_storage::recovery::RecoveryFrameSeed`] DTO. It threads
+482:     /// the storage-classified typestate product into the runtime
+483:     /// `RecoveredSeedProductContext`, so the storage
+484:     /// `RecoveryCannotResumeState` witness survives into
+485:     /// `RuntimeRecoveryProduct::CannotResume { reason }` without being
+486:     /// erased by a raw-DTO roundtrip. The internal call uses
+487:     /// `recover_runtime_frame_seed_from_events` (the non-`_raw_` entry
+488:     /// point) so the storage layer performs the cannot-resume/resumable
+489:     /// classification once and the runtime reuses that classification.
+490:     fn recover_frame_seed_from_events(
+491:         events: &[vb_storage::JournalEvent],
+492:     ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+493:         vb_storage::recovery::recover_runtime_frame_seed_from_events(events).map_err(|error| {
+494:             RuntimeError::Recovery {
+495:                 error: error.to_string(),
+496:             }
+497:         })
+498:     }
+499: 
+500:     fn recovery_workflow_digest(
+501:         seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+502:     ) -> RuntimeResult<WorkflowDigest> {
+503:         seed.summary()
+504:             .workflow
+505:             .ok_or(RuntimeError::RecoveryCannotResume {
+506:                 reason: String::from("workflow_digest_missing_from_recovery_summary"),
+507:             })
+508:     }
+509: 
+510:     fn next_recovery_sequence(
+511:         summary: &vb_storage::recovery::RecoveryRuntimeSummary,
+512:     ) -> RuntimeResult<vb_storage::EventSeq> {
+513:         summary
+514:             .last_seq
+515:             .get()
+516:             .checked_add(1)
+517:             .map(vb_storage::EventSeq::new)
+518:             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+519:     }
+520: 
+521:     fn validate_recovery_admission(
+522:         run: RunId,
+523:         runtime_policy: vb_core::RuntimePolicy,
+524:         prefix: &RecoveryPrefixEvidence,
+525:         recovered: &RecoveryArtifactWorkflow,
+526:     ) -> RuntimeResult<()> {
+527:         crate::recovery::validate_recovered_admission_evidence(
+528:             crate::recovery::RecoveredAdmissionEvidence {
+529:                 context: crate::recovery::RecoveredAdmissionContext {
+530:                     run,
+531:                     expected_workflow: prefix.workflow_digest,
+532:                     runtime_policy,
+533:                 },
+534:                 admission: &prefix.admission,
+535:                 artifact: &recovered.artifact,
+536:                 workflow: &recovered.workflow,
+537:             },
+538:         )
+539:     }
+540: 
+541:     fn build_runtime_recovery_product(
+542:         run: RunId,
+543:         prefix: RecoveryPrefixEvidence,
+544:         recovered: RecoveryArtifactWorkflow,
+545:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+546:         let expected = crate::recovery::action_abi_digests_from_contracts(
+547:             &recovered.artifact.action_contracts,
+548:         )?;
+549:         let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+550:         let boundary = Self::recovered_boundary_from_events(
+551:             &seed,
+552:             &prefix.events,
+553:             &recovered.workflow,
+554:             &expected,
+555:         )?;
+556:         Self::product_from_recovered_seed(run, prefix, seed, boundary)
+557:     }
+558: 
+559:     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+560:     /// for a workflow-aware replay path.
+561:     ///
+562:     /// **FINDING-002 typestate closure.** Uses the typed entry point
+563:     /// `recover_runtime_frame_seed_from_events_with_workflow` so the
+564:     /// storage-classified cannot-resume/resumable product is the source
+565:     /// of truth; the runtime never sees the raw DTO.
+566:     fn recover_seed_for_loaded_workflow(
+567:         events: &[vb_storage::JournalEvent],
+568:         workflow: &CompiledWorkflow,
+569:     ) -> RuntimeResult<vb_storage::recovery::RecoveryFrameSeedProduct> {
+570:         vb_storage::recovery::recover_runtime_frame_seed_from_events_with_workflow(events, workflow)
+571:             .map_err(|error| RuntimeError::Recovery {
+572:                 error: error.to_string(),
+573:             })
+574:     }
+575: 
+576:     /// Builds the recovered live-run boundary from the typed seed product.
+577:     ///
+578:     /// Takes the typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
+579:     /// and deref-coerces to `&RecoveryFrameSeed` for the legacy
+580:     /// `pending_action_ticket_from_events` / `recovered_run_boundary_from_seed`
+581:     /// helpers, which still consume the raw DTO shape. The typed witness
+582:     /// survives in the context for `product_from_recovered_context`.
+583:     fn recovered_boundary_from_events(
+584:         seed: &vb_storage::recovery::RecoveryFrameSeedProduct,
+585:         events: &[vb_storage::JournalEvent],
+586:         workflow: &CompiledWorkflow,
+587:         expected: &[(vb_core::ActionId, WorkflowDigest)],
+588:     ) -> RuntimeResult<crate::recovery::RecoveredRunBoundary> {
+589:         let pending_action = crate::recovery::pending_action_ticket_from_events(
+590:             seed.seed(),
+591:             events,
+592:             workflow,
+593:             expected,
+594:         )?;
+595:         Ok(crate::recovery::recovered_run_boundary_from_seed(
+596:             seed.seed(),
+597:             pending_action,
+598:             workflow,
+599:         ))
+600:     }
+601: 
+602:     fn product_from_recovered_seed(
+603:         run: RunId,
+604:         prefix: RecoveryPrefixEvidence,
+605:         seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+606:         boundary: crate::recovery::RecoveredRunBoundary,
+607:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+608:         let context = RecoveredSeedProductContext {
+609:             run,
+610:             prefix,
+611:             seed,
+612:             boundary,
+613:         };
+614:         Self::product_from_recovered_context(context)
+615:     }
+616: 
+617:     fn product_from_recovered_context(
+618:         context: RecoveredSeedProductContext,
+619:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+620:         let cannot_resume =
+621:             crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
+622:         if !cannot_resume.is_resumable() {
+623:             return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
+624:                 context.seed.summary(),
+625:                 cannot_resume,
+626:             ));
+627:         }
+628:         Self::resumable_product_from_recovered_context(context)
+629:     }
+630: 
+631:     fn resumable_product_from_recovered_context(
+632:         context: RecoveredSeedProductContext,
+633:     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+634:         let frame = crate::recovery::hydrate_frame_for_full_recovery(
+635:             context.seed.seed(),
+636:             context.boundary,
+637:         )?;
+638:         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
+639:         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
+640:             crate::recovery::ResumableRecoveryProduct::new(
+641:                 crate::recovery::ResumableRecoveryParts {
+642:                     run: context.run,
+643:                     summary: context.seed.summary(),
+644:                     frame,
+645:                     artifact_digest: context.prefix.admission.artifact_digest(),
+646:                     workflow_digest: context.prefix.workflow_digest,
+647:                     next_seq: context.prefix.next_seq,
+648:                     collect_states,
+649:                     boundary: context.boundary,
+650:                 },
+651:             ),
+652:         ))
+653:     }
+654: 
+655:     fn hydrate_recovered_collect_states(
+
+SOURCE crates/vb_storage/src/recovery/types.rs
+935: pub struct RecoveryFrameSeed {
+936:     /// Runtime summary for the same event set.
+937:     pub summary: RecoveryRuntimeSummary,
+938:     /// First program-counter step for the rebuilt frame.
+939:     pub first_step: StepIdx,
+940:     /// Minimum step-state capacity needed for observed events.
+941:     pub step_count: u16,
+942:     /// Minimum slot capacity needed for observed slot/result references.
+943:     pub slot_count: u16,
+944:     /// Program counter inferred from the latest observed step event.
+945:     pub pc: StepIdx,
+946:     /// Final step states inferred from durable lifecycle events.
+947:     pub steps: Vec<RecoveredStepEntry>,
+948:     /// Slot values reconstructed by deterministic replay.
+949:     pub slots: Vec<RecoveredSlotEntry>,
+950:     /// Actions scheduled but not completed or failed at the recovery point.
+951:     pub pending_actions: Vec<RecoveredPendingAction>,
+952:     /// Exact pieces of live runtime state not represented by durable events yet.
+953:     pub unsupported: UnsupportedRecoveryState,
+954: }
+955: 
+956: /// Identifier for a single full-RunState component whose absence is
+957: /// tracked on a [`RecoveryCannotResumeState`] witness.
+958: ///
+959: /// These map 1:1 to the seven `*_missing` flags on
+960: /// [`RecoveryCannotResumeState`]. The enum is intentionally distinct
+961: /// from the mask struct ([`MissingRunStateComponents`]) so callers
+962: /// can talk about a single component (e.g. via
+963: /// [`MissingRunStateComponents::single`]) without constructing the
+964: /// whole bitmask.
+965: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+966: pub enum MissingRunStateComponent {
+967:     /// A compiled workflow is required by the live runtime but is not represented.
+968:     Workflow,
+969:     /// A cold value store is required by the live runtime but is not represented.
+970:     Store,
+971:     /// Per-Do-step action attempt counters are required but not represented.
+972:     ActionAttempts,
+973:     /// Admission metadata is required by the live runtime but is not represented.
+974:     Admission,
+975:     /// Per-run collect pagination state is required but not represented.
+976:     CollectStates,
+977:     /// Validated action contracts are required but not represented.
+978:     ActionContracts,
+979:     /// Dense action ABI digest table is required but not represented.
+980:     ActionAbiDigests,
+981: }
+982: 
+983: /// Mask for which full-RunState components are absent from a seed.
+984: ///
+985: /// Used to parameterize
+986: /// [`RecoveryCannotResumeState::mark_missing_components`] so the
+987: /// priority chain reason string in
+988: /// [`RecoveryCannotResumeState::unsupported_reason`] can exercise
+989: /// every reachable token (e.g. `"store_missing"`,
+990: /// `"action_attempts_missing"`, `"admission_missing"`,
+991: /// `"collect_states_missing"`, `"action_contracts_missing"`,
+992: /// `"action_abi_digests_missing"`), not just the first one in priority
+993: /// order (`"workflow_missing"`).
+994: #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+995: pub struct MissingRunStateComponents {
+996:     /// Compile workflow digest is not represented in the seed.
+997:     pub workflow: bool,
+998:     /// Cold value store is not represented in the seed.
+999:     pub store: bool,
+1000:     /// Per-Do-step action attempt counters are not represented.
+1001:     pub action_attempts: bool,
+1002:     /// Admission metadata is not represented.
+1003:     pub admission: bool,
+1004:     /// Per-run collect pagination state is not represented.
+1005:     pub collect_states: bool,
+1006:     /// Validated action contracts are not represented.
+1007:     pub action_contracts: bool,
+1008:     /// Dense action ABI digest table is not represented.
+1009:     pub action_abi_digests: bool,
+1010: }
+1011: 
+1012: impl MissingRunStateComponents {
+1013:     /// Mask with every full-RunState component marked missing.
+1014:     pub const ALL: Self = Self {
+1015:         workflow: true,
+1016:         store: true,
+1017:         action_attempts: true,
+1018:         admission: true,
+1019:         collect_states: true,
+1020:         action_contracts: true,

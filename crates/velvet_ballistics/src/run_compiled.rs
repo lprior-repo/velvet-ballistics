@@ -105,14 +105,14 @@ pub(crate) fn map_runtime_inputs(
     input_data: &[u8],
 ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
     let input_slots = compiled.input_slots();
-    if input_slots.is_empty() {
-        return Ok(Box::from([]));
-    }
     if input_data.is_empty() {
         return Ok(Box::from([]));
     }
-    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+    let (values, remainder) = postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
         .map_err(|_| InputMappingError::DecodeFailed)?;
+    if !remainder.is_empty() {
+        return Err(InputMappingError::DecodeFailed);
+    }
     if values.len() > input_slots.len() {
         return Err(InputMappingError::SlotCountExceeded);
     }
@@ -164,3 +164,7 @@ pub(crate) fn runtime_config_for_durability(
     }
     config
 }
+
+#[cfg(test)]
+#[path = "run_compiled_input_tests.rs"]
+mod input_tests;

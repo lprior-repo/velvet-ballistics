@@ -1,0 +1,71 @@
+Implement4simple behavior-preserving Rust lint fixes. Return ONLY JSON [{"path":"relativepath","old":"exact old substring","new":"new substring"}]. No markdown, commentary, tool execution, or new logic. Exact changes specified: delete3unused crate-private getter methods including must_use; nested if -> if let Some(kind)=declared && !slot_value_matches_kind(value,kind) with same error; ok_or_else(||RuntimeError::RunNotFound)->ok_or(RuntimeError::RunNotFound); add single blank /// immediately before Recovers a run from full recovery context. Fields/constructor/validation unchanged. Use EXACT supplied snippets, do not rewrite surrounding functions or types. This implements accepted vb-yx3ux contract; previous oversized12k-tokencontext generation wastruncatedwithoutfinal.
+
+FILE crates/vb_runtime/src/recovery/full.rs
+    }
+
+    #[must_use]
+    pub(crate) const fn input(self) -> SlotIdx {
+        self.input
+    }
+
+    #[must_use]
+    pub(crate) const fn output(self) -> SlotIdx {
+        self.output
+    }
+
+    #[must_use]
+    pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+        self.action_abi_digest
+    }
+}
+
+
+FILE crates/vb_runtime/src/shard/helpers.rs
+/// Seeds input slots on a frame before deterministic execution.
+pub fn seed_input_slots(
+    frame: &mut RunFrame,
+    inputs: &[(SlotIdx, SlotValue)],
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<()> {
+    for (slot, value) in inputs {
+        let declared = workflow
+            .input_slots()
+            .iter()
+            .find(|cs| cs.slot == *slot)
+            .map(|cs| cs.kind);
+        if let Some(kind) = declared {
+            if !slot_value_matches_kind(value, kind) {
+                return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                    slot: *slot,
+                    expected: kind,
+                    actual: slot_value_kind(value),
+                });
+            }
+        }
+        frame
+            .write_slot_with_taint(*slot, *value, Taint::Clean)
+            .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+    }
+
+FILE crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+    pub(crate) fn action_abi_digest_for_run_action(
+        &self,
+        run: RunId,
+        action: ActionId,
+    ) -> RuntimeResult<WorkflowDigest> {
+        let state = self
+            .run_state_get(run)
+            .ok_or_else(|| RuntimeError::RunNotFound)?;
+        // Find the contract for this action
+        let contract = state
+            .action_contracts
+
+FILE crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+    ///   passed directly.
+    /// - Admission is built with empty capabilities (caps are not persisted
+    ///   per-run in the journal; runs requiring non-empty caps will fail
+    ///   admission during recovery, which is the correct fail-closed behavior).
+    /// Recovers a run from full recovery context provided by journal replay.
+    ///
+    /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+    /// digest for verification, workflow digest for identity validation,

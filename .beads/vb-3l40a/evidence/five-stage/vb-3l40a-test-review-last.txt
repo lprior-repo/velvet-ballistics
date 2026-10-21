@@ -1,0 +1,21 @@
+**Test review complete. Written to `.beads/vb-3l40a/test-suite-review.md`.**
+
+**STATUS: REJECTED** — The test suite has critical gaps:
+
+**Verified (8 new tests pass):**
+- 4 recovery context tests: malformed command rejection, journal seed, pending action fail-closed, open ask boundary
+- 4 contract validation tests: duplicate ID rejection, well-formed acceptance, capability insufficiency rejection, capability sufficiency acceptance
+- Full suite: 1877 passed
+
+**Critical gaps found:**
+1. **No test catches the original bug regressing** — if `action_contracts` were set to empty after recovery, all 8 new tests would still pass. The production fix (`artifact.action_contracts.clone()`) is unverified by any test.
+2. **No test exercises recovery + actual action execution** — the exact path where the bug manifested.
+3. **Weak assertions** — `recover_seeds_nonzero_journal_sequence` has no assertion at all; `recover_rejects_malformed_command` only checks `is_err()` without variant matching.
+4. **No collect_states restoration test** — the recovery command includes them but no test verifies they're restored.
+
+**Before landing, need:**
+- Test: recover run → verify action contracts non-empty and match artifact
+- Test: recover run → drive to execute pending action → verify completion
+- Strengthen assertions in `recover_seeds_nonzero_journal_sequence` and `recover_rejects_malformed_command`
+
+Bead updated with review findings.

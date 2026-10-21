@@ -1,0 +1,3 @@
+# Correction to coordinator variant finding
+
+Current source and frozen254c0dd9 both define InputMappingError::SlotIndexOutOfRange in run_compiled.rs, alongside DecodeFailed, SlotCountExceeded and KindMismatch. Coordinator prior claims that this existing variant was invented/nonexistent were wrong and are withdrawn from revision2/revision3 reviews and any earlier summary. Its existence does not change the actual positional wire format; no indexed incoming slots are encoded. The generated contracts remain rejected for their independent atomicity, artifact digest, durability and replay-order contradictions. No source implementation depended on the mistaken variant finding. All future prompts must include the actual four-variant definition.

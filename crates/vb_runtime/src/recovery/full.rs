@@ -12,9 +12,8 @@ use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
 pub(crate) use admission::{
-    action_contract_abi_digest,
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
-    validate_recovered_admission_evidence,
+    action_contract_abi_digest, validate_recovered_admission_evidence,
 };
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
@@ -60,21 +59,6 @@ impl RecoveredPendingActionTicket {
     #[must_use]
     pub(crate) const fn event_seq(self) -> vb_storage::EventSeq {
         self.event_seq
-    }
-
-    #[must_use]
-    pub(crate) const fn input(self) -> SlotIdx {
-        self.input
-    }
-
-    #[must_use]
-    pub(crate) const fn output(self) -> SlotIdx {
-        self.output
-    }
-
-    #[must_use]
-    pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
-        self.action_abi_digest
     }
 }
 

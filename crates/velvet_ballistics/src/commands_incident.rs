@@ -236,6 +236,7 @@ mod tests {
             JournalEvent::RunFinished {
                 run: RunId::new(1),
                 seq: EventSeq::new(10),
+                result: vb_core::SlotIdx::ZERO,
                 attempt: 1,
             },
         ];

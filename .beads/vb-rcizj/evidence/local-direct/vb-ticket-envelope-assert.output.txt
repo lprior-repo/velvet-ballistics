@@ -1,0 +1,6 @@
+```rust
+assert_eq!(
+    events.iter().filter(|e| matches!(e, RuntimeJournalEvent::ActionCompleted(envelope) if envelope.ticket == ticket && envelope.output_slot_idx == SlotIdx::ZERO && envelope.value == expected_value && envelope.encoded_len == 2 && envelope.taint_clean && envelope.value_digest == *blake3::hash(&expected_value).as_bytes())).count(),
+    1
+);
+```

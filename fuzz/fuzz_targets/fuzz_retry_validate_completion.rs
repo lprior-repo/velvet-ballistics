@@ -77,6 +77,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
+        input_slots: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
 

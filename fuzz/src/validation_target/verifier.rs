@@ -207,6 +207,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     };
     for result in [
         vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),

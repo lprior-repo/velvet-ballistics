@@ -1,0 +1,15 @@
+{
+  "candidate": "61930db1055a84c1867769e88888e69682292459",
+  "scope": "SetConst/Finish CLI only, fresh disposable Fjall DB; no crash or all-primitive acceptance claim",
+  "success_commands": [
+    "help",
+    "verify",
+    "simulate",
+    "strict run",
+    "reopened inspect",
+    "reopened events",
+    "reopened replay"
+  ],
+  "negative_incident_exit": 5,
+  "known_failure": "malformed binary submit accepted exit0; vb-ezymz"
+}

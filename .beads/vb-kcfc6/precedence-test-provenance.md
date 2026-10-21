@@ -1,0 +1,1 @@
+Local5090generated2explicit conflicting-error tests and1bounded I64mapping/arbitrarynonemptytrailingbytes proptest. Coordinator mechanically corrected invented postcard::to_alloc_vec spelling and made extendedpayload mutable; testlogic unchanged. Allactualtypedboxedslice messages and exactDecodeFailed precedence. No ownerdebtwaiver accepted from rejectedv1review.

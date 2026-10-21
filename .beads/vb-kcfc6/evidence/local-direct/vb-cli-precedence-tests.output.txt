@@ -1,0 +1,32 @@
+```rust
+#[test]
+fn trailing_bytes_precede_excess_count() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+    ]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+
+#[test]
+fn trailing_bytes_precede_kind_mismatch() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::Bool(true),
+    ]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+```
