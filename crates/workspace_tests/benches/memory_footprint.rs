@@ -69,6 +69,7 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
         },
     });
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("bench_chain"),
         digest: WorkflowDigest::from_bytes([0x44; 32]),
         nodes: nodes.into_boxed_slice(),

@@ -1,0 +1,5 @@
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/velvet_ballistics)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/fuzz)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.91s

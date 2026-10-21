@@ -9,6 +9,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 
 fn parts() -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("capability-schema-bench"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::new([
