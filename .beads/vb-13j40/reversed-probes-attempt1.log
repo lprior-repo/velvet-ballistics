@@ -1,0 +1,43 @@
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/workspace_tests/tests/vb_13j40_review_regressions.rs:67:16
+   |
+67 |     assert_eq!(runtime.pending_boundary_snapshot(10)?.command_queue_depth(), 0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `RuntimePendingBoundarySnapshot`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `RuntimePendingBoundarySnapshot`
+
+error[E0308]: mismatched types
+  --> crates/workspace_tests/tests/vb_13j40_review_regressions.rs:71:30
+   |
+65 | ...mit_direct_with_grants_and_contracts(RunId::new(100), workflow.clone(), CapabilitySet::empty(), Box::new([replacement.clone()])), expected);
+   |                                                                                                                                      -------- here the type of `expected` is inferred to be `Result<(), RuntimeError>`
+...
+71 | ...), expected);
+   |       ^^^^^^^^ expected `Result<bool, RuntimeError>`, found `Result<(), RuntimeError>`
+   |
+   = note: expected enum `Result<bool, _>`
+              found enum `Result<(), _>`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/workspace_tests/tests/vb_13j40_review_regressions.rs:93:16
+   |
+93 |     assert_eq!(runtime.pending_boundary_snapshot(10)?.command_queue_depth(), 0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `RuntimePendingBoundarySnapshot`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `RuntimePendingBoundarySnapshot`
+
+error[E0308]: mismatched types
+  --> crates/workspace_tests/tests/vb_13j40_review_regressions.rs:96:30
+   |
+91 |     assert_eq!(runtime.submit_direct(RunId::new(110), altered.clone()), expected);
+   |                                                                         -------- here the type of `expected` is inferred to be `Result<(), RuntimeError>`
+...
+96 |     assert_eq!(shard.tick(), expected);
+   |                              ^^^^^^^^ expected `Result<bool, RuntimeError>`, found `Result<(), RuntimeError>`
+   |
+   = note: expected enum `Result<bool, _>`
+              found enum `Result<(), _>`
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_13j40_review_regressions") due to 4 previous errors

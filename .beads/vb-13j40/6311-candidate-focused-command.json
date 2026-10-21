@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--collect",
+    "-p",
+    "MemoryHigh=12G",
+    "-p",
+    "MemoryMax=16G",
+    "-p",
+    "MemorySwapMax=0",
+    "env",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "timeout",
+    "--kill-after=10",
+    "180",
+    "cargo",
+    "test",
+    "-q",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_9agmk_artifact_evidence"
+  ],
+  "exit_code": 0,
+  "source": "6311991293c539d3016419acea3bb5c2e1f4f843"
+}
