@@ -1,0 +1,45 @@
+[
+  {
+    "name": "codec",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_storage",
+      "--lib",
+      "codec::tests::",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "clippy",
+    "argv": [
+      "cargo",
+      "clippy",
+      "-p",
+      "vb_storage",
+      "--lib",
+      "-j",
+      "2",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "fmt",
+    "argv": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/vb_storage/src/events/wire_serialize_run.rs"
+    ],
+    "exit": 0
+  }
+]
