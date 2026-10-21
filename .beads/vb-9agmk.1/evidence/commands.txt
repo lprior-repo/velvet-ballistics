@@ -1,0 +1,9 @@
+Candidate SHA: 948f19cb7cd92afec3d95e9fb285216cc6689d41
+Candidate base: 856603b8001c26a199afb91fc9a410bb5715f532
+Workspace: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-test-review-luna
+
+cargo test -p velvet-ballistics-workspace-tests --test vb_9agmk_artifact_evidence -j 2 -- --test-threads=2
+exit code: 0
+
+git diff --check 856603b8001c26a199afb91fc9a410bb5715f532 948f19cb7cd92afec3d95e9fb285216cc6689d41
+exit code: 0

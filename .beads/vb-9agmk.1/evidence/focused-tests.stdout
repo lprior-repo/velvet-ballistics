@@ -1,0 +1,20 @@
+
+running 15 tests
+test compiler_cases::compiler_candidate_binds_actual_source_and_exact_payload_with_named_checks ... ok
+test accepted_ledger_distinguishes_executed_checks_and_unproved_runtime_assumptions ... ok
+test compiler_cases::legacy_constructor_cannot_mint_verification_from_caller_claims ... ok
+test compiler_cases::compiler_rejects_stale_workflow_identity ... ok
+test compiler_cases::source_only_comment_changes_provenance_while_ir_identity_is_stable ... ok
+test legacy_and_unknown_schema_fail_closed ... ok
+test every_identity_binding_rejects_rehashed_tampering ... ok
+test rehashed_forged_closure_and_duplicate_ledger_entries_are_rejected ... ok
+test storage_rejects_missing_and_orphan_action_contracts ... ok
+test strict_side_effects_fail_without_executor_conformance_and_cannot_upgrade_policy ... ok
+test persisted_artifact_reopens_with_checked_identity_and_runtime_admission ... ok
+test tamper_cases::bound_is_checked_before_decoding_or_hashing_the_payload ... ok
+test tamper_cases::changed_valid_ir_and_contract_declarations_cannot_reuse_old_evidence ... ok
+test tamper_cases::malformed_ir_and_trailing_payload_bytes_reject_after_envelope_rehash ... ok
+test tamper_cases::arbitrary_payload_bit_change_is_rejected ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
