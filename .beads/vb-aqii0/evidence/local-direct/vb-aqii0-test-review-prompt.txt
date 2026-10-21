@@ -1,0 +1,644 @@
+Independent TEST SUITE review. Findings first; STATUS APPROVED only no open findings, otherwise REJECTED. Actual cargo test -p vb_storage --lib PROPTEST_CASES128 passed1596 failed0 ignored0. Nine fixtures restored schema, exact snapshot mismatch assertion strengthened; no productionchanges. Check mutation resistance and preservationdigest negatives using actual changedfilediff and source surroundingconditions. No proofplanning. Reviewscope fixture repair; do not require unrelated architecture rewrite. Code review approved, concern PartialEq resolved actualcompile. Correction code review overgeneralized ALLfixtures zeroedhash; recovery fixtures intentionally fixedsampledigest; unchanged semantics.
+CONTRACT
+# Scope
+Contract vb-aqii0 addresses nine missing WorkflowParts input_slots declarations in storage admission, proptest, recovery, and durability test fixtures. These are self-contained numeric workflows with no external CLI input ports, so empty declarations are correct. No production code changes.
+
+# Domain
+Test fixtures only. The input_slots field is a required declaration even when no external inputs exist. Fixtures must declare empty input_slots to compile and validate correctly.
+
+# Behavior
+Add empty input_slots declarations to all nine affected fixtures. Preserve artifact digest construction by hashing zeroed parts after the new field. Maintain wrong digest rejection tests. Strengthen the snapshot mismatch test to assert exact snapshot_run1, sequence5, expected_run2 using the existing error variant, eliminating wildcard matching that could swallow expected_run.
+
+# Errors
+No new unwrap, panic, index, cast, or allowance constructs. Existing assertions are preserved or strengthened. The ten current compile errors in the storage library tests must resolve before any pass claim.
+
+# Acceptance
+All nine fixtures compile with empty input_slots. Digest construction and rejection tests pass unchanged. Snapshot mismatch test asserts exact run identifiers. No production changes. User workflow: contract, implementation, tests, code review, test review. No proof planning.
+DIFF
+diff --git a/crates/vb_storage/src/admission/tests.rs b/crates/vb_storage/src/admission/tests.rs
+index 9720686e2..1729e9f29 100644
+--- a/crates/vb_storage/src/admission/tests.rs
++++ b/crates/vb_storage/src/admission/tests.rs
+@@ -193,6 +193,7 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+ 
+     let mut parts = WorkflowParts {
+         name: Box::<str>::from("test_admission"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::new([
+             CompiledNode {
+diff --git a/crates/vb_storage/src/hydrate_tests.rs b/crates/vb_storage/src/hydrate_tests.rs
+index 911afaf9f..aaf9c116d 100644
+--- a/crates/vb_storage/src/hydrate_tests.rs
++++ b/crates/vb_storage/src/hydrate_tests.rs
+@@ -33,13 +33,13 @@ mod hydrate_tests {
+         let snapshot_run = RunId::new(1);
+         let requested_run = RunId::new(2);
+         let result = validate_snapshot_metadata(snapshot_run, EventSeq::new(5), requested_run);
+-        assert!(
+-            matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+-                snapshot_run: sr,
+-                snapshot_seq: _
+-            }) if sr == RunId::new(1)),
+-            "should reject mismatched run, got {:?}",
+-            result
++        assert_eq!(
++            result,
++            Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
++                expected_run: requested_run,
++                snapshot_run,
++                snapshot_seq: EventSeq::new(5)
++            })
+         );
+     }
+ 
+diff --git a/crates/vb_storage/src/proptests.rs b/crates/vb_storage/src/proptests.rs
+index 5a4bc3a5f..71c6b40db 100644
+--- a/crates/vb_storage/src/proptests.rs
++++ b/crates/vb_storage/src/proptests.rs
+@@ -601,6 +601,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
+     // Build parts with digest zeroed, compute correct digest, then set it.
+     let parts_zeroed = WorkflowParts {
+         name: Box::from("admit_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -667,6 +668,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
+     // Build a workflow with a wrong digest that won't match the content hash.
+     let parts = WorkflowParts {
+         name: Box::from("checksum_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([8u8; 32]), // wrong digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -723,6 +725,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
+     };
+     let parts_zeroed = WorkflowParts {
+         name: Box::from("submit_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -812,6 +815,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
+     };
+     let parts = WorkflowParts {
+         name: Box::from("mismatch_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0xAA; 32]), // wrong digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -880,6 +884,7 @@ fn submit_artifact_stale_digest_rejected() {
+     };
+     let parts = WorkflowParts {
+         name: Box::from("different_workflow"),
++        input_slots: Box::new([]),
+         digest: original_digest, // claiming the SAME digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+diff --git a/crates/vb_storage/src/recovery/tests.rs b/crates/vb_storage/src/recovery/tests.rs
+index 43e16e8de..ce44b6fb8 100644
+--- a/crates/vb_storage/src/recovery/tests.rs
++++ b/crates/vb_storage/src/recovery/tests.rs
+@@ -31,6 +31,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>>
+ fn deterministic_parts() -> WorkflowParts {
+     WorkflowParts {
+         name: "recovery_replay".into(),
++        input_slots: Box::new([]),
+         digest: sample_digest(44),
+         nodes: deterministic_nodes().into(),
+         expressions: Vec::new().into(),
+@@ -683,6 +684,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
+     let action = ActionId::new(4);
+     let parts = WorkflowParts {
+         name: "action_recovery".into(),
++        input_slots: Box::new([]),
+         digest,
+         nodes: vec![CompiledNode {
+             id: StepIdx::ZERO,
+diff --git a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+index 0ad57cf49..3b195ea59 100644
+--- a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
++++ b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+@@ -44,6 +44,7 @@ mod durability_gate_tests {
+ 
+         let mut parts = WorkflowParts {
+             name: Box::<str>::from("vb_2bok_test"),
++            input_slots: Box::new([]),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+             nodes: Box::new([
+                 CompiledNode {
+
+admission/tests.rs
+fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+    use vb_core::value::ConstValue;
+    use vb_core::workflow::{ResourceContract, WorkflowParts};
+    use vb_core::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
+        WorkflowDigest,
+    };
+
+    let mut parts = WorkflowParts {
+        name: Box::<str>::from("test_admission"),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([ConstValue::I64(42)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+
+    // Compute the correct BLAKE3 digest from the zeroed-digest serialization.
+    let hash_bytes =
+        postcard::to_allocvec(&parts).map_err(|e| format!("serialize parts for digest: {e}"))?;
+    let computed = blake3::hash(&hash_bytes);
+    parts.digest = WorkflowDigest::from_bytes(computed.into());
+
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+}
+
+fn compiled_record_digest(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<vb_core::WorkflowDigest, String> {
+    let bytes = postcard::to_allocvec(&workflow.to_parts())
+        .map_err(|e| format!("serialize compiled workflow parts: {e}"))?;
+    Ok(vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&bytes).into(),
+    ))
+}
+
+#[test]
+fn submit_artifact_relaxed_persists_and_returns_artifact() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
+
+    // The returned artifact digest binds the accepted-artifact envelope;
+    // source_digest retains the workflow structural digest.
+    assert_eq!(
+        result.source_digest,
+        workflow.digest(),
+        "source digest must match workflow digest"
+    );
+    assert_eq!(
+        accepted_artifact_digest(&result).map_err(|e| format!("artifact digest: {e}"))?,
+        result.digest,
+        "artifact digest must match the canonical envelope digest"
+    );
+
+    // The proof under Relaxed must have 0 gates and durable=false.
+    assert_eq!(result.verification.gate_count, 0, "relaxed must skip gates");
+    assert!(!result.verification.durable, "relaxed must not be durable");
+
+    // The proof's digest must match.
+    assert_eq!(
+        result.verification.digest, result.digest,
+        "proof digest must match artifact digest"
+    );
+
+    // The ir bytes must be non-empty (postcard serialization).
+    assert!(!result.ir.is_empty(), "compiled IR bytes must not be empty");
+
+    // Verify we can read the artifact back from storage.
+    let loaded = journal
+        .compiled_ir(result.digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    assert!(loaded.is_some(), "artifact must be readable after submit");
+    Ok(())
+}
+
+#[test]
+proptests.rs
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    // Build parts with digest zeroed, compute correct digest, then set it.
+    let parts_zeroed = WorkflowParts {
+        name: Box::from("admit_test"),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+    let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
+    let computed = blake3::hash(&hash_bytes);
+    let parts = WorkflowParts {
+        digest: WorkflowDigest::from_bytes(*computed.as_bytes()),
+        ..parts_zeroed
+    };
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    let ir_bytes = postcard::to_allocvec(&workflow.to_parts())?;
+    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir_bytes).into());
+
+    let result = admit_compiled_artifact(&journal, &workflow)?;
+    assert_eq!(result, digest);
+
+    let loaded = journal.compiled_ir(digest)?;
+    assert!(loaded.is_some());
+    let record = loaded.unwrap();
+    assert_eq!(record.digest, digest);
+    Ok(())
+}
+
+#[test]
+fn admit_compiled_artifact_rejects_checksum_mismatch() {
+    use crate::{FjallJournal, JournalError, admit_compiled_artifact};
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    // Build a workflow with a wrong digest that won't match the content hash.
+    let parts = WorkflowParts {
+        name: Box::from("checksum_test"),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([8u8; 32]), // wrong digest
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+    let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
+
+    let result = admit_compiled_artifact(&journal, &corrupted);
+    assert!(matches!(
+        result,
+        Err(JournalError::ArtifactChecksumMismatch)
+    ));
+}
+
+/// Helper: build a valid CompiledWorkflow with a self-consistent BLAKE3 digest.
+///
+/// Computes the digest by hashing the serialized parts with the digest field zeroed,
+/// then sets the computed hash as the digest. This matches the checksum verification
+/// used in `submit_artifact`.
+#[allow(dead_code)]
+fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
+    use vb_core::ids::ConstIdx;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts_zeroed = WorkflowParts {
+        name: Box::from("submit_test"),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+
+    // Compute digest from content with digest field zeroed.
+    let hash_bytes = postcard::to_allocvec(&parts_zeroed).expect("serialize parts");
+    let computed = blake3::hash(&hash_bytes);
+    let correct_parts = WorkflowParts {
+        digest: WorkflowDigest::from_bytes(*computed.as_bytes()),
+        ..parts_zeroed
+    };
+
+    CompiledWorkflow::try_from_parts(correct_parts).expect("valid workflow")
+}
+
+#[test]
+fn submit_artifact_valid_workflow_succeeds() {
+    use crate::{FjallJournal, submit_artifact};
+    use vb_core::RuntimePolicy;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+    let source_digest = workflow.digest();
+
+    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
+    assert!(
+        matches!(result, Ok(_)),
+        "submit_artifact should succeed: {:?}",
+        result
+    );
+    let artifact = result.expect("ok");
+    assert_eq!(artifact.source_digest.as_bytes(), source_digest.as_bytes());
+    assert_eq!(artifact.verification.digest, artifact.digest);
+
+    // Verify it was stored.
+    let loaded = journal
+        .compiled_ir(artifact.digest)
+        .expect("load compiled ir");
+    assert!(loaded.is_some());
+    let record = loaded.expect("some");
+    assert_eq!(record.digest, artifact.digest);
+}
+
+#[test]
+fn submit_artifact_checksum_mismatch_rejected() {
+    use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::RuntimePolicy;
+    use vb_core::ids::ConstIdx;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    // Build a workflow with a wrong digest.
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("mismatch_test"),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([0xAA; 32]), // wrong digest
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+    let corrupted = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
+
+    let result = submit_artifact(&journal, &corrupted, RuntimePolicy::Strict);
+    assert!(
+        matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+        "expected checksum mismatch, got {:?}",
+        result
+    );
+}
+
+#[test]
+fn submit_artifact_stale_digest_rejected() {
+    // Verify that submitting an artifact with a stale digest (from a different
+    // workflow version) is rejected by the checksum gate.
+    use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::RuntimePolicy;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+    let workflow = build_valid_workflow_for_submit();
+    let original_digest = workflow.digest();
+
+    // Submit the valid artifact first.
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .expect("original submit should succeed");
+    assert_eq!(artifact.source_digest, original_digest);
+    assert_eq!(artifact.verification.digest, artifact.digest);
+
+    // Now try to submit a different workflow claiming the same digest.
+    // Build a different workflow.
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ids::ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("different_workflow"),
+        input_slots: Box::new([]),
+        digest: original_digest, // claiming the SAME digest
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(9999)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+    let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
+    // The stale workflow claims the same digest as the original but has different
+    // content (I64(9999) vs Bool(true)). Under Strict/Journaled policy, the
+    // checksum gate must reject this because the hash of the content won't match
+    // the claimed digest.
+    let stale_result = submit_artifact(&journal, &stale, RuntimePolicy::Strict);
+    assert!(
+        matches!(stale_result, Err(JournalError::ArtifactChecksumMismatch)),
+        "stale digest must be rejected by checksum gate, got {:?}",
+        stale_result
+    );
+}
+
+#[test]
+fn list_artifacts_empty_returns_empty() {
+    use crate::FjallJournal;
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
+
+    let artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
+    assert!(
+        artifacts.is_empty(),
+        "empty journal should have no artifacts"
+    );
+}
+
+#[test]
+fn list_artifacts_returns_stored_digests() {
+    use crate::{CompiledIrRecord, FjallJournal};
+    use vb_core::WorkflowDigest;
+hydrate_tests.rs
+)]
+mod hydrate_tests {
+    use crate::EventSeq;
+    use crate::recovery::hydrate::{
+        SnapshotRecoveryInputViolation, TailEventMetadata, validate_recovery_data_present,
+        validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot,
+    };
+    use vb_core::RunId;
+
+    #[test]
+    fn validate_snapshot_metadata_accepts_matching_run() {
+        let run = RunId::new(1);
+        let result = validate_snapshot_metadata(run, EventSeq::new(0), run);
+        assert!(
+            matches!(result, Ok(())),
+            "matching run should succeed, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn validate_snapshot_metadata_rejects_mismatched_run() {
+        let snapshot_run = RunId::new(1);
+        let requested_run = RunId::new(2);
+        let result = validate_snapshot_metadata(snapshot_run, EventSeq::new(5), requested_run);
+        assert_eq!(
+            result,
+            Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+                expected_run: requested_run,
+                snapshot_run,
+                snapshot_seq: EventSeq::new(5)
+            })
+        );
+    }
+
+    #[test]
+    fn validate_tail_run_metadata_accepts_matching_run() {
+        let run = RunId::new(3);
+        let meta = TailEventMetadata::new(run, EventSeq::new(0));
+        let result = validate_tail_run_metadata(meta, run);
+        assert!(
+            matches!(result, Ok(())),
+            "matching run should succeed, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn validate_tail_run_metadata_rejects_mismatched_run() {
+        let run = RunId::new(4);
+        let meta = TailEventMetadata::new(RunId::new(5), EventSeq::new(0));
+        let result = validate_tail_run_metadata(meta, run);
+        assert!(
+            matches!(result, Err(SnapshotRecoveryInputViolation::TailRunMismatch {
+                expected,
