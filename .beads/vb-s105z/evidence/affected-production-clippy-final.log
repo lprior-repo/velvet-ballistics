@@ -1,0 +1,4 @@
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_ipc)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_compile)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/velvet_ballistics)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.56s

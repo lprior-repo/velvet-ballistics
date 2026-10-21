@@ -1,0 +1,88 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.24s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-774085096e2424b3)
+
+running 8 tests
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_parse_errors ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_basic ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_extremes ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_no_reuse ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_reuse ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_overflow ... FAILED
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_reuse_when_full ... ok
+test mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_proptest ... FAILED
+
+failures:
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_parse_errors stdout ----
+Error: "expected parse error"
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_basic stdout ----
+
+thread 'mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_basic' (1310776) panicked at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:10:5:
+assertion `left == right` failed
+  left: ConstIdx(0)
+ right: ConstIdx(1)
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_extremes stdout ----
+
+thread 'mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_extremes' (1310777) panicked at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:86:5:
+assertion `left == right` failed
+  left: ConstIdx(0)
+ right: ConstIdx(1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_no_reuse stdout ----
+
+thread 'mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_no_reuse' (1310778) panicked at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:42:5:
+assertion `left == right` failed
+  left: ConstIdx(0)
+ right: ConstIdx(1)
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_reuse stdout ----
+
+thread 'mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_reuse' (1310782) panicked at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:25:5:
+assertion `left == right` failed
+  left: ConstIdx(0)
+ right: ConstIdx(1)
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_overflow stdout ----
+Error: "expected overflow error"
+
+---- mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_proptest stdout ----
+proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_compile/proptest-regressions/mod_compile_lowering/body_constants_tests.txt
+proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file. (You may need to create it.)
+cc dfa99b74c5f6cd384137c900bc656518e197e764ca093b5896906e6523a92923
+
+thread 'mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_proptest' (1310781) panicked at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:127:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `ConstIdx(0)`,
+ right: `ConstIdx(1)` at crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs:137.
+minimal failing input: a = 0, b = 1
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+
+failures:
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_basic
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_extremes
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_no_reuse
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_overflow
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_parse_errors
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_proptest
+    mod_compile_lowering::part_04::body_constants::tests::test_body_constant_index_reuse
+
+test result: FAILED. 1 passed; 7 failed; 0 ignored; 0 measured; 489 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_compile --lib`

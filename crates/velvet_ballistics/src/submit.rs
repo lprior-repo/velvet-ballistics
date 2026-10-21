@@ -9,7 +9,7 @@ pub(crate) fn cmd_submit(
     durability: DurabilityMode,
     output: OutputFormat,
 ) -> ExitCode {
-    let _input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -40,6 +40,11 @@ pub(crate) fn cmd_submit(
             return CliExitCode::CompileFailed.into();
         }
     };
+
+    if let Err(error) = map_runtime_inputs(&compiled, &input_data) {
+        write_failure_message(&error.to_string(), output, CliExitCode::ValidationFailed);
+        return CliExitCode::ValidationFailed.into();
+    }
 
     let digest = compiled.digest();
     let digest_hex: String = digest

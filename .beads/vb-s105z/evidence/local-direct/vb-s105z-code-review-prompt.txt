@@ -1,0 +1,201 @@
+Independent code review ONLY constant pool fix vb-s105z. STATUS APPROVED onlyno unresolvedfinding, otherwiseREJECTEDexactfileline. No proofplanning. Productionparsefirst, reuseonlyequaltypedI64, checkedu16 index, preserveparse/overflowerrors, neverchoosefirstunrelated. Isolatedsource+unit tests below. Actualcompilerlib497pass0fail0ignore, PROPTEST_CASES256. Existingbranchvalue2to99sensitivityassertionsunchangedandpass. Unit tests8new include distinct/equal/noreuse/parseinvalidnonemptypool/extremes/fullpool appenderror/reusefull andpropertypair. Reviewfornewpanic/ignoredresult/overflow/semanticregression; no broadv1claim.
+CONTRACT
+# Constant Pool Lookup Contract
+
+## Component
+Compiler constant pool management for branch instruction operands.
+
+## Defect
+Lookup returns the first pool entry regardless of value match and accepts malformed requests without parsing.
+
+## Required Behavior
+Parse the requested operand as a signed 64-bit integer before any pool lookup. When constant reuse is enabled, return an existing pool index only if its stored value equals the parsed integer. Otherwise, append the parsed value as a new constant entry. Convert the resulting index to u16 with checked arithmetic, propagating typed errors on overflow or parse failure.
+
+## Invariants
+The pool never returns an index for a value different from the requested one. Malformed or out-of-range inputs are rejected even when the pool contains entries. Distinct integer values always occupy distinct pool slots. Equal values share a single slot when reuse is enabled.
+
+## Test Requirements
+Verify two distinct values produce separate pool entries. Verify equal values reuse the same entry when reuse is enabled. Verify malformed input is rejected with a non-empty pool. Verify out-of-range values are rejected. Verify numeric boundary conditions. Verify the compiled branch instruction IR contains the correct operand values matching the source.
+
+## Workflow
+Rust contract specification, implementation, test suite, code review, test review. No proof planning.
+
+## IR Digest Note
+Numeric IR digest computation excludes authoring-only labels. Raw source identity tracking remains separate from the digest.
+
+FILE crates/vb_compile/src/mod_compile_lowering/body_constants.rs
+use super::*;
+
+pub(in crate::mod_compile_lowering) fn body_constant_index(
+    builder: &mut SlotCompiler,
+    value: &str,
+    step: usize,
+    reuse_first_constant: bool,
+) -> Result<ConstIdx, CompileErrors> {
+    let constant = parse_i64_field(value, step, "set.value")?;
+    if reuse_first_constant {
+        if let Some(index) = builder
+            .constants
+            .iter()
+            .position(|entry| *entry == ConstValue::I64(constant))
+        {
+            let idx = u16::try_from(index).map_err(|_| {
+                CompileErrors(vec![CompileError::Workflow(
+                    WorkflowError::ConstOutOfBounds {
+                        constant: ConstIdx::new(u16::MAX),
+                    },
+                )])
+            })?;
+            return Ok(ConstIdx::new(idx));
+        }
+    }
+    builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))
+}
+
+#[cfg(test)]
+#[path = "body_constants_tests.rs"]
+mod tests;
+
+FILE crates/vb_compile/src/mod_compile_lowering/body_constants_tests.rs
+use super::*;
+use proptest::prelude::*;
+
+#[test]
+fn test_body_constant_index_basic() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    let idx1 = body_constant_index(&mut builder, "7", 1, true)?;
+    assert_eq!(idx1, ConstIdx::new(0));
+    let idx2 = body_constant_index(&mut builder, "99", 2, true)?;
+    assert_eq!(idx2, ConstIdx::new(1));
+    assert_eq!(
+        builder.constants,
+        vec![ConstValue::I64(7), ConstValue::I64(99)]
+    );
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_reuse() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    assert_eq!(
+        body_constant_index(&mut builder, "7", 1, true)?,
+        ConstIdx::new(0)
+    );
+    assert_eq!(
+        body_constant_index(&mut builder, "99", 2, true)?,
+        ConstIdx::new(1)
+    );
+    let idx = body_constant_index(&mut builder, "7", 3, true)?;
+    assert_eq!(idx, ConstIdx::new(0));
+    assert_eq!(builder.constants.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_no_reuse() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    assert_eq!(
+        body_constant_index(&mut builder, "7", 1, true)?,
+        ConstIdx::new(0)
+    );
+    assert_eq!(
+        body_constant_index(&mut builder, "99", 2, true)?,
+        ConstIdx::new(1)
+    );
+    let idx = body_constant_index(&mut builder, "7", 3, false)?;
+    assert_eq!(idx, ConstIdx::new(2));
+    assert_eq!(
+        builder.constants,
+        vec![ConstValue::I64(7), ConstValue::I64(99), ConstValue::I64(7)]
+    );
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_parse_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    assert_eq!(
+        body_constant_index(&mut builder, "1", 1, true)?,
+        ConstIdx::new(0)
+    );
+    for bad in ["bad", "9223372036854775808", "-9223372036854775809"] {
+        match body_constant_index(&mut builder, bad, 9, true) {
+            Ok(_) => return Err("expected parse error".into()),
+            Err(err) => assert_eq!(
+                err,
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: 9,
+                    field: "set.value",
+                    expected: "integer string"
+                }])
+            ),
+        }
+    }
+    assert_eq!(builder.constants, vec![ConstValue::I64(1)]);
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_extremes() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    let idx_min = body_constant_index(&mut builder, &i64::MIN.to_string(), 1, true)?;
+    let idx_max = body_constant_index(&mut builder, &i64::MAX.to_string(), 2, true)?;
+    let idx_zero = body_constant_index(&mut builder, "0", 3, true)?;
+    assert_eq!(idx_min, ConstIdx::new(0));
+    assert_eq!(idx_max, ConstIdx::new(1));
+    assert_eq!(idx_zero, ConstIdx::new(2));
+    assert_eq!(
+        builder.constants,
+        vec![
+            ConstValue::I64(i64::MIN),
+            ConstValue::I64(i64::MAX),
+            ConstValue::I64(0)
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_overflow() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    builder.constants = vec![ConstValue::I64(0); 65536];
+    match body_constant_index(&mut builder, "1", 1, true) {
+        Ok(_) => return Err("expected overflow error".into()),
+        Err(err) => assert_eq!(
+            err,
+            CompileErrors(vec![CompileError::Workflow(
+                WorkflowError::ConstOutOfBounds {
+                    constant: ConstIdx::new(u16::MAX)
+                }
+            )])
+        ),
+    }
+    assert_eq!(builder.constants.len(), 65536);
+    Ok(())
+}
+
+#[test]
+fn test_body_constant_index_reuse_when_full() -> Result<(), Box<dyn std::error::Error>> {
+    let mut builder = SlotCompiler::new();
+    builder.constants = vec![ConstValue::I64(0); 65536];
+    let idx = body_constant_index(&mut builder, "0", 1, true)?;
+    assert_eq!(idx, ConstIdx::new(0));
+    Ok(())
+}
+
+proptest! {
+    #[test]
+    fn test_body_constant_index_proptest(a in i64::MIN..=i64::MAX, b in i64::MIN..=i64::MAX) {
+        if a == b { return Ok(()); }
+        let mut builder = SlotCompiler::new();
+        let idx_a = body_constant_index(&mut builder, &a.to_string(), 1, true)
+            .map_err(|e| TestCaseError::fail(format!("{:?}", e)))?;
+        let idx_b = body_constant_index(&mut builder, &b.to_string(), 2, true)
+            .map_err(|e| TestCaseError::fail(format!("{:?}", e)))?;
+        prop_assert_eq!(idx_a, ConstIdx::new(0));
+        prop_assert_eq!(idx_b, ConstIdx::new(1));
+        prop_assert_eq!(builder.constants, vec![ConstValue::I64(a), ConstValue::I64(b)]);
+    }
+}

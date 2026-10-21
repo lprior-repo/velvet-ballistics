@@ -1,0 +1,15 @@
+Return ONLY complete Rust body_constant_index function replacing this exactfunction. Contract parse_i64_field(value,step,"set.value")? FIRST. If reuse_first_constant then builder.constants.iter().position(|entry|*entry==ConstValue::I64(constant)) return onlymatching index via u16::try_from(index).map_err(|_| CompileErrors(vec![CompileError::Workflow(WorkflowError::ConstOutOfBounds{constant:ConstIdx::new(u16::MAX)})]))?; ConstIdx::new(index). Else builder.push_constant(ConstValue::I64(constant)).map_err(|e|CompileErrors(vec![e])). No firstconstantfallback, no casts/index/unwrap/allow. Alltype/imports alreadyexist. Do not changefunctionsignature or addtype.
+pub(super) fn body_constant_index(
+    builder: &mut SlotCompiler,
+    value: &str,
+    step: usize,
+    reuse_first_constant: bool,
+) -> Result<ConstIdx, CompileErrors> {
+    if reuse_first_constant && !builder.constants.is_empty() {
+        return Ok(ConstIdx::new(0));
+    }
+    let constant = parse_i64_field(value, step, "set.value")?;
+    builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))
+}

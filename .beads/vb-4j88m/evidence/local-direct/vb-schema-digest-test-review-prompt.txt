@@ -1,0 +1,453 @@
+Independent test-reviewer suite review for vb-4j88m schema types and vb-86nyq numeric IRdigest. Findings first, namedtestwouldmissbug, STATUS APPROVED onlyallissuesresolvedotherwiseREJECTED. Scopeactualcontract, exacterrors, mutationresistance, deterministicpublicAPIs, noignoredtests. No proofs/planning. Actual9compiler+2runtime tests passed; CLI17inputtests passedbeforeexpandedAnyvaluesrerunpending. Compilerlib497pass0failincludesfullpropertysuite+branchconstantfix. AnyIDs onlykindmatching; ownedbackingoutsidecontract parentvb-ezymz. NewCompiledIrEncode error unreachablewithcurrentinmemorypostcardallocserializer exceptformattercapacity errors; notfakeinjectionclaim. Review actualtestsource. Coulddeletekindmapping?Anybranch?digesthash?Wouldnamedtestfail? No approval basedon toolversions.
+
+FILE .beads/vb-4j88m/contract.md
+# Input Schema Kind Resolution Contract
+
+## Bug
+Compiler called `kind_from_author_value` on schema declarations. Shorthand strings became `Symbol`; longform mappings became `Object`.
+
+## Fix
+Parse declared schema meaning, not author value shape.
+
+## Schema Forms
+- **Shorthand:** `text`, `number`, `boolean`, `object`, `any`, `list<any>`, `list<text>`, `list<number>`, `list<boolean>`
+- **Longform:** `{is: text|number|boolean|object|list|any, of: ..., fields: ..., default: ...}`
+
+## Kind Mappings
+| Schema | InputSlotKind |
+|--------|---------------|
+| text | Symbol |
+| number | I64 |
+| boolean | Bool |
+| object | Object |
+| list | List |
+| any | Any (new) |
+
+## Any Variant
+- Appended after `Blob` in enum; existing postcard discriminants unchanged
+- Accepts every recognized `SlotValue` shape in CLI mapping and runtime seeding
+- Typed exact kinds still reject mismatched values
+- Unknown future values fail closed
+- Schema wildcard only; not a stored `SlotValue` type
+
+## Error Handling
+- `kind_from_input_schema` returns `Result`
+- No unchecked indexing, casts, `unwrap`, `unsafe`, or `panic`
+- Unknown/malformed schema in `compile_source` returns `CompileError::InvalidInputSchema`
+- No `Null` fallback
+
+## Invariants
+- Numeric source order preserved
+- Slots and digest include input schemas
+- Actual types: `AuthorValue::Text(String)`, `Mapping(Vec<AuthorEntry<AuthorValue>>)`
+
+## Runtime & CLI
+- Runtime and helper kind matching updated for `Any`
+- CLI mapper handles `Any` for all primitives
+- Kind mismatch errors preserved for typed slots
+- IPC receives runtime validation; no new HTTP types
+
+## Behavioral Tests
+- Public compiler: shorthand/longform kind resolution, digest binding, source order
+- Invalid direct schema returns `CompileError::InvalidInputSchema`
+- Runtime: exact kind acceptance vs `Any` wildcard
+- CLI: `Any` maps all primitives; kind mismatch preserved for typed slots
+
+## Scope
+No full owned handle persistence. No v1 complete claim.
+FILE .beads/vb-86nyq/contract.md
+# Domain
+
+Compiler fingerprinting for numeric intermediate representation.
+
+# Invariant
+
+The fingerprint binds the complete emitted numeric intermediate representation, including declared input kinds. It is calculated from deterministic binary bytes with the fingerprint field zeroed, then stored in that field.
+
+# Errors
+
+A typed compiler encoding error is returned if serializing the emitted IR fails.
+
+# Acceptance
+
+Independent tests recalculate the fingerprint and verify it changes when an input kind or constant is altered. Strict storage admission must accept real compiler output with its correct IR digest, and reject a stale digest after IR mutation. The legacy authoring fingerprint helper remains separate. No release completion or mathematical proof is claimed.
+
+Coordinator clarification: storage admission here means a regression using the existing storage API; compiler code does not write to a database.
+
+FILE crates/workspace_tests/tests/compiler_input_schema_kinds.rs
+use vb_core::InputSlotKind;
+
+fn source(schema: &str) -> String {
+    format!(
+        "version: velvet-ballistics/v1\nname: schema_kind\nwhen:\n  manual: {{}}\ninputs:\n  value: {schema}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n"
+    )
+}
+
+#[test]
+fn schema_kind_mapping() -> Result<(), Box<dyn std::error::Error>> {
+    let cases = [
+        ("text", InputSlotKind::Symbol),
+        ("number", InputSlotKind::I64),
+        ("boolean", InputSlotKind::Bool),
+        ("object", InputSlotKind::Object),
+        ("any", InputSlotKind::Any),
+        ("list<any>", InputSlotKind::List),
+        ("list<text>", InputSlotKind::List),
+        ("list<number>", InputSlotKind::List),
+        ("list<boolean>", InputSlotKind::List),
+    ];
+
+    for (schema, expected) in cases {
+        let compiled = vb_compile::compile_workflow(source(schema).as_bytes())?;
+        let slots = compiled.input_slots();
+        if slots.len() != 1 {
+            return Err(format!("expected 1 slot for {schema}, got {}", slots.len()).into());
+        }
+        let slot = slots.first().ok_or(std::io::Error::other("missing slot"))?;
+        if slot.kind != expected {
+            return Err(format!("slot kind mismatch for {schema}").into());
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_schema_kind_mapping() -> Result<(), Box<dyn std::error::Error>> {
+    let cases = [
+        ("{is: text}", InputSlotKind::Symbol),
+        ("{is: number}", InputSlotKind::I64),
+        ("{is: boolean}", InputSlotKind::Bool),
+        ("{is: any}", InputSlotKind::Any),
+        ("{is: object, fields: {}}", InputSlotKind::Object),
+        ("{is: list, of: number}", InputSlotKind::List),
+    ];
+    for (schema, expected) in cases {
+        let compiled = vb_compile::compile_workflow(source(schema).as_bytes())?;
+        let slots = compiled.input_slots();
+        if slots.len() != 1 {
+            return Err(format!("expected 1 slot, got {}", slots.len()).into());
+        }
+        let slot = slots.first().ok_or("missing slot")?;
+        if slot.kind != expected {
+            return Err(format!("expected {:?}, got {:?}", expected, slot.kind).into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_digest_stability_and_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+    let src = source("{is: number}");
+    let c1 = vb_compile::compile_workflow(src.as_bytes())?;
+    let c2 = vb_compile::compile_workflow(src.as_bytes())?;
+    if c1.digest() != c2.digest() {
+        return Err("digest not stable".into());
+    }
+    let c3 = vb_compile::compile_workflow(source("{is: boolean}").as_bytes())?;
+    if c1.digest() == c3.digest() {
+        return Err("different schemas should have different digests".into());
+    }
+    let parts = c1.to_parts();
+    let bytes = postcard::to_allocvec(&parts)?;
+    let restored_parts = postcard::from_bytes::<vb_core::WorkflowParts>(&bytes)?;
+    let restored = vb_core::CompiledWorkflow::try_from_parts(restored_parts)?;
+    let slots = restored.input_slots();
+    if slots.len() != 1 {
+        return Err("roundtrip lost input slot".into());
+    }
+    let slot = slots.first().ok_or("missing slot after roundtrip")?;
+    if slot.kind != InputSlotKind::I64 {
+        return Err("roundtrip changed slot kind".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn test_postcard_ordinals() -> Result<(), Box<dyn std::error::Error>> {
+    let table = [
+        (InputSlotKind::Null, 0u8),
+        (InputSlotKind::Bool, 1),
+        (InputSlotKind::I64, 2),
+        (InputSlotKind::F64, 3),
+        (InputSlotKind::Symbol, 4),
+        (InputSlotKind::List, 5),
+        (InputSlotKind::Object, 6),
+        (InputSlotKind::Blob, 7),
+        (InputSlotKind::Any, 8),
+    ];
+    for (kind, expected) in table {
+        let bytes = postcard::to_allocvec(&kind)?;
+        assert_eq!(bytes, vec![expected], "ordinal mismatch for {kind:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn test_deterministic_compile_and_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src = source("number");
+    let compiled1 = vb_compile::compile_workflow(src.as_bytes())?;
+    let compiled2 = vb_compile::compile_workflow(src.as_bytes())?;
+    assert_eq!(compiled1.digest(), compiled2.digest());
+
+    let parts = compiled1.to_parts();
+    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_ne!(parts.digest, zero);
+
+    let mut parts_for_recompute = parts.clone();
+    parts_for_recompute.digest = zero;
+    let computed = vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts_for_recompute)?).into(),
+    );
+    assert_eq!(computed, parts.digest);
+    Ok(())
+}
+
+#[test]
+fn test_constant_change_alters_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src_a = source("number");
+    let src_b = src_a.replace("value: '42'", "value: '43'");
+    let compiled_a = vb_compile::compile_workflow(src_a.as_bytes())?;
+    let compiled_b = vb_compile::compile_workflow(src_b.as_bytes())?;
+    assert_ne!(compiled_a.digest(), compiled_b.digest());
+
+    let parts_a = compiled_a.to_parts();
+    let parts_b = compiled_b.to_parts();
+    assert_ne!(parts_a.constants, parts_b.constants);
+    Ok(())
+}
+
+#[test]
+fn test_journal_rejects_mutated_payload() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let journal = vb_storage::FjallJournal::open(dir.path(), None)?;
+    let src = source("number");
+    let compiled = vb_compile::compile_workflow(src.as_bytes())?;
+    let accepted =
+        vb_storage::submit_artifact(&journal, &compiled, vb_core::RuntimePolicy::Strict)?;
+    assert_eq!(accepted.ir, postcard::to_allocvec(&compiled.to_parts())?);
+
+    let parts = compiled.to_parts();
+    let mut parts_mut = parts.clone();
+    let slot = parts_mut.input_slots.first_mut().ok_or("missing port")?;
+    slot.kind = vb_core::InputSlotKind::Bool;
+    let rebuilt = vb_core::CompiledWorkflow::try_from_parts(parts_mut)?;
+    assert!(matches!(
+        vb_storage::submit_artifact(&journal, &rebuilt, vb_core::RuntimePolicy::Strict),
+        Err(vb_storage::JournalError::ArtifactChecksumMismatch)
+    ));
+    Ok(())
+}
+
+#[test]
+fn test_input_slot_ordering() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = source("number").replace("  value: number", "  zulu: boolean\n  alpha: number");
+    let compiled = vb_compile::compile_workflow(yaml.as_bytes())?;
+    let kinds: Vec<vb_core::InputSlotKind> =
+        compiled.input_slots().iter().map(|s| s.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![vb_core::InputSlotKind::Bool, vb_core::InputSlotKind::I64]
+    );
+    let slots = compiled.input_slots();
+    for pair in slots.windows(2) {
+        let [a, b] = pair else {
+            return Err("pair".into());
+        };
+        assert!(a.slot.get() < b.slot.get());
+    }
+    Ok(())
+}
+
+#[test]
+fn test_invalid_input_schemas() -> Result<(), Box<dyn std::error::Error>> {
+    let base = vb_compile::parse_workflow_source(&source("number"))?;
+    let invalid_schemas = vec![
+        vb_compile::AuthorValue::Text("list<garbage>".into()),
+        vb_compile::AuthorValue::Text("unknown".into()),
+        vb_compile::AuthorValue::Mapping(vec![]),
+        vb_compile::AuthorValue::Mapping(vec![vb_compile::AuthorEntry {
+            key: "is".into(),
+            value: vb_compile::AuthorValue::Text("unknown".into()),
+        }]),
+    ];
+    for invalid in invalid_schemas {
+        let modified = vb_compile::WorkflowSource::new(vb_compile::WorkflowSourceParts {
+            version: base.version().into(),
+            name: base.name().into(),
+            trigger: base.trigger().clone(),
+            inputs: vec![vb_compile::InputField {
+                key: "value".into(),
+                value: invalid,
+            }],
+            vars: vec![],
+            secrets: vec![],
+            steps: base.steps().to_vec(),
+            result: None,
+            examples: vec![],
+        });
+        let result = vb_compile::compile_source(&modified);
+        assert_eq!(
+            result,
+            Err(vb_compile::CompileErrors(vec![
+                vb_compile::CompileError::InvalidInputSchema {
+                    field: "inputs".into(),
+                    expected: "an allowed input schema".into(),
+                }
+            ]))
+        );
+    }
+    Ok(())
+}
+
+FILE crates/workspace_tests/tests/runtime_input_schema_kinds.rs
+use std::error::Error;
+use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::workflow::{
+    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
+    ResourceContract, WorkflowParts,
+};
+use vb_core::{SlotIdx, SlotValue};
+
+type TestResult<T> = Result<T, Box<dyn Error>>;
+
+fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("input-mapping"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+        input_slots,
+    };
+    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string().into())
+}
+
+use vb_core::RunId;
+use vb_core::frame::RunFrame;
+use vb_runtime::RuntimeError;
+use vb_runtime::shard::helpers::seed_input_slots;
+
+#[test]
+fn test_any_slot_accepts_all_values() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture(Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::Any,
+    }]))?;
+    let values = [
+        vb_core::SlotValue::Null,
+        vb_core::SlotValue::Bool(false),
+        vb_core::SlotValue::Bool(true),
+        vb_core::SlotValue::I64(i64::MIN),
+        vb_core::SlotValue::I64(i64::MAX),
+        vb_core::SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+        vb_core::SlotValue::Symbol(vb_core::SymbolId::new(0)),
+        vb_core::SlotValue::List(vb_core::ListId::new(0)),
+        vb_core::SlotValue::Object(vb_core::ObjectId::new(0)),
+        vb_core::SlotValue::Blob(vb_core::BlobId::new(0)),
+    ];
+    for value in values {
+        let mut frame = RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count())?;
+        seed_input_slots(&mut frame, &[(SlotIdx::new(2), value)], &wf)?;
+        let read = frame.read_slot(SlotIdx::new(2))?;
+        if read != &value {
+            return Err(Box::from("read mismatch"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_i64_slot_rejects_bool() -> Result<(), Box<dyn std::error::Error>> {
+    let wf = fixture(Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::I64,
+    }]))?;
+    let mut frame = RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count())?;
+    let before = frame.read_slot(SlotIdx::new(2)).copied();
+    let result = seed_input_slots(&mut frame, &[(SlotIdx::new(2), SlotValue::Bool(true))], &wf);
+    let after = frame.read_slot(SlotIdx::new(2)).copied();
+    if before != after {
+        return Err(Box::from("slot changed"));
+    }
+    match result {
+        Err(RuntimeError::RuntimeInputSlotKindMismatch {
+            slot,
+            expected,
+            actual,
+        }) => {
+            if slot != SlotIdx::new(2)
+                || expected != InputSlotKind::I64
+                || actual != InputSlotKind::Bool
+            {
+                return Err(Box::from("wrong mismatch"));
+            }
+        }
+        other => return Err(Box::from(format!("unexpected: {:?}", other))),
+    }
+    Ok(())
+}
+
+CLI TESTS
+proptest::proptest! {
+    #[test]
+    fn typed_i64_mapping_and_trailing_rejection(value in proptest::num::i64::ANY, junk in proptest::collection::vec(proptest::num::u8::ANY, 1..17)) {
+        let wf = fixture(Box::from([i64_port()]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        let mut bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(value)]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(value))]))
+        );
+        bytes.extend(junk);
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Err(InputMappingError::DecodeFailed)
+        );
+    }
+}
+
+#[test]
+fn any_port_maps_primitives() -> TestResult<()> {
+    let wf = fixture(Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::Any,
+    }]))?;
+    let values = [
+        vb_core::SlotValue::Null,
+        vb_core::SlotValue::Bool(false),
+        vb_core::SlotValue::Bool(true),
+        vb_core::SlotValue::I64(i64::MIN),
+        vb_core::SlotValue::I64(i64::MAX),
+        vb_core::SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+        vb_core::SlotValue::Symbol(vb_core::SymbolId::new(0)),
+        vb_core::SlotValue::List(vb_core::ListId::new(0)),
+        vb_core::SlotValue::Object(vb_core::ObjectId::new(0)),
+        vb_core::SlotValue::Blob(vb_core::BlobId::new(0)),
+    ];
+    for value in values {
+        let bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([value]))?;
+        assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), value)]))
+        );
+    }
+    Ok(())
+}

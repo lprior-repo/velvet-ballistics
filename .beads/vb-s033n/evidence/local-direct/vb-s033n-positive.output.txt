@@ -1,0 +1,47 @@
+```rust
+#[test]
+fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
+    use vb_storage::{FjallJournal, EventSeq};
+    use vb_core::compile_workflow;
+
+    let modes = ["none", "journaled", "strict"];
+    let cases = [
+        (NO_PORTS_YAML, vec![]),
+        (NO_PORTS_YAML, postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?),
+        (NUMBER_PORT_YAML, postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?),
+    ];
+
+    for mode in &modes {
+        for (yaml, input) in &cases {
+            let dir = tempdir()?;
+            let wf_path = write_file(&dir, "wf.yaml", yaml.as_bytes())?;
+            let inp_path = write_file(&dir, "inp.bin", input)?;
+            let db = db_path(&dir);
+
+            let out = subprocess(&wf_path, &inp_path, &db, mode)?;
+            assert_eq!(out.status, Some(Ok(0)));
+            assert!(out.stderr.is_empty());
+
+            let compiled = compile_workflow(yaml)?;
+            let journal = FjallJournal::open(&db, None)?;
+            let headers = journal.run_headers()?;
+            assert_eq!(headers.len(), 1);
+            let header = headers.first().unwrap();
+            assert_eq!(header.compiled_digest, compiled.digest());
+            assert_eq!(header.status, 0);
+
+            let digest_hex = compiled.digest().as_bytes().iter().map(|b| format!("{b:02x}")).collect::<String>();
+            let expected = format!("submitted run {}\n  digest:     {}\n  steps:      {}\n  durability: {}\n  status:     submitted\n", header.run.get(), digest_hex, compiled.node_count(), mode);
+            assert_eq!(String::from_utf8_lossy(&out.stdout), expected);
+
+            let events = journal.events_for_run(header.run)?;
+            if *mode == "none" {
+                assert!(events.is_empty());
+            } else {
+                assert_eq!(events, vec![vb_storage::JournalEvent::RunAccepted { run: header.run, seq: EventSeq::new(0), workflow: compiled.digest() }]);
+            }
+        }
+    }
+    Ok(())
+}
+```

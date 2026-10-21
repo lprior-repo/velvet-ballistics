@@ -134,7 +134,7 @@ pub(crate) fn map_runtime_inputs(
                 vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
                 _ => return Err(InputMappingError::DecodeFailed),
             };
-            if value_kind != slot.kind {
+            if slot.kind != vb_core::InputSlotKind::Any && value_kind != slot.kind {
                 return Err(InputMappingError::KindMismatch {
                     slot: slot.slot,
                     expected_kind: slot.kind,

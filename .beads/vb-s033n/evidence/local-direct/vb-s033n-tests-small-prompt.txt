@@ -1,0 +1,97 @@
+Return FULL Rust file from this draft but only first4 tests; no extra tests. Exact API fixes: remove "file" arg; NUMBER_PORT_YAML declare count:number but constant42 save saved then finishsaved like NO_PORTS_YAML (inputunused). Encode Box<[vb_core::SlotValue]>::from([I64(7)]) or Bool(true) rather thanbare7ortrue. Use !Path::new(&db).try_exists()? instead metadata. Kindmismatch expected format!("INPUT_MAPPING_FAILED: slot {:?} value kind mismatch, expected I64\n",slot.slot). Keep exactstderr/exit2/noDB/3durabilitymodes checks. No other APIs. No >160lines. Output Rust ONLY.
+```rust
+use std::fs;
+use std::io::Write;
+use std::process::Command;
+use tempfile::tempdir;
+
+const NO_PORTS_YAML: &str = "version: velvet-ballistics/v1\nname: submit_boundary\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
+const NUMBER_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_number\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
+
+fn subprocess(wf: &str, inp: &str, db: &str, mode: &str) -> std::io::Result<std::process::Output> {
+    Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["submit", "file", wf, "--input-bin", inp, "--db", db, "--durability", mode])
+        .output()
+}
+
+fn write_file(dir: &tempfile::TempDir, name: &str, data: &[u8]) -> std::io::Result<String> {
+    let path = dir.path().join(name);
+    let mut f = fs::File::create(&path)?;
+    f.write_all(data)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+fn db_path(dir: &tempfile::TempDir) -> String {
+    dir.path().join("db").to_string_lossy().to_string()
+}
+
+#[test]
+fn malformed_decode_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &[255])?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        assert_eq!(out.stderr, b"INPUT_MAPPING_FAILED: input-bin decode failed\n");
+        assert!(!fs::metadata(&db).is_ok());
+    }
+    Ok(())
+}
+
+#[test]
+fn encoded_empty_plus_garbage_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &[0, 255])?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        assert_eq!(out.stderr, b"INPUT_MAPPING_FAILED: input-bin decode failed\n");
+        assert!(!fs::metadata(&db).is_ok());
+    }
+    Ok(())
+}
+
+#[test]
+fn excess_slots_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    let encoded = postcard::to_allocvec(&7i64)?;
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &encoded)?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        assert_eq!(out.stderr, b"INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count\n");
+        assert!(!fs::metadata(&db).is_ok());
+    }
+    Ok(())
+}
+
+#[test]
+fn bool_kind_mismatch_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    let compiled = vb_compile::compile_workflow(NUMBER_PORT_YAML.as_bytes())?;
+    let slot = compiled.input_slots().first().ok_or("no input slot")?;
+    let encoded = postcard::to_allocvec(&true)?;
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", NUMBER_PORT_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &encoded)?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        let expected = format!("INPUT_MAPPING_FAILED: input slot {} kind mismatch expected I64\n", slot);
+        assert_eq!(out.stderr, expected.as_bytes());
+        assert!(!fs::metadata(&db).is_ok());
+    }
+    Ok(())
+}
+
