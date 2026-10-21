@@ -1,7 +1,7 @@
 # Bead vb-jei3u Contract
 
 ## Subject
-Production compile_source digest determinism and Finish result/position
+Production compile_source digest determinism and Finish result/identifier
 sensitivity over valid workflows; invalid slot inputs must return exact
 typed ResourceContractExceeded max_slots errors, never silently filtered.
 
@@ -17,8 +17,8 @@ typed ResourceContractExceeded max_slots errors, never silently filtered.
    different digest. The slot index is part of the canonical source
    representation that is hashed.
 
-3. **Finish Step Position Sensitivity (C3)**: Changing step IDs (which
-   determine step ordering) produces different digests because step IDs
+3. **Finish Step Identifier Sensitivity (C3)**: Changing step IDs
+   produces different digests because step IDs
    are encoded in the canonical source representation.
 
 4. **Invalid Slot Input Handling**: Slot indices from max_slots (1024 in

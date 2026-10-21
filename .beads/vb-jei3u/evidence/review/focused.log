@@ -1,0 +1,46 @@
+   Compiling logos-codegen v0.15.1
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.15.5
+   Compiling beef v0.5.2
+   Compiling lazy_static v1.5.0
+   Compiling hashlink v0.10.0
+   Compiling once_cell v1.21.4
+   Compiling arraydeque v0.5.1
+   Compiling saphyr-parser v0.0.6
+   Compiling tempfile v3.27.0
+   Compiling logos-derive v0.15.1
+   Compiling ordered-float v5.3.0
+   Compiling rusty-fork v0.3.1
+   Compiling saphyr v0.0.6
+   Compiling logos v0.15.1
+   Compiling proptest v1.11.0
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_yaml)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_validate)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.15s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-774085096e2424b3)
+
+running 10 tests
+test proptest_finish_digest::slot_at_u16_max_fails_with_slot_index_out_of_range ... ok
+test proptest_finish_digest::slot_at_max_fails_with_max_slots_error ... ok
+test proptest_finish_digest::slot_at_max_minus_one_compiles ... ok
+test proptest_finish_digest::slot_at_max_plus_one_fails_with_max_slots_error ... ok
+test proptest_finish_digest::slot_5000_fails_with_max_slots_error ... ok
+test proptest_finish_digest::canonical_digest_is_deterministic ... ok
+test proptest_finish_digest::finish_result_change_changes_digest_integer ... ok
+test proptest_finish_digest::finish_position_change_changes_digest ... ok
+test proptest_finish_digest::finish_result_change_changes_digest_string ... ok
+test proptest_finish_digest::invalid_slot_values_rejected ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.35s
+
