@@ -160,7 +160,7 @@ fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn st
 
 #[test]
 fn validate_contracts_accepts_valid_do_contract() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract = make_contract(0, "real_action")?;
     let result = shard.validate_submit_admission_with_contracts(
@@ -179,7 +179,7 @@ fn validate_contracts_accepts_valid_do_contract() -> Result<(), Box<dyn std::err
 
 #[test]
 fn validate_contracts_rejects_fabricated_action_id() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract = make_contract(999, "not_in_workflow")?;
     let result = shard.validate_submit_admission_with_contracts(
@@ -200,7 +200,7 @@ fn validate_contracts_rejects_fabricated_action_id() -> Result<(), Box<dyn std::
 
 #[test]
 fn validate_contracts_rejects_duplicate_action_ids() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract = make_contract(0, "foo")?;
     let result = shard.validate_submit_admission_with_contracts(
@@ -221,7 +221,7 @@ fn validate_contracts_rejects_duplicate_action_ids() -> Result<(), Box<dyn std::
 
 #[test]
 fn validate_contracts_rejects_missing_capability() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let required = vb_core::capability::Capability::new("needed".into(), ActionId::new(0));
     let contract = vb_core::action::ActionContract {
@@ -256,7 +256,7 @@ fn validate_contracts_rejects_missing_capability() -> Result<(), Box<dyn std::er
 
 #[test]
 fn validate_contracts_accepts_with_capability() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let cap = vb_core::capability::Capability::new("needed".into(), ActionId::new(0));
     let caps = CapabilitySet::from_grants(Box::from([cap]));
@@ -288,7 +288,7 @@ fn validate_contracts_accepts_with_capability() -> Result<(), Box<dyn std::error
 
 #[test]
 fn validate_contracts_rejection_is_non_mutating() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract = make_contract(999, "not_in_workflow")?;
     let run = RunId::new(1);
@@ -346,7 +346,7 @@ fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::err
         input_slots: Box::from([]),
     })?;
 
-    let mut shard = test_shard();
+    let shard = test_shard();
     let contract = make_contract(0, "reused")?;
     let result = shard.validate_submit_admission_with_contracts(
         RunId::new(1),
@@ -364,7 +364,7 @@ fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::err
 
 #[test]
 fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     // Use postcard to deserialize an empty ActionName (constructor rejects "")
     let empty_bytes = b"\x00\x00";
@@ -439,7 +439,7 @@ fn validate_contracts_accepts_multiple_distinct_action_ids(
         input_slots: Box::from([]),
     })?;
 
-    let mut shard = test_shard();
+    let shard = test_shard();
     let contract0 = make_contract(0, "first")?;
     let contract1 = make_contract(1, "second")?;
     let result = shard.validate_submit_admission_with_contracts(
@@ -459,7 +459,7 @@ fn validate_contracts_accepts_multiple_distinct_action_ids(
 #[test]
 fn validate_contracts_rejects_missing_referenced_action() -> Result<(), Box<dyn std::error::Error>>
 {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(10)?;
     let contract = make_contract(0, "only_action")?;
     let result = shard.validate_submit_admission_with_contracts(
@@ -481,7 +481,7 @@ fn validate_contracts_rejects_missing_referenced_action() -> Result<(), Box<dyn 
 #[test]
 fn validate_contracts_accepts_unused_dense_entries() -> Result<(), Box<dyn std::error::Error>> {
     // Registry with 3 contracts, workflow only uses action 0
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract0 = make_contract(0, "used")?;
     let contract1 = make_contract(1, "unused1")?;
@@ -502,7 +502,7 @@ fn validate_contracts_accepts_unused_dense_entries() -> Result<(), Box<dyn std::
 
 #[test]
 fn validate_contracts_rejects_sparse_registry() -> Result<(), Box<dyn std::error::Error>> {
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract0 = make_contract(0, "ok")?;
     let contract2 = make_contract(2, "sparse")?;
@@ -527,7 +527,7 @@ fn validate_contracts_duplicate_precedes_index_mismatch() -> Result<(), Box<dyn 
 {
     // Two contracts with ID 3, at indices 0 and 1 — duplicate must be detected
     // before the index mismatch at index 0
-    let mut shard = test_shard();
+    let shard = test_shard();
     let workflow = do_workflow(0)?;
     let contract_a = make_contract(3, "dup")?;
     let contract_b = make_contract(3, "dup2")?;

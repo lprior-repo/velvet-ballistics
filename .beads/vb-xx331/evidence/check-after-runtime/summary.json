@@ -1,0 +1,6 @@
+{
+  "exit_code": 1,
+  "scope": "canonical moon :check",
+  "result": "failed: next stale workspace test fixture missing WorkflowParts.input_slots, tracked vb-bwdf0; no full CI green claim",
+  "inner_cargo_exit_code": 101
+}
