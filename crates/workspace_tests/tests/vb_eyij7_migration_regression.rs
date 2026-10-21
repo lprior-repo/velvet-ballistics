@@ -89,12 +89,8 @@ fn workspace_has_exactly_11_members() -> Result<(), Box<dyn std::error::Error>> 
 
     // Check exact set equality
     if actual_set != expected {
-        let missing: Vec<&String> = expected
-            .difference(&actual_set)
-            .collect();
-        let extra: Vec<&String> = actual_set
-            .difference(&expected)
-            .collect();
+        let missing: Vec<&String> = expected.difference(&actual_set).collect();
+        let extra: Vec<&String> = actual_set.difference(&expected).collect();
 
         let mut msg = "Workspace member set mismatch".to_string();
         if !missing.is_empty() {
@@ -144,7 +140,11 @@ fn workspace_members_are_in_canonical_order() -> Result<(), Box<dyn std::error::
 fn workspace_no_old_member_names() -> Result<(), Box<dyn std::error::Error>> {
     let actual = workspace_members()?;
 
-    let old_names = ["crates/vb_cli", "crates/vb_queue_semantics", "crates/vb_boundary_inventory"];
+    let old_names = [
+        "crates/vb_cli",
+        "crates/vb_queue_semantics",
+        "crates/vb_boundary_inventory",
+    ];
     for old in &old_names {
         if actual.iter().any(|m| m == old) {
             return Err(format!("Old workspace member name still present: {}", old).into());
@@ -204,7 +204,10 @@ fn cargo_metadata_resolves_exactly_11_packages() -> Result<(), Box<dyn std::erro
         ("vb_runtime", "crates/vb_runtime"),
         ("vb_ipc", "crates/vb_ipc"),
         ("velvet-ballistics", "crates/velvet_ballistics"),
-        ("velvet-ballistics-workspace-tests", "crates/workspace_tests"),
+        (
+            "velvet-ballistics-workspace-tests",
+            "crates/workspace_tests",
+        ),
         ("velvet-ballistics-fuzz", "fuzz"),
     ]);
 
@@ -283,13 +286,18 @@ fn vb_yaml_rejects_merge_keys_with_specific_error() -> Result<(), Box<dyn std::e
     let yaml = "defaults: &d\n  a: 1\nitem:\n  <<: *d\n";
     match vb_yaml::validate_yaml_profile(yaml) {
         Err(vb_yaml::YamlError::AnchorAliasMerge) => Ok(()),
-        Err(other) => Err(format!("Expected AnchorAliasMerge error for merge key, got {:?}", other).into()),
+        Err(other) => Err(format!(
+            "Expected AnchorAliasMerge error for merge key, got {:?}",
+            other
+        )
+        .into()),
         Ok(_) => Err("Expected merge key error, got Ok".into()),
     }
 }
 
 #[test]
-fn vb_yaml_rejects_multiple_documents_with_specific_error() -> Result<(), Box<dyn std::error::Error>> {
+fn vb_yaml_rejects_multiple_documents_with_specific_error() -> Result<(), Box<dyn std::error::Error>>
+{
     let yaml = "a: 1\n---\nb: 2\n";
     match vb_yaml::validate_yaml_profile(yaml) {
         Err(vb_yaml::YamlError::MultipleDocuments { count }) => {
@@ -356,7 +364,8 @@ fn vb_expr_eval_returns_result() -> Result<(), Box<dyn std::error::Error>> {
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[test]
-fn expr_error_from_core_error_preserves_division_by_zero() -> Result<(), Box<dyn std::error::Error>> {
+fn expr_error_from_core_error_preserves_division_by_zero() -> Result<(), Box<dyn std::error::Error>>
+{
     let core_err = vb_core::CoreError::DivisionByZero;
     let expr_err: vb_expr::ExprError = core_err.into();
     if !matches!(expr_err, vb_expr::ExprError::DivisionByZero) {
@@ -366,7 +375,8 @@ fn expr_error_from_core_error_preserves_division_by_zero() -> Result<(), Box<dyn
 }
 
 #[test]
-fn expr_error_from_core_error_preserves_stack_underflow() -> Result<(), Box<dyn std::error::Error>> {
+fn expr_error_from_core_error_preserves_stack_underflow() -> Result<(), Box<dyn std::error::Error>>
+{
     let core_err = vb_core::CoreError::ExpressionStackUnderflow;
     let expr_err: vb_expr::ExprError = core_err.into();
     if !matches!(expr_err, vb_expr::ExprError::StackUnderflow) {
@@ -419,8 +429,11 @@ fn expr_error_from_core_error_preserves_non_finite() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn expr_error_from_core_error_fallback_is_unexpected_eof() -> Result<(), Box<dyn std::error::Error>> {
-    let core_err = vb_core::CoreError::InvalidProgramCounter { step: vb_core::StepIdx::new(0) };
+fn expr_error_from_core_error_fallback_is_unexpected_eof() -> Result<(), Box<dyn std::error::Error>>
+{
+    let core_err = vb_core::CoreError::InvalidProgramCounter {
+        step: vb_core::StepIdx::new(0),
+    };
     let expr_err: vb_expr::ExprError = core_err.into();
     if !matches!(expr_err, vb_expr::ExprError::UnexpectedEof) {
         return Err(format!("Expected ExprError::UnexpectedEof, got: {:?}", expr_err).into());
@@ -471,7 +484,11 @@ fn velvet_ballistics_package_name_is_correct() -> Result<(), Box<dyn std::error:
         .ok_or_else(|| "package.name not found")?;
 
     if pkg_name != "velvet-ballistics" {
-        return Err(format!("Expected package.name = 'velvet-ballistics', got '{}'", pkg_name).into());
+        return Err(format!(
+            "Expected package.name = 'velvet-ballistics', got '{}'",
+            pkg_name
+        )
+        .into());
     }
 
     Ok(())
@@ -490,7 +507,11 @@ fn velvet_ballistics_lib_name_is_correct() -> Result<(), Box<dyn std::error::Err
         .ok_or_else(|| "lib.name not found")?;
 
     if lib_name != "velvet_ballistics" {
-        return Err(format!("Expected lib.name = 'velvet_ballistics', got '{}'", lib_name).into());
+        return Err(format!(
+            "Expected lib.name = 'velvet_ballistics', got '{}'",
+            lib_name
+        )
+        .into());
     }
 
     Ok(())
@@ -537,7 +558,10 @@ fn vb_compile_has_no_duplicate_expr_modules() -> Result<(), Box<dyn std::error::
         let entry = entry?;
         let name = entry.file_name();
         let name_str = name.to_string_lossy().to_string();
-        if name_str.starts_with("expr_") && name_str != "expression.rs" && name_str != "expression_bytecode.rs" {
+        if name_str.starts_with("expr_")
+            && name_str != "expression.rs"
+            && name_str != "expression_bytecode.rs"
+        {
             return Err(format!("Duplicate old expr module in vb_compile: {}", name_str).into());
         }
     }
@@ -585,7 +609,13 @@ fn fuzz_targets_exist() -> Result<(), Box<dyn std::error::Error>> {
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect();
 
-    let required = ["yaml_events", "expression", "ipc_frame", "journal_event", "compiled_ir"];
+    let required = [
+        "yaml_events",
+        "expression",
+        "ipc_frame",
+        "journal_event",
+        "compiled_ir",
+    ];
     for req in &required {
         let expected = format!("{}.rs", req);
         if !target_names.contains(&expected) {

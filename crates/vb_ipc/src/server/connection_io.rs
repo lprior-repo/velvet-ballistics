@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 //! Single-flight framing and bounded partial I/O.
 use super::dispatch::dispatch_command_with_resolver;
-use super::helpers::{MagicValidationState, validate_magic_early};
+use super::helpers::{validate_magic_early, MagicValidationState};
 use super::{
     ClientConnection, ClosePolicy, IpcResponse, IpcServer, IpcServerError, WorkflowResolver,
 };
-use crate::{IPC_HEADER_LEN, IpcError, IpcFrameHeader, MaxPayloadBytes};
+use crate::{IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN};
 use mio::{Interest, Token};
 use std::io::{Read, Write};
 use vb_runtime::runtime::Runtime;
@@ -16,6 +16,17 @@ enum ReadProgress {
     Incomplete,
     Closed,
     Request(IpcFrameHeader),
+}
+
+enum WriteResult {
+    /// Connection closed (peer EOF).
+    Closed,
+    /// Bytes written; caller should continue writing.
+    Wrote,
+    /// Would block; try again later.
+    WouldBlock,
+    /// Interrupted; retry immediately.
+    Interrupted,
 }
 
 struct ReadyRequest {
@@ -105,8 +116,11 @@ impl IpcServer {
             if client.write_buffer.is_empty() {
                 return finish_response(client, self.poll.registry(), token);
             }
-            if let Some(close) = write_pending_chunk(client)? {
-                return Ok(close);
+            match write_pending_chunk(client)? {
+                WriteResult::Closed => return Ok(true),
+                WriteResult::Wrote => continue,
+                WriteResult::WouldBlock => return Ok(false),
+                WriteResult::Interrupted => continue,
             }
         }
         client.write_ready = true;
@@ -120,18 +134,20 @@ fn clone_registry(poll: &mio::Poll) -> Result<mio::Registry, IpcServerError> {
         .map_err(|source| IpcServerError::PollFailed { source })
 }
 
-fn write_pending_chunk(client: &mut ClientConnection) -> Result<Option<bool>, IpcServerError> {
+fn write_pending_chunk(client: &mut ClientConnection) -> Result<WriteResult, IpcServerError> {
     match client.stream.write(&client.write_buffer) {
-        Ok(0) => Ok(Some(true)),
+        Ok(0) => Ok(WriteResult::Closed),
         Ok(count) => {
             client.write_buffer.drain(..count).for_each(|_| ());
-            Ok(None)
+            Ok(WriteResult::Wrote)
         }
         Err(source) if source.kind() == std::io::ErrorKind::WouldBlock => {
             client.write_ready = false;
-            Ok(Some(false))
+            Ok(WriteResult::WouldBlock)
         }
-        Err(source) if source.kind() == std::io::ErrorKind::Interrupted => Ok(None),
+        Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {
+            Ok(WriteResult::Interrupted)
+        }
         Err(source) => Err(IpcServerError::ResponseWriteFailed { source }),
     }
 }

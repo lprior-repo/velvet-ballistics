@@ -646,7 +646,9 @@ mod tests {
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(0), attempt: 1},
+                    step: StepIdx::new(0),
+                    attempt: 1
+                },
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
@@ -662,7 +664,9 @@ mod tests {
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(1), attempt: 1},
+                    step: StepIdx::new(1),
+                    attempt: 1
+                },
                 RuntimeJournalEvent::StepSucceeded {
                     run,
                     step: StepIdx::new(1),
@@ -671,7 +675,9 @@ mod tests {
                 },
                 RuntimeJournalEvent::RunFinished {
                     run,
-                    result: SlotIdx::ZERO, attempt: 1},
+                    result: SlotIdx::ZERO,
+                    attempt: 1
+                },
             ])
         );
         Ok(())

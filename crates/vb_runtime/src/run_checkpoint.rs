@@ -267,7 +267,7 @@ mod tests {
         vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::from("retry-checkpoint"),
             digest: WorkflowDigest::from_bytes([3; 32]),
-        semantic_source_identity: None,
+            semantic_source_identity: None,
             nodes: Box::from([node]),
             expressions: Box::from([]),
             accessors: Box::from([]),

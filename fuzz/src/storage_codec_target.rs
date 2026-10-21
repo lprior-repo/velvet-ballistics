@@ -159,7 +159,13 @@ fn assert_all_family_mismatches(record: &vb_storage::WorkflowSourceRecord) {
         vb_storage::RecordKind::WorkflowSource.id(),
     );
     assert_encode_family_mismatch(
-        vb_storage::encode_record(vb_storage::MAGIC_BLOB, vb_storage::RecordKind::Snapshot, 0, record, 128),
+        vb_storage::encode_record(
+            vb_storage::MAGIC_BLOB,
+            vb_storage::RecordKind::Snapshot,
+            0,
+            record,
+            128,
+        ),
         vb_storage::MAGIC_BLOB,
         vb_storage::RecordKind::Snapshot.id(),
     );

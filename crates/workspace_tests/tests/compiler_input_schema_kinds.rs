@@ -237,17 +237,11 @@ fn any_schema_digest_and_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
     assert_ne!(any1.to_parts().input_slots, num.to_parts().input_slots);
     let obj = vb_compile::compile_workflow(source(obj_src).as_bytes())?;
     assert_eq!(
-        num.input_slots()
-            .first()
-            .ok_or("missing input port")?
-            .kind,
+        num.input_slots().first().ok_or("missing input port")?.kind,
         vb_core::InputSlotKind::I64
     );
     assert_eq!(
-        obj.input_slots()
-            .first()
-            .ok_or("missing input port")?
-            .kind,
+        obj.input_slots().first().ok_or("missing input port")?.kind,
         vb_core::InputSlotKind::Object
     );
     let parts = any1.to_parts();

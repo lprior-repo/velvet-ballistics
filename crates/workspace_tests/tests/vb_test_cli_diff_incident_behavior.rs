@@ -2,10 +2,12 @@
 //!
 //! Tests the pure computation logic in commands_diff and commands_incident modules.
 
-use velvet_ballistics::commands_diff::{compute_diff, diff_event_summary, event_name, events_differ};
-use velvet_ballistics::commands_incident::build_incident_report;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, JournalEvent};
+use velvet_ballistics::commands_diff::{
+    compute_diff, diff_event_summary, event_name, events_differ,
+};
+use velvet_ballistics::commands_incident::build_incident_report;
 
 /// Helper: create a minimal StepStarted event.
 fn step_event(run: u64, seq: u64, step: u16) -> JournalEvent {

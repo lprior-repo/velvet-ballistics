@@ -1,10 +1,10 @@
 use std::{fs, num::NonZeroUsize, path::Path, process::Command, sync::Arc};
+use vb_core::RuntimePolicy;
 use vb_core::{RunId, SlotValue};
 use vb_runtime::journal::StorageRuntimeJournal;
+use vb_runtime::recovery::RuntimeRecoveryProduct;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
-use vb_core::RuntimePolicy;
-use vb_runtime::recovery::RuntimeRecoveryProduct;
 use vb_storage::FjallJournal;
 
 const INPUT_FINISH: &str = "version: velvet-ballistics/v1\nname: retained_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
@@ -46,8 +46,7 @@ fn submit(
         "submit failed: {}",
         String::from_utf8_lossy(&result.stderr)
     );
-    let receipt: serde_json::Value =
-        serde_json::from_str(&String::from_utf8(result.stdout)?)?;
+    let receipt: serde_json::Value = serde_json::from_str(&String::from_utf8(result.stdout)?)?;
     assert_eq!(
         receipt.get("status").and_then(serde_json::Value::as_str),
         Some("submitted")
@@ -84,7 +83,9 @@ fn retained_inputs_recovered_from_cold_storage_with_runtime_api() -> TestResult 
         let fjall_journal = Arc::new(FjallJournal::open(&db, None)?);
 
         // Verify retained inputs are still accessible
-        let retained = fjall_journal.run_inputs(run)?.ok_or("missing retained inputs")?;
+        let retained = fjall_journal
+            .run_inputs(run)?
+            .ok_or("missing retained inputs")?;
         assert_eq!(
             retained
                 .inputs()
@@ -119,7 +120,9 @@ fn retained_inputs_recovered_from_cold_storage_with_runtime_api() -> TestResult 
         }
 
         // Verify by re-opening and reading retained inputs directly
-        let retained2 = fjall_journal.run_inputs(run)?.ok_or("missing retained inputs after runtime")?;
+        let retained2 = fjall_journal
+            .run_inputs(run)?
+            .ok_or("missing retained inputs after runtime")?;
         retained2.validate_admission(admission_event)?;
     }
     Ok(())

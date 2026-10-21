@@ -292,8 +292,8 @@ mod equality;
 #[cfg(test)]
 mod tests_basic;
 #[cfg(test)]
-mod tests_equality;
-#[cfg(test)]
 mod tests_conversion_refinement;
 #[cfg(test)]
 mod tests_diagnostics;
+#[cfg(test)]
+mod tests_equality;

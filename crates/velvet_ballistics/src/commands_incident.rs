@@ -7,7 +7,7 @@
 
 use vb_storage::events::JournalEvent;
 use vb_storage::journal::incident::{
-    analyze_incident_events, build_repair_hints, SideEffectCertainty,
+    SideEffectCertainty, analyze_incident_events, build_repair_hints,
 };
 
 /// Structured incident report for CLI output.

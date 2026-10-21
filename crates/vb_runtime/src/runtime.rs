@@ -436,8 +436,12 @@ impl Runtime {
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
-        let retained_inputs =
-            Self::load_retained_inputs_for_recovery(&prefix, &recovered, fjall_journal.as_ref(), run)?;
+        let retained_inputs = Self::load_retained_inputs_for_recovery(
+            &prefix,
+            &recovered,
+            fjall_journal.as_ref(),
+            run,
+        )?;
         self.build_runtime_recovery_product(run, prefix, recovered, retained_inputs)
     }
 
@@ -463,11 +467,12 @@ impl Runtime {
         }
 
         // New-bound admission - retained inputs required
-        let record = journal
-            .run_inputs(run)?
-            .ok_or(RuntimeError::Recovery {
-                error: format!("recovery: retained input record missing for new-bound run {:?}", run),
-            })?;
+        let record = journal.run_inputs(run)?.ok_or(RuntimeError::Recovery {
+            error: format!(
+                "recovery: retained input record missing for new-bound run {:?}",
+                run
+            ),
+        })?;
 
         crate::recovery::validate_input_record_binding(&record, run, admission_event)?;
         crate::recovery::validate_input_record_artifact(
@@ -681,9 +686,7 @@ impl Runtime {
         retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let initial_inputs = match &retained_inputs {
-            Some(record) => {
-                Some(record.inputs().to_vec())
-            }
+            Some(record) => Some(record.inputs().to_vec()),
             None => None,
         };
         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
@@ -735,7 +738,10 @@ impl Runtime {
     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
         use crate::admission::AcceptedArtifactStore;
 
-        let store = crate::admission::StorageArtifactStore::with_catalog(journal, self.journal.executor_catalog());
+        let store = crate::admission::StorageArtifactStore::with_catalog(
+            journal,
+            self.journal.executor_catalog(),
+        );
         let artifact = store
             .load_accepted_artifact(artifact_digest)
             .map_err(|error| RuntimeError::RecoveryCannotResume {
@@ -1295,11 +1301,11 @@ impl Runtime {
     }
 }
 
+#[path = "runtime/registered_executor.rs"]
+mod registered_executor;
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
-#[path = "runtime/registered_executor.rs"]
-mod registered_executor;
 pub use registered_executor::RegisteredExecutionError;
 
 #[cfg(test)]

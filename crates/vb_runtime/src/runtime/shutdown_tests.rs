@@ -1,6 +1,7 @@
 //! Actual Runtime + Fjall shutdown ownership regressions.
 #[path = "shutdown_fixtures.rs"]
 mod fixtures;
+use crate::RuntimeError;
 use fixtures::*;
 use vb_core::RunId;
 use vb_storage::{EventSeq, JournalEvent};
@@ -38,7 +39,27 @@ fn failed_shutdown_preserves_actual_pending_timer_authority() -> TestResult {
     assert_eq!(failure.phase(), super::ShutdownPhase::JournalDrain);
     assert_eq!(failure.completed_shards(), 1);
     assert_eq!(failure.remaining(), &before);
-    assert!(std::error::Error::source(&failure).is_some());
+    let source = failure.cause();
+    let journal_error = match source {
+        RuntimeError::StorageJournalAppend { source } => source.as_ref(),
+        RuntimeError::AdmissionHeaderPersistenceFailed { source } => source.as_ref(),
+        other => return Err(format!("expected storage journal error, got {other:?}").into()),
+    };
+    match journal_error {
+        vb_storage::JournalError::DuplicateEvent { run: r, seq } => {
+            assert_eq!(
+                r.get(),
+                run.get(),
+                "DuplicateEvent must carry the colliding run"
+            );
+            assert_eq!(
+                seq.get(),
+                first_queued_seq,
+                "DuplicateEvent must carry the colliding seq"
+            );
+        }
+        other => return Err(format!("expected DuplicateEvent, got {other:?}").into()),
+    }
     let after = runtime.pending_boundary_snapshot(64);
     assert_eq!(after.active_run_count(), 1);
     assert_eq!(
@@ -84,11 +105,9 @@ fn successful_shutdown_reports_suspended_authority_without_cancelling_run() -> T
     );
     let events = journal.events_for_run(run)?;
     assert!(!events.is_empty());
-    assert!(
-        events
-            .iter()
-            .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. }))
-    );
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. })));
     assert!(!events.iter().any(|event| matches!(
         event,
         JournalEvent::RunCancelled { .. } | JournalEvent::RunFinished { .. }
@@ -122,11 +141,9 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
     for run in [RunId::new(710), RunId::new(711)] {
         runtime.submit_direct(run, finished_workflow()?)?;
     }
-    assert!(
-        runtime
-            .submit_direct(RunId::new(712), finished_workflow()?)
-            .is_err()
-    );
+    assert!(runtime
+        .submit_direct(RunId::new(712), finished_workflow()?)
+        .is_err());
     assert_eq!(
         runtime.pending_boundary_snapshot(64).command_queue_depth(),
         2
@@ -136,12 +153,10 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
     assert_eq!(report.remaining().command_queue_depth(), 0);
     assert_eq!(report.remaining().active_run_count(), 0);
     for run in [RunId::new(710), RunId::new(711)] {
-        assert!(
-            journal
-                .events_for_run(run)?
-                .iter()
-                .any(|event| matches!(event, JournalEvent::RunFinished { .. }))
-        );
+        assert!(journal
+            .events_for_run(run)?
+            .iter()
+            .any(|event| matches!(event, JournalEvent::RunFinished { .. })));
     }
     assert_eq!(queue.pending_profile_counts()?.journaled, 0);
     Ok(())

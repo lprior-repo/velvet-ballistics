@@ -26,12 +26,12 @@
 
 #![forbid(unsafe_code)]
 
-use velvet_ballistics::lifecycle::test_helpers::create_run_header;
-use velvet_ballistics::status::StatusError;
-use velvet_ballistics::status::{DerivedStatus, ReplayTimeline, derive_status_from_events};
 use vb_core::action::compute_action_idempotency_key;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
+use velvet_ballistics::lifecycle::test_helpers::create_run_header;
+use velvet_ballistics::status::StatusError;
+use velvet_ballistics::status::{DerivedStatus, ReplayTimeline, derive_status_from_events};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -241,7 +241,8 @@ fn replay_explain_prints_snapshot_boundary_then_journal_tail() {
     }
 
     // When: replay_explain is called
-    let timeline = velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
+    let timeline =
+        velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: timeline has snapshot boundary marker then events in sequence
     match timeline {
@@ -340,7 +341,8 @@ fn replay_explain_handles_multiple_runs() {
     }
 
     // When: replay_explain is called
-    let timeline = velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
+    let timeline =
+        velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: timeline has two runs
     match timeline {
@@ -700,7 +702,8 @@ fn replay_explain_is_read_only_no_journal_mutation() {
     let headers_before = journal.run_headers().expect("run_headers must succeed");
 
     // When: replay_explain is called
-    let _timeline = velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
+    let _timeline =
+        velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: journal state is unchanged
     let headers_after = journal.run_headers().expect("run_headers must succeed");
@@ -756,7 +759,8 @@ fn replay_timeline_includes_digest_or_record_kind_per_event() {
     }
 
     // When: replay_explain is called
-    let timeline = velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
+    let timeline =
+        velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: each entry has either digest or record_kind
     match timeline {
@@ -806,7 +810,8 @@ fn replay_timeline_entry_has_digest_for_run_accepted() {
     }
 
     // When: replay_explain is called
-    let timeline = velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
+    let timeline =
+        velvet_ballistics::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: entry has the workflow digest
     match timeline {

@@ -449,8 +449,11 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
         true
     );
     assert_eq!(
-        journal_events(&journal)?
-            .contains(&RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1 }),
+        journal_events(&journal)?.contains(&RuntimeJournalEvent::RunCancelled {
+            run,
+            reason: None,
+            attempt: 1
+        }),
         true
     );
     Ok(())

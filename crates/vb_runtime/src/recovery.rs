@@ -2,8 +2,8 @@
 //! Runtime recovery boundary over storage summary hydration.
 
 mod frame;
-mod input_binding;
 mod full;
+mod input_binding;
 mod product;
 
 use vb_core::frame::RunFrame;
@@ -17,11 +17,9 @@ pub use full::{
     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
 };
 pub(crate) use full::{
-    hydrate_frame_for_full_recovery_with_inputs,
-    action_contract_abi_digest,
-    RecoveredAdmissionContext, RecoveredAdmissionEvidence,
-    ResumableRecoveryParts, action_abi_digests_from_contracts, classify_full_recovery_resume,
-    pending_action_ticket_from_events,
+    RecoveredAdmissionContext, RecoveredAdmissionEvidence, ResumableRecoveryParts,
+    action_abi_digests_from_contracts, action_contract_abi_digest, classify_full_recovery_resume,
+    hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
     recovered_run_boundary_from_seed, validate_recovered_admission_evidence,
 };
 

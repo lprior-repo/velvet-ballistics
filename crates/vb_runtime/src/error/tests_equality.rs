@@ -1,6 +1,6 @@
 use super::RuntimeError;
-use vb_core::ids::ActionId;
 use vb_core::SlotIdx;
+use vb_core::ids::ActionId;
 
 fn slot(index: u16) -> SlotIdx {
     SlotIdx::new(index)

@@ -109,8 +109,7 @@ fn assert_typed_unknown_kind_error(error: vb_storage::JournalError, expected_kin
     match error {
         vb_storage::JournalError::UnknownRecordKind { kind } => {
             assert_eq!(
-                kind,
-                expected_kind,
+                kind, expected_kind,
                 "UnknownRecordKind carried {kind}, expected {expected_kind}"
             );
         }
@@ -130,13 +129,11 @@ fn assert_typed_family_error(error: vb_storage::JournalError, magic: u32, kind: 
                 kind: err_kind,
             } => {
                 assert_eq!(
-                    err_magic,
-                    magic,
+                    err_magic, magic,
                     "family mismatch magic {err_magic:#010x} must match input {magic:#010x}"
                 );
                 assert_eq!(
-                    err_kind,
-                    kind,
+                    err_kind, kind,
                     "family mismatch kind {err_kind} must match input {kind}"
                 );
             }

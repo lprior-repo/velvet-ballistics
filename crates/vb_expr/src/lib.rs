@@ -8,8 +8,8 @@ pub mod expr_eval;
 pub mod expr_lexer;
 pub mod expr_parser;
 pub mod expr_proofs;
-pub mod expr_typecheck;
 pub mod expr_stack_ops;
+pub mod expr_typecheck;
 
 #[cfg(test)]
 mod expr_property_tests;
@@ -141,10 +141,13 @@ mod core_error_conversion_tests {
             found: "string",
         };
         let expr_err: ExprError = core_err.into();
-        assert_eq!(expr_err, ExprError::TypeMismatch {
-            expected: "i64".to_string(),
-            found: "string".to_string(),
-        });
+        assert_eq!(
+            expr_err,
+            ExprError::TypeMismatch {
+                expected: "i64".to_string(),
+                found: "string".to_string(),
+            }
+        );
     }
 
     #[test]

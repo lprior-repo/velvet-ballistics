@@ -110,7 +110,10 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
 fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     let dir = workspace()?;
     let manifest = "[package]\nname = \"velvet-ballistics\"\nedition = \"2024\"\n\n[dependencies]\n\n[[bin]]\nname = \"vb\"\npath = \"src/main.rs\"\n";
-    write_file(&dir.path().join("crates/velvet_ballistics/Cargo.toml"), manifest)?;
+    write_file(
+        &dir.path().join("crates/velvet_ballistics/Cargo.toml"),
+        manifest,
+    )?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());
     assert_eq!(

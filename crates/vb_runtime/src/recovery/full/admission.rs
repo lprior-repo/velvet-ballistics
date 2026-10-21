@@ -30,7 +30,9 @@ pub(crate) fn action_abi_digests_from_contracts(
     Ok(digests.into_boxed_slice())
 }
 
-pub(crate) fn action_contract_abi_digest(contract: &ActionContract) -> RuntimeResult<WorkflowDigest> {
+pub(crate) fn action_contract_abi_digest(
+    contract: &ActionContract,
+) -> RuntimeResult<WorkflowDigest> {
     let bytes = postcard::to_allocvec(contract)
         .map_err(|_| cannot_resume_error("action_abi_digests_missing"))?;
     Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))

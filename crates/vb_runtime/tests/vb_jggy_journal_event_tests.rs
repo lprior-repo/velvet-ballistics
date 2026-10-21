@@ -282,7 +282,9 @@ fn other_journal_variants_still_work() {
     // RunFinished variant
     let finished = RuntimeJournalEvent::RunFinished {
         run: RunId::new(1),
-        result: SlotIdx::ZERO, attempt: 1};
+        result: SlotIdx::ZERO,
+        attempt: 1,
+    };
     assert_eq!(journal.append(finished), Ok(()));
 
     // ActionScheduled variant

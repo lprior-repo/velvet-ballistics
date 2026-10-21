@@ -182,7 +182,9 @@ fn given_diverged_attempt_count_when_duplicate_appended_then_duplicate_event_var
             assert_eq!(seq, EventSeq::new(1));
         }
         Err(other) => return Err(format!("expected DuplicateEvent, got {other:?}")),
-        Ok(()) => return Err("expected duplicate with different attempt to be rejected".to_string()),
+        Ok(()) => {
+            return Err("expected duplicate with different attempt to be rejected".to_string());
+        }
     }
     let after = journal
         .events_for_run(run)
@@ -217,8 +219,7 @@ fn given_same_sequence_different_run_when_appended_then_cross_run_sequences_are_
 }
 
 #[test]
-fn given_same_run_different_sequence_when_appended_then_order_is_preserved()
--> Result<(), String> {
+fn given_same_run_different_sequence_when_appended_then_order_is_preserved() -> Result<(), String> {
     // Given
     let (_dir, journal) = temp_journal()?;
     let run = RunId::new(15);
