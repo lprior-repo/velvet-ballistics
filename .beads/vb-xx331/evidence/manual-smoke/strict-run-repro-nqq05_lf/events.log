@@ -1,0 +1,39 @@
+events:
+- run: 1
+  seq: 0
+  type: RunAccepted
+  workflow: >-
+    WorkflowDigest([229, 96, 81, 86, 216, 159, 14, 200, 241, 31, 229, 13, 160, 4,
+    105, 108, 8, 49, 15, 99, 132, 19, 98, 166, 142, 10, 221, 186, 3, 73, 115, 123])
+- artifact_digest: >-
+    WorkflowDigest([137, 135, 6, 135, 104, 37, 71, 26, 130, 136, 69, 138, 249, 189,
+    121, 60, 118, 255, 227, 42, 94, 175, 240, 134, 27, 140, 197, 126, 27, 133, 239,
+    44])
+  granted_capabilities: "CapabilitySet { grants: [] }"
+  policy: Strict
+  run: 1
+  seq: 1
+  type: RunAdmission
+- seq: 2
+  step: 0
+  type: StepStarted
+- seq: 3
+  slot: 0
+  type: SlotWritten
+- output: 0
+  seq: 4
+  type: StepSucceeded
+- seq: 5
+  step: 1
+  type: StepStarted
+- output: 0
+  seq: 6
+  type: StepSucceeded
+- result: 0
+  seq: 7
+  type: RunFinished
+kind: events_report
+run_id: "1"
+schema_version: velvet-ballistics/cli-output/v1
+total: 8
+

@@ -1,0 +1,30 @@
+The Rust contract and scoped implementation design for vb-ezymz are complete. Both artifacts are written to the bead directory:
+
+```
+.beads/vb-ezymz/contract.md
+.beads/vb-ezymz/boundary-map.md
+```
+
+**Contract summary:**
+
+The CLI submit command has two defects:
+1. It reads input bytes into `_input_data` then discards them without validation
+2. It never persists validated inputs for recovery hydration
+
+The contract specifies that `cmd_submit` must:
+- Compile the workflow first (existing behavior)
+- Validate and map raw input bytes against declared input slots via `map_runtime_inputs` (new)
+- On mapping failure (malformed, count-exceeded, kind-mismatch, out-of-range), exit before any durable writes
+- On mapping success, persist the validated `InputMapping` via a new `RunInputRecord` type and `put_run_input`/`get_run_input` operations (new storage module `crates/vb_storage/src/inputs.rs`)
+- Then persist run header and journal event (existing)
+
+The `map_runtime_inputs` helper itself has a latent defect: it returns `Ok` for any non-empty `input_data` bytes when the compiled workflow has no input slots. The contract requires this to return `InputMappingError::SlotCountExceeded` so malformed bytes are rejected even for no-input workflows.
+
+**Implementation boundary:**
+- Pure core: `CompiledWorkflow`, `CompiledInputSlot`, `SlotValue`, `WorkflowDigest` (existing types)
+- Parser boundary: `map_runtime_inputs` (existing function, fix behavior)
+- CLI shell: `cmd_submit` (existing function, call mapper before persistence)
+- Storage boundary: new `RunInputRecord` type and Fjall operations
+- Recovery: `hydrate_run_frame` will accept persisted mapping to seed input slots
+
+**Not included:** tests, code review, test review, proof planning, CI execution, bead closure, git push. This is the first stage of the five-stage delivery flow as requested.

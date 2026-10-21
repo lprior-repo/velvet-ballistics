@@ -1,0 +1,14 @@
+kind: simulate
+schema_version: velvet-ballistics/v1
+success: true
+total_actions: 0
+total_branches: 0
+total_steps: 2
+trace:
+- description: Set constant value
+  kind: set_const
+  step: 0
+- description: Finish -- would complete run
+  kind: finish
+  step: 1
+

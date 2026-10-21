@@ -107,6 +107,7 @@ fn workflow_parts(
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     }
 }
 

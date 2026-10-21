@@ -325,6 +325,7 @@ impl Shard {
     /// - Admission is built with empty capabilities (caps are not persisted
     ///   per-run in the journal; runs requiring non-empty caps will fail
     ///   admission during recovery, which is the correct fail-closed behavior).
+    ///
     /// Recovers a run from full recovery context provided by journal replay.
     ///
     /// The typed `RecoverRunCommand` carries all recovery evidence: artifact

@@ -880,45 +880,49 @@ fn action_attempts_never_decreases_across_operations() {
 // Error cases: EncodeFailed on completion/failure paths
 // =============================================================================
 
-/// EncodeFailed: completion returns error and leaves state unchanged
+/// Happy completion persists a concrete successful step event.
 #[test]
-fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
-    // This test would require forcing postcard serialization to fail.
-    // We test the error path exists and state is unchanged on error.
-    // Note: Actual EncodeFailed forcing would require a custom encoder or oversized value.
-    // This test documents the expected behavior.
+fn completion_happy_path_writes_output_and_event() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+        return Err("missing workflow fixture".into());
     };
     let run = RunId::new(50);
 
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Verify run is active and in correct state
-    let _state_before = shard
-        .run_state_get_mut(run)
-        .expect("run should exist")
-        .clone();
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("missing pending ticket")?;
 
-    // Complete action normally (happy path to verify event structure)
-    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
+    let journal_len_before = journal.snapshot()?.len();
+
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(42),
         taint: Taint::Clean,
         encoded_len: 2,
     };
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
-        Ok(())
-    );
-    // The tick processes the completion - we just verify it doesn't panic
+    shard.enqueue(ShardCommand::ActionCompleted { ticket, output })?;
     assert_eq!(shard.tick(), Ok(true));
+
+    let journal_len_after = journal.snapshot()?.len();
+    assert!(journal_len_after > journal_len_before, "journal should have grown after completion");
+
+    let events = journal.snapshot()?;
+    let expected_value = postcard::to_allocvec(&SlotValue::I64(42))?;
+    assert_eq!(events.iter().filter(|event| matches!(event,
+        RuntimeJournalEvent::ActionCompletedEnvelope { ticket: actual_ticket, output, value, encoded_len, taint, value_digest, .. }
+            if *actual_ticket == ticket && *output == SlotIdx::ZERO && *value == expected_value
+            && *encoded_len == 2 && *taint == Taint::Clean
+            && *value_digest == *blake3::hash(&expected_value).as_bytes()
+    )).count(), 1);
+
+    Ok(())
 }
 
 // =============================================================================
@@ -1060,3 +1064,6 @@ fn each_step_has_independent_attempt_counter() {
         "step 1 attempt should be 0 (not yet reached)"
     );
 }
+
+#[path = "vb_jggy_lifecycle/stale_guards.rs"]
+mod stale_guards;

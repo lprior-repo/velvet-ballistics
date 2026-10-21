@@ -81,6 +81,7 @@ proptest! {
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
+            input_slots: Box::from([]),
         };
 
         // Compute reference digest via postcard + blake3.

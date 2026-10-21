@@ -1,0 +1,3 @@
+# Current aligned parity candidate
+
+Full runtime package2452passed0failed1unchangedintentionalparent-invokedcrashmarkerignored, exit0, after alignment with reviewed baseline87fac9c4. Includes1912unit(old1909+3newregressions). Restoring originalcfgtestsubmissionhandlers caused exactly2newcap-preservationtest assertionfailures and1deniedcaptestpass; sourcefinallyrestored and1912unitpassagain. Allold70fixturefailuresresolved via explicit prerequisites; newregressionmoduleactuallyregistered. Dormantchunk030changesrestoredtobase; unusednewallinonewrapperremoved;3nonactionRuntime APItestsrestored. Code/testreviews pending, no fullCI/v1claim.

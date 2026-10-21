@@ -1,0 +1,37 @@
+artifact:
+  ir_digest_hex: e5605156d89f0ec8f11fe50da004696c08310f63841362a68e0addba0349737b
+  node_count: 2
+  source_digest_hex: e5605156d89f0ec8f11fe50da004696c08310f63841362a68e0addba0349737b
+checks:
+- yaml_parse
+- compilation
+- ir_validation
+- budget_computation
+- boundedness_policy
+digest: e5605156d89f0ec8f11fe50da004696c08310f63841362a68e0addba0349737b
+durability:
+  journal_written: false
+  profile: none
+exit_code: 0
+kind: verify_report
+node_count: 2
+profile: standard
+repair_hints: []
+replay:
+  gate_sequence:
+  - yaml_parse
+  - compilation
+  - ir_validation
+  - budget_computation
+  - boundedness_policy
+  gates_passed:
+  - yaml_parse
+  - compilation
+  - ir_validation
+  - budget_computation
+  - boundedness_policy
+  replay_safe: true
+schema_version: velvet-ballistics/cli-output/v1
+success: true
+warnings: []
+

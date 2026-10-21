@@ -1,0 +1,77 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `INPUT_MAPPING_KIND_MISMATCH_MESSAGE`
+  --> crates/velvet_ballistics/src/app_impl.rs:24:46
+   |
+24 |         INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `INPUT_MAPPING_KIND_MISMATCH_MESSAGE` is never used
+  --> crates/velvet_ballistics/src/app_impl.rs:69:18
+   |
+69 | pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `SlotIndexOutOfRange` is never constructed
+  --> crates/velvet_ballistics/src/run_compiled.rs:82:5
+   |
+79 | pub(crate) enum InputMappingError {
+   |                 ----------------- variant in this enum
+...
+82 |     SlotIndexOutOfRange,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `InputMappingError` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+velvet-ballistics - compiled workflow runtime
+
+commands:
+  validate   <workflow.yaml> [--emit text|yaml|postcard]
+  verify     <workflow.yaml> [--profile <quick|standard|full>] [--emit text|yaml|postcard]
+  explain    <workflow.yaml> [--emit text|yaml|postcard]
+  compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>
+  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+  ipc-serve  --socket <path> --db <path>
+  inspect    <run_id> --db <path> [--emit text|yaml|postcard]
+  events     <run_id> --db <path> [--emit text|yaml|postcard]
+  replay     <run_id> --db <path> [--emit text|yaml|postcard]
+  trace      <run_id> --db <path> [--emit text|yaml|postcard]
+  retry      <run_id> --db <path> [--emit text|yaml|postcard]
+  resume     <run_id> --db <path> [--emit text|yaml|postcard]
+  cancel     <run_id> --db <path> [--reason <text>] [--emit text|yaml|postcard]
+  action     <list|inspect> [--registry <registered|empty|uninitialized>] [--emit text|yaml|postcard]
+  bench-run  <workflow.yaml> [--emit text|yaml|postcard]
+  doctor     [--db <path>] [--emit text|yaml|postcard]
+  answer     <run_id> --step <N> --value-file <file> --db <path> [--emit text|yaml|postcard]
+  graph      <workflow.yaml> [--emit text|yaml|postcard]
+  diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
+  incident   <run_id> --db <path> [--emit text|yaml|postcard]
+  submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
+  simulate   <workflow.yaml> [--emit text|yaml|postcard]
+  system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]
+  agent-context [--deliver stdout|file:<absolute-path>]
+  ai-context <run_id> --db <path> [--emit text|yaml|postcard]
+  help
+  version
+
+architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path
