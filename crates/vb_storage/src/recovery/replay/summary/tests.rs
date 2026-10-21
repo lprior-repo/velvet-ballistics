@@ -122,6 +122,7 @@ fn summary_events_cover_workflow_admission_retry_and_terminals() {
             workflow,
         },
         JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(2),
             artifact_digest: digest(8),
@@ -215,6 +216,7 @@ fn recover_run_admission_returns_latest_metadata_or_none() {
             workflow: digest(9),
         },
         JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest: first,
@@ -222,6 +224,7 @@ fn recover_run_admission_returns_latest_metadata_or_none() {
             policy: RuntimePolicy::Relaxed,
         },
         JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(2),
             artifact_digest: latest,

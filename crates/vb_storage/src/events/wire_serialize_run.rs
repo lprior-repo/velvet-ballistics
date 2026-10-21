@@ -2,8 +2,9 @@
 
 use super::super::super::JournalEvent;
 use super::super::tags::{
-    TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
-    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+    TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND, TAG_RUN_ANSWERED,
+    TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED,
+    TAG_RUN_RETRIED,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -50,14 +51,30 @@ where
             run,
             seq,
             artifact_digest,
+            input_digest,
             granted_capabilities,
             policy,
-        } => serialize_record_kind_variant(
-            serializer,
-            TAG_RUN_ADMISSION,
-            "RunAdmission",
-            &(run, seq, artifact_digest, granted_capabilities, policy),
-        ),
+        } => match input_digest {
+            crate::RunInputBinding::LegacyUnbound => serialize_record_kind_variant(
+                serializer,
+                TAG_RUN_ADMISSION,
+                "RunAdmission",
+                &(run, seq, artifact_digest, granted_capabilities, policy),
+            ),
+            crate::RunInputBinding::Digest(digest) => serialize_record_kind_variant(
+                serializer,
+                TAG_RUN_ADMISSION_BOUND,
+                "RunAdmission",
+                &(
+                    run,
+                    seq,
+                    artifact_digest,
+                    digest,
+                    granted_capabilities,
+                    policy,
+                ),
+            ),
+        },
         _ => serialize_routing_error::<S>(),
     }
 }

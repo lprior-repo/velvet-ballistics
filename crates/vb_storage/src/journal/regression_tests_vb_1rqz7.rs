@@ -237,6 +237,7 @@ fn run_accepted_maps_to_active() {
 #[test]
 fn run_admission_maps_to_active() {
     let event = JournalEvent::RunAdmission {
+        input_digest: crate::RunInputBinding::LegacyUnbound,
         run: run(),
         seq: EventSeq::new(17),
         artifact_digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -401,6 +402,7 @@ fn every_known_variant_has_an_event_to_lifecycle_mapping() {
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         },
         JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run: run(),
             seq: EventSeq::new(2),
             artifact_digest: WorkflowDigest::from_bytes([0u8; 32]),

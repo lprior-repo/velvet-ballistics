@@ -16,6 +16,7 @@ use vb_core::{
     Taint, WorkflowDigest,
 };
 
+mod admission_receipt;
 mod kill_kind_admission;
 mod replay_integrity;
 
@@ -57,6 +58,7 @@ fn all_journal_event_cases() -> Result<Vec<(JournalEvent, RecordKind)>, JournalE
         ),
         (
             JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
                 run,
                 seq: EventSeq::new(1),
                 artifact_digest: digest,
@@ -583,6 +585,7 @@ fn schema_one_fixture_cases() -> Result<Vec<SchemaOneFixtureCase>, JournalError>
                 policy: RuntimePolicy::Strict,
             },
             expected: JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
                 run,
                 seq: EventSeq::new(1),
                 artifact_digest: digest,

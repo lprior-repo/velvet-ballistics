@@ -348,6 +348,7 @@ fn write_pending_action_events_with_input(
             workflow: workflow_digest,
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -424,6 +425,7 @@ fn write_wait_boundary_events(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -459,6 +461,7 @@ fn write_ask_boundary_events(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -498,6 +501,7 @@ fn write_ask_boundary_events_with_prompt(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,

@@ -11,6 +11,7 @@ where
     match kind {
         RecordKind::RunAccepted => deserialize_accepted(variant),
         RecordKind::RunAdmission => deserialize_admission(variant),
+        RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
         RecordKind::RunCancelled => deserialize_cancelled(variant),
         RecordKind::RunKilled => deserialize_killed(variant),
         RecordKind::RunFinished => deserialize_finished(variant),
@@ -39,6 +40,23 @@ where
         run,
         seq,
         artifact_digest,
+        input_digest: crate::RunInputBinding::LegacyUnbound,
+        granted_capabilities,
+        policy,
+    })
+}
+
+fn deserialize_bound_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, artifact_digest, input_digest, granted_capabilities, policy) =
+        variant.newtype_variant()?;
+    Ok(JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest,
+        input_digest: crate::RunInputBinding::Digest(input_digest),
         granted_capabilities,
         policy,
     })

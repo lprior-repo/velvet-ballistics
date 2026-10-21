@@ -78,6 +78,7 @@ impl StorageRuntimeJournal {
                 Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
             }
             RuntimeJournalEvent::RunAdmission { admission } => Ok(Some(JournalEvent::RunAdmission {
+                input_digest: vb_storage::RunInputBinding::LegacyUnbound,
                 run: admission.run_id(),
                 seq,
                 artifact_digest: admission.artifact_digest(),

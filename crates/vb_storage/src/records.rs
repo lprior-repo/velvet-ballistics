@@ -211,6 +211,10 @@ pub enum RecordKind {
     Blob = 40,
     /// Index update record.
     IndexUpdate = 50,
+    /// Retained typed run inputs (appended to preserve legacy Serde ordinals).
+    RunInputs = 4,
+    /// Admission receipt carrying a canonical typed input digest.
+    RunAdmissionBound = 36,
 }
 
 impl RecordKind {
@@ -221,6 +225,8 @@ impl RecordKind {
             Self::WorkflowSource => 1,
             Self::CompiledIr => 2,
             Self::RunHeader => 3,
+            Self::RunInputs => 4,
+            Self::RunAdmissionBound => 36,
             Self::RunAccepted => 10,
             Self::StepStarted => 11,
             Self::SlotWritten => 12,
@@ -259,6 +265,8 @@ impl RecordKind {
             1 => Some(Self::WorkflowSource),
             2 => Some(Self::CompiledIr),
             3 => Some(Self::RunHeader),
+            4 => Some(Self::RunInputs),
+            36 => Some(Self::RunAdmissionBound),
             10 => Some(Self::RunAccepted),
             11 => Some(Self::StepStarted),
             12 => Some(Self::SlotWritten),
@@ -310,6 +318,7 @@ impl RecordKind {
             | Self::RunFinished
             | Self::RunFailed
             | Self::RunAdmission
+            | Self::RunAdmissionBound
             | Self::RunResumed
             | Self::RunRetried
             | Self::RunAnswered
@@ -323,6 +332,7 @@ impl RecordKind {
             Self::WorkflowSource
             | Self::CompiledIr
             | Self::RunHeader
+            | Self::RunInputs
             | Self::Snapshot
             | Self::Blob
             | Self::IndexUpdate => false,
@@ -339,7 +349,7 @@ impl RecordKind {
             crate::constants::MAGIC_SNAPSHOT => matches!(self, Self::Snapshot),
             crate::constants::MAGIC_BLOB => matches!(self, Self::Blob),
             crate::constants::MAGIC_INDEX_RECORD => {
-                matches!(self, Self::RunHeader | Self::IndexUpdate)
+                matches!(self, Self::RunHeader | Self::RunInputs | Self::IndexUpdate)
             }
             _ => false,
         }

@@ -612,6 +612,7 @@ fn parse_event_result_is_valid_is_true_for_all_variants() {
             workflow: digest,
         },
         JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest: digest,

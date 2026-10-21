@@ -1,142 +1,15 @@
-# Rust Contract: CLI Submit Input Validation and Persistence (vb-ezymz)
+# vb-ezymz admission contract, revision 5
 
-**Bead:** vb-ezymz
-**Product:** velvet-ballistics
-**Language version:** velvet-ballistics/v1
-**Type:** Bug fix — admission and persistence defect
+Status: implementation contract; independent review pending.
 
----
+Authoritative clauses: master sections 27/44 (recover numeric IR without YAML compilation), 49 (crash consistency), 66 (input validation and artifact binding before RunAccepted). Backend/IRInterpreter scope remains in force.
 
-## Ubiquitous Language
+C1. CLI input wire stays positional postcard Box<[SlotValue]>, mapped by compiled.input_slots order. Empty bytes and an encoded empty list are valid omitted-input encodings. Decode consumes all supplied bytes. Excess values and kind mismatches reject with exit 2 before opening storage. The CLI wire cannot encode duplicate slot IDs; storage constructor rejects duplicated, undeclared and out-of-range typed mappings.
+C2. Retained RunInputsRecord binds RunId, accepted artifact digest, numeric workflow digest, original YAML source digest, canonical input digest and typed slot pairs. Input identity is BLAKE3 of postcard slot-sorted typed pairs; duplicate slots reject. It is checksummed and size-bounded. Input validation is pure; storage remains an imperative boundary. Arena-only input handles without supplied arena data cannot be retained as usable inputs and must reject.
+C3. Persist original source, accepted artifact containing numeric IR, retained inputs and run header in one Fjall OwnedWriteBatch. Durable modes also stage RunAccepted at seq 0 and RunAdmission at seq 1 in that batch. RunAccepted.workflow/header.compiled_digest carry the compiled workflow digest; RunAdmission.artifact_digest and retained inputs carry accepted-envelope digest. RunAdmission.input_digest binds the canonical retained input digest. New bound receipts use stable tag 36; historical tag 24 and schema-one ordinal receipts decode explicitly as LegacyUnbound, never as a valid new retained-input receipt. These are distinct digests. Source is keyed by raw YAML BLAKE3; retained inputs preserve that binding.
+C4. Strict uses SyncAll on the batch before acknowledgement. Journaled commits the complete batch without a stable-storage promise (acknowledged loss window). None preserves existing CLI metadata storage behavior and stores complete inputs/artifact/header/source, without RunAccepted/RunAdmission events or durable-run promise. No mode advertises durability beyond its policy.
+C5. Any validation/staging failure discards the batch. An existing run must not be overwritten. Injected precommit failure exposes no new source/artifact/input/header/events or indexes. Actual storage-engine commit errors propagate; storage atomicity is delegated to Fjall's WAL batch contract, not a post-write rollback.
+C6. Recovery consumes retained typed inputs before its first deterministic drive, loads persisted artifact IR, and checks digest binding. The recovery owner vb-netau supplies this integration; this worker does not modify its files. A reopened journal execution test must demonstrate original input values affect the resulting frame, without source compilation.
+C7. Accepted verification proof production is owned by vb-9agmk. Admission must consume its pure prepared artifact rather than writing a claimed proof or persisting an artifact before the atomic batch. No self-approved proof claim or independent-review claim.
 
-- **submit:** CLI command that compiles a YAML workflow, validates and maps runtime inputs against declared input slots, persists run metadata and validated inputs, and returns a `run_id`.
-- **input slot:** A declared entry point on a compiled workflow (`CompiledInputSlot`) that pairs a `SlotIdx` with an `InputSlotKind`.
-- **input mapping:** A collection of `(SlotIdx, SlotValue)` pairs produced by decoding and validating raw postcard bytes against a workflow's declared input slots.
-- **malformed input:** Raw bytes that fail postcard decoding into `Box<[SlotValue]>`.
-- **durable acceptance:** The point at which run metadata and validated inputs are persisted to the storage layer such that process restart can recover them.
-- **recovery hydration:** The process of reconstructing a live `RunFrame` from persistent storage records, including slot values seeded by input mapping.
-
----
-
-## Entities and Value Objects
-
-### Entities
-
-| Name | Type | Lifecycle |
-|------|------|-----------|
-| Run | `RunId` (u64) | Created on submit, terminal on finish/fail/cancel |
-
-### Value Objects
-
-| Name | Fields | Invariants |
-|------|--------|------------|
-| `CompiledInputSlot` | `slot: SlotIdx`, `kind: InputSlotKind` | `slot` in range `[0, slot_count)`, `kind` in `InputSlotKind` enum |
-| `InputMapping` | `Box<[(SlotIdx, SlotValue)]>` | Each `SlotIdx` unique, each in declared input slots, value kind matches declared kind |
-| `InputMappingError` | Tagged error variants | Discriminates malformed, kind-mismatch, duplicate, out-of-range, count-exceeded |
-
-### Commands
-
-| Name | Input | Output |
-|------|-------|--------|
-| `cmd_submit(workflow_path, input_bin_path, db_path, durability, output)` | Paths, durability mode, output format | `ExitCode`, side effects: storage writes, JSON or text response |
-| `map_runtime_inputs(compiled, input_bytes)` | `CompiledWorkflow`, raw bytes | `Result<Box<[(SlotIdx, SlotValue)]>, InputMappingError>` |
-
-### Policies
-
-- Input bytes must be decoded and validated against declared input slots **before** any durable write of run header or `RunAccepted` journal event.
-- If validation fails, no partial durable state is left.
-- If the workflow declares no input slots, non-empty input bytes are considered a **SlotCountExceeded** error (user provided inputs where none are declared).
-- Empty input bytes on a workflow with no input slots is valid and produces an empty `InputMapping`.
-- Empty input bytes on a workflow with declared input slots is valid and produces an empty `InputMapping` (user omitted optional inputs).
-
----
-
-## State Transitions
-
-```
-User provides workflow + input bytes
-  → compile YAML to CompiledWorkflow (existing)
-  → validate/map raw input bytes against compiled.input_slots() (NEW)
-  → on mapping error: report error, exit, no durable writes
-  → on mapping success: persist workflow source (existing)
-  → persist validated InputMapping (NEW)
-  → persist RunHeaderRecord (existing)
-  → persist RunAccepted journal event (existing)
-  → return run_id to user
-```
-
----
-
-## Durable Acceptance Atomicity
-
-Durable acceptance requires the following to be persisted before returning `run_id`:
-
-1. **Workflow source** (`put_workflow_source`) — already done
-2. **Run header** (`put_run_header`) — already done
-3. **Validated InputMapping** (NEW: `put_run_input` or equivalent)
-4. **RunAccepted journal event** (`append_strict_batch`) — already done
-
-Under `DurabilityMode::Strict`, items 1-4 are synced. Under `DurabilityMode::Journaled`, items are queued. Under `DurabilityMode::None`, no persistence occurs.
-
-**No compiled IR is stored for submit:** submit is an admission command, not execution. The workflow is compiled in memory, its source is stored, and its digest is bound to the run header. Runtime execution (if initiated separately) will re-compile from source or accept the artifact.
-
----
-
-## Process Reopen Behavior
-
-When the velvet-ballistics process restarts and needs to recover a submitted run:
-
-1. Recovery reads the `RunHeaderRecord` to get `run_id` and `compiled_digest`.
-2. Recovery loads the compiled workflow from the artifact store by digest (or re-compiles from source).
-3. Recovery reads the persisted `InputMapping` for the run.
-4. Recovery hydrates a `RunFrame` using the `InputMapping` to seed input slots via `seed_input_slots`.
-5. Recovery continues execution from the recovered frame state.
-
-The persisted `InputMapping` is essential: without it, recovery cannot reconstruct the user's original input values, and the run cannot be resumed from a pre-execution state.
-
----
-
-## Bounded Implementation Changes
-
-### Files Modified
-
-| File | Change |
-|------|--------|
-| `crates/velvet_ballistics/src/submit.rs` | Call `map_runtime_inputs` after compile; on success, pass mapping to persistence layer; on error, exit before durable writes |
-| `crates/velvet_ballistics/src/app_impl.rs` | Export `InputMappingError` variants for CLI error handling |
-| `crates/velvet_ballistics/src/run_compiled.rs` | Fix `map_runtime_inputs` to error on non-empty input bytes when `input_slots` is empty |
-
-### Files Added
-
-| File | Purpose |
-|------|---------|
-| `crates/vb_storage/src/inputs.rs` (new) | `RunInputRecord` type and `put_run_input`/`get_run_input`/`remove_run_input` operations on `FjallJournal` |
-| `crates/vb_storage/src/records.rs` (add) | `RunInputRecord` struct: `{ run: RunId, inputs: Box<[(SlotIdx, SlotValue)]> }` |
-
-### Functions Added
-
-| Module | Function | Signature |
-|--------|----------|-----------|
-| `vb_storage::inputs` | `put_run_input` | `fn put_run_input(&self, record: &RunInputRecord) -> Result<(), JournalError>` |
-| `vb_storage::inputs` | `get_run_input` | `fn get_run_input(&self, run: RunId) -> Result<Option<RunInputRecord>, JournalError>` |
-| `vb_storage::inputs` | `remove_run_input` | `fn remove_run_input(&self, run: RunId) -> Result<(), JournalError>` |
-| `vb_core::slot_value` | `input_mapping_empty` | `fn input_mapping_empty(inputs: &[(SlotIdx, SlotValue)]) -> bool` |
-| `vb_storage::recovery::hydrate` | (extend `hydrate_run_frame`) | Accept optional `inputs` parameter for slot seeding |
-
-### No Changes To
-
-- Workflow YAML format
-- Compiled IR format
-- Runtime execution loop
-- IPC protocol
-- Existing run/run-compiled commands' input handling
-
----
-
-## Hazards
-
-- **Malformed bytes accepted:** If `map_runtime_inputs` returns `Ok` for malformed bytes, the user believes submission succeeded but the run cannot execute. Fixed by strict decoding.
-- **No-input workflow given bytes:** If a workflow has no input slots, non-empty bytes must be an error, not silently ignored.
-- **Recovery input drift:** If recovery does not re-apply the persisted `InputMapping`, the resumed run has different initial slot values than originally submitted.
-- **Duplicate slot mapping:** If raw bytes decode to duplicate `SlotIdx` entries, only the last survives; this should be detected and rejected.
-- **Kind mismatch:** If a value's runtime kind does not match the declared `InputSlotKind`, the mismatch is detected at submit time, not execution time.
+Focused evidence must include CLI success/rejection over none/journaled/strict, close/reopen typed value equality, artifact decode/digest bindings, no partial records on failure, and actual runtime use at recovery boundary. Independent code and test review required before bead closure. Canonical moon ci belongs the integration lane.

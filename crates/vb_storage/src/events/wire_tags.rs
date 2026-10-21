@@ -3,6 +3,7 @@
 use crate::RecordKind;
 
 pub(super) const TAG_RUN_ACCEPTED: u16 = RecordKind::RunAccepted.id();
+pub(super) const TAG_RUN_ADMISSION_BOUND: u16 = RecordKind::RunAdmissionBound.id();
 pub(super) const TAG_RUN_ADMISSION: u16 = RecordKind::RunAdmission.id();
 pub(super) const TAG_STEP_STARTED: u16 = RecordKind::StepStarted.id();
 pub(super) const TAG_STEP_SUCCEEDED: u16 = RecordKind::StepSucceeded.id();

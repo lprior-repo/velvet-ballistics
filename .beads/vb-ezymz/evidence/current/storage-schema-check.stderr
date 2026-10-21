@@ -1,0 +1,52 @@
+    Checking serde_core v1.0.228
+    Checking num-traits v0.2.19
+    Checking byteorder v1.5.0
+    Checking hash32 v0.2.1
+    Checking foldhash v0.1.5
+    Checking arraydeque v0.5.1
+    Checking hashbrown v0.15.5
+   Compiling fnv v1.0.7
+   Compiling regex-syntax v0.8.10
+   Compiling logos-codegen v0.15.1
+    Checking hashlink v0.10.0
+   Compiling getrandom v0.3.4
+    Checking saphyr-parser v0.0.6
+   Compiling logos-derive v0.15.1
+    Checking ordered-float v5.3.0
+    Checking saphyr v0.0.6
+    Checking logos v0.15.1
+    Checking zmij v1.0.21
+    Checking zerocopy v0.8.48
+    Checking serde v1.0.228
+    Checking crossbeam-queue v0.3.12
+    Checking chrono v0.4.44
+    Checking bytes v1.11.1
+    Checking heapless v0.7.17
+    Checking postcard v1.1.3
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_core)
+    Checking encoding_rs v0.8.35
+    Checking unicode-width v0.2.2
+    Checking rtrb v0.3.4
+    Checking anstyle v1.0.14
+    Checking annotate-snippets v0.12.16
+    Checking encoding_rs_io v0.1.7
+    Checking ahash v0.8.12
+    Checking saphyr-parser-bw v0.0.611
+    Checking mio v1.2.0
+    Checking crossbeam-channel v0.5.15
+    Checking base64 v0.22.1
+    Checking memchr v2.8.0
+    Checking nohash-hasher v0.2.0
+    Checking itoa v1.0.18
+    Checking serde_json v1.0.150
+    Checking serde-saphyr v0.0.25
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_storage)
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_yaml)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_expr)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_runtime)
+    Checking crc32fast v1.5.0
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/velvet_ballistics)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.11s

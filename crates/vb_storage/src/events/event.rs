@@ -52,6 +52,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Compiled artifact digest admitted for this run.
         artifact_digest: WorkflowDigest,
+        /// Canonical typed input identity, or explicit historical absence.
+        input_digest: crate::RunInputBinding,
         /// Capabilities granted for this run.
         granted_capabilities: CapabilitySet,
         /// Policy used to admit this run.

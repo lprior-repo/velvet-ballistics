@@ -12,8 +12,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::{
     constants::{
         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
-        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_INPUTS,
+        KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
     },
     error::JournalError,
     process_lock::ProcessLock,
@@ -53,6 +53,7 @@ pub struct FjallJournal {
     pub(crate) workflow_source: fjall::Keyspace,
     pub(crate) compiled_ir: fjall::Keyspace,
     pub(crate) run_header: fjall::Keyspace,
+    pub(crate) run_inputs: fjall::Keyspace,
     pub(crate) events: fjall::Keyspace,
     pub(crate) run_snapshot: fjall::Keyspace,
     pub(crate) blob: fjall::Keyspace,
@@ -106,6 +107,9 @@ impl FjallJournal {
         let run_header = database.keyspace(KEYSPACE_RUN_HEADER, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let run_inputs = database.keyspace(KEYSPACE_RUN_INPUTS, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+        })?;
         let events = database.keyspace(KEYSPACE_RUN_EVENT, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
@@ -130,6 +134,7 @@ impl FjallJournal {
             workflow_source,
             compiled_ir,
             run_header,
+            run_inputs,
             events,
             run_snapshot,
             blob,
@@ -149,7 +154,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 9] {
+    pub const fn declared_keyspaces() -> [&'static str; 10] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -160,6 +165,7 @@ impl FjallJournal {
             KEYSPACE_INDEX_STATUS,
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
+            KEYSPACE_RUN_INPUTS,
         ]
     }
 
@@ -209,6 +215,7 @@ impl FjallJournal {
         let _ = self.workflow_source.contains_key(empty_key)?;
         let _ = self.compiled_ir.contains_key(empty_key)?;
         let _ = self.run_header.contains_key(empty_key)?;
+        let _ = self.run_inputs.contains_key(empty_key)?;
         let _ = self.events.contains_key(empty_key)?;
         let _ = self.run_snapshot.contains_key(empty_key)?;
         let _ = self.blob.contains_key(empty_key)?;

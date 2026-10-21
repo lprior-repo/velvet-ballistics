@@ -175,6 +175,7 @@ fn run_accepted_event(run: RunId, seq: u64, workflow: WorkflowDigest) -> Journal
 
 fn run_admission_event(run: RunId, seq: u64, artifact_digest: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         run,
         seq: EventSeq::new(seq),
         artifact_digest,

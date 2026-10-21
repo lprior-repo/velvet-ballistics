@@ -47,3 +47,7 @@ path = "../workspace_tests/tests/cli/finish_input_execution.rs"
 [[test]]
 name = "verify_budget_profiles"
 path = "../workspace_tests/tests/cli/verify_budget_profiles.rs"
+
+[[test]]
+name = "submit_retained_inputs"
+path = "../workspace_tests/tests/cli/submit_retained_inputs.rs"

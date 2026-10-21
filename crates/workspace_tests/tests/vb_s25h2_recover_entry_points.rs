@@ -48,6 +48,7 @@ fn run_accepted(run: RunId, seq: u64, wf: WorkflowDigest) -> JournalEvent {
 
 fn run_admission(run: RunId, seq: u64, artifact: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         run,
         seq: EventSeq::new(seq),
         artifact_digest: artifact,

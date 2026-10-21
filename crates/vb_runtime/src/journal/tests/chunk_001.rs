@@ -226,6 +226,7 @@ fn storage_runtime_journal_maps_run_admission_event() {
     assert_eq!(
         events,
         vec![vb_storage::JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(0),
             artifact_digest: workflow,

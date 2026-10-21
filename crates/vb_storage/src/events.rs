@@ -91,7 +91,14 @@ impl JournalEvent {
     pub const fn record_kind(&self) -> RecordKind {
         match self {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
-            Self::RunAdmission { .. } => RecordKind::RunAdmission,
+            Self::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
+                ..
+            } => RecordKind::RunAdmission,
+            Self::RunAdmission {
+                input_digest: crate::RunInputBinding::Digest(_),
+                ..
+            } => RecordKind::RunAdmissionBound,
             Self::StepStarted { .. } => RecordKind::StepStarted,
             Self::StepSucceeded { .. } => RecordKind::StepSucceeded,
             Self::StepFailed { .. } => RecordKind::StepFailed,

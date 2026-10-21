@@ -53,6 +53,7 @@ fn assert_unsupported_frame_seed<T: core::fmt::Debug>(
 
 fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         run,
         seq,
         artifact_digest: digest,

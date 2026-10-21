@@ -521,6 +521,7 @@ fn journal_events(run: RunId) -> [JournalEvent; 4] {
             workflow,
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest: workflow,
