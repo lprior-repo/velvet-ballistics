@@ -1,0 +1,8 @@
+Return JSON array of two {old,new} edits. Rust test source only. First fix event ordering with no type inventions: exact old fn retry_last_started below; new uses inline JournalEvent::ActionFailedEvent{run:RunId::new(1),seq:EventSeq::new(1),step:StepIdx::new(10),action:ActionId::new(0),attempt:1}, inline JournalEvent::StepStarted{run:RunId::new(1),seq:EventSeq::new(2),step:StepIdx::new(8),attempt:1}, failed_run() helper seq4. Same assertions. Second append a NEW regression before exact anchor proptest::proptest! { : #[test] fn retry_explicit_step_failed() { let a=analyze_retry(&[JournalEvent::StepFailed{run:RunId::new(1),seq:EventSeq::new(1),step:StepIdx::new(17),attempt:1},failed_run()]); assert!(a.can_retry); assert_eq!(a.failed_at_step,Some(17)); assert_eq!(a.last_successful_step,None); } . Keep anchor and all other tests.
+EXACTOLDFUNCTION:
+#[test]
+fn retry_last_started() {
+    let a = analyze_retry(&[failed_action(10), started(8), failed_run()]);
+    assert!(a.can_retry);
+    assert_eq!(a.failed_at_step, Some(8));
+}
