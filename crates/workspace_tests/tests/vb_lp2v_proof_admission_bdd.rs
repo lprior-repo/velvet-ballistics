@@ -7,7 +7,9 @@ use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
     StorageArtifactStore, admit_artifact_run,
 };
-use vb_storage::admission::{AcceptedArtifact, VerificationProof, accepted_artifact_digest};
+use vb_storage::admission::{
+    AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
+};
 use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
 
 fn digest(byte: u8) -> WorkflowDigest {
@@ -22,33 +24,17 @@ fn granted_capabilities(required: Capability) -> CapabilitySet {
     CapabilitySet::from_grants(Box::new([required]))
 }
 
+fn compile_fixture(source_digest: WorkflowDigest) -> vb_core::CompiledWorkflow {
+    let source = format!(
+        "version: velvet-ballistics/v1\nname: lp2v_fixture\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: make\n    set: {{ output: answer, value: \"42\" }}\n  - id: done\n    finish: {{ result: answer }}\n"
+    );
+    vb_compile::compile_workflow(source.as_bytes()).expect("compile fixture")
+}
+
 fn accepted_artifact(source_digest: WorkflowDigest) -> Result<AcceptedArtifact, String> {
-    let zero = digest(0);
-    let mut artifact = AcceptedArtifact {
-        digest: zero,
-        source_digest,
-        policy_digest: source_digest,
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest: zero,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: EventSeq::new(42),
-        required_capabilities: Box::new([required_capability()]),
-        action_contracts: Box::new([]),
-    };
-    let artifact_digest = accepted_artifact_digest(&artifact).map_err(|error| error.to_string())?;
-    artifact.digest = artifact_digest;
-    artifact.verification.digest = artifact_digest;
+    let workflow = compile_fixture(source_digest);
+    let artifact = prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
+        .map_err(|error| error.to_string())?;
     Ok(artifact)
 }
 
@@ -113,10 +99,11 @@ fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
     let _journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
     let found = digest(0xB2);
-    let mut artifact = accepted_artifact(digest(0xB1))?;
+    let artifact = accepted_artifact(digest(0xB1))?;
     let requested = artifact.digest;
-    artifact.verification.digest = found;
-    let store = FixedAcceptedStore { artifact };
+    let mut tampered = artifact.clone();
+    tampered.verification.digest = found;
+    let store = FixedAcceptedStore { artifact: tampered };
 
     let result = admit_artifact_run(
         &store,
