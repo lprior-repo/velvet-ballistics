@@ -1,0 +1,17 @@
+APPROVE
+
+The fixture-only compilation repair is sound. Adding `input_slots: Box::new([])` to 96 WorkflowParts initializers is a pure schema alignment change that restores compilation without altering production semantics. All original assertions are preserved, no lines deleted, and the change is confined to test/benchmark fixtures.
+
+**Evidence supporting approval:**
+- vb_core: 209/209 passed
+- vb_validate: 77/77 passed  
+- vb_storage: 29/29 passed
+- These suites directly exercise the fixture structures being modified
+
+**Unresolved behavior disclosed:**
+- Workspace tests: 460 passed, 36 failed, 8 ignored (exit 101)
+- Failures concentrated in 5 runtime/lifecycle targets: cancel_kill_lattice_tests, runtime_fjall_pending_action_recovery, vb_c1s0_orchestration_runtime_tests, vb_test_runtime_lifecycle_state_behavior, vb_vt2f_direct_runtime_api_acceptance
+- These failures are tracked separately (vb-t36e0) and appear pre-existing, not introduced by the fixture schema change
+- The failing tests involve runtime state transitions, cancel/kill semantics, and direct API behavior — orthogonal to the input_slots schema addition
+
+**Scope:** Approval is scoped to the fixture patch only. The 36 workspace test failures and 8 ignored tests remain open issues for separate tracking and resolution.
