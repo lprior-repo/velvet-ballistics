@@ -1369,10 +1369,22 @@ steps:
     let wf_la = crate::compile_source(&source_la).expect("compile label-a");
     let wf_lb = crate::compile_source(&source_lb).expect("compile label-b");
 
-    assert_ne!(
+    assert_eq!(
+        wf_la.to_parts(),
+        wf_lb.to_parts(),
+        "consistent branch renames preserve compiled IR parts"
+    );
+    assert_eq!(
         wf_la.digest(),
         wf_lb.digest(),
-        "different branch labels must produce different digests"
+        "consistent branch renames preserve compiled IR digest"
+    );
+    assert!(
+        matches!(
+            (crate::canonical_digest(&source_la), crate::canonical_digest(&source_lb)),
+            (Ok(a), Ok(b)) if a != b
+        ),
+        "authoring digest preserves branch label spelling"
     );
 
     // (c) Different sub-step IDs
@@ -1432,10 +1444,22 @@ steps:
     let wf_ida = crate::compile_source(&source_ida).expect("compile id-a");
     let wf_idb = crate::compile_source(&source_idb).expect("compile id-b");
 
-    assert_ne!(
+    assert_eq!(
+        wf_ida.to_parts(),
+        wf_idb.to_parts(),
+        "consistent sub-step ID renames preserve compiled IR parts"
+    );
+    assert_eq!(
         wf_ida.digest(),
         wf_idb.digest(),
-        "different sub-step IDs must produce different digests"
+        "consistent sub-step ID renames preserve compiled IR digest"
+    );
+    assert!(
+        matches!(
+            (crate::canonical_digest(&source_ida), crate::canonical_digest(&source_idb)),
+            (Ok(a), Ok(b)) if a != b
+        ),
+        "authoring digest preserves sub-step ID spelling"
     );
 }
 

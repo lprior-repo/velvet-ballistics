@@ -296,17 +296,6 @@ pub(super) fn emit_single_body_set(
     }
 }
 
-pub(super) fn body_constant_index(
-    builder: &mut SlotCompiler,
-    value: &str,
-    step: usize,
-    reuse_first_constant: bool,
-) -> Result<ConstIdx, CompileErrors> {
-    if reuse_first_constant && !builder.constants.is_empty() {
-        return Ok(ConstIdx::new(0));
-    }
-    let constant = parse_i64_field(value, step, "set.value")?;
-    builder
-        .push_constant(ConstValue::I64(constant))
-        .map_err(|e| CompileErrors(vec![e]))
-}
+#[path = "body_constants.rs"]
+mod body_constants;
+pub(super) use body_constants::body_constant_index;

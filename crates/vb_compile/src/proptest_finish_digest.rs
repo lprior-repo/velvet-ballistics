@@ -131,7 +131,7 @@ proptest! {
     }
 
     #[test]
-    fn finish_result_change_changes_digest_string(
+    fn finish_output_rename_preserves_ir_and_changes_authoring_digest(
         id in step_id_strategy(),
         out_a in step_id_strategy(),
         out_b in step_id_strategy(),
@@ -156,8 +156,19 @@ proptest! {
         let db = digest_from_yaml(&yaml_b)
             .map_err(|e| TestCaseError::fail(e))?;
 
-        prop_assert_ne!(da, db,
-            "different Finish result output names must produce different digests");
+        prop_assert_eq!(da, db, "consistent output renames preserve compiled IR digest");
+        let source_a = crate::canonical_digest(&crate::parse_workflow_source(&yaml_a).map_err(|e| TestCaseError::fail(e.to_string()))?)
+            .map_err(|e| TestCaseError::fail(format!("canonical_digest(a): {}", e)))?;
+        let source_b = crate::canonical_digest(&crate::parse_workflow_source(&yaml_b).map_err(|e| TestCaseError::fail(e.to_string()))?)
+            .map_err(|e| TestCaseError::fail(format!("canonical_digest(b): {}", e)))?;
+        prop_assert_ne!(source_a, source_b, "authoring digest preserves output spelling");
+        let parts_a = crate::compile_workflow(yaml_a.as_bytes())
+            .map_err(|e| TestCaseError::fail(format!("compile(a): {}", e)))?
+            .to_parts();
+        let parts_b = crate::compile_workflow(yaml_b.as_bytes())
+            .map_err(|e| TestCaseError::fail(format!("compile(b): {}", e)))?
+            .to_parts();
+        prop_assert_eq!(parts_a, parts_b, "consistent output renames preserve compiled IR parts");
     }
 }
 
@@ -205,9 +216,11 @@ fn compile_and_expect_max_slots_error(yaml: &str) -> Result<(), String> {
         Err(errors) => {
             let slice = errors.as_slice();
             match slice {
-                [crate::CompileError::Workflow(
-                    vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
-                )] => {
+                [
+                    crate::CompileError::Workflow(
+                        vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
+                    ),
+                ] => {
                     if *resource == "max_slots" {
                         Ok(())
                     } else {
