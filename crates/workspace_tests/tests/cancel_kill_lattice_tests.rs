@@ -66,6 +66,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
         nodes,

@@ -1,0 +1,39 @@
+{
+  "package": "vb_validate",
+  "targets": [
+    "capability_contract_schema",
+    "gate_08_accessor_parity",
+    "idempotency_contract_red",
+    "red_phase_validation"
+  ],
+  "command": [
+    "timeout",
+    "150",
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--collect",
+    "-p",
+    "MemoryHigh=20G",
+    "-p",
+    "MemoryMax=24G",
+    "-p",
+    "MemorySwapMax=0",
+    "cargo",
+    "test",
+    "-q",
+    "-p",
+    "vb_validate",
+    "--no-fail-fast",
+    "--test",
+    "capability_contract_schema",
+    "--test",
+    "gate_08_accessor_parity",
+    "--test",
+    "idempotency_contract_red",
+    "--test",
+    "red_phase_validation"
+  ],
+  "exit_code": 0
+}

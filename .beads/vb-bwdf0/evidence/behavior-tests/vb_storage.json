@@ -1,0 +1,30 @@
+{
+  "package": "vb_storage",
+  "targets": [
+    "accepted_artifact_red_phase"
+  ],
+  "command": [
+    "timeout",
+    "150",
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--collect",
+    "-p",
+    "MemoryHigh=20G",
+    "-p",
+    "MemoryMax=24G",
+    "-p",
+    "MemorySwapMax=0",
+    "cargo",
+    "test",
+    "-q",
+    "-p",
+    "vb_storage",
+    "--no-fail-fast",
+    "--test",
+    "accepted_artifact_red_phase"
+  ],
+  "exit_code": 0
+}

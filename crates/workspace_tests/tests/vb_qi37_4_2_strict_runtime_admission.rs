@@ -221,6 +221,7 @@ fn accepted_artifact_with_flags_and_seq(
 
 fn minimal_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("vb_qi37_4_2_runtime_admission_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
