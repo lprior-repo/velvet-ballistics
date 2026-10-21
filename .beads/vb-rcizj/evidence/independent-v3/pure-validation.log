@@ -1,0 +1,77 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/vb_runtime)
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:765:13
+    |
+765 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:348:13
+    |
+348 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:387:13
+    |
+387 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib test) generated 4 warnings (run `cargo fix --lib -p vb_runtime --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.93s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+
+running 25 tests
+test shard::helpers::tests::validate_action_completion_accepts_running_step_with_matching_action ... ok
+test shard::helpers::tests::validate_action_completion_accepts_equal_attempt_and_capacity ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_min_valid_attempt_capacity_one ... ok
+test shard::helpers::tests::validate_action_completion_rejects_attempt_beyond_max ... ok
+test shard::helpers::tests::validate_action_completion_rejects_unscheduled_first_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_failed ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_max_valid_attempt ... ok
+test shard::helpers::tests::validate_action_completion_accepts_matching_current_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_capacity_is_zero ... ok
+test shard::helpers::tests::validate_action_completion_rejects_stale_attempt_without_state_change ... ok
+test shard::helpers::tests::validate_action_completion_rejects_future_attempt_when_attempt_exceeds_current ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_node_is_not_do ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_pending ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_over_capacity_and_current_zero ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_succeeded ... ok
+test shard::helpers::tests::validate_action_completion_rejects_wrong_action_id ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_exceeds_capacity ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_capacity ... ok
+test shard::helpers::tests::validate_action_completion_returns_ok_when_all_preconditions_satisfied ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_is_zero ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_at_edge_1_vs_2 ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_attempt_lower_than_current ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_lower_by_many ... ok
+test shard::helpers::tests::proptest_tests::prop_validate_action_completion_never_panics ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 1878 filtered out; finished in 0.00s
+
