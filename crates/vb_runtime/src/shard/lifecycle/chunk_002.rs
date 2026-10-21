@@ -40,12 +40,22 @@ impl Shard {
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        let pending_timer = self
-            .pending_timer_get(run)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        if pending_timer.step != answer.ticket.ask_step
-            || pending_timer.kind != PendingTimerKind::Ask
-        {
+        // For recovered open asks without timers, verify via workflow node kind.
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        let ask_node = state.workflow.node(answer.ticket.ask_step);
+        let timer = self.pending_timer_get(run);
+        let open_ask_boundary = ask_node
+            .map(|n| matches!(n.kind, vb_core::workflow::CompiledNodeKind::Ask { .. }))
+            .unwrap_or(false);
+        if open_ask_boundary && timer.is_none() {
+            // Recovered open ask with no timer — allowed
+        } else if let Some(pending_timer) = timer {
+            if pending_timer.step != answer.ticket.ask_step
+                || pending_timer.kind != PendingTimerKind::Ask
+            {
+                return Err(RuntimeError::InvalidActionCompletion);
+            }
+        } else {
             return Err(RuntimeError::InvalidActionCompletion);
         }
         {

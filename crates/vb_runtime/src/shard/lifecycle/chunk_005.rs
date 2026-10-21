@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let result = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -21,7 +21,8 @@ impl Shard {
             evidence,
             &mut state.collect_states,
             granted,
-        )
+        );
+        result
     }
 
     fn apply_drive_result(
@@ -96,6 +97,7 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
+        let action_abi_digest = Self::action_abi_digest_from_state(&state, ticket.action)?;
         let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
         Self::push_drive_journal_event(
             &mut journal_events,
@@ -103,7 +105,7 @@ impl Shard {
                 ticket,
                 input,
                 output,
-                action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+                action_abi_digest,
             },
         )?;
         Ok((journal_events, trace_events, state, ticket, step))
@@ -263,5 +265,21 @@ impl Shard {
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.apply(run, RuntimeEvent::Fail)
             .map_err(DriveApplyFailure::AfterCommit)
+    }
+}
+
+impl Shard {
+    fn action_abi_digest_from_state(
+        state: &RunState,
+        action: vb_core::ids::ActionId,
+    ) -> RuntimeResult<vb_core::ids::WorkflowDigest> {
+        let contract = state
+            .action_contracts
+            .iter()
+            .find(|c| c.id == action)
+            .ok_or(RuntimeError::UnsupportedOperation {
+                operation: "action_contract_not_found",
+            })?;
+        crate::recovery::action_contract_abi_digest(contract)
     }
 }

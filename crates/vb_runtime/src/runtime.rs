@@ -295,12 +295,12 @@ impl Runtime {
         action_contracts: Box<[ActionContract]>,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission_with_contracts(
-            run,
-            &workflow,
-            caps.clone(),
-            &action_contracts,
-        )?;
+        if !action_contracts.is_empty() {
+            shard.validate_action_abi_digests_match(
+                &workflow,
+                &action_contracts,
+            )?;
+        }
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
@@ -903,7 +903,8 @@ impl Runtime {
         ticket_wire: u64,
     ) -> Option<vb_core::action::ActionTicket> {
         let shard = self.shard_for_run(run).ok()?;
-        let canonical = shard.pending_action_get(run)?;
+        let canonical = shard.pending_action_get(run);
+        let canonical = canonical?;
         let wire_step = u16::try_from(ticket_wire).ok()?;
         if canonical.step.get() != wire_step {
             return None;

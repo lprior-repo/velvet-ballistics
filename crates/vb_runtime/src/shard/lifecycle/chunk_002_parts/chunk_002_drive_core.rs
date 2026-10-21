@@ -1,6 +1,12 @@
 impl Shard {
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {
         let mut state = self.take_run_state(run)?;
+        if state.action_contracts.is_empty() && has_do_nodes(&state.workflow) {
+            self.run_state_insert(run, state)?;
+            return Err(RuntimeError::RecoveryCannotResume {
+                reason: String::from("action_abi_digests_missing"),
+            });
+        }
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();
         let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
@@ -65,6 +71,17 @@ impl Shard {
             &mut state.collect_states,
             granted,
         )
+    }
+
+    fn has_do_nodes(workflow: &CompiledWorkflow) -> bool {
+        for step in 0u16..workflow.node_count() {
+            if let Some(node) = workflow.node(vb_core::ids::StepIdx::new(step)) {
+                if matches!(node.kind, CompiledNodeKind::Do { .. }) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     fn apply_drive_result(

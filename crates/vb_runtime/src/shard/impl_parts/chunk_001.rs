@@ -571,14 +571,16 @@ impl Shard {
         run_id: RunId,
         ticket: vb_core::action::ActionTicket,
     ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
-        self.run_aggregate
-            .pending_action_insert(&self.runs, self.max_active_runs, run_id, ticket)
+        let result = self.run_aggregate
+            .pending_action_insert(&self.runs, self.max_active_runs, run_id, ticket);
+        result
     }
 
     /// Returns the in-flight action ticket for the given run, if any.
     #[must_use]
     pub fn pending_action_get(&self, run_id: RunId) -> Option<vb_core::action::ActionTicket> {
-        self.run_aggregate.pending_action_get(run_id)
+        let result = self.run_aggregate.pending_action_get(run_id);
+        result
     }
 
     #[must_use]

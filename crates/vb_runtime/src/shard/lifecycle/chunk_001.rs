@@ -117,6 +117,21 @@ impl Shard {
         let admission = self.build_admission(run, digest, caps)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+        // Persist input slot writes to the journal for recovery.
+        for (slot, value) in inputs {
+            let bytes = postcard::to_allocvec(value).map_err(|_| RuntimeError::EncodeFailed)?;
+            let extra = vb_storage::encode_slot_written_extra(Taint::Clean, None)
+                .map_err(|_| RuntimeError::Recovery {
+                    error: "slot_written_extra_encode_failed".to_string(),
+                })?;
+            self.append_journal_event(RuntimeJournalEvent::SlotWritten {
+                run,
+                slot: *slot,
+                value: bytes,
+                taint: Taint::Clean,
+                extra: Some(extra),
+            })?;
+        }
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         if persist_header {
             self.append_admission_header_journal_event(
@@ -281,6 +296,13 @@ impl Shard {
         super::contract_validation::validate_contract_ids(action_contracts)?;
         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+        if !action_contracts.is_empty() {
+            super::contract_validation::validate_action_abi_digests_match(
+                &self.artifact_store,
+                workflow,
+                action_contracts,
+            )?;
+        }
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
@@ -347,7 +369,7 @@ impl Shard {
         command: crate::shard::types::RecoverRunCommand,
     ) -> RuntimeResult<()> {
         let run = command.run;
-        let frame = command.frame;
+        let mut frame = command.frame;
         let artifact_digest = command.artifact_digest;
         let workflow_digest = command.workflow_digest;
         let next_seq = command.next_seq;
@@ -404,6 +426,21 @@ impl Shard {
         let max_slots = workflow.resource_contract().max_slots;
         self.prepare_run_slots(run)?;
 
+        // Handle open ask boundary: advance PC to AskResume node before
+        // admission so the Ask node is not re-executed.
+        if boundary.kind() == crate::recovery::RecoveredRunBoundaryKind::OpenAsk {
+            let ask = boundary.open_ask().expect("open ask boundary must have ask");
+            let resume_step = workflow
+                .node(ask.step())
+                .and_then(|n| n.next)
+                .ok_or_else(|| RuntimeError::RecoveryCannotResume {
+                    reason: String::from("open_ask_resume_step_missing"),
+                })?;
+            frame
+                .set_pc(resume_step)
+                .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+        }
+
         let state = crate::shard::types::RunState {
             frame,
             workflow,
@@ -415,25 +452,32 @@ impl Shard {
         };
 
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+        let admit_result = self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial);
+        admit_result?;
 
         // Step 7: Handle boundary for suspended operations
         match boundary.kind() {
-            crate::recovery::RecoveredRunBoundaryKind::None => {}
+            crate::recovery::RecoveredRunBoundaryKind::None => {
+            }
             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
                 // Re-inject pending action ticket from boundary
                 let ticket = boundary.pending_action_ticket().map(|t| t.ticket());
                 if let Some(t) = ticket {
                     self.reinject_pending_action(run, t)?;
+                } else {
                 }
             }
             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                // Open ask boundary: resume at ask step, no side effects
+                // PC already advanced before admission. Do not drive the run
+                // because the answer slot is not yet written. The run should
+                // be suspended, waiting for answer_ask to provide the answer.
+                return Ok(());
             }
         }
 
         // Step 8: Drive run from recovered state
-        match self.drive_run(run) {
+        let drive_result = self.drive_run(run);
+        match drive_result {
             Ok(()) => Ok(()),
             Err(error) => {
                 if !self.run_state_contains(run) {
@@ -661,5 +705,17 @@ impl Shard {
             capacity: ticket.capacity.max(policy.max_attempts),
             ..ticket
         })
+    }
+    /// Validates action ABI digests match the accepted artifact.
+    pub fn validate_action_abi_digests_match(
+        &self,
+        workflow: &CompiledWorkflow,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        super::contract_validation::validate_action_abi_digests_match(
+            &self.artifact_store,
+            workflow,
+            action_contracts,
+        )
     }
 }

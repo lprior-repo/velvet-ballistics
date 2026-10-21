@@ -106,6 +106,12 @@ pub fn validate_workflow_action_binding(
     workflow: &CompiledWorkflow,
     contracts: &[ActionContract],
 ) -> RuntimeResult<()> {
+    let has_do_nodes = has_workflow_do_nodes(workflow);
+    if contracts.is_empty() && has_do_nodes {
+        return Err(RuntimeError::RecoveryCannotResume {
+            reason: String::from("action_abi_digests_missing"),
+        });
+    }
     for step in 0u16..workflow.node_count() {
         let step_idx = vb_core::ids::StepIdx::new(step);
         let node = match workflow.node(step_idx) {
@@ -128,6 +134,85 @@ pub fn validate_workflow_action_binding(
                     action,
                     error: "contract ID mismatch for workflow Do action".to_string(),
                 });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn has_workflow_do_nodes(workflow: &CompiledWorkflow) -> bool {
+    for step in 0u16..workflow.node_count() {
+        if let Some(node) = workflow.node(vb_core::ids::StepIdx::new(step)) {
+            if matches!(node.kind, vb_core::workflow::CompiledNodeKind::Do { .. }) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+use crate::recovery::action_contract_abi_digest;
+
+/// Validates that submitted action contracts match the accepted artifact's
+/// action ABI digests. This ensures that the runtime uses the exact same
+/// action contracts that were admitted.
+pub fn validate_action_abi_digests_match(
+    artifact_store: &crate::admission::SharedAcceptedArtifactStore,
+    workflow: &CompiledWorkflow,
+    submitted_contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    let workflow_digest = workflow.digest();
+    let accepted = artifact_store.load_accepted_artifact(workflow_digest).map_err(|error| {
+        match error {
+            crate::admission::ArtifactEnvelopeError::ArtifactNotFound { .. } => {
+                RuntimeError::AdmissionActionAbiDigestMismatch {
+                    action: submitted_contracts.first().map(|c| c.id).unwrap_or(vb_core::ids::ActionId::new(0)),
+                    expected: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+                    submitted: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+                }
+            }
+            _ => RuntimeError::RecoveryCannotResume {
+                reason: String::from("artifact_decode_failed"),
+            },
+        }
+    })?;
+
+    for submitted in submitted_contracts.iter() {
+        let submitted_digest = action_contract_abi_digest(submitted)?;
+        let expected_contract = accepted
+            .action_contracts
+            .iter()
+            .find(|c| c.id == submitted.id)
+            .ok_or(RuntimeError::ContractValidationError {
+                action: submitted.id,
+                error: "accepted artifact missing action contract".to_string(),
+            })?;
+        let expected_digest = action_contract_abi_digest(expected_contract)?;
+        if submitted_digest != expected_digest {
+            return Err(RuntimeError::AdmissionActionAbiDigestMismatch {
+                action: submitted.id,
+                expected: expected_digest,
+                submitted: submitted_digest,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Validates that a workflow with Do nodes has non-empty action contracts.
+pub fn validate_workflow_requires_contracts(
+    workflow: &CompiledWorkflow,
+    contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    if contracts.is_empty() {
+        for step in 0u16..workflow.node_count() {
+            let step_idx = vb_core::ids::StepIdx::new(step);
+            if let Some(node) = workflow.node(step_idx) {
+                if matches!(node.kind, vb_core::workflow::CompiledNodeKind::Do { .. }) {
+                    return Err(RuntimeError::RecoveryCannotResume {
+                        reason: String::from("action_abi_digests_missing"),
+                    });
+                }
             }
         }
     }
