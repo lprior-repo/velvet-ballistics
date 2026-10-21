@@ -1,0 +1,5 @@
+2026-10-21T22:58:12.839992Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 324 (body: 720 bytes)
+2026-10-21T22:58:12.865224Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 324 (body: 720 bytes)
+2026-10-21T22:58:12.865462Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-3090 is used. This will use fallback model metadata.
+2026-10-21T22:58:12.903339Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-3090 is used. This will use fallback model metadata.
+2026-10-21T22:58:13.225283Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-3090 is used. This will use fallback model metadata.

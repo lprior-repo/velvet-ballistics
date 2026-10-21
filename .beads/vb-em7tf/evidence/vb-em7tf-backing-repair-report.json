@@ -1,0 +1,122 @@
+[
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-v1-gap-review-sol-20261021",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-v1-gap-review-sol-20261021",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-ezymz-admission-sol",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-r5c1c-retry-luna",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-r5c1c-retry-luna",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-mryfc-lifecycle-luna",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-cvuau-direct-api-luna",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-cvuau-direct-api-luna",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-cyz6d-async-audit-sol",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-xx331-ci-luna",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-014sy-yaml-cli-luna",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-9agmk-artifact-sol",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl",
+    "old_target": "../../../.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-eyij7-impl",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-netau-recovery-5090",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-netau-recovery-5090",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-module-guard-5090",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-gy80b-module-guard-5090",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-code-review-3090",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-gy80b-code-review-3090",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-cancel-5090",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-16jfp-cancel-5090",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  },
+  {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-code-review-3090",
+    "old_target": "/home/lewis/src/velvet-ballistics/.git",
+    "new_target": "../../../.git",
+    "git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-vb-16jfp-code-review-3090",
+    "jj_status_exit": 0,
+    "source_mutation": "none requested; ignore-working-copy used"
+  }
+]

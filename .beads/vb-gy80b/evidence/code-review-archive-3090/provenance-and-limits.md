@@ -1,0 +1,3 @@
+# Reviewer archive
+
+Actual3090 CLI review of cd6a8e8596259c20e0159492bbca041f5de152e7, localprovider only. Reviewer reported source APPROVED with existing formatting issue. Parent does not accept this as full gate closure: formatting remains required, exact baseline experiment used e72b905d rather than immediate856603b8, and findings lack all canonical dispositions. Raw events preserve temporary source checkout experiment; reviewer restored source candidate before report. Prior misrouted test runs are rejected evidence, not candidate coverage. Independent test review still pending. No main/integration source change is authorized by this archive.
