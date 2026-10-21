@@ -110,7 +110,6 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
         self.release_frame(state.frame);
-        self.action_abi_digests_remove(run);
         self.discard_journal_sequence(run);
         self.clear_executed_step_accounting(run);
         Ok(())
@@ -231,7 +230,6 @@ impl Shard {
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.release_frame(state.frame);
-        self.action_abi_digests_remove(run);
         self.runtime_state_remove(run);
         self.discard_journal_sequence(run);
         self.clear_executed_step_accounting(run);

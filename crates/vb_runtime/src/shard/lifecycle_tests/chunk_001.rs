@@ -63,6 +63,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -123,6 +124,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -160,6 +162,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -220,6 +223,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -267,6 +271,102 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
+
+// vb-3l40a: validate_submit_admission_with_contracts capability coverage tests
+#[cfg(test)]
+mod vb_3l40a_contract_validation_tests {
+    use super::*;
+    use crate::shard::Shard;
+    use crate::shard::ShardConfig;
+    use crate::RuntimeError;
+
+    fn make_contract(
+        id: vb_core::ids::ActionId,
+        name: &str,
+        required_caps: Box<[vb_core::capability::Capability]>,
+    ) -> vb_core::action::ActionContract {
+        vb_core::action::ActionContract {
+            id,
+            name: vb_core::action::ActionName::new(name).expect("test name"),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::DeterministicPure,
+            side_effect: vb_core::action::SideEffect::None,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+            required_capabilities: required_caps,
+        }
+    }
+
+    #[test]
+    fn validate_rejects_insufficient_capability() {
+        let shard_config = ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(shard_config);
+        let run = vb_core::ids::RunId::new(1);
+        let digest = vb_core::ids::WorkflowDigest::from_bytes([1u8; 32]);
+
+        // Contract requires a cap that is not granted
+        let cap = vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
+        let contract = make_contract(vb_core::ids::ActionId::new(0), "test", Box::new([cap.clone()]));
+
+        // Grant a different cap
+        let granted =
+            vb_core::capability::CapabilitySet::from_grants(Box::new([
+                vb_core::capability::Capability::new("other".into(), vb_core::ids::ActionId::new(0)),
+            ]));
+
+        let result = shard.validate_submit_admission_with_contracts(
+            run, digest, granted, &vec![contract],
+        );
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        match err {
+            RuntimeError::AdmissionCapabilityDenied {
+                required, granted: _, ..
+            } => {
+                assert_eq!(required.name(), "storage");
+            }
+            _ => panic!("expected AdmissionCapabilityDenied, got: {err:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_accepts_sufficient_capability() {
+        let shard_config = ShardConfig {
+            command_queue_capacity: 64,
+            trace_capacity: 64,
+            step_budget_per_tick: 4,
+            max_active_runs: 8,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(shard_config);
+        let run = vb_core::ids::RunId::new(2);
+        let digest = vb_core::ids::WorkflowDigest::from_bytes([2u8; 32]);
+
+        // Contract requires cap that is granted
+        let cap = vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
+        let contract = make_contract(vb_core::ids::ActionId::new(0), "test", Box::new([cap.clone()]));
+
+        let granted =
+            vb_core::capability::CapabilitySet::from_grants(Box::new([cap.clone()]));
+
+        let result = shard.validate_submit_admission_with_contracts(
+            run, digest, granted, &vec![contract],
+        );
+
+        assert!(result.is_ok(), "expected Ok, got: {result:?}");
+    }
+}

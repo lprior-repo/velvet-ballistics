@@ -12,6 +12,7 @@ use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
 pub(crate) use admission::{
+    action_contract_abi_digest,
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     validate_recovered_admission_evidence,
 };

@@ -325,6 +325,7 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).unwrap()
 }
@@ -1226,6 +1227,7 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).unwrap()
 }
@@ -1288,6 +1290,7 @@ mod proptest_reentry {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         CompiledWorkflow::try_from_parts(parts).unwrap()
     }

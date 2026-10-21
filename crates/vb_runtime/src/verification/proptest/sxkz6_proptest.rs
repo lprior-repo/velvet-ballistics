@@ -58,6 +58,7 @@ fn small_workflow() -> vb_core::workflow::CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("bounded parts must compile")
 }
