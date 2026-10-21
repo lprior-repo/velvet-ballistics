@@ -1,0 +1,3 @@
+# Seven schema fixture declarations
+
+Local3090 corrected v2JSON applied, coordinator formatted declaredinputliteral only. Rejected v1 invented idx/tupleID/imports, neverapplied. Contract firstcall emitted unrelated invented APIcode rather than prose, rejected; v2 accepted. Actual CLI123pass, admission23pass1dummy-ticketfailure, then independently reviewed vb-oqd41 resolvesfailure and actual24pass. Separate local5090 code/local3090 testreview approve seven fixture declarations. FullCLIpackage now compiles/runs but2productionretryanalysisunitfailures remain vb-nn1yo; no fullpackagepassclaim. Parent vb-bwdf0 remainsopen forstoragefixtures and oldcandidate review.

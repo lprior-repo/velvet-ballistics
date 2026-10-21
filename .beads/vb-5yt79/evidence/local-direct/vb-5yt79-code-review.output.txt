@@ -1,0 +1,7 @@
+STATUS APPROVED
+
+The change adds the required `input_slots` field to seven `WorkflowParts` struct literals across three test fixture files. One fixture (`cli-input`) declares a single I64 slot at `SlotIdx::ZERO`, matching the CLI test that passes `SlotValue::I64(7)` as input. The remaining six fixtures declare empty `input_slots` arrays, which is correct for workflows with no external input ports.
+
+The slot declaration is consistent with the existing test behavior: the CLI integration test already passes an I64 value via `--input-bin`, and the workflow type system now has the corresponding slot declaration to validate against. No production code, assertions, or test expectations are modified.
+
+All seven fixtures are accounted for: three in `chunk_001.rs`, two in `chunk_004.rs`, and two in `cli_integration.rs`. The change is purely additive and addresses a schema completeness issue in test fixtures only.
