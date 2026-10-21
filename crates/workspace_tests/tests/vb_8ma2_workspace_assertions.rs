@@ -10,7 +10,7 @@ const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_queue_semantics", "vb_queue_semantics"),
-    ("crates/vb_cli", "velvet-ballistics"),
+    ("crates/velvet_ballistics", "velvet-ballistics"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
@@ -50,7 +50,7 @@ fn write_manifest(root: &Path, extra_member: Option<&str>) -> Result<(), std::io
         &format!(
             r#"[workspace]
 members = [
-    "crates/vb_cli",
+    "crates/velvet_ballistics",
     "crates/vb_compile",
     "crates/vb_core",
     "crates/vb_ipc",
@@ -109,7 +109,7 @@ fn write_extra_member_manifests(root: &Path) -> Result<(), std::io::Error> {
     for &(member, package_name) in EXTRA_MEMBER_MANIFESTS {
         let mut manifest =
             format!("[package]\nname = \"{package_name}\"\nedition = \"2024\"\n\n[dependencies]\n");
-        if member == "crates/vb_cli" {
+        if member == "crates/velvet_ballistics" {
             manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballistics\"\npath = \"src/main.rs\"\n");
         }
         if member == "crates/vb_validate" {

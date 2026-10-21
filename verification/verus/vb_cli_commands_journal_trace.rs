@@ -7,7 +7,7 @@
 // ============================================================================
 //
 // This file is bound to the production exec fns `build_trace` and
-// `trace_one` at `crates/vb_cli/src/commands_journal.rs:62-68` and
+// `trace_one` at `crates/velvet_ballistics/src/commands_journal.rs:62-68` and
 // `:100-311` through the companion extern surface
 // `verification/verus/extern_vb_cli_commands_journal_trace.rs`. The
 // extern file provides production-bound mirrors of:
@@ -15,13 +15,13 @@
 //   - `MirrorJournalEvent` (24-variant enum mirror of
 //     `crates/vb_storage/src/events.rs:23-316`)
 //   - `TraceEntry` (struct mirror of
-//     `crates/vb_cli/src/commands_journal.rs:14-24`)
+//     `crates/velvet_ballistics/src/commands_journal.rs:14-24`)
 //   - `TraceStatus` (enum mirror of
-//     `crates/vb_cli/src/commands_journal.rs:27-35`)
+//     `crates/velvet_ballistics/src/commands_journal.rs:27-35`)
 //   - `mirror_trace_one` (line-by-line mirror of
-//     `crates/vb_cli/src/commands_journal.rs:100-311`)
+//     `crates/velvet_ballistics/src/commands_journal.rs:100-311`)
 //   - `mirror_build_trace` (line-by-line mirror of
-//     `crates/vb_cli/src/commands_journal.rs:62-68`)
+//     `crates/velvet_ballistics/src/commands_journal.rs:62-68`)
 //
 // The `assume_specification` bridges below attach production
 // contracts to `mirror_trace_one` and `mirror_build_trace`. The exec
@@ -85,11 +85,11 @@
 // BINDING LEDGER (mirrors extern_vb_cli_commands_journal_trace.rs)
 // ============================================================================
 //   - `MirrorJournalEvent`        <- crates/vb_storage/src/events.rs:23-316
-//   - `TraceEntry`                <- crates/vb_cli/src/commands_journal.rs:14-24
-//   - `TraceStatus`               <- crates/vb_cli/src/commands_journal.rs:27-35
-//   - `TraceStatus::as_str`       <- crates/vb_cli/src/commands_journal.rs:38-48
-//   - `mirror_trace_one`          <- crates/vb_cli/src/commands_journal.rs:100-311
-//   - `mirror_build_trace`        <- crates/vb_cli/src/commands_journal.rs:62-68
+//   - `TraceEntry`                <- crates/velvet_ballistics/src/commands_journal.rs:14-24
+//   - `TraceStatus`               <- crates/velvet_ballistics/src/commands_journal.rs:27-35
+//   - `TraceStatus::as_str`       <- crates/velvet_ballistics/src/commands_journal.rs:38-48
+//   - `mirror_trace_one`          <- crates/velvet_ballistics/src/commands_journal.rs:100-311
+//   - `mirror_build_trace`        <- crates/velvet_ballistics/src/commands_journal.rs:62-68
 //   - `RunId`                     <- crates/vb_core/src/ids/mod.rs:65
 //   - `EventSeq`                  <- crates/vb_core/src/ids/mod.rs:75
 //   - `StepIdx`                   <- crates/vb_core/src/ids/mod.rs:53
@@ -203,12 +203,12 @@ pub struct ExConstValue(pub production::ConstValue);
 pub struct ExMirrorJournalEvent(pub production::MirrorJournalEvent);
 
 /// External type spec: production `TraceEntry` struct
-/// (mirror of `crates/vb_cli/src/commands_journal.rs:14-24`).
+/// (mirror of `crates/velvet_ballistics/src/commands_journal.rs:14-24`).
 #[verifier::external_type_specification]
 pub struct ExTraceEntry(pub production::TraceEntry);
 
 /// External type spec: production `TraceStatus` enum
-/// (mirror of `crates/vb_cli/src/commands_journal.rs:27-35`).
+/// (mirror of `crates/velvet_ballistics/src/commands_journal.rs:27-35`).
 #[verifier::external_type_specification]
 pub struct ExTraceStatus(pub production::TraceStatus);
 
@@ -569,7 +569,7 @@ pub proof fn proof_trace_one_applied_globally_deterministic(
 // ---------------------------------------------------------------------------
 //
 // Required because `TraceEntry` derives `PartialEq` in production
-// (crates/vb_cli/src/commands_journal.rs:14). The exec proofs below
+// (crates/velvet_ballistics/src/commands_journal.rs:14). The exec proofs below
 // compare `TraceEntry` values via `==`, which dispatches to
 // `PartialEq::eq`. This bridge tells Verus that the production
 // `==` semantics are the standard reflexive PartialEq contract.
@@ -586,7 +586,7 @@ pub assume_specification[ <production::TraceEntry as std::cmp::PartialEq>::eq ](
 // ---------------------------------------------------------------------------
 //
 // Mirrors production `trace_one` at
-// `crates/vb_cli/src/commands_journal.rs:100-311`. The contract
+// `crates/velvet_ballistics/src/commands_journal.rs:100-311`. The contract
 // states: `mirror_trace_one(idx, event)` returns a `TraceEntry`
 // whose `index` field equals `idx` (production
 // commands_journal.rs:103, 119, 139, 150, 161, 171, 182, 193, 202,
@@ -604,7 +604,7 @@ pub assume_specification[ production::mirror_trace_one ](
 // ---------------------------------------------------------------------------
 //
 // Mirrors production `build_trace` at
-// `crates/vb_cli/src/commands_journal.rs:62-68`. The contract
+// `crates/velvet_ballistics/src/commands_journal.rs:62-68`. The contract
 // states: `mirror_build_trace(events)` returns a `Vec<TraceEntry>`
 // of the same length as `events`. (The per-index equality with
 // `mirror_trace_one` is established separately in the exec proofs

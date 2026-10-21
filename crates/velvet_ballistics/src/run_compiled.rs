@@ -88,17 +88,15 @@ pub(crate) enum InputMappingError {
 
 impl std::fmt::Display for InputMappingError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(match self {
-            Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-            Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-            Self::SlotIndexOutOfRange => INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
-            Self::KindMismatch { slot, expected_kind } => {
-                write!(
-                    formatter,
-                    "INPUT_MAPPING_FAILED: slot {slot} value kind mismatch, expected {expected_kind}"
-                )
-            }
-        })
+        match self {
+            Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+            Self::SlotCountExceeded => formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE),
+            Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
+            Self::KindMismatch { slot, expected_kind } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+            ),
+        }
     }
 }
 
@@ -131,6 +129,7 @@ pub(crate) fn map_runtime_inputs(
                 vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
                 vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
                 vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+                _ => return Err(InputMappingError::DecodeFailed),
             };
             if value_kind != slot.kind {
                 return Err(InputMappingError::KindMismatch {

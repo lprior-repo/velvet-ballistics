@@ -8,9 +8,9 @@ import tomllib
 from pathlib import Path
 
 
+# Authoritative master §34: exact 11 members
 ACTIVE_MEMBERS = frozenset(
     {
-        "crates/vb_boundary_inventory",
         "crates/vb_core",
         "crates/vb_yaml",
         "crates/vb_validate",
@@ -18,13 +18,10 @@ ACTIVE_MEMBERS = frozenset(
         "crates/vb_compile",
         "crates/vb_storage",
         "crates/vb_runtime",
-        "crates/vb_doc",
         "crates/vb_ipc",
-        "crates/vb_proof_kernels",
-        "crates/vb_cli",
-        "crates/vb_verification",
-        "crates/workspace_tests/idempotency_suite",
+        "crates/velvet_ballistics",
         "crates/workspace_tests",
+        "fuzz",
     }
 )
 
@@ -32,11 +29,12 @@ DEFERRED_MEMBERS = frozenset(
     {
         "crates/vb_ui_makepad",
         "crates/vb_ui_snapshot",
-        "fuzz",
     }
 )
 
-EXPECTED_EXCLUDES = frozenset({"target/miri-tmp", "crates/vb_ui", "fuzz"})
+# Excluded: xtask and target/miri-tmp
+EXPECTED_EXCLUDES = frozenset({"xtask", "target/miri-tmp"})
+
 BOUNDARY_CRATES = frozenset({"vb_core", "vb_runtime", "vb_storage", "vb_ipc"})
 FORBIDDEN_UI_DEPENDENCIES = frozenset(
     {"vb_ui", "vb_ui_makepad", "vb_ui_model", "vb_ui_snapshot", "makepad-widgets", "makepad-draw"}
@@ -45,8 +43,9 @@ FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES = frozenset(
     {"serde_json", "saphyr", "saphyr-parser", "serde-saphyr"}
 )
 DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "build-dependencies")
+
+# Product package: velvet-ballistics (binary + lib)
 EXPECTED_PACKAGE_NAMES = {
-    "crates/vb_boundary_inventory": "vb_boundary_inventory",
     "crates/vb_core": "vb_core",
     "crates/vb_yaml": "vb_yaml",
     "crates/vb_validate": "vb_validate",
@@ -54,22 +53,14 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_compile": "vb_compile",
     "crates/vb_storage": "vb_storage",
     "crates/vb_runtime": "vb_runtime",
-    "crates/vb_doc": "vb_doc",
     "crates/vb_ipc": "vb_ipc",
-    "crates/vb_ui_makepad": "vb_ui_makepad",
-    "crates/vb_ui_snapshot": "vb_ui_snapshot",
-    "crates/vb_proof_kernels": "vb_proof_kernels",
-    "crates/vb_cli": "velvet-ballistics",
-    "crates/vb_verification": "vb_verification",
-    "crates/workspace_tests/idempotency_suite": "velvet-ballistics-idempotency-workspace-tests",
+    "crates/velvet_ballistics": "velvet-ballistics",
     "crates/workspace_tests": "velvet-ballistics-workspace-tests",
-    "fuzz": "velvet-ballistics-fuzz",
 }
-EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballistics"}}
+EXPECTED_BINARIES = {"crates/velvet_ballistics": {"velvet-ballistics"}}
 EXPECTED_FEATURES = {
     "crates/vb_core": {"default", "bench", "kani-diagnostic-codes", "volatile", "test-util"},
     "crates/vb_validate": {"default", "verus"},
-    "crates/vb_ui_snapshot": {"default", "std", "tokio"},
 }
 FORBIDDEN_FEATURE_NAMES = {
     "json",

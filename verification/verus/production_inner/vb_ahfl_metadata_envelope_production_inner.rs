@@ -6,7 +6,7 @@
 // ============================================================================
 //
 // This file is a MIRROR of the relevant production surface from
-//   crates/vb_cli/src/cli_envelope.rs:18-174
+//   crates/velvet_ballistics/src/cli_envelope.rs:18-174
 // with SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without the `serde_json` extern crate
 // (no installs allowed by the task brief).
@@ -17,7 +17,7 @@
 // time) is type-checked in spec context.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_cli/src/cli_envelope.rs:18-174` whenever production
+// `crates/velvet_ballistics/src/cli_envelope.rs:18-174` whenever production
 // changes. Drift that changes the `Kind` discriminant set, the
 // `kind::*` constant values, the `as_str` / `from_str` match arms,
 // the `build_envelope` / `serialize_with_version` bodies, or the
@@ -38,7 +38,7 @@ verus! {
 // ============================================================================
 //
 // Mirror of production `vb_cli::cli_envelope::SCHEMA_VERSION` at
-// `crates/vb_cli/src/cli_envelope.rs:18`. The literal value is
+// `crates/velvet_ballistics/src/cli_envelope.rs:18`. The literal value is
 // preserved byte-for-byte. The constant visibility is relaxed from
 // `pub(crate)` to `pub` so the spec file can read it through the
 // `production::*` re-export path.
@@ -67,7 +67,7 @@ pub spec const SPEC_SCHEMA_VERSION_LEN: usize = 35;
 // ============================================================================
 //
 // Mirror of production `vb_cli::cli_envelope::Kind` at
-// `crates/vb_cli/src/cli_envelope.rs:45-63`. All 17 variants preserved
+// `crates/velvet_ballistics/src/cli_envelope.rs:45-63`. All 17 variants preserved
 // with identical names AND identical source ordering so the
 // `discriminant()` mapping below is a stable 0..=16 range. Visibility
 // is relaxed from `pub(crate)` to `pub`.
@@ -205,7 +205,7 @@ impl SpecKindProduction {
 impl SpecKindProduction {
     // ----------------------------------------------------------------------
     // Production: `Kind::as_str(&self) -> &'static str`
-    //             crates/vb_cli/src/cli_envelope.rs:68-88
+    //             crates/velvet_ballistics/src/cli_envelope.rs:68-88
     // ----------------------------------------------------------------------
     //
     // Body is a verbatim copy of the production match arms. All 17
@@ -234,7 +234,7 @@ impl SpecKindProduction {
 
     // ----------------------------------------------------------------------
     // Production: `Kind::from_str(s: &str) -> Option<Kind>`
-    //             crates/vb_cli/src/cli_envelope.rs:92-113
+    //             crates/velvet_ballistics/src/cli_envelope.rs:92-113
     // ----------------------------------------------------------------------
     //
     // Body is a verbatim copy of the production match arms. All 17
@@ -271,7 +271,7 @@ impl SpecKindProduction {
 //
 // Mirror of the production `build_envelope(data: Value, kind: Kind)
 // -> Value` output structure at
-// `crates/vb_cli/src/cli_envelope.rs:133-142`.
+// `crates/velvet_ballistics/src/cli_envelope.rs:133-142`.
 //
 // Production builds a `serde_json::Value::Object` with three keys:
 //
@@ -345,7 +345,7 @@ impl SpecEnvelopeProduction {
 // ============================================================================
 //
 // Mirror of production `build_envelope(data: Value, kind: Kind) -> Value`
-// at `crates/vb_cli/src/cli_envelope.rs:133-142`.
+// at `crates/velvet_ballistics/src/cli_envelope.rs:133-142`.
 //
 // Production signature: `fn build_envelope(data: Value, kind: Kind) -> Value`.
 // Production body (lines 134-142):
@@ -382,7 +382,7 @@ pub fn build_envelope_mirror(
 // ============================================================================
 //
 // Mirror of production `serialize_with_version(data: &Value, kind: Kind)
-// -> Value` at `crates/vb_cli/src/cli_envelope.rs:154-165`.
+// -> Value` at `crates/velvet_ballistics/src/cli_envelope.rs:154-165`.
 //
 // Production body (lines 155-165):
 //
@@ -420,7 +420,7 @@ pub fn serialize_with_version_mirror(
 // ============================================================================
 //
 // Mirror of production `vb_cli::cli_envelope::EnvelopeError` at
-// `crates/vb_cli/src/cli_envelope.rs:170-174`.
+// `crates/velvet_ballistics/src/cli_envelope.rs:170-174`.
 //
 // Production source (verbatim):
 //

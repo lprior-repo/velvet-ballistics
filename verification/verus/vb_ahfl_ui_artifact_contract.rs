@@ -59,7 +59,7 @@
 //
 // As of this writing, NONE of these exact types exists in the
 // production workspace (the `vb_ui_model` crate has been REMOVED —
-// see `crates/vb_cli/Cargo.toml:35`). All six are bound here to
+// see `crates/velvet_ballistics/Cargo.toml:35`). All six are bound here to
 // their closest production analogues:
 //
 //   - ArtifactKind::WorkflowGraph     -> Kind::WorkflowGraph
@@ -92,28 +92,28 @@
 //
 //   - `pub(crate) const SCHEMA_VERSION: &str =
 //          "velvet-ballistics/cli-output/v1"`
-//          crates/vb_cli/src/cli_envelope.rs:18
+//          crates/velvet_ballistics/src/cli_envelope.rs:18
 //          -> mirrored as `production::SPEC_SCHEMA_VERSION` (literal
 //             byte-for-byte).
 //
 //   - `pub(crate) enum Kind { 17 variants }`
-//          crates/vb_cli/src/cli_envelope.rs:42-63
+//          crates/velvet_ballistics/src/cli_envelope.rs:42-63
 //          -> mirrored as `production::SpecKindProduction` (all 17
 //             variants preserved with identical names + identical
 //             source ordering).
 //
 //   - `pub(crate) fn Kind::as_str(&self) -> &'static str`
-//          crates/vb_cli/src/cli_envelope.rs:68-88
+//          crates/velvet_ballistics/src/cli_envelope.rs:68-88
 //          -> mirrored verbatim in the extern file as
 //             `production::SpecKindProduction::as_str`.
 //
 //   - `pub(crate) fn Kind::from_str(s: &str) -> Option<Kind>`
-//          crates/vb_cli/src/cli_envelope.rs:92-113
+//          crates/velvet_ballistics/src/cli_envelope.rs:92-113
 //          -> mirrored verbatim in the extern file as
 //             `production::SpecKindProduction::from_str`.
 //
 //   - `pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value`
-//          crates/vb_cli/src/cli_envelope.rs:133-142
+//          crates/velvet_ballistics/src/cli_envelope.rs:133-142
 //          -> mirrored as `production::build_envelope_mirror`
 //             (`serde_json::Value` abstracted to typed
 //             `SpecEnvelopeProduction`; body is
@@ -132,7 +132,7 @@
 //
 //   - `pub(crate) fn redacted_slot_value(slot, value, snapshot)
 //          -> Value`
-//          crates/vb_cli/src/commands_ai_context.rs:399-413
+//          crates/velvet_ballistics/src/commands_ai_context.rs:399-413
 //          -> mirrored as `production::redacted_slot_value_mirror`
 //             (`serde_json::Value` abstracted to typed
 //             `SpecRedactedValueViewProduction`; body is

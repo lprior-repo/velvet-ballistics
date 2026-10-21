@@ -11,7 +11,7 @@
 // `#[path]` inclusion of the in-tree mirror at
 // `verification/verus/production_inner/vb_ahfl_bounds_production_inner.rs`,
 // which is a verbatim copy of the relevant production surface from
-// `crates/vb_cli/src/commands_incident.rs:14-59` with the two
+// `crates/velvet_ballistics/src/commands_incident.rs:14-59` with the two
 // `Vec<serde_json::Value>` fields abstracted to their lengths (because
 // `serde_json` is not in scope in a standalone `verus --crate-type=lib`
 // invocation — no installs allowed by the task brief).
@@ -39,7 +39,7 @@
 //   - SpecIncidentReportView      (claimed source: vb_ui_model::incident)
 //
 // As of this writing, the `vb_ui_model` crate has been REMOVED from the
-// workspace (see `crates/vb_cli/Cargo.toml:35`:
+// workspace (see `crates/velvet_ballistics/Cargo.toml:35`:
 //     `# vb_ui_model is removed from the current workspace scope.`).
 // None of the nine types exist anywhere in the current production
 // workspace. A repo-wide grep for `WorkflowGraphView`, `RunEventsView`,
@@ -60,7 +60,7 @@
 //       pub repair_hints:    Vec<serde_json::Value>,
 //   }
 //
-// at `crates/vb_cli/src/commands_incident.rs:14-27`.
+// at `crates/velvet_ballistics/src/commands_incident.rs:14-27`.
 //
 // Per the user's instruction, this extern file binds ONLY
 // `SpecIncidentReportView` to `IncidentReport` via field re-mapping.
@@ -95,7 +95,7 @@ verus! {
 //
 // Direct `#[path]` inclusion of the in-tree mirror at
 // `production_inner/vb_ahfl_bounds_production_inner.rs`. The mirror
-// is a verbatim copy of `crates/vb_cli/src/commands_incident.rs:14-59`
+// is a verbatim copy of `crates/velvet_ballistics/src/commands_incident.rs:14-59`
 // with two substitutions:
 //   1. The two `Vec<serde_json::Value>` production fields are mirrored
 //      as their `.len(): usize` (serde_json is not in scope).

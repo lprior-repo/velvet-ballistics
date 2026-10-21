@@ -3,19 +3,24 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+// Authoritative master §34: exact 11 members
 const EXPECTED_MEMBERS: &[&str] = &[
-    "crates/vb_cli",
-    "crates/vb_compile",
     "crates/vb_core",
-    "crates/vb_ipc",
-    "crates/vb_queue_semantics",
-    "crates/vb_runtime",
-    "crates/vb_storage",
+    "crates/vb_yaml",
     "crates/vb_validate",
+    "crates/vb_expr",
+    "crates/vb_compile",
+    "crates/vb_storage",
+    "crates/vb_runtime",
+    "crates/vb_ipc",
+    "crates/velvet_ballistics",
     "crates/workspace_tests",
+    "fuzz",
 ];
 
-const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
+// Excluded: xtask and target/miri-tmp
+const EXPECTED_EXCLUDES: &[&str] = &["xtask", "target/miri-tmp"];
+
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
 const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[
     "vb_ui",
@@ -36,15 +41,17 @@ const FORBIDDEN_FEATURE_NAMES: &[&str] = &[
     "velvet_ballistics",
 ];
 
+// Product package: velvet-ballistics (binary + lib)
 const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
-    ("crates/vb_cli", "velvet-ballistics"),
-    ("crates/vb_compile", "vb_compile"),
     ("crates/vb_core", "vb_core"),
-    ("crates/vb_ipc", "vb_ipc"),
-    ("crates/vb_queue_semantics", "vb_queue_semantics"),
-    ("crates/vb_runtime", "vb_runtime"),
-    ("crates/vb_storage", "vb_storage"),
+    ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
+    ("crates/vb_expr", "vb_expr"),
+    ("crates/vb_compile", "vb_compile"),
+    ("crates/vb_storage", "vb_storage"),
+    ("crates/vb_runtime", "vb_runtime"),
+    ("crates/vb_ipc", "vb_ipc"),
+    ("crates/velvet_ballistics", "velvet-ballistics"),
     (
         "crates/workspace_tests",
         "velvet-ballistics-workspace-tests",
@@ -281,12 +288,13 @@ fn check_crate_names(root: &Path, failures: &mut Vec<String>) {
                     "{member_path}/Cargo.toml: package.name expected {expected_name:?}, got {actual_name:?}"
                 ));
             }
-            if *member_path == "crates/vb_cli" {
+            // Product binary name check for velvet_ballistics crate
+            if *member_path == "crates/velvet_ballistics" {
                 let actual_binaries = binary_names(&manifest);
                 let expected_binaries = expected_set(&["velvet-ballistics"]);
                 push_set_failure(
                     failures,
-                    "crates/vb_cli/Cargo.toml: bin names",
+                    "crates/velvet_ballistics/Cargo.toml: bin names",
                     sorted_difference(&expected_binaries, &actual_binaries),
                     sorted_difference(&actual_binaries, &expected_binaries),
                 );

@@ -226,7 +226,7 @@ impl ActionId {
 }
 
 // ============================================================================
-// StepAst / StepPrimitive — mirrors of `crates/vb_compile/src/yaml_ast/types.rs`
+// StepAst / StepPrimitive — mirrors of `crates/vb_yaml/src/yaml_ast/types.rs`
 // ============================================================================
 //
 // Production `StepAst` (yaml_ast/types.rs:208) and `StepPrimitive`
@@ -246,7 +246,7 @@ impl ActionId {
 // parity proofs reason about.
 
 /// Mirror of production `StepPrimitive` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:230`. All twelve production
+/// `crates/vb_yaml/src/yaml_ast/types.rs:230`. All twelve production
 /// variants plus an `Other` arm to model the `#[non_exhaustive]`
 /// catch-all. `emit_single_body_set` only pattern-matches on `Set` and
 /// `Do` at part_04.rs:237 and 244; every other variant falls through to
@@ -314,7 +314,7 @@ pub enum StepPrimitive {
 }
 
 /// Mirror of production `ScalarValue` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:332`. Integer discriminant
+/// `crates/vb_yaml/src/yaml_ast/types.rs:332`. Integer discriminant
 /// preserved; string is `&'static str` for Verus compatibility.
 pub enum ScalarValue {
     String(&'static str),
@@ -322,21 +322,21 @@ pub enum ScalarValue {
 }
 
 /// Mirror of production `ChooseBranch` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:341`.
+/// `crates/vb_yaml/src/yaml_ast/types.rs:341`.
 pub struct ChooseBranch {
     pub when: &'static str,
     pub steps: Vec<StepAst>,
 }
 
 /// Mirror of production `TogetherBranch` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:350`.
+/// `crates/vb_yaml/src/yaml_ast/types.rs:350`.
 pub struct TogetherBranch {
     pub label: &'static str,
     pub steps: Vec<StepAst>,
 }
 
 /// Mirror of production `StepAst` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:208`. Field names match
+/// `crates/vb_yaml/src/yaml_ast/types.rs:208`. Field names match
 /// production line-by-line so any drift breaks the mirror.
 pub struct StepAst {
     pub id: &'static str,
@@ -350,14 +350,14 @@ pub struct StepAst {
 }
 
 /// Mirror of production `RetryPolicy` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:359`.
+/// `crates/vb_yaml/src/yaml_ast/types.rs:359`.
 pub struct RetryPolicy {
     pub max_attempts: u16,
     pub delay: Option<&'static str>,
 }
 
 /// Mirror of production `ErrorHandlerAst` at
-/// `crates/vb_compile/src/yaml_ast/types.rs:368`.
+/// `crates/vb_yaml/src/yaml_ast/types.rs:368`.
 pub struct ErrorHandlerAst {
     pub handler: &'static str,
 }

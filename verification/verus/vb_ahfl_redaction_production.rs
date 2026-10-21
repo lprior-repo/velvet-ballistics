@@ -109,13 +109,13 @@
 //             variant set + verbatim `#[repr(u8)]` discriminants).
 //
 //   - `pub(crate) fn slot_is_secret_or_derived(slot, snapshot) -> bool`
-//          crates/vb_cli/src/commands_ai_context.rs:415-422
+//          crates/velvet_ballistics/src/commands_ai_context.rs:415-422
 //          -> mirrored as `production::slot_is_secret_or_derived_mirror`.
 //             Body is `#[verifier::external]`. The contract is the
 //             `assume_specification` bridge in this file.
 //
 //   - `pub(crate) fn redacted_slot_value(slot, value, snapshot) -> Value`
-//          crates/vb_cli/src/commands_ai_context.rs:399-413
+//          crates/velvet_ballistics/src/commands_ai_context.rs:399-413
 //          -> mirrored as `production::redacted_slot_value_mirror`.
 //             Body is `#[verifier::external]`. The contract is the
 //             `assume_specification` bridge in this file.

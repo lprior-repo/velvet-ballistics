@@ -6,8 +6,6 @@ license = "MIT OR Apache-2.0"
 publish = false
 autobins = false
 
-[workspace]
-
 [package.metadata]
 # NOTE: cargo-fuzz requires `cargo-fuzz = true` here for manifest detection.
 # The `[package.metadata.cargo-fuzz]` subtable is the documented place for
@@ -41,7 +39,7 @@ vb_core = { path = "../crates/vb_core" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
-vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
+vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
 
 xtask = { path = "../xtask" }
@@ -58,16 +56,6 @@ path = "src/lib.rs"
 ignored = ["bytes"]
 
 # === Fuzz profile (Phase 0) ===
-[profile.fuzz]
-inherits = "release"
-debug = true
-debug-assertions = true
-overflow-checks = true
-lto = "off"
-opt-level = 2
-codegen-units = 1
-incremental = false
-
 [[bin]]
 name = "accessor_traversal"
 path = "stdin_smoke/accessor_traversal.rs"

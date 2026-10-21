@@ -18,7 +18,7 @@
 //      mirror at
 //      `verification/verus/production_inner/cli_envelope_production.rs`,
 //      which is itself a verbatim copy of
-//      `crates/vb_cli/src/cli_envelope.rs:1-114` with only the
+//      `crates/velvet_ballistics/src/cli_envelope.rs:1-114` with only the
 //      `serde_json`-dependent items removed. The mirror is structurally
 //      bound: any rename, discriminant drift, or signature change in the
 //      production `Kind` enum, the `kind::*` constants, or the
@@ -27,7 +27,7 @@
 //
 //   2. Spec fns `spec_kind_as_str` and `spec_kind_from_str` (math model)
 //      whose definitions mirror the production bodies
-//      (`crates/vb_cli/src/cli_envelope.rs:65-114`).
+//      (`crates/velvet_ballistics/src/cli_envelope.rs:65-114`).
 //
 //   3. `assume_specification[ production::Kind::as_str ]` and
 //      `assume_specification[ production::Kind::from_str ]` bridges
@@ -57,7 +57,7 @@
 //   - SpecRunEventsView      (claimed source: vb_ui_model::events)
 //
 // The `vb_ui_model` crate has been REMOVED from the workspace (see
-// `crates/vb_cli/Cargo.toml:35`:
+// `crates/velvet_ballistics/Cargo.toml:35`:
 //     `# vb_ui_model is removed from the current workspace scope.`).
 // A repo-wide grep for `WorkflowGraphView`, `RunEventsView`,
 // `WorkflowNodeView`, `WorkflowEdgeView`, `RunEventView` returns ONLY
@@ -72,7 +72,7 @@
 //
 // The closest production analogue for the view content is the envelope
 // discriminant `Kind::WorkflowGraph` (and `Kind::RunEvents`) at
-// `crates/vb_cli/src/cli_envelope.rs:49, 53`. These variants IDENTIFY
+// `crates/velvet_ballistics/src/cli_envelope.rs:49, 53`. These variants IDENTIFY
 // that a serialized payload is a "WorkflowGraph" or "RunEvents" type
 // but carry NO field state for the workflow / events content. The
 // binding scope of THIS file is therefore the envelope-discriminant
@@ -84,30 +84,30 @@
 // ============================================================================
 //
 //   - `pub enum Kind { ..., WorkflowGraph, ..., RunEvents, ... }`
-//          crates/vb_cli/src/cli_envelope.rs:42-63
+//          crates/velvet_ballistics/src/cli_envelope.rs:42-63
 //          -> mirrored verbatim in
 //             production_inner/cli_envelope_production.rs and bound via
 //             `#[path]`. Any discriminant drift breaks the spec build.
 //
 //   - `pub const SCHEMA_VERSION: &str`
-//          crates/vb_cli/src/cli_envelope.rs:16-18
+//          crates/velvet_ballistics/src/cli_envelope.rs:16-18
 //          -> mirrored verbatim. Re-exported as `SPEC_SCHEMA_VERSION`.
 //
 //   - `pub mod kind { pub const WORKFLOW_GRAPH: &str = "WorkflowGraph"; ... }`
-//          crates/vb_cli/src/cli_envelope.rs:22-40
+//          crates/velvet_ballistics/src/cli_envelope.rs:22-40
 //          -> mirrored verbatim. `WORKFLOW_GRAPH` and `RUN_EVENTS`
 //             re-exported as `SPEC_WORKFLOW_GRAPH` and
 //             `SPEC_RUN_EVENTS`. The `as_str` / `from_str`
 //             bridges reference these constants via the `kind` module.
 //
 //   - `impl Kind { fn as_str(&self) -> &'static str }`
-//          crates/vb_cli/src/cli_envelope.rs:65-88
+//          crates/velvet_ballistics/src/cli_envelope.rs:65-88
 //          -> mirrored verbatim. Contract attached via
 //             `assume_specification[ production::Kind::as_str ]`:
 //             `as_str() == spec_kind_as_str(*self_)`.
 //
 //   - `impl Kind { fn from_str(s: &str) -> Option<Kind> }`
-//          crates/vb_cli/src/cli_envelope.rs:90-114
+//          crates/velvet_ballistics/src/cli_envelope.rs:90-114
 //          -> mirrored verbatim. Contract attached via
 //             `assume_specification[ production::Kind::from_str ]`:
 //             `from_str(s) == spec_kind_from_str(s)`.
@@ -170,7 +170,7 @@ mod production;
 // ============================================================================
 //
 // `production::Kind` is the actual production enum from
-// `crates/vb_cli/src/cli_envelope.rs:42-63`. Because the production
+// `crates/velvet_ballistics/src/cli_envelope.rs:42-63`. Because the production
 // module is marked `#[verifier::external]`, the type is nameable but
 // not usable in spec context until we attach an external type spec.
 // This is the bridge: it tells Verus "this spec-mode name refers to
@@ -195,75 +195,75 @@ pub use production::Kind;
 // `production::Kind::*.as_str() == SPEC_*` so any production
 // constant rename breaks the wrapper assertion.
 /// Local mirror of production
-/// `crates/vb_cli/src/cli_envelope.rs:18`.
+/// `crates/velvet_ballistics/src/cli_envelope.rs:18`.
 pub const SPEC_SCHEMA_VERSION: &'static str = "velvet-ballistics/cli-output/v1";
 
 /// Local mirror of production `kind::VERIFICATION_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:23`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:23`).
 pub const SPEC_VERIFICATION_REPORT: &'static str = "VerificationReport";
 
 /// Local mirror of production `kind::DIAGNOSTIC_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:24`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:24`).
 pub const SPEC_DIAGNOSTIC_REPORT: &'static str = "DiagnosticReport";
 
 /// Local mirror of production `kind::WORKFLOW_EXPLANATION`
-/// (`crates/vb_cli/src/cli_envelope.rs:25`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:25`).
 pub const SPEC_WORKFLOW_EXPLANATION: &'static str = "WorkflowExplanation";
 
 /// Local mirror of production `kind::WORKFLOW_GRAPH`
-/// (`crates/vb_cli/src/cli_envelope.rs:26`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:26`).
 pub const SPEC_WORKFLOW_GRAPH: &'static str = "WorkflowGraph";
 
 /// Local mirror of production `kind::SIMULATION_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:27`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:27`).
 pub const SPEC_SIMULATION_REPORT: &'static str = "SimulationReport";
 
 /// Local mirror of production `kind::SUBMIT_RUN_RESULT`
-/// (`crates/vb_cli/src/cli_envelope.rs:28`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:28`).
 pub const SPEC_SUBMIT_RUN_RESULT: &'static str = "SubmitRunResult";
 
 /// Local mirror of production `kind::RUN_INSPECTION`
-/// (`crates/vb_cli/src/cli_envelope.rs:29`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:29`).
 pub const SPEC_RUN_INSPECTION: &'static str = "RunInspection";
 
 /// Local mirror of production `kind::RUN_EVENTS`
-/// (`crates/vb_cli/src/cli_envelope.rs:30`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:30`).
 pub const SPEC_RUN_EVENTS: &'static str = "RunEvents";
 
 /// Local mirror of production `kind::REPLAY_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:31`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:31`).
 pub const SPEC_REPLAY_REPORT: &'static str = "ReplayReport";
 
 /// Local mirror of production `kind::INCIDENT_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:32`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:32`).
 pub const SPEC_INCIDENT_REPORT: &'static str = "IncidentReport";
 
 /// Local mirror of production `kind::ACTION_LIST`
-/// (`crates/vb_cli/src/cli_envelope.rs:33`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:33`).
 pub const SPEC_ACTION_LIST: &'static str = "ActionList";
 
 /// Local mirror of production `kind::ACTION_DESCRIPTION`
-/// (`crates/vb_cli/src/cli_envelope.rs:34`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:34`).
 pub const SPEC_ACTION_DESCRIPTION: &'static str = "ActionDescription";
 
 /// Local mirror of production `kind::DOCTOR_REPORT`
-/// (`crates/vb_cli/src/cli_envelope.rs:35`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:35`).
 pub const SPEC_DOCTOR_REPORT: &'static str = "DoctorReport";
 
 /// Local mirror of production `kind::AI_CONTEXT_PACKET`
-/// (`crates/vb_cli/src/cli_envelope.rs:36`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:36`).
 pub const SPEC_AI_CONTEXT_PACKET: &'static str = "AiContextPacket";
 
 /// Local mirror of production `kind::CLI_STATUS`
-/// (`crates/vb_cli/src/cli_envelope.rs:37`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:37`).
 pub const SPEC_CLI_STATUS: &'static str = "CliStatus";
 
 /// Local mirror of production `kind::SYSTEM_STATUS`
-/// (`crates/vb_cli/src/cli_envelope.rs:38`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:38`).
 pub const SPEC_SYSTEM_STATUS: &'static str = "SystemStatus";
 
 /// Local mirror of production `kind::AGENT_CONTEXT`
-/// (`crates/vb_cli/src/cli_envelope.rs:39`).
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:39`).
 pub const SPEC_AGENT_CONTEXT: &'static str = "AgentContext";
 
 // ============================================================================
@@ -272,7 +272,7 @@ pub const SPEC_AGENT_CONTEXT: &'static str = "AgentContext";
 //
 // `spec_kind_as_str` and `spec_kind_from_str` are the spec-side
 // descriptions of the production bodies at
-// `crates/vb_cli/src/cli_envelope.rs:65-88` and `:90-114`
+// `crates/velvet_ballistics/src/cli_envelope.rs:65-88` and `:90-114`
 // respectively. Each `assume_specification` bridge below asserts that
 // the production exec fn returns exactly what the corresponding spec
 // fn predicts.
@@ -281,7 +281,7 @@ pub const SPEC_AGENT_CONTEXT: &'static str = "AgentContext";
 // `from_str(s).is_none()` contract for strings not matching any
 // registered kind.
 /// Spec model of `Kind::as_str(&self) -> &'static str` (production at
-/// `crates/vb_cli/src/cli_envelope.rs:65-88`). Each variant maps to
+/// `crates/velvet_ballistics/src/cli_envelope.rs:65-88`). Each variant maps to
 /// its registered constant.
 pub open spec fn spec_kind_as_str(k: production::Kind) -> &'static str {
     match k {
@@ -306,7 +306,7 @@ pub open spec fn spec_kind_as_str(k: production::Kind) -> &'static str {
 }
 
 /// Spec model of `Kind::from_str(s: &str) -> Option<Kind>` (production
-/// at `crates/vb_cli/src/cli_envelope.rs:90-114`). Returns `Some(k)`
+/// at `crates/velvet_ballistics/src/cli_envelope.rs:90-114`). Returns `Some(k)`
 /// for any string matching a registered `kind::*` constant, otherwise
 /// `None`.
 pub open spec fn spec_kind_from_str(s: &str) -> Option<production::Kind> {
@@ -374,7 +374,7 @@ pub open spec fn is_registered_kind_constant(s: &str) -> bool {
 // witnesses that exercise the contract end-to-end.
 /// Bridge contract: `Kind::as_str()` returns
 /// `spec_kind_as_str(*self_)`. Mirrors the production body at
-/// `crates/vb_cli/src/cli_envelope.rs:65-88`.
+/// `crates/velvet_ballistics/src/cli_envelope.rs:65-88`.
 pub assume_specification[ production::Kind::as_str ](self_: &production::Kind) -> (s: &'static str)
     ensures
         s == spec_kind_as_str(*self_),
@@ -382,7 +382,7 @@ pub assume_specification[ production::Kind::as_str ](self_: &production::Kind) -
 
 /// Bridge contract: `Kind::from_str(s)` returns
 /// `spec_kind_from_str(s)`. Mirrors the production body at
-/// `crates/vb_cli/src/cli_envelope.rs:90-114`.
+/// `crates/velvet_ballistics/src/cli_envelope.rs:90-114`.
 pub assume_specification[ production::Kind::from_str ](s: &str) -> (r: Option<production::Kind>)
     ensures
         r == spec_kind_from_str(s),

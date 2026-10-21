@@ -20,8 +20,9 @@ use crate::lexer::{BinaryOp, UnaryOp};
 #[test]
 fn blackhat_be_001_div_values_misreports_min_div_neg_one() {
     let result = eval_div_values(SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-    let Err(ExprError::DivisionByZero) = result else {
-        return;
+    match result {
+        Err(ExprError::DivisionByZero) => {},
+        other => panic!("BH-BE-001: expected DivisionByZero, got {:?}", other),
     };
 }
 
@@ -29,8 +30,9 @@ fn blackhat_be_001_div_values_misreports_min_div_neg_one() {
 #[test]
 fn blackhat_be_002_public_api_correctly_handles_min_div_neg_one() {
     let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-    let Err(ExprError::IntegerOverflow) = result else {
-        return;
+    match result {
+        Err(ExprError::IntegerOverflow) => {},
+        other => panic!("BH-BE-002: expected IntegerOverflow, got {:?}", other),
     };
 }
 

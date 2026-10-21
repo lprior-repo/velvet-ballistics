@@ -6,7 +6,7 @@
 //! - Journal read/write behavior
 //! - Error handling on corrupted data
 //!
-//! Note: vb_cli::StorageWorkflowResolver and vb_cli::event_name are private
+//! Note: velvet_ballistics::StorageWorkflowResolver and velvet_ballistics::event_name are private
 //! implementation details. These tests verify the same behavior through the
 //! public vb_storage and vb_ipc APIs.
 
@@ -134,7 +134,7 @@ fn accepted_artifact_record(compiled: &CompiledWorkflow) -> CompiledIrRecord {
     CompiledIrRecord { digest, ir }
 }
 
-/// Local implementation mirroring vb_cli::StorageWorkflowResolver behavior.
+/// Local implementation mirroring velvet_ballistics::StorageWorkflowResolver behavior.
 /// This is needed because StorageWorkflowResolver is not publicly exported.
 struct TestStorageResolver {
     journal: Arc<FjallJournal>,
@@ -205,7 +205,7 @@ impl TestStorageResolver {
     }
 }
 
-/// Mirror of vb_cli::storage::event_name for testing.
+/// Mirror of velvet_ballistics::storage::event_name for testing.
 /// Returns the static event type name for each JournalEvent variant.
 fn event_name(event: &JournalEvent) -> &'static str {
     match event {

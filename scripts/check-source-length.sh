@@ -100,11 +100,11 @@ hot_files() {
     -g 'crates/vb_*/src/runtime/**' \
     -g 'crates/vb_*/src/generated/**' \
     -g 'crates/vb_*/src/perf/**' \
-    -g 'crates/vb_cli/src/engine.rs' \
-    -g 'crates/vb_cli/src/engine/**' \
-    -g 'crates/vb_cli/src/runtime/**' \
-    -g 'crates/vb_cli/src/generated/**' \
-    -g 'crates/vb_cli/src/perf/**' \
+    -g 'crates/velvet_ballistics/src/engine.rs' \
+    -g 'crates/velvet_ballistics/src/engine/**' \
+    -g 'crates/velvet_ballistics/src/runtime/**' \
+    -g 'crates/velvet_ballistics/src/generated/**' \
+    -g 'crates/velvet_ballistics/src/perf/**' \
     -g '!**/tests/**' \
     -g '!**/tests.rs' \
     -g '!**/*_tests.rs' \

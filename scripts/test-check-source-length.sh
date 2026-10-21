@@ -76,13 +76,13 @@ assert_eq 'production: scripts/check-workspace-assertions.rs' \
 # ---- test_in_src categorization -----------------------------------------
 
 assert_eq 'test_in_src: tests.rs directly in src' \
-  test_in_src "$(sl_categorize crates/vb_compile/src/expr_eval_tests.rs)"
+  test_in_src "$(sl_categorize crates/vb_expr/src/expr_eval_tests.rs)"
 
 assert_eq 'test_in_src: _tests.rs directly in src' \
   test_in_src "$(sl_categorize crates/vb_runtime/src/handlers_tests.rs)"
 
 assert_eq 'test_in_src: tests.rs under submodule' \
-  test_in_src "$(sl_categorize crates/vb_cli/src/commands_journal/tests.rs)"
+  test_in_src "$(sl_categorize crates/velvet_ballistics/src/commands_journal/tests.rs)"
 
 assert_eq 'test_in_src: _tests.rs under submodule' \
   test_in_src "$(sl_categorize crates/vb_ipc/src/server/impl_tests.rs)"

@@ -12,7 +12,7 @@
 //   1. A direct `#[path]` inclusion of the verbatim production mirror
 //      at `verification/verus/production_inner/cli_envelope_production.rs`,
 //      which is itself a VERBATIM copy of
-//      `crates/vb_cli/src/cli_envelope.rs:1-114` with only the
+//      `crates/velvet_ballistics/src/cli_envelope.rs:1-114` with only the
 //      `serde_json`-dependent items removed. This structural binding
 //      means any rename, discriminant drift, or signature change in
 //      the production `Kind` enum, the `kind::*` constants, or the
@@ -29,7 +29,7 @@
 // WHY A FOCUSED PRODUCTION MIRROR (NOT DIRECT #[path] TO cli_envelope.rs)
 // ============================================================================
 //
-// Direct `#[path = "../../crates/vb_cli/src/cli_envelope.rs"]` inclusion
+// Direct `#[path = "../../crates/velvet_ballistics/src/cli_envelope.rs"]` inclusion
 // is blocked by:
 //
 //   - cli_envelope.rs:14 `use serde_json::{Map, Value};` requires the
@@ -69,7 +69,7 @@
 //   - SpecRunEventsView           (claimed source: vb_ui_model::events)
 //
 // As of this writing, the `vb_ui_model` crate has been REMOVED from
-// the workspace (see `crates/vb_cli/Cargo.toml:35`:
+// the workspace (see `crates/velvet_ballistics/Cargo.toml:35`:
 //     `# vb_ui_model is removed from the current workspace scope.`).
 // None of the seven types exist anywhere in the current production
 // workspace. A repo-wide grep for `WorkflowGraphView`, `RunEventsView`,
@@ -79,7 +79,7 @@
 //
 // The closest existing production symbols are the envelope
 // discriminants `Kind::WorkflowGraph` and `Kind::RunEvents` at
-// `crates/vb_cli/src/cli_envelope.rs:49, 53`, which IDENTIFY that a
+// `crates/velvet_ballistics/src/cli_envelope.rs:49, 53`, which IDENTIFY that a
 // serialized payload is a "WorkflowGraph" or "RunEvents" type but
 // carry NO field state for the workflow / events content. The
 // binding scope of THIS file is therefore:
@@ -107,26 +107,26 @@
 // ============================================================================
 //
 //   - `pub(crate) enum Kind { ..., WorkflowGraph, ..., RunEvents, ... }`
-//          crates/vb_cli/src/cli_envelope.rs:42-63
+//          crates/velvet_ballistics/src/cli_envelope.rs:42-63
 //          -> mirrored verbatim in
 //             production_inner/cli_envelope_production.rs and bound
 //             via `#[path]` below. Any discriminant drift breaks
 //             the spec build.
 //
 //   - `pub(crate) const SCHEMA_VERSION: &str`
-//          crates/vb_cli/src/cli_envelope.rs:16-18
+//          crates/velvet_ballistics/src/cli_envelope.rs:16-18
 //          -> mirrored verbatim. Used to ground the production
 //             envelope contract.
 //
 //   - `pub(crate) mod kind { pub(crate) const WORKFLOW_GRAPH: &str = "WorkflowGraph"; ... }`
-//          crates/vb_cli/src/cli_envelope.rs:22-40
+//          crates/velvet_ballistics/src/cli_envelope.rs:22-40
 //          -> mirrored verbatim. The `WORKFLOW_GRAPH` and `RUN_EVENTS`
 //             constants are referenced by the
 //             `assume_specification[ Kind::as_str ]` bridges in the
 //             companion spec file.
 //
 //   - `impl Kind { fn as_str(&self) -> &'static str }`
-//          crates/vb_cli/src/cli_envelope.rs:65-88
+//          crates/velvet_ballistics/src/cli_envelope.rs:65-88
 //          -> mirrored verbatim. The contract
 //             `as_str() == kind::WORKFLOW_GRAPH` (for
 //             `Kind::WorkflowGraph`) and
@@ -135,7 +135,7 @@
 //             companion spec file.
 //
 //   - `impl Kind { fn from_str(s: &str) -> Option<Kind> }`
-//          crates/vb_cli/src/cli_envelope.rs:90-114
+//          crates/velvet_ballistics/src/cli_envelope.rs:90-114
 //          -> mirrored verbatim. The round-trip contract
 //             `from_str(s) == Some(k) iff s == k.as_str()` is
 //             attached via `assume_specification` in the companion
@@ -204,7 +204,7 @@ verus! {
 // `production_inner/cli_envelope_production.rs`. The mirror contains
 // the production `Kind` enum, the `kind::*` constants, the
 // `SCHEMA_VERSION` constant, and the `as_str` / `from_str` impls,
-// copied line-for-line from `crates/vb_cli/src/cli_envelope.rs:1-114`.
+// copied line-for-line from `crates/velvet_ballistics/src/cli_envelope.rs:1-114`.
 // The `#[path]` attribute ensures any drift in the discriminant set,
 // the constant values, or the `as_str` / `from_str` match arms breaks
 // Rust resolution at compile time.

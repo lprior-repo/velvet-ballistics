@@ -33,9 +33,9 @@
 //
 //   - SpecIncidentReportView  -> bound to
 //       vb_cli::commands_incident::IncidentReport
-//       (crates/vb_cli/src/commands_incident.rs:14-27)
+//       (crates/velvet_ballistics/src/commands_incident.rs:14-27)
 //       and vb_cli::commands_incident::build_incident_report
-//       (crates/vb_cli/src/commands_incident.rs:30-59).
+//       (crates/velvet_ballistics/src/commands_incident.rs:30-59).
 //
 // The OTHER EIGHT spec mirror types have NO production source anywhere
 // in the current workspace. They are explicitly retained as
@@ -64,7 +64,7 @@
 //   - `pub struct IncidentReport { run_id, failure_code, failure_found,
 //                                  failed_at_step, side_effects,
 //                                  repair_hints }`
-//          crates/vb_cli/src/commands_incident.rs:14-27
+//          crates/velvet_ballistics/src/commands_incident.rs:14-27
 //          -> mirrored as `production::SpecIncidentReportProduction`
 //             (with side_effects / repair_hints mirrored as
 //             `.len(): usize` because `serde_json` is not in scope in
@@ -72,7 +72,7 @@
 //
 //   - `pub fn build_incident_report(run_id: &str, events: &[JournalEvent])
 //          -> IncidentReport`
-//          crates/vb_cli/src/commands_incident.rs:30-59
+//          crates/velvet_ballistics/src/commands_incident.rs:30-59
 //          -> mirrored as `production::build_incident_report_mirror`
 //             (input arguments abstracted to direct production-derived
 //             field values; body is `#[verifier::external]` and

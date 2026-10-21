@@ -11,10 +11,10 @@
 // `#[path]` inclusion of the in-tree mirror at
 // `verification/verus/production_inner/vb_ahfl_ui_artifact_contract_inner.rs`,
 // which is a verbatim copy of the relevant production surface from
-//   crates/vb_cli/src/cli_envelope.rs:18-174
+//   crates/velvet_ballistics/src/cli_envelope.rs:18-174
 //   crates/vb_storage/src/journal/core.rs:25-48
 //   crates/vb_storage/src/preview.rs:58-130
-//   crates/vb_cli/src/commands_ai_context.rs:399-413
+//   crates/velvet_ballistics/src/commands_ai_context.rs:399-413
 // with `serde_json`-dependent items abstracted (no installs allowed
 // by the task brief).
 //
@@ -46,7 +46,7 @@
 //
 // As of this writing, none of these exact types exists in the production
 // workspace (the `vb_ui_model` crate has been REMOVED — see
-// `crates/vb_cli/Cargo.toml:35`). All six are bound here to their
+// `crates/velvet_ballistics/Cargo.toml:35`). All six are bound here to their
 // closest production analogues:
 //
 //   - ArtifactKind::WorkflowGraph     -> Kind::WorkflowGraph
@@ -111,10 +111,10 @@ verus! {
 // Direct `#[path]` inclusion of the in-tree mirror at
 // `production_inner/vb_ahfl_ui_artifact_contract_inner.rs`. The
 // mirror is a verbatim copy of the production surface from
-//   crates/vb_cli/src/cli_envelope.rs:18-174
+//   crates/velvet_ballistics/src/cli_envelope.rs:18-174
 //   crates/vb_storage/src/journal/core.rs:25-48
 //   crates/vb_storage/src/preview.rs:58-130
-//   crates/vb_cli/src/commands_ai_context.rs:399-413
+//   crates/velvet_ballistics/src/commands_ai_context.rs:399-413
 // with `serde_json`-dependent items abstracted. Any drift in field
 // NAME or method signature breaks the verification build (the
 // `assume_specification` bridge becomes inconsistent).

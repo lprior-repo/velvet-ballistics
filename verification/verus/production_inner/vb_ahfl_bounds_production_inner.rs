@@ -6,7 +6,7 @@
 // ============================================================================
 //
 // This file is a MIRROR of the relevant production surface from
-//   crates/vb_cli/src/commands_incident.rs:14-59
+//   crates/velvet_ballistics/src/commands_incident.rs:14-59
 // with TWO SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without the `vb_storage` extern crate
 // (no installs allowed by the task brief):
@@ -29,7 +29,7 @@
 //     production assignment shape at lines 38-58.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_cli/src/commands_incident.rs:14-59` whenever production
+// `crates/velvet_ballistics/src/commands_incident.rs:14-59` whenever production
 // changes. The mirror is annotated at the top of every section with
 // the originating production line range so regeneration is
 // mechanical. Drift that changes the `IncidentReport` field set or
@@ -56,7 +56,7 @@ use vstd::prelude::*;
 // ============================================================================
 //
 // Mirror of production `vb_cli::commands_incident::IncidentReport` at
-// `crates/vb_cli/src/commands_incident.rs:14-27`.
+// `crates/velvet_ballistics/src/commands_incident.rs:14-27`.
 //
 // Production source (verbatim):
 //
@@ -76,31 +76,31 @@ use vstd::prelude::*;
 // `String` content is opaque to Verus.
 pub struct SpecIncidentReportProduction {
     /// Mirror of production `run_id: String` at
-    /// `crates/vb_cli/src/commands_incident.rs:16`. Mirrored as length
+    /// `crates/velvet_ballistics/src/commands_incident.rs:16`. Mirrored as length
     /// because the spec projection needs a non-negative integer; the
     /// production `String` content is opaque to Verus.
     pub run_id_len: usize,
 
     /// Mirror of production `failure_code: String` at
-    /// `crates/vb_cli/src/commands_incident.rs:18`. Mirrored as
+    /// `crates/velvet_ballistics/src/commands_incident.rs:18`. Mirrored as
     /// length; the content is opaque to Verus.
     pub failure_code_len: usize,
 
     /// Mirror of production `failure_found: bool` at
-    /// `crates/vb_cli/src/commands_incident.rs:20`. Direct mirror.
+    /// `crates/velvet_ballistics/src/commands_incident.rs:20`. Direct mirror.
     pub failure_found: bool,
 
     /// Mirror of production `failed_at_step: Option<u16>` at
-    /// `crates/vb_cli/src/commands_incident.rs:22`. Direct mirror.
+    /// `crates/velvet_ballistics/src/commands_incident.rs:22`. Direct mirror.
     pub failed_at_step: Option<u16>,
 
     /// Mirror of production `side_effects: Vec<serde_json::Value>` at
-    /// `crates/vb_cli/src/commands_incident.rs:24`. Mirrored as
+    /// `crates/velvet_ballistics/src/commands_incident.rs:24`. Mirrored as
     /// length only; the JSON values are opaque to Verus.
     pub side_effects_len: usize,
 
     /// Mirror of production `repair_hints: Vec<serde_json::Value>` at
-    /// `crates/vb_cli/src/commands_incident.rs:26`. Mirrored as
+    /// `crates/velvet_ballistics/src/commands_incident.rs:26`. Mirrored as
     /// length only.
     pub repair_hints_len: usize,
 }
@@ -121,7 +121,7 @@ impl SpecIncidentReportProduction {
 //
 // Mirror of production
 // `build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentReport`
-// at `crates/vb_cli/src/commands_incident.rs:30-59`.
+// at `crates/velvet_ballistics/src/commands_incident.rs:30-59`.
 //
 // Production body lines 38-58:
 //
@@ -217,7 +217,7 @@ pub struct NoProductionSourceRunEventsView;
 /// Re-introducing `vb_ui_model::verification::VerificationReportView`
 /// would close this binding debt item. The closest production
 /// analogue is `vb_cli::cli_envelope::Kind::VerificationReport`
-/// (`crates/vb_cli/src/cli_envelope.rs:46`) which is an envelope-kind
+/// (`crates/velvet_ballistics/src/cli_envelope.rs:46`) which is an envelope-kind
 /// enum variant, not a view struct, so no `assume_specification`
 /// bridge is possible.
 pub struct NoProductionSourceVerificationReportView;

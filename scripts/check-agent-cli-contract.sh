@@ -2,7 +2,7 @@
 set -euo pipefail
 
 status=0
-cli_src="crates/vb_cli/src"
+cli_src="crates/velvet_ballistics/src"
 master="velvet-ballistics-MASTER.md"
 
 require_literal() {

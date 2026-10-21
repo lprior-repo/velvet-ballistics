@@ -163,7 +163,7 @@ pub enum CompileError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
-/// Production `WorkflowSource` at `crates/vb_compile/src/yaml_ast.rs`.
+/// Production `WorkflowSource` at `crates/vb_yaml/src/yaml_ast.rs`.
 /// The mirror preserves the production method names (`name()`,
 /// `steps()`) and the field shape.
 #[derive(Debug, Clone, Default)]

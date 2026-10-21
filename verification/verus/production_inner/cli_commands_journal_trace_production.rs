@@ -8,7 +8,7 @@
 //
 // This file is the production-binding surface for the
 // `vb_cli_commands_journal_trace.rs` Verus spec. It mirrors the
-// production source file `crates/vb_cli/src/commands_journal.rs` with
+// production source file `crates/velvet_ballistics/src/commands_journal.rs` with
 // line-by-line field/parity annotations so any drift in production
 // field names, discriminant sets, or fn signatures breaks Rust
 // resolution at compile time.
@@ -17,7 +17,7 @@
 // WHY STRUCTURAL MIRROR (NOT DIRECT #[path] INCLUSION)
 // ============================================================================
 //
-// Direct `#[path = "../../crates/vb_cli/src/commands_journal.rs"]`
+// Direct `#[path = "../../crates/velvet_ballistics/src/commands_journal.rs"]`
 // inclusion is blocked by three blockers in the production file:
 //
 //   1. `commands_journal.rs:7` `use vb_storage::JournalEvent;` is a
@@ -29,7 +29,7 @@
 //      cannot be modified.
 //
 //   2. `commands_journal.rs` uses `serde_json::Value` (production
-//      dependency declared in `crates/vb_cli/Cargo.toml`). `serde_json`
+//      dependency declared in `crates/velvet_ballistics/Cargo.toml`). `serde_json`
 //      is not available as an extern crate in a standalone
 //      `verus --crate-type=lib` invocation, and re-exporting a stub
 //      module as an extern crate requires `--extern` flags that verus
@@ -58,10 +58,10 @@
 // Mirror types (each mirrors a production type line-by-line so any
 // drift in field names or fn signatures breaks the build):
 //
-//   - `TraceEntry`           <- crates/vb_cli/src/commands_journal.rs:14-24
-//   - `TraceStatus`          <- crates/vb_cli/src/commands_journal.rs:27-35
-//   - `TraceStatus::as_str`  <- crates/vb_cli/src/commands_journal.rs:38-48
-//   - `TraceFilters`         <- crates/vb_cli/src/commands_journal.rs:51-59
+//   - `TraceEntry`           <- crates/velvet_ballistics/src/commands_journal.rs:14-24
+//   - `TraceStatus`          <- crates/velvet_ballistics/src/commands_journal.rs:27-35
+//   - `TraceStatus::as_str`  <- crates/velvet_ballistics/src/commands_journal.rs:38-48
+//   - `TraceFilters`         <- crates/velvet_ballistics/src/commands_journal.rs:51-59
 //   - `MirrorJournalEvent`   <- crates/vb_storage/src/events.rs:23-316
 //                               (mirror of the 24-variant enum, with
 //                               stub newtypes below for the fields
@@ -70,11 +70,11 @@
 // Mirror fns (each mirror body mirrors the production body
 // line-by-line so any drift breaks the spec proofs):
 //
-//   - `mirror_trace_one`     <- crates/vb_cli/src/commands_journal.rs:100-311
+//   - `mirror_trace_one`     <- crates/velvet_ballistics/src/commands_journal.rs:100-311
 //                               (THE PRIMARY BINDING TARGET — production
 //                               matches 18 variants explicitly and has
 //                               a `_ =>` catch-all for the rest)
-//   - `mirror_build_trace`   <- crates/vb_cli/src/commands_journal.rs:62-68
+//   - `mirror_build_trace`   <- crates/velvet_ballistics/src/commands_journal.rs:62-68
 //                               (uses `mirror_trace_one` internally)
 //
 // Stub newtypes (mirror of vb_core::ids newtypes used by trace_one):
@@ -142,7 +142,7 @@
 //         the mirror follows the same pattern.
 //
 // ============================================================================
-// DRIFT POLICY: `crates/vb_cli/src/commands_journal.rs:1-377`
+// DRIFT POLICY: `crates/velvet_ballistics/src/commands_journal.rs:1-377`
 // ============================================================================
 // Production source coverage:
 //   - `TraceEntry`     <- commands_journal.rs (full file)
@@ -167,7 +167,7 @@ use vstd::prelude::*;
 // ============================================================================
 //
 // The production `serde_json` is an external crate dependency of
-// `vb_cli` (declared in `crates/vb_cli/Cargo.toml`), not available in
+// `vb_cli` (declared in `crates/velvet_ballistics/Cargo.toml`), not available in
 // standalone `verus --crate-type=lib`. The stub mirrors only the
 // `Value` variants and `From` impls exercised by `commands_journal.rs`
 // (Null, Bool, Number(U64), Number(I64), String).
@@ -774,10 +774,10 @@ pub enum MirrorJournalEvent {
 // TraceEntry / TraceStatus / TraceFilters — production-bound mirrors
 // ============================================================================
 //
-// Mirror of `crates/vb_cli/src/commands_journal.rs:14-59`.
+// Mirror of `crates/velvet_ballistics/src/commands_journal.rs:14-59`.
 
 /// Mirror of production `TraceEntry`
-/// (`crates/vb_cli/src/commands_journal.rs:14-24`).
+/// (`crates/velvet_ballistics/src/commands_journal.rs:14-24`).
 ///
 /// Production derives: `Debug, Clone, PartialEq`. The mirror
 /// preserves the same derives (no `Eq` because `serde_json::Value`
@@ -802,7 +802,7 @@ pub struct TraceEntry {
 }
 
 /// Mirror of production `TraceStatus`
-/// (`crates/vb_cli/src/commands_journal.rs:27-35`).
+/// (`crates/velvet_ballistics/src/commands_journal.rs:27-35`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TraceStatus {
     /// Mirror of `TraceStatus::Pending`.
@@ -821,7 +821,7 @@ pub enum TraceStatus {
 
 impl TraceStatus {
     /// Mirror of `TraceStatus::as_str`
-    /// (`crates/vb_cli/src/commands_journal.rs:38-48`).
+    /// (`crates/velvet_ballistics/src/commands_journal.rs:38-48`).
     #[allow(dead_code)]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -839,7 +839,7 @@ impl TraceStatus {
 // mirror_trace_one — production-bound mirror of trace_one
 // ============================================================================
 //
-// Mirror of `crates/vb_cli/src/commands_journal.rs:100-311`.
+// Mirror of `crates/velvet_ballistics/src/commands_journal.rs:100-311`.
 //
 // The mirror body is line-by-line equivalent to the production body:
 // each explicit match arm produces the same `event_type`, `step`,
@@ -1090,7 +1090,7 @@ pub fn mirror_trace_one(idx: usize, event: &MirrorJournalEvent) -> TraceEntry {
 // mirror_build_trace — production-bound mirror of build_trace
 // ============================================================================
 //
-// Mirror of `crates/vb_cli/src/commands_journal.rs:62-68`. Uses
+// Mirror of `crates/velvet_ballistics/src/commands_journal.rs:62-68`. Uses
 // `mirror_trace_one` internally so any drift in `trace_one` cascades
 // here.
 #[allow(dead_code)]
