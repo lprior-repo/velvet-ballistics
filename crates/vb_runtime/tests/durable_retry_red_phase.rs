@@ -117,8 +117,9 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
         next: Some(StepIdx::new(3)),
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(1),
         },
     };
     let finish = CompiledNode {
@@ -548,13 +549,11 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = retry_workflow() else {
-        panic!("retry workflow must exist");
+        return Err("fixture missing".into());
     };
     let run = RunId::new(7004);
     submit_run(&mut shard, run, wf);
 
-    // After submit, PC should be at step 1 (the action node)
-    // Inspect to verify initial PC
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run,
@@ -576,7 +575,6 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
         );
     }
 
-    // Fail at step 1 with retryable policy using runtime-issued ticket
     let ticket = shard
         .pending_action_get(run)
         .ok_or("pending action ticket missing after submit")?;
@@ -589,7 +587,6 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Inspect again to check PC after failure
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run,
@@ -600,7 +597,6 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry()
     assert_eq!(shard.tick(), Ok(true));
     let resp = shard.take_inspect_response();
 
-    // INV-5: PC must reset to failed step (step 1) on retry
     assert!(
         matches!(resp, Some(vb_runtime::shard::InspectResponse::Found(_))),
         "run should still exist after retry"
@@ -625,15 +621,11 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = error_handler_with_slot_workflow() else {
-        panic!("error_handler_with_slot workflow must exist");
+        return Err("fixture missing".into());
     };
     let run = RunId::new(7005);
     submit_run(&mut shard, run, wf);
 
-    // The error handler has error_slot = Some(SlotIdx::new(1))
-    // Failed step is StepIdx::new(1)
-
-    // Fail the action at step 1 (NonRetryable to skip retry)
     let ticket = shard
         .pending_action_get(run)
         .ok_or("pending action ticket missing after submit")?;
@@ -646,7 +638,6 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // The run should continue at the handler step (step 2)
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run,
@@ -657,20 +648,30 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
     assert_eq!(shard.tick(), Ok(true));
     let resp = shard.take_inspect_response();
 
-    // Verify PC is at handler step (step 2)
-    if let Some(vb_runtime::shard::InspectResponse::Found(snap)) = resp {
-        assert_eq!(
-            snap.pc,
-            StepIdx::new(2),
-            "PC should be at handler step after error handling"
-        );
-    }
+    let snap = match resp {
+        Some(vb_runtime::shard::InspectResponse::Found(snapshot)) => snapshot,
+        _ => return Err("expected Found inspect response".into()),
+    };
+    assert_eq!(
+        snap.pc,
+        StepIdx::new(2),
+        "PC should be at handler step after error handling"
+    );
 
-    // RED gap: Cannot verify error_slot[1] contains I64(1) because:
-    // - ShardCommand::Inspect does not expose slot values
-    // - No ReadSlot command exists
-    // POST-002 requires error_slot contains I64(failed_step), but this cannot
-    // be verified from integration tests without a slot inspection interface.
+    let handler_ticket = shard
+        .pending_action_get(run)
+        .ok_or("missing handler ticket")?;
+    assert_eq!(handler_ticket.step, StepIdx::new(2));
+    assert_eq!(handler_ticket.action, ActionId::new(0));
+    assert_eq!(handler_ticket.attempt, 1);
+    let frame = shard.run_state_get(run).ok_or("missing run")?;
+    let slot_value = frame.frame.read_slot(SlotIdx::new(1))?;
+    assert_eq!(
+        slot_value,
+        &vb_core::value::SlotValue::I64(1),
+        "POST-002: error slot should contain I64 of failed step index"
+    );
+
     Ok(())
 }
 
@@ -684,13 +685,11 @@ fn retry_is_available_returns_false_for_nonretryable_policy()
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = retry_workflow() else {
-        panic!("retry workflow must exist");
+        return Err("fixture missing".into());
     };
     let run = RunId::new(7006);
     submit_run(&mut shard, run, wf);
 
-    // Even though the policy is Retryable and metadata exists,
-    // using NonRetryable should bypass retry logic
     let ticket = shard
         .pending_action_get(run)
         .ok_or("pending action ticket missing after submit")?;
@@ -703,8 +702,6 @@ fn retry_is_available_returns_false_for_nonretryable_policy()
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // With NonRetryable, no retry should occur and run should fail
-    // because there's no error handler in retry_workflow
     assert!(
         !run_exists(&mut shard, run),
         "NonRetryable without handler should fail the run"

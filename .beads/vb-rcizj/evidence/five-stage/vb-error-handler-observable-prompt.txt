@@ -1,0 +1,119 @@
+Do NOT call tools. Return ONLY JSON {"replacements":[{"name":"...","code":"complete Rust function"}]} for these2 functions, no fence/XML. Source below is exact. No unsafe/unwrap/expect/panic/allow/index/casts. Production frozen.
+Actual stronger test fails "expected Found inspect response": old SetConst handler finishesrun synchronously, oldoptionalifSomePC2 assertion never ran. Fix TEST OBSERVABILITY (notproduction/errorcontract): in error_handler_with_slot_workflow change ONLY handler node step2 from SetConst to Do {action:ActionId::new(0),input:SlotIdx::new(1)}. Preserve outputslot0,nextFinish3, guard/body/error_slot/allotherparts. Existing dense action0contract applies to bothactions. Then real nonretryablefailure atstep1 writes I64(1) toerror_slot1 and dispatches handler Do step2, suspendingrun soPC2 isobservable. This explicitly changes fixture to observe genuine production transition, not skippingassertions or changingexpectederror/value.
+In test retain originalfailuretickandInspecttick, mandatoryFound responsepc2 and exact frame.read_slot(slot1)==&I64(1), require pendinghandler ticketstep2/action0/attempt1. No extra successsmoke or optionalassertions. No needcompletehandler inthisscopedtest. It already exercises exacterror-slot/handlerdispatch ratherthanterminalrun. All3otherfixturepanicrepairsarealreadyapplied, don'toutputthemagain.
+Source:
+
+fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
+    let guard = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(1),
+            handler: StepIdx::new(2),
+            error_slot: Some(SlotIdx::new(1)),
+        },
+    };
+    let action = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(3)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let handler = CompiledNode {
+        id: StepIdx::new(2),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(3)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(3),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("error_handler_with_slot"),
+        digest: WorkflowDigest::from_bytes([0xBB; 32]),
+        nodes: Box::from([guard, action, handler, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(false)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .ok()
+}
+
+fn apply_error_handler_writes_step_index_to_error_slot_integration_gap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(wf) = error_handler_with_slot_workflow() else {
+        return Err("fixture missing".into());
+    };
+    let run = RunId::new(7005);
+    submit_run(&mut shard, run, wf);
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket missing after submit")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 3,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let resp = shard.take_inspect_response();
+
+    let snap = match resp {
+        Some(vb_runtime::shard::InspectResponse::Found(snapshot)) => snapshot,
+        _ => return Err("expected Found inspect response".into()),
+    };
+    assert_eq!(
+        snap.pc,
+        StepIdx::new(2),
+        "PC should be at handler step after error handling"
+    );
+
+    let frame = shard.run_state_get(run).ok_or("missing run")?;
+    let slot_value = frame.frame.read_slot(SlotIdx::new(1))?;
+    assert_eq!(
+        slot_value,
+        &vb_core::value::SlotValue::I64(1),
+        "POST-002: error slot should contain I64 of failed step index"
+    );
+
+    Ok(())
+}
