@@ -184,6 +184,7 @@ pub(crate) fn mkwfc(
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e}"))

@@ -32,6 +32,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|error| {
             format!("action output policy fixture must compile: {error:?}")
@@ -76,6 +77,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         CompiledWorkflow::try_from_parts(parts)
             .map_err(|error| format!("do_then_finish fixture must compile: {error:?}"))

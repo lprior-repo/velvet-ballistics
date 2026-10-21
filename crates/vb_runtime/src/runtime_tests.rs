@@ -104,6 +104,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -142,6 +143,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -197,7 +199,11 @@ mod tests {
     }
 
     fn action_grants(action: ActionId) -> CapabilitySet {
-        CapabilitySet::from_grants(Box::from([contract_required_capability(action)]))
+        let mut grants = Vec::new();
+        for i in 0..=action.get() {
+            grants.push(contract_required_capability(ActionId::new(i)));
+        }
+        CapabilitySet::from_grants(grants.into_boxed_slice())
     }
 
     fn encoded_len(value: &SlotValue) -> u32 {
@@ -338,6 +344,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -396,6 +403,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -668,6 +676,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -2937,6 +2946,7 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
             symbols_count: 0,
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()

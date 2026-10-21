@@ -40,6 +40,7 @@
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }

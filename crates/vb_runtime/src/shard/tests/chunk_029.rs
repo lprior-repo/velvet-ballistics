@@ -370,6 +370,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

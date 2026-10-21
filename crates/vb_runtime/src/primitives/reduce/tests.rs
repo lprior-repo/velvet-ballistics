@@ -31,6 +31,7 @@ fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts)
         .ok()

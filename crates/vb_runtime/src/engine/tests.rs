@@ -830,6 +830,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         step_names: Box::from([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
@@ -1024,6 +1025,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         step_names: Box::from([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
@@ -1093,6 +1095,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         step_names: Box::from([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
@@ -1168,6 +1171,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         step_names: Box::from([]),
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
@@ -1616,6 +1620,7 @@ mod blackhat_engine {
             symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
             step_names: Box::from([]),
         };
         match CompiledWorkflow::try_from_parts(parts) {
@@ -2124,6 +2129,7 @@ mod blackhat_engine {
             symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
             step_names: Box::from([]),
         };
         let workflow = match CompiledWorkflow::try_from_parts(parts) {

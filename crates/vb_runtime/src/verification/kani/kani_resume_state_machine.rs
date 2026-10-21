@@ -87,6 +87,7 @@ fn symbolic_workflow_parts() -> WorkflowParts {
         symbols_count: u32::from(kani::any::<u8>() % 4),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         step_names: symbolic_step_names(step_count),
     };
     assume_guard_workflow_parts_domain(&parts);
