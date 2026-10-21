@@ -1,0 +1,3 @@
+# Reviewer v1 disposition
+
+Code review approved current source. Separate testreview correctlyidentifieduncovereddecode/count/kindprecedence but incorrectlyinventedowner_approved_debt/no_action; noownerwaiversweregiven. ItsAPPROVEDstatusisREJECTEDasacceptanceevidence. Add exactconflicting-errorcases and boundedtypedvalue+arbitrarysuffixproperty; thenrepeatactualtestsandrequestfreshreview. This is a testcoveragefix, notproductioncontractweakening. No rejected disposition carriedforward.

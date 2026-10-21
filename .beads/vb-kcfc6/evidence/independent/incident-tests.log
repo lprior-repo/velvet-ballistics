@@ -1,0 +1,63 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+warning: unused import: `INPUT_MAPPING_KIND_MISMATCH_MESSAGE`
+  --> crates/velvet_ballistics/src/app_impl.rs:24:46
+   |
+24 |         INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `INPUT_MAPPING_KIND_MISMATCH_MESSAGE` is never used
+  --> crates/velvet_ballistics/src/app_impl.rs:69:18
+   |
+69 | pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `SlotIndexOutOfRange` is never constructed
+  --> crates/velvet_ballistics/src/run_compiled.rs:82:5
+   |
+79 | pub(crate) enum InputMappingError {
+   |                 ----------------- variant in this enum
+...
+82 |     SlotIndexOutOfRange,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `InputMappingError` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `velvet-ballistics` (bin "velvet-ballistics" test) generated 3 warnings (run `cargo fix --bin "velvet-ballistics" -p velvet-ballistics --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)
+
+running 10 tests
+test commands_incident::tests::t_001_empty_events ... ok
+test commands_incident::tests::t_003_run_cancelled ... ok
+test commands_incident::tests::t_002_run_failed_event ... ok
+test commands_incident::tests::t_007_multiple_step_started_tracking ... ok
+test commands_incident::tests::t_004_action_completed_side_effects ... ok
+test commands_incident::tests::t_008_mixed_events_full_report ... ok
+test commands_incident::tests::t_005_action_failed_side_effects ... ok
+test commands_incident::tests::t_006_multiple_events ... ok
+test commands_incident::tests::t_014_completed_run_not_incident ... ok
+test commands_incident::tests::t_015_cancelled_run_incident ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 325 filtered out; finished in 0.00s
+

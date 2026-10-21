@@ -1,0 +1,976 @@
+Independent CODE REVIEW ONLY, frozen candidate09742bbca088. User workflow rustcontract->implementation->tests->codereview->testreview, no proofplanning. Return <=500words Markdown findingsfirst STATUSAPPROVED only noactualactionablein-scopefindings, elseREJECTED. Do not invent ownerwaivers. Review decoderboundaryonefullpostcardmessage, errorprecedence, zeroportsvalidation, emptyrawconvention, positionalmapping/count/kind/partialprefix, exactexistingCLIexit1vs3. No new required-input/handlevalidity/durable-submit claim. Separatetinyincidentfixturevb-iwf1d addsresultSlotIdxZERO noanalyzerlogic.13productionmappertests+1publictest10subcases+10incidentactualpassed; nofullCIclaim. Inspect actual changedsource authoritative over rawrejectedgenerations. ContractcorrectedabandonedBytesexamplesnotnewrequirements. Pathsfilesincontextnottools. No needperformtests yourself; evaluate code only.
+
+## .beads/vb-kcfc6/contract.md
+**Domain:** CLI input decoder for compiled workflow execution. Decodes raw positional binary into `SlotValue` sequence, validates against declared input slots, emits mapped `(slot, value)` pairs. Non-core values (`List`, `Object`, `Blob`) are accepted; their internal structural validation is a separate parent-scope concern (vb-ezymz).
+
+**Value Types:**
+- `input_data`: `&[u8]` — raw positional input payload
+- `compiled.input_slots()`: declared input slot descriptors, each with `slot: SlotIdx` and `kind: InputSlotKind`
+- `SlotValue`: Null, Bool, I64, F64, Symbol, List, Object, Blob, and other core variants
+- `InputMappingError`: DecodeFailed, SlotCountExceeded, SlotIndexOutOfRange, KindMismatch{slot, expected_kind}
+
+**Workflow:**
+1. Decode `input_data` as Postcard `Box<[SlotValue]>`. Empty input yields an empty list. Decoder error or trailing unused bytes yields `DecodeFailed`.
+2. If decoded value count exceeds declared input slot count, return `SlotCountExceeded`.
+3. Positionally map each supplied value to its corresponding declared slot:
+   - Derive value kind (Null/Bool/I64/F64/Symbol/List/Object/Blob; other core variants yield `DecodeFailed`).
+   - If value kind != slot's declared kind, return `KindMismatch{slot, expected_kind}`.
+4. Return boxed slice of `(SlotIdx, SlotValue)` pairs. Unsupplied slots are omitted; missing values are not invented.
+
+**Errors:**
+- `DecodeFailed`: Postcard decode error, non-core value variants, or trailing unused bytes after decoding.
+- `SlotCountExceeded`: More supplied values than declared input slots.
+- `KindMismatch{slot, expected_kind}`: Supplied value kind does not match declared slot kind.
+- `SlotIndexOutOfRange`: Existing variant remains unchanged and is not synthesized by this positional mapping repair.
+
+**Boundaries:**
+- Exactly one Postcard message per invocation; no indexed addressing, no default value generation, no runtime I/O.
+- Empty input always yields empty mapping (requiredness is runtime admission, not decoder concern).
+- Durability handling, non-core value validation, and durable submit persistence are unchanged parent-scope responsibilities.
+
+**Hazards:**
+- `postcard::from_bytes` ignores trailing bytes; must use `take_from_bytes` to detect remainder.
+- Decode must succeed before count/kind checks; otherwise partial decode leads to misattribution.
+- Current8SlotValue variants retain existing kind mapping; unsupported future shapes return DecodeFailed.
+
+
+## Acceptance and scope clarification
+
+Zeroports: rawempty/encodedempty =>Okempty; malformed255/encodedempty+trailingbyte =>DecodeFailed; encodedI64=>SlotCountExceeded. Withports: rawempty=>Okempty, nonzero declaredslot2 maps correctly, partialprefix and2valueorder preserved, Bool for I64port=>KindMismatch{slot:2,expected_kind:I64}, excess=>SlotCountExceeded, validpayload+trailingbyte=>DecodeFailed before count/kind. Actual implementation uses postcard::take_from_bytes with remainder rejection; no synthesized missing inputs or indexed wire. Handle ownership and requiredness remain runtime admission; durable submit remains parentvb-ezymz. No claimed proof planning.
+
+Existing CLIstatus is preserved: cmd_run mappingfailureexit1, cmd_run_compiled mappingfailureexit3. Exact existing diagnostics preserved in both commands. CLIstdout reports exact summary/terminalstatus, not result42. Fivepayloads x2commands=10subcases in1Rustintegrationtest, plus13functionunit tests. No broaderCI/v1closure.
+
+## .beads/vb-iwf1d/contract.md
+# Typed incident fixture contract
+
+Current JournalEvent::RunFinished requires run,seq,result:SlotIdx,attempt. Existing completed-run incident fixture must provide an explicit result slot (SlotIdx::ZERO), retain all prior event ordering and exact report assertions, and remain a completed non-incident. This repairs test schema compilation only; production analyzer/event/wire behavior unchanged. Scope commands_incident.rs completed-run test one added typed field. Tests:13new mapper cases and existing incident tests must actually run nonzero; independent code/test review before closure. Tiny coordinator schema glue discovered by actual compilerE0063, not autonomous local implementation claim.
+
+## crates/velvet_ballistics/src/run_compiled.rs
+//! Module: run_compiled
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_run_compiled(
+    vbir_path: &std::path::Path,
+    input_bin: &std::path::Path,
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> ExitCode {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let ir_bytes = match read_file(vbir_path, output, CliExitCode::CompileFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled: vb_core::CompiledWorkflow =
+        match postcard::from_bytes::<vb_core::WorkflowParts>(&ir_bytes) {
+            Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
+                Ok(c) => c,
+                Err(e) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "error": format!("compiled IR validation error: {e}")
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("compiled IR validation error: {e}");
+                    }
+                    return CliExitCode::CompileFailed.into();
+                }
+            },
+            Err(e) => {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("error deserializing compiled IR: {e}")
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("error deserializing compiled IR: {e}");
+                }
+                return CliExitCode::CompileFailed.into();
+            }
+        };
+
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": error.to_string()
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{error}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InputMappingError {
+    DecodeFailed,
+    SlotCountExceeded,
+    SlotIndexOutOfRange,
+    KindMismatch {
+        slot: vb_core::SlotIdx,
+        expected_kind: vb_core::InputSlotKind,
+    },
+}
+
+impl std::fmt::Display for InputMappingError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+            Self::SlotCountExceeded => formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE),
+            Self::SlotIndexOutOfRange => formatter.write_str(INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE),
+            Self::KindMismatch { slot, expected_kind } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+            ),
+        }
+    }
+}
+
+pub(crate) fn map_runtime_inputs(
+    compiled: &vb_core::CompiledWorkflow,
+    input_data: &[u8],
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    let input_slots = compiled.input_slots();
+    if input_data.is_empty() {
+        return Ok(Box::from([]));
+    }
+    let (values, remainder) = postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+        .map_err(|_| InputMappingError::DecodeFailed)?;
+    if !remainder.is_empty() {
+        return Err(InputMappingError::DecodeFailed);
+    }
+    if values.len() > input_slots.len() {
+        return Err(InputMappingError::SlotCountExceeded);
+    }
+    input_slots
+        .iter()
+        .zip(values.iter())
+        .map(|(slot, value)| {
+            let value_kind = match value {
+                vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+                vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+                vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+                vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+                vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+                vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+                vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+                vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+                _ => return Err(InputMappingError::DecodeFailed),
+            };
+            if value_kind != slot.kind {
+                return Err(InputMappingError::KindMismatch {
+                    slot: slot.slot,
+                    expected_kind: slot.kind,
+                });
+            }
+            Ok((slot.slot, *value))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Vec::into_boxed_slice)
+}
+
+pub(crate) fn runtime_journal_for_mode(
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    match durability {
+        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
+    }
+}
+
+pub(crate) fn runtime_config_for_durability(
+    durability: DurabilityMode,
+) -> vb_runtime::shard::ShardConfig {
+    let mut config = vb_runtime::shard::ShardConfig::default();
+    if durability == DurabilityMode::None {
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    }
+    config
+}
+
+#[cfg(test)]
+#[path = "run_compiled_input_tests.rs"]
+mod input_tests;
+
+## crates/velvet_ballistics/src/run.rs
+//! Module: run
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_run(
+    workflow: &std::path::Path,
+    input_bin: &std::path::Path,
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> ExitCode {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            if output != OutputFormat::Text {
+                write_failure_message(
+                    &compile_errors_message(&errors.0),
+                    output,
+                    CliExitCode::CompileFailed,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
+                }
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            if output != OutputFormat::Text {
+                write_failure_message(&error.to_string(), output, CliExitCode::RuntimeFailed);
+            } else {
+                errln!("{error}");
+            }
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
+
+    match durability {
+        DurabilityMode::None => {}
+        _ => {
+            if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output) {
+                return code;
+            }
+        }
+    }
+
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
+}
+
+pub(crate) fn store_workflow_artifacts(
+    compiled: &vb_core::CompiledWorkflow,
+    source: &[u8],
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    let Some(db) = db else {
+        return Ok(());
+    };
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("error opening journal at {}: {e}", db.display()),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let source_record = vb_storage::WorkflowSourceRecord {
+        digest: vb_core::WorkflowDigest::from_bytes(blake3::hash(source).into()),
+        source: source.to_vec(),
+    };
+    if let Err(e) = journal.put_workflow_source(&source_record) {
+        report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
+        return Err(CliExitCode::StorageError.into());
+    }
+    submit_cli_compiled_artifact(&journal, compiled)
+        .map_err(|e| {
+            report_compiled_ir_store_error(
+                format_args!("compiled artifact admission error: {e}"),
+                output,
+            );
+            CliExitCode::StorageError.into()
+        })
+        .map(|_| ())
+}
+
+pub(crate) fn submit_cli_compiled_artifact(
+    journal: &vb_storage::FjallJournal,
+    compiled: &vb_core::CompiledWorkflow,
+) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
+    let parts = compiled.to_parts();
+    let ir =
+        postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    let mut artifact = vb_storage::AcceptedArtifact {
+        digest: zero,
+        source_digest: compiled.digest(),
+        policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
+        ir,
+        verification: vb_storage::VerificationProof::new(
+            zero,
+            vb_runtime::admission::REQUIRED_GATE_COUNT,
+            true,
+        ),
+        accepted_at_seq: vb_storage::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+        action_contracts: Box::new([]),
+    };
+    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let bytes =
+        postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+    journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
+    Ok(artifact)
+}
+
+pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
+    } else {
+        errln!("{args}");
+    }
+}
+
+## crates/velvet_ballistics/src/run_compiled_input_tests.rs
+use super::{InputMappingError, map_runtime_inputs};
+use std::error::Error;
+use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::workflow::{
+    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
+    ResourceContract, WorkflowParts,
+};
+use vb_core::{SlotIdx, SlotValue};
+
+type TestResult<T> = Result<T, Box<dyn Error>>;
+
+fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("input-mapping"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+        input_slots,
+    };
+    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string().into())
+}
+
+fn i64_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::I64,
+    }
+}
+fn bool_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::Bool,
+    }
+}
+
+#[test]
+fn zeroports_raw_empty() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn zeroports_encoded_empty() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn zeroports_malformed_255() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf: Vec<u8> = vec![255];
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn zeroports_one_i64() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(99)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
+    Ok(())
+}
+
+#[test]
+fn zeroports_encoded_empty_plus_255() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    buf.push(255);
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn with_i64_port_empty_raw() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn slot2_i64_mapping_i64_42() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(42))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn slots_2_i64_3_bool_partial_1_maps_2() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(11)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(11))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn full_2_correct_order() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::Bool(true),
+    ]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([
+            (SlotIdx::new(2), SlotValue::I64(1)),
+            (SlotIdx::new(3), SlotValue::Bool(true)),
+        ]))
+    );
+    Ok(())
+}
+
+#[test]
+fn i64_port_bool() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Err(InputMappingError::KindMismatch {
+            slot: SlotIdx::new(2),
+            expected_kind: InputSlotKind::I64,
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn two_values_for_one_port() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+    ]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
+    Ok(())
+}
+
+#[test]
+fn ports_255() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf: Vec<u8> = vec![255];
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn valid_one_plus_255() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(1)]))?;
+    buf.push(255);
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+## crates/velvet_ballistics/tests/input_mapping_boundary.rs
+use std::fs;
+use std::process::Command;
+
+const YAML_STRING: &str = "version: velvet-ballistics/v1\nname: input_boundary\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
+#[test]
+fn cli_zero_port_input_boundary() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let yaml_path = dir.path().join("workflow.yaml");
+    let ir_path = dir.path().join("workflow.ir");
+    let input_path = dir.path().join("input.bin");
+
+    fs::write(&yaml_path, YAML_STRING)?;
+
+    let compiled = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .arg("compile")
+        .arg(&yaml_path)
+        .args(["--emit", "postcard", "--out"])
+        .arg(&ir_path)
+        .output()?;
+    assert_eq!(
+        compiled.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+
+    let encoded_empty = postcard::to_allocvec(&Box::<[vb_core::SlotValue]>::from([]))?;
+    let one_value = postcard::to_allocvec(&Box::<[vb_core::SlotValue]>::from([
+        vb_core::SlotValue::I64(42),
+    ]))?;
+
+    let cases: [(Vec<u8>, Option<&str>); 5] = [
+        (Vec::new(), None),
+        (encoded_empty.clone(), None),
+        (
+            vec![255],
+            Some("INPUT_MAPPING_FAILED: input-bin decode failed"),
+        ),
+        (
+            one_value,
+            Some("INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"),
+        ),
+        (
+            encoded_empty.clone().into_iter().chain(vec![255]).collect(),
+            Some("INPUT_MAPPING_FAILED: input-bin decode failed"),
+        ),
+    ];
+
+    for (data, expected) in cases {
+        fs::write(&input_path, &data)?;
+        for (command, path, failure_code) in [("run", &yaml_path, 1), ("run-compiled", &ir_path, 3)]
+        {
+            let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+                .arg(command)
+                .arg(path)
+                .arg("--input-bin")
+                .arg(&input_path)
+                .args(["--durability", "none"])
+                .output()?;
+
+            if let Some(expected_msg) = expected {
+                assert_eq!(
+                    output.status.code(),
+                    Some(failure_code),
+                    "{command}: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                assert_eq!(String::from_utf8_lossy(&output.stderr).trim(), expected_msg);
+            } else {
+                assert_eq!(output.status.code(), Some(0));
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                assert!(
+                    stdout
+                        .lines()
+                        .any(|line| line == "run 1: submitted=1 completed=1 failed=0 steps=2"),
+                    "{stdout}"
+                );
+                assert!(stdout.ends_with("run completed\n"), "{stdout}");
+                assert!(output.stderr.is_empty());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+## actualpatch
+diff --git a/crates/velvet_ballistics/src/commands_incident.rs b/crates/velvet_ballistics/src/commands_incident.rs
+index f1b6dbb64..37f804406 100644
+--- a/crates/velvet_ballistics/src/commands_incident.rs
++++ b/crates/velvet_ballistics/src/commands_incident.rs
+@@ -236,6 +236,7 @@ mod tests {
+             JournalEvent::RunFinished {
+                 run: RunId::new(1),
+                 seq: EventSeq::new(10),
++                result: vb_core::SlotIdx::ZERO,
+                 attempt: 1,
+             },
+         ];
+diff --git a/crates/velvet_ballistics/src/run_compiled.rs b/crates/velvet_ballistics/src/run_compiled.rs
+index b41ded431..32b7634e0 100644
+--- a/crates/velvet_ballistics/src/run_compiled.rs
++++ b/crates/velvet_ballistics/src/run_compiled.rs
+@@ -105,14 +105,14 @@ pub(crate) fn map_runtime_inputs(
+     input_data: &[u8],
+ ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+     let input_slots = compiled.input_slots();
+-    if input_slots.is_empty() {
+-        return Ok(Box::from([]));
+-    }
+     if input_data.is_empty() {
+         return Ok(Box::from([]));
+     }
+-    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
++    let (values, remainder) = postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+         .map_err(|_| InputMappingError::DecodeFailed)?;
++    if !remainder.is_empty() {
++        return Err(InputMappingError::DecodeFailed);
++    }
+     if values.len() > input_slots.len() {
+         return Err(InputMappingError::SlotCountExceeded);
+     }
+@@ -164,3 +164,7 @@ pub(crate) fn runtime_config_for_durability(
+     }
+     config
+ }
++
++#[cfg(test)]
++#[path = "run_compiled_input_tests.rs"]
++mod input_tests;
+diff --git a/crates/velvet_ballistics/src/run_compiled_input_tests.rs b/crates/velvet_ballistics/src/run_compiled_input_tests.rs
+new file mode 100644
+index 000000000..69463f9d5
+--- /dev/null
++++ b/crates/velvet_ballistics/src/run_compiled_input_tests.rs
+@@ -0,0 +1,192 @@
++use super::{InputMappingError, map_runtime_inputs};
++use std::error::Error;
++use vb_core::ids::{StepIdx, WorkflowDigest};
++use vb_core::workflow::{
++    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
++    ResourceContract, WorkflowParts,
++};
++use vb_core::{SlotIdx, SlotValue};
++
++type TestResult<T> = Result<T, Box<dyn Error>>;
++
++fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
++    let node = CompiledNode {
++        id: StepIdx::ZERO,
++        output: None,
++        next: None,
++        on_error: None,
++        error_slot: None,
++        kind: CompiledNodeKind::Finish {
++            result: SlotIdx::new(2),
++        },
++    };
++    let parts = WorkflowParts {
++        name: Box::from("input-mapping"),
++        digest: WorkflowDigest::from_bytes([1; 32]),
++        nodes: Box::from([node]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 4,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        resource_contract: ResourceContract::DEFAULT,
++        step_names: Box::from([]),
++        input_slots,
++    };
++    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string().into())
++}
++
++fn i64_port() -> CompiledInputSlot {
++    CompiledInputSlot {
++        slot: SlotIdx::new(2),
++        kind: InputSlotKind::I64,
++    }
++}
++fn bool_port() -> CompiledInputSlot {
++    CompiledInputSlot {
++        slot: SlotIdx::new(3),
++        kind: InputSlotKind::Bool,
++    }
++}
++
++#[test]
++fn zeroports_raw_empty() -> TestResult<()> {
++    let wf = fixture(Box::from([]))?;
++    let result = map_runtime_inputs(&wf, &[]);
++    assert_eq!(result, Ok(Box::from([])));
++    Ok(())
++}
++
++#[test]
++fn zeroports_encoded_empty() -> TestResult<()> {
++    let wf = fixture(Box::from([]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Ok(Box::from([])));
++    Ok(())
++}
++
++#[test]
++fn zeroports_malformed_255() -> TestResult<()> {
++    let wf = fixture(Box::from([]))?;
++    let buf: Vec<u8> = vec![255];
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::DecodeFailed));
++    Ok(())
++}
++
++#[test]
++fn zeroports_one_i64() -> TestResult<()> {
++    let wf = fixture(Box::from([]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(99)]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
++    Ok(())
++}
++
++#[test]
++fn zeroports_encoded_empty_plus_255() -> TestResult<()> {
++    let wf = fixture(Box::from([]))?;
++    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
++    buf.push(255);
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::DecodeFailed));
++    Ok(())
++}
++
++#[test]
++fn with_i64_port_empty_raw() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let result = map_runtime_inputs(&wf, &[]);
++    assert_eq!(result, Ok(Box::from([])));
++    Ok(())
++}
++
++#[test]
++fn slot2_i64_mapping_i64_42() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(
++        result,
++        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(42))]))
++    );
++    Ok(())
++}
++
++#[test]
++fn slots_2_i64_3_bool_partial_1_maps_2() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(11)]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(
++        result,
++        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(11))]))
++    );
++    Ok(())
++}
++
++#[test]
++fn full_2_correct_order() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
++        SlotValue::I64(1),
++        SlotValue::Bool(true),
++    ]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(
++        result,
++        Ok(Box::from([
++            (SlotIdx::new(2), SlotValue::I64(1)),
++            (SlotIdx::new(3), SlotValue::Bool(true)),
++        ]))
++    );
++    Ok(())
++}
++
++#[test]
++fn i64_port_bool() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(
++        result,
++        Err(InputMappingError::KindMismatch {
++            slot: SlotIdx::new(2),
++            expected_kind: InputSlotKind::I64,
++        })
++    );
++    Ok(())
++}
++
++#[test]
++fn two_values_for_one_port() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
++        SlotValue::I64(1),
++        SlotValue::I64(2),
++    ]))?;
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
++    Ok(())
++}
++
++#[test]
++fn ports_255() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let buf: Vec<u8> = vec![255];
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::DecodeFailed));
++    Ok(())
++}
++
++#[test]
++fn valid_one_plus_255() -> TestResult<()> {
++    let wf = fixture(Box::from([i64_port()]))?;
++    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(1)]))?;
++    buf.push(255);
++    let result = map_runtime_inputs(&wf, &buf);
++    assert_eq!(result, Err(InputMappingError::DecodeFailed));
++    Ok(())
++}
+diff --git a/crates/velvet_ballistics/tests/input_mapping_boundary.rs b/crates/velvet_ballistics/tests/input_mapping_boundary.rs
+new file mode 100644
+index 000000000..17f626882
+--- /dev/null
++++ b/crates/velvet_ballistics/tests/input_mapping_boundary.rs
+@@ -0,0 +1,86 @@
++use std::fs;
++use std::process::Command;
++
++const YAML_STRING: &str = "version: velvet-ballistics/v1\nname: input_boundary\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
++
++#[test]
++fn cli_zero_port_input_boundary() -> Result<(), Box<dyn std::error::Error>> {
++    let dir = tempfile::tempdir()?;
++    let yaml_path = dir.path().join("workflow.yaml");
++    let ir_path = dir.path().join("workflow.ir");
++    let input_path = dir.path().join("input.bin");
++
++    fs::write(&yaml_path, YAML_STRING)?;
++
++    let compiled = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
++        .arg("compile")
++        .arg(&yaml_path)
++        .args(["--emit", "postcard", "--out"])
++        .arg(&ir_path)
++        .output()?;
++    assert_eq!(
++        compiled.status.code(),
++        Some(0),
++        "{}",
++        String::from_utf8_lossy(&compiled.stderr)
++    );
++
++    let encoded_empty = postcard::to_allocvec(&Box::<[vb_core::SlotValue]>::from([]))?;
++    let one_value = postcard::to_allocvec(&Box::<[vb_core::SlotValue]>::from([
++        vb_core::SlotValue::I64(42),
++    ]))?;
++
++    let cases: [(Vec<u8>, Option<&str>); 5] = [
++        (Vec::new(), None),
++        (encoded_empty.clone(), None),
++        (
++            vec![255],
++            Some("INPUT_MAPPING_FAILED: input-bin decode failed"),
++        ),
++        (
++            one_value,
++            Some("INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"),
++        ),
++        (
++            encoded_empty.clone().into_iter().chain(vec![255]).collect(),
++            Some("INPUT_MAPPING_FAILED: input-bin decode failed"),
++        ),
++    ];
++
++    for (data, expected) in cases {
++        fs::write(&input_path, &data)?;
++        for (command, path, failure_code) in [("run", &yaml_path, 1), ("run-compiled", &ir_path, 3)]
++        {
++            let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
++                .arg(command)
++                .arg(path)
++                .arg("--input-bin")
++                .arg(&input_path)
++                .args(["--durability", "none"])
++                .output()?;
++
++            if let Some(expected_msg) = expected {
++                assert_eq!(
++                    output.status.code(),
++                    Some(failure_code),
++                    "{command}: {}",
++                    String::from_utf8_lossy(&output.stderr)
++                );
++                assert_eq!(String::from_utf8_lossy(&output.stderr).trim(), expected_msg);
++            } else {
++                assert_eq!(output.status.code(), Some(0));
++                let stdout = String::from_utf8_lossy(&output.stdout);
++                assert!(
++                    stdout
++                        .lines()
++                        .any(|line| line == "run 1: submitted=1 completed=1 failed=0 steps=2"),
++                    "{stdout}"
++                );
++                assert!(stdout.ends_with("run completed\n"), "{stdout}");
++                assert!(output.stderr.is_empty());
++            }
++        }
++    }
++
++    Ok(())
++}
