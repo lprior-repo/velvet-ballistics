@@ -327,27 +327,27 @@ pub(crate) struct RetryAnalysis {
 ///
 /// Returns structured data; the caller is responsible for formatting.
 pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
-    let mut last_successful_step: Option<u16> = None;
-    let mut failed_step: Option<u16> = None;
-
-    for event in events {
-        match event {
+    let state = events.iter().fold(
+        (None, None),
+        |(last_successful, pending), event| match event {
+            JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),
+            JournalEvent::StepFailed { step, .. } => (last_successful, Some(step.get())),
+            JournalEvent::ActionFailedEvent { step, .. } => (last_successful, Some(step.get())),
             JournalEvent::StepSucceeded { step, .. } => {
-                last_successful_step = Some(step.get());
+                let new_pending = if pending == Some(step.get()) {
+                    None
+                } else {
+                    pending
+                };
+                (Some(step.get()), new_pending)
             }
-            JournalEvent::ActionFailedEvent { step, .. } => {
-                failed_step = Some(step.get());
-            }
-            _ => {}
-        }
-    }
-
-    // Check terminal status
-    let terminal = events.last();
-    let is_failed = matches!(
-        terminal,
-        Some(JournalEvent::RunFailedEvent { .. }) | Some(JournalEvent::RunCancelled { .. })
+            _ => (last_successful, pending),
+        },
     );
+
+    let (last_successful_step, pending_step) = state;
+
+    let is_failed = matches!(events.last(), Some(JournalEvent::RunFailedEvent { .. }));
 
     if !is_failed {
         return RetryAnalysis {
@@ -358,10 +358,8 @@ pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
         };
     }
 
-    let failure_step = failed_step.or(last_successful_step.map(|s| s.saturating_add(1)));
-
     RetryAnalysis {
-        failed_at_step: failure_step,
+        failed_at_step: pending_step,
         last_successful_step,
         can_retry: true,
         reason: String::new(),
@@ -375,3 +373,7 @@ pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
 #[cfg(test)]
 #[path = "commands_journal/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "commands_journal/retry_analysis_tests.rs"]
+mod retry_analysis_tests;

@@ -1,0 +1,7 @@
+**Failure Observation Addendum**
+
+`JournalEvent::StepFailed { run, seq, step, attempt }` is now included in failure observation. Recovery must retain the failed step's identity.
+
+Observation accepts `StepStarted`, `StepFailed`, and `ActionFailedEvent`. Latest observed wins; matching `StepSucceeded` clears. Only terminal `RunFailed` is eligible. No numeric inference. Unknown `None` preserves eligibility.
+
+Regression: `StepFailed17` with terminal `RunFailed` and no prior `StepStarted` yields `Some(17)`. All other accepted behavior preserved.
