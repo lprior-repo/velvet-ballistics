@@ -2,6 +2,17 @@
 
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
+/// Digest a framed string field with explicit domain separation.
+/// Format: tag bytes + content bytes + NUL terminator.
+fn digest_framed_string(
+    hasher: &mut blake3::Hasher,
+    tag: &[u8],
+    value: &str,
+) {
+    hasher.update(tag);
+    hasher.update(value.as_bytes());
+    hasher.update(b"\0");
+}
 
 pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
     match primitive {
@@ -26,23 +37,26 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
     validate_branch_counts(source)?;
 
     let mut hasher = blake3::Hasher::new();
-    hasher.update(source.version().as_bytes());
-    hasher.update(source.name().as_bytes());
-    match source.trigger() {
+    digest_framed_string(&mut hasher, b"version:", source.version());
+    digest_framed_string(&mut hasher, b"name:", source.name());
+    let trigger = source.trigger();
+    match trigger {
         crate::TriggerAst::Manual => hasher.update(b"manual"),
         crate::TriggerAst::Schedule { cron } => {
             hasher.update(b"schedule");
-            hasher.update(cron.as_bytes())
+            digest_framed_string(&mut hasher, b"", cron);
+            &mut hasher
         }
         crate::TriggerAst::Event { event_type } => {
             hasher.update(b"event");
-            hasher.update(event_type.as_bytes())
+            digest_framed_string(&mut hasher, b"", event_type);
+            &mut hasher
         }
         crate::TriggerAst::Webhook => hasher.update(b"webhook"),
         _ => hasher.update(b"unknown"),
     };
     for step in source.steps() {
-        hasher.update(step.id.as_bytes());
+        digest_framed_string(&mut hasher, b"step:", &step.id);
         digest_step_primitive(&mut hasher, &step.primitive)?;
     }
     Ok(WorkflowDigest::from_bytes(hasher.finalize().into()))
@@ -83,7 +97,7 @@ pub(crate) fn digest_step_primitive(
     match primitive {
         crate::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
-            hasher.update(output.as_bytes());
+            digest_framed_string(hasher, b"output:", output);
             hasher.update(value.as_bytes());
         }
         crate::StepPrimitive::Finish { result } => digest_finish(hasher, result),
@@ -95,7 +109,7 @@ pub(crate) fn digest_step_primitive(
         } => digest_for_each(hasher, variable, input, *at_once, body)?,
         crate::StepPrimitive::Ask { prompt, timeout } => {
             hasher.update(b"ask");
-            hasher.update(prompt.as_bytes());
+            digest_framed_string(hasher, b"prompt:", prompt);
             digest_optional_text(hasher, b"timeout", b"no_timeout", timeout.as_deref());
         }
         crate::StepPrimitive::Together { branches } => {
@@ -123,7 +137,7 @@ pub(crate) fn digest_step_primitive(
             hasher.update(b"repeat");
             hasher.update(&max_attempts.to_le_bytes());
             for step in body {
-                hasher.update(step.id.as_bytes());
+                digest_framed_string(hasher, b"step:", &step.id);
                 digest_step_primitive(hasher, &step.primitive)?;
             }
         }
@@ -160,7 +174,7 @@ fn digest_for_each(
     hasher.update(&limit.to_le_bytes());
     hasher.update(b":body:");
     for step in body {
-        hasher.update(step.id.as_bytes());
+        digest_framed_string(hasher, b"step:", &step.id);
         digest_step_primitive(hasher, &step.primitive)?;
     }
     Ok(())
@@ -182,7 +196,7 @@ fn digest_together(
     })?;
     hasher.update(&count.to_le_bytes());
     for branch in branches.iter() {
-        hasher.update(branch.label.as_bytes());
+        digest_framed_string(hasher, b"branch:", &branch.label);
         for step in &branch.steps {
             digest_sub_step(hasher, step)?;
         }
@@ -267,7 +281,7 @@ fn digest_sub_step(
     hasher: &mut blake3::Hasher,
     step: &crate::StepAst,
 ) -> Result<(), CompileErrors> {
-    hasher.update(step.id.as_bytes());
+    digest_framed_string(hasher, b"step:", &step.id);
     digest_step_primitive(hasher, &step.primitive)?;
     Ok(())
 }
