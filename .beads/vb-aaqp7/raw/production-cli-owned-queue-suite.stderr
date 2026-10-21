@@ -1,0 +1,4 @@
+    Blocking waiting for file lock on package cache
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-aaqp7-shutdown-sol/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)

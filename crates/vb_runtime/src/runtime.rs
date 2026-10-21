@@ -18,6 +18,9 @@ use crate::shard::{
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+mod shutdown;
+pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
+
 struct RecoveryArtifactWorkflow {
     artifact: vb_storage::admission::AcceptedArtifact,
     workflow: CompiledWorkflow,
@@ -1206,13 +1209,13 @@ impl Runtime {
         summaries
     }
 
-    /// Shuts down all shards gracefully.
-    pub fn shutdown_graceful(&mut self) -> RuntimeResult<()> {
-        for shard in &mut self.shards {
-            shard.drain_pending_and_shutdown()?;
-        }
-        self.journal.drain_for_shutdown()?;
-        Ok(())
+    /// Stops command processing and durably drains the owned journal.
+    ///
+    /// Suspended runs remain owned by their shards. The report preserves their
+    /// boundary authorities before timer registrations are released. On failure
+    /// those registrations remain available for inspection and retry.
+    pub fn shutdown_graceful(&mut self) -> Result<ShutdownReport, ShutdownFailure> {
+        shutdown::shutdown(self)
     }
 
     fn shard_index(&self, run: RunId) -> usize {
@@ -1295,7 +1298,10 @@ impl Runtime {
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
-
 #[path = "runtime/registered_executor.rs"]
 mod registered_executor;
 pub use registered_executor::RegisteredExecutionError;
+
+#[cfg(test)]
+#[path = "runtime/shutdown_tests.rs"]
+mod shutdown_tests;

@@ -16,7 +16,9 @@ pub fn handle_health() -> IpcResponse {
 
 pub fn handle_shutdown(runtime: &mut Runtime) -> IpcResponse {
     match runtime.shutdown_graceful() {
-        Ok(()) => IpcResponse::ShuttingDown,
+        // The typed facade reports suspended work; this wire acknowledgement
+        // means command quiescence and durable journal drain succeeded.
+        Ok(_report) => IpcResponse::ShuttingDown,
         Err(e) => IpcResponse::RuntimeError {
             message: sanitize_runtime_error(&e),
         },

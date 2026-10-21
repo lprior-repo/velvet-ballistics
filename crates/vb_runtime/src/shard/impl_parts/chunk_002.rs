@@ -43,26 +43,27 @@ impl Shard {
 
     /// Drains currently queued commands, then marks the shard shut down.
     pub fn drain_pending_and_shutdown(&mut self) -> RuntimeResult<()> {
-        if self.shutting_down {
-            self.clear_pending_timers();
-            return Ok(());
-        }
-        self.drain_pending_commands(self.command_queue.len())?;
-        self.shutting_down = true;
+        self.quiesce_for_shutdown()?;
         self.clear_pending_timers();
         Ok(())
     }
 
-    fn drain_pending_commands(&mut self, command_count: usize) -> RuntimeResult<()> {
-        (0..command_count).try_for_each(|_| {
+    /// Processes only commands present on entry, retaining boundary authorities.
+    pub(crate) fn quiesce_for_shutdown(&mut self) -> RuntimeResult<usize> {
+        let command_count = self.command_queue.len();
+        let mut processed = 0usize;
+        for _ in 0..command_count {
             if self.command_queue.is_empty() || self.shutting_down {
-                return Ok(());
+                break;
             }
-            if !self.tick()? {
-                self.clear_pending_timers();
+            let continuing = self.tick()?;
+            processed = processed.saturating_add(1);
+            if !continuing {
+                break;
             }
-            Ok(())
-        })
+        }
+        self.shutting_down = true;
+        Ok(processed)
     }
 
     #[cfg(test)]

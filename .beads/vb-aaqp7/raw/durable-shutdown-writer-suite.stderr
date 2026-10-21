@@ -1,0 +1,9 @@
+    Blocking waiting for file lock on build directory
+   Compiling log v0.4.29
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-aaqp7-shutdown-sol/crates/vb_core)
+   Compiling sfa v1.0.0
+   Compiling lsm-tree v3.1.4
+   Compiling fjall v3.1.4
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-aaqp7-shutdown-sol/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.67s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)

@@ -13,6 +13,7 @@ use crate::{
 
 mod flush;
 mod group;
+mod shutdown;
 mod stage;
 
 use self::group::{QueuedJournalGroup, count_profile};

@@ -1,0 +1,10 @@
+
+running 5 tests
+test queue::writer::flush_tests::shutdown_commit_failure_retains_batch_closes_admission_and_retries ... ok
+test queue::writer::flush_tests::shutdown_idempotent_barrier_failure_retains_ownership_for_retry ... ok
+test queue::writer::flush_tests::durable_service_respects_batch_limit_and_fifo ... ok
+test queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once ... ok
+test queue::writer::flush_tests::idempotent_visible_event_requires_barrier_before_durable_drain ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 1596 filtered out; finished in 0.01s
+

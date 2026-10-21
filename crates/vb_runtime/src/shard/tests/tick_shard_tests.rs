@@ -817,7 +817,7 @@ fn runtime_tick_shard_shutdown_idempotent() {
     let run = RunId::new(80);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // First shutdown tick
 
     // When: tick_shard(Shutdown) is called a second time.
@@ -850,7 +850,7 @@ fn runtime_tick_shard_shutdown_returns_false_on_dead_shard_continue_rejected() {
     let run = RunId::new(90);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // Shutdown complete
 
     // When: tick_shard(Continue) is called on dead shard.
@@ -1085,7 +1085,7 @@ fn runtime_tick_shard_shutdown_is_stable_idempotent() {
     let run = RunId::new(400);
 
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
-    assert_eq!(runtime.shutdown_graceful(), Ok(()));
+    assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // First call returns false
 
     // Get state after first shutdown
