@@ -40,7 +40,7 @@ vb_compile = { path = "../vb_compile", features = ["test-util"] }
 vb_expr = { path = "../vb_expr" }
 vb_yaml = { path = "../vb_yaml" }
 vb_core = { path = "../vb_core", features = ["verus-kernels"] }
-vb_cli = { package = "velvet-ballistics", path = "../velvet_ballistics" }
+velvet_ballistics = { package = "velvet-ballistics", path = "../velvet_ballistics" }
 vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
