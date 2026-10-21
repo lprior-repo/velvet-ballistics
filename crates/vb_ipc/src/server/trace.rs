@@ -208,6 +208,7 @@ mod tests {
             symbols_count: 0,
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
+            input_slots: Box::new([]),
             resource_contract: ResourceContract::DEFAULT,
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
