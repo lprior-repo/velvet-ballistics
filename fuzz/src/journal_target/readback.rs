@@ -126,6 +126,7 @@ fn one_node_parts(name: &'static str, digest: [u8; 32]) -> vb_core::WorkflowPart
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     }
 }
 

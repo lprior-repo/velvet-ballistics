@@ -139,6 +139,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
         symbols_count: 0,
         entry: StepIdx::new(u16::from(entry_byte)),
         step_names: Box::new([]),
+        input_slots: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     })
 }

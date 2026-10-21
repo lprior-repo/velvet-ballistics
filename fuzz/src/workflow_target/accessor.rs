@@ -38,6 +38,7 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     };
     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
         return;
