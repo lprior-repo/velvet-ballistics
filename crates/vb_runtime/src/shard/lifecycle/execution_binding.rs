@@ -1,7 +1,8 @@
 //! Bind the exact execution tuple to the independently checked accepted artifact.
 use crate::admission::{AcceptedArtifactStore, ArtifactEnvelopeError};
 use crate::{RuntimeError, RuntimeResult};
-use vb_core::{ActionContract, CompiledWorkflow, RuntimePolicy};
+use vb_core::{ActionContract, CompiledWorkflow, RuntimePolicy, WorkflowDigest};
+use vb_storage::AcceptedArtifact;
 
 pub(super) fn validate(
     store: &dyn AcceptedArtifactStore,
@@ -19,7 +20,17 @@ pub(super) fn validate(
         }
     }
     let digest = workflow.digest();
-    let artifact = store
+    let artifact = load_artifact(store, digest)?;
+    vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy)
+        .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
+    compare_execution_tuple(&artifact, workflow, contracts)
+}
+
+fn load_artifact(
+    store: &dyn AcceptedArtifactStore,
+    digest: WorkflowDigest,
+) -> RuntimeResult<AcceptedArtifact> {
+    store
         .load_accepted_artifact(digest)
         .map_err(|error| match error {
             ArtifactEnvelopeError::ArtifactNotFound { digest } => {
@@ -29,9 +40,15 @@ pub(super) fn validate(
                 RuntimeError::AdmissionArtifactDigestMismatch { requested, found }
             }
             _ => RuntimeError::AdmissionArtifactInvalid { digest },
-        })?;
-    vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy)
-        .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
+        })
+}
+
+fn compare_execution_tuple(
+    artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
+    contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    let digest = workflow.digest();
     if artifact.source_digest != digest {
         return Err(RuntimeError::AdmissionArtifactDigestMismatch {
             requested: digest,
