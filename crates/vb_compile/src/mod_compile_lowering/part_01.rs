@@ -13,6 +13,10 @@ use vb_core::{
     StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
+#[path = "finish_inputs.rs"]
+mod finish_inputs;
+use finish_inputs::prepare_finish_input_slots;
+
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
@@ -27,9 +31,16 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_names =
         canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
+    let mut inputs_allocated = false;
     for (index, step) in steps.iter().enumerate() {
         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
         let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        if index == last
+            && let crate::StepPrimitive::Finish { result } = &step.primitive
+        {
+            prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
+            inputs_allocated = true;
+        }
         lower_canonical_step(
             step,
             index,
@@ -41,7 +52,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             &mut builder,
         )?;
     }
-    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    if !inputs_allocated {
+        allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    }
     let mut parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: WorkflowDigest::from_bytes([0u8; 32]),

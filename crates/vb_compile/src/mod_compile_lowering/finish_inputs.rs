@@ -1,0 +1,27 @@
+use super::*;
+
+pub(super) fn prepare_finish_input_slots(
+    source: &crate::WorkflowSource,
+    result: &crate::ScalarValue,
+    outputs: &mut std::collections::HashMap<String, vb_core::SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if !matches!(result, crate::ScalarValue::String(name) if name.starts_with("$input.")) {
+        let internal = canonical_finish_slot(result, outputs)?;
+        builder.record_slot(internal);
+    }
+
+    allocate_input_slots(source.inputs(), builder).map_err(|e| CompileErrors(vec![e]))?;
+
+    for (input, port) in source.inputs().iter().zip(builder.input_slots.iter()) {
+        let name = format!("$input.{}", input.key);
+        if outputs.contains_key(&name) {
+            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+                name: name.into_boxed_str(),
+            }]));
+        }
+        outputs.insert(name, port.slot);
+    }
+
+    Ok(())
+}

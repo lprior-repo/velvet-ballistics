@@ -1,0 +1,105 @@
+Generate full Rust integration test code only; output ```rust fenced code. Save to crates/workspace_tests/tests/finish_input_binding.rs. Use actual public APIs below, no hallucinated API. Tests Result<(),Box<dyn std::error::Error>>, no unwrap/expect/panic/index/as/arithmetic. Test YAML compiler+real engine exact returned value (not counter-only). APIs:
+vb_compile::parse_workflow_source(&str)->Result<WorkflowSource,..>; vb_compile::compile_source(&source)->Result<CompiledWorkflow,CompileErrors>.
+workflow.input_slots()->&[CompiledInputSlot] { slot:SlotIdx, kind:InputSlotKind }, workflow.to_parts(), CompiledWorkflow::try_from_parts(parts), postcard::to_allocvec, postcard::from_bytes::<vb_core::WorkflowParts>.
+vb_core::engine::{new_run_frame,run_until_blocked,StepBudget,EngineSignal}; new_run_frame(RunId::new(7),&workflow), run.write_slot_with_taint(port.slot,SlotValue::I64(value),Taint::Secret)?; ValueStore::new(); run_until_blocked(&workflow,&mut run,StepBudget::MAX,&mut store)?; assert_eq!(signal,EngineSignal::Finished(SlotValue::I64(value),Taint::Secret)). Imports vb_core::{RunId,SlotIdx,SlotValue,Taint,InputSlotKind,CompiledWorkflow,WorkflowParts}; vb_core::value_store::ValueStore.
+Canonical YAML EXACT:
+version: velvet-ballistics/v1
+name: input_finish
+when:
+  manual: {}
+inputs:
+  count: number
+steps:
+  - id: done
+    finish:
+      result: $input.count
+Preceding save syntax:
+  - id: write_internal
+    save:
+      output: saved
+      value: '42'
+Tests: finish-only port SlotIdx0 I64 exact return all [MIN,-1,0,42,MAX]; preceding save port1 exactreturn input99 not saved42; two declarations first/second numeric use second and distinctvalues to prove declarationorder; unknown $input.missing exact error CompileErrors(vec![CompileError::UnknownOutputName{name:Box::from("$input.missing")}]); internal named Finish saved with unused input must return42 and port1; numeric finish result: 3 with one save must reserve slot3 and put input4 and not alias (assert exact inputport, terminalnode.result==3); postcard roundtrip+recompile deterministic parts/digest equality then execute restored workflow exactvalue. No claims CLI exposes value. Public part comparison includes exact numeric slots/kinds. Keep <300lines. Actual implementations follow:
+#![allow(unused_imports)]
+
+use crate::mod_compile_errors::{CompileError, CompileErrors};
+use std::collections::HashMap;
+use vb_core::{SlotIdx, StepIdx};
+
+pub(in crate::mod_compile_lowering) fn parse_i64_field(
+    value: &str,
+    step: usize,
+    field: &'static str,
+) -> Result<i64, CompileErrors> {
+    value.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })
+}
+
+pub(in crate::mod_compile_lowering) fn slot_from_text(
+    text: &str,
+    step: usize,
+    field: &'static str,
+) -> Result<SlotIdx, CompileErrors> {
+    if text.is_empty() {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "non-empty primitive field",
+        }]));
+    }
+    let value = text.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })?;
+    let raw = u16::try_from(value)
+        .map_err(|_| CompileErrors(vec![CompileError::SlotIndexOutOfRange { value }]))?;
+    Ok(SlotIdx::new(raw))
+}
+
+pub(in crate::mod_compile_lowering) fn optional_slot_from_text(
+    text: Option<&str>,
+    step: usize,
+    field: &'static str,
+) -> Result<Option<SlotIdx>, CompileErrors> {
+    match text {
+        Some(value) => slot_from_text(value, step, field).map(Some),
+        None => Ok(None),
+    }
+}
+
+pub(in crate::mod_compile_lowering) trait StepIdxSlotExt {
+    fn to_slot(self) -> SlotIdx;
+}
+
+impl StepIdxSlotExt for StepIdx {
+    fn to_slot(self) -> SlotIdx {
+        SlotIdx::new(self.get())
+    }
+}
+
+pub(in crate::mod_compile_lowering) fn canonical_finish_slot(
+    result: &crate::ScalarValue,
+    outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileErrors> {
+    match result {
+        crate::ScalarValue::String(name) => outputs.get(name.as_str()).copied().ok_or_else(|| {
+            CompileErrors(vec![CompileError::UnknownOutputName {
+                name: name.clone().into_boxed_str(),
+            }])
+        }),
+        crate::ScalarValue::Integer(value) => {
+            let raw = u16::try_from(*value).map_err(|_| {
+                CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: *value }])
+            })?;
+            Ok(SlotIdx::new(raw))
+        }
+        _ => Err(CompileErrors(vec![CompileError::BadValue])),
+    }
+}
