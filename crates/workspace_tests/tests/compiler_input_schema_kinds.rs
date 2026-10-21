@@ -40,6 +40,7 @@ fn test_schema_kind_mapping() -> Result<(), Box<dyn std::error::Error>> {
     let cases = [
         ("{is: text}", InputSlotKind::Symbol),
         ("{is: number}", InputSlotKind::I64),
+        ("{is: number, default: 42}", InputSlotKind::I64),
         ("{is: boolean}", InputSlotKind::Bool),
         ("{is: any}", InputSlotKind::Any),
         ("{is: object, fields: {}}", InputSlotKind::Object),
@@ -220,5 +221,47 @@ fn test_invalid_input_schemas() -> Result<(), Box<dyn std::error::Error>> {
             ]))
         );
     }
+    Ok(())
+}
+
+#[test]
+fn any_schema_digest_and_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+    let any_src = "{is: any}";
+    let num_src = "{is: number}";
+    let obj_src = "{is: object, fields: {enabled: boolean}}";
+    let any1 = vb_compile::compile_workflow(source(any_src).as_bytes())?;
+    let any2 = vb_compile::compile_workflow(source(any_src).as_bytes())?;
+    assert_eq!(any1.digest(), any2.digest());
+    let num = vb_compile::compile_workflow(source(num_src).as_bytes())?;
+    assert_ne!(any1.digest(), num.digest());
+    assert_ne!(any1.to_parts().input_slots, num.to_parts().input_slots);
+    let obj = vb_compile::compile_workflow(source(obj_src).as_bytes())?;
+    assert_eq!(
+        num.input_slots()
+            .first()
+            .ok_or("missing input port")?
+            .kind,
+        vb_core::InputSlotKind::I64
+    );
+    assert_eq!(
+        obj.input_slots()
+            .first()
+            .ok_or("missing input port")?
+            .kind,
+        vb_core::InputSlotKind::Object
+    );
+    let parts = any1.to_parts();
+    let enc = postcard::to_allocvec(&parts)?;
+    let dec: vb_core::WorkflowParts = postcard::from_bytes(&enc)?;
+    let recon = vb_core::CompiledWorkflow::try_from_parts(dec)?;
+    assert_eq!(recon.to_parts(), parts);
+    assert_eq!(
+        recon
+            .input_slots()
+            .first()
+            .ok_or("missing input port")?
+            .kind,
+        vb_core::InputSlotKind::Any
+    );
     Ok(())
 }

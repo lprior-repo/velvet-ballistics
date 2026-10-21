@@ -1,0 +1,101 @@
+Independent code review ONLY vb-86nyq compiled IRdigest binding. Findings first exactfiles, STATUS APPROVED only ifnofindings. Contract numericIRhash postcard WorkflowParts selfdigestzero, typedencodingerror, existingStrictstoragealgomatch. Actual evidence9integrationtests pass including independenthash, constantsensitivity, schemasensitivity, roundtrip and strictstalechecksumrejection. Widercompiler487/489 nowpassingafter separateconstantreusefix, remainingnamesensitivitytestsarebeingupdatedtoexplicitdualidentity checks; DO NOTclaimfullsuite greenorwholev1done. Assess actualproductiondiffno newunchecked arithmetic/panics/allow/fallback. Legacypubliccanonical_digestASThelperunchanged.
+CONTRACT
+# Domain
+
+Compiler fingerprinting for numeric intermediate representation.
+
+# Invariant
+
+The fingerprint binds the complete emitted numeric intermediate representation, including declared input kinds. It is calculated from deterministic binary bytes with the fingerprint field zeroed, then stored in that field.
+
+# Errors
+
+A typed compiler encoding error is returned if serializing the emitted IR fails.
+
+# Acceptance
+
+Independent tests recalculate the fingerprint and verify it changes when an input kind or constant is altered. Strict storage admission must accept real compiler output with its correct IR digest, and reject a stale digest after IR mutation. The legacy authoring fingerprint helper remains separate. No release completion or mathematical proof is claimed.
+
+Coordinator clarification: storage admission here means a regression using the existing storage API; compiler code does not write to a database.
+
+DIFF
+diff --git a/crates/vb_compile/src/mod_compile_errors/collection.rs b/crates/vb_compile/src/mod_compile_errors/collection.rs
+index 580107d18..a283c1a87 100644
+--- a/crates/vb_compile/src/mod_compile_errors/collection.rs
++++ b/crates/vb_compile/src/mod_compile_errors/collection.rs
+@@ -44,6 +44,7 @@ impl CompileError {
+             | Self::BranchTargetOutOfRange { .. }
+             | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
+             Self::Workflow(error) => workflow_error_code(error),
++            Self::CompiledIrEncode(_) => "INVALID_COMPILED_WORKFLOW",
+             Self::UnknownTopLevelField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
+             Self::InvalidVersion { .. } => "INVALID_VERSION",
+             Self::InvalidTriggerCount { .. }
+diff --git a/crates/vb_compile/src/mod_compile_errors/kind.rs b/crates/vb_compile/src/mod_compile_errors/kind.rs
+index 49940b5bf..375bac836 100644
+--- a/crates/vb_compile/src/mod_compile_errors/kind.rs
++++ b/crates/vb_compile/src/mod_compile_errors/kind.rs
+@@ -52,6 +52,8 @@ pub enum CompileError {
+     ScalarLimit { actual: usize, limit: usize },
+     #[error("compiled workflow IR failed validation: {0}")]
+     Workflow(#[from] WorkflowError),
++    #[error("compiled workflow IR encoding failed: {0}")]
++    CompiledIrEncode(postcard::Error),
+     #[error("validation gate failure: {0}")]
+     Validation(#[from] vb_validate::ValidationError),
+     #[error("required workflow field is missing: {field}")]
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_01.rs b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+index b2934adae..4e92f06cb 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_01.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+@@ -42,9 +42,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
+         )?;
+     }
+     allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+-    let parts = WorkflowParts {
++    let mut parts = WorkflowParts {
+         name: Box::from(source.name()),
+-        digest: canonical_digest(source)?,
++        digest: WorkflowDigest::from_bytes([0u8; 32]),
+         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+         symbols_count: 0,
+         nodes: builder.nodes.into_boxed_slice(),
+@@ -56,6 +56,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
+         step_names: step_names.into_boxed_slice(),
+         input_slots: builder.input_slots.into_boxed_slice(),
+     };
++    let encoded_parts = postcard::to_allocvec(&parts)
++        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
+     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+ }
+@@ -84,24 +87,15 @@ pub(super) fn allocate_input_slots(
+                 .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
+         );
+         builder.record_slot(slot);
+-        let kind = kind_from_author_value(&input.value);
++        let kind = kind_from_input_schema(&input.value)?;
+         builder.record_input_slot(slot, kind);
+     }
+     Ok(())
+ }
+ 
+-/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
+-pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
+-    match value {
+-        AuthorValue::Null => InputSlotKind::Null,
+-        AuthorValue::Bool(_) => InputSlotKind::Bool,
+-        AuthorValue::I64(_) => InputSlotKind::I64,
+-        AuthorValue::Text(_) => InputSlotKind::Symbol,
+-        AuthorValue::Sequence(_) => InputSlotKind::List,
+-        AuthorValue::Mapping(_) => InputSlotKind::Object,
+-        _ => InputSlotKind::Null,
+-    }
+-}
++#[path = "input_schema.rs"]
++mod input_schema;
++use input_schema::kind_from_input_schema;
+ 
+ #[derive(Clone, Copy)]
+ pub(super) struct CanonicalStepLayout {

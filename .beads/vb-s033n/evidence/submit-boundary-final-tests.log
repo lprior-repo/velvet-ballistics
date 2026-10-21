@@ -1,0 +1,15 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-contract-5090/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.09s
+     Running ../workspace_tests/tests/cli/submit_input_boundary.rs (target/debug/deps/submit_input_boundary-7f2a3d256dafd474)
+
+running 6 tests
+test encoded_empty_plus_garbage_fails_all_durabilities ... ok
+test malformed_decode_fails_all_durabilities ... ok
+test excess_slots_fails_all_durabilities ... ok
+test bool_kind_mismatch_fails_all_durabilities ... ok
+test validation_precedes_journal_open ... ok
+test test_submit_controls ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+

@@ -1,0 +1,15 @@
+STATUS: APPROVED
+
+The test changes correctly validate the numeric IR identity semantics:
+
+1. **Compiled IR stability**: Both modified tests now assert `to_parts()` equality and digest equality for consistent renames (branch labels, sub-step IDs, finish output names). This verifies the core property that cosmetic source identifiers don't affect compiled output.
+
+2. **Authoring digest preservation**: Each test adds a `canonical_digest` check on the source, asserting the legacy AST digest still captures the original spelling. This confirms the two digest layers are independent.
+
+3. **No weakened assertions**: Constant values, branch counts, finish slots, and finish positions remain asserted elsewhere in the test suite. These changes only affect identity/renaming tests.
+
+4. **Stronger coverage**: The tests now verify three properties (parts equal, digest equal, source digest different) instead of one, providing more complete validation of the compiler's behavior.
+
+The property test rename (`finish_output_rename_preserves_ir_and_changes_authoring_digest`) accurately describes the new semantics. The formatting change in `compile_and_expect_max_slots_error` is cosmetic only.
+
+No unresolved findings.

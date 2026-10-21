@@ -2,3 +2,5 @@ Local implementation accepted with two bounded corrections before applying: repl
 
 Extra tests used only requested test functions; discarded an unsolicited invented YAML helper and corrected invented vb_compile::SlotKind to actual vb_core::InputSlotKind. Enabled existing compiler test-util feature in workspace-test dev dependency for public AST fixture construction.
 Local3090 exact value array expanded both Any mapper/runtime tests to all8 known SlotValue variants plus Bool/I64 boundaries. Handle IDs test kind matching only and make no owned backing validation claim.
+Review followup test corrected to reuse real source(schema) YAML helper, actual public input_slots() getter, fallible Option access. Any vs plain number isolates kind change; separate default schema case added to existing longform table. Existing i64_port_bool exact CLI mismatch test supplied to reviewer to correct missing-context finding.
+Compiler caught coordinator overbroad getter correction on temporary WorkflowParts: removed to_parts() for num/obj kind checks to call CompiledWorkflow.input_slots() directly. Failed compile log retained; final actual test run required.
