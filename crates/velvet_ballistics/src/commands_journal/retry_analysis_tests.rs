@@ -108,6 +108,82 @@ fn retry_failed_action() {
 }
 
 #[test]
+fn retry_analysis_uses_only_the_latest_run_attempt() {
+    let run = RunId::new(1);
+    let events = [
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(3),
+            attempt: 1,
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+        },
+        JournalEvent::RetryScheduledEvent {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(7),
+            attempt: 2,
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(7),
+            attempt: 2,
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(4),
+            attempt: 2,
+        },
+    ];
+
+    let analysis = analyze_retry(&events);
+
+    assert!(analysis.can_retry);
+    assert_eq!(analysis.failed_at_step, Some(7));
+    assert_eq!(analysis.last_successful_step, None);
+}
+
+#[test]
+fn retry_analysis_rejects_a_run_active_on_a_newer_attempt() {
+    let run = RunId::new(1);
+    let events = [
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(3),
+            attempt: 1,
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+        },
+        JournalEvent::RetryScheduledEvent {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(3),
+            attempt: 2,
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(3),
+            attempt: 2,
+        },
+    ];
+
+    let analysis = analyze_retry(&events);
+
+    assert!(!analysis.can_retry);
+    assert_eq!(analysis.failed_at_step, None);
+}
+
+#[test]
 fn no_retry_cancelled_or_finished() {
     let a1 = analyze_retry(&[started(5), cancelled_run()]);
     assert!(!a1.can_retry);

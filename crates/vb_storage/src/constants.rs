@@ -10,6 +10,10 @@ pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
 pub const KEYSPACE_COMPILED_IR: &str = "compiled_ir";
 /// Run metadata and status records.
 pub const KEYSPACE_RUN_HEADER: &str = "run_header";
+/// Retained, artifact-bound typed inputs by run.
+pub const KEYSPACE_RUN_INPUTS: &str = "run_inputs";
+/// Maximum encoded retained-input payload (1 MiB).
+pub const MAX_RUN_INPUT_BYTES: u32 = 1_048_576;
 /// Compact binary event journal records.
 pub const KEYSPACE_RUN_EVENT: &str = "run_event";
 /// Compact binary run snapshot records.

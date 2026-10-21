@@ -26,7 +26,7 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let runtime_journal = match vb_runtime::journal::RuntimeJournalConfig::new(
         vb_storage::DurabilityProfile::Journaled,
     )
-    .shared_journal(journal, queue)
+    .shared_journal(Arc::clone(&journal), Arc::clone(&queue))
     {
         Ok(j) => j,
         Err(e) => {
@@ -53,34 +53,27 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     };
 
     outln!("ipc server listening on {}", socket.display());
+    let persistence = IpcJournalService { journal, queue };
 
     // Event loop
     loop {
-        match server.poll_once_with_resolver(
+        let result = persistence.turn(
+            &mut server,
             &mut runtime,
+            &mut resolver,
             Some(std::time::Duration::from_millis(100)),
-            Some(&mut resolver),
-        ) {
+        );
+        if let Some(error) = server.take_client_error() {
+            errln!("ipc peer error: {error}");
+        }
+        match result {
             Ok(true) => {}
             Ok(false) => {
                 outln!("shutdown requested");
                 break;
             }
             Err(e) => {
-                errln!("ipc server error: {e}");
-                return CliExitCode::IpcError.into();
-            }
-        }
-
-        // Process pending commands
-        match runtime.tick_all() {
-            Ok(true) => {}
-            Ok(false) => {
-                outln!("runtime shut down");
-                break;
-            }
-            Err(e) => {
-                errln!("runtime tick error: {e}");
+                errln!("ipc service error: {e}");
                 return CliExitCode::IpcError.into();
             }
         }
@@ -88,6 +81,70 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
 
     ExitCode::SUCCESS
 }
+
+struct IpcJournalService {
+    journal: Arc<vb_storage::FjallJournal>,
+    queue: Arc<vb_storage::JournalWriterQueue>,
+}
+
+impl IpcJournalService {
+    fn turn(
+        &self,
+        server: &mut vb_ipc::server::IpcServer,
+        runtime: &mut vb_runtime::runtime::Runtime,
+        resolver: &mut StorageWorkflowResolver,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<bool, IpcServiceError> {
+        self.flush_batch()?;
+        if !server
+            .poll_once_with_resolver(runtime, timeout, Some(resolver))
+            .map_err(IpcServiceError::Ipc)?
+        {
+            return Ok(false);
+        }
+        let alive = runtime.tick_all().map_err(IpcServiceError::Runtime)?;
+        self.flush_batch()?;
+        Ok(alive || server.has_pending_responses())
+    }
+
+    fn flush_batch(&self) -> Result<(), IpcServiceError> {
+        self.queue
+            .flush_batch_durable(&self.journal)
+            .map_err(IpcServiceError::Storage)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+enum IpcServiceError {
+    Ipc(vb_ipc::server::IpcServerError),
+    Runtime(vb_runtime::RuntimeError),
+    Storage(vb_storage::JournalError),
+}
+
+impl std::fmt::Display for IpcServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ipc(error) => write!(f, "IPC: {error}"),
+            Self::Runtime(error) => write!(f, "runtime: {error}"),
+            Self::Storage(error) => write!(f, "storage: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for IpcServiceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Ipc(error) => Some(error),
+            Self::Runtime(error) => Some(error),
+            Self::Storage(error) => Some(error),
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "ipc_serve_tests.rs"]
+mod tests;
 
 struct StorageWorkflowResolver {
     journal: Arc<vb_storage::FjallJournal>,

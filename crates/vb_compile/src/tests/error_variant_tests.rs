@@ -1369,22 +1369,31 @@ steps:
     let wf_la = crate::compile_source(&source_la).expect("compile label-a");
     let wf_lb = crate::compile_source(&source_lb).expect("compile label-b");
 
-    assert_eq!(
-        wf_la.to_parts(),
-        wf_lb.to_parts(),
-        "consistent branch renames preserve compiled IR parts"
-    );
-    assert_eq!(
+    assert_ne!(
         wf_la.digest(),
         wf_lb.digest(),
-        "consistent branch renames preserve compiled IR digest"
+        "branch label changes alter source identity and compiled digest"
+    );
+    let mut parts_la = wf_la.to_parts();
+    let mut parts_lb = wf_lb.to_parts();
+    assert_ne!(
+        parts_la.semantic_source_identity, parts_lb.semantic_source_identity,
+        "branch label spelling must remain in source identity"
+    );
+    parts_la.semantic_source_identity = None;
+    parts_lb.semantic_source_identity = None;
+    parts_la.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
+    parts_lb.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_eq!(
+        parts_la, parts_lb,
+        "consistent branch renames preserve exact numeric compiled IR"
     );
     assert!(
         matches!(
             (crate::canonical_digest(&source_la), crate::canonical_digest(&source_lb)),
             (Ok(a), Ok(b)) if a != b
         ),
-        "authoring digest preserves branch label spelling"
+        "canonical source identity preserves branch label spelling"
     );
 
     // (c) Different sub-step IDs
@@ -1444,22 +1453,31 @@ steps:
     let wf_ida = crate::compile_source(&source_ida).expect("compile id-a");
     let wf_idb = crate::compile_source(&source_idb).expect("compile id-b");
 
-    assert_eq!(
-        wf_ida.to_parts(),
-        wf_idb.to_parts(),
-        "consistent sub-step ID renames preserve compiled IR parts"
-    );
-    assert_eq!(
+    assert_ne!(
         wf_ida.digest(),
         wf_idb.digest(),
-        "consistent sub-step ID renames preserve compiled IR digest"
+        "sub-step ID changes alter source identity and compiled digest"
+    );
+    let mut parts_ida = wf_ida.to_parts();
+    let mut parts_idb = wf_idb.to_parts();
+    assert_ne!(
+        parts_ida.semantic_source_identity, parts_idb.semantic_source_identity,
+        "sub-step ID spelling must remain in source identity"
+    );
+    parts_ida.semantic_source_identity = None;
+    parts_idb.semantic_source_identity = None;
+    parts_ida.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
+    parts_idb.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_eq!(
+        parts_ida, parts_idb,
+        "consistent sub-step ID renames preserve exact numeric compiled IR"
     );
     assert!(
         matches!(
             (crate::canonical_digest(&source_ida), crate::canonical_digest(&source_idb)),
             (Ok(a), Ok(b)) if a != b
         ),
-        "authoring digest preserves sub-step ID spelling"
+        "canonical source identity preserves sub-step ID spelling"
     );
 }
 

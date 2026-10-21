@@ -5,11 +5,11 @@ use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy};
 use vb_core::ids::SlotIdx;
 use vb_core::value::Taint;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{AskAnswer, AskTicket};
+use vb_runtime::shard::AskAnswer;
 
 use super::query::{decode_payload, sanitize_runtime_error};
-use crate::server::ticket::{payload_len, step_from_ticket};
 use crate::IpcPayload;
+use crate::server::ticket::{payload_len, step_from_ticket};
 
 const MAX_ANSWER_ASK_BYTES: usize = 65536;
 const MAX_ACTION_OUTPUT_LEN: usize = 65536;
@@ -53,13 +53,12 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             };
         }
     };
+    let Some(ticket) = runtime.lookup_pending_ask_ticket(run_id, ask_step) else {
+        return IpcResponse::BadRequest;
+    };
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run: run_id,
-            ask_step,
-            resume_step: ask_step,
-        },
-        answer_slot: SlotIdx::ZERO,
+        answer_slot: ticket.answer_slot(),
+        ticket,
         value,
         taint: taint.unwrap_or(Taint::Clean),
         encoded_len,

@@ -87,9 +87,11 @@ impl Shard {
         };
         // Note: StepSucceeded for the Finish step is now emitted by the evidence
         // collector during flush_evidence, before apply_drive_result is called.
-        if let Err(error) =
-            self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })
-        {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFinished {
+            run,
+            result,
+            attempt: state.run_attempt.get(),
+        }) {
             return self.rollback_run_state_preserving_error("finish_run", run, state, error);
         }
         self.finish_run_after_journaled(run, state)
@@ -105,6 +107,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
+        self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
         self.add_executed_step_delta(run, state.frame.executed());
@@ -168,6 +171,12 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let ask_boundary_seq = if kind == PendingTimerKind::Ask {
+            self.reserve_pending_ask_authority_slot(run)?;
+            Some(self.journal_sequence_for(run))
+        } else {
+            None
+        };
         if register_timer {
             self.reserve_pending_timer_slot(run)?;
         }
@@ -203,6 +212,9 @@ impl Shard {
                 },
             )?;
         }
+        if let Some(boundary_seq) = ask_boundary_seq {
+            self.record_pending_ask_authority(run, step, boundary_seq);
+        }
         self.run_state_insert(run, state)?;
         Ok(())
     }
@@ -210,7 +222,10 @@ impl Shard {
     /// Marks a run as failed, releases its frame, and updates counters.
     /// Runtime state mutation is applied after the durable failure event is persisted.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed { run }) {
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::RunFailed {
+            run,
+            attempt: state.run_attempt.get(),
+        }) {
             return self.rollback_run_state_preserving_error("fail_run_state", run, state, error);
         }
         self.fail_run_state_after_journaled(run, state)
@@ -226,6 +241,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
+        self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });

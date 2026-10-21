@@ -221,7 +221,7 @@ fn kind_28_29_31_through_35_admission_for_journal_magic() {
         validate_kind_family(MAGIC_JOURNAL_EVENT, 32).is_ok(),
         "kind 32 (ActionAbandoned) must be admitted for journal magic"
     );
-    for kind in [33_u16, 34, 35] {
+    for kind in [33_u16, 34, 35, 36] {
         assert!(is_known_record_kind(kind), "new unique kind must be known");
         assert!(
             validate_kind_family(MAGIC_JOURNAL_EVENT, kind).is_ok(),
@@ -229,13 +229,13 @@ fn kind_28_29_31_through_35_admission_for_journal_magic() {
         );
     }
     // Kinds outside the journal range remain rejected.
-    assert!(!is_known_record_kind(36), "kind 36 must remain unknown");
+    assert!(!is_known_record_kind(37), "kind 37 must remain unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 36),
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 37),
             Err(JournalError::UnknownRecordKind { .. })
         ),
-        "kind 36 must be rejected for journal magic"
+        "kind 37 must be rejected for journal magic"
     );
 }
 

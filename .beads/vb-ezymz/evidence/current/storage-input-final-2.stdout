@@ -1,0 +1,18 @@
+
+running 13 tests
+test inputs::receipt_tests::canonical_input_digest_binds_slots_values_and_types_without_order_dependency ... ok
+test inputs::receipt_tests::retained_input_receipt_rejects_legacy_digest_artifact_and_run_mismatch ... ok
+test inputs::tests::retained_mapping_rejects_workflow_digest_drift_before_execution ... ok
+test inputs::tests::retained_mapping_rejects_unbacked_arena_handles_and_zero_run ... ok
+test inputs::receipt_tests::retained_value_tampering_with_recomputed_envelope_checksum_is_rejected ... ok
+test inputs::tests::retained_record_envelope_rejects_kind_sequence_trailing_bytes_and_checksum_corruption ... ok
+test inputs::tests::retained_mapping_rejects_duplicate_undeclared_out_of_range_and_wrong_kind ... ok
+test inputs::tests::retained_mapping_preserves_extreme_values_and_empty_mapping ... ok
+test inputs::tests::arbitrary_i64_retained_values_roundtrip_exactly ... ok
+test inputs::tests::journal_input_read_rejects_wrong_run_and_legacy_absence_is_explicit ... ok
+test inputs::submission_tests::journaled_artifact_cannot_be_committed_as_strict_or_relaxed ... ok
+test inputs::submission_tests::injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds ... ok
+test inputs::submission_tests::colliding_run_cannot_replace_retained_input_or_existing_admission ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1599 filtered out; finished in 0.02s
+

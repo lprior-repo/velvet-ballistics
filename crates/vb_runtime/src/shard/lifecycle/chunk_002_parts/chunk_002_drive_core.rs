@@ -106,7 +106,7 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         let (journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
@@ -140,7 +140,7 @@ impl Shard {
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
         let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
+        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         Self::push_drive_journal_event(
             &mut journal_events,
             RuntimeJournalEvent::ActionScheduledTicket {
@@ -162,7 +162,7 @@ impl Shard {
     ) -> RuntimeResult<AwaitingTimerPlan> {
         let step = state.frame.pc();
         let mut timer = None;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
+        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
         if register_timer || kind == PendingTimerKind::Ask {
             let event = match kind {

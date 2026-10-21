@@ -48,6 +48,7 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
     vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_budget"),
         digest: vb_core::WorkflowDigest::from_bytes([0xC0; 32]),
+        semantic_source_identity: None,
         nodes: vec![
             vb_core::CompiledNode {
                 id: vb_core::StepIdx::new(0),

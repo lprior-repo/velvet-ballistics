@@ -168,17 +168,66 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
             );
             assert_eq!(String::from_utf8_lossy(&out.stdout), expected);
 
+            let retained = journal
+                .run_inputs(header.run)?
+                .ok_or("missing retained inputs")?;
+            assert_eq!(retained.workflow_digest(), compiled.digest());
+            let expected_values: Box<[SlotValue]> = if input.is_empty() {
+                Box::new([])
+            } else {
+                postcard::from_bytes(input)?
+            };
+            let expected_slots = compiled
+                .input_slots()
+                .iter()
+                .zip(expected_values.iter())
+                .map(|(slot, value)| (slot.slot, *value))
+                .collect::<Vec<_>>();
+            assert_eq!(retained.inputs(), expected_slots);
+            let record = journal
+                .compiled_ir(retained.artifact_digest())?
+                .ok_or("missing artifact")?;
+            let artifact: vb_storage::AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+            assert_eq!(artifact.digest, retained.artifact_digest());
+            assert_eq!(artifact.source_digest, compiled.digest());
+            assert_eq!(
+                retained.source_digest(),
+                vb_core::WorkflowDigest::from_bytes(blake3::hash(yaml.as_bytes()).into())
+            );
+            assert_eq!(
+                journal
+                    .workflow_source(retained.source_digest())?
+                    .ok_or("missing source")?
+                    .source,
+                yaml.as_bytes()
+            );
             let events = journal.events_for_run(header.run)?;
             if *mode == "none" {
                 assert!(events.is_empty());
             } else {
                 assert_eq!(
                     events,
-                    vec![vb_storage::JournalEvent::RunAccepted {
-                        run: header.run,
-                        seq: EventSeq::new(0),
-                        workflow: compiled.digest()
-                    }]
+                    vec![
+                        vb_storage::JournalEvent::RunAccepted {
+                            run: header.run,
+                            seq: EventSeq::new(0),
+                            workflow: compiled.digest()
+                        },
+                        vb_storage::JournalEvent::RunAdmission {
+                            input_digest: vb_storage::RunInputBinding::Digest(
+                                retained.input_digest()
+                            ),
+                            run: header.run,
+                            seq: EventSeq::new(1),
+                            artifact_digest: retained.artifact_digest(),
+                            granted_capabilities: vb_core::CapabilitySet::empty(),
+                            policy: if *mode == "strict" {
+                                vb_core::RuntimePolicy::Strict
+                            } else {
+                                vb_core::RuntimePolicy::Journaled
+                            },
+                        }
+                    ]
                 );
             }
         }

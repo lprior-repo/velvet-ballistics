@@ -57,6 +57,9 @@ fn make_answer(run: RunId) -> AskAnswer {
             run,
             ask_step: StepIdx::ZERO,
             resume_step: StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: SlotValue::Bool(true),

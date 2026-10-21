@@ -43,6 +43,8 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
     )
     .expect("failed to create RunFrame");
     RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: vb_runtime::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow: wf,
         store: ValueStore::new(),
@@ -63,6 +65,7 @@ fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<Compiled
         kind,
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test_wf"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([node]),

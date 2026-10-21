@@ -1,0 +1,5 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7r7jv-conformance-sol/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7r7jv-conformance-sol/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7r7jv-conformance-sol/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7r7jv-conformance-sol/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.44s

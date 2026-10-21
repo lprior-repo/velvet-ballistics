@@ -51,6 +51,7 @@ fn step_once_bounds_harness() {
 
     // Build CompiledWorkflow (may fail validation; accept either path)
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: parts.semantic_source_identity,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -62,6 +63,7 @@ fn step_once_bounds_harness() {
         entry: parts.entry,
         resource_contract: parts.resource_contract,
         step_names: parts.step_names,
+        input_slots: parts.input_slots,
     });
 
     let plan = match workflow_result {
@@ -156,6 +158,7 @@ fn step_once_bounds_harness() {
 fn step_once_state_mapping_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: parts.semantic_source_identity,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -167,6 +170,7 @@ fn step_once_state_mapping_harness() {
         entry: parts.entry,
         resource_contract: parts.resource_contract,
         step_names: parts.step_names,
+        input_slots: parts.input_slots,
     });
 
     let plan = match workflow_result {
@@ -228,6 +232,7 @@ fn step_once_state_mapping_harness() {
 fn step_once_slot_init_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: parts.semantic_source_identity,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -239,6 +244,7 @@ fn step_once_slot_init_harness() {
         entry: parts.entry,
         resource_contract: parts.resource_contract,
         step_names: parts.step_names,
+        input_slots: parts.input_slots,
     });
 
     let plan = match workflow_result {
@@ -289,6 +295,7 @@ fn step_once_slot_init_harness() {
 fn step_once_pc_bounds_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: parts.semantic_source_identity,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -300,6 +307,7 @@ fn step_once_pc_bounds_harness() {
         entry: parts.entry,
         resource_contract: parts.resource_contract,
         step_names: parts.step_names,
+        input_slots: parts.input_slots,
     });
 
     let plan = match workflow_result {
@@ -434,6 +442,7 @@ fn taint_validity_harness() {
 fn step_once_error_harness() {
     let parts: WorkflowParts = kani::any();
     let workflow_result = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: parts.semantic_source_identity,
         name: parts.name,
         digest: parts.digest,
         nodes: parts.nodes,
@@ -445,6 +454,7 @@ fn step_once_error_harness() {
         entry: parts.entry,
         resource_contract: parts.resource_contract,
         step_names: parts.step_names,
+        input_slots: parts.input_slots,
     });
 
     let plan = match workflow_result {

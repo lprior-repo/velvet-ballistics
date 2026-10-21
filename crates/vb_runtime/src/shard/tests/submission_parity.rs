@@ -132,6 +132,7 @@ fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> 
         },
     };
     let parts = super::WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("nop_then_do"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([nop_node, do_node]),

@@ -820,6 +820,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         kind: CompiledNodeKind::Nop,
     };
     let parts = vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("nop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1015,6 +1016,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
         kind: CompiledNodeKind::Nop,
     };
     let parts = vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("bh_nop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1085,6 +1087,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
         },
     };
     let parts = vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("bh_nop_finish"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node, finish]),
@@ -1161,6 +1164,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         },
     };
     let parts = vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("bh_do"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1610,6 +1614,7 @@ mod blackhat_engine {
         constants: Box<[vb_core::value::ConstValue]>,
     ) -> CompiledWorkflow {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("bh_test"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
             nodes: nodes.into_boxed_slice(),
@@ -2119,6 +2124,7 @@ mod blackhat_engine {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("bh_do_no_out"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0xDD; 32]),
             nodes: Box::from([node]),

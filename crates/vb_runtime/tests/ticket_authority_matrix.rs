@@ -67,6 +67,7 @@ fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std:
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("setconst-do"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set, do_node, finish]),

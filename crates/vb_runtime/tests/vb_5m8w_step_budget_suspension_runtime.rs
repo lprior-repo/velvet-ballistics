@@ -19,6 +19,7 @@ use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, Shard
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("vb_5m8w_runtime_suspension"),
         digest: WorkflowDigest::from_bytes([0x8b; 32]),
         nodes: vec![CompiledNode {
@@ -45,6 +46,7 @@ fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<Compiled
 
 fn const_then_finish_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("vb_5m8w_runtime_completed_then_exhausted"),
         digest: WorkflowDigest::from_bytes([0x5e; 32]),
         nodes: vec![

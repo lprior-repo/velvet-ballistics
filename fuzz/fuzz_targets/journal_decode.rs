@@ -160,6 +160,8 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::UnsupportedReadOnly
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
+        | JournalError::ArtifactValidation(_)
+        | JournalError::ArtifactActionRegistry(_)
         | JournalError::Trim(_) => {}
     }
 }

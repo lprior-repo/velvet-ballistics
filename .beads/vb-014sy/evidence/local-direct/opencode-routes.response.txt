@@ -1,0 +1,10 @@
+OpenCode local-only bounded review attempts; all failed before tool use.
+
+1. `opencode run --model qwen36-5090/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf --format json 'Use your bash tool to run pwd and inspect the master contract section 9 and the changes to the event trigger validator and test cases. Do not edit any files. Report whether the v1 event grammar is correctly enforced and point out any missing exact rejection coverage.'`
+Exit 1. Local endpoint `http://127.0.0.1:11000/v1/chat/completions` returned HTTP 404: model `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` not found.
+
+2. `opencode run --model qwen36-5090/Qwen3.6-35B-A3B-UD-Q5_K_XL --format json 'Use your bash tool to run pwd in this workspace. Then inspect the changed files and master event contract. Do not edit. Assess whether type is required and the legacy name path is rejected.'`
+Exit 1. Returned an unexpected server error (`err_ad9d7615`) before a tool call.
+
+3. `opencode run --model qwen36-3090/Qwen3.6-35B-A3B-UD-Q4_K_XL --format json 'Use bash to run pwd in this workspace, then inspect the changed event validator and tests against the master event grammar. Do not edit any files. Give a concise review.'`
+Exit 1. Returned an unexpected server error (`err_52528249`) before a tool call.

@@ -1,0 +1,954 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 96f3f0945..1cdf06c13 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -2013,6 +2013,7 @@ dependencies = [
+  "tempfile",
+  "thiserror",
+  "vb_core",
++ "vb_validate",
+ ]
+ 
+ [[package]]
+diff --git a/crates/vb_compile/src/lib.rs b/crates/vb_compile/src/lib.rs
+index 846491bb6..783d049c4 100644
+--- a/crates/vb_compile/src/lib.rs
++++ b/crates/vb_compile/src/lib.rs
+@@ -14,18 +14,18 @@
+ pub mod ast;
+ 
+ // Preserve the original public paths while the dedicated crates own the code.
+-pub use vb_expr::{expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs,
+-    expr_stack_ops, expr_typecheck};
+-pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile,
+-    yaml_source_map};
++pub use vb_expr::{
++    expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs, expr_stack_ops, expr_typecheck,
++};
+ #[cfg(kani)]
+ pub use vb_yaml::yaml_kani;
+-#[cfg(test)]
+-mod migration_compat;
++pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile, yaml_source_map};
+ mod control_flow;
+ pub mod expression;
+ mod expression_bytecode;
+ mod limits;
++#[cfg(test)]
++mod migration_compat;
+ mod mod_compile_core;
+ mod mod_compile_errors;
+ pub mod mod_compile_lowering;
+@@ -37,27 +37,20 @@ mod type_taint;
+ 
+ // Import expression and YAML modules from dedicated crates
+ pub use vb_expr::{
+-    ExprError, ExprResult,
+-    bytecode, eval, lexer, parser, stack_ops, typecheck,
+-    compile_expr, compile_expr_to_bytecode, compile_expr_with_pool,
+-    compile_expr_with_resolver, check_expr_stack_bound, ReferenceResolver,
+-    eval_binary_op, eval_expr_program, eval_expr_program_with_store,
+-    eval_helper, eval_helper_with_store, eval_unary_op,
++    ExprError, ExprResult, ReferenceResolver, bytecode, check_expr_stack_bound, compile_expr,
++    compile_expr_to_bytecode, compile_expr_with_pool, compile_expr_with_resolver, eval,
++    eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
++    eval_helper_with_store, eval_unary_op, lexer, parser, stack_ops, typecheck,
+ };
+ 
+ pub use vb_yaml::{
+-    YamlError, YamlResult,
+-    YamlEvent, EventSpan, ScalarStyle,
+-    collect_events, convert_event,
+-    reject_anchors_aliases_merges, reject_duplicate_keys,
+-    reject_forbidden_features, reject_multiple_documents,
+-    reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
+-    SourceMap, SourceSpan, SemanticSourceMap,
+-    build_source_map, build_semantic_source_map, span_for_node,
+-    WorkflowSource,
+-    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst,
+-    InputField, ResultMapping, RetryPolicy, ScalarValue, SecretField,
+-    StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
++    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, EventSpan, ExampleAst, InputField,
++    ResultMapping, RetryPolicy, ScalarStyle, ScalarValue, SecretField, SemanticSourceMap,
++    SourceMap, SourceSpan, StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
++    WorkflowSource, YamlError, YamlEvent, YamlResult, build_semantic_source_map, build_source_map,
++    collect_events, convert_event, reject_anchors_aliases_merges, reject_duplicate_keys,
++    reject_forbidden_features, reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars,
++    span_for_node, validate_yaml_profile,
+ };
+ 
+ #[cfg(any(test, feature = "test-util"))]
+@@ -80,7 +73,6 @@ mod proptest_choose_lowering;
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+ pub mod kani_finish_digest;
+ 
+-
+ // Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
+ #[cfg(any())]
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+@@ -142,8 +134,6 @@ pub mod kani_wait_digest;
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+ pub mod kani_digest_repeat;
+ 
+-
+-
+ // Internal test modules (error variant completeness, together digest unit tests).
+ #[cfg(test)]
+ mod tests;
+@@ -159,6 +149,11 @@ pub use core::{
+     compute_compiled_digest, emit_compiled_artifact, is_compile_idempotency_gate_accepted,
+ };
+ pub use errors::{CompileError, CompileErrors, SourceMark};
++pub mod artifact;
++pub use artifact::{
++    ArtifactVerificationError, CompilationBinding, CompilerCheck, SourceProvenance,
++    VerifiedCompilation, compile_verified_artifact, verify_compiled_artifact,
++};
+ pub(crate) use errors::{collect, non_string_key_error};
+ #[allow(unused_imports)]
+ pub(crate) use lwr::digest_step_primitive as digest_step_primitive_part05;
+diff --git a/crates/vb_compile/src/migration_compat.rs b/crates/vb_compile/src/migration_compat.rs
+index 994c2cf05..43aa2e872 100644
+--- a/crates/vb_compile/src/migration_compat.rs
++++ b/crates/vb_compile/src/migration_compat.rs
+@@ -31,7 +31,9 @@ mod expr_module_paths {
+     #[test]
+     fn expr_lexer_behavioral_check() -> Result<(), Box<dyn std::error::Error>> {
+         let tokens = expr_lexer::lex_expr("x")?;
+-        let has_identifier = tokens.iter().any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
++        let has_identifier = tokens
++            .iter()
++            .any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
+         assert!(has_identifier, "Expected an identifier token");
+         Ok(())
+     }
+@@ -83,18 +85,25 @@ mod yaml_module_paths {
+     #[test]
+     fn yaml_profile_rejects_duplicate_keys() {
+         let result = yaml_profile::validate_yaml_profile("version: a\nversion: b\n");
+-        assert!(matches!(result,
+-            Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
+-        ), "Expected DuplicateKey for version, got {result:?}");
++        assert!(
++            matches!(result,
++                Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
++            ),
++            "Expected DuplicateKey for version, got {result:?}"
++        );
+     }
+ 
+     /// Behavioral check: validate_yaml_profile rejects multiple documents via old path.
+     #[test]
+     fn yaml_profile_rejects_multiple_documents() {
+         let result = yaml_profile::validate_yaml_profile("a: 1\n---\nb: 2\n");
+-        assert!(matches!(result,
+-            Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
+-        ), "Expected two documents, got {result:?}");
++        assert!(
++            matches!(
++                result,
++                Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
++            ),
++            "Expected two documents, got {result:?}"
++        );
+     }
+ 
+     /// Compile-time check that yaml_ast module is accessible via old path.
+diff --git a/crates/vb_compile/src/mod_compile_errors/collection.rs b/crates/vb_compile/src/mod_compile_errors/collection.rs
+index a283c1a87..4a7908526 100644
+--- a/crates/vb_compile/src/mod_compile_errors/collection.rs
++++ b/crates/vb_compile/src/mod_compile_errors/collection.rs
+@@ -57,7 +57,9 @@ impl CompileError {
+             Self::UnsupportedTopLevelDeclaration { .. } => "UNSUPPORTED_TOP_LEVEL_DECLARATION",
+             Self::EmptySteps | Self::MissingStepPrimitive { .. } => "MISSING_STEP_PRIMITIVE",
+             Self::InvalidName { field, value } => invalid_name_code(field, value),
+-            Self::DuplicateStepId { .. } | Self::DuplicateOutputName { .. } | Self::DuplicateInputName { .. } => "DUPLICATE_ID",
++            Self::DuplicateStepId { .. }
++            | Self::DuplicateOutputName { .. }
++            | Self::DuplicateInputName { .. } => "DUPLICATE_ID",
+             Self::UnknownOutputName { .. } => "UNKNOWN_OUTPUT_NAME",
+             Self::UnknownStepField { .. } | Self::UnknownStepPrimitiveField { .. } => {
+                 "UNKNOWN_STEP_FIELD"
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs b/crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
+index 7adc18f74..adc1cddc1 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
+@@ -2,9 +2,8 @@
+ 
+ use crate::mod_compile_errors::CompileErrors;
+ use vb_core::{
+-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+-    ConstIdx, ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
+-    WorkflowParts,
++    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
++    ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+ };
+ 
+ use super::super::SlotCompiler;
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_07.rs b/crates/vb_compile/src/mod_compile_lowering/part_07.rs
+index c2c6fd5d8..0fc68b589 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_07.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_07.rs
+@@ -7,9 +7,9 @@ use crate::mod_compile_validation::{
+ use saphyr::Yaml;
+ use std::collections::HashMap;
+ use vb_core::{
+-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+-    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
+-    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
++    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
++    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
++    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+ };
+ 
+ /// Lowers a `repeat` primitive into retry IR nodes.
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_08.rs b/crates/vb_compile/src/mod_compile_lowering/part_08.rs
+index 86d09b479..f44df8bf5 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_08.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_08.rs
+@@ -9,9 +9,9 @@ use crate::mod_compile_validation::{
+ use saphyr::Yaml;
+ use std::collections::HashMap;
+ use vb_core::{
+-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+-    ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch,
+-    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
++    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
++    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
++    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+ };
+ 
+ impl SlotCompiler {
+@@ -84,8 +84,7 @@ impl SlotCompiler {
+ 
+     /// Records an input slot with its kind classification.
+     pub fn record_input_slot(&mut self, slot: SlotIdx, kind: InputSlotKind) {
+-        self.input_slots
+-            .push(CompiledInputSlot { slot, kind });
++        self.input_slots.push(CompiledInputSlot { slot, kind });
+     }
+ 
+     /// Pushes a compiled node into the node array.
+diff --git a/crates/vb_core/src/lib.rs b/crates/vb_core/src/lib.rs
+index 9983d5e44..37fd5473a 100644
+--- a/crates/vb_core/src/lib.rs
++++ b/crates/vb_core/src/lib.rs
+@@ -12,6 +12,7 @@
+ //! no storage, no HTTP, and no YAML dependencies.
+ 
+ pub mod action;
++pub mod artifact;
+ pub mod budget;
+ pub mod capability;
+ pub mod contract_encoding;
+diff --git a/crates/vb_runtime/src/admission/artifact_envelope_tests.rs b/crates/vb_runtime/src/admission/artifact_envelope_tests.rs
+index 43783daae..f96964b9e 100644
+--- a/crates/vb_runtime/src/admission/artifact_envelope_tests.rs
++++ b/crates/vb_runtime/src/admission/artifact_envelope_tests.rs
+@@ -29,6 +29,7 @@ mod artifact_envelope_bdd_tests {
+             idempotency_keyed: Box::new([]),
+             idempotency_attested: Box::new([]),
+             warnings: Vec::new(),
++        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+         }
+     }
+ 
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs b/crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs
+index 140e8a8b1..5aa6cf4b2 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs
+@@ -17,6 +17,9 @@ pub enum ArtifactEnvelopeError {
+     /// Artifact failed envelope deserialization.
+     #[error("artifact envelope decode failed")]
+     PostcardDecodeFailed,
++    /// Independent runtime artifact verification rejected the evidence or IR.
++    #[error("artifact evidence verification failed")]
++    ArtifactEvidenceInvalid,
+     /// Verification gate count is not 15.
+     #[error("invalid gate count: found {found}, required {required}")]
+     InvalidGateCount {
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_003_stores.rs b/crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
+index dd0b2e9f2..05f371ade 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
+@@ -82,6 +82,7 @@ fn always_present_verification_proof(
+         idempotency_keyed: Box::new([]),
+         idempotency_attested: Box::new([]),
+         warnings: Vec::new(),
++        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+     }
+ }
+ 
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_004_validation.rs b/crates/vb_runtime/src/admission/parts/chunk_004_validation.rs
+index 254caa890..67dea51b8 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_004_validation.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_004_validation.rs
+@@ -7,44 +7,9 @@ fn validate_accepted_artifact_envelope(
+             found: artifact.verification.digest,
+         });
+     }
+-    if artifact.verification.gate_count != REQUIRED_GATE_COUNT {
+-        return Err(ArtifactEnvelopeError::InvalidGateCount {
+-            found: artifact.verification.gate_count,
+-            required: REQUIRED_GATE_COUNT,
+-        });
+-    }
+-    if !artifact.verification.bounded_claimed {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded);
+-    }
+-    if !artifact.verification.taint_safe_claimed {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe);
+-    }
+-    if !artifact.verification.retry_safe_claimed {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe);
+-    }
+-    if !artifact.verification.durable {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable);
+-    }
+-    if !artifact.verification.replayable_claimed {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable);
+-    }
+-    if !artifact.verification.idempotency_verified_claimed {
+-        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified);
+-    }
+-    first_missing_idempotency_attestation(artifact).map_or(Ok(()), |action| {
+-        Err(ArtifactEnvelopeError::MissingIdempotencyAttestation { action })
+-    })
+-}
+-
+-fn first_missing_idempotency_attestation(
+-    artifact: &vb_storage::admission::AcceptedArtifact,
+-) -> Option<ActionId> {
+-    artifact
+-        .verification
+-        .idempotency_keyed
+-        .iter()
+-        .copied()
+-        .find(|action| !artifact.verification.idempotency_attested.contains(action))
++    vb_storage::admission::verify_accepted_artifact(artifact)
++        .map(|_| ())
++        .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)
+ }
+ 
+ fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError {
+@@ -53,6 +18,9 @@ fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError
+             AdmissionError::ArtifactNotFound { digest }
+         }
+         ArtifactEnvelopeError::PostcardDecodeFailed => AdmissionError::ArtifactEnvelopeDecodeFailed,
++        ArtifactEnvelopeError::ArtifactEvidenceInvalid => {
++            AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" }
++        }
+         ArtifactEnvelopeError::InvalidGateCount { found, required } => {
+             AdmissionError::ArtifactInvalidGateCount { found, required }
+         }
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs b/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+index 83241f1c3..23a6aab3c 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+@@ -17,6 +17,8 @@ pub fn admit_run(
+                 .load_accepted_artifact(digest)
+                 .map_err(map_artifact_envelope_error)?;
+             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
++            vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy)
++                .map_err(|_| AdmissionError::ArtifactInvalidProofFlag { flag: "admission_policy" })?;
+             if artifact.digest != digest && artifact.source_digest != digest {
+                 return Err(AdmissionError::ArtifactDigestMismatch {
+                     requested: digest,
+@@ -85,6 +87,8 @@ pub fn admit_artifact_run_with_certificate_floor(
+                 .load_accepted_artifact(artifact_digest)
+                 .map_err(map_artifact_envelope_error)?;
+             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
++            vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy)
++                .map_err(|_| AdmissionError::ArtifactInvalidProofFlag { flag: "admission_policy" })?;
+ 
+             // INV-002: digest binding must be total. The loaded artifact's digest
+             // must match the requested digest exactly — a crafted artifact with
+diff --git a/crates/vb_runtime/src/admission/tests.rs b/crates/vb_runtime/src/admission/tests.rs
+index 8ba876249..00cfe5f9f 100644
+--- a/crates/vb_runtime/src/admission/tests.rs
++++ b/crates/vb_runtime/src/admission/tests.rs
+@@ -40,6 +40,7 @@ fn accepted_artifact_with_caps(
+             idempotency_keyed: Box::new([]),
+             idempotency_attested: Box::new([]),
+             warnings: Vec::new(),
++            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+         },
+         accepted_at_seq: vb_storage::EventSeq::new(0),
+         required_capabilities,
+diff --git a/crates/vb_runtime/src/engine/drive/tests/common.rs b/crates/vb_runtime/src/engine/drive/tests/common.rs
+index dc1021e2d..6c5b3f7eb 100644
+--- a/crates/vb_runtime/src/engine/drive/tests/common.rs
++++ b/crates/vb_runtime/src/engine/drive/tests/common.rs
+@@ -184,7 +184,7 @@ pub(crate) fn mkwfc(
+         symbols_count: 0,
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+         step_names: names,
+     };
+     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e}"))
+diff --git a/crates/vb_runtime/src/error/display.rs b/crates/vb_runtime/src/error/display.rs
+index cbe5f07e1..32c58a3ee 100644
+--- a/crates/vb_runtime/src/error/display.rs
++++ b/crates/vb_runtime/src/error/display.rs
+@@ -13,7 +13,9 @@ impl std::fmt::Display for RuntimeError {
+ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
+     match error {
+         RuntimeError::QueueFull => Some("queue full"),
+-        RuntimeError::RuntimeInputSlotKindMismatch { .. } => Some("runtime input slot kind mismatch"),
++        RuntimeError::RuntimeInputSlotKindMismatch { .. } => {
++            Some("runtime input slot kind mismatch")
++        }
+         RuntimeError::RunNotFound => Some("run not found"),
+         RuntimeError::RunAlreadyExists => Some("run already exists"),
+         RuntimeError::ShutdownInProgress => Some("shutdown in progress"),
+@@ -155,8 +157,15 @@ fn write_runtime_error_dynamic(
+         RuntimeError::ShardNotFound { shard } => {
+             write!(f, "shard {shard} not found")
+         }
+-        RuntimeError::RuntimeInputSlotKindMismatch { slot, expected, actual } => {
+-            write!(f, "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}")
++        RuntimeError::RuntimeInputSlotKindMismatch {
++            slot,
++            expected,
++            actual,
++        } => {
++            write!(
++                f,
++                "runtime input slot {slot:?} kind mismatch: expected {expected:?}, got {actual:?}"
++            )
+         }
+         _ => Ok(()),
+     }
+diff --git a/crates/vb_runtime/src/error/equality.rs b/crates/vb_runtime/src/error/equality.rs
+index 0f0d7906b..308906531 100644
+--- a/crates/vb_runtime/src/error/equality.rs
++++ b/crates/vb_runtime/src/error/equality.rs
+@@ -154,10 +154,7 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
+             RuntimeError::EngineDriveFailed { run: a, source: s1 },
+             RuntimeError::EngineDriveFailed { run: b, source: s2 },
+         ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
+-        (
+-            RuntimeError::Recovery { error: a },
+-            RuntimeError::Recovery { error: b },
+-        ) => a == b,
++        (RuntimeError::Recovery { error: a }, RuntimeError::Recovery { error: b }) => a == b,
+         (
+             RuntimeError::RuntimeInputSlotKindMismatch {
+                 slot: a_slot,
+diff --git a/crates/vb_runtime/src/error/mod.rs b/crates/vb_runtime/src/error/mod.rs
+index ecbfecd4f..b6c045b98 100644
+--- a/crates/vb_runtime/src/error/mod.rs
++++ b/crates/vb_runtime/src/error/mod.rs
+@@ -292,8 +292,8 @@ mod equality;
+ #[cfg(test)]
+ mod tests_basic;
+ #[cfg(test)]
+-mod tests_equality;
+-#[cfg(test)]
+ mod tests_conversion_refinement;
+ #[cfg(test)]
+ mod tests_diagnostics;
++#[cfg(test)]
++mod tests_equality;
+diff --git a/crates/vb_runtime/src/error/tests_equality.rs b/crates/vb_runtime/src/error/tests_equality.rs
+index d678902bb..048af2c7c 100644
+--- a/crates/vb_runtime/src/error/tests_equality.rs
++++ b/crates/vb_runtime/src/error/tests_equality.rs
+@@ -1,6 +1,6 @@
+ use super::RuntimeError;
+-use vb_core::ids::ActionId;
+ use vb_core::SlotIdx;
++use vb_core::ids::ActionId;
+ 
+ fn slot(index: u16) -> SlotIdx {
+     SlotIdx::new(index)
+diff --git a/crates/vb_runtime/src/primitives/reduce/tests.rs b/crates/vb_runtime/src/primitives/reduce/tests.rs
+index 944491abb..5a8d6c5b1 100644
+--- a/crates/vb_runtime/src/primitives/reduce/tests.rs
++++ b/crates/vb_runtime/src/primitives/reduce/tests.rs
+@@ -31,7 +31,7 @@ fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+     };
+     CompiledWorkflow::try_from_parts(parts)
+         .ok()
+diff --git a/crates/vb_runtime/src/primitives/reentry_tests.rs b/crates/vb_runtime/src/primitives/reentry_tests.rs
+index a8100e17b..ff9d8b162 100644
+--- a/crates/vb_runtime/src/primitives/reentry_tests.rs
++++ b/crates/vb_runtime/src/primitives/reentry_tests.rs
+@@ -325,7 +325,7 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+     };
+     CompiledWorkflow::try_from_parts(parts).unwrap()
+ }
+@@ -1227,7 +1227,7 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+     };
+     CompiledWorkflow::try_from_parts(parts).unwrap()
+ }
+diff --git a/crates/vb_runtime/src/recovery.rs b/crates/vb_runtime/src/recovery.rs
+index 7f686abdc..fba669e3a 100644
+--- a/crates/vb_runtime/src/recovery.rs
++++ b/crates/vb_runtime/src/recovery.rs
+@@ -16,9 +16,8 @@ pub use full::{
+     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+ };
+ pub(crate) use full::{
+-    action_contract_abi_digest,
+-    RecoveredAdmissionContext, RecoveredAdmissionEvidence,
+-    ResumableRecoveryParts, action_abi_digests_from_contracts, classify_full_recovery_resume,
++    RecoveredAdmissionContext, RecoveredAdmissionEvidence, ResumableRecoveryParts,
++    action_abi_digests_from_contracts, action_contract_abi_digest, classify_full_recovery_resume,
+     hydrate_frame_for_full_recovery, pending_action_ticket_from_events,
+     recovered_run_boundary_from_seed, validate_recovered_admission_evidence,
+ };
+diff --git a/crates/vb_runtime/src/recovery/full/admission.rs b/crates/vb_runtime/src/recovery/full/admission.rs
+index 4f7dc706e..b4c319159 100644
+--- a/crates/vb_runtime/src/recovery/full/admission.rs
++++ b/crates/vb_runtime/src/recovery/full/admission.rs
+@@ -30,7 +30,9 @@ pub(crate) fn action_abi_digests_from_contracts(
+     Ok(digests.into_boxed_slice())
+ }
+ 
+-pub(crate) fn action_contract_abi_digest(contract: &ActionContract) -> RuntimeResult<WorkflowDigest> {
++pub(crate) fn action_contract_abi_digest(
++    contract: &ActionContract,
++) -> RuntimeResult<WorkflowDigest> {
+     let bytes = postcard::to_allocvec(contract)
+         .map_err(|_| cannot_resume_error("action_abi_digests_missing"))?;
+     Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
+diff --git a/crates/vb_runtime/src/shard/helpers/tests.rs b/crates/vb_runtime/src/shard/helpers/tests.rs
+index dc1ebc720..9b9262876 100644
+--- a/crates/vb_runtime/src/shard/helpers/tests.rs
++++ b/crates/vb_runtime/src/shard/helpers/tests.rs
+@@ -623,7 +623,9 @@ fn seed_input_slots_rejects_out_of_bounds_slot() {
+         next: None,
+         on_error: None,
+         error_slot: None,
+-        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
++        kind: vb_core::workflow::CompiledNodeKind::Finish {
++            result: vb_core::ids::SlotIdx::ZERO,
++        },
+     };
+     let parts = WorkflowParts {
+         name: Box::from("test"),
+@@ -1166,7 +1168,9 @@ fn seed_input_slots_writes_multiple_distinct_values() {
+         next: None,
+         on_error: None,
+         error_slot: None,
+-        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
++        kind: vb_core::workflow::CompiledNodeKind::Finish {
++            result: vb_core::ids::SlotIdx::ZERO,
++        },
+     };
+     let parts = WorkflowParts {
+         name: Box::from("test"),
+@@ -1751,7 +1755,7 @@ mod proptest_tests {
+             entry: StepIdx::ZERO,
+             step_names: Box::from([]),
+             resource_contract: ResourceContract::DEFAULT,
+-        input_slots: Box::from([]),
++            input_slots: Box::from([]),
+         };
+         let wf =
+             vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");
+diff --git a/crates/vb_runtime/src/shard/mod.rs b/crates/vb_runtime/src/shard/mod.rs
+index 303e93a78..14f405bd3 100644
+--- a/crates/vb_runtime/src/shard/mod.rs
++++ b/crates/vb_runtime/src/shard/mod.rs
+@@ -2,8 +2,8 @@
+ //! Single-threaded shard owning mutable run state directly.
+ 
+ pub mod completion_watermark;
+-pub mod directive;
+ pub mod contract_validation;
++pub mod directive;
+ pub mod helpers;
+ pub mod impl_;
+ pub mod lifecycle;
+diff --git a/crates/vb_runtime/src/shard/types.rs b/crates/vb_runtime/src/shard/types.rs
+index 9fca47ddc..a3469a0bc 100644
+--- a/crates/vb_runtime/src/shard/types.rs
++++ b/crates/vb_runtime/src/shard/types.rs
+@@ -189,9 +189,7 @@ pub enum ShardCommand {
+     /// replay and validated full recovery context. The typed
+     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
+     /// collect pagination, and boundary classification in a single value.
+-    Recover {
+-        command: RecoverRunCommand,
+-    },
++    Recover { command: RecoverRunCommand },
+ }
+ 
+ /// Typed recovery command carrying full recovery context from journal replay.
+diff --git a/crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs b/crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs
+index 7e6be2f8c..439080c15 100644
+--- a/crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs
++++ b/crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs
+@@ -83,7 +83,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+     };
+     let workflow =
+         CompiledWorkflow::try_from_parts(parts).expect("kani harness: valid workflow parts");
+diff --git a/crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs b/crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+index 2d51b10a2..8d4118744 100644
+--- a/crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
++++ b/crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+@@ -87,7 +87,7 @@ fn symbolic_workflow_parts() -> WorkflowParts {
+         symbols_count: u32::from(kani::any::<u8>() % 4),
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+-            input_slots: Box::from([]),
++        input_slots: Box::from([]),
+         step_names: symbolic_step_names(step_count),
+     };
+     assume_guard_workflow_parts_domain(&parts);
+diff --git a/crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs b/crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs
+index 83b051cf4..513962a35 100644
+--- a/crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs
++++ b/crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs
+@@ -911,7 +911,10 @@ fn completion_happy_path_writes_output_and_event() -> Result<(), Box<dyn std::er
+     assert_eq!(shard.tick(), Ok(true));
+ 
+     let journal_len_after = journal.snapshot()?.len();
+-    assert!(journal_len_after > journal_len_before, "journal should have grown after completion");
++    assert!(
++        journal_len_after > journal_len_before,
++        "journal should have grown after completion"
++    );
+ 
+     let events = journal.snapshot()?;
+     let expected_value = postcard::to_allocvec(&SlotValue::I64(42))?;
+diff --git a/crates/vb_storage/Cargo.toml b/crates/vb_storage/Cargo.toml
+index dc3913c83..f0dd902e7 100644
+--- a/crates/vb_storage/Cargo.toml
++++ b/crates/vb_storage/Cargo.toml
+@@ -15,6 +15,7 @@ rustix.workspace = true
+ serde.workspace = true
+ thiserror.workspace = true
+ vb_core = { path = "../vb_core" }
++vb_validate = { path = "../vb_validate" }
+ 
+ [dev-dependencies]
+ proptest = { workspace = true }
+diff --git a/crates/vb_storage/src/admission.rs b/crates/vb_storage/src/admission.rs
+index ff42b0755..ad234e3aa 100644
+--- a/crates/vb_storage/src/admission.rs
++++ b/crates/vb_storage/src/admission.rs
+@@ -57,13 +57,10 @@ pub enum ProofFlag {
+     Replayable,
+ }
+ 
+-/// Proof that artifact verification passed at admission time.
++/// Legacy display flags plus typed, payload-bound artifact evidence.
+ ///
+-/// GAP-001 FIX: Fields ending in `_claimed` are set unconditionally by
+-/// `VerificationProof::new()` because the actual verification gates are not
+-/// yet implemented. The `_claimed` suffix makes the intent explicit: these
+-/// are unverified claims, not proven facts. When proper verification is
+-/// implemented, the suffix should be removed and flags set based on results.
++/// Flags and counts are not admission authority. Consumers must independently
++/// run `verify_accepted_artifact`; legacy constructors are unverified.
+ #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+ pub struct VerificationProof {
+     /// Confirmed digest of the verified artifact.
+@@ -88,6 +85,8 @@ pub struct VerificationProof {
+     pub idempotency_attested: Box<[vb_core::ActionId]>,
+     /// Soft verification failures encountered during admission.
+     pub warnings: Vec<VerificationWarning>,
++    /// Typed evidence bound by the accepted envelope digest.
++    pub evidence: vb_core::artifact::ArtifactEvidence,
+ }
+ 
+ /// Allocation-free core of [`VerificationProof`] construction.
+@@ -113,28 +112,25 @@ pub(crate) struct VerificationProofCore {
+ 
+ pub(crate) const fn verification_proof_core(
+     digest: vb_core::WorkflowDigest,
+-    gate_count: u8,
+-    durable: bool,
++    _gate_count: u8,
++    _durable: bool,
+ ) -> VerificationProofCore {
+     VerificationProofCore {
+         digest,
+-        gate_count,
+-        durable,
+-        bounded_claimed: true,
+-        taint_safe_claimed: true,
+-        retry_safe_claimed: true,
+-        idempotency_verified_claimed: true,
+-        replayable_claimed: true,
++        gate_count: 0,
++        durable: false,
++        bounded_claimed: false,
++        taint_safe_claimed: false,
++        retry_safe_claimed: false,
++        idempotency_verified_claimed: false,
++        replayable_claimed: false,
+     }
+ }
+ 
+ impl VerificationProof {
+-    /// Creates a new verification proof with all proof flags set to true.
+-    ///
+-    /// GAP-001 NOTE: All `_claimed` flags are unconditionally set to `true`
+-    /// because actual per-gate verification is not yet implemented. The flags
+-    /// are named with `_claimed` suffix to indicate they represent unverified
+-    /// claims, not proven facts. See `VerificationProof` struct docs.
++    /// Creates unverified legacy metadata. Supplied counts and durability are
++    /// intentionally ignored: caller assertions cannot mint verification.
++    /// Use `prepare_compiled_artifact` for checked artifact construction.
+     #[must_use]
+     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
+         let core = verification_proof_core(digest, gate_count, durable);
+@@ -150,6 +146,7 @@ impl VerificationProof {
+             idempotency_keyed: Box::new([]),
+             idempotency_attested: Box::new([]),
+             warnings: Vec::new(),
++            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+         }
+     }
+ }
+@@ -334,21 +331,11 @@ pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
+         + HEADROOM
+ }
+ 
+-/// Number of verification gates in the accepted artifact v1 admission flow.
+-/// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
+-const ADMISSION_GATE_COUNT: u8 = 15;
++#[path = "admission/verification.rs"]
++mod verification;
++pub use verification::{prepare_compiled_artifact, verify_accepted_artifact, verify_accepted_artifact_for_policy};
+ 
+-/// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
+-///
+-/// This is the full admission flow. It performs:
+-/// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
+-/// 2. Structure validation: re-parse the workflow from serialized parts.
+-/// 3. Checksum validation: serialized bytes must hash to the claimed digest.
+-/// 4. Proof validation: gate count must be 15 and all proof flags must be true.
+-/// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
+-/// 6. Durability: under `Strict` policy, calls SyncAll before returning.
+-///
+-/// Returns the `AcceptedArtifact` on success.
++/// Validate and persist an artifact without action declarations.
+ pub fn submit_artifact(
+     journal: &FjallJournal,
+     workflow: &vb_core::CompiledWorkflow,
+@@ -357,108 +344,22 @@ pub fn submit_artifact(
+     submit_artifact_with_contracts(journal, workflow, policy, &[])
+ }
+ 
+-/// Validates, verifies, and persists a compiled workflow artifact with the
+-/// required capability profile extracted from validated action contracts.
++/// Check artifact evidence before writing; Strict returns only after SyncAll.
++/// The durable display flag is not a persisted fsync certificate.
+ pub fn submit_artifact_with_contracts(
+     journal: &FjallJournal,
+     workflow: &vb_core::CompiledWorkflow,
+     policy: vb_core::RuntimePolicy,
+     action_contracts: &[ActionContract],
+ ) -> Result<AcceptedArtifact, JournalError> {
+-    let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
+-    let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
+-    match policy {
+-        vb_core::RuntimePolicy::Relaxed => {
+-            // Relaxed: skip gate validation, no durability, gate_count=0
+-            let parts = workflow.to_parts();
+-            let ir_bytes =
+-                postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+-            let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
+-            proof.idempotency_keyed = idempotency_evidence.keyed;
+-            proof.idempotency_attested = idempotency_evidence.attested;
+-            let mut artifact = AcceptedArtifact {
+-                digest: zero_workflow_digest(),
+-                source_digest: workflow.digest(),
+-                policy_digest: compute_policy_digest(workflow)?,
+-                ir: ir_bytes,
+-                verification: proof,
+-                accepted_at_seq: EventSeq::new(0),
+-                required_capabilities,
+-                action_contracts: action_contracts.to_vec().into_boxed_slice(),
+-            };
+-            bind_artifact_digest(&mut artifact)?;
+-            let artifact_bytes =
+-                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+-            let record = CompiledIrRecord {
+-                digest: artifact.digest,
+-                ir: artifact_bytes,
+-            };
+-            journal.put_compiled_ir(&record)?;
+-            let stored = journal
+-                .compiled_ir(artifact.digest)
+-                .map_err(|_| JournalError::ArtifactMalformed)?;
+-            if stored.is_none() {
+-                return Err(JournalError::ArtifactMalformed);
+-            }
+-            Ok(artifact)
+-        }
+-        vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
+-            let parts = workflow.to_parts();
+-
+-            vb_core::CompiledWorkflow::try_from_parts(parts.clone())
+-                .map_err(JournalError::WorkflowReconstruction)?;
+-
+-            let mut parts_for_hash = parts.clone();
+-            parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+-            let hash_bytes = postcard::to_allocvec(&parts_for_hash)
+-                .map_err(JournalError::PostcardEncodeFailed)?;
+-            let computed = blake3::hash(&hash_bytes);
+-            if computed.as_bytes() != &workflow.digest().as_bytes() {
+-                return Err(JournalError::ArtifactChecksumMismatch);
+-            }
+-
+-            let durable = policy == vb_core::RuntimePolicy::Strict;
+-
+-            let mut proof =
+-                VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
+-            proof.idempotency_keyed = idempotency_evidence.keyed;
+-            proof.idempotency_attested = idempotency_evidence.attested;
+-
+-            let ir_bytes =
+-                postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+-
+-            let mut artifact = AcceptedArtifact {
+-                digest: zero_workflow_digest(),
+-                source_digest: workflow.digest(),
+-                policy_digest: compute_policy_digest(workflow)?,
+-                ir: ir_bytes,
+-                verification: proof,
+-                accepted_at_seq: EventSeq::new(0),
+-                required_capabilities,
+-                action_contracts: action_contracts.to_vec().into_boxed_slice(),
+-            };
+-            bind_artifact_digest(&mut artifact)?;
+-
+-            let artifact_bytes =
+-                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+-            let record = CompiledIrRecord {
+-                digest: artifact.digest,
+-                ir: artifact_bytes,
+-            };
+-            journal.put_compiled_ir(&record)?;
+-
+-            if durable {
+-                journal.persist_strict()?;
+-            }
+-
+-            verify_artifact_persisted(journal, artifact.digest)?;
+-
+-            Ok(artifact)
+-        }
+-        // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
+-        // fail closed rather than silently accept malformed artifacts.
+-        _ => Err(JournalError::ArtifactMalformed),
++    let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
++    let ir = postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
++    journal.put_compiled_ir(&CompiledIrRecord { digest: artifact.digest, ir })?;
++    if policy == vb_core::RuntimePolicy::Strict {
++        journal.persist_strict()?;
+     }
++    verify_artifact_persisted(journal, artifact.digest)?;
++    Ok(artifact)
+ }
+ 
+ /// Verifies that the artifact identified by `digest` is actually readable
+@@ -503,40 +404,13 @@ fn required_capabilities_from_contracts(
+     Ok(required.into_boxed_slice())
+ }
+ 
+-#[derive(Debug, Clone)]
+-struct IdempotencyEvidence {
+-    keyed: Box<[vb_core::ActionId]>,
+-    attested: Box<[vb_core::ActionId]>,
+-}
+-
+-fn idempotency_evidence_from_contracts(
+-    action_contracts: &[ActionContract],
+-) -> Result<IdempotencyEvidence, JournalError> {
+-    let keyed = action_contracts
+-        .iter()
+-        .filter(|contract| requires_idempotency_key(contract))
+-        .map(|contract| contract.id)
+-        .collect::<Vec<_>>()
+-        .into_boxed_slice();
+-    let attested = action_contracts
+-        .iter()
+-        .map(attested_action_id)
+-        .collect::<Result<Vec<_>, _>>()?
+-        .into_boxed_slice();
+-    Ok(IdempotencyEvidence { keyed, attested })
+-}
+-
+-fn attested_action_id(contract: &ActionContract) -> Result<vb_core::ActionId, JournalError> {
+-    is_contract_idempotency_accepted(contract)
+-        .then_some(contract.id)
+-        .ok_or(JournalError::ArtifactMalformed)
+-}
+-
+-fn requires_idempotency_key(contract: &ActionContract) -> bool {
+-    matches!(
+-        (contract.retry_safety, contract.idempotency),
+-        (RetrySafety::KeyRequired, _) | (_, Idempotency::AtLeastOnceExternal)
+-    )
++fn validate_idempotency_contracts(action_contracts: &[ActionContract]) -> Result<(), JournalError> {
++    for contract in action_contracts {
++        if !is_contract_idempotency_accepted(contract) {
++            return Err(JournalError::ArtifactMalformed);
++        }
++    }
++    Ok(())
+ }
+ 
+ fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
+diff --git a/crates/vb_storage/src/error/codes.rs b/crates/vb_storage/src/error/codes.rs
+index c1600097d..d8e942655 100644
+--- a/crates/vb_storage/src/error/codes.rs
++++ b/crates/vb_storage/src/error/codes.rs
+@@ -129,6 +129,7 @@ impl JournalError {
+             Self::PostcardEncodeFailed(_) => Self::POSTCARD_ENCODE_FAILED_CODE,
+             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
+             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
++            Self::ArtifactValidation(_) => Self::ARTIFACT_MALFORMED_CODE,
+             // vb-l9jqs: the three typed variants below preserve their inner
+             // source error for diagnostics while still reporting as the
+             // structural-defect bucket so callers that pattern-match on the
+@@ -220,6 +221,7 @@ impl JournalError {
+             Self::PostcardEncodeFailed(_) => "ARTIFACT_POSTCARD_ENCODE_FAILED",
+             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
+             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
++            Self::ArtifactValidation(_) => "ARTIFACT_MALFORMED",
+             // vb-l9jqs: typed variants preserve inner source while reporting
+             // the same symbolic code as the collapsed bucket they replaced.
+             Self::WorkflowReconstruction(_) => "ARTIFACT_MALFORMED",
+diff --git a/crates/vb_storage/src/error/mod.rs b/crates/vb_storage/src/error/mod.rs
+index 58b07d002..b13019550 100644
+--- a/crates/vb_storage/src/error/mod.rs
++++ b/crates/vb_storage/src/error/mod.rs
+@@ -109,6 +109,8 @@ pub enum JournalError {
+     InvalidEvent,
+     #[error("artifact structure validation failed")]
+     ArtifactMalformed,
++    #[error("compiled artifact validation failed: {0}")]
++    ArtifactValidation(#[source] vb_validate::ValidationError),
+     #[error("compiled workflow reconstruction failed: {0}")]
+     WorkflowReconstruction(#[source] WorkflowError),
+     #[error("compiled_ir readback failed: {0}")]

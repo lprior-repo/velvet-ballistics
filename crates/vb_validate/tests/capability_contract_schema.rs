@@ -39,6 +39,7 @@ fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
         },
     });
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("capability-schema-red"),
         digest: WorkflowDigest::from_bytes([0; 32]),

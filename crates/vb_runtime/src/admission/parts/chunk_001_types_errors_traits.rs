@@ -17,6 +17,9 @@ pub enum ArtifactEnvelopeError {
     /// Artifact failed envelope deserialization.
     #[error("artifact envelope decode failed")]
     PostcardDecodeFailed,
+    /// Independent runtime artifact verification rejected the evidence or IR.
+    #[error("artifact evidence verification failed")]
+    ArtifactEvidenceInvalid,
     /// Verification gate count is not 15.
     #[error("invalid gate count: found {found}, required {required}")]
     InvalidGateCount {

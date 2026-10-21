@@ -1,4 +1,3 @@
-
 fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = CompiledNode {
         id: StepIdx::ZERO,
@@ -52,6 +51,7 @@ fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish_node]),
@@ -197,6 +197,7 @@ fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
         },
     };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -268,7 +269,7 @@ fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
             action: ActionId::new(0),
             attempt: 1,
         },
-        RuntimeJournalEvent::RunFailed { run },
+        RuntimeJournalEvent::RunFailed { run, attempt: 1},
     );
 }
 

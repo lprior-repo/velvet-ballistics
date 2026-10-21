@@ -29,6 +29,7 @@ fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFr
 
 fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),

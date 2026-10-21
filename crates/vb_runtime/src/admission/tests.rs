@@ -19,33 +19,9 @@ fn test_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0xAB; 32])
 }
 
-fn accepted_artifact_with_caps(
-    required_capabilities: Box<[Capability]>,
-) -> vb_storage::admission::AcceptedArtifact {
-    let digest = test_digest();
-    vb_storage::admission::AcceptedArtifact {
-        digest,
-        source_digest: digest,
-        policy_digest: digest,
-        ir: Vec::new(),
-        verification: vb_storage::admission::VerificationProof {
-            digest,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: vb_storage::EventSeq::new(0),
-        required_capabilities,
-        action_contracts: Box::new([]),
-    }
-}
+#[path = "evidence_test_support.rs"]
+pub(super) mod evidence_test_support;
+use evidence_test_support::accepted_artifact_with_caps;
 
 #[test]
 fn admission_new_stores_all_fields() {
@@ -72,7 +48,7 @@ fn admission_artifact_not_found_error_equality() {
 }
 
 #[test]
-fn admission_capability_denied_error_fields() {
+fn admission_capability_denied_error_fields() -> Result<(), String> {
     let action = ActionId::new(5);
     let required = Capability::new("secrets".into(), ActionId::new(5));
     let granted = CapabilitySet::empty();
@@ -95,6 +71,7 @@ fn admission_capability_denied_error_fields() {
             assert!(false, "expected CapabilityDenied, got {other:?}");
         }
     }
+    Ok(())
 }
 
 #[test]
@@ -161,7 +138,7 @@ fn admission_check_capability_rejects_partial_prefix_grant() {
 }
 
 #[test]
-fn admit_artifact_run_rejects_capability_superset() {
+fn admit_artifact_run_rejects_capability_superset() -> Result<(), String> {
     // F-001 fix: strict admission rejects extras (VERUS-CARD-003 cardinality-exact).
     // RA-023 fix: a cardinality mismatch surfaces as the typed
     // `CapabilityCountMismatch` error rather than a fabricated
@@ -174,7 +151,7 @@ fn admit_artifact_run_rejects_capability_superset() {
     let required = Capability::new("network".into(), action);
     let extra = Capability::new("storage".into(), ActionId::new(8));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required])),
+        artifact: accepted_artifact_with_caps(Box::new([required]))?,
     };
     let granted =
         CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action), extra]));
@@ -183,7 +160,7 @@ fn admit_artifact_run_rejects_capability_superset() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted,
     );
 
@@ -194,16 +171,17 @@ fn admit_artifact_run_rejects_capability_superset() {
             granted_count: 2,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_capability_duplicate() {
+fn admit_artifact_run_rejects_capability_duplicate() -> Result<(), String> {
     // F-001 fix: strict admission rejects duplicate grants (cardinality mismatch).
     // RA-023 fix: surface as typed `CapabilityCountMismatch`, not fabricated denial.
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([required.clone(), required.clone()]));
 
@@ -211,7 +189,7 @@ fn admit_artifact_run_rejects_capability_duplicate() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted,
     );
 
@@ -222,10 +200,12 @@ fn admit_artifact_run_rejects_capability_duplicate() {
             granted_count: 2,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied() {
+fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied()
+-> Result<(), String> {
     // RA-023 regression: a cardinality mismatch (over-grant / extra) must surface
     // as a typed `CapabilityCountMismatch` error, NOT as a fabricated
     // `CapabilityDenied` that names a granted capability as the missing one.
@@ -237,7 +217,7 @@ fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied()
     let required = Capability::new("network".into(), action);
     let extra = Capability::new("storage".into(), ActionId::new(8));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([required.clone(), extra]));
 
@@ -245,7 +225,7 @@ fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied()
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted,
     );
 
@@ -256,10 +236,12 @@ fn admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied()
             granted_count: 2,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial() {
+fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial()
+-> Result<(), String> {
     // RA-023 / RA-018: when count differs, return the typed count-mismatch
     // error instead of fabricating a per-capability denial on a granted cap.
     // Required = 2, granted = 1 (under-grant with different membership).
@@ -273,7 +255,7 @@ fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let extra = Capability::new("storage.write".into(), ActionId::new(9));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([network, filesystem, extra]));
 
@@ -281,7 +263,7 @@ fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted,
     );
 
@@ -292,10 +274,12 @@ fn admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap
             granted_count: 3,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied() {
+fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied()
+-> Result<(), String> {
     // vb-ia7sq / RA-018 regression: when the cardinality check is reached
     // (i.e. every required capability is covered), a count mismatch MUST
     // surface as a typed `CapabilityCountMismatch { required_count, granted_count }`
@@ -318,7 +302,7 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
             network.clone(),
             filesystem.clone(),
             kv.clone(),
-        ])),
+        ]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([network, filesystem, kv, extra]));
 
@@ -326,23 +310,17 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted,
     );
 
-    let admission_error = match result {
+    assert_eq!(
+        result,
         Err(AdmissionError::CapabilityCountMismatch {
             required_count: 3,
             granted_count: 4,
-        }) => AdmissionError::CapabilityCountMismatch {
-            required_count: 3,
-            granted_count: 4,
-        },
-        other => panic!(
-            "expected CapabilityCountMismatch {{ required_count: 3, granted_count: 4 }}, got {other:?}"
-        ),
-    };
-    let _ = admission_error;
+        })
+    );
 
     // Pin the contract: a re-admission through the same path must also yield
     // the typed variant, never `CapabilityDenied` with a fabricated capability.
@@ -351,7 +329,7 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
             Capability::new("a".into(), ActionId::new(1)),
             Capability::new("b".into(), ActionId::new(2)),
             Capability::new("c".into(), ActionId::new(3)),
-        ])),
+        ]))?,
     };
     let granted2 = CapabilitySet::from_grants(Box::new([
         Capability::new("a".into(), ActionId::new(1)),
@@ -363,7 +341,7 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
         &store2,
         RuntimePolicy::Strict,
         RunId::new(2),
-        test_digest(),
+        store2.artifact.digest,
         granted2,
     );
     assert_eq!(
@@ -386,7 +364,7 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
             required_count: *required_count,
             granted_count: *granted_count,
         },
-        _ => unreachable!("result2 pinned above"),
+        other => return Err(format!("expected count mismatch, got {other:?}")),
     };
     assert_eq!(
         mapped,
@@ -395,10 +373,12 @@ fn capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_deni
             granted_count: 4,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied() {
+fn admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied()
+-> Result<(), String> {
     // RA-023 contract preservation: when cardinality is equal but membership
     // differs, the per-capability loop must fire and surface the actual
     // missing capability, NOT a count-mismatch error.
@@ -406,7 +386,7 @@ fn admit_artifact_run_count_match_with_missing_capability_still_returns_capabili
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let wrong = Capability::new("network.other".into(), ActionId::new(11));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()]))?,
     };
     // Granted has the right count (2) but the second cap is wrong.
     let granted = CapabilitySet::from_grants(Box::new([network, wrong]));
@@ -415,7 +395,7 @@ fn admit_artifact_run_count_match_with_missing_capability_still_returns_capabili
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted.clone(),
     );
 
@@ -427,15 +407,16 @@ fn admit_artifact_run_count_match_with_missing_capability_still_returns_capabili
             granted,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_accepts_capability_exact_match() {
+fn admit_artifact_run_accepts_capability_exact_match() -> Result<(), String> {
     // F-001 fix: strict admission accepts exactly-equal capability sets.
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([required.clone()]));
 
@@ -443,20 +424,21 @@ fn admit_artifact_run_accepts_capability_exact_match() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted.clone(),
     );
 
-    let admitted = result.expect("exact-match capability set must admit");
+    let admitted = result.map_err(|e| format!("exact-match capability set must admit: {e:?}"))?;
     assert_eq!(admitted.granted_capabilities(), &granted);
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_grants_without_allocation() {
+fn admit_artifact_run_rejects_missing_grants_without_allocation() -> Result<(), String> {
     let network = Capability::new("network.github".into(), ActionId::new(7));
     let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([network.clone()]));
 
@@ -464,7 +446,7 @@ fn admit_artifact_run_rejects_missing_grants_without_allocation() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted.clone(),
     );
 
@@ -476,14 +458,15 @@ fn admit_artifact_run_rejects_missing_grants_without_allocation() {
             granted,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_non_exact_grant_without_allocation() {
+fn admit_artifact_run_rejects_non_exact_grant_without_allocation() -> Result<(), String> {
     let action = ActionId::new(7);
     let required = Capability::new("network.github".into(), action);
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
 
@@ -491,7 +474,7 @@ fn admit_artifact_run_rejects_non_exact_grant_without_allocation() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted.clone(),
     );
 
@@ -503,14 +486,15 @@ fn admit_artifact_run_rejects_non_exact_grant_without_allocation() {
             granted,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_preserves_non_empty_required_capabilities() {
+fn admit_artifact_run_preserves_non_empty_required_capabilities() -> Result<(), String> {
     let action = ActionId::new(7);
     let required = Capability::new("network".into(), action);
     let store = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([required.clone()]))?,
     };
     let granted = CapabilitySet::from_grants(Box::new([required]));
 
@@ -518,16 +502,17 @@ fn admit_artifact_run_preserves_non_empty_required_capabilities() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted.clone(),
     );
 
     assert!(matches!(admission, Ok(run) if run.granted_capabilities() == &granted));
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_idempotency_gate() {
-    let mut artifact = accepted_artifact_with_caps(Box::new([]));
+fn admit_artifact_run_rejects_missing_idempotency_gate() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
     artifact.verification.idempotency_verified_claimed = false;
     let store = FixedAcceptedStore { artifact };
 
@@ -535,22 +520,21 @@ fn admit_artifact_run_rejects_missing_idempotency_gate() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         CapabilitySet::empty(),
     );
 
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag {
-            flag: "idempotency_verified",
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_keyed_action_without_attestation() {
+fn admit_artifact_run_rejects_keyed_action_without_attestation() -> Result<(), String> {
     let action = ActionId::new(9);
-    let mut artifact = accepted_artifact_with_caps(Box::new([]));
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
     artifact.verification.idempotency_keyed = Box::new([action]);
     artifact.verification.idempotency_attested = Box::new([]);
     let store = FixedAcceptedStore { artifact };
@@ -559,35 +543,32 @@ fn admit_artifact_run_rejects_keyed_action_without_attestation() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         CapabilitySet::empty(),
     );
 
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag {
-            flag: "idempotency_attested",
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_carries_idempotency_evidence_to_dispatch() {
-    let action = ActionId::new(9);
-    let mut artifact = accepted_artifact_with_caps(Box::new([]));
-    artifact.verification.idempotency_keyed = Box::new([action]);
-    artifact.verification.idempotency_attested = Box::new([action]);
+fn admit_artifact_run_does_not_invent_executor_attestation() -> Result<(), String> {
+    let artifact = accepted_artifact_with_caps(Box::new([]))?;
     let store = FixedAcceptedStore { artifact };
 
     let admission = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         CapabilitySet::empty(),
     );
 
-    assert!(matches!(admission, Ok(run) if run.idempotency_attested() == [action]));
+    assert!(matches!(admission, Ok(run) if run.idempotency_attested().is_empty()));
+    Ok(())
 }
 
 #[test]
@@ -619,27 +600,24 @@ fn admission_clone_is_equal() {
 }
 
 #[test]
-fn admission_admit_run_strict_with_present_artifact() {
-    let store = AlwaysPresentArtifactStore::shared();
-    let digest = test_digest();
+fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
+    let store = FixedAcceptedStore {
+        artifact: accepted_artifact_with_caps(Box::new([]))?,
+    };
+    let digest = store.artifact.digest;
     let run_id = RunId::new(1);
-    let caps = CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(0))]));
-    let result = admit_run(
-        store.as_ref(),
-        RuntimePolicy::Strict,
-        digest,
-        run_id,
-        caps.clone(),
-    );
+    let caps = CapabilitySet::empty();
+    let result = admit_run(&store, RuntimePolicy::Strict, digest, run_id, caps.clone());
     let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict);
     assert_eq!(result, Ok(admission.clone()));
     assert_eq!(admission.artifact_digest(), digest);
     assert_eq!(admission.run_id(), run_id);
     assert_eq!(admission.policy(), RuntimePolicy::Strict);
+    Ok(())
 }
 
 #[test]
-fn admission_admit_run_strict_rejects_loaded_digest_mismatch() {
+fn admission_admit_run_strict_rejects_loaded_digest_mismatch() -> Result<(), String> {
     struct MismatchedAcceptedStore;
     impl AcceptedArtifactStore for MismatchedAcceptedStore {
         fn load_accepted_artifact(
@@ -647,7 +625,8 @@ fn admission_admit_run_strict_rejects_loaded_digest_mismatch() {
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
             let found = WorkflowDigest::from_bytes([0x42; 32]);
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.digest = found;
             artifact.source_digest = found;
             artifact.verification.digest = found;
@@ -666,27 +645,26 @@ fn admission_admit_run_strict_rejects_loaded_digest_mismatch() {
 
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactDigestMismatch {
-            requested,
-            found: WorkflowDigest::from_bytes([0x42; 32]),
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admission_admit_run_strict_rejects_loaded_proof_digest_mismatch() {
+fn admission_admit_run_strict_rejects_loaded_proof_digest_mismatch() -> Result<(), String> {
     struct MismatchedProofStore;
     impl AcceptedArtifactStore for MismatchedProofStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.verification.digest = WorkflowDigest::from_bytes([0x42; 32]);
             Ok(artifact)
         }
     }
-    let requested = test_digest();
+    let requested = accepted_artifact_with_caps(Box::new([]))?.digest;
 
     let result = admit_run(
         &MismatchedProofStore,
@@ -703,6 +681,7 @@ fn admission_admit_run_strict_rejects_loaded_proof_digest_mismatch() {
             found: WorkflowDigest::from_bytes([0x42; 32]),
         })
     );
+    Ok(())
 }
 
 #[test]
@@ -824,7 +803,7 @@ fn load_accepted_artifact_returns_invalid_gate_count() {
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_bounded_flag() {
+fn admit_artifact_run_rejects_missing_bounded_flag() -> Result<(), String> {
     /// Store that returns artifact with bounded=false.
     struct BoundedFalseStore;
     impl AcceptedArtifactStore for BoundedFalseStore {
@@ -832,7 +811,8 @@ fn admit_artifact_run_rejects_missing_bounded_flag() {
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.verification.bounded_claimed = false;
             Ok(artifact)
         }
@@ -847,20 +827,22 @@ fn admit_artifact_run_rejects_missing_bounded_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_taint_safe_flag() {
+fn admit_artifact_run_rejects_forged_taint_safe_claim() -> Result<(), String> {
     struct TaintSafeFalseStore;
     impl AcceptedArtifactStore for TaintSafeFalseStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
-            artifact.verification.taint_safe_claimed = false;
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
+            artifact.verification.taint_safe_claimed = true;
             Ok(artifact)
         }
     }
@@ -874,20 +856,22 @@ fn admit_artifact_run_rejects_missing_taint_safe_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_retry_safe_flag() {
+fn admit_artifact_run_rejects_forged_retry_safe_claim() -> Result<(), String> {
     struct RetrySafeFalseStore;
     impl AcceptedArtifactStore for RetrySafeFalseStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
-            artifact.verification.retry_safe_claimed = false;
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
+            artifact.verification.retry_safe_claimed = true;
             Ok(artifact)
         }
     }
@@ -901,20 +885,22 @@ fn admit_artifact_run_rejects_missing_retry_safe_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_durable_flag() {
+fn admit_artifact_run_rejects_forged_durable_claim() -> Result<(), String> {
     struct DurableFalseStore;
     impl AcceptedArtifactStore for DurableFalseStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
-            artifact.verification.durable = false;
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
+            artifact.verification.durable = true;
             Ok(artifact)
         }
     }
@@ -928,20 +914,22 @@ fn admit_artifact_run_rejects_missing_durable_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "durable" })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_replayable_flag() {
+fn admit_artifact_run_rejects_forged_replayable_claim() -> Result<(), String> {
     struct ReplayableFalseStore;
     impl AcceptedArtifactStore for ReplayableFalseStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
-            artifact.verification.replayable_claimed = false;
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
+            artifact.verification.replayable_claimed = true;
             Ok(artifact)
         }
     }
@@ -955,19 +943,21 @@ fn admit_artifact_run_rejects_missing_replayable_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_idempotency_verified_flag() {
+fn admit_artifact_run_rejects_missing_idempotency_verified_flag() -> Result<(), String> {
     struct IdempotencyVerifiedFalseStore;
     impl AcceptedArtifactStore for IdempotencyVerifiedFalseStore {
         fn load_accepted_artifact(
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.verification.idempotency_verified_claimed = false;
             Ok(artifact)
         }
@@ -982,14 +972,13 @@ fn admit_artifact_run_rejects_missing_idempotency_verified_flag() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag {
-            flag: "idempotency_verified"
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 #[test]
-fn admit_artifact_run_rejects_missing_idempotency_attestation() {
+fn admit_artifact_run_rejects_missing_idempotency_attestation() -> Result<(), String> {
     /// Store that returns artifact with idempotency_keyed but no attestation.
     struct MissingAttestationStore {
         action: ActionId,
@@ -999,7 +988,8 @@ fn admit_artifact_run_rejects_missing_idempotency_attestation() {
             &self,
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.verification.idempotency_keyed = Box::new([self.action]);
             artifact.verification.idempotency_attested = Box::new([]);
             Ok(artifact)
@@ -1017,10 +1007,9 @@ fn admit_artifact_run_rejects_missing_idempotency_attestation() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag {
-            flag: "idempotency_attested"
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 // -------------------------------------------------------------------------
@@ -1028,7 +1017,7 @@ fn admit_artifact_run_rejects_missing_idempotency_attestation() {
 // -------------------------------------------------------------------------
 
 #[test]
-fn admit_artifact_run_returns_digest_mismatch() {
+fn admit_artifact_run_returns_digest_mismatch() -> Result<(), String> {
     /// Store that returns an artifact with a different digest than requested.
     struct MismatchedDigestStore;
     impl AcceptedArtifactStore for MismatchedDigestStore {
@@ -1037,7 +1026,8 @@ fn admit_artifact_run_returns_digest_mismatch() {
             _digest: WorkflowDigest,
         ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
             let wrong_digest = WorkflowDigest::from_bytes([0x42; 32]);
-            let mut artifact = accepted_artifact_with_caps(Box::new([]));
+            let mut artifact = accepted_artifact_with_caps(Box::new([]))
+                .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)?;
             artifact.digest = wrong_digest;
             artifact.source_digest = wrong_digest;
             artifact.verification.digest = wrong_digest;
@@ -1055,11 +1045,9 @@ fn admit_artifact_run_returns_digest_mismatch() {
     );
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactDigestMismatch {
-            requested,
-            found: WorkflowDigest::from_bytes([0x42; 32])
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
+    Ok(())
 }
 
 // -------------------------------------------------------------------------

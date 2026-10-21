@@ -129,6 +129,9 @@ impl JournalError {
             Self::PostcardEncodeFailed(_) => Self::POSTCARD_ENCODE_FAILED_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
+            Self::ArtifactValidation(_) | Self::ArtifactActionRegistry(_) => {
+                Self::ARTIFACT_MALFORMED_CODE
+            }
             // vb-l9jqs: the three typed variants below preserve their inner
             // source error for diagnostics while still reporting as the
             // structural-defect bucket so callers that pattern-match on the
@@ -220,6 +223,7 @@ impl JournalError {
             Self::PostcardEncodeFailed(_) => "ARTIFACT_POSTCARD_ENCODE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
+            Self::ArtifactValidation(_) | Self::ArtifactActionRegistry(_) => "ARTIFACT_MALFORMED",
             // vb-l9jqs: typed variants preserve inner source while reporting
             // the same symbolic code as the collapsed bucket they replaced.
             Self::WorkflowReconstruction(_) => "ARTIFACT_MALFORMED",

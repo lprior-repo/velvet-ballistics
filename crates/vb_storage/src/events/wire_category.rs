@@ -29,6 +29,8 @@ fn is_run_record(kind: RecordKind) -> bool {
         kind,
         RecordKind::RunAccepted
             | RecordKind::RunAdmission
+            | RecordKind::RunAdmissionBound
+            | RecordKind::RetryCheckpoint
             | RecordKind::RunCancelled
             | RecordKind::RunKilled
             | RecordKind::RunFinished

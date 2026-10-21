@@ -26,9 +26,11 @@ use vb_runtime::admission::{
     admit_artifact_run_with_certificate_floor,
 };
 use vb_storage::EventSeq;
-use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+use vb_storage::admission::AcceptedArtifact;
 
-const REQUIRED_GATE_COUNT: u8 = 15;
+#[path = "support/verified_artifact.rs"]
+mod verified_artifact;
+use verified_artifact::accepted_artifact_with_caps;
 
 // ---------------------------------------------------------------------------
 // Test fixture: an `AcceptedArtifactStore` that always returns a single
@@ -45,36 +47,6 @@ impl AcceptedArtifactStore for FixedAcceptedStore {
         _artifact_digest: WorkflowDigest,
     ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
         Ok(self.artifact.clone())
-    }
-}
-
-fn test_digest() -> WorkflowDigest {
-    WorkflowDigest::from_bytes([0xA9; 32])
-}
-
-fn accepted_artifact_with_caps(required_capabilities: Box<[Capability]>) -> AcceptedArtifact {
-    let digest = test_digest();
-    AcceptedArtifact {
-        digest,
-        source_digest: digest,
-        policy_digest: digest,
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: EventSeq::new(0),
-        required_capabilities,
-        action_contracts: Box::new([]),
     }
 }
 
@@ -285,7 +257,7 @@ fn mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5() {
 // ===========================================================================
 
 #[test]
-fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
+fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() -> Result<(), String> {
     let required_a = cap("mqa.network.read", 1);
     let required_b = cap("mqa.kv.write", 2);
     let required_c = cap("mqa.fs.append", 3);
@@ -295,7 +267,7 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
             required_a.clone(),
             required_b.clone(),
             required_c.clone(),
-        ])),
+        ]))?,
     };
 
     // --- Shape (a): under-grant (2 caps, 3 required) ---
@@ -305,7 +277,7 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(1),
-        test_digest(),
+        store.artifact.digest,
         granted_two,
         EventSeq::new(0),
     );
@@ -349,7 +321,7 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
         &store,
         RuntimePolicy::Strict,
         RunId::new(2),
-        test_digest(),
+        store.artifact.digest,
         granted_four,
         EventSeq::new(0),
     );
@@ -386,7 +358,7 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
     let req_a = cap("mqa.role.alpha", 10);
     let req_b = cap("mqa.role.beta", 11);
     let store_small_req = FixedAcceptedStore {
-        artifact: accepted_artifact_with_caps(Box::new([req_a.clone(), req_b.clone()])),
+        artifact: accepted_artifact_with_caps(Box::new([req_a.clone(), req_b.clone()]))?,
     };
     let extra_c = cap("mqa.role.gamma", 12);
     let granted_three =
@@ -395,7 +367,7 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
         &store_small_req,
         RuntimePolicy::Strict,
         RunId::new(3),
-        test_digest(),
+        store_small_req.artifact.digest,
         granted_three,
         EventSeq::new(0),
     );
@@ -421,4 +393,5 @@ fn mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error() {
             );
         }
     }
+    Ok(())
 }

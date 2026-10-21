@@ -13,6 +13,7 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             })
         }
         vb_storage::JournalEvent::RunAdmission {
+            input_digest,
             seq,
             run,
             artifact_digest,
@@ -24,6 +25,7 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
                 "type": "RunAdmission",
                 "run": run.get(),
                 "artifact_digest": format!("{artifact_digest:?}"),
+                "input_digest": format!("{input_digest:?}"),
                 "granted_capabilities": format!("{granted_capabilities:?}"),
                 "policy": format!("{policy:?}")
             })

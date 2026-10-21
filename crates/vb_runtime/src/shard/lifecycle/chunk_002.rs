@@ -17,6 +17,7 @@ type AwaitingTimerPlan = (
     DriveTraceEvents,
     RunState,
     Option<PendingTimer>,
+    Option<vb_storage::EventSeq>,
 );
 
 impl Shard {
@@ -37,36 +38,36 @@ impl Shard {
     /// ```
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
+        self.validate_ask_answer_request(run, answer)?;
+        self.append_ask_answer_events(run, answer)?;
+        self.apply_ask_answer_to_run(run, answer)
+    }
+
+    fn validate_ask_answer_request(&self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
         if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        let pending_timer = self
-            .pending_timer_get(run)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        if pending_timer.step != answer.ticket.ask_step
-            || pending_timer.kind != PendingTimerKind::Ask
-        {
-            return Err(RuntimeError::InvalidActionCompletion);
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        let contract = state.workflow.resource_contract();
+        if answer.taint == Taint::Secret && !contract.allows_secret_results {
+            return Err(RuntimeError::SecretResultNotAllowed);
         }
-        {
-            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-            let contract = state.workflow.resource_contract();
-            if answer.taint == Taint::Secret && !contract.allows_secret_results {
-                return Err(RuntimeError::SecretResultNotAllowed);
-            }
-            if answer.encoded_len > contract.max_ipc_payload_bytes {
-                return Err(RuntimeError::IpcPayloadSizeExceeded {
-                    size: answer.encoded_len,
-                    max: contract.max_ipc_payload_bytes,
-                });
-            }
-            if answer.answer_slot.as_usize() >= usize::from(state.frame.slot_count()) {
-                return Err(RuntimeError::RunNotFound);
-            }
-            if answer.ticket.resume_step.as_usize() >= usize::from(state.frame.step_count()) {
-                return Err(RuntimeError::RunNotFound);
-            }
+        if answer.encoded_len > contract.max_ipc_payload_bytes {
+            return Err(RuntimeError::IpcPayloadSizeExceeded {
+                size: answer.encoded_len,
+                max: contract.max_ipc_payload_bytes,
+            });
         }
+        if answer.answer_slot.as_usize() >= usize::from(state.frame.slot_count())
+            || answer.ticket.resume_step.as_usize() >= usize::from(state.frame.step_count())
+        {
+            return Err(RuntimeError::RunNotFound);
+        }
+        self.validate_pending_ask_answer(answer)?;
+        Ok(())
+    }
+
+    fn append_ask_answer_events(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
         let encoded_answer_value =
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.append_journal_events_atomically([
@@ -88,20 +89,22 @@ impl Shard {
                 output: answer.answer_slot,
                 attempt: 1,
             },
-        ])?;
-        {
-            let state = self
-                .run_state_get_mut(run)
-                .ok_or(RuntimeError::RunNotFound)?;
-            state
-                .frame
-                .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
-                .map_err(|_| RuntimeError::RunNotFound)?;
-            state
-                .frame
-                .set_pc(answer.ticket.resume_step)
-                .map_err(|_| RuntimeError::RunNotFound)?;
-        }
+        ])
+    }
+
+    fn apply_ask_answer_to_run(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .set_pc(answer.ticket.resume_step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        self.clear_pending_ask_authority(run);
         let _removed_timer = self.pending_timer_remove(run);
         self.trace_ring.push(TraceEvent::AskAnswered {
             run,
@@ -127,6 +130,9 @@ impl Shard {
         let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
         self.append_timer_resolution_event(run, current_timer)?;
+        if kind == PendingTimerKind::Ask {
+            self.clear_pending_ask_authority(run);
+        }
         let mut state = self.take_run_state(run)?;
         let timer = match self.pending_timer_remove(run) {
             Some(timer) => timer,
@@ -154,10 +160,12 @@ impl Shard {
         timer: PendingTimer,
     ) -> RuntimeResult<()> {
         match timer.kind {
-            PendingTimerKind::Wait => self.append_journal_event(RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            }),
+            PendingTimerKind::Wait => {
+                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
+                    run,
+                    step: timer.step,
+                })
+            }
             PendingTimerKind::Ask => self.append_journal_event(RuntimeJournalEvent::AskTimedOut {
                 run,
                 step: timer.step,
@@ -176,8 +184,13 @@ impl Shard {
         }
         if self.run_state_contains(run) {
             self.reserve_cancel_kill_terminalization(run)?;
-            self.append_cancel_terminal_events(run, reason)?;
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
+            self.append_cancel_terminal_events(run, reason, attempt)?;
             self.checked_out_run_insert(run)?;
+            self.clear_pending_ask_authority(run);
             let _removed_timer = self.pending_timer_remove(run);
             let Some(state) = self.run_state_remove(run) else {
                 self.checked_out_run_remove(run);
@@ -201,8 +214,13 @@ impl Shard {
         }
         if self.run_state_contains(run) {
             self.reserve_cancel_kill_terminalization(run)?;
-            self.append_kill_terminal_events(run)?;
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
+            self.append_kill_terminal_events(run, attempt)?;
             self.checked_out_run_insert(run)?;
+            self.clear_pending_ask_authority(run);
             let _removed_timer = self.pending_timer_remove(run);
         }
         if let Some(state) = self.run_state_remove(run) {

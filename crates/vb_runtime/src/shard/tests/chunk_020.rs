@@ -198,12 +198,11 @@ fn shard_ask_answered_with_i64_value() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(2))
+        .expect("suspended ask must issue a ticket");
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: vb_core::ids::StepIdx::new(2),
-            resume_step: vb_core::ids::StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: vb_core::value::SlotValue::I64(12345),
         taint: vb_core::value::Taint::Clean,

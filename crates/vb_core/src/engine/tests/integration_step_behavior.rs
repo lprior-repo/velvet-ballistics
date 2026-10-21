@@ -3,14 +3,14 @@
 //! state transitions, idempotency, budget tracking, invalid transitions,
 //! action retry, edge cases, and Kani boundedness harnesses.
 
-use crate::engine::{
-    EngineSignal, StepBudget, new_run_frame, resume_action_completion, resume_action_failure,
-    step_once,
-};
 use crate::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionJournalEvent, ActionName,
     ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
     compute_action_idempotency_key,
+};
+use crate::engine::{
+    EngineSignal, StepBudget, new_run_frame, resume_action_completion, resume_action_failure,
+    step_once,
 };
 use crate::errors::EngineError;
 use crate::frame::{RunFrame, StepState, is_valid_step_state_transition};
@@ -20,7 +20,8 @@ use crate::ids::{
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, SlotBranch,
+    WorkflowParts,
 };
 
 fn test_store() -> ValueStore {
@@ -44,6 +45,7 @@ where
 
 fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![
@@ -87,6 +89,7 @@ fn tiny_workflow_parts(name: &'static str, value: ConstValue) -> WorkflowParts {
 #[test]
 fn nop_advances_pc_to_next_step_with_continue_signal() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("nop_test"),
         digest: WorkflowDigest::from_bytes([0x01; 32]),
         nodes: vec![
@@ -137,6 +140,7 @@ fn nop_advances_pc_to_next_step_with_continue_signal() -> Result<(), String> {
 #[test]
 fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0x02; 32]),
         nodes: vec![
@@ -178,7 +182,11 @@ fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(777))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(777),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -186,20 +194,19 @@ fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), 
 #[test]
 fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("copy_test"),
         digest: WorkflowDigest::from_bytes([0x03; 32]),
-        nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Copy {
-                    source: SlotIdx::new(0),
-                },
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
             },
-        ]
+        }]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -223,8 +230,15 @@ fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String>
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::Bool(true))?;
-    ensure_equal(run.read_taint(SlotIdx::new(0)), Ok(Taint::DerivedFromSecret))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        run.read_taint(SlotIdx::new(0)),
+        Ok(Taint::DerivedFromSecret),
+    )?;
     Ok(())
 }
 
@@ -241,6 +255,7 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
     .map_err(|error| error.to_string())?;
 
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("eval_test"),
         digest: WorkflowDigest::from_bytes([0x04; 32]),
         nodes: vec![
@@ -282,13 +297,18 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(25))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(25),
+    )?;
     Ok(())
 }
 
 #[test]
 fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("build_obj_taint"),
         digest: WorkflowDigest::from_bytes([0x05; 32]),
         nodes: vec![
@@ -341,7 +361,10 @@ fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    match run.read_slot(SlotIdx::new(1)).map_err(|error| error.to_string())? {
+    match run
+        .read_slot(SlotIdx::new(1))
+        .map_err(|error| error.to_string())?
+    {
         SlotValue::Object(_) => Ok(()),
         other => Err(format!("expected Object handle, got {other:?}")),
     }
@@ -350,6 +373,7 @@ fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
 #[test]
 fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("build_list_handle"),
         digest: WorkflowDigest::from_bytes([0x06; 32]),
         nodes: vec![
@@ -402,7 +426,10 @@ fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    match run.read_slot(SlotIdx::new(1)).map_err(|error| error.to_string())? {
+    match run
+        .read_slot(SlotIdx::new(1))
+        .map_err(|error| error.to_string())?
+    {
         SlotValue::List(_) => Ok(()),
         other => Err(format!("expected List handle, got {other:?}")),
     }
@@ -411,6 +438,7 @@ fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
 #[test]
 fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("do_no_next"),
         digest: WorkflowDigest::from_bytes([0x07; 32]),
         nodes: vec![CompiledNode {
@@ -449,6 +477,7 @@ fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), Strin
 #[test]
 fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("jump_test"),
         digest: WorkflowDigest::from_bytes([0x08; 32]),
         nodes: vec![
@@ -515,7 +544,10 @@ fn finish_returns_finished_signal_with_result_value_and_taint() -> Result<(), St
     let _s0 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::Finished(SlotValue::I64(99), Taint::Clean))?;
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(99), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -523,6 +555,7 @@ fn finish_returns_finished_signal_with_result_value_and_taint() -> Result<(), St
 #[test]
 fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("wait_test"),
         digest: WorkflowDigest::from_bytes([0x0A; 32]),
         nodes: vec![CompiledNode {
@@ -559,6 +592,7 @@ fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<()
 #[test]
 fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("wait_event_test"),
         digest: WorkflowDigest::from_bytes([0x0B; 32]),
         nodes: vec![CompiledNode {
@@ -596,6 +630,7 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
 #[test]
 fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("ask_test"),
         digest: WorkflowDigest::from_bytes([0x0C; 32]),
         nodes: vec![CompiledNode {
@@ -633,6 +668,7 @@ fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String>
 #[test]
 fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("err_handler"),
         digest: WorkflowDigest::from_bytes([0x0D; 32]),
         nodes: vec![
@@ -695,6 +731,7 @@ fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
 #[test]
 fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("choose_slot_true"),
         digest: WorkflowDigest::from_bytes([0x0E; 32]),
         nodes: vec![
@@ -760,6 +797,7 @@ fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<()
 #[test]
 fn choose_slot_false_takes_otherwise_target() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("choose_slot_false"),
         digest: WorkflowDigest::from_bytes([0x0F; 32]),
         nodes: vec![
@@ -860,6 +898,7 @@ fn step_transitions_pending_to_running_then_succeeded_on_completion() -> Result<
 #[test]
 fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("chain_tx"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![
@@ -919,7 +958,10 @@ fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), St
     ensure_equal(run.step_state(StepIdx::new(2)), Ok(StepState::Pending))?;
 
     let s2 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
-    ensure_equal(s2, EngineSignal::Finished(SlotValue::I64(200), Taint::Clean))?;
+    ensure_equal(
+        s2,
+        EngineSignal::Finished(SlotValue::I64(200), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(2)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -950,7 +992,10 @@ fn signal_finished_maps_step_state_to_succeeded() -> Result<(), String> {
 
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
-    ensure_equal(result, EngineSignal::Finished(SlotValue::I64(6), Taint::Clean))?;
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(6), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -961,6 +1006,7 @@ fn signal_finished_maps_step_state_to_succeeded() -> Result<(), String> {
 
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("do_finish"),
         digest: WorkflowDigest::from_bytes([0x1A; 32]),
         nodes: vec![
@@ -999,7 +1045,13 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     .map_err(|error| error.to_string())
 }
 
-fn make_ticket(run: RunId, step: StepIdx, seq_raw: u32, action: ActionId, attempt: u16) -> ActionTicket {
+fn make_ticket(
+    run: RunId,
+    step: StepIdx,
+    seq_raw: u32,
+    action: ActionId,
+    attempt: u16,
+) -> ActionTicket {
     let seq = SeqNo::new(u64::from(seq_raw));
     ActionTicket {
         run,
@@ -1081,7 +1133,11 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
     .map_err(|error| error.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(42))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(42),
+    )?;
     ensure_equal(run.pc(), StepIdx::new(1))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
@@ -1116,7 +1172,8 @@ fn resume_action_completion_increments_executed_counter() -> Result<(), String> 
 }
 
 #[test]
-fn resume_action_completion_journal_has_completed_variant_with_correct_fields() -> Result<(), String> {
+fn resume_action_completion_journal_has_completed_variant_with_correct_fields() -> Result<(), String>
+{
     let workflow = do_then_finish_workflow()?;
     let mut run = test_frame(RunId::new(242), &workflow)?;
     let mut store = test_store();
@@ -1162,6 +1219,7 @@ fn resume_action_completion_journal_has_completed_variant_with_correct_fields() 
 #[test]
 fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("fail_no_handler"),
         digest: WorkflowDigest::from_bytes([0x2B; 32]),
         nodes: vec![CompiledNode {
@@ -1218,6 +1276,7 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
 #[test]
 fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("fail_journal"),
         digest: WorkflowDigest::from_bytes([0x2C; 32]),
         nodes: vec![CompiledNode {
@@ -1286,6 +1345,7 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
 #[test]
 fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("fail_retry"),
         digest: WorkflowDigest::from_bytes([0x2D; 32]),
         nodes: vec![CompiledNode {
@@ -1352,10 +1412,12 @@ fn mark_running_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(250), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
     Ok(())
 }
@@ -1366,11 +1428,14 @@ fn mark_succeeded_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(251), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
 
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -1381,11 +1446,14 @@ fn mark_failed_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(252), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_failed(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_failed(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
 
-    run.mark_failed(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_failed(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
     Ok(())
 }
@@ -1396,78 +1464,123 @@ fn mark_failed_twice_is_idempotent() -> Result<(), String> {
 
 #[test]
 fn pending_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Pending, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn pending_to_asking_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Pending, StepState::Asking));
+    assert!(!is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Asking
+    ));
 }
 
 #[test]
 fn running_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Running, StepState::Pending));
+    assert!(!is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Pending
+    ));
 }
 
 #[test]
 fn succeeded_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn succeeded_to_pending_is_invalid_transition() {
     // Succeeded -> Pending is valid (for loop re-entry). This should be valid.
-    assert!(is_valid_step_state_transition(StepState::Succeeded, StepState::Pending));
+    assert!(is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Pending
+    ));
 }
 
 #[test]
 fn succeeded_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn failed_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Failed, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Failed,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn failed_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Failed, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Failed,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn waiting_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Waiting, StepState::Pending));
+    assert!(!is_valid_step_state_transition(
+        StepState::Waiting,
+        StepState::Pending
+    ));
 }
 
 #[test]
 fn cancelled_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Cancelled, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Cancelled,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn pending_to_running_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Pending, StepState::Running));
+    assert!(is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn running_to_succeeded_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Succeeded));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Succeeded
+    ));
 }
 
 #[test]
 fn running_to_failed_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Failed));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Failed
+    ));
 }
 
 #[test]
 fn running_to_waiting_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Waiting));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn running_to_asking_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Asking));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Asking
+    ));
 }
 
 #[test]
@@ -1483,8 +1596,10 @@ fn same_state_idempotent_is_always_valid() {
         StepState::Cancelled,
     ];
     for state in all_states {
-        assert!(is_valid_step_state_transition(state, state),
-            "idempotent transition should be valid for {state:?}");
+        assert!(
+            is_valid_step_state_transition(state, state),
+            "idempotent transition should be valid for {state:?}"
+        );
     }
 }
 
@@ -1494,12 +1609,17 @@ fn invalid_transition_rejected_in_run_frame_mark() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(260), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     let result = run.mark_pending(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation { reason: "invalid_state_transition" }) => Ok(()),
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation {
+            reason: "invalid_state_transition",
+        }) => Ok(()),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
@@ -1509,14 +1629,20 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(261), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
 
     let result = run.mark_running(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation { reason: "invalid_state_transition" }) => Ok(()),
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation {
+            reason: "invalid_state_transition",
+        }) => Ok(()),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
@@ -1527,6 +1653,7 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
 #[test]
 fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: Box::new([]),
@@ -1577,13 +1704,16 @@ fn run_frame_creation_rejects_zero_step_count() -> Result<(), String> {
 
     match result {
         Err(EngineError::InvalidCompiledWorkflow { reason }) if reason.contains("zero") => Ok(()),
-        other => Err(format!("expected InvalidCompiledWorkflow with zero reason, got {other:?}")),
+        other => Err(format!(
+            "expected InvalidCompiledWorkflow with zero reason, got {other:?}"
+        )),
     }
 }
 
 #[test]
 fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("bad_entry"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![CompiledNode {
@@ -1618,6 +1748,7 @@ fn workflow_compile_rejects_entry_out_of_bounds() -> Result<(), String> {
 #[test]
 fn jump_to_out_of_bounds_target_rejected_at_compilation() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("bad_jump"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![CompiledNode {
@@ -1674,18 +1805,14 @@ fn resume_action_completion_nonexistent_step_returns_invalid_pc() -> Result<(), 
     let ticket = make_ticket(RunId::new(273), StepIdx::new(99), 1, ActionId::new(7), 1);
     let contract = make_contract(ActionId::new(7), 8);
     let output = ready_output(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean, 2);
-    let result = resume_action_completion(
-        &workflow,
-        &mut run,
-        ticket,
-        output,
-        b"ok",
-        &contract,
-    );
+    let result = resume_action_completion(&workflow, &mut run, ticket, output, b"ok", &contract);
 
     match result {
         Err(EngineError::ActionResumeRejected { report })
-            if report.rejection.reason() == "action_resume_step_not_current_pc" => Ok(()),
+            if report.rejection.reason() == "action_resume_step_not_current_pc" =>
+        {
+            Ok(())
+        }
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -1693,6 +1820,7 @@ fn resume_action_completion_nonexistent_step_returns_invalid_pc() -> Result<(), 
 #[test]
 fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("do_no_next"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
         nodes: vec![CompiledNode {
@@ -1725,14 +1853,7 @@ fn resume_action_completion_missing_next_returns_error() -> Result<(), String> {
     let ticket = make_ticket(RunId::new(274), StepIdx::new(0), 1, ActionId::new(11), 1);
     let contract = make_contract(ActionId::new(11), 8);
     let output = ready_output(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean, 2);
-    let result = resume_action_completion(
-        &workflow,
-        &mut run,
-        ticket,
-        output,
-        b"ok",
-        &contract,
-    );
+    let result = resume_action_completion(&workflow, &mut run, ticket, output, b"ok", &contract);
 
     match result {
         Err(EngineError::MissingNextStep { step }) if step == StepIdx::new(0) => Ok(()),
@@ -1769,7 +1890,8 @@ fn step_budget_run_until_blocked_exhausts_at_limit() -> Result<(), String> {
     let mut run = test_frame(RunId::new(280), &workflow)?;
     let mut store = test_store();
 
-    let result = crate::engine::run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
+    let result =
+        crate::engine::run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
 
     ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
     ensure_equal(run.executed(), 1)?;
@@ -1787,7 +1909,7 @@ mod kani_boundedness {
         ActionContract, ActionName, ActionOutputReady, Idempotency, RetrySafety, SideEffect,
         compute_action_idempotency_key,
     };
-    use crate::engine::{step_once, resume_action_completion, new_run_frame};
+    use crate::engine::{new_run_frame, resume_action_completion, step_once};
     use crate::errors::EngineError;
     use crate::frame::StepState;
     use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -1802,6 +1924,7 @@ mod kani_boundedness {
     fn step_once_panic_freedom_bounded() {
         let slot_val = kani::any::<i64>();
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             name: Box::<str>::from("kani_nop_finish"),
             digest: WorkflowDigest::from_bytes([0x10; 32]),
             nodes: vec![
@@ -1855,6 +1978,7 @@ mod kani_boundedness {
     #[kani::unwind(4)]
     fn resume_action_completion_panic_freedom_bounded() {
         let plan = match CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             name: Box::<str>::from("kani_resume"),
             digest: WorkflowDigest::from_bytes([0x20; 32]),
             nodes: vec![
@@ -1934,10 +2058,7 @@ mod kani_boundedness {
             required_capabilities: Box::new([]),
         };
 
-        let result = resume_action_completion(
-            &plan, &mut run, ticket,
-            output, b"ok", &contract,
-        );
+        let result = resume_action_completion(&plan, &mut run, ticket, output, b"ok", &contract);
         let _ = result;
     }
 

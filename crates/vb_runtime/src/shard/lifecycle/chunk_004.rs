@@ -8,15 +8,22 @@ impl Shard {
         &mut self,
         run: RunId,
         reason: Option<String>,
+        attempt: u16,
     ) -> RuntimeResult<()> {
         self.append_terminal_events_with_pending_action(
             run,
-            RuntimeJournalEvent::RunCancelled { run, reason },
+            RuntimeJournalEvent::RunCancelled {
+                run,
+                reason,
+                attempt,},
         )
     }
 
-    fn append_kill_terminal_events(&mut self, run: RunId) -> RuntimeResult<()> {
-        self.append_terminal_events_with_pending_action(run, RuntimeJournalEvent::RunKilled { run })
+    fn append_kill_terminal_events(&mut self, run: RunId, attempt: u16) -> RuntimeResult<()> {
+        self.append_terminal_events_with_pending_action(
+            run,
+            RuntimeJournalEvent::RunKilled { run, attempt},
+        )
     }
 
     fn append_terminal_events_with_pending_action(

@@ -74,6 +74,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
@@ -1051,34 +1052,13 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
 // silently enqueueing onto the home shard.
 #[test]
 fn answer_ask_returns_run_not_found_for_unknown_run() -> Result<(), String> {
-    use vb_runtime::shard::AskAnswer;
-    use vb_runtime::shard::AskTicket;
-
     // Given: a runtime with 2 shards and no submitted run
     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, relaxed_config());
 
-    // Create an ask answer for run 5 (5 % 2 = 1 -> shard 1)
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run: RunId::new(5),
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
-        answer_slot: SlotIdx::ZERO,
-        value: SlotValue::Bool(true),
-        taint: Taint::Clean,
-        encoded_len: 1,
-    };
-
-    // When: answer_ask is called for an unknown run
-    let result = runtime.answer_ask(answer);
-
-    // Then: RunNotFound (fail-closed; routing is tested by the migrated-shard
-    // and runtime_answer_ask_routes_to_run_shard tests in vb_runtime).
-    assert!(
-        matches!(result, Err(vb_runtime::RuntimeError::RunNotFound)),
-        "answer_ask on unknown run must return RunNotFound, got {:?}",
-        result
+    // Unknown runs cannot produce an opaque ask ticket.
+    assert_eq!(
+        runtime.lookup_pending_ask_ticket(RunId::new(5), StepIdx::ZERO),
+        None
     );
     Ok(())
 }
@@ -1086,9 +1066,6 @@ fn answer_ask_returns_run_not_found_for_unknown_run() -> Result<(), String> {
 // Scenario I2: answer_ask returns RunNotFound for terminal run
 #[test]
 fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
-    use vb_runtime::shard::AskAnswer;
-    use vb_runtime::shard::AskTicket;
-
     // Given: a runtime where a run has reached terminal state
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(6001);
@@ -1106,28 +1083,7 @@ fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
         })
     );
 
-    // When: answer_ask is called for the terminal run
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
-        answer_slot: SlotIdx::ZERO,
-        value: SlotValue::Bool(true),
-        taint: Taint::Clean,
-        encoded_len: 1,
-    };
-    let result = runtime.answer_ask(answer);
-
-    // Then: terminal runs are still routed (RA-030: home or terminal shard),
-    // the answer is enqueued so the shard can no-op the obsolete command.
-    assert_eq!(
-        result,
-        Ok(()),
-        "answer_ask on terminal run must enqueue onto the terminal shard (RA-030 routing), got {:?}",
-        result
-    );
+    assert_eq!(runtime.lookup_pending_ask_ticket(run, StepIdx::ZERO), None);
     Ok(())
 }
 

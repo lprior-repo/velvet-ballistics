@@ -71,13 +71,28 @@ impl Shard {
         target: &mut Self,
         run: RunId,
     ) -> RuntimeResult<()> {
-        let runtime_state = self.runtime_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        let runtime_state = self
+            .runtime_state_get(run)
+            .ok_or(RuntimeError::RunNotFound)?;
         let pending_timer = self.pending_timer_get(run);
         let pending_action = self.pending_action_get(run);
-        target.reserve_transfer_slots(run, pending_timer.is_some(), pending_action.is_some())?;
-        let state = self.run_state_remove(run).ok_or(RuntimeError::RunNotFound)?;
+        let pending_ask_authority = self.pending_ask_authorities.get(&run).copied();
+        target.reserve_transfer_slots(
+            run,
+            pending_timer.is_some(),
+            pending_action.is_some(),
+            pending_ask_authority.is_some(),
+        )?;
+        let state = self
+            .run_state_remove(run)
+            .ok_or(RuntimeError::RunNotFound)?;
         target.admit_run_state(run, state, runtime_state)?;
-        target.restore_transfer_boundaries(run, pending_timer, pending_action)
+        target.restore_transfer_boundaries(
+            run,
+            pending_timer,
+            pending_action,
+            pending_ask_authority,
+        )
     }
 
     #[cfg(test)]
@@ -86,6 +101,7 @@ impl Shard {
         run: RunId,
         has_timer: bool,
         has_action: bool,
+        has_ask_authority: bool,
     ) -> RuntimeResult<()> {
         self.validate_new_active_run(run, RuntimeState::Running)?;
         self.reserve_run_state_slot(run)?;
@@ -96,6 +112,9 @@ impl Shard {
         if has_action {
             self.reserve_pending_action_slot(run)?;
         }
+        if has_ask_authority {
+            self.reserve_pending_ask_authority_slot(run)?;
+        }
         Ok(())
     }
 
@@ -105,12 +124,16 @@ impl Shard {
         run: RunId,
         pending_timer: Option<PendingTimer>,
         pending_action: Option<vb_core::action::ActionTicket>,
+        pending_ask_authority: Option<super::types::PendingAskAuthority>,
     ) -> RuntimeResult<()> {
         if let Some(timer) = pending_timer {
             self.pending_timer_insert(run, timer)?;
         }
         if let Some(ticket) = pending_action {
             self.pending_action_insert(run, ticket)?;
+        }
+        if let Some(authority) = pending_ask_authority {
+            self.pending_ask_authorities.insert(run, authority);
         }
         Ok(())
     }

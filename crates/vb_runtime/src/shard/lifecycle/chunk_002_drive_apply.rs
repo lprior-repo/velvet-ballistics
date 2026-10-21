@@ -38,7 +38,7 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         let (journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
@@ -71,7 +71,8 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
+        let (mut journal_events, trace_events) =
+            self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         Self::push_drive_journal_event(
             &mut journal_events,
             RuntimeJournalEvent::ActionScheduledTicket {
@@ -93,7 +94,8 @@ impl Shard {
     ) -> RuntimeResult<AwaitingTimerPlan> {
         let step = state.frame.pc();
         let mut timer = None;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
+        let (mut journal_events, trace_events) =
+            self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         if crate::shard::helpers::timer_registration_required(&state, step) {
             let generation = match self.next_pending_timer_generation(run) {
                 Some(generation) => generation,
@@ -194,11 +196,15 @@ impl Shard {
             None => SlotIdx::ZERO,
         };
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         Self::push_drive_journal_event(
             &mut journal_events,
-            RuntimeJournalEvent::RunFinished { run, result },
+            RuntimeJournalEvent::RunFinished {
+                run,
+                result,
+                attempt: state.run_attempt.get(),
+            },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
@@ -224,10 +230,16 @@ impl Shard {
                 .map_err(DriveApplyFailure::AfterCommit);
         }
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        Self::push_drive_journal_event(&mut journal_events, RuntimeJournalEvent::RunFailed { run })
-            .map_err(DriveApplyFailure::BeforeCommit)?;
+        Self::push_drive_journal_event(
+            &mut journal_events,
+            RuntimeJournalEvent::RunFailed {
+                run,
+                attempt: state.run_attempt.get(),
+            },
+        )
+        .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);

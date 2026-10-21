@@ -28,6 +28,7 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("single_finish"),
         digest: workflow,
         nodes: Box::from([node]),
@@ -39,7 +40,7 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
@@ -96,8 +97,7 @@ fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
         adapter.append_sequenced(
             RuntimeJournalEvent::RunFinished {
                 run,
-                result: SlotIdx::new(3),
-            },
+                result: SlotIdx::new(3), attempt: 1},
             EventSeq::new(1),
         ),
         Ok(())
@@ -142,7 +142,9 @@ fn queued_runtime_admission_flush_does_not_fabricate_recovery_indexes() -> Resul
         adapter.append_sequenced(RuntimeJournalEvent::RunSubmitted { run, workflow }, seq),
         Ok(())
     );
-    assert!(matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1));
+    assert!(
+        matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
+    );
 
     assert_eq!(
         journal.run_header(run).map_err(|error| error.to_string())?,
@@ -151,12 +153,9 @@ fn queued_runtime_admission_flush_does_not_fabricate_recovery_indexes() -> Resul
     );
 
     let workflow_id = fabricated_workflow_id_from_digest_for_test(workflow);
-    let status_key = vb_storage::keys::index_status_key(
-        vb_storage::IndexStatusState::Submitted,
-        seq.get(),
-        run,
-    )
-    .map_err(|error| error.to_string())?;
+    let status_key =
+        vb_storage::keys::index_status_key(vb_storage::IndexStatusState::Submitted, seq.get(), run)
+            .map_err(|error| error.to_string())?;
     let workflow_key = vb_storage::keys::index_workflow_key(workflow_id, run)
         .map_err(|error| error.to_string())?;
     assert!(
@@ -226,6 +225,7 @@ fn storage_runtime_journal_maps_run_admission_event() {
     assert_eq!(
         events,
         vec![vb_storage::JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(0),
             artifact_digest: workflow,
@@ -253,7 +253,7 @@ fn storage_runtime_journal_maps_cancelled_and_failed_events() {
     );
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(1),
         ),
         Ok(())
@@ -287,7 +287,7 @@ fn storage_runtime_journal_maps_cancelled_and_failed_events() {
     let failed_run = RunId::new(43);
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunFailed { run: failed_run },
+            RuntimeJournalEvent::RunFailed { run: failed_run, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())

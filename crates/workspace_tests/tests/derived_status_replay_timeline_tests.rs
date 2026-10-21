@@ -732,6 +732,7 @@ fn replay_timeline_includes_digest_or_record_kind_per_event() {
             workflow: dummy_digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: make_event_seq(1),
             artifact_digest: dummy_digest(),

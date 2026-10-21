@@ -33,6 +33,7 @@ pub(super) fn test_frame(workflow: &CompiledWorkflow) -> Result<RunFrame, String
 
 pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -139,6 +140,7 @@ pub(super) fn single_do_workflow(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
@@ -162,6 +164,7 @@ pub(super) fn do_then_finish_workflow(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
@@ -193,6 +196,7 @@ pub(super) fn do_with_error_handler_workflow(
     digest: [u8; 32],
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),

@@ -1,0 +1,11 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/compiled_digest_payload.rs (target/debug/deps/compiled_digest_payload-a75686f47db6b1bd)
+
+running 2 tests
+test compiled_digest_is_hash_of_serialized_parts_with_digest_zeroed ... ok
+test formatting_and_comments_do_not_change_compiled_digest ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_code=0

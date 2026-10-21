@@ -63,6 +63,7 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_expr_bytecode"),
         digest: vb_core::WorkflowDigest::from_bytes([0xA0; 32]),
+        semantic_source_identity: None,
         nodes: vec![vb_core::CompiledNode {
             id: vb_core::StepIdx::new(0),
             output: None,
@@ -145,6 +146,7 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_taint"),
         digest: vb_core::WorkflowDigest::from_bytes([0xB0; 32]),
+        semantic_source_identity: None,
         nodes: vec![vb_core::CompiledNode {
             id: vb_core::StepIdx::new(0),
             output: None,

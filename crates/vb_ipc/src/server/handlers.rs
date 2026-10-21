@@ -218,13 +218,12 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             };
         }
     };
+    let Some(ticket) = runtime.lookup_pending_ask_ticket(run_id, ask_step) else {
+        return IpcResponse::BadRequest;
+    };
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run: run_id,
-            ask_step,
-            resume_step: ask_step,
-        },
-        answer_slot: SlotIdx::ZERO,
+        answer_slot: ticket.answer_slot(),
+        ticket,
         value,
         taint: taint.unwrap_or(Taint::Clean),
         encoded_len,

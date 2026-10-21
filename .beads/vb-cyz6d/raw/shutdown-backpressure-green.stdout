@@ -1,0 +1,6 @@
+
+running 1 test
+test server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 535 filtered out; finished in 0.00s
+

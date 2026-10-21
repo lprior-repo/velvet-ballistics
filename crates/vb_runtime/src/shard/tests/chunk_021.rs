@@ -215,11 +215,17 @@ fn ask_ticket_equality_and_inequality() {
         run: super::RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     let b = AskTicket {
         run: super::RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     assert_eq!(a, b);
 
@@ -228,6 +234,9 @@ fn ask_ticket_equality_and_inequality() {
         run: super::RunId::new(11),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     assert_ne!(a, c);
 
@@ -236,6 +245,9 @@ fn ask_ticket_equality_and_inequality() {
         run: super::RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(99),
         resume_step: vb_core::ids::StepIdx::new(2),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     assert_ne!(a, d);
 
@@ -244,6 +256,9 @@ fn ask_ticket_equality_and_inequality() {
         run: super::RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(99),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     assert_ne!(a, e);
 }

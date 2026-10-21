@@ -1,0 +1,47 @@
+# vb-cyz6d async-shell audit and bounded repairs
+
+Audit baseline: 856603b8. Workspace: `/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol`. Scope: v1 backend/interpreter shell, IPC service and journal queue. Master is authoritative. Full v1 acceptance is **not approved** by this report. Independent candidate code/test review and parent canonical `moon ci` remain required.
+
+## Boundary and ownership findings
+
+Master section 62 forbids async functions/executors in vb_core, vb_runtime, vb_storage and vb_ipc; mio is approved. Source/manifests and metadata show no production Future task region in these crates. Tokio spawn, JoinSet, StreamExt and async-trait migration would violate the contract. Spawn/select/await recommendations from async-rust-reviewer are not mechanically applicable. Its ownership, cancellation, boundedness and terminal-outcome checks apply to the actual synchronous reactor.
+
+| Boundary | Owner/capability | Scheduling and completion | Audit result |
+| --- | --- | --- | --- |
+| Core transitions | numeric workflow/frame/ticket types | synchronous bounded step budget | preserved; no new async/I/O dependency |
+| IPC admission | IpcServer owns listener, registry, clients | max256 clients, max256 accepts/turn | burst readiness retained; excess peers closed and counted |
+| Client framing/output | ClientConnection owns socket, request/output buffers | max64 I/O operations/direction/turn; one request/response flight | retained readiness, bounded chunks, pending output cannot be replaced |
+| Storage servicing | CLI retains Arc journal + queue; queue owns Mutex/deque | one configured batch before poll and after tick | SyncAll before queue drain, including explicit barrier for empty/idempotent batches; fallible service errors preserve causes |
+| Workflow lookup | explicit StorageWorkflowResolver capability | synchronous artifact read + digest checks | existing capability seam preserved |
+| External actions | suspended typed ActionTicket; completion command | no new thread/task spawn | lifecycle/recovery owner retains source lane |
+| Shutdown | runtime shutdown + reactor output drain | admission/dispatch stops on successful ShuttingDown; writable service completes output | acknowledgement under real socket backpressure tested; no wall-clock completion bound claimed |
+
+Blocking Fjall reads and synchronous durability barriers remain in the imperative shell. Their latency and mutex hold time need measurement; the codec result below is not evidence of durable service throughput. Core transition APIs remain synchronous. No broad architectural rewrite, new unstable feature, unsafe access, suppression, or verifier-contract change was introduced.
+
+## Concrete findings and dispositions
+
+1. **P0, vb-2a9i3, repaired pending independent review:** one read per mio edge stalled a fully sent 8216-byte request. One accept per listener edge stalled a preconnected burst. Public-API reproduction observed no response after20 polls and only first of3 clients replying. Bounded loops retain readiness until WouldBlock/budget rescheduling.
+2. **P0, vb-2a9i3, repaired pending review:** send_response cleared an earlier pending response. Actual socket WouldBlock reproduction showed correlation11 replaced by22. ResponsePending now rejects without changing bytes; request dispatch waits for output completion.
+3. **P0, vb-2a9i3, repaired pending review:** client257 raised TooManyClients from polling, causing CLI service termination. Production admission now closes/counts only the extra peer, preserves256 admitted clients, and a healthy admitted client still replies.
+4. **P0, vb-fnugl, repaired pending review:** CLI moved the journal/queue into its runtime adapter without periodic writer service. Journaled acknowledgement was RAM admission and work was committed only during shutdown. The CLI now services bounded durable batches during operation. Journaled acknowledgement still means queue admission (master18); strict persistence-before-ack is preserved. DuplicateEvent staging errors retain the pending item and exact error. A separate injected commit-boundary failure proves entire-batch retention and successful exactly-once retry; it does not simulate physical disk failure. Inspection of installed Fjall3.1.10 src/batch/mod.rs:101-104 showed empty commit returns without persistence; an all-idempotent visible event therefore needs an explicit persist_strict before removal. Its injected barrier-failure regression failed before the repair and passes afterward, retaining the queued retry.
+5. **P1, vb-2a9i3, repaired pending review:** runtime shutdown could terminate the CLI while an acknowledgement remained in its output buffer. Reactor shutdown state and pending-output ownership keep polling alive until the bytes are written. Actual full send-buffer regression checks correlation88 and ShuttingDown before polling stops. Peer transport errors remain observable; infrastructure/encoding failures propagate.
+6. **P0, vb-aaqp7, unresolved outside this source lane:** Runtime::shutdown_graceful returns Result<()> and no remaining-run/drain report. Existing shutdown Loom model uses std atomics then sets pending=0 immediately before asserting0; queue model is a copied atomic counter rather than production Mutex/deque. Workspace shutdown fixture is a ShardModel with simulated journal. Passing those tests cannot prove production drain/finalize behavior. Parent/lifecycle owner must resolve evidence binding and outcome semantics against pending-run preservation.
+7. **P1, vb-n9wil, unresolved:** no current baseline/candidate reactor tail-latency, saturation or durable-batch throughput evidence. Existing benchmark rows use old commit2990ccb0. No speed or full performance acceptance claim is justified.
+
+## Executed evidence
+
+`commands.jsonl` retains actual argv, assigned cwd, exit status, elapsed time and SHA256 of complete raw stdout/stderr. Jobs were limited to2. Raw failures and unsuccessful attempts are retained.
+
+- Baseline `ipc-tests`:531 passed,0 ignored. Four `reactor-red-tests` failed against original source; `reactor-green-tests` passed all4.
+- `journal-service-red`:2 failed. `journal-service-green`:2 passed against real Fjall service capabilities. Failure case is **staging** DuplicateEvent, not an injected physical commit error.
+- `shutdown-backpressure-red`: failed because polling never signalled shutdown completion; `shutdown-backpressure-green`:1 passed with a real full outgoing socket.
+- `durable-batch-fault-red`: existing journal fault hook was not wired into raw queue commits, so fault expectation failed. Green extends that test-only boundary to queue commits;2 tests prove batch/FIFO limits and commit-boundary error retention/retry. This is instrumentation evidence, not an independent disk-failure experiment.
+- `ipc-suite-typed-errors`:535 passed,0 ignored. `ipc-final-suite` passed536; final prefix validation coverage in `ipc-public-final-suite` passed537,0 ignored. The added test inspects only4 buffered magic bytes and empty output before removal.
+- `storage-final-queue-suite`:51 passed before the added idempotent-barrier case; final `storage-idempotent-final-suite`:52 passed,0 ignored,1547 filtered. `service-final-suite`:3 production CLI service tests,0 ignored,352 filtered.
+- Baseline `scoped-acceptance-tests`: FIFO17, shutdown19, timers141, IPC7 passed,0 ignored. Model-only shutdown cases are explicitly excluded from production shutdown assurance. Candidate `ipc-acceptance-disconnect-green`:7 passed,0 ignored. First candidate attempt exposed an overly specific EOF-string assertion: Unix closes with unread bytes may return ConnectionReset. Exact terminal EOF or typed ConnectionReset is now required, arbitrary I/O errors/WouldBlock/response bytes fail, healthy peer service is asserted, and internal removal/prefix bounds have production unit coverage. Parent explicitly authorized this transport-contract correction. No production allocation/disconnect contract was relaxed.
+- `focused-source-lint`: source libraries/binaries, all features, canonical warning/panic/index/cast/arithmetic/ignored-result/await-lock bans, exit0. Earlier extra `-Wclippy::pedantic` run stopped at58 pre-existing vb_core pedantic errors; that run is a failed expanded audit, not a pass or canonical-gate substitute.
+- `ipc-codec-benchmark`: Criterion10 samples,1s warmup/measurement, decode interval [82.478ns,82.866ns,83.131ns]. This is a codec measurement only, with no candidate-vs-baseline speed claim.
+- `ipc-all-tests-after-reactor` timed out120s due an old helper that yielded indefinitely while expecting two replies after one poll. The helper now has a2s deadline; the pipelining compatibility test polls per single-flight response and asserts exact correlations1/2. No ignored/removed assertions were used to hide the regression.
+- `shutdown-immediate-baseline` incorrectly selected the library target and ran0 matching tests; it is **not evidence**. The corrected binary service suite executes all3 tests.
+
+The implementation audit is scoped; this report does not approve whole-repository replay/capability/conformance coverage, formal proof closure, crash durability, canonical CI, or full v1 readiness. No production task/Future cancellation test is invented for a synchronous engine. Remaining lifecycle and performance work is tracked in beads.

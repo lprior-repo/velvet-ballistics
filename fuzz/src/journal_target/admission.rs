@@ -98,6 +98,7 @@ fn workflow_parts(
     vb_core::WorkflowParts {
         name: Box::<str>::from(name),
         digest: vb_core::WorkflowDigest::from_bytes(digest),
+        semantic_source_identity: None,
         nodes,
         expressions: Box::new([]),
         accessors: Box::new([]),

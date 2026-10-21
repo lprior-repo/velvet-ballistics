@@ -2,8 +2,9 @@
 
 use super::super::super::JournalEvent;
 use super::super::tags::{
-    TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
-    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+    TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND, TAG_RUN_ANSWERED,
+    TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED,
+    TAG_RUN_RETRIED, TAG_RETRY_CHECKPOINT,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -15,6 +16,7 @@ where
     match event {
         JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
         JournalEvent::RunAdmission { .. } => serialize_admission(event, serializer),
+        JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
         JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
         JournalEvent::RunKilled { .. } => serialize_killed(event, serializer),
         JournalEvent::RunFinished { .. } => serialize_finished(event, serializer),
@@ -22,6 +24,28 @@ where
         JournalEvent::RunResumed { .. } => serialize_resumed(event, serializer),
         JournalEvent::RunRetried { .. } => serialize_retried(event, serializer),
         JournalEvent::RunAnswered { .. } => serialize_answered(event, serializer),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_retry_checkpoint<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RetryCheckpoint {
+            run,
+            seq,
+            attempt,
+            step,
+            payload_digest,
+            payload,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RETRY_CHECKPOINT,
+            "RetryCheckpoint",
+            &(run, seq, attempt, step, payload_digest, payload),
+        ),
         _ => serialize_routing_error::<S>(),
     }
 }
@@ -41,6 +65,14 @@ where
     }
 }
 
+type AdmissionFields<'a> = (
+    &'a vb_core::RunId,
+    &'a crate::EventSeq,
+    &'a vb_core::WorkflowDigest,
+    &'a vb_core::CapabilitySet,
+    &'a vb_core::RuntimePolicy,
+);
+
 fn serialize_admission<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -50,16 +82,52 @@ where
             run,
             seq,
             artifact_digest,
-            granted_capabilities,
+            input_digest,
+            granted_capabilities: caps,
             policy,
-        } => serialize_record_kind_variant(
+        } => serialize_admission_payload(
             serializer,
-            TAG_RUN_ADMISSION,
-            "RunAdmission",
-            &(run, seq, artifact_digest, granted_capabilities, policy),
+            (run, seq, artifact_digest, caps, policy),
+            input_digest,
         ),
         _ => serialize_routing_error::<S>(),
     }
+}
+
+fn serialize_admission_payload<S>(
+    serializer: S,
+    fields: AdmissionFields<'_>,
+    binding: &crate::RunInputBinding,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match binding {
+        crate::RunInputBinding::LegacyUnbound => {
+            serialize_record_kind_variant(serializer, TAG_RUN_ADMISSION, "RunAdmission", &fields)
+        }
+        crate::RunInputBinding::Digest(digest) => {
+            serialize_bound_admission_payload(serializer, fields, digest)
+        }
+    }
+}
+
+fn serialize_bound_admission_payload<S>(
+    serializer: S,
+    fields: AdmissionFields<'_>,
+    input_digest: &vb_core::WorkflowDigest,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let (run, seq, artifact, caps, policy) = fields;
+    let payload = (run, seq, artifact, input_digest, caps, policy);
+    serialize_record_kind_variant(
+        serializer,
+        TAG_RUN_ADMISSION_BOUND,
+        "RunAdmission",
+        &payload,
+    )
 }
 
 fn serialize_cancelled<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>

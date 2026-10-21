@@ -2,6 +2,7 @@
 mod action_index;
 mod append_event;
 mod commit;
+mod inputs;
 mod putters;
 mod types;
 mod writer_queue;

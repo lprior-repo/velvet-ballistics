@@ -33,6 +33,9 @@ impl ArtifactStore for AlwaysPresentArtifactStore {
 /// This trait enables the runtime admission gate to perform full artifact
 /// validation — not just existence — before admitting a run.
 pub trait AcceptedArtifactStore: Send + Sync {
+    /// Checked built-in catalog, created only by executing registered scratch conformance.
+    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> { None }
+
     /// Loads and validates an accepted artifact by digest.
     ///
     /// Returns the validated artifact on success, or an error if the artifact
@@ -82,6 +85,7 @@ fn always_present_verification_proof(
         idempotency_keyed: Box::new([]),
         idempotency_attested: Box::new([]),
         warnings: Vec::new(),
+        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
     }
 }
 
@@ -107,13 +111,19 @@ impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
 /// Artifact store backed by FjallJournal.
 pub struct StorageArtifactStore {
     journal: Arc<vb_storage::FjallJournal>,
+    catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
 }
 
 impl StorageArtifactStore {
+    /// Attach checked executor authority explicitly; legacy constructors remain fail-closed.
+    pub fn with_catalog(journal: Arc<vb_storage::FjallJournal>, catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>) -> Self {
+        Self { journal, catalog }
+    }
+
     /// Creates a new storage-backed artifact store.
     #[must_use]
     pub fn new(journal: Arc<vb_storage::FjallJournal>) -> Self {
-        Self { journal }
+        Self { journal, catalog: None }
     }
 
     /// Creates a new shared storage-backed artifact store (legacy artifact-only view).
@@ -140,6 +150,8 @@ impl ArtifactStore for StorageArtifactStore {
 }
 
 impl AcceptedArtifactStore for StorageArtifactStore {
+    fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> { self.catalog.as_deref() }
+
     fn load_accepted_artifact(
         &self,
         artifact_digest: WorkflowDigest,
@@ -176,7 +188,7 @@ impl AcceptedArtifactStore for StorageArtifactStore {
                 found: artifact.digest,
             });
         }
-        validate_accepted_artifact_envelope(&artifact)?;
+        validate_accepted_artifact_envelope(self, &artifact)?;
 
         Ok(artifact)
     }

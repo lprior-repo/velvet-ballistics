@@ -198,6 +198,7 @@ mod tests {
             },
         });
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("chain"),
             digest: WorkflowDigest::from_bytes([4; 32]),
             nodes: Box::from(nodes),

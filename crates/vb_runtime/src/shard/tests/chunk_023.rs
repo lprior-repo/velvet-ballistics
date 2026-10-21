@@ -277,6 +277,9 @@ fn ask_ticket_copy_semantics() {
         run: super::RunId::new(5),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
+
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
+        boundary_seq: vb_storage::EventSeq::ZERO,
     };
     let b = a;
     assert_eq!(a, b);

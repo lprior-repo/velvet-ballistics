@@ -154,6 +154,11 @@ pub use core::{
     compute_compiled_digest, emit_compiled_artifact, is_compile_idempotency_gate_accepted,
 };
 pub use errors::{CompileError, CompileErrors, SourceMark};
+pub mod artifact;
+pub use artifact::{
+    ArtifactVerificationError, CompilationBinding, CompilerCheck, SourceProvenance,
+    VerifiedCompilation, compile_verified_artifact, verify_compiled_artifact,
+};
 pub(crate) use errors::{collect, non_string_key_error};
 #[allow(unused_imports)]
 pub(crate) use lwr::digest_step_primitive as digest_step_primitive_part05;

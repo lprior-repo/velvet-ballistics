@@ -60,6 +60,7 @@ fn simple_workflow() -> CompiledWorkflow {
         },
     }];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_simple"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -89,6 +90,8 @@ fn run_state_after_n_steps(workflow: &CompiledWorkflow, run_id: RunId, executed:
         i = i.saturating_add(1);
     }
     RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: vb_runtime::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow: workflow.clone(),
         store: vb_core::ValueStore::new(),

@@ -1,0 +1,7 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.13s
+     Running tests/vb_9agmk_artifact_evidence.rs (target/debug/deps/vb_9agmk_artifact_evidence-aae04723156273c8)

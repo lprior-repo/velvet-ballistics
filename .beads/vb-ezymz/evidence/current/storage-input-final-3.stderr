@@ -1,0 +1,20 @@
+    Blocking waiting for file lock on build directory
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_storage)
+error[E0425]: cannot find function `recover_run_admission_from_events` in module `crate::recovery`
+  --> crates/vb_storage/src/inputs/receipt_tests.rs:53:38
+   |
+53 |     let recovered = crate::recovery::recover_run_admission_from_events(&[receipt(&record)])
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `crate::recovery`
+   |
+help: consider importing this function through its public re-export
+   |
+ 1 + use crate::recovery::replay::recover_run_admission_from_events;
+   |
+help: if you import `recover_run_admission_from_events`, refer to it directly
+   |
+53 -     let recovered = crate::recovery::recover_run_admission_from_events(&[receipt(&record)])
+53 +     let recovered = recover_run_admission_from_events(&[receipt(&record)])
+   |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (lib test) due to 1 previous error

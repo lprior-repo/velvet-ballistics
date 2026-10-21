@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+use core::num::NonZeroU16;
 use crossbeam_queue::ArrayQueue;
 use indexmap::{IndexMap, IndexSet};
 use std::time::Instant;
@@ -123,6 +124,15 @@ pub enum ShardCommand {
         /// Typed action output payload.
         output: vb_core::action::ActionOutputReady,
     },
+    /// A registered adapter produced an opaque checked durable receipt.
+    RegisteredActionCompleted {
+        /// Canonical pending action ticket.
+        ticket: vb_core::action::ActionTicket,
+        /// Receipt can only be produced by the concrete registered adapter.
+        receipt: vb_storage::executor::RegisterReceipt,
+        /// Runtime output derived from the adapter receipt.
+        output: vb_core::action::ActionOutputReady,
+    },
     /// An external action completed without a typed output payload.
     ActionCompletedLegacy {
         /// Run identifier.
@@ -189,9 +199,7 @@ pub enum ShardCommand {
     /// replay and validated full recovery context. The typed
     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
     /// collect pagination, and boundary classification in a single value.
-    Recover {
-        command: RecoverRunCommand,
-    },
+    Recover { command: RecoverRunCommand },
 }
 
 /// Typed recovery command carrying full recovery context from journal replay.
@@ -212,6 +220,8 @@ pub struct RecoverRunCommand {
     pub next_seq: EventSeq,
     /// Collect pagination states to resume after recovery.
     pub collect_states: CollectStates,
+    /// Validated full state to restore for a durable retry, when present.
+    pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
 }
@@ -235,8 +245,19 @@ impl RecoverRunCommand {
             workflow_digest,
             next_seq,
             collect_states,
+            retry_checkpoint: None,
             boundary,
         }
+    }
+
+    /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
+    #[must_use]
+    pub fn with_retry_checkpoint(
+        mut self,
+        checkpoint: crate::run_checkpoint::RunCheckpointV1,
+    ) -> Self {
+        self.retry_checkpoint = Some(checkpoint);
+        self
     }
 }
 
@@ -244,14 +265,66 @@ impl RecoverRunCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AskTicket {
     /// Owning run.
-    pub run: RunId,
+    pub(crate) run: RunId,
     /// Step that issued the ask and is currently marked asking.
-    pub ask_step: StepIdx,
+    pub(crate) ask_step: StepIdx,
     /// Step that consumes the answer slot, usually an AskResume node.
-    pub resume_step: StepIdx,
+    pub(crate) resume_step: StepIdx,
+    /// Slot authorized by the compiled AskResume node.
+    pub(crate) answer_slot: SlotIdx,
+    /// Durable per-run sequence identifying this exact AskScheduled boundary.
+    pub(crate) boundary_seq: EventSeq,
 }
 
-/// Explicit ask answer contract. The caller supplies both payload and destination slot.
+impl AskTicket {
+    /// Returns the owning run.
+    #[must_use]
+    pub const fn run(self) -> RunId {
+        self.run
+    }
+
+    /// Returns the step that issued the ask.
+    #[must_use]
+    pub const fn ask_step(self) -> StepIdx {
+        self.ask_step
+    }
+
+    /// Returns the step that consumes the answer.
+    #[must_use]
+    pub const fn resume_step(self) -> StepIdx {
+        self.resume_step
+    }
+
+    /// Returns the authorized answer slot.
+    #[must_use]
+    pub const fn answer_slot(self) -> SlotIdx {
+        self.answer_slot
+    }
+
+    pub(crate) const fn issued(
+        run: RunId,
+        ask_step: StepIdx,
+        resume_step: StepIdx,
+        answer_slot: SlotIdx,
+        boundary_seq: EventSeq,
+    ) -> Self {
+        Self {
+            run,
+            ask_step,
+            resume_step,
+            answer_slot,
+            boundary_seq,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PendingAskAuthority {
+    pub(crate) step: StepIdx,
+    pub(crate) boundary_seq: EventSeq,
+}
+
+/// Explicit ask answer contract. The requested slot must match the AskTicket authority.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AskAnswer {
     /// Ask ticket proving the intended resume point.
@@ -298,11 +371,24 @@ impl AskAnswer {
     }
 }
 
+/// Origin determines whether registered production effects may execute.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegisteredExecutionMode {
+    /// A newly admitted live run can execute with an exact issued grant.
+    Live,
+    /// Replayed runs may only reconcile existing receipts.
+    ReconcileOnly,
+}
+
 /// Mutable run state owned directly by the shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunState {
+    /// Replayed state never authorizes a new registered production effect.
+    pub registered_execution: RegisteredExecutionMode,
     /// Active run frame.
     pub frame: RunFrame,
+    /// Current durable run attempt. Attempt one is used only for newly admitted runs.
+    pub run_attempt: NonZeroU16,
     /// Compiled workflow for this run.
     pub workflow: CompiledWorkflow,
     /// Cold value store for list, object, and blob handles.
@@ -1011,6 +1097,8 @@ pub struct Shard {
     pub(super) run_aggregate: RunAggregate,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
+    /// Current runtime-issued ask boundary generation by run.
+    pub(crate) pending_ask_authorities: IndexMap<RunId, PendingAskAuthority>,
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,

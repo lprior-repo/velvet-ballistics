@@ -145,6 +145,7 @@ mod verus_unit_tests {
         accessors: Box<[AccessorProgram]>,
     ) -> WorkflowParts {
         WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("verus_test"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([CompiledNode {

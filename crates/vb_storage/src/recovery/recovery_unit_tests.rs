@@ -516,6 +516,7 @@ mod tests {
                 workflow: sample_digest(9),
             },
             JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
                 run,
                 seq: EventSeq::new(1),
                 artifact_digest: first,
@@ -523,6 +524,7 @@ mod tests {
                 policy: RuntimePolicy::Relaxed,
             },
             JournalEvent::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
                 run,
                 seq: EventSeq::new(2),
                 artifact_digest: latest,
@@ -708,6 +710,7 @@ mod tests {
             terminal: None,
         };
         let event = JournalEvent::RunAdmission {
+            input_digest: crate::RunInputBinding::LegacyUnbound,
             run: RunId::new(401),
             seq: EventSeq::new(0),
             artifact_digest: sample_digest(16),
@@ -1204,6 +1207,7 @@ mod tests {
                 JournalEvent::RetryScheduledEvent { .. } => Ok(true),
                 JournalEvent::RunAccepted { .. } => Ok(false),
                 JournalEvent::RunAdmission { .. } => Ok(false),
+                JournalEvent::RetryCheckpoint { .. } => Ok(false),
                 JournalEvent::RunCancelled { .. } => Ok(false),
                 JournalEvent::RunKilled { .. } => Ok(false),
                 JournalEvent::RunFinished { .. } => Ok(false),

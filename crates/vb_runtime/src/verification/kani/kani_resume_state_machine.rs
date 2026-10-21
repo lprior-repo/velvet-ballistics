@@ -77,6 +77,7 @@ fn symbolic_workflow_parts() -> WorkflowParts {
     let slot_count = symbolic_slot_count();
     let nodes = symbolic_nodes(step_count, slot_count);
     let parts = WorkflowParts {
+        semantic_source_identity: kani::any(),
         name: symbolic_workflow_name(),
         digest: vb_core::ids::WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
         nodes,
@@ -87,7 +88,7 @@ fn symbolic_workflow_parts() -> WorkflowParts {
         symbols_count: u32::from(kani::any::<u8>() % 4),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
         step_names: symbolic_step_names(step_count),
     };
     assume_guard_workflow_parts_domain(&parts);
@@ -211,6 +212,7 @@ fn symbolic_run_state(run: RunId) -> Option<RunState> {
         Err(_) => return None,
     };
     Some(RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::with_max_slots(slot_count),

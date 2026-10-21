@@ -60,6 +60,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -121,6 +122,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("action_with_error_handler"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([guard, action, handler, finish]),
@@ -195,6 +197,8 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         Err(_) => return,
     };
     let mut state = RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::new(),

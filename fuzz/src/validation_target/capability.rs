@@ -81,6 +81,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("capability-schema-fuzz"),
         digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
+        semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

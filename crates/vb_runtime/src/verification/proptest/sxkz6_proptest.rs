@@ -47,6 +47,7 @@ fn small_workflow() -> vb_core::workflow::CompiledWorkflow {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("proptest_sxkz6"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([node]),
@@ -69,6 +70,9 @@ fn make_answer(run: RunId) -> AskAnswer {
             run,
             ask_step: StepIdx::ZERO,
             resume_step: StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: SlotValue::Bool(true),

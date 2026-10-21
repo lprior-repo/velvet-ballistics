@@ -11,6 +11,8 @@ where
     match kind {
         RecordKind::RunAccepted => deserialize_accepted(variant),
         RecordKind::RunAdmission => deserialize_admission(variant),
+        RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
+        RecordKind::RetryCheckpoint => deserialize_retry_checkpoint(variant),
         RecordKind::RunCancelled => deserialize_cancelled(variant),
         RecordKind::RunKilled => deserialize_killed(variant),
         RecordKind::RunFinished => deserialize_finished(variant),
@@ -20,6 +22,21 @@ where
         RecordKind::RunAnswered => deserialize_answered(variant),
         _ => Err(de::Error::custom("record kind is not a run event")),
     }
+}
+
+fn deserialize_retry_checkpoint<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, attempt, step, payload_digest, payload) = variant.newtype_variant()?;
+    Ok(JournalEvent::RetryCheckpoint {
+        run,
+        seq,
+        attempt,
+        step,
+        payload_digest,
+        payload,
+    })
 }
 
 fn deserialize_accepted<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
@@ -39,6 +56,23 @@ where
         run,
         seq,
         artifact_digest,
+        input_digest: crate::RunInputBinding::LegacyUnbound,
+        granted_capabilities,
+        policy,
+    })
+}
+
+fn deserialize_bound_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, artifact_digest, input_digest, granted_capabilities, policy) =
+        variant.newtype_variant()?;
+    Ok(JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest,
+        input_digest: crate::RunInputBinding::Digest(input_digest),
         granted_capabilities,
         policy,
     })

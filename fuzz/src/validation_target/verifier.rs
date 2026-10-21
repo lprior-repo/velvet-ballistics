@@ -198,6 +198,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
     let parts = vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_gates"),
         digest: vb_core::WorkflowDigest::from_bytes([0xD0; 32]),
+        semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

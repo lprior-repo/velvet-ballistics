@@ -178,17 +178,23 @@ impl RecoveredRunBoundary {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveredOpenAsk {
     step: StepIdx,
+    boundary_seq: vb_storage::EventSeq,
 }
 
 impl RecoveredOpenAsk {
     #[must_use]
-    pub(crate) const fn new(step: StepIdx) -> Self {
-        Self { step }
+    pub(crate) const fn new(step: StepIdx, boundary_seq: vb_storage::EventSeq) -> Self {
+        Self { step, boundary_seq }
     }
 
     #[must_use]
     pub const fn step(self) -> StepIdx {
         self.step
+    }
+
+    #[must_use]
+    pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
+        self.boundary_seq
     }
 }
 
@@ -244,6 +250,7 @@ impl ResumableRecoveryProduct {
             workflow_digest: self.workflow_digest,
             next_seq: self.next_seq,
             collect_states: self.collect_states,
+            retry_checkpoint: None,
             boundary: self.boundary,
         }
     }

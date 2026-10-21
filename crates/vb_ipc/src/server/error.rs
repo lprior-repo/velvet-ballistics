@@ -31,6 +31,15 @@ pub enum IpcServerError {
     /// Failed to encode response payload.
     #[error("response encode failed")]
     ResponseEncodeFailed,
+    /// A previous response still owns the bounded output buffer.
+    #[error("previous IPC response is still pending")]
+    ResponsePending,
+    /// Failed to read a request from a peer.
+    #[error("request read failed: {source}")]
+    RequestReadFailed {
+        /// Underlying IO error.
+        source: std::io::Error,
+    },
     /// Failed to write response to client.
     #[error("response write failed: {source}")]
     ResponseWriteFailed {
@@ -65,6 +74,10 @@ impl PartialEq for IpcServerError {
             }
             (Self::TooManyClients, Self::TooManyClients) => true,
             (Self::ResponseEncodeFailed, Self::ResponseEncodeFailed) => true,
+            (Self::ResponsePending, Self::ResponsePending) => true,
+            (Self::RequestReadFailed { source: a }, Self::RequestReadFailed { source: b }) => {
+                a.kind() == b.kind() && a.to_string() == b.to_string()
+            }
             (Self::ResponseWriteFailed { source: a }, Self::ResponseWriteFailed { source: b }) => {
                 a.kind() == b.kind() && a.to_string() == b.to_string()
             }
@@ -91,6 +104,8 @@ impl IpcServerError {
             | Self::PollFailed { .. }
             | Self::AcceptFailed { .. }
             | Self::ResponseEncodeFailed
+            | Self::ResponsePending
+            | Self::RequestReadFailed { .. }
             | Self::ResponseWriteFailed { .. } => None,
         }
     }

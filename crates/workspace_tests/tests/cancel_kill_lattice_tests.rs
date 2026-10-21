@@ -66,6 +66,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
@@ -890,7 +891,7 @@ fn kill_live_run_produces_runkilled_journal_event() -> Result<(), String> {
     assert!(
         events.iter().any(|e| matches!(
             e,
-            RuntimeJournalEvent::RunKilled { run: r } if *r == run
+            RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run
         )),
         "journal must contain RunKilled event after kill"
     );
@@ -955,7 +956,7 @@ fn kill_on_cancelled_run_is_idempotent() -> Result<(), String> {
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     let killed_count = events
         .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r } if *r == run))
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run))
         .count();
     assert_eq!(
         killed_count, 0,
@@ -997,7 +998,7 @@ fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> 
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     let killed_count = events
         .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r } if *r == run))
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run))
         .count();
     assert_eq!(
         killed_count, 1,

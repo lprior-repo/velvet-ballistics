@@ -32,6 +32,7 @@ fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -753,15 +754,14 @@ fn validate_trigger_accepts_schedule_trigger_with_cron() {
 }
 
 #[test]
-#[ignore]
-fn validate_trigger_accepts_event_trigger_with_name() {
-    // Given a workflow doc with event trigger containing name
+fn validate_trigger_accepts_event_trigger_with_type() {
+    // Given a workflow doc with event trigger containing the v1 type field
     let doc = make_workflow(vec![(
         "when",
         FieldValue::Mapping(vec![(
             "event".to_owned(),
             FieldValue::Mapping(vec![(
-                "name".to_owned(),
+                "type".to_owned(),
                 FieldValue::String("job.created".to_owned()),
             )]),
         )]),

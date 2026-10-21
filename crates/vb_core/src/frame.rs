@@ -41,6 +41,9 @@ use crate::errors::{CoreError, CoreResult};
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 
+mod checkpoint;
+pub use checkpoint::{CheckpointStepState, RunFrameCheckpointV1, RunFrameCheckpointV1Error};
+
 /// Per-step execution state stored in the hot run frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]

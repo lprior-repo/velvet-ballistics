@@ -43,6 +43,7 @@ mod durability_gate_tests {
         use vb_core::{CompiledNode, CompiledNodeKind, ConstIdx, SlotIdx, StepIdx};
 
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::<str>::from("vb_2bok_test"),
             input_slots: Box::new([]),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -140,19 +141,21 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 15,
-            "Journaled must pass exactly 15 gates (structure + checksum + 13 others)"
+            result.verification.gate_count, 0,
+            "Journaled must pass typed checked evidence without a fabricated aggregate count"
         );
         assert!(
             !result.verification.durable,
             "Journaled must not be durable (no SyncAll)"
         );
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Journaled)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
     /// TEST: submit_artifact Strict policy enforces gates plus SyncAll
     ///
-    /// Contract §2.1 Postcondition (Strict): gate_count=15, durable=true.
+    /// Strict persists checked evidence; proof bytes cannot certify the persistence acknowledgement.
     #[test]
     fn submit_artifact_strict_enforces_gates_plus_syncall() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -162,13 +165,15 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 15,
-            "Strict must pass exactly 15 gates"
+            result.verification.gate_count, 0,
+            "Strict must pass typed checked evidence"
         );
         assert!(
-            result.verification.durable,
-            "Strict must be durable (SyncAll called)"
+            !result.verification.durable,
+            "proof bytes cannot self-certify a durable acknowledgement"
         );
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Strict)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -437,17 +442,19 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 15,
-            "Journaled policy must have gate_count == 15"
+            result.verification.gate_count, 0,
+            "Journaled policy must have no fabricated aggregate gate count"
         );
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Journaled)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    /// TEST: gate_count fifteen for Strict
+    /// TEST: checked evidence replaces aggregate gate counts for Strict
     ///
-    /// Contract §3.2: Strict → gate_count = 15.
+    /// Strict carries typed evidence with a conservative legacy gate count.
     #[test]
-    fn gate_count_two_for_strict() -> Result<(), String> {
+    fn strict_uses_checked_evidence_without_fabricated_count() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
@@ -455,17 +462,19 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 15,
-            "Strict policy must have gate_count == 15"
+            result.verification.gate_count, 0,
+            "Strict policy must have no fabricated aggregate gate count"
         );
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Strict)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    /// TEST: durable true only for Strict
+    /// TEST: proof metadata does not certify durability for any policy
     ///
-    /// Contract §3.2: durable == true only for Strict.
+    /// Durability is an executed journal barrier result.
     #[test]
-    fn durable_true_only_for_strict() -> Result<(), String> {
+    fn proof_metadata_does_not_certify_durability() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
@@ -485,9 +494,11 @@ mod durability_gate_tests {
             "Journaled must have durable == false"
         );
         assert!(
-            strict.verification.durable,
-            "Strict must have durable == true"
+            !strict.verification.durable,
+            "durability is an executed persistence result, not a proof flag"
         );
+        crate::admission::verify_accepted_artifact_for_policy(&strict, RuntimePolicy::Strict)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -1436,9 +1447,14 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 15, "gate_count must be 15");
+        assert_eq!(
+            result.verification.gate_count, 0,
+            "aggregate count is not proof evidence"
+        );
         assert!(!result.verification.durable, "durable must be false");
 
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Journaled)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -1451,9 +1467,17 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 15, "gate_count must be 15");
-        assert!(result.verification.durable, "durable must be true");
+        assert_eq!(
+            result.verification.gate_count, 0,
+            "aggregate count is not proof evidence"
+        );
+        assert!(
+            !result.verification.durable,
+            "proof bytes cannot self-certify a durable acknowledgement"
+        );
 
+        crate::admission::verify_accepted_artifact_for_policy(&result, RuntimePolicy::Strict)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 

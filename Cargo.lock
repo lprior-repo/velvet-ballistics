@@ -2013,6 +2013,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "vb_core",
+ "vb_validate",
 ]
 
 [[package]]

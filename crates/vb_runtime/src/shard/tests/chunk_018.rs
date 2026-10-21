@@ -14,7 +14,7 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     let events = journal.snapshot().unwrap_or_default();
     let cancelled_count = events
         .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r , reason: None} if *r == run))
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r , reason: None, attempt: 1} if *r == run))
         .count();
     assert_eq!(
         cancelled_count, 0,

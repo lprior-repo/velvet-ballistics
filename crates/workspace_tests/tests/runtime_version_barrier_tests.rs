@@ -1,613 +1,194 @@
 #![forbid(unsafe_code)]
-//! Artifact version barrier integration tests for runtime admission.
-//!
-//! These tests verify the runtime enforcement of artifact version barriers
-//! including schema version validation, gate count requirements, and proof
-//! flag verification before run admission.
-//!
-//! ## Coverage
-//!
-//! - Schema version barrier: only version == 1 is accepted
-//! - Gate count barrier: exactly 15 verification gates required
-//! - Proof flag barrier: all 6 proof flags must be true
-//! - Digest barrier: artifact digest must match verification proof digest
-//!
-//! ## Test Philosophy
-//!
-//! These are **failing-first TDD tests**. The implementation does not exist yet.
-//! Each test documents the expected contract and will pass once the runtime
-//! artifact version barrier is properly implemented.
+//! Runtime admission requires checked artifact evidence bound to the actual payload.
+//! Historical proof flags and gate counts do not establish that authority.
 
-use proptest::{prop_assert, prop_assume, proptest};
-use vb_compile::{CompileError, CompileErrors, YamlCompiler};
-use vb_core::capability::CapabilitySet;
-use vb_core::ids::{RunId, WorkflowDigest};
-use vb_core::policy::RuntimePolicy;
+use proptest::{prop_assert_eq, proptest};
+use vb_core::artifact::ArtifactEvidence;
+use vb_core::{CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::admission::{
-    AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore, admit_artifact_run,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore,
+    admit_artifact_run,
 };
-use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 
-// ---------------------------------------------------------------------------
-// Test fixtures and helpers
-// ---------------------------------------------------------------------------
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: version_barrier\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
 
-fn empty_digest() -> WorkflowDigest {
-    WorkflowDigest::from_bytes([0u8; 32])
-}
+struct FixedStore(AcceptedArtifact);
 
-fn make_artifact_with_gate_count(gate_count: u8, all_flags_true: bool) -> AcceptedArtifact {
-    AcceptedArtifact {
-        digest: empty_digest(),
-        source_digest: empty_digest(),
-        policy_digest: empty_digest(),
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest: empty_digest(),
-            gate_count,
-            durable: true,
-            bounded_claimed: all_flags_true,
-            taint_safe_claimed: all_flags_true,
-            retry_safe_claimed: all_flags_true,
-            idempotency_verified_claimed: all_flags_true,
-            replayable_claimed: all_flags_true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: vb_storage::types::EventSeq::ZERO,
-        required_capabilities: Box::new([]),
-        action_contracts: Box::new([]),
-    }
-}
-
-fn make_artifact_with_flags(
-    gate_count: u8,
-    bounded: bool,
-    taint_safe: bool,
-    retry_safe: bool,
-    durable: bool,
-    replayable: bool,
-    idempotency_verified: bool,
-) -> AcceptedArtifact {
-    AcceptedArtifact {
-        digest: empty_digest(),
-        source_digest: empty_digest(),
-        policy_digest: empty_digest(),
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest: empty_digest(),
-            gate_count,
-            durable,
-            bounded_claimed: bounded,
-            taint_safe_claimed: taint_safe,
-            retry_safe_claimed: retry_safe,
-            idempotency_verified_claimed: idempotency_verified,
-            replayable_claimed: replayable,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: vb_storage::types::EventSeq::ZERO,
-        required_capabilities: Box::new([]),
-        action_contracts: Box::new([]),
-    }
-}
-
-fn make_artifact_with_digest(digest: WorkflowDigest) -> AcceptedArtifact {
-    AcceptedArtifact {
-        digest,
-        source_digest: digest,
-        policy_digest: digest,
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest,
-            gate_count: 15,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: vb_storage::types::EventSeq::ZERO,
-        required_capabilities: Box::new([]),
-        action_contracts: Box::new([]),
-    }
-}
-
-/// A store that returns a pre-configured artifact regardless of digest.
-#[derive(Debug, Default)]
-struct FixedAcceptedArtifactStore {
-    artifact: Option<AcceptedArtifact>,
-    should_fail_load: bool,
-}
-
-impl FixedAcceptedArtifactStore {
-    fn new(artifact: AcceptedArtifact) -> Self {
-        Self {
-            artifact: Some(artifact),
-            should_fail_load: false,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn with_failure() -> Self {
-        Self {
-            artifact: None,
-            should_fail_load: true,
-        }
-    }
-}
-
-impl vb_runtime::admission::AcceptedArtifactStore for FixedAcceptedArtifactStore {
+impl AcceptedArtifactStore for FixedStore {
     fn load_accepted_artifact(
         &self,
-        _artifact_digest: WorkflowDigest,
+        _digest: WorkflowDigest,
     ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-        if self.should_fail_load {
-            return Err(ArtifactEnvelopeError::ArtifactNotFound {
-                digest: empty_digest(),
-            });
-        }
-        self.artifact
-            .clone()
-            .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
-                digest: empty_digest(),
-            })
+        Ok(self.0.clone())
     }
 }
 
-// ---------------------------------------------------------------------------
-// Gate Count Barrier Tests
-// ---------------------------------------------------------------------------
+fn valid_artifact() -> Result<AcceptedArtifact, Box<dyn std::error::Error>> {
+    let workflow = vb_compile::compile_workflow(SOURCE)?;
+    Ok(prepare_compiled_artifact(
+        &workflow,
+        RuntimePolicy::Strict,
+        &[],
+    )?)
+}
 
-// B-05: gate_count != 15 must be rejected
-#[test]
-fn gate_count_zero_rejected() {
-    let artifact = make_artifact_with_gate_count(0, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
+fn admit(artifact: AcceptedArtifact) -> Result<(), AdmissionError> {
+    let digest = artifact.digest;
+    admit_artifact_run(
+        &FixedStore(artifact),
         RuntimePolicy::Strict,
         RunId::new(1),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            err,
-            AdmissionError::ArtifactInvalidGateCount {
-                found: 0,
-                required: 15
-            }
-        ),
-        "expected ArtifactInvalidGateCount {{ found: 0, required: 15 }}, got {:?}",
-        err
-    );
-}
-
-#[test]
-fn gate_count_fourteen_rejected() {
-    let artifact = make_artifact_with_gate_count(14, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(2),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            err,
-            AdmissionError::ArtifactInvalidGateCount {
-                found: 14,
-                required: 15
-            }
-        ),
-        "expected ArtifactInvalidGateCount {{ found: 14, required: 15 }}, got {:?}",
-        err
-    );
-}
-
-#[test]
-fn gate_count_sixteen_rejected() {
-    let artifact = make_artifact_with_gate_count(16, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(3),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            err,
-            AdmissionError::ArtifactInvalidGateCount {
-                found: 16,
-                required: 15
-            }
-        ),
-        "expected ArtifactInvalidGateCount {{ found: 16, required: 15 }}, got {:?}",
-        err
-    );
-}
-
-#[test]
-fn gate_count_fifteen_accepted() {
-    let artifact = make_artifact_with_gate_count(15, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(4),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(
-        result.is_ok(),
-        "gate_count == 15 must be accepted, got {:?}",
-        result
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Proof Flag Barrier Tests
-// ---------------------------------------------------------------------------
-
-// B-06: bounded flag must be true
-#[test]
-fn bounded_false_rejected() {
-    let artifact = make_artifact_with_flags(15, false, true, true, true, true, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(5),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "bounded"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"bounded\" }}, got {:?}",
-        err
-    );
-}
-
-// B-07: taint_safe flag must be true
-#[test]
-fn taint_safe_false_rejected() {
-    let artifact = make_artifact_with_flags(15, true, false, true, true, true, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(6),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "taint_safe"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"taint_safe\" }}, got {:?}",
-        err
-    );
-}
-
-// B-08: retry_safe flag must be true
-#[test]
-fn retry_safe_false_rejected() {
-    let artifact = make_artifact_with_flags(15, true, true, false, true, true, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(7),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "retry_safe"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"retry_safe\" }}, got {:?}",
-        err
-    );
-}
-
-// B-09: durable flag must be true
-#[test]
-fn durable_false_rejected() {
-    let artifact = make_artifact_with_flags(15, true, true, true, false, true, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(8),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "durable"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"durable\" }}, got {:?}",
-        err
-    );
-}
-
-// B-10: replayable flag must be true
-#[test]
-fn replayable_false_rejected() {
-    let artifact = make_artifact_with_flags(15, true, true, true, true, false, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(9),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "replayable"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"replayable\" }}, got {:?}",
-        err
-    );
-}
-
-// B-11: idempotency_verified flag must be true
-#[test]
-fn idempotency_verified_false_rejected() {
-    let artifact = make_artifact_with_flags(15, true, true, true, true, true, false);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(10),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactInvalidProofFlag { flag } if flag == "idempotency_verified"),
-        "expected ArtifactInvalidProofFlag {{ flag: \"idempotency_verified\" }}, got {:?}",
-        err
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Digest Barrier Tests
-// ---------------------------------------------------------------------------
-
-// B-12: digest mismatch must be rejected
-#[test]
-fn artifact_digest_mismatch_rejected() {
-    let requested_digest = empty_digest();
-    let different_digest = WorkflowDigest::from_bytes([1u8; 32]);
-    let artifact = make_artifact_with_digest(different_digest);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(11),
-        requested_digest,
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            err,
-            AdmissionError::ArtifactDigestMismatch {
-                requested,
-                found
-            } if requested == requested_digest && found == different_digest
-        ),
-        "expected ArtifactDigestMismatch {{ requested: {:?}, found: {:?} }}, got {:?}",
-        requested_digest,
-        different_digest,
-        err
-    );
-}
-
-// B-13: digest match must be accepted
-#[test]
-fn artifact_digest_match_accepted() {
-    let digest = WorkflowDigest::from_bytes([42u8; 32]);
-    let artifact = make_artifact_with_digest(digest);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(12),
         digest,
         CapabilitySet::empty(),
-    );
-    assert!(
-        result.is_ok(),
-        "matching digest must be accepted, got {:?}",
-        result
-    );
+    )
+    .map(|_| ())
 }
 
-// ---------------------------------------------------------------------------
-// Compile Error Barrier Tests
-// ---------------------------------------------------------------------------
+fn evidence_error() -> Result<(), AdmissionError> {
+    Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
+}
 
-// B-15: UnsupportedStepPrimitive error
-// Nested collect inside collect body is not supported in Phase 0 compiler.
 #[test]
-fn unsupported_step_primitive_rejected_at_compile() {
-    let yaml = b"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: collect_pages
-    collect:
-      variable: page
-      source: \"0\"
-      steps:
-        - id: inner
-          collect:
-            variable: inner_page
-            source: \"1\"
-  - id: done
-    finish:
-      result: 0
-";
-    let compiler = YamlCompiler::default();
-    let result = compiler.compile(yaml);
-    assert!(result.is_err());
-    let errors: CompileErrors = result.unwrap_err();
-    let first_error = errors.first();
-    assert!(
-        matches!(
-            first_error,
-            Some(CompileError::UnsupportedStepPrimitive { .. })
+fn verified_artifact_admitted_without_fabricated_claims() -> TestResult {
+    let artifact = valid_artifact()?;
+    assert_eq!(artifact.verification.gate_count, 0);
+    assert!(!artifact.verification.durable);
+    assert!(!artifact.verification.replayable_claimed);
+    assert!(!artifact.verification.retry_safe_claimed);
+    assert!(!artifact.verification.taint_safe_claimed);
+    assert_eq!(admit(artifact), Ok(()));
+    Ok(())
+}
+
+#[test]
+fn all_legacy_claims_true_do_not_establish_evidence() -> TestResult {
+    let mut artifact = valid_artifact()?;
+    let proof = &mut artifact.verification;
+    proof.evidence = ArtifactEvidence::Unverified;
+    proof.gate_count = 15;
+    proof.durable = true;
+    proof.bounded_claimed = true;
+    proof.taint_safe_claimed = true;
+    proof.retry_safe_claimed = true;
+    proof.idempotency_verified_claimed = true;
+    proof.replayable_claimed = true;
+    assert_eq!(admit(artifact), evidence_error());
+    Ok(())
+}
+
+#[test]
+fn changed_proof_claims_rejected_even_after_checksum_rebinding() -> TestResult {
+    let base = valid_artifact()?;
+    for field in 0..7 {
+        let mut artifact = base.clone();
+        let proof = &mut artifact.verification;
+        match field {
+            0 => proof.bounded_claimed = !proof.bounded_claimed,
+            1 => proof.taint_safe_claimed = !proof.taint_safe_claimed,
+            2 => proof.retry_safe_claimed = !proof.retry_safe_claimed,
+            3 => proof.durable = !proof.durable,
+            4 => proof.replayable_claimed = !proof.replayable_claimed,
+            5 => proof.idempotency_verified_claimed = !proof.idempotency_verified_claimed,
+            _ => proof.gate_count = 15,
+        }
+        artifact.digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
+        artifact.verification.digest = artifact.digest;
+        assert_eq!(admit(artifact), evidence_error(), "changed field {field}");
+    }
+    Ok(())
+}
+
+#[test]
+fn unsupported_evidence_version_rejected() -> TestResult {
+    let mut artifact = valid_artifact()?;
+    let ArtifactEvidence::Verified(evidence) = &mut artifact.verification.evidence else {
+        return Err("fixture lacks verified evidence".into());
+    };
+    evidence.schema_version = u16::MAX;
+    assert_eq!(admit(artifact), evidence_error());
+    Ok(())
+}
+
+#[test]
+fn matching_digest_does_not_authorize_changed_ir() -> TestResult {
+    let mut artifact = valid_artifact()?;
+    artifact.ir.clear();
+    assert_eq!(admit(artifact), evidence_error());
+    Ok(())
+}
+
+#[test]
+fn requested_digest_mismatch_has_exact_error() -> TestResult {
+    let artifact = valid_artifact()?;
+    let found = artifact.digest;
+    let requested = WorkflowDigest::from_bytes([1; 32]);
+    assert_ne!(found, requested);
+    assert_eq!(
+        admit_artifact_run(
+            &FixedStore(artifact),
+            RuntimePolicy::Strict,
+            RunId::new(2),
+            requested,
+            CapabilitySet::empty(),
         ),
-        "expected UnsupportedStepPrimitive, got {:?}",
-        errors
+        Err(AdmissionError::ArtifactDigestMismatch { requested, found }),
     );
+    Ok(())
 }
-
-// NOTE: B-16 (ExpressionLoweringUnsupported) is not testable through YamlCompiler::compile
-// because the YAML schema validates and coerces values before expression lowering occurs.
-// Text constants in expressions trigger ExpressionLoweringUnsupported in the expression
-// bytecode layer, but this is only accessible through the expression parser directly,
-// not through the YAML compilation path. This behavior is covered by unit tests in
-// vb_compile/src/expression_bytecode.rs.
-
-// ---------------------------------------------------------------------------
-// Relaxed Policy Tests
-// ---------------------------------------------------------------------------
 
 #[test]
-fn relaxed_policy_skips_barrier_validation() {
-    let artifact = make_artifact_with_gate_count(0, false);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Relaxed,
-        RunId::new(13),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
+fn relaxed_policy_skips_evidence_validation() -> TestResult {
+    let mut artifact = valid_artifact()?;
+    artifact.verification.evidence = ArtifactEvidence::Unverified;
+    let digest = artifact.digest;
     assert!(
-        result.is_ok(),
-        "Relaxed policy must skip barrier validation, got {:?}",
-        result
+        admit_artifact_run(
+            &FixedStore(artifact),
+            RuntimePolicy::Relaxed,
+            RunId::new(3),
+            digest,
+            CapabilitySet::empty(),
+        )
+        .is_ok()
     );
+    Ok(())
 }
-
-// ---------------------------------------------------------------------------
-// Missing Artifact Tests
-// ---------------------------------------------------------------------------
 
 #[test]
 fn missing_artifact_rejected_under_strict_policy() {
-    let store = MissingAcceptedArtifactStore::shared();
-    let result = admit_artifact_run(
-        store.as_ref(),
-        RuntimePolicy::Strict,
-        RunId::new(14),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        matches!(err, AdmissionError::ArtifactNotFound { .. }),
-        "expected ArtifactNotFound, got {:?}",
-        err
+    let digest = WorkflowDigest::from_bytes([0; 32]);
+    assert_eq!(
+        admit_artifact_run(
+            MissingAcceptedArtifactStore::shared().as_ref(),
+            RuntimePolicy::Strict,
+            RunId::new(4),
+            digest,
+            CapabilitySet::empty(),
+        ),
+        Err(AdmissionError::ArtifactNotFound { digest }),
     );
 }
-
-// ---------------------------------------------------------------------------
-// Boundary: All Proof Flags True Together
-// ---------------------------------------------------------------------------
 
 #[test]
-fn all_proof_flags_true_accepted() {
-    let artifact = make_artifact_with_flags(15, true, true, true, true, true, true);
-    let store = FixedAcceptedArtifactStore::new(artifact);
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(15),
-        empty_digest(),
-        CapabilitySet::empty(),
-    );
-    assert!(
-        result.is_ok(),
-        "all proof flags true must be accepted, got {:?}",
-        result
-    );
+fn unsupported_step_primitive_rejected_at_compile() {
+    let yaml = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
+    let result = vb_compile::YamlCompiler::default().compile(yaml);
+    assert!(matches!(result, Err(errors) if matches!(
+        errors.first(), Some(vb_compile::CompileError::UnsupportedStepPrimitive { .. })
+    )));
 }
-
-// ---------------------------------------------------------------------------
-// Proptest: Gate Count Invariants
-// ---------------------------------------------------------------------------
 
 proptest! {
     #[test]
-    fn validate_gate_count_rejects_invalid_counts(count in proptest::num::u8::ANY) {
-        prop_assume!(count != 15, "skipping valid case");
-        let artifact = make_artifact_with_gate_count(count, true);
-        let store = FixedAcceptedArtifactStore::new(artifact);
-        let result = admit_artifact_run(
-            &store,
-            RuntimePolicy::Strict,
-            RunId::new(0),
-            empty_digest(),
-            CapabilitySet::empty(),
-        );
-        prop_assert!(result.is_err(), "gate count {} must be rejected", count);
-    }
-
-    #[test]
-    fn validate_gate_count_accepts_fifteen(count in proptest::strategy::Just(15u8)) {
-        let artifact = make_artifact_with_gate_count(count, true);
-        let store = FixedAcceptedArtifactStore::new(artifact);
-        let result = admit_artifact_run(
-            &store,
-            RuntimePolicy::Strict,
-            RunId::new(0),
-            empty_digest(),
-            CapabilitySet::empty(),
-        );
-        prop_assert!(result.is_ok(), "gate count 15 must be accepted");
-    }
-
-    #[test]
-    fn digest_mismatch_detected_by_admission(d1 in proptest::array::uniform32(0u8..), d2 in proptest::array::uniform32(0u8..)) {
-        prop_assume!(d1 != d2);
-        let artifact = make_artifact_with_digest(WorkflowDigest::from_bytes(d1));
-        let store = FixedAcceptedArtifactStore::new(artifact);
-        let result = admit_artifact_run(
-            &store,
-            RuntimePolicy::Strict,
-            RunId::new(0),
-            WorkflowDigest::from_bytes(d2),
-            CapabilitySet::empty(),
-        );
-        prop_assert!(result.is_err(), "digest mismatch must be detected");
+    fn any_claimed_gate_count_without_evidence_is_rejected(count in proptest::num::u8::ANY) {
+        let artifact = valid_artifact().map(|mut artifact| {
+            artifact.verification.evidence = ArtifactEvidence::Unverified;
+            artifact.verification.gate_count = count;
+            artifact
+        });
+        let result = artifact.map(admit).map_err(|error| error.to_string());
+        prop_assert_eq!(result, Ok(evidence_error()));
     }
 }

@@ -591,6 +591,8 @@ pub struct RecoveryRuntimeSummary {
 /// Admission metadata recovered from durable journal events.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveredRunAdmission {
+    /// Canonical retained input identity, or explicit historical absence.
+    pub input_digest: crate::RunInputBinding,
     /// Digest of the accepted compiled artifact.
     pub artifact_digest: WorkflowDigest,
     /// Run identifier assigned at admission.

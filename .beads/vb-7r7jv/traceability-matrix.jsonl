@@ -1,0 +1,6 @@
+{"requirement_id": "vb-7r7jv", "contract_clause": "K1", "proof_seed_id": "SEED-vb-7r7jv-001", "boundary": "cold action-pack admission", "status": "contract-draft-awaiting-root-boundary-coordination"}
+{"requirement_id": "vb-7r7jv", "contract_clause": "K4", "proof_seed_id": "SEED-vb-7r7jv-002", "boundary": "dedicated Fjall target+receipt transaction", "status": "contract-draft-awaiting-root-boundary-coordination"}
+{"requirement_id": "vb-7r7jv", "contract_clause": "K5", "proof_seed_id": "SEED-vb-7r7jv-003", "boundary": "adapter receipt store and runtime scheduled ticket", "status": "contract-draft-awaiting-root-boundary-coordination"}
+{"requirement_id": "vb-7r7jv", "contract_clause": "K6", "proof_seed_id": "SEED-vb-7r7jv-004", "boundary": "independent classification smart constructor", "status": "contract-draft-awaiting-root-boundary-coordination"}
+{"requirement_id": "vb-7r7jv", "contract_clause": "K7", "proof_seed_id": "SEED-vb-7r7jv-005", "boundary": "receipt lookup and atomic commit", "status": "contract-draft-awaiting-root-boundary-coordination"}
+{"requirement_id": "vb-7r7jv", "contract_clause": "K8", "proof_seed_id": "SEED-vb-7r7jv-006", "boundary": "versioned pack and artifact decoders", "status": "contract-draft-awaiting-root-boundary-coordination"}

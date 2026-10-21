@@ -100,6 +100,7 @@ fn accepted_artifact_with_gate_count(
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         },
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
@@ -175,6 +176,7 @@ fn run_accepted_event(run: RunId, seq: u64, workflow: WorkflowDigest) -> Journal
 
 fn run_admission_event(run: RunId, seq: u64, artifact_digest: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         run,
         seq: EventSeq::new(seq),
         artifact_digest,

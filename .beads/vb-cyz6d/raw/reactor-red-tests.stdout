@@ -1,0 +1,33 @@
+
+running 4 tests
+test server::reactor_tests::pending_response_cannot_be_replaced ... FAILED
+test server::reactor_tests::overload_rejects_extra_peer_and_existing_client_stays_usable ... FAILED
+test server::reactor_tests::listener_drains_a_preconnected_burst ... FAILED
+test server::reactor_tests::complete_frame_larger_than_read_chunk_makes_progress ... FAILED
+
+failures:
+
+---- server::reactor_tests::pending_response_cannot_be_replaced stdout ----
+
+thread 'server::reactor_tests::pending_response_cannot_be_replaced' (2329892) panicked at crates/vb_ipc/src/server/reactor_tests.rs:127:5:
+second response must be rejected while first owns output
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- server::reactor_tests::overload_rejects_extra_peer_and_existing_client_stays_usable stdout ----
+Error: TooManyClients
+
+---- server::reactor_tests::listener_drains_a_preconnected_burst stdout ----
+Error: Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" }
+
+---- server::reactor_tests::complete_frame_larger_than_read_chunk_makes_progress stdout ----
+Error: Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" }
+
+
+failures:
+    server::reactor_tests::complete_frame_larger_than_read_chunk_makes_progress
+    server::reactor_tests::listener_drains_a_preconnected_burst
+    server::reactor_tests::overload_rejects_extra_peer_and_existing_client_stays_usable
+    server::reactor_tests::pending_response_cannot_be_replaced
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 531 filtered out; finished in 0.07s
+

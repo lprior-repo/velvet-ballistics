@@ -34,6 +34,58 @@ fn parse_run_accepts_db_for_journaled_mode() {
 }
 
 #[test]
+fn parse_retry_requires_and_parses_observed_step() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "retry",
+        "42",
+        "--step",
+        "65535",
+        "--db",
+        "journal-db",
+    ]));
+
+    assert!(
+        matches!(parsed, Ok(Command::Retry { step: u16::MAX, .. })),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_retry_requires_step_flag() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "retry",
+        "42",
+        "--db",
+        "journal-db",
+    ]));
+
+    assert!(
+        matches!(parsed, Err(ParseError::MissingArgument("--step"))),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_retry_rejects_step_overflow() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "retry",
+        "42",
+        "--step",
+        "65536",
+        "--db",
+        "journal-db",
+    ]));
+
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidStep(ref step)) if step == "65536"),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
 fn parse_run_compiled_requires_db_for_strict_mode() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",

@@ -97,6 +97,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("proptest_do_wf"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([do_node]),
@@ -115,6 +116,8 @@ fn make_do_run_state(step_count: u16) -> RunState {
         RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).expect("proptest: valid frame");
 
     RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: ValueStore::new(),

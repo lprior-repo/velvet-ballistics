@@ -72,6 +72,7 @@ proptest! {
         let parts_zeroed = WorkflowParts {
             name: Box::<str>::from("proptest_digest"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
+            semantic_source_identity: None,
             nodes: nodes.into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
@@ -100,6 +101,7 @@ proptest! {
         // Now build the correct parts with the right digest.
         let corrected_parts = WorkflowParts {
             digest: reference_digest,
+            semantic_source_identity: None,
             ..parts_zeroed
         };
 

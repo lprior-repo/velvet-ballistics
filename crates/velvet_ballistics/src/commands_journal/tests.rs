@@ -3,8 +3,8 @@ use chrono::Utc;
 use proptest::proptest;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
-use vb_storage::types::EventSeq;
 use vb_storage::JournalEvent;
+use vb_storage::types::EventSeq;
 
 fn make_run_id(v: u64) -> RunId {
     RunId::new(v)
@@ -373,6 +373,7 @@ fn trace_one_run_accepted_maps_correct_fields() {
 #[test]
 fn trace_one_run_admission_maps_correct_fields() {
     let event = JournalEvent::RunAdmission {
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         run: make_run_id(2),
         seq: make_event_seq(3),
         artifact_digest: dummy_digest(),

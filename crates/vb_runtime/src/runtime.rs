@@ -254,7 +254,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
         shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
@@ -344,7 +344,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
+        shard.validate_submit_admission(run, &workflow, caps.clone())?;
         shard.enqueue(ShardCommand::SubmitWithInputs {
             run,
             workflow,
@@ -428,12 +428,52 @@ impl Runtime {
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let fjall_journal = self.recovery_storage_journal()?;
         let prefix = Self::load_recovery_prefix_evidence(fjall_journal.as_ref(), run)?;
-        let recovered = Self::load_recovery_artifact_and_workflow(
-            fjall_journal,
+        let recovered = self.load_recovery_artifact_and_workflow(
+            std::sync::Arc::clone(&fjall_journal),
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
-        Self::build_runtime_recovery_product(run, prefix, recovered)
+        let retained_inputs =
+            Self::load_retained_inputs_for_recovery(&prefix, &recovered, fjall_journal.as_ref(), run)?;
+        self.build_runtime_recovery_product(run, prefix, recovered, retained_inputs)
+    }
+
+    /// Loads and validates retained typed inputs for cold startup recovery.
+    fn load_retained_inputs_for_recovery(
+        prefix: &RecoveryPrefixEvidence,
+        recovered: &RecoveryArtifactWorkflow,
+        journal: &vb_storage::FjallJournal,
+        run: RunId,
+    ) -> RuntimeResult<Option<vb_storage::RunInputsRecord>> {
+        // Check if this admission is new-bound (has input digest) or legacy
+        let admission_event = prefix
+            .events
+            .iter()
+            .find(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
+            .ok_or(RuntimeError::Recovery {
+                error: "recovery: admission event not found in journal events".to_string(),
+            })?;
+
+        if !crate::recovery::admission_is_new_bound(admission_event) {
+            // Legacy unbound admission - no retained inputs expected
+            return Ok(None);
+        }
+
+        // New-bound admission - retained inputs required
+        let record = journal
+            .run_inputs(run)?
+            .ok_or(RuntimeError::Recovery {
+                error: format!("recovery: retained input record missing for new-bound run {:?}", run),
+            })?;
+
+        crate::recovery::validate_input_record_binding(&record, run, admission_event)?;
+        crate::recovery::validate_input_record_artifact(
+            &record,
+            prefix.admission.artifact_digest(),
+        )?;
+        crate::recovery::validate_input_record_workflow(&record, &recovered.workflow)?;
+
+        Ok(Some(record))
     }
 
     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
@@ -539,9 +579,11 @@ impl Runtime {
     }
 
     fn build_runtime_recovery_product(
+        &self,
         run: RunId,
         prefix: RecoveryPrefixEvidence,
         recovered: RecoveryArtifactWorkflow,
+        retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
@@ -553,7 +595,7 @@ impl Runtime {
             &recovered.workflow,
             &expected,
         )?;
-        Self::product_from_recovered_seed(run, prefix, seed, boundary)
+        Self::product_from_recovered_seed(run, prefix, seed, boundary, retained_inputs)
     }
 
     /// Reconstructs a typed [`vb_storage::recovery::RecoveryFrameSeedProduct`]
@@ -596,6 +638,7 @@ impl Runtime {
             seed.seed(),
             pending_action,
             workflow,
+            events,
         ))
     }
 
@@ -604,6 +647,7 @@ impl Runtime {
         prefix: RecoveryPrefixEvidence,
         seed: vb_storage::recovery::RecoveryFrameSeedProduct,
         boundary: crate::recovery::RecoveredRunBoundary,
+        retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let context = RecoveredSeedProductContext {
             run,
@@ -611,11 +655,12 @@ impl Runtime {
             seed,
             boundary,
         };
-        Self::product_from_recovered_context(context)
+        Self::product_from_recovered_context(context, retained_inputs)
     }
 
     fn product_from_recovered_context(
         context: RecoveredSeedProductContext,
+        retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let cannot_resume =
             crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
@@ -625,15 +670,23 @@ impl Runtime {
                 cannot_resume,
             ));
         }
-        Self::resumable_product_from_recovered_context(context)
+        Self::resumable_product_from_recovered_context(context, retained_inputs)
     }
 
     fn resumable_product_from_recovered_context(
         context: RecoveredSeedProductContext,
+        retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let frame = crate::recovery::hydrate_frame_for_full_recovery(
+        let initial_inputs = match &retained_inputs {
+            Some(record) => {
+                Some(record.inputs().to_vec())
+            }
+            None => None,
+        };
+        let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
             context.seed.seed(),
             context.boundary,
+            initial_inputs,
         )?;
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
@@ -673,12 +726,13 @@ impl Runtime {
     }
 
     fn load_recovery_artifact_and_workflow(
+        &self,
         journal: std::sync::Arc<vb_storage::FjallJournal>,
         artifact_digest: WorkflowDigest,
     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
         use crate::admission::AcceptedArtifactStore;
 
-        let store = crate::admission::StorageArtifactStore::new(journal);
+        let store = crate::admission::StorageArtifactStore::with_catalog(journal, self.journal.executor_catalog());
         let artifact = store
             .load_accepted_artifact(artifact_digest)
             .map_err(|error| RuntimeError::RecoveryCannotResume {
@@ -851,6 +905,9 @@ impl Runtime {
     /// Completes an action for a run.
     pub fn complete_action(&self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        if let Some(ticket) = self.lookup_pending_action_ticket(run, u64::from(step.get())) {
+            shard.reject_unregistered_completion(ticket)?;
+        }
         shard.enqueue(ShardCommand::ActionCompletedLegacy { run, step })
     }
 
@@ -865,6 +922,7 @@ impl Runtime {
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for_mut(ticket.run)?;
+        shard.reject_unregistered_completion(ticket)?;
         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
         // if the ticket doesn't match the current run state.
         if let Some(state) = shard.run_state_get(ticket.run) {
@@ -911,6 +969,22 @@ impl Runtime {
         Some(canonical)
     }
 
+    /// Looks up the opaque authority for the run's currently suspended Ask boundary.
+    ///
+    /// The ticket is issued only from the shard's current Asking state and its
+    /// journal-backed AskScheduled boundary. A stale or unknown boundary returns
+    /// `None`; callers must not construct or alter ticket fields themselves.
+    #[must_use]
+    pub fn lookup_pending_ask_ticket(
+        &self,
+        run: RunId,
+        ask_step: vb_core::ids::StepIdx,
+    ) -> Option<crate::shard::AskTicket> {
+        self.shard_for_run(run)
+            .ok()?
+            .pending_ask_ticket(run, ask_step)
+    }
+
     /// Lists trace events for a run without draining the shard trace ring.
     ///
     /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard
@@ -930,8 +1004,9 @@ impl Runtime {
     /// shards for active or terminal ownership so the answer is routed to
     /// whichever shard actually holds the run state.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
-        let run = answer.ticket.run;
+        let run = answer.ticket.run();
         let shard = self.shard_for_run(run)?;
+        shard.validate_pending_ask_answer(answer)?;
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
@@ -1220,3 +1295,7 @@ impl Runtime {
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
+
+#[path = "runtime/registered_executor.rs"]
+mod registered_executor;
+pub use registered_executor::RegisteredExecutionError;

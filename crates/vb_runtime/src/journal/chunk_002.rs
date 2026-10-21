@@ -1,9 +1,15 @@
 impl StorageRuntimeJournal {
+    /// Strict journal with explicitly checked registered executor startup authority.
+    pub fn shared_strict_with_catalog(journal: Arc<FjallJournal>, catalog: Arc<vb_storage::executor::ExecutorCatalog>) -> SharedRuntimeJournal {
+        Arc::new(Self { journal, catalog: Some(catalog), profile: DurabilityProfile::Strict })
+    }
+
     /// Creates an adapter that uses journaled appends without a per-event sync barrier.
     #[must_use]
     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
+            catalog: None,
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -13,6 +19,7 @@ impl StorageRuntimeJournal {
     pub fn strict(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
+            catalog: None,
             profile: DurabilityProfile::Strict,
         }
     }
@@ -51,7 +58,9 @@ impl StorageRuntimeJournal {
         for (offset, event) in events.iter().enumerate() {
             let seq = Self::sequence_at_offset(start_seq, offset)?;
             let storage_event = Self::storage_event(event.clone(), seq)?;
-            batch.append_event(&storage_event).map_err(RuntimeError::from)?;
+            batch
+                .append_event(&storage_event)
+                .map_err(RuntimeError::from)?;
         }
         if profile == DurabilityProfile::Strict {
             return batch.strict().commit().map_err(RuntimeError::from);
@@ -77,44 +86,67 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunSubmitted { run, workflow } => {
                 Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
             }
-            RuntimeJournalEvent::RunAdmission { admission } => Ok(Some(JournalEvent::RunAdmission {
-                run: admission.run_id(),
+            RuntimeJournalEvent::RunAdmission { admission } => {
+                Ok(Some(JournalEvent::RunAdmission {
+                    input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+                    run: admission.run_id(),
+                    seq,
+                    artifact_digest: admission.artifact_digest(),
+                    granted_capabilities: admission.granted_capabilities().clone(),
+                    policy: admission.policy(),
+                }))
+            }
+            RuntimeJournalEvent::RetryCheckpoint {
+                run,
+                attempt,
+                step,
+                payload_digest,
+                payload,
+            } => Ok(Some(JournalEvent::RetryCheckpoint {
+                run,
                 seq,
-                artifact_digest: admission.artifact_digest(),
-                granted_capabilities: admission.granted_capabilities().clone(),
-                policy: admission.policy(),
+                attempt,
+                step,
+                payload_digest,
+                payload,
             })),
-            RuntimeJournalEvent::RunFinished { run, result } => Ok(Some(JournalEvent::RunFinished {
+            RuntimeJournalEvent::RunFinished {
+                run,
+                result,
+                attempt,
+            } => Ok(Some(JournalEvent::RunFinished {
                 run,
                 seq,
                 result,
-                attempt: 1,
+                attempt,
             })),
-            RuntimeJournalEvent::RunFailed { run } => Ok(Some(JournalEvent::RunFailedEvent {
+            RuntimeJournalEvent::RunFailed { run, attempt } => {
+                Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
+            }
+            RuntimeJournalEvent::RunCancelled {
+                run,
+                reason,
+                attempt,
+            } => Ok(Some(JournalEvent::RunCancelled {
                 run,
                 seq,
-                attempt: 1,
-            })),
-            RuntimeJournalEvent::RunCancelled { run, reason } => Ok(Some(JournalEvent::RunCancelled {
-                run,
-                seq,
-                attempt: 1,
+                attempt,
                 reason,
             })),
-            RuntimeJournalEvent::RunKilled { run } => Ok(Some(JournalEvent::RunKilled {
-                run,
-                seq,
-                attempt: 1,
-            })),
+            RuntimeJournalEvent::RunKilled { run, attempt } => {
+                Ok(Some(JournalEvent::RunKilled { run, seq, attempt }))
+            }
             RuntimeJournalEvent::Resumed { run, timestamp } => {
                 resumed_storage_event(run, seq, timestamp).map(Some)
             }
-            RuntimeJournalEvent::StepStarted { run, step } => Ok(Some(JournalEvent::StepStarted {
-                run,
-                seq,
-                step,
-                attempt: 1,
-            })),
+            RuntimeJournalEvent::StepStarted { run, step, attempt} => {
+                Ok(Some(JournalEvent::StepStarted {
+                    run,
+                    seq,
+                    step,
+                    attempt,
+                }))
+            }
             RuntimeJournalEvent::StepSucceeded {
                 run, step, output, ..
             } => Ok(Some(JournalEvent::StepSucceeded {
@@ -203,13 +235,16 @@ impl StorageRuntimeJournal {
                 action,
                 attempt,
             }),
-            RuntimeJournalEvent::ActionAbandoned { ticket } => Some(JournalEvent::ActionAbandoned {
-                run: ticket.run,
-                seq,
-                ticket,
-            }),
+            RuntimeJournalEvent::ActionAbandoned { ticket } => {
+                Some(JournalEvent::ActionAbandoned {
+                    run: ticket.run,
+                    seq,
+                    ticket,
+                })
+            }
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
@@ -287,6 +322,7 @@ impl StorageRuntimeJournal {
             })),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
@@ -310,6 +346,7 @@ impl StorageRuntimeJournal {
         let result = match &event {
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
@@ -345,17 +382,12 @@ impl StorageRuntimeJournal {
     }
 }
 
-fn resumed_storage_event(
-    run: RunId,
-    seq: EventSeq,
-    timestamp: u64,
-) -> RuntimeResult<JournalEvent> {
-    let seconds = i64::try_from(timestamp).map_err(|_| {
-        RuntimeError::RuntimeJournalTimestampOutOfRange {
+fn resumed_storage_event(run: RunId, seq: EventSeq, timestamp: u64) -> RuntimeResult<JournalEvent> {
+    let seconds =
+        i64::try_from(timestamp).map_err(|_| RuntimeError::RuntimeJournalTimestampOutOfRange {
             event_kind: "Resumed",
             timestamp,
-        }
-    })?;
+        })?;
     let timestamp = DateTime::<Utc>::from_timestamp(seconds, 0).ok_or(
         RuntimeError::RuntimeJournalTimestampOutOfRange {
             event_kind: "Resumed",
@@ -399,6 +431,8 @@ fn encoded_slot_taint_extra(
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {
+    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> { self.catalog.clone() }
+
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Err(RuntimeError::UnsupportedOperation {
             operation: "unsequenced_storage_journal_append",

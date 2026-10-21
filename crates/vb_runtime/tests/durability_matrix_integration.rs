@@ -79,6 +79,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -108,6 +109,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -156,6 +158,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("timed_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish]),
@@ -225,6 +228,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -392,13 +396,12 @@ fn ask_answered_persists_before_ack() {
     shard.tick().unwrap();
 
     let _ = journal.snapshot().unwrap();
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .expect("suspended ask must issue a ticket");
 
     let answer = vb_runtime::shard::AskAnswer {
-        ticket: vb_runtime::shard::AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: SlotValue::I64(99),
         taint: Taint::Clean,
@@ -448,7 +451,7 @@ fn cancel_persists_before_ack() {
     let events = journal.snapshot().unwrap();
     let has_run_cancelled = events
         .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _ } if *r == run));
+        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _, attempt: 1} if *r == run));
     assert!(
         has_run_cancelled,
         "RunCancelled must be persisted before ack"

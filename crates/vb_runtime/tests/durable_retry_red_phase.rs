@@ -71,6 +71,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -133,6 +134,7 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("error_handler_with_slot"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([guard, action, handler, finish]),
@@ -177,6 +179,7 @@ fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -242,6 +245,7 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("slot_preservation"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: Box::from([set_policy, do_node, retry_check, finish]),

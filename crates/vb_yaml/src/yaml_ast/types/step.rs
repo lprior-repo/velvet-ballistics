@@ -9,7 +9,7 @@ pub enum TriggerAst {
     Manual,
     /// Schedule trigger with cron expression.
     Schedule { cron: String },
-    /// Named event trigger; YAML field is `name`.
+    /// Named event trigger; YAML field is `type`.
     Event { event_type: String },
     /// Empty webhook trigger.
     Webhook,

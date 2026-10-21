@@ -103,6 +103,7 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
     let step_names: Vec<Box<str>> = vec!["step_0".into()];
 
     WorkflowParts {
+        semantic_source_identity: kani::any(),
         name: "foreach_harness".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -433,6 +434,7 @@ fn foreach_rejects_malformed_ir() {
     // Case 5: Empty nodes — should be OK (empty workflow is valid)
     {
         let empty_parts = WorkflowParts {
+            semantic_source_identity: kani::any(),
             name: "empty".into(),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([]),

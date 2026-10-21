@@ -72,6 +72,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -101,6 +102,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -141,6 +143,7 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("action_then_finish"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -351,30 +354,15 @@ fn ipc_cancel_after_submit_processed_in_order() {
 /// typed error rather than enqueuing onto a phantom home shard).
 #[test]
 fn ipc_ask_answer_enqueues_successfully() {
-    use vb_runtime::shard::{AskAnswer, AskTicket};
-
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
 
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run: RunId::new(1),
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
-        answer_slot: SlotIdx::new(0),
-        value: SlotValue::Bool(true),
-        taint: Taint::Clean,
-        encoded_len: 1u32,
-    };
-
-    // Unknown run -> RunNotFound at the boundary (RA-030 fail-closed routing).
     assert_eq!(
-        runtime.answer_ask(answer),
-        Err(vb_runtime::RuntimeError::RunNotFound),
-        "answer_ask for unknown run must fail closed with RunNotFound"
+        runtime.lookup_pending_ask_ticket(RunId::new(1), StepIdx::ZERO),
+        None,
+        "unknown run must not issue an ask ticket"
     );
 }
 
@@ -383,31 +371,14 @@ fn ipc_ask_answer_enqueues_successfully() {
 /// `RunNotFound` (RA-030 fail-closed routing).
 #[test]
 fn ipc_ask_answer_enqueues_for_unknown_run() {
-    use vb_runtime::shard::{AskAnswer, AskTicket};
-
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, test_config());
 
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run: RunId::new(999), // run that doesn't exist
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
-        answer_slot: SlotIdx::new(0),
-        value: SlotValue::Bool(true),
-        taint: Taint::Clean,
-        encoded_len: 1u32,
-    };
-
-    let result = runtime.answer_ask(answer);
     assert_eq!(
-        result,
-        Err(vb_runtime::RuntimeError::RunNotFound),
-        "answer_ask for unknown run must return RunNotFound, got {:?}",
-        result
+        runtime.lookup_pending_ask_ticket(RunId::new(999), StepIdx::ZERO),
+        None
     );
 }
 

@@ -20,15 +20,14 @@ fn runtime_journal_event_run_finished_has_correct_run_id() {
     let run = vb_core::ids::RunId::new(2);
     let event = super::RuntimeJournalEvent::RunFinished {
         run,
-        result: vb_core::ids::SlotIdx::new(0),
-    };
+        result: vb_core::ids::SlotIdx::new(0), attempt: 1};
     assert_eq!(event.run_id(), run);
 }
 
 #[test]
 fn runtime_journal_event_run_failed_has_correct_run_id() {
     let run = vb_core::ids::RunId::new(3);
-    let event = super::RuntimeJournalEvent::RunFailed { run };
+    let event = super::RuntimeJournalEvent::RunFailed { run, attempt: 1};
     assert_eq!(event.run_id(), run);
 }
 
@@ -37,8 +36,7 @@ fn runtime_journal_event_run_cancelled_has_correct_run_id_and_reason() {
     let run = vb_core::ids::RunId::new(4);
     let event = super::RuntimeJournalEvent::RunCancelled {
         run,
-        reason: Some("timeout".into()),
-    };
+        reason: Some("timeout".into()), attempt: 1};
     assert_eq!(event.run_id(), run);
 }
 
@@ -129,7 +127,7 @@ fn runtime_journal_event_slot_written_preserves_value_and_taint() {
 fn runtime_journal_event_step_started_has_correct_run_id() {
     let run = vb_core::ids::RunId::new(13);
     let step = vb_core::ids::StepIdx::new(0);
-    let event = super::RuntimeJournalEvent::StepStarted { run, step };
+    let event = super::RuntimeJournalEvent::StepStarted { run, step, attempt: 1};
     assert_eq!(event.run_id(), run);
 }
 
@@ -173,8 +171,7 @@ fn volatile_journal_appends_and_reads_back_events() {
     assert_eq!(
         journal.append(super::RuntimeJournalEvent::RunFinished {
             run,
-            result: vb_core::ids::SlotIdx::new(0),
-        }),
+            result: vb_core::ids::SlotIdx::new(0), attempt: 1}),
         Ok(())
     );
 
@@ -192,8 +189,7 @@ fn volatile_journal_preserves_event_ordering_on_read_back() {
     journal
         .append(super::RuntimeJournalEvent::StepStarted {
             run,
-            step: vb_core::ids::StepIdx::new(0),
-        })
+            step: vb_core::ids::StepIdx::new(0), attempt: 1})
         .expect("append must succeed");
     journal
         .append(super::RuntimeJournalEvent::StepSucceeded {
@@ -206,8 +202,7 @@ fn volatile_journal_preserves_event_ordering_on_read_back() {
     journal
         .append(super::RuntimeJournalEvent::RunFinished {
             run,
-            result: vb_core::ids::SlotIdx::new(0),
-        })
+            result: vb_core::ids::SlotIdx::new(0), attempt: 1})
         .expect("append must succeed");
 
     let snapshot = journal.snapshot().expect("snapshot must succeed");
@@ -222,7 +217,7 @@ fn noop_journal_always_succeeds_and_returns_no_storage() {
     let run = vb_core::ids::RunId::new(102);
 
     assert_eq!(
-        journal.append(super::RuntimeJournalEvent::RunFailed { run }),
+        journal.append(super::RuntimeJournalEvent::RunFailed { run, attempt: 1}),
         Ok(())
     );
     assert_eq!(journal.probe(), Ok(()));
@@ -257,8 +252,7 @@ fn storage_journal_replays_events_for_run_in_sequence_order() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())
@@ -294,8 +288,7 @@ fn storage_journal_events_for_run_bounded_enforces_limit() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())
@@ -374,8 +367,7 @@ fn trim_events_for_run_succeeds_after_snapshot_is_written() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())
@@ -589,8 +581,7 @@ fn events_for_run_returns_events_in_monotonic_sequence_order() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(*seq_val),
-                },
+                    step: step_idx_i(*seq_val), attempt: 1},
                 vb_storage::EventSeq::new(*seq_val),
             ),
             Ok(())
@@ -624,8 +615,7 @@ fn journal_sequences_are_contiguous_after_sequential_appends() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())
@@ -662,14 +652,13 @@ fn queued_journal_rejects_writes_when_queue_is_full() {
         adapter.append_sequenced(
             super::RuntimeJournalEvent::RunCancelled {
                 run,
-                reason: Some("test".into()),
-            },
+                reason: Some("test".into()), attempt: 1},
             vb_storage::EventSeq::new(0),
         ),
         Ok(())
     );
     let result = adapter.append_sequenced(
-        super::RuntimeJournalEvent::RunFailed { run },
+        super::RuntimeJournalEvent::RunFailed { run, attempt: 1},
         vb_storage::EventSeq::new(1),
     );
     let is_queue_full = matches!(
@@ -713,8 +702,7 @@ fn volatile_journal_withstands_concurrent_appends_from_multiple_threads() {
             for i in 0..events_per_thread {
                 let run_id = (t * events_per_thread + i) as u64;
                 let event = super::RuntimeJournalEvent::RunFailed {
-                    run: vb_core::ids::RunId::new(run_id),
-                };
+                    run: vb_core::ids::RunId::new(run_id), attempt: 1};
                 journal
                     .append(event)
                     .expect("concurrent append must not fail");
@@ -751,8 +739,7 @@ fn concurrent_journal_writers_preserve_all_written_events() {
                 journal
                     .append(super::RuntimeJournalEvent::StepStarted {
                         run: vb_core::ids::RunId::new(run_base + seq),
-                        step: step_idx_i(seq),
-                    })
+                        step: step_idx_i(seq), attempt: 1})
                     .expect("append must succeed");
             }
         });
@@ -808,8 +795,7 @@ fn recover_runtime_summary_yields_summary_for_known_run() {
         adapter.append_sequenced(
             super::RuntimeJournalEvent::RunFinished {
                 run,
-                result: vb_core::ids::SlotIdx::new(0),
-            },
+                result: vb_core::ids::SlotIdx::new(0), attempt: 1},
             vb_storage::EventSeq::new(1),
         ),
         Ok(())
@@ -920,8 +906,7 @@ fn queued_journal_flush_batch_drains_in_bounded_chunks() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())
@@ -1017,13 +1002,11 @@ fn all_runtime_journal_event_variants_have_consistent_run_id_accessors() {
         },
         super::RuntimeJournalEvent::RunFinished {
             run,
-            result: vb_core::ids::SlotIdx::new(0),
-        },
-        super::RuntimeJournalEvent::RunFailed { run },
+            result: vb_core::ids::SlotIdx::new(0), attempt: 1},
+        super::RuntimeJournalEvent::RunFailed { run, attempt: 1},
         super::RuntimeJournalEvent::RunCancelled {
             run,
-            reason: None,
-        },
+            reason: None, attempt: 1},
         super::RuntimeJournalEvent::ActionScheduled {
             run,
             step: vb_core::ids::StepIdx::new(0),
@@ -1066,8 +1049,7 @@ fn all_runtime_journal_event_variants_have_consistent_run_id_accessors() {
         },
         super::RuntimeJournalEvent::StepStarted {
             run,
-            step: vb_core::ids::StepIdx::new(0),
-        },
+            step: vb_core::ids::StepIdx::new(0), attempt: 1},
         super::RuntimeJournalEvent::StepSucceeded {
             run,
             step: vb_core::ids::StepIdx::new(0),
@@ -1145,8 +1127,7 @@ fn queued_journal_drain_for_shutdown_empties_all_pending_writes() {
             adapter.append_sequenced(
                 super::RuntimeJournalEvent::StepStarted {
                     run,
-                    step: step_idx_i(i),
-                },
+                    step: step_idx_i(i), attempt: 1},
                 vb_storage::EventSeq::new(i),
             ),
             Ok(())

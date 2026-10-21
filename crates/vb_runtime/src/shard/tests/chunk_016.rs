@@ -130,6 +130,9 @@ fn shard_ask_answer_after_cancel_returns_run_not_found() {
             run,
             ask_step: vb_core::ids::StepIdx::new(2),
             resume_step: vb_core::ids::StepIdx::new(3),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(2),
         value: vb_core::value::SlotValue::Bool(true),

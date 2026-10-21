@@ -62,13 +62,18 @@ impl ReadOnlyJournal {
 
     /// Returns all declared keyspace names.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 9] {
+    pub const fn declared_keyspaces() -> [&'static str; 10] {
         FjallJournal::declared_keyspaces()
     }
 
     /// Replays events for a single run, returning them in sequence order.
     pub fn events_for_run(&self, run: RunId) -> Result<Vec<JournalEvent>, JournalError> {
         self.0.events_for_run(run)
+    }
+
+    /// Reads retained, checksummed typed run inputs.
+    pub fn run_inputs(&self, run: RunId) -> Result<Option<crate::RunInputsRecord>, JournalError> {
+        self.0.run_inputs(run)
     }
 
     /// Reads a stored blob by digest.

@@ -1,0 +1,8 @@
+
+running 3 tests
+test runtime_cases::compiler_and_storage_reject_sparse_and_duplicate_dispatch_registries ... ok
+test runtime_cases::public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest ... ok
+test runtime_cases::public_runtime_rejects_replacement_execution_contracts_before_enqueue ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.01s
+

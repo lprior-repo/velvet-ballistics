@@ -11,8 +11,11 @@ use crate::value::{SlotValue, Taint};
 use bytes::Bytes;
 use indexmap::IndexMap;
 
+mod checkpoint;
+pub use checkpoint::ValueStoreCheckpointV1;
+
 /// Deterministic object field stored in insertion order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ObjectField {
     /// Interned field name.
     pub key: SymbolId,

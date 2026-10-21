@@ -964,7 +964,7 @@ fn append_strict_batch_on_empty_is_ok() {
 #[test]
 fn declared_keyspaces_count_matches_opened_keyspaces() {
     let declared = FjallJournal::declared_keyspaces();
-    assert_eq!(declared.len(), 9, "there should be 9 declared keyspaces");
+    assert_eq!(declared.len(), 10, "there should be 10 declared keyspaces");
     let (_temp, _journal) = temp_journal();
     // If we got here, all keyspaces opened successfully
 }

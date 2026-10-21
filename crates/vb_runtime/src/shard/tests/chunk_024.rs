@@ -103,7 +103,7 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() {
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().expect("journal snapshot should succeed");
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None }),
+        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1}),
         "journal should contain RunCancelled event"
     );
 }

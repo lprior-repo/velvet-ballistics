@@ -153,6 +153,9 @@ fn shard_ask_answered_for_unknown_run_returns_run_not_found() {
             run: super::RunId::new(999),
             ask_step: vb_core::ids::StepIdx::new(0),
             resume_step: vb_core::ids::StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::SlotValue::I64(42),

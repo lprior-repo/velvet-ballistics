@@ -72,6 +72,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: kani::any(),
         name: Box::from("kani_do_wf"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([do_node]),
@@ -83,7 +84,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
     };
     let workflow =
         CompiledWorkflow::try_from_parts(parts).expect("kani harness: valid workflow parts");
@@ -91,6 +92,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         .expect("kani harness: valid frame");
 
     let mut state = RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: ValueStore::new(),

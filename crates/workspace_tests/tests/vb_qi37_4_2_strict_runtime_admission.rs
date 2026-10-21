@@ -151,6 +151,7 @@ fn accepted_artifact_with_seq(
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         },
         accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
         required_capabilities,
@@ -212,6 +213,7 @@ fn accepted_artifact_with_flags_and_seq(
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         },
         accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
         required_capabilities,
@@ -221,6 +223,7 @@ fn accepted_artifact_with_flags_and_seq(
 
 fn minimal_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("vb_qi37_4_2_runtime_admission_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),

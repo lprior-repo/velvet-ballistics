@@ -12,6 +12,7 @@ fn fresh_frame() -> RunFrame {
 
 fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("reduce_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([5; 32]),
         nodes: vec![CompiledNode {
@@ -31,7 +32,7 @@ fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts)
         .ok()

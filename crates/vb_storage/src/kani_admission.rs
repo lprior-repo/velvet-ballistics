@@ -28,6 +28,7 @@ fn bounded_journal() -> Option<crate::FjallJournal> {
 
 fn minimal_valid_workflow() -> CompiledWorkflow {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("kani_admission"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([

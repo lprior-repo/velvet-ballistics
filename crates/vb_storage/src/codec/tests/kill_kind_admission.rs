@@ -479,7 +479,8 @@ fn validate_known_kind_accepts_kind_10() {
 #[test]
 fn kind_28_does_not_affect_known_kinds_elsewhere() {
     // Ensure adding kind 28 didn't accidentally allow adjacent un-admitted kinds
-    assert!(!is_known_record_kind(4));
+    assert!(is_known_record_kind(4));
+    assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(9));
     // kind 31 (WaitResolved) is admitted by RE-009; keep verifying other reserved/unknown kinds stay rejected.

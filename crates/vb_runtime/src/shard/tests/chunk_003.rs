@@ -51,6 +51,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("timed_ask_without_answer"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),

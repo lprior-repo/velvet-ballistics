@@ -1,0 +1,9 @@
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna/crates/vb_yaml)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/vb_yaml-7a2ea3f414c82930)
+
+running 2 tests
+test yaml_profile::profile_error_variants_tests::raw_yaml_event_trigger_parses_type_field ... ok
+test yaml_profile::profile_error_variants_tests::raw_yaml_event_trigger_rejects_invalid_shapes_with_exact_paths ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 158 filtered out; finished in 0.00s

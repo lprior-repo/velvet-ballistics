@@ -30,6 +30,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> 
 
 fn deterministic_parts() -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: "recovery_replay".into(),
         input_slots: Box::new([]),
         digest: sample_digest(44),
@@ -683,6 +684,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
     let digest = sample_digest(55);
     let action = ActionId::new(4);
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: "action_recovery".into(),
         input_slots: Box::new([]),
         digest,
@@ -1096,6 +1098,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                     summary.terminal = Some(TerminalSummary::Failed);
                 }
                 JournalEvent::RunAdmission { .. }
+                | JournalEvent::RetryCheckpoint { .. }
                 | JournalEvent::StepFailed { .. }
                 | JournalEvent::SlotWrittenEvent { .. }
                 | JournalEvent::WaitResolvedEvent { .. }

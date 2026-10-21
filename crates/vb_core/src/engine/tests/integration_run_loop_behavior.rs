@@ -9,7 +9,9 @@ use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
-use crate::engine::{EngineSignal, StepBudget, drive_deterministic, new_run_frame, run_until_blocked, step_once};
+use crate::engine::{
+    EngineSignal, StepBudget, drive_deterministic, new_run_frame, run_until_blocked, step_once,
+};
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -36,6 +38,7 @@ fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFr
 
 fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("two_step"),
         digest: WorkflowDigest::from_bytes([0x01; 32]),
         nodes: vec![
@@ -75,6 +78,7 @@ fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
 
 fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("single_finish"),
         digest: WorkflowDigest::from_bytes([0x02; 32]),
         nodes: vec![CompiledNode {
@@ -102,6 +106,7 @@ fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
 
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("do_then_finish"),
         digest: WorkflowDigest::from_bytes([0x03; 32]),
         nodes: vec![
@@ -142,6 +147,7 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
 
 fn wait_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("wait"),
         digest: WorkflowDigest::from_bytes([0x04; 32]),
         nodes: vec![CompiledNode {
@@ -169,6 +175,7 @@ fn wait_workflow() -> Result<CompiledWorkflow, String> {
 
 fn ask_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("ask"),
         digest: WorkflowDigest::from_bytes([0x05; 32]),
         nodes: vec![CompiledNode {
@@ -227,6 +234,7 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
         .collect();
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("set_chain"),
         digest: WorkflowDigest::from_bytes([0x06; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -244,6 +252,7 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
 
 fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x07; 32]),
         nodes: vec![
@@ -292,7 +301,10 @@ fn run_until_blocked_completes_two_step_workflow_with_i64_value() -> Result<(), 
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean))?;
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(42), Taint::Clean),
+    )?;
     ensure_equal(run.executed(), 2)?;
     ensure_equal(run.pc(), StepIdx::new(1))
 }
@@ -390,9 +402,8 @@ fn drive_deterministic_exact_budget_two_completes_two_step_workflow() -> Result<
     let mut store = test_store();
     let mut budget = StepBudget::new(2);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
@@ -409,9 +420,8 @@ fn drive_deterministic_budget_one_exhausts_on_two_step_workflow() -> Result<(), 
     let mut store = test_store();
     let mut budget = StepBudget::new(1);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
     ensure_equal(run.executed(), 1)?;
@@ -429,9 +439,8 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted_frame_unchanged
     let initial_pc = run.pc();
     let mut budget = StepBudget::new(0);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
     ensure_equal(run.executed(), initial_executed)?;
@@ -450,9 +459,8 @@ fn drive_deterministic_budget_three_completes_three_step_workflow() -> Result<()
     let mut store = test_store();
     let mut budget = StepBudget::new(4);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
@@ -473,9 +481,8 @@ fn drive_deterministic_budget_mid_exhaustion_keeps_leftover_remaining() -> Resul
     let mut store = test_store();
     let mut budget = StepBudget::new(10);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
@@ -495,9 +502,8 @@ fn drive_deterministic_stops_on_do_node_with_awaiting_action_signal() -> Result<
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAction)?;
     ensure_equal(run.executed(), 1)?;
@@ -511,9 +517,8 @@ fn drive_deterministic_stops_on_wait_node_with_awaiting_wait_signal() -> Result<
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingWait)?;
     ensure_equal(run.executed(), 1)?;
@@ -527,9 +532,8 @@ fn drive_deterministic_stops_on_ask_node_with_awaiting_ask_signal() -> Result<()
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAsk)?;
     ensure_equal(run.executed(), 1)?;
@@ -583,9 +587,8 @@ fn drive_deterministic_do_then_finish_only_executes_do_not_advance_past_suspensi
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAction)?;
     ensure_equal(run.executed(), 1)?;
@@ -610,8 +613,7 @@ fn run_until_blocked_marks_all_non_suspension_steps_as_succeeded() -> Result<(),
 }
 
 #[test]
-fn run_until_blocked_step_budget_exhausted_leaves_pending_step_as_pending()
--> Result<(), String> {
+fn run_until_blocked_step_budget_exhausted_leaves_pending_step_as_pending() -> Result<(), String> {
     let workflow = two_step_workflow(ConstValue::I64(42))?;
     let mut run = test_frame(RunId::new(31), &workflow)?;
     let mut store = test_store();
@@ -631,9 +633,8 @@ fn drive_deterministic_wait_node_marks_step_as_waiting() -> Result<(), String> {
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingWait)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
@@ -646,9 +647,8 @@ fn drive_deterministic_ask_node_marks_step_as_asking() -> Result<(), String> {
     let mut store = test_store();
     let mut budget = StepBudget::MAX;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAsk)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
@@ -667,9 +667,8 @@ fn drive_deterministic_nop_then_finish_transitions_through_pending_to_succeeded(
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Pending))?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Pending))?;
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
@@ -708,8 +707,8 @@ fn run_until_blocked_max_budget_executes_all_10k_step_transitions() -> Result<()
     let mut run = test_frame(RunId::new(41), &workflow)?;
     let mut store = test_store();
 
-    let result = run_until_blocked(&workflow, &mut run, budget, &mut store)
-        .map_err(|e| e.to_string())?;
+    let result =
+        run_until_blocked(&workflow, &mut run, budget, &mut store).map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
@@ -738,9 +737,8 @@ fn drive_deterministic_zero_budget_exhausts_immediately_no_state_change() -> Res
     let mut store = test_store();
     let mut budget = StepBudget::new(0);
 
-    let result =
-        drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
     ensure_equal(run.executed(), 0)?;
@@ -839,8 +837,8 @@ fn step_once_finish_node_returns_finished_with_exact_value_and_taint() -> Result
 }
 
 #[test]
-fn step_once_set_const_then_step_once_finish_produces_continue_then_finished()
--> Result<(), String> {
+fn step_once_set_const_then_step_once_finish_produces_continue_then_finished() -> Result<(), String>
+{
     let workflow = two_step_workflow(ConstValue::I64(77))?;
     let mut run = test_frame(RunId::new(54), &workflow)?;
     let mut store = test_store();
@@ -850,10 +848,7 @@ fn step_once_set_const_then_step_once_finish_produces_continue_then_finished()
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
 
     let s1 = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-    ensure_equal(
-        s1,
-        EngineSignal::Finished(SlotValue::I64(77), Taint::Clean),
-    )?;
+    ensure_equal(s1, EngineSignal::Finished(SlotValue::I64(77), Taint::Clean))?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded))
 }
 

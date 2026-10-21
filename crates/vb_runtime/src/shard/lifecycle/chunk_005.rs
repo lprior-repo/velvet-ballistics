@@ -14,6 +14,16 @@ fn schedule_action_abi_digest(
     crate::recovery::action_contract_abi_digest(contract)
 }
 
+fn awaiting_schedule_event(
+    run: RunId,
+    step: StepIdx,
+    kind: PendingTimerKind,
+) -> RuntimeJournalEvent {
+    match kind {
+        PendingTimerKind::Wait => RuntimeJournalEvent::WaitScheduled { run, step },
+        PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
+    }
+}
 impl Shard {
     fn drive_state(
         state: &mut RunState,
@@ -79,7 +89,7 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         let (journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
@@ -112,7 +122,8 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
+        let (mut journal_events, trace_events) =
+            self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         Self::push_drive_journal_event(
             &mut journal_events,
             RuntimeJournalEvent::ActionScheduledTicket {
@@ -133,26 +144,68 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<AwaitingTimerPlan> {
         let step = state.frame.pc();
-        let mut timer = None;
-        let (mut journal_events, trace_events) = self.prepare_evidence_events(run, evidence)?;
-        if crate::shard::helpers::timer_registration_required(&state, step) {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => return Err(RuntimeError::InvalidTimerFire),
-            };
-            let event = match kind {
-                PendingTimerKind::Wait => RuntimeJournalEvent::WaitScheduled { run, step },
-                PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled { run, step },
-            };
-            Self::push_drive_journal_event(&mut journal_events, event)?;
-            timer = Some(PendingTimer {
-                step,
-                kind,
-                generation,
-                deadline: std::time::Instant::now(),
-            });
+        let (mut journal_events, trace_events) =
+            self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
+        let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let (timer, ask_boundary_seq) =
+            self.prepare_awaiting_schedule(run, step, kind, register_timer, &mut journal_events)?;
+        Ok((journal_events, trace_events, state, timer, ask_boundary_seq))
+    }
+
+    fn prepare_awaiting_schedule(
+        &self,
+        run: RunId,
+        step: StepIdx,
+        kind: PendingTimerKind,
+        register_timer: bool,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+    ) -> RuntimeResult<(Option<PendingTimer>, Option<vb_storage::EventSeq>)> {
+        if !register_timer && kind != PendingTimerKind::Ask {
+            return Ok((None, None));
         }
-        Ok((journal_events, trace_events, state, timer))
+        let boundary_seq = if kind == PendingTimerKind::Ask {
+            Some(self.ask_boundary_sequence(run, journal_events.len())?)
+        } else {
+            None
+        };
+        let timer = self.pending_timer_for_awaiting(run, step, kind, register_timer)?;
+        Self::push_drive_journal_event(journal_events, awaiting_schedule_event(run, step, kind))?;
+        Ok((timer, boundary_seq))
+    }
+
+    fn ask_boundary_sequence(
+        &self,
+        run: RunId,
+        preceding_events: usize,
+    ) -> RuntimeResult<vb_storage::EventSeq> {
+        let offset = u64::try_from(preceding_events)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        self.journal_sequence_for(run)
+            .get()
+            .checked_add(offset)
+            .map(vb_storage::EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+    }
+
+    fn pending_timer_for_awaiting(
+        &self,
+        run: RunId,
+        step: StepIdx,
+        kind: PendingTimerKind,
+        register_timer: bool,
+    ) -> RuntimeResult<Option<PendingTimer>> {
+        if !register_timer {
+            return Ok(None);
+        }
+        let generation = self
+            .next_pending_timer_generation(run)
+            .ok_or(RuntimeError::InvalidTimerFire)?;
+        Ok(Some(PendingTimer {
+            step,
+            kind,
+            generation,
+            deadline: std::time::Instant::now(),
+        }))
     }
 
     fn apply_awaiting_action(
@@ -200,11 +253,18 @@ impl Shard {
                 .apply(run, RuntimeEvent::AwaitTimer)
                 .map_err(DriveApplyFailure::AfterCommit);
         }
-        let (journal_events, trace_events, state, timer) = self
+        if kind == PendingTimerKind::Ask {
+            self.reserve_pending_ask_authority_slot(run)
+                .map_err(DriveApplyFailure::BeforeCommit)?;
+        }
+        let (journal_events, trace_events, state, timer, ask_boundary_seq) = self
             .prepare_awaiting_timer(run, state, kind, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
+        if let Some(boundary_seq) = ask_boundary_seq {
+            self.record_pending_ask_authority(run, state.frame.pc(), boundary_seq);
+        }
         self.push_trace_events(trace_events);
         self.add_executed_step_delta(run, state.frame.executed());
         self.run_state_insert(run, state)
@@ -235,11 +295,15 @@ impl Shard {
             None => SlotIdx::ZERO,
         };
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         Self::push_drive_journal_event(
             &mut journal_events,
-            RuntimeJournalEvent::RunFinished { run, result },
+            RuntimeJournalEvent::RunFinished {
+                run,
+                result,
+                attempt: state.run_attempt.get(),
+            },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
@@ -265,10 +329,16 @@ impl Shard {
                 .map_err(DriveApplyFailure::AfterCommit);
         }
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        Self::push_drive_journal_event(&mut journal_events, RuntimeJournalEvent::RunFailed { run })
-            .map_err(DriveApplyFailure::BeforeCommit)?;
+        Self::push_drive_journal_event(
+            &mut journal_events,
+            RuntimeJournalEvent::RunFailed {
+                run,
+                attempt: state.run_attempt.get(),
+            },
+        )
+        .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);

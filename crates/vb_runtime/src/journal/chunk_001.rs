@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
-use chrono::{DateTime, Utc};
 use vb_core::Taint;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{
@@ -26,17 +26,34 @@ pub enum RuntimeJournalEvent {
         /// Admission record for this run.
         admission: crate::admission::RunAdmission,
     },
+    /// Full typed checkpoint and next-attempt authority for a retry.
+    RetryCheckpoint {
+        /// Run identifier.
+        run: RunId,
+        /// New run attempt authorized by this checkpoint.
+        attempt: u16,
+        /// Failed step selected for re-execution.
+        step: StepIdx,
+        /// Digest of the serialized checkpoint payload.
+        payload_digest: [u8; 32],
+        /// Serialized versioned checkpoint payload.
+        payload: Vec<u8>,
+    },
     /// Run reached a successful terminal state.
     RunFinished {
         /// Run identifier.
         run: RunId,
         /// Result slot selected by the terminal finish node.
         result: SlotIdx,
+        /// Run attempt that reached the terminal state.
+        attempt: u16,
     },
     /// Run reached a failed terminal state.
     RunFailed {
         /// Run identifier.
         run: RunId,
+        /// Run attempt that failed.
+        attempt: u16,
     },
     /// Run was cancelled by the caller.
     RunCancelled {
@@ -44,11 +61,15 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Optional cancellation reason.
         reason: Option<String>,
+        /// Run attempt that was cancelled.
+        attempt: u16,
     },
     /// Run was killed by the runtime.
     RunKilled {
         /// Run identifier.
         run: RunId,
+        /// Run attempt that was killed.
+        attempt: u16,
     },
     /// Action was scheduled and handed to the external action boundary.
     ActionScheduled {
@@ -174,6 +195,8 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Step index.
         step: StepIdx,
+        /// Run attempt in which the step started.
+        attempt: u16,
     },
     /// Deterministic step completed and wrote an output slot.
     StepSucceeded {
@@ -202,7 +225,7 @@ impl RuntimeJournalEvent {
         match self {
             Self::RunSubmitted { run, .. }
             | Self::RunFinished { run, .. }
-            | Self::RunFailed { run }
+            | Self::RunFailed { run, .. }
             | Self::RunCancelled { run, .. }
             | Self::RunKilled { run, .. }
             | Self::ActionScheduled { run, .. }
@@ -221,6 +244,7 @@ impl RuntimeJournalEvent {
             | Self::ActionCompletedEnvelope { ticket, .. }
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
+            Self::RetryCheckpoint { run, .. } => *run,
         }
     }
 
@@ -230,6 +254,7 @@ impl RuntimeJournalEvent {
         match self {
             Self::RunSubmitted { .. } => "RunSubmitted",
             Self::RunAdmission { .. } => "RunAdmission",
+            Self::RetryCheckpoint { .. } => "RetryCheckpoint",
             Self::RunFinished { .. } => "RunFinished",
             Self::RunFailed { .. } => "RunFailed",
             Self::RunCancelled { .. } => "RunCancelled",
@@ -255,6 +280,9 @@ impl RuntimeJournalEvent {
 
 /// Append-only port used by runtime shards for lifecycle journaling.
 pub trait RuntimeJournal: Send + Sync {
+    /// Explicit trusted startup catalog; raw serialized reports cannot create this value.
+    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> { None }
+
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
 
@@ -464,28 +492,27 @@ impl RuntimeJournalConfig {
         }
     }
 
-//    /// Compile-time exhaustiveness assertion for `shared_journal`.
-//    #[allow(dead_code, unreachable_patterns)]
-//    const _: () = {
-//        fn _check_exhaustiveness(
-//            profile: DurabilityProfile,
-//            journal: std::sync::Arc<FjallJournal>,
-//            queue: std::sync::Arc<JournalWriterQueue>,
-//        ) -> RuntimeResult<SharedRuntimeJournal> {
-//            match profile {
-//                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
-//                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
-//                    journal, queue,
-//                )),
-//                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
-//                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
-//                    profile_debug: String::new(),
-//                }),
-//            }
-//        }
-//// };
-//}
-
+    //    /// Compile-time exhaustiveness assertion for `shared_journal`.
+    //    #[allow(dead_code, unreachable_patterns)]
+    //    const _: () = {
+    //        fn _check_exhaustiveness(
+    //            profile: DurabilityProfile,
+    //            journal: std::sync::Arc<FjallJournal>,
+    //            queue: std::sync::Arc<JournalWriterQueue>,
+    //        ) -> RuntimeResult<SharedRuntimeJournal> {
+    //            match profile {
+    //                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+    //                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+    //                    journal, queue,
+    //                )),
+    //                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+    //                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+    //                    profile_debug: String::new(),
+    //                }),
+    //            }
+    //        }
+    //// };
+    //}
 }
 
 impl RuntimeJournal for VolatileRuntimeJournal {
@@ -513,12 +540,12 @@ impl RuntimeJournal for VolatileRuntimeJournal {
             .events
             .lock()
             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
-        let available = self
-            .capacity
-            .checked_sub(stored.len())
-            .ok_or(RuntimeError::JournalFull {
-                capacity: self.capacity,
-            })?;
+        let available =
+            self.capacity
+                .checked_sub(stored.len())
+                .ok_or(RuntimeError::JournalFull {
+                    capacity: self.capacity,
+                })?;
         if events.len() > available {
             return Err(RuntimeError::JournalFull {
                 capacity: self.capacity,
@@ -545,6 +572,7 @@ impl RuntimeJournal for VolatileRuntimeJournal {
 
 /// Runtime journal adapter that appends lifecycle events into `vb_storage`.
 pub struct StorageRuntimeJournal {
+    catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
     journal: Arc<FjallJournal>,
     profile: DurabilityProfile,
 }

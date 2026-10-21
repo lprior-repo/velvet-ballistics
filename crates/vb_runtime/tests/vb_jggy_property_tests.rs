@@ -53,6 +53,7 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("prop_test"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -80,6 +81,8 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
     }
 
     Ok(RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: vb_runtime::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store,

@@ -79,11 +79,15 @@ impl Shard {
             None => SlotIdx::ZERO,
         };
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         Self::push_drive_journal_event(
             &mut journal_events,
-            RuntimeJournalEvent::RunFinished { run, result },
+            RuntimeJournalEvent::RunFinished {
+                run,
+                result,
+                attempt: state.run_attempt.get(),
+            },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
@@ -109,11 +113,14 @@ impl Shard {
                 .map_err(DriveApplyFailure::AfterCommit);
         }
         let (mut journal_events, trace_events) = self
-            .prepare_evidence_events(run, evidence)
+            .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         Self::push_drive_journal_event(
             &mut journal_events,
-            RuntimeJournalEvent::RunFailed { run },
+            RuntimeJournalEvent::RunFailed {
+                run,
+                attempt: state.run_attempt.get(),
+            },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)

@@ -1,0 +1,14 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-3c36b208ba07749e)
+
+running 3 tests
+test mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots ... ok
+test mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5 ... ok
+test mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

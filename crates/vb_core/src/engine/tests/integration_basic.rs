@@ -292,6 +292,7 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
 
 fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -356,6 +357,7 @@ fn tiny_finish_node() -> CompiledNode {
 
 fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("copy"),
         digest: WorkflowDigest::from_bytes([9; 32]),
@@ -386,6 +388,7 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
 
 fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("construction"),
         digest: WorkflowDigest::from_bytes([0x36; 32]),

@@ -157,6 +157,8 @@ pub enum RecordKind {
     ActionCompleted = 14,
     /// Action completed event carrying the full durable completion envelope.
     ActionCompletedEnvelope = 35,
+    /// Full runtime state at a retry boundary.
+    RetryCheckpoint = 37,
     /// Action failed event.
     ActionFailed = 15,
     /// Wait scheduled event.
@@ -211,6 +213,10 @@ pub enum RecordKind {
     Blob = 40,
     /// Index update record.
     IndexUpdate = 50,
+    /// Retained typed run inputs (appended to preserve legacy Serde ordinals).
+    RunInputs = 4,
+    /// Admission receipt carrying a canonical typed input digest.
+    RunAdmissionBound = 36,
 }
 
 impl RecordKind {
@@ -221,6 +227,8 @@ impl RecordKind {
             Self::WorkflowSource => 1,
             Self::CompiledIr => 2,
             Self::RunHeader => 3,
+            Self::RunInputs => 4,
+            Self::RunAdmissionBound => 36,
             Self::RunAccepted => 10,
             Self::StepStarted => 11,
             Self::SlotWritten => 12,
@@ -247,6 +255,7 @@ impl RecordKind {
             Self::StepSucceeded => 33,
             Self::ActionScheduledTicket => 34,
             Self::ActionCompletedEnvelope => 35,
+            Self::RetryCheckpoint => 37,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -259,6 +268,8 @@ impl RecordKind {
             1 => Some(Self::WorkflowSource),
             2 => Some(Self::CompiledIr),
             3 => Some(Self::RunHeader),
+            4 => Some(Self::RunInputs),
+            36 => Some(Self::RunAdmissionBound),
             10 => Some(Self::RunAccepted),
             11 => Some(Self::StepStarted),
             12 => Some(Self::SlotWritten),
@@ -285,6 +296,7 @@ impl RecordKind {
             33 => Some(Self::StepSucceeded),
             34 => Some(Self::ActionScheduledTicket),
             35 => Some(Self::ActionCompletedEnvelope),
+            37 => Some(Self::RetryCheckpoint),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -310,6 +322,7 @@ impl RecordKind {
             | Self::RunFinished
             | Self::RunFailed
             | Self::RunAdmission
+            | Self::RunAdmissionBound
             | Self::RunResumed
             | Self::RunRetried
             | Self::RunAnswered
@@ -319,10 +332,12 @@ impl RecordKind {
             | Self::ActionAbandoned
             | Self::StepSucceeded
             | Self::ActionScheduledTicket
-            | Self::ActionCompletedEnvelope => true,
+            | Self::ActionCompletedEnvelope
+            | Self::RetryCheckpoint => true,
             Self::WorkflowSource
             | Self::CompiledIr
             | Self::RunHeader
+            | Self::RunInputs
             | Self::Snapshot
             | Self::Blob
             | Self::IndexUpdate => false,
@@ -339,7 +354,7 @@ impl RecordKind {
             crate::constants::MAGIC_SNAPSHOT => matches!(self, Self::Snapshot),
             crate::constants::MAGIC_BLOB => matches!(self, Self::Blob),
             crate::constants::MAGIC_INDEX_RECORD => {
-                matches!(self, Self::RunHeader | Self::IndexUpdate)
+                matches!(self, Self::RunHeader | Self::RunInputs | Self::IndexUpdate)
             }
             _ => false,
         }

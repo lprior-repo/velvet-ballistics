@@ -20,6 +20,7 @@ fn arb_parts(
     accessors: Vec<AccessorProgram>,
 ) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("prop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

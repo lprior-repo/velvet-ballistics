@@ -187,8 +187,8 @@ fn declared_keyspaces_count() {
     let keyspaces = FjallJournal::declared_keyspaces();
     assert_eq!(
         keyspaces.len(),
-        9,
-        "declared_keyspaces must return exactly 9 entries"
+        10,
+        "declared_keyspaces must return exactly 10 entries"
     );
 }
 
@@ -199,6 +199,7 @@ fn declared_keyspaces_contains_required_names() {
         "workflow_source",
         "compiled_ir",
         "run_header",
+        "run_inputs",
         "run_event",
         "run_snapshot",
         "blob",

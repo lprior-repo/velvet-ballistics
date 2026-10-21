@@ -76,6 +76,7 @@ pub(super) fn admission(
     policy: RuntimePolicy,
 ) -> JournalEvent {
     JournalEvent::RunAdmission {
+        input_digest: crate::RunInputBinding::LegacyUnbound,
         run,
         seq,
         artifact_digest,

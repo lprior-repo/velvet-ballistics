@@ -488,6 +488,7 @@ impl vb_runtime::admission::AcceptedArtifactStore for WrongGateCountStore {
                 idempotency_keyed: Box::new([]),
                 idempotency_attested: Box::new([]),
                 warnings: Vec::new(),
+                evidence: vb_core::artifact::ArtifactEvidence::Unverified,
             },
             accepted_at_seq: EventSeq::new(0),
             required_capabilities: Box::new([]),

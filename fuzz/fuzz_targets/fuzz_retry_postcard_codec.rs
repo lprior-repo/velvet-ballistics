@@ -130,6 +130,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
 
     Some(WorkflowParts {
         name: Box::from("fuzz_wf"),
+        semantic_source_identity: None,
         digest,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),

@@ -810,6 +810,7 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::ActionAbandoned { .. }
         | JournalEvent::RunAccepted { .. }
         | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RetryCheckpoint { .. }
         | JournalEvent::RunCancelled { .. }
         | JournalEvent::RunKilled { .. }
         | JournalEvent::RunFinished { .. }

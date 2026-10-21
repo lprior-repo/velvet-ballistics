@@ -28,8 +28,10 @@ pub mod codec_miri_tests;
 pub mod constants;
 pub mod error;
 pub mod events;
+pub mod executor;
 pub mod headers;
 pub mod indexes;
+pub mod inputs;
 pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
@@ -248,3 +250,5 @@ pub use admission::{
     AcceptedArtifact, VerificationProof, VerificationWarning, admit_compiled_artifact,
     submit_artifact, submit_artifact_with_contracts,
 };
+
+pub use inputs::{RunInputBinding, RunInputsRecord, RunSubmission};

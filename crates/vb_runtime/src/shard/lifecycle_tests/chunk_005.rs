@@ -1,4 +1,3 @@
-
 #[test]
 fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
@@ -26,7 +25,7 @@ fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Res
             action: ActionId::new(0),
             attempt: 1,
         },
-        RuntimeJournalEvent::RunFailed { run },
+        RuntimeJournalEvent::RunFailed { run, attempt: 1},
     );
     Ok(())
 }
@@ -93,8 +92,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
         },
         RuntimeJournalEvent::StepStarted {
             run,
-            step: StepIdx::new(2),
-        },
+            step: StepIdx::new(2), attempt: 1},
     );
     Ok(())
 }
@@ -147,12 +145,11 @@ fn ask_answer_completes_ask_workflow() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .expect("active ask boundary must issue a ticket");
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: SlotValue::I64(77),
         taint: Taint::Clean,
@@ -164,6 +161,55 @@ fn ask_answer_completes_ask_workflow() {
 }
 
 #[test]
+fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("ask", ask_workflow())?;
+    let run = RunId::new(71);
+    submit_run(&mut shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let first = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or("first ask boundary must issue a ticket")?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| format!("suspended ask state must be checked out: {error:?}"))?;
+    let _previous_timer = shard.pending_timer_remove(run);
+    shard
+        .await_timer(run, state, PendingTimerKind::Ask)
+        .map_err(|error| format!("ask reschedule failed: {error:?}"))?;
+    let second = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or("reentered ask boundary must issue a ticket")?;
+    if first == second {
+        return Err(String::from(
+            "reentered ask ticket reused its durable sequence",
+        ));
+    }
+
+    let before = journal
+        .snapshot()
+        .map_err(|error| format!("journal snapshot failed: {error:?}"))?;
+    let stale_answer = AskAnswer::new(first, SlotIdx::new(2), SlotValue::I64(88), Taint::Clean);
+    assert_eq!(
+        shard.enqueue(ShardCommand::AskAnswered {
+            answer: stale_answer
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    assert_eq!(
+        journal
+            .snapshot()
+            .map_err(|error| format!("journal snapshot failed: {error:?}"))?,
+        before
+    );
+    Ok(())
+}
+
+#[test]
 fn ask_answer_unknown_run_returns_run_not_found() {
     let mut shard = Shard::new(small_config());
     let answer = AskAnswer {
@@ -171,6 +217,9 @@ fn ask_answer_unknown_run_returns_run_not_found() {
             run: RunId::new(9999),
             ask_step: StepIdx::ZERO,
             resume_step: StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::ZERO,
         value: SlotValue::I64(0),

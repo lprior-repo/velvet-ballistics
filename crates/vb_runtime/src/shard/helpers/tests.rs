@@ -42,6 +42,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -80,6 +81,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -110,6 +112,7 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("wait_no_next"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([wait]),
@@ -171,6 +174,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("wait_event_timeout"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([wait_event, resume]),
@@ -236,6 +240,7 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_with_timeout"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: Box::from([ask, resume, finish]),
@@ -291,6 +296,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_no_timeout"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: Box::from([ask, resume]),
@@ -623,9 +629,12 @@ fn seed_input_slots_rejects_out_of_bounds_slot() {
         next: None,
         on_error: None,
         error_slot: None,
-        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+        kind: vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::ZERO,
+        },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -693,6 +702,7 @@ fn retry_policy_after_action_rejects_non_i64_policy_slot() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry_bad_policy"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -799,6 +809,7 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry_negative"),
         digest: WorkflowDigest::from_bytes([0xAC; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -884,6 +895,7 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry_zero"),
         digest: WorkflowDigest::from_bytes([0xAD; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -1019,6 +1031,7 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("error_handler_with_slot"),
         digest: WorkflowDigest::from_bytes([0xBA; 32]),
         nodes: Box::from([guard, action, handler, finish]),
@@ -1135,6 +1148,7 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("multi_slot"),
         digest: WorkflowDigest::from_bytes([0xCA; 32]),
         nodes: Box::from([set_a, finish]),
@@ -1166,9 +1180,12 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         next: None,
         on_error: None,
         error_slot: None,
-        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+        kind: vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::ZERO,
+        },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1481,6 +1498,7 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("label_first"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([label_node, action_node]),
@@ -1740,6 +1758,7 @@ mod proptest_tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("proptest"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: Box::from([node]),
@@ -1751,7 +1770,7 @@ mod proptest_tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+            input_slots: Box::from([]),
         };
         let wf =
             vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");

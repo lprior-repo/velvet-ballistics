@@ -56,6 +56,7 @@ fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
     let done_step = StepIdx::new(3);
 
     WorkflowParts {
+        semantic_source_identity: None,
         name: "test_budget".to_string(),
         digest: vb_core::ids::WorkflowDigest::new(&[]),
         nodes: vec![

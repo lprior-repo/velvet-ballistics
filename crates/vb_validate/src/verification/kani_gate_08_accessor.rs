@@ -182,6 +182,7 @@ fn workflow_parts_with_accessors(
     symbols_count: u32,
 ) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("kani_workflow"),
         digest: WorkflowDigest::from_bytes(kani::any()),
         nodes: bounded_nodes(),

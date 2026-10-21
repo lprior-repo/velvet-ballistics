@@ -179,6 +179,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -348,6 +349,7 @@ fn write_pending_action_events_with_input(
             workflow: workflow_digest,
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -424,6 +426,7 @@ fn write_wait_boundary_events(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -459,6 +462,7 @@ fn write_ask_boundary_events(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -498,6 +502,7 @@ fn write_ask_boundary_events_with_prompt(
             workflow: workflow.digest(),
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest,
@@ -1081,24 +1086,39 @@ fn recovered_fjall_open_ask_can_answer_after_reopen() -> Result<(), String> {
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
     recovered.tick_all().map_err(|err| err.to_string())?;
+    let ticket = recovered
+        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+        .ok_or("recovered open ask must issue its persisted ticket")?;
+    drop(recovered);
+
+    let journal = open_journal(temp.path())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal);
+    let mut recovered_again = Runtime::new(shard_count(1)?, strict_config(), shared);
+    recovered_again
+        .recover_and_resume(run)
+        .map_err(|err| err.to_string())?;
+    recovered_again.tick_all().map_err(|err| err.to_string())?;
+    let repeated_ticket = recovered_again
+        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+        .ok_or("reopened ask must issue its persisted ticket")?;
+    assert_eq!(
+        ticket, repeated_ticket,
+        "recovery must preserve AskScheduled seq"
+    );
     let answer = vb_runtime::shard::AskAnswer::with_encoded_len(
-        vb_runtime::shard::AskTicket {
-            run,
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
+        repeated_ticket,
         SlotIdx::new(1),
         SlotValue::I64(99),
         Taint::Clean,
         1,
     );
-    recovered
+    recovered_again
         .answer_ask(answer)
         .map_err(|err| err.to_string())?;
-    recovered.tick_all().map_err(|err| err.to_string())?;
+    recovered_again.tick_all().map_err(|err| err.to_string())?;
 
-    assert_eq!(recovered.counters_snapshot().runs_completed, 1);
-    assert_eq!(recovered.list_active_runs(8, None), Vec::new());
+    assert_eq!(recovered_again.counters_snapshot().runs_completed, 1);
+    assert_eq!(recovered_again.list_active_runs(8, None), Vec::new());
     Ok(())
 }
 
@@ -1143,12 +1163,11 @@ fn recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen() -> Resu
         .recover_and_resume(run)
         .map_err(|err| err.to_string())?;
     recovered.tick_all().map_err(|err| err.to_string())?;
+    let ticket = recovered
+        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+        .ok_or("recovered open ask must issue its persisted ticket")?;
     let answer = vb_runtime::shard::AskAnswer::with_encoded_len(
-        vb_runtime::shard::AskTicket {
-            run,
-            ask_step: StepIdx::ZERO,
-            resume_step: StepIdx::new(1),
-        },
+        ticket,
         SlotIdx::new(1),
         SlotValue::I64(101),
         Taint::Clean,

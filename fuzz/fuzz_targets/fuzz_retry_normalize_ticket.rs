@@ -71,6 +71,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
 
     let parts = WorkflowParts {
         name: Box::from("fuzz_normalize_ticket"),
+        semantic_source_identity: None,
         digest,
         nodes: Box::from([do_node]),
         expressions: Box::from([]),
@@ -94,6 +95,8 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
     .ok()?;
 
     Some(vb_runtime::shard::types::RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: vb_runtime::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: ValueStore::new(),

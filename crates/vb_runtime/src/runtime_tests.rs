@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 //! Tests for the multi-shard runtime.
 
-use crate::AskTicket;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
@@ -21,9 +20,11 @@ mod tests {
     use super::*;
     use crate::RuntimeError;
     use crate::engine::action::compute_idempotency_key;
+    use crate::runtime::RecoveryPrefixEvidence;
     use crate::shard::{AskAnswer, InspectResponse, PendingTimerKind, ShardDirective};
     use crate::trace::TraceEvent;
     use std::num::NonZeroUsize;
+    use vb_core::ids::RunId;
 
     #[derive(Debug)]
     struct RejectCompletionJournal {
@@ -93,6 +94,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("suspended"),
             digest: WorkflowDigest::from_bytes([1; 32]),
             nodes: Box::from([node]),
@@ -132,6 +134,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("action_then_finish"),
             digest: WorkflowDigest::from_bytes([3; 32]),
             nodes: Box::from([do_node, finish]),
@@ -332,6 +335,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("ask_waiting_test"),
             digest: WorkflowDigest::from_bytes([42; 32]),
             nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -391,6 +395,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("ask_without_timeout_test"),
             digest: WorkflowDigest::from_bytes([43; 32]),
             nodes: Box::from([set_prompt, ask, resume, finish]),
@@ -405,6 +410,99 @@ mod tests {
             input_slots: Box::from([]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn asking_recovery_summary(
+        run: RunId,
+        workflow: &vb_core::workflow::CompiledWorkflow,
+    ) -> vb_storage::recovery::RecoveryRuntimeSummary {
+        vb_storage::recovery::RecoveryRuntimeSummary {
+            run,
+            first_seq: vb_storage::EventSeq::new(0),
+            last_seq: vb_storage::EventSeq::new(2),
+            workflow: Some(workflow.digest()),
+            steps_started: 1,
+            steps_succeeded: 0,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 1,
+            slots_written: 0,
+            terminal: None,
+        }
+    }
+
+    fn asking_recovery_seed(
+        run: RunId,
+        workflow: &vb_core::workflow::CompiledWorkflow,
+    ) -> vb_storage::recovery::RecoveryFrameSeed {
+        vb_storage::recovery::RecoveryFrameSeed {
+            summary: asking_recovery_summary(run, workflow),
+            first_step: StepIdx::ZERO,
+            step_count: 4,
+            slot_count: 2,
+            pc: StepIdx::new(1),
+            steps: asking_recovery_steps(),
+            slots: Vec::new(),
+            pending_actions: Vec::new(),
+            unsupported: vb_storage::recovery::UnsupportedRecoveryState::SUPPORTED,
+        }
+    }
+
+    fn asking_recovery_steps() -> Vec<vb_storage::recovery::RecoveredStepEntry> {
+        vec![
+            vb_storage::recovery::RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: vb_storage::recovery::RecoveredStepState::Succeeded,
+            },
+            vb_storage::recovery::RecoveredStepEntry {
+                step: StepIdx::new(1),
+                state: vb_storage::recovery::RecoveredStepState::Asking,
+            },
+        ]
+    }
+
+    fn asking_recovery_prefix(
+        run: RunId,
+        workflow: &vb_core::workflow::CompiledWorkflow,
+    ) -> RecoveryPrefixEvidence {
+        RecoveryPrefixEvidence {
+            events: Vec::new(),
+            admission: crate::admission::RunAdmission::new(
+                WorkflowDigest::from_bytes([0x41; 32]),
+                run,
+                CapabilitySet::empty(),
+                RuntimePolicy::Relaxed,
+            ),
+            workflow_digest: workflow.digest(),
+            next_seq: vb_storage::EventSeq::new(3),
+        }
+    }
+
+    fn runtime_product_without_ask_schedule(
+        run: RunId,
+    ) -> Result<crate::recovery::RuntimeRecoveryProduct, String> {
+        let workflow = ask_without_timeout_workflow().ok_or("ask workflow must compile")?;
+        let seed = vb_storage::recovery::RecoveryFrameSeedProduct::from_seed(asking_recovery_seed(
+            run, &workflow,
+        ));
+        let boundary =
+            crate::recovery::recovered_run_boundary_from_seed(seed.seed(), None, &workflow, &[]);
+        Runtime::product_from_recovered_seed(
+            run,
+            asking_recovery_prefix(run, &workflow),
+            seed,
+            boundary,
+            None,
+        )
+        .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn runtime_recovery_without_ask_schedule_is_not_resumable() -> Result<(), String> {
+        let run = RunId::new(26_001);
+        let product = runtime_product_without_ask_schedule(run)?;
+        assert_eq!(product.cannot_resume_reason(), Some("pending_asks"));
+        Ok(())
     }
 
     fn submit_ask_waiting(
@@ -548,8 +646,7 @@ mod tests {
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(0),
-                },
+                    step: StepIdx::new(0), attempt: 1},
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
@@ -565,8 +662,7 @@ mod tests {
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(1),
-                },
+                    step: StepIdx::new(1), attempt: 1},
                 RuntimeJournalEvent::StepSucceeded {
                     run,
                     step: StepIdx::new(1),
@@ -575,8 +671,7 @@ mod tests {
                 },
                 RuntimeJournalEvent::RunFinished {
                     run,
-                    result: SlotIdx::ZERO,
-                },
+                    result: SlotIdx::ZERO, attempt: 1},
             ])
         );
         Ok(())
@@ -657,6 +752,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("finished"),
             digest: WorkflowDigest::from_bytes([2; 32]),
             nodes: Box::from([set_const, finish]),
@@ -1104,12 +1200,11 @@ mod tests {
         assert_eq!(submit_ask_waiting(&runtime, run, wf), Ok(()));
         // Drive the run to the Ask-waiting state.
         assert_eq!(runtime.tick_all(), Ok(true));
+        let ticket = runtime
+            .lookup_pending_ask_ticket(run, StepIdx::new(2))
+            .expect("suspended ask must issue a ticket");
         let answer = AskAnswer {
-            ticket: AskTicket {
-                run,
-                ask_step: StepIdx::new(2),
-                resume_step: StepIdx::new(3),
-            },
+            ticket,
             answer_slot: SlotIdx::new(2),
             value: SlotValue::Bool(true),
             taint: Taint::Clean,
@@ -1146,18 +1241,21 @@ mod tests {
         assert_eq!(runtime.tick_all(), Ok(true));
         // Sanity: run is now active on home shard.
         assert!(runtime.shards[home_index].run_state_contains(run));
+        let ticket_before = runtime.shards[home_index]
+            .lookup_pending_ask_ticket(run, StepIdx::new(2))
+            .expect("source shard must issue a ticket before migration");
         // Simulate migration through the invariant-preserving transfer helper.
         assert_eq!(
             migrate_active_run_for_test(&mut runtime, home_index, destination, run),
             Ok(())
         );
         // Now answer_ask must find the run on the destination shard.
+        let ticket = runtime
+            .lookup_pending_ask_ticket(run, StepIdx::new(2))
+            .expect("migrated suspended ask must issue a ticket");
+        assert_eq!(ticket, ticket_before);
         let answer = AskAnswer {
-            ticket: AskTicket {
-                run,
-                ask_step: StepIdx::new(2),
-                resume_step: StepIdx::new(3),
-            },
+            ticket,
             answer_slot: SlotIdx::new(2),
             value: SlotValue::Bool(true),
             taint: Taint::Clean,
@@ -1174,20 +1272,11 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
-        // When answering an ask for a run that exists nowhere
-        let answer = AskAnswer {
-            ticket: AskTicket {
-                run: vb_core::ids::RunId::new(424242),
-                ask_step: StepIdx::ZERO,
-                resume_step: StepIdx::new(1),
-            },
-            answer_slot: SlotIdx::new(0),
-            value: SlotValue::Bool(true),
-            taint: Taint::Clean,
-            encoded_len: 1u32,
-        };
-        // Then answer_ask returns RunNotFound
-        assert_eq!(runtime.answer_ask(answer), Err(RuntimeError::RunNotFound));
+        // Unknown runs cannot be used to issue an opaque ticket.
+        assert_eq!(
+            runtime.lookup_pending_ask_ticket(vb_core::ids::RunId::new(424242), StepIdx::ZERO),
+            None
+        );
     }
 
     // ----------------------------------------------------------------
@@ -1363,12 +1452,11 @@ mod tests {
             Ok(())
         );
         // Then each method observes the owning shard (post-fix).
+        let ticket = runtime
+            .lookup_pending_ask_ticket(run, StepIdx::new(2))
+            .expect("migrated suspended ask must issue a ticket");
         let answer = AskAnswer {
-            ticket: AskTicket {
-                run,
-                ask_step: StepIdx::new(2),
-                resume_step: StepIdx::new(3),
-            },
+            ticket,
             answer_slot: SlotIdx::new(2),
             value: SlotValue::Bool(true),
             taint: Taint::Clean,
@@ -2932,6 +3020,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("wait_then_finish"),
             digest: WorkflowDigest::from_bytes([6; 32]),
             nodes: Box::from([set_deadline, wait, finish]),

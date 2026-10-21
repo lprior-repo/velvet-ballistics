@@ -1,0 +1,13 @@
+
+running 8 tests
+test inputs::tests::retained_mapping_preserves_extreme_values_and_empty_mapping ... ok
+test inputs::tests::retained_mapping_rejects_duplicate_undeclared_out_of_range_and_wrong_kind ... ok
+test inputs::tests::retained_mapping_rejects_unbacked_arena_handles_and_zero_run ... ok
+test inputs::tests::retained_record_envelope_rejects_kind_sequence_trailing_bytes_and_checksum_corruption ... ok
+test inputs::tests::arbitrary_i64_retained_values_roundtrip_exactly ... ok
+test inputs::submission_tests::journaled_artifact_cannot_be_committed_as_strict_or_relaxed ... ok
+test inputs::submission_tests::injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds ... ok
+test inputs::submission_tests::colliding_run_cannot_replace_retained_input_or_existing_admission ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1596 filtered out; finished in 0.02s
+

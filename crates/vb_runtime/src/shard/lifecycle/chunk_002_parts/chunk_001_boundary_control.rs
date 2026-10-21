@@ -63,10 +63,12 @@ impl Shard {
         timer: PendingTimer,
     ) -> RuntimeResult<()> {
         match timer.kind {
-            PendingTimerKind::Wait => self.append_journal_event(RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            }),
+            PendingTimerKind::Wait => {
+                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
+                    run,
+                    step: timer.step,
+                })
+            }
             PendingTimerKind::Ask => self.append_journal_event(RuntimeJournalEvent::AskTimedOut {
                 run,
                 step: timer.step,
@@ -84,8 +86,15 @@ impl Shard {
             return Err(RuntimeError::RunNotFound);
         }
         if self.run_state_contains(run) {
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
             self.emit_action_abandoned_for_pending(run)?;
-            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
+            self.append_journal_event(RuntimeJournalEvent::RunCancelled {
+                run,
+                reason,
+                attempt,})?;
             let _removed_timer = self.pending_timer_remove(run);
             let Some(state) = self.run_state_remove(run) else {
                 return Err(RuntimeError::RunNotFound);
@@ -107,8 +116,12 @@ impl Shard {
             return Err(RuntimeError::RunNotFound);
         }
         if self.run_state_contains(run) {
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
             self.emit_action_abandoned_for_pending(run)?;
-            self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
+            self.append_journal_event(RuntimeJournalEvent::RunKilled { run, attempt})?;
             let _removed_timer = self.pending_timer_remove(run);
         }
         if let Some(state) = self.run_state_remove(run) {

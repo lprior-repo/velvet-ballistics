@@ -112,9 +112,12 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
-        self.prepare_run_slots(run)?;
         let digest = workflow.digest();
         let admission = self.build_admission(run, digest, caps)?;
+        execution_binding::validate(
+            self.artifact_store.as_ref(), self.policy, &workflow, action_contracts,
+        )?;
+        self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
@@ -139,7 +142,9 @@ impl Shard {
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;
         let state = RunState {
+            registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
             frame,
+            run_attempt: core::num::NonZeroU16::MIN,
             workflow,
             store: ValueStore::with_max_slots(max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
@@ -227,9 +232,7 @@ impl Shard {
                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
             Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
-                Err(RuntimeError::AdmissionArtifactInvalid {
-                    digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-                })
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
             Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
@@ -256,10 +259,11 @@ impl Shard {
     pub(crate) fn validate_submit_admission(
         &self,
         run: RunId,
-        digest: vb_core::ids::WorkflowDigest,
+        workflow: &CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.build_admission(run, digest, caps)?;
+        self.build_admission(run, workflow.digest(), caps)?;
+        execution_binding::validate(self.artifact_store.as_ref(), self.policy, workflow, &[])?;
         Ok(())
     }
 
@@ -281,6 +285,9 @@ impl Shard {
         super::contract_validation::validate_contract_ids(action_contracts)?;
         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+        execution_binding::validate(
+            self.artifact_store.as_ref(), self.policy, workflow, action_contracts,
+        )?;
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
@@ -352,6 +359,7 @@ impl Shard {
         let workflow_digest = command.workflow_digest;
         let next_seq = command.next_seq;
         let collect_states = command.collect_states;
+        let retry_checkpoint = command.retry_checkpoint;
         let boundary = command.boundary;
 
         // Step 1: Load artifact by artifact_digest for verification
@@ -394,24 +402,42 @@ impl Shard {
         // Step 4: Seed journal sequence from recovered next_seq
         self.seed_journal_sequence(run, next_seq)?;
 
-        // Step 5: Build admission with artifact's required capabilities
-        let granted_caps =
-            vb_core::capability::CapabilitySet::from_grants(artifact.required_capabilities.clone());
-        let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
-
-        // Step 6: Prepare run slots and construct RunState with restored collect_states
-        let frame_step_count = frame.step_count();
-        let max_slots = workflow.resource_contract().max_slots;
-        self.prepare_run_slots(run)?;
-
-        let state = crate::shard::types::RunState {
-            frame,
-            workflow,
-            store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
-            action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
-            admission,
-            collect_states,
-            action_contracts: artifact.action_contracts.clone(),
+        // Step 5: Restore the full validated checkpoint when this is a retry.
+        // The checkpoint's accepted artifact digest and action registry are
+        // checked against the independently loaded artifact before run state mutates.
+        let state = if let Some(checkpoint) = retry_checkpoint {
+            let (state, _attempt, _retry_step, _prior_seq) = checkpoint
+                .restore(workflow, artifact_digest, &artifact.action_contracts)
+                .map_err(|error| RuntimeError::Recovery {
+                    error: format!("retry checkpoint validation failed: {error}"),
+                })?;
+            if state.frame.run_id() != run {
+                return Err(RuntimeError::Recovery {
+                    error: "retry checkpoint run identity mismatch".to_string(),
+                });
+            }
+            self.prepare_run_slots(run)?;
+            state
+        } else {
+            // Step 6: Build initial admission and recover the legacy resumable frame.
+            let granted_caps = vb_core::capability::CapabilitySet::from_grants(
+                artifact.required_capabilities.clone(),
+            );
+            let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
+            let frame_step_count = frame.step_count();
+            let max_slots = workflow.resource_contract().max_slots;
+            self.prepare_run_slots(run)?;
+            crate::shard::types::RunState {
+                registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
+                frame,
+                run_attempt: core::num::NonZeroU16::MIN,
+                workflow,
+                store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+                action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+                admission,
+                collect_states,
+                action_contracts: artifact.action_contracts.clone(),
+            }
         };
 
         self.terminal_runs_remove(run);
@@ -428,7 +454,11 @@ impl Shard {
                 }
             }
             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                // Open ask boundary: resume at ask step, no side effects
+                if let Some(ask) = boundary.open_ask() {
+                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+                    return Ok(());
+                }
             }
         }
 
@@ -503,6 +533,15 @@ impl Shard {
         ticket: ActionTicket,
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
+        self.reject_unregistered_completion(ticket)?;
+        self.apply_action_completion(ticket, output)
+    }
+
+    pub(crate) fn apply_action_completion(
+        &mut self,
+        ticket: ActionTicket,
+        output: ActionOutputReady,
+    ) -> RuntimeResult<()> {
         let run = ticket.run;
         self.require_pending_action_ownership(ticket)?;
         let preflight = {
@@ -549,6 +588,7 @@ impl Shard {
         step: StepIdx,
     ) -> RuntimeResult<()> {
         let ticket = self.require_legacy_pending_action_ownership(run, step)?;
+        self.reject_unregistered_completion(ticket)?;
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
@@ -608,9 +648,13 @@ impl Shard {
             attempt: preflight.ticket.attempt,
         };
         if preflight.outcome == ActionFailureOutcome::FailRun {
+            let attempt = self
+                .run_state_get(run)
+                .map(|state| state.run_attempt.get())
+                .ok_or(RuntimeError::RunNotFound)?;
             self.append_journal_events_atomically([
                 action_failed_event,
-                RuntimeJournalEvent::RunFailed { run },
+                RuntimeJournalEvent::RunFailed { run, attempt},
             ])?;
         } else {
             self.append_journal_event(action_failed_event)?;

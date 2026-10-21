@@ -20,6 +20,7 @@ fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("input-mapping"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),

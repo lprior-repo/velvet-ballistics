@@ -21,6 +21,7 @@ impl Shard {
             runs: IndexMap::new(),
             run_aggregate: RunAggregate::new(),
             journal_sequences: IndexMap::new(),
+            pending_ask_authorities: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -50,7 +51,7 @@ impl Shard {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
                 // artifact validation. This ensures the shard can load and validate
                 // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::new(fjall_journal))
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(fjall_journal, journal.executor_catalog()))
             } else {
                 match config.policy {
                     vb_core::policy::RuntimePolicy::Relaxed => {
@@ -129,7 +130,8 @@ impl Shard {
         self.reserve_runtime_state_slot(run_id)?;
         self.reserve_journal_sequence_slot(run_id)?;
         self.reserve_pending_timer_slot(run_id)?;
-        self.reserve_pending_action_slot(run_id)
+        self.reserve_pending_action_slot(run_id)?;
+        self.reserve_pending_ask_authority_slot(run_id)
     }
 
     fn reserve_index_map_slot<T>(
@@ -169,6 +171,17 @@ impl Shard {
     pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
         self.run_aggregate
             .reserve_pending_timer_slot(run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_pending_ask_authority_slot(
+        &mut self,
+        run_id: RunId,
+    ) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(
+            &mut self.pending_ask_authorities,
+            run_id,
+            self.max_active_runs,
+        )
     }
 
     fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
@@ -255,7 +268,7 @@ impl Shard {
         self.journal_sequences.get(&run_id).copied()
     }
 
-    fn journal_sequence_for(&self, run: RunId) -> EventSeq {
+    pub(crate) fn journal_sequence_for(&self, run: RunId) -> EventSeq {
         self.journal_sequences
             .get(&run)
             .copied()
@@ -368,6 +381,7 @@ impl Shard {
             self.runtime_state_remove(run_id);
             let _removed_timer = self.pending_timer_remove(run_id);
             let _removed_action = self.pending_action_remove(run_id);
+            let _removed_ask_authority = self.pending_ask_authorities.swap_remove(&run_id);
         }
         Some(state)
     }
@@ -704,6 +718,9 @@ impl Shard {
             ShardCommand::Resume { run } => {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
             }
+            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+                self.handle_registered_action_completion(ticket, receipt, output)?;
+            }
             ShardCommand::ActionCompleted { ticket, output } => {
                 self.handle_action_completion(ticket, output)?;
             }
@@ -842,6 +859,7 @@ impl Shard {
     pub(crate) fn prepare_evidence_events(
         &self,
         run: RunId,
+        attempt: u16,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<(Vec<RuntimeJournalEvent>, Vec<TraceEvent>)> {
         let event_count = evidence.len();
@@ -850,7 +868,13 @@ impl Shard {
         let mut trace_events = Vec::new();
         Self::reserve_drive_vec(&mut trace_events, event_count)?;
         for event in evidence.drain() {
-            Self::prepare_evidence_event(run, event, &mut journal_events, &mut trace_events)?;
+            Self::prepare_evidence_event(
+                run,
+                attempt,
+                event,
+                &mut journal_events,
+                &mut trace_events,
+            )?;
         }
         Ok((journal_events, trace_events))
     }
@@ -872,6 +896,7 @@ impl Shard {
 
     fn prepare_evidence_event(
         run: RunId,
+        attempt: u16,
         event: EvidenceEvent,
         journal_events: &mut Vec<RuntimeJournalEvent>,
         trace_events: &mut Vec<TraceEvent>,
@@ -880,7 +905,7 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step },
+                    RuntimeJournalEvent::StepStarted { run, step, attempt},
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
@@ -894,7 +919,7 @@ impl Shard {
                         Some(slot) => slot,
                         None => SlotIdx::ZERO,
                     },
-                    attempt: 1,
+                    attempt,
                 },
             ),
             EvidenceEvent::SlotWritten {

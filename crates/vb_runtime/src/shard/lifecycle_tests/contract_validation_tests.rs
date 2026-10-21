@@ -49,6 +49,7 @@ fn do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::E
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test-do"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -99,6 +100,7 @@ fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std:
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("setconst-do"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set, do_node, finish]),
@@ -139,6 +141,7 @@ fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn st
         },
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("input-do"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([do_node, finish]),
@@ -248,7 +251,7 @@ fn validate_contracts_rejects_missing_capability() -> Result<(), Box<dyn std::er
             assert_eq!(required.name(), "needed");
         }
         other => {
-            return Err(format!("expected AdmissionCapabilityDenied, got: {:?}", other).into())
+            return Err(format!("expected AdmissionCapabilityDenied, got: {:?}", other).into());
         }
     }
     Ok(())
@@ -332,6 +335,7 @@ fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::err
         },
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("reused"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([node1, node2]),
@@ -399,8 +403,8 @@ fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::err
 }
 
 #[test]
-fn validate_contracts_accepts_multiple_distinct_action_ids(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn validate_contracts_accepts_multiple_distinct_action_ids()
+-> Result<(), Box<dyn std::error::Error>> {
     // Workflow with two distinct actions
     let node1 = CompiledNode {
         id: StepIdx::ZERO,
@@ -425,6 +429,7 @@ fn validate_contracts_accepts_multiple_distinct_action_ids(
         },
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("multi-action"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([node1, node2]),
@@ -550,8 +555,8 @@ fn validate_contracts_duplicate_precedes_index_mismatch() -> Result<(), Box<dyn 
 // Direct shard boundary validation tests with journal immutability checks.
 
 #[test]
-fn shard_boundary_validates_fabricated_id_before_admission(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn shard_boundary_validates_fabricated_id_before_admission()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(
         ShardConfig {
@@ -582,7 +587,7 @@ fn shard_boundary_validates_fabricated_id_before_admission(
             assert_eq!(error, "contract at index 0 has ID 999 (expected 0)");
         }
         other => {
-            return Err(format!("expected Err(ContractValidationError), got: {:?}", other).into())
+            return Err(format!("expected Err(ContractValidationError), got: {:?}", other).into());
         }
     }
     assert!(!shard.run_state_contains(run), "run must not be admitted");
@@ -599,8 +604,8 @@ fn shard_boundary_validates_fabricated_id_before_admission(
 }
 
 #[test]
-fn shard_boundary_validates_fabricated_id_with_inputs_before_admission(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(
         ShardConfig {
@@ -633,7 +638,7 @@ fn shard_boundary_validates_fabricated_id_with_inputs_before_admission(
             assert_eq!(error, "contract at index 0 has ID 777 (expected 0)");
         }
         other => {
-            return Err(format!("expected Err(ContractValidationError), got: {:?}", other).into())
+            return Err(format!("expected Err(ContractValidationError), got: {:?}", other).into());
         }
     }
     assert!(!shard.run_state_contains(run), "run must not be admitted");
@@ -728,7 +733,7 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
         "exactly one RunFinished journal event expected"
     );
     assert!(matches!(run_finished.first(),
-        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result })
+        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result, attempt: 1})
             if *r == run && *result == SlotIdx::new(1)));
 
     let run_failed: Vec<_> = events
@@ -769,8 +774,8 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
 }
 
 #[test]
-fn shard_boundary_accepts_valid_contract_with_seeded_input(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn shard_boundary_accepts_valid_contract_with_seeded_input()
+-> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(
         ShardConfig {
@@ -844,7 +849,7 @@ fn shard_boundary_accepts_valid_contract_with_seeded_input(
         "exactly one RunFinished journal event expected"
     );
     assert!(matches!(run_finished.first(),
-        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result })
+        Some(crate::journal::RuntimeJournalEvent::RunFinished { run: r, result, attempt: 1})
             if *r == run && *result == SlotIdx::new(1)));
 
     let run_failed: Vec<_> = events

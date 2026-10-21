@@ -51,6 +51,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -112,6 +113,7 @@ fn zero_retry_policy_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("zero_retry_policy"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -150,6 +152,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -211,6 +214,7 @@ fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("error_handler"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([guard, action, handler, finish_node]),
@@ -259,6 +263,7 @@ fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish_node]),
@@ -298,6 +303,7 @@ mod vb_3l40a_contract_validation_tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("test-do"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([3u8; 32]),
             nodes: Box::from([node]),

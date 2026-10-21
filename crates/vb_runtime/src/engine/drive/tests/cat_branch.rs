@@ -131,6 +131,7 @@ mod tests {
         };
 
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: "bh_branch_limit".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),
             nodes: Box::from([node]),

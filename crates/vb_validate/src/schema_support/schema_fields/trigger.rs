@@ -20,7 +20,7 @@ fn validate_trigger_accepts_supported_triggers() {
         (
             "event",
             FieldValue::Mapping(vec![(
-                "name".to_owned(),
+                "type".to_owned(),
                 FieldValue::String("job.created".to_owned()),
             )]),
         ),
@@ -31,6 +31,26 @@ fn validate_trigger_accepts_supported_triggers() {
         )]);
         assert_eq!(validate_trigger(&doc), Ok(()));
     }
+}
+
+#[test]
+fn validate_trigger_rejects_event_with_legacy_name_field() {
+    let doc = make_workflow(vec![(
+        "when",
+        FieldValue::Mapping(vec![(
+            "event".to_owned(),
+            FieldValue::Mapping(vec![(
+                "name".to_owned(),
+                FieldValue::String("job.created".to_owned()),
+            )]),
+        )]),
+    )]);
+    assert_eq!(
+        validate_trigger(&doc),
+        Err(ValidationError::UnsupportedTrigger {
+            trigger: "event".to_owned(),
+        })
+    );
 }
 
 #[test]

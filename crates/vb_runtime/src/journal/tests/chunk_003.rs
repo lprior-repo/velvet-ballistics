@@ -15,13 +15,13 @@ fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<
     );
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(1),
         ),
         Ok(())
     );
     assert_eq!(
-        adapter.append_sequenced(RuntimeJournalEvent::RunFailed { run }, EventSeq::new(2),),
+        adapter.append_sequenced(RuntimeJournalEvent::RunFailed { run, attempt: 1}, EventSeq::new(2),),
         Ok(())
     );
     assert!(matches!(
@@ -49,7 +49,7 @@ fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), Str
     let run = RunId::new(50);
 
     assert!(matches!(
-        adapter.append(RuntimeJournalEvent::RunCancelled { run, reason: None }),
+        adapter.append(RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1}),
         Err(crate::RuntimeError::UnsupportedOperation {
             operation: "unsequenced_storage_journal_append"
         })
@@ -110,14 +110,14 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
 
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())
     );
     assert!(matches!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunFailed { run },
+            RuntimeJournalEvent::RunFailed { run, attempt: 1},
             EventSeq::new(1),
         ),
         Err(crate::RuntimeError::StorageJournalAppend { source })
@@ -127,7 +127,7 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
         matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
     );
     assert_eq!(
-        adapter.append_sequenced(RuntimeJournalEvent::RunFailed { run }, EventSeq::new(1),),
+        adapter.append_sequenced(RuntimeJournalEvent::RunFailed { run, attempt: 1}, EventSeq::new(1),),
         Ok(())
     );
     assert!(
@@ -168,7 +168,7 @@ fn queued_batch_append_waits_behind_pending_predecessor() -> Result<(), String> 
 
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::StepStarted { run, step },
+            RuntimeJournalEvent::StepStarted { run, step, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())
@@ -263,7 +263,7 @@ fn queued_batch_append_returns_typed_error_when_batch_would_overfill_queue() -> 
 
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::StepStarted { run, step },
+            RuntimeJournalEvent::StepStarted { run, step, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())
@@ -322,7 +322,7 @@ fn queued_storage_runtime_journal_probe_rejects_full_queue() -> Result<(), Strin
 
     assert_eq!(
         adapter.append_sequenced(
-            RuntimeJournalEvent::RunCancelled { run, reason: None },
+            RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1},
             EventSeq::new(0),
         ),
         Ok(())
@@ -345,8 +345,7 @@ fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Resul
     let first = RuntimeJournalEvent::RunSubmitted { run, workflow };
     let second = RuntimeJournalEvent::RunFinished {
         run,
-        result: SlotIdx::new(0),
-    };
+        result: SlotIdx::new(0), attempt: 1};
 
     assert_eq!(journal.append(first.clone()), Ok(()));
     assert_eq!(journal.append(second.clone()), Ok(()));
@@ -363,7 +362,7 @@ fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capa
     let run = RunId::new(52);
     let workflow = WorkflowDigest::from_bytes([14; 32]);
     let kept = RuntimeJournalEvent::RunSubmitted { run, workflow };
-    let rejected = RuntimeJournalEvent::RunFailed { run };
+    let rejected = RuntimeJournalEvent::RunFailed { run, attempt: 1};
 
     assert_eq!(journal.append(kept.clone()), Ok(()));
     assert_eq!(
@@ -381,8 +380,8 @@ fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection(
     let capacity = NonZeroUsize::new(2).ok_or_else(|| "invalid journal capacity".to_owned())?;
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(53);
-    let first = RuntimeJournalEvent::RunCancelled { run, reason: None };
-    let second = RuntimeJournalEvent::RunFailed { run };
+    let first = RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1};
+    let second = RuntimeJournalEvent::RunFailed { run, attempt: 1};
     let rejected = RuntimeJournalEvent::WaitScheduled {
         run,
         step: StepIdx::new(1),
@@ -421,8 +420,7 @@ fn shutdown_forces_syncall_for_journaled_events() -> Result<(), String> {
             adapter.append_sequenced(
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(i),
-                },
+                    step: StepIdx::new(i), attempt: 1},
                 EventSeq::new(u64::from(i)),
             ),
             Ok(())
@@ -503,8 +501,7 @@ fn drain_for_shutdown_empties_pending_writes_and_makes_them_durable() -> Result<
             adapter.append_sequenced(
                 RuntimeJournalEvent::StepStarted {
                     run,
-                    step: StepIdx::new(i),
-                },
+                    step: StepIdx::new(i), attempt: 1},
                 EventSeq::new(u64::from(i)),
             ),
             Ok(())

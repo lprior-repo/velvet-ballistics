@@ -19,6 +19,7 @@ fn make_parts(
     accessors: Vec<AccessorProgram>,
 ) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("bench"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {

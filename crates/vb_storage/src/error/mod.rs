@@ -109,6 +109,10 @@ pub enum JournalError {
     InvalidEvent,
     #[error("artifact structure validation failed")]
     ArtifactMalformed,
+    #[error("compiled artifact validation failed: {0}")]
+    ArtifactValidation(#[source] vb_validate::ValidationError),
+    #[error("artifact action registry invalid: {0}")]
+    ArtifactActionRegistry(#[source] vb_core::action::ActionRegistryError),
     #[error("compiled workflow reconstruction failed: {0}")]
     WorkflowReconstruction(#[source] WorkflowError),
     #[error("compiled_ir readback failed: {0}")]

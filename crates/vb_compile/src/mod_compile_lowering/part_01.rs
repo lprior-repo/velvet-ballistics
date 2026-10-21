@@ -21,6 +21,7 @@ use finish_inputs::prepare_finish_input_slots;
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     validate_branch_counts(source)?;
+    let semantic_source_identity = canonical_digest(source)?;
     let steps = source.steps();
     let last = steps
         .len()
@@ -58,6 +59,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let mut parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
+        semantic_source_identity: Some(semantic_source_identity),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),

@@ -69,6 +69,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
@@ -403,7 +404,7 @@ fn fail_action_transitions_run_to_failed() -> Result<(), String> {
     assert!(
         events
             .iter()
-            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r, .. } if *r == run)),
         "journal must contain RunFailed event"
     );
     Ok(())
@@ -572,7 +573,7 @@ fn step_started_lifecycle_event_recorded() -> Result<(), String> {
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
         events.iter().any(
-            |e| matches!(e, RuntimeJournalEvent::StepStarted { run: r, step }
+            |e| matches!(e, RuntimeJournalEvent::StepStarted { run: r, step, .. }
             if *r == run && *step == StepIdx::ZERO)
         ),
         "StepStarted must be journaled for step 0"
@@ -638,7 +639,7 @@ fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
     assert!(
         events
             .iter()
-            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r, .. } if *r == run)),
         "RunFailed must be journaled on failure"
     );
     Ok(())

@@ -600,6 +600,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     };
     // Build parts with digest zeroed, compute correct digest, then set it.
     let parts_zeroed = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("admit_test"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -616,6 +617,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
     let computed = blake3::hash(&hash_bytes);
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         digest: WorkflowDigest::from_bytes(*computed.as_bytes()),
         ..parts_zeroed
     };
@@ -667,6 +669,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     };
     // Build a workflow with a wrong digest that won't match the content hash.
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("checksum_test"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([8u8; 32]), // wrong digest
@@ -724,6 +727,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         },
     };
     let parts_zeroed = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("submit_test"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -742,6 +746,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
     let hash_bytes = postcard::to_allocvec(&parts_zeroed).expect("serialize parts");
     let computed = blake3::hash(&hash_bytes);
     let correct_parts = WorkflowParts {
+        semantic_source_identity: None,
         digest: WorkflowDigest::from_bytes(*computed.as_bytes()),
         ..parts_zeroed
     };
@@ -814,6 +819,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("mismatch_test"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0xAA; 32]), // wrong digest
@@ -883,6 +889,7 @@ fn submit_artifact_stale_digest_rejected() {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("different_workflow"),
         input_slots: Box::new([]),
         digest: original_digest, // claiming the SAME digest

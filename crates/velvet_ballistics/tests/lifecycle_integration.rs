@@ -55,6 +55,7 @@ fn finished_workflow() -> CompiledWorkflow {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2u8; 32]),
         nodes: Box::from([set_const, finish]),
@@ -1264,7 +1265,8 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
     let _ = velvet_ballistics::lifecycle::cancel(run, &journal);
 
     // Capture pre-crash state via replay
-    let pre_crash_states = velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
+    let pre_crash_states =
+        velvet_ballistics::lifecycle::replay(&journal).expect("replay must succeed");
     let pre_crash_run_state = pre_crash_states
         .iter()
         .find(|s| s.run_id == run)

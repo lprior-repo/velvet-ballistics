@@ -19,6 +19,7 @@ use thiserror::Error;
 pub struct CompiledWorkflow {
     name: Box<str>,
     digest: WorkflowDigest,
+    semantic_source_identity: Option<WorkflowDigest>,
     nodes: Box<[CompiledNode]>,
     expressions: Box<[ExprProgram]>,
     accessors: Box<[AccessorProgram]>,
@@ -40,6 +41,7 @@ impl CompiledWorkflow {
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
+            semantic_source_identity: parts.semantic_source_identity,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -62,6 +64,7 @@ impl CompiledWorkflow {
         Self {
             name: parts.name,
             digest: parts.digest,
+            semantic_source_identity: parts.semantic_source_identity,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -82,6 +85,7 @@ impl CompiledWorkflow {
         Self {
             name: parts.name,
             digest: parts.digest,
+            semantic_source_identity: parts.semantic_source_identity,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -105,6 +109,15 @@ impl CompiledWorkflow {
     #[must_use]
     pub const fn digest(&self) -> WorkflowDigest {
         self.digest
+    }
+
+    /// Canonical identity of the normalized source semantics, when source-backed.
+    ///
+    /// This is distinct from a digest of raw source bytes. `None` denotes a
+    /// compiled-IR-only or explicitly legacy artifact.
+    #[must_use]
+    pub const fn semantic_source_identity(&self) -> Option<WorkflowDigest> {
+        self.semantic_source_identity
     }
 
     /// Entry step for new runs.
@@ -179,6 +192,7 @@ impl CompiledWorkflow {
         WorkflowParts {
             name: self.name.clone(),
             digest: self.digest,
+            semantic_source_identity: self.semantic_source_identity,
             nodes: self.nodes.clone(),
             expressions: self.expressions.clone(),
             accessors: self.accessors.clone(),
@@ -325,6 +339,11 @@ pub struct WorkflowParts {
     pub name: Box<str>,
     /// Compiled workflow digest.
     pub digest: WorkflowDigest,
+    /// Canonical identity of normalized source semantics, when source-backed.
+    ///
+    /// This is distinct from a digest of raw source bytes. `None` denotes a
+    /// compiled-IR-only or explicitly legacy artifact.
+    pub semantic_source_identity: Option<WorkflowDigest>,
     /// Numeric nodes.
     pub nodes: Box<[CompiledNode]>,
     /// Expression bytecode table.

@@ -121,6 +121,8 @@ fn assert_known_journal_error(error: JournalError) -> Result<(), TestCaseError> 
         | JournalError::UnsupportedReadOnly
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
+        | JournalError::ArtifactValidation(_)
+        | JournalError::ArtifactActionRegistry(_)
         | JournalError::Trim(_) => Ok(()),
     }
 }

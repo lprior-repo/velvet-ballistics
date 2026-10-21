@@ -1,0 +1,32 @@
+
+running 2 tests
+test dangling_arena_input_is_rejected_before_creating_database ... FAILED
+test submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir ... FAILED
+
+failures:
+
+---- dangling_arena_input_is_rejected_before_creating_database stdout ----
+
+thread 'dangling_arena_input_is_rejected_before_creating_database' (2567568) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_retained_inputs.rs:129:9:
+assertion failed: String::from_utf8_lossy(&result.stderr).contains("runtime input schema mismatch")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir stdout ----
+
+thread 'submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir' (2567569) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_retained_inputs.rs:24:5:
+assertion `left == right` failed: error: ValidationFailed
+exit_code: 2
+message: "INPUT_MAPPING_FAILED: input-bin decode failed"
+success: false
+
+
+  left: Some(2)
+ right: Some(0)
+
+
+failures:
+    dangling_arena_input_is_rejected_before_creating_database
+    submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

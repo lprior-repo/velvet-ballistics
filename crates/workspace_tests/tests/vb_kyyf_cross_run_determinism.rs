@@ -359,6 +359,7 @@ fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, St
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("vb-kyyf-deterministic-finish"),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
@@ -521,6 +522,7 @@ fn journal_events(run: RunId) -> [JournalEvent; 4] {
             workflow,
         },
         JournalEvent::RunAdmission {
+            input_digest: vb_storage::RunInputBinding::LegacyUnbound,
             run,
             seq: EventSeq::new(1),
             artifact_digest: workflow,
