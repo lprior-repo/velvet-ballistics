@@ -282,15 +282,15 @@ fn evidence_chain_captures_action_timeout_and_failure() {
         }
     }
 
-    let ticket = vb_core::action::ActionTicket {
-        run: run_id,
-        step: StepIdx::new(0),
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(7),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
+    let ticket_opt = runtime.lookup_pending_action_ticket(run_id, 0);
+    let ticket = match ticket_opt {
+        Some(t) => t,
+        None => {
+            fail_assert!("no pending action ticket found for run");
+            return;
+        }
     };
+
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Timeout,
         retry_policy: vb_core::action::RetryPolicy::NonRetryable,
@@ -314,10 +314,9 @@ fn evidence_chain_captures_action_timeout_and_failure() {
     }
 
     let snap = runtime.counters_snapshot();
-    assert_eq!(snap.runs_completed, 0, "run should not complete on action timeout");
-    assert!(snap.runs_failed > 0 || snap.runs_submitted > snap.runs_completed,
-        "run should be in failed/suspended state after action timeout: runs_submitted={} runs_failed={}",
-        snap.runs_submitted, snap.runs_failed);
+    assert_eq!(snap.runs_submitted, 1, "exactly one run should be submitted");
+    assert_eq!(snap.runs_failed, 1, "exactly one run should be failed");
+    assert_eq!(snap.runs_completed, 0, "no runs should be completed");
 
     let events = match journal.snapshot() {
         Ok(events) => events,
@@ -326,10 +325,13 @@ fn evidence_chain_captures_action_timeout_and_failure() {
             return;
         }
     };
-    let has_failed = events.iter().any(|e| {
+    let failed_events = events.iter().filter(|e| {
         matches!(e, vb_runtime::journal::RuntimeJournalEvent::RunFailed { run, .. } if *run == run_id)
-    });
-    assert!(has_failed, "journal should contain RunFailed after action timeout");
+    }).count();
+    assert_eq!(failed_events, 1, "exactly one RunFailed event expected");
+
+    let ticket_after = runtime.lookup_pending_action_ticket(run_id, 0);
+    assert!(ticket_after.is_none(), "ticket should be consumed after failure");
 }
 
 #[test]

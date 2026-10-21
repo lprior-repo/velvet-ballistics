@@ -1,0 +1,3 @@
+STATUS APPROVED
+
+The fixture now retrieves the actual issued ticket via `lookup_pending_action_ticket` instead of fabricating one, satisfying the no-fabricated-tickets constraint. Assertions are strengthened to exact counts (1 submitted, 1 failed, 0 completed) and exactly one `RunFailed` journal event. The new `ticket_after.is_none()` check correctly verifies ticket consumption. No production code is modified. The `fail_assert!` pattern is intentional per the contract. All 24 tests pass.
