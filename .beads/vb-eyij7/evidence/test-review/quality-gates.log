@@ -1,0 +1,29 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/vb_qi37_25_quality_gates.rs (target/debug/deps/vb_qi37_25_quality_gates-485e31a29ef42111)
+
+running 3 tests
+test feature_drift_reports_exact_expected_feature_set ... ok
+test binary_alias_reports_exact_allowed_binary_set ... ok
+test package_name_drift_reports_exact_member_and_expected_name ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
