@@ -23,7 +23,7 @@ The action contract registry is a dense, sorted array where index == ActionId:
 - Missing a contract for a referenced Do action is rejected.
 
 ## Duplicated Action IDs
-- Duplicate contract IDs (same ID at multiple indices, or same ID at multiple positions in the array) are rejected before workflow binding checks.
+- Duplicate contract IDs (same ID at multiple positions in the array) are rejected before any index or name checks.
 - Error: `RuntimeError::ContractValidationError { action, error: "duplicate action ID" }`
 
 ## Missing / Extra Contracts
@@ -32,12 +32,23 @@ The action contract registry is a dense, sorted array where index == ActionId:
 - Fabricated action ID (contract ID doesn't match its index): rejected.
 - Error for missing/fabricated: `RuntimeError::ContractValidationError { action, error: ... }`
 
-## Capability Error Ordering
-Validation order (first error wins):
-1. Duplicate action IDs in contracts
-2. Empty action contract names
-3. Capability coverage (granted vs required)
-4. Action ID workflow binding (referenced Do actions must have contracts)
+## Validation Order (First Error Wins)
+The admission validation runs these global passes in strict order; the first
+pass that detects an error returns immediately, so earlier diagnostics
+always take precedence over later ones.
+
+1. `build_admission` — run/digest/capability set construction (existing)
+2. `check_duplicate_ids` — global duplicate detection across all contracts
+3. `check_empty_names` — global empty-name check across all contracts
+4. `check_dense_index` — global index==ID check across all contracts
+5. `validate_contract_capabilities` — global capability coverage check
+6. `validate_workflow_action_binding` — workflow Do binding check
+
+This ordering means:
+- A duplicate ID at index 5 is detected even if index 1 has an ID mismatch
+- An empty name at index 2 is detected even if index 3 has an ID mismatch
+- An ID mismatch at index 1 is detected even if index 5 references an undefined action
+- A capability denial at action 0 is detected even if action 1 has no contract
 
 ## Direct Submission Paths
 Both public with-contract ingress paths must validate before enqueue:

@@ -1,0 +1,22 @@
+Done. Here's the actual results:
+
+**Targeted 4 boundary tests:** All 4 passed, 0 failed.
+- `shard_boundary_validates_fabricated_id_before_admission` ✓
+- `shard_boundary_validates_fabricated_id_with_inputs_before_admission` ✓
+- `shard_boundary_accepts_valid_contract_and_executes_do` ✓
+- `shard_boundary_accepts_valid_contract_with_seeded_input` ✓
+
+**Full vb_runtime lib suite:** 1909 passed, 0 failed.
+
+**What was actually broken and fixed:**
+
+1. **Negative tests:** Were comparing `Result<Vec>` via `assert_eq!` (comparing Ok/Err wrappers, not content). Now use `journal.snapshot()?` to get actual event vectors and compare those. Added missing `!terminal_runs_contains` assertion.
+
+2. **Positive tests:** Were using `test_shard()` (no journal), so no durable evidence was being verified at all. Now use real `VolatileRuntimeJournal` and verify:
+   - Exactly 1 `RunFinished` event with correct run id and result slot
+   - Exactly 0 `RunFailed` events
+   - Exactly 1 `ActionCompletedEnvelope` with correct ticket and serialized output value bytes
+
+3. **Seeded input workflow:** The original `do_workflow` is Do-only (no Finish node). Added a new `input_slot_do_workflow` helper with proper Do->Finish structure and typed `input_slots` (`SlotIdx::ZERO` as `InputSlotKind::I64`), without altering the shared `do_workflow`.
+
+Evidence saved to `.beads/vb-3l40a/evidence/admission-review-fix/outcomes.log` and `outcomes-lib.log`. Report in `.beads/vb-3l40a/report.md`. No push or bead closure performed.
