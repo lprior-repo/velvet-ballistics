@@ -1,0 +1,10 @@
+Review bead: vb-5yimw
+Candidate source commit: 57f307dac5dd59153f46f1d3e7b92ea73e2de35b
+Candidate bookmark: codex/vb-9agmk-artifact-repairs
+Review worktree: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-test-review-git
+Git root and JJ root: /home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-test-review-git
+
+Command:
+cargo test -p velvet-ballistics-workspace-tests --test vb_9agmk_artifact_evidence -j 2 -- --test-threads=2
+Exit status: 0
+Summary: 20 passed, 0 failed, 0 ignored, 0 filtered out
