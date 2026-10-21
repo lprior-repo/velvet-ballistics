@@ -1,3 +1,3 @@
-# Current inspected CLI decoder candidate
+# Current reviewed CLI result
 
-Actual bounded commands passed:13binary-unit productionmapper tests,1publicCLItest covering5payloads x2commands (10subcases),10incidenttests after separatelytracked explicitRunFinishedresultfixture.0fail0ignore. Earlier compileerror and failingmodeltestexpectations preserved in raw logs; no success inferred from source inspection. Localgeneration plus mechanical application provenance explicit. Independentcode/testreview still pending, no closureclaim.
+Actualfreshindependent16productionmapperunit tests,1publicCLItest5payloadsx2commands=10subcases,10incidenttestsallpass0fail0ignore. Propertycases256within16unittests. Rawlogs evidence/independent-v2.2specificprecedencemutationskilled, originalsourcerestored. Separatecode/testreviewsapprovedboundedpatch. No fullCLIpackage/canonicalCI/v1proofclaim. Earlierfailingcommandsandmodelgeneration/applicationprovenanceretained.
