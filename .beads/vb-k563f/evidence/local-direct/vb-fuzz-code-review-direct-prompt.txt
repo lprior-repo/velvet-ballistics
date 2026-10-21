@@ -1,0 +1,892 @@
+Independent CODE REVIEW fresh local5090 context, no authorhistory. Frozen5e61264d5c30 plusparentf41c19bf. Do not implement, do not claim tests yourself. Return plainMarkdown <=700words findingsfirst, exact sourcefile/line references, STATUS: APPROVED only no unresolved defects otherwise REJECTED. Positive observations are not findings requiring invented owner dispositions. No ownerwaivers exist. User Rustcontract->implementation->tests->code review->test review, no Go/proofs. Review13 emptyinput_slots fixture fields across12files atf41 and4file oracle/feature repair5e. Known14variantboolcontract, publicmustuse, all4callers assert, unknownnonexhaustive matches false, no newallows/uncheckedops/explicitpanics. Fuzz-only dependency enablesexistingcompiler test-util tobuildexistingcanonicaltarget; considerCargo featureunification versusstandalone productiondefaults. Do notapprovefullCI/v1orparentdurableinputs. Source/diffs/actualrawtests attached. Tests review is separate later invocation. No tools, answer only review.
+
+
+SOURCE .beads/vb-k563f/contract.md
+1: # vb-k563f Rust contract
+2: 
+3: Public #[must_use] bool predicate assert_typed_ipc_error accepts exactly the 14 current vb_ipc::IpcError variants and rejects future additions. Callers must assert the returned bool; no caller may ignore the result. This provides a static oracle: any new enum variant will cause the predicate to return false, failing the assertion and alerting callers to update the predicate. Tests cover each of the 14 current variants plus a malformed-header case producing InvalidMagic{actual:0}.
+4: 
+5: The current implementation name stays assert_typed_ipc_error; future unknown variant rejection is a wildcard policy, not an executed unknown-variant test. Static production-enum/oracle drift checking remains required. No production decoder semantics change.
+6: 
+7: ## Compiler fixture feature binding
+8: 
+9: Enable test-util feature on vb_compile dependency in fuzz harness to expose fixture constructors required for canonical digest property tests; no production feature defaults altered.
+10: Canonical property build exposed the gated constructor after fixing IPC export. The fuzz package dependency enables the existing compiler test-util feature. Cargo unifies that feature for shared dependencies in a build selecting fuzz; standalone production selection does not gain a new default feature. No production API visibility edits or deleted property checks.
+
+SOURCE .beads/vb-k563f/application-provenance.md
+1: Local5090 authored boolean predicate and both test functions via actual local Responses API with high reasoning and explicit32768 generation budget. Coordinator inspected source, mechanically replaced the old helper, added the omitted must_use attribute, exported it from its actual module and wrapped allfour existing callsites in assertions. No productionIPC source changed. Earlier malformed JSON/invented export/unwrap draft and truncated CLI attempts retained as rejected evidence. This is local-authored code with bounded coordinator application glue, not autonomous tool completion.
+2: Local5090 generated exact fuzz-only compiler dependency feature change and contract addendum; coordinator removed extra escaped quotes from generated TOML strings and applied the one matching line. Review must consider ordinary Cargo feature unification when selecting fuzz with other packages.
+
+SOURCE .beads/vb-k563f/current-results.md
+1: # Current bounded results
+2: 
+3: Actual local5090-authored oracle repair plus fuzz-only existing compiler test-util dependency feature: canonical four property suites pass6tests (1digest+2IPC+1journal+2roundtrip),0failed,0ignored. Raw evidence/canonical-properties-with-fixture-feature.log. Fuzz library unit tests pass2,0failed,0ignored; evidence/unit-tests.log. Static script check-error-exhaustiveness.sh passes all current variants; evidence/exhaustiveness.log. Actual failed earlier property logs retained. No ignored/error swallowing/property deletion or production enum visibility changes. Source includes ordinary Cargo feature unification for builds selecting fuzz. Independent code and test reviews remain required. Full moonCI/v1 not approved.
+
+SOURCE fuzz/src/ipc_target.rs
+1: //! IPC frame fuzzing targets.
+2: #![allow(clippy::indexing_slicing)]
+3: #![allow(clippy::missing_errors_doc)]
+4: #![allow(clippy::must_use_candidate)]
+5: #![allow(clippy::missing_panics_doc)]
+6: #![allow(clippy::too_many_lines)]
+7: #![allow(clippy::items_after_statements)]
+8: #![allow(clippy::doc_markdown)]
+9: #![allow(clippy::let_underscore_must_use)]
+10: #![allow(clippy::as_conversions)]
+11: #![allow(clippy::arithmetic_side_effects)]
+12: #![allow(clippy::len_zero)]
+13: 
+14: #[must_use]
+15: pub fn assert_typed_ipc_error(error: vb_ipc::IpcError) -> bool {
+16:     use vb_ipc::IpcError;
+17:     matches!(
+18:         error,
+19:         IpcError::Full
+20:             | IpcError::Disconnected
+21:             | IpcError::PayloadTooLarge { .. }
+22:             | IpcError::InvalidMagic { .. }
+23:             | IpcError::UnsupportedVersion { .. }
+24:             | IpcError::UnknownCommand(_)
+25:             | IpcError::ReservedNonZero { .. }
+26:             | IpcError::PayloadLengthMismatch { .. }
+27:             | IpcError::HeaderEncodeFailed
+28:             | IpcError::HeaderDecodeFailed
+29:             | IpcError::PayloadLengthOutOfRange { .. }
+30:             | IpcError::PayloadEncodeFailed
+31:             | IpcError::PayloadDecodeFailed
+32:             | IpcError::ResponseDecodeFailed
+33:     )
+34: }
+35: 
+36: pub fn fuzz_ipc_frame(data: &[u8]) {
+37:     use vb_ipc::frame::{decode_frame_header, decode_frame_payload};
+38: 
+39:     let Some(header_bytes) = data.get(..vb_ipc::IPC_HEADER_LEN) else {
+40:         return;
+41:     };
+42: 
+43:     let mut header = [0u8; vb_ipc::IPC_HEADER_LEN];
+44:     header.copy_from_slice(header_bytes);
+45: 
+46:     let header_result = decode_frame_header(&header);
+47: 
+48:     if let Ok(decoded_header) = header_result
+49:         && let Ok(encoded) = decoded_header.encode()
+50:     {
+51:         assert_eq!(
+52:             &encoded[..],
+53:             header_bytes,
+54:             "re-encoded header must match original bytes"
+55:         );
+56:     }
+57: 
+58:     let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
+59:         return;
+60:     };
+61: 
+62:     if !payload.is_empty()
+63:         && let Ok(header) = header_result
+64:     {
+65:         let payload_len_usize = header.payload_len as usize;
+66:         let result = decode_frame_payload(&header, payload);
+67:         match result {
+68:             Ok(decoded) => {
+69:                 assert!(
+70:                     payload.len() == payload_len_usize,
+71:                     "decode must fail when payload len mismatches header"
+72:                 );
+73:                 match decoded {
+74:                     vb_ipc::IpcPayload::SubmitRun(p) | vb_ipc::IpcPayload::SubmitRunInline(p) => {
+75:                         let _ = p.run_id;
+76:                         let _ = p.workflow;
+77:                     }
+78:                     vb_ipc::IpcPayload::CancelRun { run_id }
+79:                     | vb_ipc::IpcPayload::InspectRun { run_id }
+80:                     | vb_ipc::IpcPayload::ListEvents { run_id, .. }
+81:                     | vb_ipc::IpcPayload::DrainTrace { run_id, .. } => {
+82:                         let _ = run_id;
+83:                     }
+84:                     vb_ipc::IpcPayload::AnswerAsk { run_id, ticket, .. } => {
+85:                         let _ = run_id;
+86:                         let _ = ticket;
+87:                     }
+88:                     vb_ipc::IpcPayload::CompleteAction { run_id, ticket, .. }
+89:                     | vb_ipc::IpcPayload::FailAction { run_id, ticket, .. } => {
+90:                         let _ = run_id;
+91:                         let _ = ticket;
+92:                     }
+93:                     vb_ipc::IpcPayload::Health | vb_ipc::IpcPayload::Shutdown => {}
+94:                     _ => {}
+95:                 }
+96:             }
+97:             Err(e) => assert!(assert_typed_ipc_error(e)),
+98:         }
+99:     }
+100: }
+101: 
+102: pub fn fuzz_ipc_decode(data: &[u8]) {
+103:     use vb_ipc::frame::decode_frame_header;
+104: 
+105:     if data.len() >= vb_ipc::IPC_HEADER_LEN {
+106:         let mut header_bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+107:         header_bytes.copy_from_slice(&data[..vb_ipc::IPC_HEADER_LEN]);
+108: 
+109:         let bounds: &[usize] = &[0, 1, 16, 256, 1024, 65536, 1_048_576];
+110:         for &b in bounds {
+111:             if let Some(max) = std::num::NonZeroUsize::new(b) {
+112:                 let _ = vb_ipc::IpcFrameHeader::decode(
+113:                     &header_bytes,
+114:                     vb_ipc::MaxPayloadBytes::new(max),
+115:                 );
+116:             }
+117:         }
+118: 
+119:         let _ = decode_frame_header(&header_bytes);
+120:     }
+121: 
+122:     for len in 0..vb_ipc::IPC_HEADER_LEN {
+123:         if data.len() >= len {
+124:             let mut bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+125:             let end = len.min(data.len());
+126:             bytes[..end].copy_from_slice(&data[..end]);
+127:             let _ = vb_ipc::IpcFrameHeader::decode(&bytes, vb_ipc::MaxPayloadBytes::DEFAULT);
+128:         }
+129:     }
+130: }
+131: 
+132: pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
+133:     use vb_ipc::frame::{decode_frame_header, validate_frame_magic};
+134:     use vb_ipc::{IPC_HEADER_LEN, IpcError, MaxPayloadBytes};
+135: 
+136:     if data.is_empty() {
+137:         return;
+138:     }
+139: 
+140:     let magic_result = validate_frame_magic(data);
+141:     if data.len() < 4 {
+142:         assert!(
+143:             matches!(magic_result, Err(IpcError::HeaderDecodeFailed)),
+144:             "truncated frame (< 4 bytes) must return HeaderDecodeFailed"
+145:         );
+146:         return;
+147:     }
+148: 
+149:     if magic_result.is_err() {
+150:         assert!(
+151:             matches!(
+152:                 magic_result,
+153:                 Err(IpcError::InvalidMagic { .. }) | Err(IpcError::HeaderDecodeFailed)
+154:             ),
+155:             "wrong magic must return InvalidMagic or HeaderDecodeFailed"
+156:         );
+157:         return;
+158:     }
+159: 
+160:     if data.len() < IPC_HEADER_LEN {
+161:         return;
+162:     }
+163: 
+164:     let mut header_bytes = [0u8; IPC_HEADER_LEN];
+165:     header_bytes.copy_from_slice(&data[..IPC_HEADER_LEN]);
+166: 
+167:     let Some(max_payload_nz) = std::num::NonZeroUsize::new(65536) else {
+168:         return;
+169:     };
+170:     let max_payload = MaxPayloadBytes::new(max_payload_nz);
+171:     let header_result = vb_ipc::IpcFrameHeader::decode(&header_bytes, max_payload);
+172: 
+173:     match header_result {
+174:         Ok(header) => {
+175:             let payload = data.get(IPC_HEADER_LEN..).unwrap_or(&[]);
+176:             let Ok(expected_len) = usize::try_from(header.payload_len) else {
+177:                 return;
+178:             };
+179:             if payload.len() != expected_len && !payload.is_empty() {}
+180:         }
+181:         Err(e) => {
+182:             assert!(assert_typed_ipc_error(e));
+183:         }
+184:     }
+185: 
+186:     if data.len() >= IPC_HEADER_LEN {
+187:         let _ = decode_frame_header(&header_bytes);
+188:     }
+189: }
+190: 
+191: #[cfg(test)]
+192: mod typed_ipc_error_tests {
+193:     use super::*;
+194: 
+195:     #[test]
+196:     fn test_all_14_explicit_variants_match() {
+197:         let variants = [
+198:             vb_ipc::IpcError::Full,
+199:             vb_ipc::IpcError::Disconnected,
+200:             vb_ipc::IpcError::PayloadTooLarge {
+201:                 actual: 1,
+202:                 limit: 0,
+203:             },
+204:             vb_ipc::IpcError::InvalidMagic { actual: 0 },
+205:             vb_ipc::IpcError::UnsupportedVersion { actual: 0 },
+206:             vb_ipc::IpcError::UnknownCommand(0),
+207:             vb_ipc::IpcError::ReservedNonZero { actual: 1 },
+208:             vb_ipc::IpcError::PayloadLengthMismatch {
+209:                 header: 1,
+210:                 actual: 0,
+211:             },
+212:             vb_ipc::IpcError::HeaderEncodeFailed,
+213:             vb_ipc::IpcError::HeaderDecodeFailed,
+214:             vb_ipc::IpcError::PayloadLengthOutOfRange { actual: 0 },
+215:             vb_ipc::IpcError::PayloadEncodeFailed,
+216:             vb_ipc::IpcError::PayloadDecodeFailed,
+217:             vb_ipc::IpcError::ResponseDecodeFailed,
+218:         ];
+219:         for variant in variants {
+220:             assert!(assert_typed_ipc_error(variant));
+221:         }
+222:     }
+223: 
+224:     #[test]
+225:     fn test_malformed_header_decode() -> Result<(), Box<dyn std::error::Error>> {
+226:         let header = [0u8; vb_ipc::IPC_HEADER_LEN];
+227:         let error = vb_ipc::frame::decode_frame_header(&header)
+228:             .err()
+229:             .ok_or("expected malformed header rejection")?;
+230:         assert_eq!(error, vb_ipc::IpcError::InvalidMagic { actual: 0 });
+231:         assert!(assert_typed_ipc_error(error));
+232:         Ok(())
+233:     }
+234: }
+
+SOURCE fuzz/src/lib.rs
+1: //! Shared fuzz target bodies for Velvet Ballistics evidence gates.
+2: #![allow(clippy::indexing_slicing)]
+3: #![allow(clippy::missing_errors_doc)]
+4: #![allow(clippy::must_use_candidate)]
+5: #![allow(clippy::missing_panics_doc)]
+6: #![allow(clippy::too_many_lines)]
+7: #![allow(clippy::items_after_statements)]
+8: #![allow(clippy::doc_markdown)]
+9: #![allow(clippy::let_underscore_must_use)]
+10: #![allow(clippy::as_conversions)]
+11: #![allow(clippy::arithmetic_side_effects)]
+12: #![allow(clippy::len_zero)]
+13: 
+14: pub mod bin_common;
+15: 
+16: mod storage_codec_assertions;
+17: mod storage_codec_errors;
+18: mod storage_codec_mutation;
+19: pub mod storage_codec_target;
+20: pub mod yaml_target;
+21: pub mod validation_target;
+22: pub mod journal_target;
+23: pub mod expression_target;
+24: pub mod workflow_target;
+25: pub mod ipc_target;
+26: pub mod boundary_target;
+27: 
+28: pub use storage_codec_target::fuzz_vb_storage_codec;
+29: 
+30: pub use yaml_target::fuzz_yaml_events;
+31: pub use yaml_target::fuzz_strict_yaml_profile;
+32: pub use yaml_target::fuzz_compile_source_ast_marks;
+33: pub use yaml_target::fuzz_span_bridge;
+34: 
+35: pub use validation_target::fuzz_capability_name_schema;
+36: pub use validation_target::fuzz_capability_contract_schema;
+37: pub use validation_target::fuzz_verifier_gates;
+38: pub use validation_target::fuzz_diagnostic_from_error;
+39: pub use validation_target::fuzz_diagnostic_code_from_str;
+40: 
+41: pub use journal_target::fuzz_journal_event;
+42: pub use journal_target::fuzz_replay_events;
+43: pub use journal_target::fuzz_extract_terminal;
+44: pub use journal_target::fuzz_action_tracker;
+45: pub use journal_target::fuzz_admission_flow;
+46: pub use journal_target::fuzz_admission_fuzz;
+47: pub use journal_target::fuzz_strict_artifact_decoder;
+48: pub use journal_target::fuzz_digest_coherence;
+49: pub use journal_target::fuzz_readback_family_set;
+50: pub use journal_target::fuzz_admission_input_surface;
+51: pub use journal_target::fuzz_accepted_artifact_decode;
+52: pub use journal_target::fuzz_recovery_decode;
+53: pub use journal_target::fuzz_vb_qi37_12_persisted_payload_decode;
+54: pub use journal_target::fuzz_storage_envelope_boundary;
+55: pub use journal_target::fuzz_binary_payload_boundary;
+56: pub use journal_target::fuzz_accepted_artifact_envelope_qi37_4_2;
+57: 
+58: pub use expression_target::fuzz_expression;
+59: pub use expression_target::fuzz_expr_bytecode;
+60: pub use expression_target::fuzz_taint_propagation;
+61: pub use expression_target::fuzz_expr_eval;
+62: 
+63: pub use workflow_target::fuzz_compiled_ir;
+64: pub use workflow_target::fuzz_generated_compare;
+65: pub use workflow_target::fuzz_resource_budget;
+66: pub use workflow_target::fuzz_budget_compute;
+67: pub use workflow_target::fuzz_accessor_traversal;
+68: pub use workflow_target::fuzz_slot_value_roundtrip;
+69: pub use workflow_target::fuzz_collect_page_pagination;
+70: pub use workflow_target::fuzz_step_budget_new;
+71: 
+72: pub use ipc_target::assert_typed_ipc_error;
+73: pub use ipc_target::fuzz_ipc_frame;
+74: pub use ipc_target::fuzz_ipc_decode;
+75: pub use ipc_target::fuzz_ipc_frame_boundary;
+76: 
+77: pub use boundary_target::fuzz_external_input_adapter_boundary;
+
+SOURCE fuzz/fuzz_targets/ipc_frame.rs
+1: //! Fuzz target for IPC frame decode.
+2: //!
+3: //! ## INVARIANT Oracle
+4: //!
+5: //! Replaces crash-only fuzzing with structural assertions on
+6: //! `decode_frame_header` and `decode_frame_payload`:
+7: //! - Decoded `IpcFrameHeader` is guaranteed to have matched `IPC_VERSION` on
+8: //!   decode (the version slot is validated during decode and not stored on the
+9: //!   struct). The wire-format version slot of any re-encoded header MUST equal
+10: //!   `IPC_VERSION`.
+11: //! - On Ok: re-encoding the decoded header round-trips to the exact input
+12: //!   bytes (`encode ∘ decode = id`).
+13: //! - `decode_frame_payload` MUST return `Err` whenever `payload.len()` differs
+14: //!   from the header's `payload_len` field.
+15: //! - All errors are typed `IpcError` variants (enforced inside
+16: //!   `fuzz_lib::fuzz_ipc_frame`).
+17: //!
+18: //! Every `decode_frame_header` call is matched into `Ok / Err` so that no
+19: //! decoder `Result` is silently discarded and no wildcard `IpcPayload` arm is
+20: //! reached. Decode and encode failures are routed through the typed
+21: //! `fuzz_lib::assert_typed_ipc_error` oracle.
+22: //!
+23: //! Corpus seeds are maintained in `fuzz/corpus/ipc_frame/`.
+24: 
+25: #![no_main]
+26: 
+27: use libfuzzer_sys::fuzz_target;
+28: 
+29: fuzz_target!(|data: &[u8]| {
+30:     // Target-level oracle: a successfully decoded header re-encodes to bytes
+31:     // whose version slot equals IPC_VERSION. This is the only externally
+32:     // observable form of the "decoded header has version == IPC_VERSION"
+33:     // invariant, since `IpcFrameHeader` does not store a version field.
+34:     //
+35:     // Both decoder calls are matched into `Ok / Err` so the typed oracle in
+36:     // `fuzz_lib` exercises every error class. The strict lint gate forbids
+37:     // `let _ = decode(...)` discard patterns and any wildcard `IpcPayload`
+38:     // arm, so we route both branches through the oracle.
+39:     if let Some(header_bytes) = data.first_chunk::<{ vb_ipc::IPC_HEADER_LEN }>() {
+40:         match vb_ipc::frame::decode_frame_header(header_bytes) {
+41:             Ok(decoded) => match decoded.encode() {
+42:                 Ok(encoded) => {
+43:                     let version_bytes: [u8; 2] = encoded
+44:                         .as_slice()
+45:                         .get(4..6)
+46:                         .and_then(|s| <[u8; 2]>::try_from(s).ok())
+47:                         .unwrap_or([0u8; 2]);
+48:                     let version = u16::from_le_bytes(version_bytes);
+49:                     assert_eq!(
+50:                         version,
+51:                         vb_ipc::IPC_VERSION,
+52:                         "decoded IpcFrameHeader re-encodes with version != IPC_VERSION"
+53:                     );
+54:                     assert_eq!(
+55:                         encoded.as_slice(),
+56:                         header_bytes.as_slice(),
+57:                         "re-encoded header must match original bytes"
+58:                     );
+59:                 }
+60:                 Err(encode_error) => {
+61:                     assert!(fuzz_lib::assert_typed_ipc_error(encode_error));
+62:                 }
+63:             },
+64:             Err(decode_error) => {
+65:                 assert!(fuzz_lib::assert_typed_ipc_error(decode_error));
+66:             }
+67:         }
+68:     }
+69: 
+70:     fuzz_lib::fuzz_ipc_frame(data);
+71: });
+
+SOURCE crates/vb_ipc/src/error.rs
+1: #![forbid(unsafe_code)]
+2: //! IPC error types.
+3: 
+4: use thiserror::Error;
+5: use vb_core::DiagnosticCode;
+6: 
+7: /// IPC/memory ingress failures.
+8: #[derive(Debug, Error, PartialEq, Eq)]
+9: #[non_exhaustive]
+10: pub enum IpcError {
+11:     /// Queue is full and the producer must apply backpressure.
+12:     #[error("memory ingress queue is full")]
+13:     Full,
+14:     /// All producers or consumers have disconnected.
+15:     #[error("memory ingress queue is disconnected")]
+16:     Disconnected,
+17:     /// Payload exceeds the configured frame limit.
+18:     #[error("ingress payload is too large: actual={actual}, limit={limit}")]
+19:     PayloadTooLarge {
+20:         /// Actual payload bytes.
+21:         actual: usize,
+22:         /// Configured limit.
+23:         limit: usize,
+24:     },
+25:     /// Frame magic did not match `VBLT`.
+26:     #[error("invalid IPC frame magic: actual={actual:#010x}")]
+27:     InvalidMagic {
+28:         /// Decoded magic value.
+29:         actual: u32,
+30:     },
+31:     /// Frame version is not supported by this crate.
+32:     #[error("unsupported IPC frame version: actual={actual}")]
+33:     UnsupportedVersion {
+34:         /// Decoded version value.
+35:         actual: u16,
+36:     },
+37:     /// Command id is not part of the v1 command set.
+38:     #[error("unknown IPC command: {0}")]
+39:     UnknownCommand(u16),
+40:     /// Reserved header field must remain zero.
+41:     #[error("IPC reserved header field is non-zero: actual={actual}")]
+42:     ReservedNonZero {
+43:         /// Decoded reserved value.
+44:         actual: u16,
+45:     },
+46:     /// Header payload length and supplied payload bytes disagree.
+47:     #[error("IPC payload length mismatch: header={header}, actual={actual}")]
+48:     PayloadLengthMismatch {
+49:         /// Header-declared payload length.
+50:         header: usize,
+51:         /// Actual payload bytes supplied to the decoder.
+52:         actual: usize,
+53:     },
+54:     /// Header could not be encoded to the fixed wire length.
+55:     #[error("failed to encode IPC header")]
+56:     HeaderEncodeFailed,
+57:     /// Header bytes could not be read as fixed-width fields.
+58:     #[error("failed to decode IPC header")]
+59:     HeaderDecodeFailed,
+60:     /// Payload length cannot fit this target architecture.
+61:     #[error("IPC payload length cannot fit usize: actual={actual}")]
+62:     PayloadLengthOutOfRange {
+63:         /// Header-declared payload length.
+64:         actual: u32,
+65:     },
+66:     /// Typed Postcard payload encoding failed.
+67:     #[error("failed to encode IPC payload")]
+68:     PayloadEncodeFailed,
+69:     /// Typed Postcard payload decoding failed.
+70:     #[error("failed to decode IPC payload")]
+71:     PayloadDecodeFailed,
+72:     /// Typed response payload decoding failed.
+73:     #[error("failed to decode IPC response")]
+74:     ResponseDecodeFailed,
+75: }
+76: 
+77: impl IpcError {
+78:     /// Runtime code for structurally invalid IPC frames.
+79:     pub const IPC_FRAME_INVALID_RUNTIME_CODE: &str = "IPC_FRAME_INVALID";
+80:     /// Runtime code for IPC payloads exceeding a configured bound.
+81:     pub const IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE: &str = "IPC_PAYLOAD_TOO_LARGE";
+82:     /// Runtime code for bounded IPC ingress queues at capacity.
+83:     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+84: 
+85:     /// Diagnostic code for queue full.
+86:     pub const FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x3001);
+87:     /// Diagnostic code for disconnected.
+88:     pub const DISCONNECTED_CODE: DiagnosticCode = DiagnosticCode::new(0x3002);
+89:     /// Diagnostic code for payload too large.
+90:     pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x3003);
+91:     /// Diagnostic code for invalid magic.
+92:     pub const INVALID_MAGIC_CODE: DiagnosticCode = DiagnosticCode::new(0x3004);
+93:     /// Diagnostic code for unsupported version.
+94:     pub const UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x3005);
+95:     /// Diagnostic code for unknown command.
+96:     pub const UNKNOWN_COMMAND_CODE: DiagnosticCode = DiagnosticCode::new(0x3006);
+97:     /// Diagnostic code for reserved non-zero.
+98:     pub const RESERVED_NON_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x3007);
+99:     /// Diagnostic code for payload length mismatch.
+100:     pub const PAYLOAD_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x3008);
+101:     /// Diagnostic code for header encode failed.
+102:     pub const HEADER_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x3009);
+103:     /// Diagnostic code for header decode failed.
+104:     pub const HEADER_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300A);
+105:     /// Diagnostic code for payload length out of range.
+106:     pub const PAYLOAD_LENGTH_OUT_OF_RANGE_CODE: DiagnosticCode = DiagnosticCode::new(0x300B);
+107:     /// Diagnostic code for payload encode failed.
+108:     pub const PAYLOAD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300C);
+109:     /// Diagnostic code for payload decode failed.
+110:     pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300D);
+111:     /// Diagnostic code for response decode failed.
+112:     pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
+113: 
+114:     /// Returns the stable diagnostic code for this error.
+115:     #[must_use]
+116:     pub const fn diagnostic_code(&self) -> DiagnosticCode {
+117:         match self {
+118:             Self::Full => Self::FULL_CODE,
+119:             Self::Disconnected => Self::DISCONNECTED_CODE,
+120:             Self::PayloadTooLarge { .. } => Self::PAYLOAD_TOO_LARGE_CODE,
+121:             Self::InvalidMagic { .. } => Self::INVALID_MAGIC_CODE,
+122:             Self::UnsupportedVersion { .. } => Self::UNSUPPORTED_VERSION_CODE,
+123:             Self::UnknownCommand(_) => Self::UNKNOWN_COMMAND_CODE,
+124:             Self::ReservedNonZero { .. } => Self::RESERVED_NON_ZERO_CODE,
+125:             Self::PayloadLengthMismatch { .. } => Self::PAYLOAD_LENGTH_MISMATCH_CODE,
+126:             Self::HeaderEncodeFailed => Self::HEADER_ENCODE_FAILED_CODE,
+127:             Self::HeaderDecodeFailed => Self::HEADER_DECODE_FAILED_CODE,
+128:             Self::PayloadLengthOutOfRange { .. } => Self::PAYLOAD_LENGTH_OUT_OF_RANGE_CODE,
+129:             Self::PayloadEncodeFailed => Self::PAYLOAD_ENCODE_FAILED_CODE,
+130:             Self::PayloadDecodeFailed => Self::PAYLOAD_DECODE_FAILED_CODE,
+131:             Self::ResponseDecodeFailed => Self::RESPONSE_DECODE_FAILED_CODE,
+132:         }
+133:     }
+134: 
+135:     /// Returns the stable section 17 runtime code when this IPC error has a direct mapping.
+136:     #[must_use]
+137:     pub const fn runtime_code(&self) -> Option<&'static str> {
+138:         match self {
+139:             Self::Full => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+140:             Self::PayloadTooLarge { .. } | Self::PayloadLengthOutOfRange { .. } => {
+141:                 Some(Self::IPC_PAYLOAD_TOO_LARGE_RUNTIME_CODE)
+142:             }
+143:             Self::InvalidMagic { .. }
+144:             | Self::UnsupportedVersion { .. }
+145:             | Self::UnknownCommand(_)
+146:             | Self::ReservedNonZero { .. }
+147:             | Self::PayloadLengthMismatch { .. }
+148:             | Self::HeaderDecodeFailed
+149:             | Self::PayloadDecodeFailed
+150:             | Self::ResponseDecodeFailed => Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE),
+151:             Self::Disconnected | Self::HeaderEncodeFailed | Self::PayloadEncodeFailed => None,
+152:         }
+153:     }
+154: }
+155: 
+156: /// Converts a u32 payload length to usize, returning an error if it doesn't fit.
+157: ///
+158: /// On 64-bit platforms this is always valid since usize is 64-bit and u32 fits.
+159: /// On 32-bit platforms, payloads larger than `u32::MAX` would fail the conversion,
+160: /// but such payloads cannot be represented in the IPC frame anyway (payload_len is u32).
+161: pub(crate) fn u32_to_usize(value: u32) -> Result<usize, IpcError> {
+162:     match usize::try_from(value) {
+163:         Ok(converted) => Ok(converted),
+164:         Err(_) => Err(IpcError::PayloadLengthOutOfRange { actual: value }),
+165:     }
+166: }
+diff --git a/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs b/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+index 105b2f790..192fd7dc3 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+@@ -80,6 +80,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs b/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+index 54ad911ef..c814cdb93 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+@@ -139,6 +139,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
+         symbols_count: 0,
+         entry: StepIdx::new(u16::from(entry_byte)),
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     })
+ }
+diff --git a/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs b/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+index 91ae4e64d..833807d6f 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+@@ -83,6 +83,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs b/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+index 01f54aa71..c7651641a 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+@@ -77,6 +77,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/src/expression_target.rs b/fuzz/src/expression_target.rs
+index 27e99e50e..e5a2aca52 100644
+--- a/fuzz/src/expression_target.rs
++++ b/fuzz/src/expression_target.rs
+@@ -82,6 +82,7 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }) else {
+         return;
+     };
+@@ -163,6 +164,7 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }) else {
+         return;
+     };
+diff --git a/fuzz/src/journal_target/admission.rs b/fuzz/src/journal_target/admission.rs
+index 098b26c4e..2685fe592 100644
+--- a/fuzz/src/journal_target/admission.rs
++++ b/fuzz/src/journal_target/admission.rs
+@@ -107,6 +107,7 @@ fn workflow_parts(
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/journal_target/readback.rs b/fuzz/src/journal_target/readback.rs
+index e9b5b11d2..3222a3835 100644
+--- a/fuzz/src/journal_target/readback.rs
++++ b/fuzz/src/journal_target/readback.rs
+@@ -126,6 +126,7 @@ fn one_node_parts(name: &'static str, digest: [u8; 32]) -> vb_core::WorkflowPart
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/validation_target/capability.rs b/fuzz/src/validation_target/capability.rs
+index 1344d7cbb..505113301 100644
+--- a/fuzz/src/validation_target/capability.rs
++++ b/fuzz/src/validation_target/capability.rs
+@@ -90,6 +90,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/validation_target/verifier.rs b/fuzz/src/validation_target/verifier.rs
+index d5d22da03..4d5f4c0b2 100644
+--- a/fuzz/src/validation_target/verifier.rs
++++ b/fuzz/src/validation_target/verifier.rs
+@@ -207,6 +207,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     };
+     for result in [
+         vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
+diff --git a/fuzz/src/workflow_target/accessor.rs b/fuzz/src/workflow_target/accessor.rs
+index 66d267096..cbf4f6f1e 100644
+--- a/fuzz/src/workflow_target/accessor.rs
++++ b/fuzz/src/workflow_target/accessor.rs
+@@ -38,6 +38,7 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     };
+     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
+         return;
+diff --git a/fuzz/src/workflow_target/budget.rs b/fuzz/src/workflow_target/budget.rs
+index 24a84e128..cd127f1de 100644
+--- a/fuzz/src/workflow_target/budget.rs
++++ b/fuzz/src/workflow_target/budget.rs
+@@ -79,6 +79,7 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/tests/proptest_digest_coherence.rs b/fuzz/tests/proptest_digest_coherence.rs
+index 49ed795ca..ea3aee7be 100644
+--- a/fuzz/tests/proptest_digest_coherence.rs
++++ b/fuzz/tests/proptest_digest_coherence.rs
+@@ -81,6 +81,7 @@ proptest! {
+             entry: StepIdx::ZERO,
+             resource_contract: ResourceContract::DEFAULT,
+             step_names: Box::new([]),
++            input_slots: Box::from([]),
+         };
+ 
+         // Compute reference digest via postcard + blake3.
+
+diff --git a/fuzz/Cargo.toml b/fuzz/Cargo.toml
+index 62d708e16..290be05c1 100644
+--- a/fuzz/Cargo.toml
++++ b/fuzz/Cargo.toml
+@@ -39,7 +39,7 @@ vb_core = { path = "../crates/vb_core" }
+ vb_storage = { path = "../crates/vb_storage" }
+ vb_runtime = { path = "../crates/vb_runtime" }
+ vb_validate = { path = "../crates/vb_validate" }
+-vb_compile = { path = "../crates/vb_compile" }
++vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
+ vb_ipc = { path = "../crates/vb_ipc" }
+ 
+ xtask = { path = "../xtask" }
+diff --git a/fuzz/fuzz_targets/ipc_frame.rs b/fuzz/fuzz_targets/ipc_frame.rs
+index cd8d69514..ef168215b 100644
+--- a/fuzz/fuzz_targets/ipc_frame.rs
++++ b/fuzz/fuzz_targets/ipc_frame.rs
+@@ -58,11 +58,11 @@ fuzz_target!(|data: &[u8]| {
+                     );
+                 }
+                 Err(encode_error) => {
+-                    fuzz_lib::assert_typed_ipc_error(encode_error);
++                    assert!(fuzz_lib::assert_typed_ipc_error(encode_error));
+                 }
+             },
+             Err(decode_error) => {
+-                fuzz_lib::assert_typed_ipc_error(decode_error);
++                assert!(fuzz_lib::assert_typed_ipc_error(decode_error));
+             }
+         }
+     }
+diff --git a/fuzz/src/ipc_target.rs b/fuzz/src/ipc_target.rs
+index 4d75bdeea..81821d72c 100644
+--- a/fuzz/src/ipc_target.rs
++++ b/fuzz/src/ipc_target.rs
+@@ -11,25 +11,26 @@
+ #![allow(clippy::arithmetic_side_effects)]
+ #![allow(clippy::len_zero)]
+ 
+-fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
++#[must_use]
++pub fn assert_typed_ipc_error(error: vb_ipc::IpcError) -> bool {
+     use vb_ipc::IpcError;
+-    match error {
++    matches!(
++        error,
+         IpcError::Full
+-        | IpcError::Disconnected
+-        | IpcError::PayloadTooLarge { .. }
+-        | IpcError::InvalidMagic { .. }
+-        | IpcError::UnsupportedVersion { .. }
+-        | IpcError::UnknownCommand(_)
+-        | IpcError::ReservedNonZero { .. }
+-        | IpcError::PayloadLengthMismatch { .. }
+-        | IpcError::HeaderEncodeFailed
+-        | IpcError::HeaderDecodeFailed
+-        | IpcError::PayloadLengthOutOfRange { .. }
+-        | IpcError::PayloadEncodeFailed
+-        | IpcError::PayloadDecodeFailed
+-        | IpcError::ResponseDecodeFailed => {}
+-        _ => {}
+-    }
++            | IpcError::Disconnected
++            | IpcError::PayloadTooLarge { .. }
++            | IpcError::InvalidMagic { .. }
++            | IpcError::UnsupportedVersion { .. }
++            | IpcError::UnknownCommand(_)
++            | IpcError::ReservedNonZero { .. }
++            | IpcError::PayloadLengthMismatch { .. }
++            | IpcError::HeaderEncodeFailed
++            | IpcError::HeaderDecodeFailed
++            | IpcError::PayloadLengthOutOfRange { .. }
++            | IpcError::PayloadEncodeFailed
++            | IpcError::PayloadDecodeFailed
++            | IpcError::ResponseDecodeFailed
++    )
+ }
+ 
+ pub fn fuzz_ipc_frame(data: &[u8]) {
+@@ -93,7 +94,7 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
+                     _ => {}
+                 }
+             }
+-            Err(e) => assert_typed_ipc_error(e),
++            Err(e) => assert!(assert_typed_ipc_error(e)),
+         }
+     }
+ }
+@@ -178,7 +179,7 @@ pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
+             if payload.len() != expected_len && !payload.is_empty() {}
+         }
+         Err(e) => {
+-            assert_typed_ipc_error(e);
++            assert!(assert_typed_ipc_error(e));
+         }
+     }
+ 
+@@ -186,3 +187,48 @@ pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
+         let _ = decode_frame_header(&header_bytes);
+     }
+ }
++
++#[cfg(test)]
++mod typed_ipc_error_tests {
++    use super::*;
++
++    #[test]
++    fn test_all_14_explicit_variants_match() {
++        let variants = [
++            vb_ipc::IpcError::Full,
++            vb_ipc::IpcError::Disconnected,
++            vb_ipc::IpcError::PayloadTooLarge {
++                actual: 1,
++                limit: 0,
++            },
++            vb_ipc::IpcError::InvalidMagic { actual: 0 },
++            vb_ipc::IpcError::UnsupportedVersion { actual: 0 },
++            vb_ipc::IpcError::UnknownCommand(0),
++            vb_ipc::IpcError::ReservedNonZero { actual: 1 },
++            vb_ipc::IpcError::PayloadLengthMismatch {
++                header: 1,
++                actual: 0,
++            },
++            vb_ipc::IpcError::HeaderEncodeFailed,
++            vb_ipc::IpcError::HeaderDecodeFailed,
++            vb_ipc::IpcError::PayloadLengthOutOfRange { actual: 0 },
++            vb_ipc::IpcError::PayloadEncodeFailed,
++            vb_ipc::IpcError::PayloadDecodeFailed,
++            vb_ipc::IpcError::ResponseDecodeFailed,
++        ];
++        for variant in variants {
++            assert!(assert_typed_ipc_error(variant));
++        }
++    }
++
++    #[test]
++    fn test_malformed_header_decode() -> Result<(), Box<dyn std::error::Error>> {
++        let header = [0u8; vb_ipc::IPC_HEADER_LEN];
++        let error = vb_ipc::frame::decode_frame_header(&header)
++            .err()
++            .ok_or("expected malformed header rejection")?;
++        assert_eq!(error, vb_ipc::IpcError::InvalidMagic { actual: 0 });
++        assert!(assert_typed_ipc_error(error));
++        Ok(())
++    }
++}
+diff --git a/fuzz/src/lib.rs b/fuzz/src/lib.rs
+index 284d08aac..98a4d5ba4 100644
+--- a/fuzz/src/lib.rs
++++ b/fuzz/src/lib.rs
+@@ -69,6 +69,7 @@ pub use workflow_target::fuzz_slot_value_roundtrip;
+ pub use workflow_target::fuzz_collect_page_pagination;
+ pub use workflow_target::fuzz_step_budget_new;
+ 
++pub use ipc_target::assert_typed_ipc_error;
+ pub use ipc_target::fuzz_ipc_frame;
+ pub use ipc_target::fuzz_ipc_decode;
+ pub use ipc_target::fuzz_ipc_frame_boundary;
+
+REVIEW ONLY, <=700words Markdown. Neverinvent ownerapproveddebt or fullv1acceptance.
