@@ -130,7 +130,7 @@ fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
             ),
             node(
                 1,
-                None,
+                Some(1),
                 None,
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
@@ -210,7 +210,11 @@ fn action_contract(action: ActionId, output_slots: u16) -> ActionContract {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
-        required_capabilities: Box::from([required_capability(action)]),
+        required_capabilities: if output_slots == 0 {
+            Box::from([])
+        } else {
+            Box::from([required_capability(action)])
+        },
     }
 }
 
@@ -267,13 +271,9 @@ fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
     }
 }
 
-fn ask_answer(run: RunId, value: SlotValue, taint: Taint) -> AskAnswer {
+fn ask_answer(ticket: AskTicket, value: SlotValue, taint: Taint) -> AskAnswer {
     AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value,
         taint,
@@ -544,10 +544,10 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
     };
 
     // When: fail_action is called with a typed non-retryable failure.
-    assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
-        Ok(())
-    );
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or("suspended action must have a runtime-issued ticket")?;
+    assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
     run_one_tick(&mut runtime)?;
 
     // Then: the failure type is visible and the run does not complete successfully.
@@ -625,7 +625,10 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
     let answer_value = SlotValue::I64(6060);
     let answer_taint = Taint::DerivedFromSecret;
     let answer_bytes = encoded(&answer_value)?;
-    let answer = ask_answer(run, answer_value, answer_taint);
+    let ticket = runtime
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or("suspended ask must have a runtime-issued ticket")?;
+    let answer = ask_answer(ticket, answer_value, answer_taint);
 
     // When: answer_ask resumes the run.
     assert_eq!(runtime.answer_ask(answer), Ok(()));
@@ -669,9 +672,24 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let stale = RunId::new(1606);
     let unrelated = RunId::new(2606);
-    assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(stale, ask_then_finish_workflow()?),
+        Ok(())
+    );
     assert_eq!(
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        Ok(())
+    );
+    run_one_tick(&mut runtime)?;
+    let stale_ticket = runtime
+        .lookup_pending_ask_ticket(stale, StepIdx::new(2))
+        .ok_or("suspended ask must have a runtime-issued ticket")?;
+    assert_eq!(
+        runtime.answer_ask(ask_answer(
+            stale_ticket,
+            SlotValue::I64(6060),
+            Taint::DerivedFromSecret,
+        )),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -698,11 +716,11 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
     // to the terminal shard for no-op processing rather than failing.
     assert_eq!(
         runtime.answer_ask(ask_answer(
-            stale,
+            stale_ticket,
             SlotValue::I64(6060),
             Taint::DerivedFromSecret
         )),
-        Ok(())
+        Err(RuntimeError::InvalidActionCompletion)
     );
 
     // Then: stale answer_ask enqueues onto the terminal shard and unrelated observable state is unchanged.
@@ -729,9 +747,24 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
         Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, trace_starved_config());
     let stale = RunId::new(1616);
     let unrelated = RunId::new(2616);
-    assert_eq!(runtime.submit_direct(stale, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(stale, ask_then_finish_workflow()?),
+        Ok(())
+    );
     assert_eq!(
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        Ok(())
+    );
+    run_one_tick(&mut runtime)?;
+    let stale_ticket = runtime
+        .lookup_pending_ask_ticket(stale, StepIdx::new(2))
+        .ok_or("suspended ask must have a runtime-issued ticket")?;
+    assert_eq!(
+        runtime.answer_ask(ask_answer(
+            stale_ticket,
+            SlotValue::I64(6160),
+            Taint::DerivedFromSecret,
+        )),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -758,7 +791,7 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 
     // When: the stale ask ticket is answered after terminal trace evidence was dropped/evicted.
     let answer_result = runtime.answer_ask(ask_answer(
-        stale,
+        stale_ticket,
         SlotValue::I64(6160),
         Taint::DerivedFromSecret,
     ));
@@ -767,7 +800,7 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
     // is independent of trace retention), so answer_ask enqueues onto the
     // terminal shard for no-op processing. Err(RunNotFound) is reserved
     // for runs that live on NO shard (unknown runs).
-    assert_eq!(answer_result, Ok(()));
+    assert_eq!(answer_result, Err(RuntimeError::InvalidActionCompletion));
     assert_eq!(runtime.snapshot_run(unrelated, 617), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     assert_eq!(
@@ -783,17 +816,19 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run()
+fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
-    let wrong = RunId::new(9606);
     let unrelated = RunId::new(2607);
     assert_eq!(
-        submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        runtime.submit_direct(unrelated, ask_then_finish_workflow()?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    let ticket = runtime
+        .lookup_pending_ask_ticket(unrelated, StepIdx::new(2))
+        .ok_or("suspended ask must have a runtime-issued ticket")?;
     let unrelated_before = runtime.snapshot_run(unrelated, 608);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let active_before = runtime
@@ -807,9 +842,11 @@ fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelate
     // RA-030: answer_ask fails closed at the boundary when the run lives on
     // no shard, rather than enqueueing onto the home shard and surfacing the
     // error at tick time.
+    let mut invalid_answer = ask_answer(ticket, SlotValue::I64(6061), Taint::Clean);
+    invalid_answer.answer_slot = SlotIdx::new(1);
     assert_eq!(
-        runtime.answer_ask(ask_answer(wrong, SlotValue::I64(6061), Taint::Clean)),
-        Err(RuntimeError::RunNotFound)
+        runtime.answer_ask(invalid_answer),
+        Err(RuntimeError::InvalidActionCompletion)
     );
 
     // Then: tick is not affected and unrelated observable state is unchanged.

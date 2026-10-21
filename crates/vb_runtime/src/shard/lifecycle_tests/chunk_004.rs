@@ -476,12 +476,11 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
         submit_run(&mut shard, run, require_workflow("ask", ask_workflow())?);
+        let ticket = shard
+            .lookup_pending_ask_ticket(run, StepIdx::new(2))
+            .ok_or("suspended ask must issue a ticket")?;
         let answer = AskAnswer {
-            ticket: AskTicket {
-                run,
-                ask_step: StepIdx::new(2),
-                resume_step: StepIdx::new(3),
-            },
+            ticket,
             answer_slot: SlotIdx::new(2),
             value: SlotValue::I64(77),
             taint: Taint::Clean,

@@ -428,7 +428,11 @@ impl Shard {
                 }
             }
             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
-                // Open ask boundary: resume at ask step, no side effects
+                if let Some(ask) = boundary.open_ask() {
+                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+                    return Ok(());
+                }
             }
         }
 

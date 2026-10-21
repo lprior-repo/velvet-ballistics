@@ -596,6 +596,7 @@ impl Runtime {
             seed.seed(),
             pending_action,
             workflow,
+            events,
         ))
     }
 
@@ -911,6 +912,22 @@ impl Runtime {
         Some(canonical)
     }
 
+    /// Looks up the opaque authority for the run's currently suspended Ask boundary.
+    ///
+    /// The ticket is issued only from the shard's current Asking state and its
+    /// journal-backed AskScheduled boundary. A stale or unknown boundary returns
+    /// `None`; callers must not construct or alter ticket fields themselves.
+    #[must_use]
+    pub fn lookup_pending_ask_ticket(
+        &self,
+        run: RunId,
+        ask_step: vb_core::ids::StepIdx,
+    ) -> Option<crate::shard::AskTicket> {
+        self.shard_for_run(run)
+            .ok()?
+            .pending_ask_ticket(run, ask_step)
+    }
+
     /// Lists trace events for a run without draining the shard trace ring.
     ///
     /// RA-030 wave-15 (vb-sxkz6): a run may have been migrated to a shard
@@ -930,8 +947,9 @@ impl Runtime {
     /// shards for active or terminal ownership so the answer is routed to
     /// whichever shard actually holds the run state.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
-        let run = answer.ticket.run;
+        let run = answer.ticket.run();
         let shard = self.shard_for_run(run)?;
+        shard.validate_pending_ask_answer(answer)?;
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 

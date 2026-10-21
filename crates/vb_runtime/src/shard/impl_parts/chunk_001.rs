@@ -21,6 +21,7 @@ impl Shard {
             runs: IndexMap::new(),
             run_aggregate: RunAggregate::new(),
             journal_sequences: IndexMap::new(),
+            pending_ask_authorities: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -129,7 +130,8 @@ impl Shard {
         self.reserve_runtime_state_slot(run_id)?;
         self.reserve_journal_sequence_slot(run_id)?;
         self.reserve_pending_timer_slot(run_id)?;
-        self.reserve_pending_action_slot(run_id)
+        self.reserve_pending_action_slot(run_id)?;
+        self.reserve_pending_ask_authority_slot(run_id)
     }
 
     fn reserve_index_map_slot<T>(
@@ -169,6 +171,17 @@ impl Shard {
     pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
         self.run_aggregate
             .reserve_pending_timer_slot(run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_pending_ask_authority_slot(
+        &mut self,
+        run_id: RunId,
+    ) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(
+            &mut self.pending_ask_authorities,
+            run_id,
+            self.max_active_runs,
+        )
     }
 
     fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
@@ -255,7 +268,7 @@ impl Shard {
         self.journal_sequences.get(&run_id).copied()
     }
 
-    fn journal_sequence_for(&self, run: RunId) -> EventSeq {
+    pub(crate) fn journal_sequence_for(&self, run: RunId) -> EventSeq {
         self.journal_sequences
             .get(&run)
             .copied()
@@ -368,6 +381,7 @@ impl Shard {
             self.runtime_state_remove(run_id);
             let _removed_timer = self.pending_timer_remove(run_id);
             let _removed_action = self.pending_action_remove(run_id);
+            let _removed_ask_authority = self.pending_ask_authorities.swap_remove(&run_id);
         }
         Some(state)
     }

@@ -1,4 +1,3 @@
-
 #[test]
 fn ask_timer_fire_fails_run_when_no_answer() {
     let mut shard = Shard::new(small_config());
@@ -79,12 +78,11 @@ fn red_ask_answer_secret_redaction() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or("suspended ask must issue a ticket")?;
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: SlotValue::Symbol(vb_core::ids::SymbolId::new(9999)),
         taint: Taint::Secret,
@@ -113,15 +111,14 @@ fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or("suspended ask must issue a ticket")?;
     let Some(encoded_len) = max_size.checked_add(1) else {
         return Err(String::from("max_ipc_payload_bytes overflowed"));
     };
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: SlotValue::Blob(vb_core::ids::BlobId::new(u64::MAX)),
         taint: Taint::Clean,

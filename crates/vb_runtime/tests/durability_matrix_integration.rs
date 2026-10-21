@@ -392,13 +392,12 @@ fn ask_answered_persists_before_ack() {
     shard.tick().unwrap();
 
     let _ = journal.snapshot().unwrap();
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .expect("suspended ask must issue a ticket");
 
     let answer = vb_runtime::shard::AskAnswer {
-        ticket: vb_runtime::shard::AskTicket {
-            run,
-            ask_step: StepIdx::new(2),
-            resume_step: StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: SlotValue::I64(99),
         taint: Taint::Clean,

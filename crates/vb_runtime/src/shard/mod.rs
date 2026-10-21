@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+mod ask_authority;
 pub mod completion_watermark;
-pub mod directive;
 pub mod contract_validation;
+pub mod directive;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;

@@ -96,6 +96,9 @@ fn shard_command_ask_answered_equality() {
             run: super::RunId::new(4),
             ask_step: vb_core::ids::StepIdx::new(2),
             resume_step: vb_core::ids::StepIdx::new(3),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::Bool(true),
@@ -108,6 +111,9 @@ fn shard_command_ask_answered_equality() {
             run: super::RunId::new(4),
             ask_step: vb_core::ids::StepIdx::new(2),
             resume_step: vb_core::ids::StepIdx::new(3),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::Bool(true),
@@ -176,6 +182,9 @@ fn ask_answer_equality_same_fields() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(3),
         value: vb_core::value::SlotValue::I64(42),
@@ -187,6 +196,9 @@ fn ask_answer_equality_same_fields() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(3),
         value: vb_core::value::SlotValue::I64(42),
@@ -203,6 +215,9 @@ fn ask_answer_inequality_different_taint() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(3),
         value: vb_core::value::SlotValue::I64(42),
@@ -214,6 +229,9 @@ fn ask_answer_inequality_different_taint() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(3),
         value: vb_core::value::SlotValue::I64(42),
@@ -230,6 +248,9 @@ fn ask_answer_inequality_different_value() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::Bool(true),
@@ -241,6 +262,9 @@ fn ask_answer_inequality_different_value() {
             run: super::RunId::new(8),
             ask_step: vb_core::ids::StepIdx::new(1),
             resume_step: vb_core::ids::StepIdx::new(2),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::Bool(false),
@@ -257,6 +281,9 @@ fn ask_answer_debug_format() {
             run: super::RunId::new(9),
             ask_step: vb_core::ids::StepIdx::new(0),
             resume_step: vb_core::ids::StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::I64(0),

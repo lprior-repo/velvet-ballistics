@@ -275,6 +275,9 @@ fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
             run,
             ask_step: vb_core::ids::StepIdx::ZERO,
             resume_step: vb_core::ids::StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::I64(42),

@@ -105,6 +105,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
+        self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_completed();
         self.add_executed_step_delta(run, state.frame.executed());
@@ -168,6 +169,12 @@ impl Shard {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
+        let ask_boundary_seq = if kind == PendingTimerKind::Ask {
+            self.reserve_pending_ask_authority_slot(run)?;
+            Some(self.journal_sequence_for(run))
+        } else {
+            None
+        };
         if register_timer {
             self.reserve_pending_timer_slot(run)?;
         }
@@ -203,6 +210,9 @@ impl Shard {
                 },
             )?;
         }
+        if let Some(boundary_seq) = ask_boundary_seq {
+            self.record_pending_ask_authority(run, step, boundary_seq);
+        }
         self.run_state_insert(run, state)?;
         Ok(())
     }
@@ -226,6 +236,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
+        self.clear_pending_ask_authority(run);
         self.terminal_runs_insert(run)?;
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });

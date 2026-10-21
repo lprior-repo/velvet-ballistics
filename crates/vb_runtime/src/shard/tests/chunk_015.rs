@@ -91,14 +91,13 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     // Run is now waiting on an ask with a pending timer
     assert_eq!(shard.pending_timer_count(), 1);
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(2))
+        .ok_or("suspended ask must issue a ticket")?;
 
     // When answering the ask
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: vb_core::ids::StepIdx::new(2),
-            resume_step: vb_core::ids::StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: vb_core::value::SlotValue::I64(99),
         taint: vb_core::value::Taint::Clean,
@@ -131,13 +130,12 @@ fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(2))
+        .ok_or("suspended ask must issue a ticket")?;
 
     let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: vb_core::ids::StepIdx::new(2),
-            resume_step: vb_core::ids::StepIdx::new(3),
-        },
+        ticket,
         answer_slot: SlotIdx::new(2),
         value: vb_core::value::SlotValue::Bool(true),
         taint: vb_core::value::Taint::Clean,
@@ -159,7 +157,7 @@ fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
 }
 
 #[test]
-fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Result<(), String> {
+fn shard_ask_ticket_lookup_rejects_wrong_ask_step() -> Result<(), String> {
     let config = small_config();
     let mut shard = Shard::new(config);
     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
@@ -175,20 +173,10 @@ fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Re
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Answer with a wrong ask_step that doesn't match the suspended state.
-    let answer = AskAnswer {
-        ticket: AskTicket {
-            run,
-            ask_step: vb_core::ids::StepIdx::new(99),
-            resume_step: vb_core::ids::StepIdx::new(3),
-        },
-        answer_slot: SlotIdx::new(2),
-        value: vb_core::value::SlotValue::Bool(true),
-        taint: vb_core::value::Taint::Clean,
-        encoded_len: 0,
-    };
-    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
-    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    assert_eq!(
+        shard.lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(99)),
+        None
+    );
     Ok(())
 }
 

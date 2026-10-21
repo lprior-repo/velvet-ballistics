@@ -102,6 +102,9 @@ fn vb1u88_ask_answer_unknown_run_not_found() {
             run: super::RunId::new(9999),
             ask_step: vb_core::ids::StepIdx::ZERO,
             resume_step: vb_core::ids::StepIdx::new(1),
+
+            answer_slot: vb_core::ids::SlotIdx::ZERO,
+            boundary_seq: vb_storage::EventSeq::ZERO,
         },
         answer_slot: SlotIdx::ZERO,
         value: vb_core::value::SlotValue::Bool(true),
