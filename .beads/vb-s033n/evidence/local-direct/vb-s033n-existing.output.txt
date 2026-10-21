@@ -1,0 +1,39 @@
+```rust
+#[test]
+fn validation_precedes_journal_open() -> Result<(), Box<dyn std::error::Error>> {
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let db = db_path(&dir, mode);
+        write_file(&dir.join("wf.yaml"), NO_PORTS_YAML)?;
+        write_file(&dir.join("input.bin"), &[255])?;
+        let journal = vb_storage::FjallJournal::open(&db, None)?;
+        let compiled = vb_compile::compile_workflow(NO_PORTS_YAML.as_bytes())?;
+        let run = vb_core::RunId::new(77);
+        let header = vb_storage::RunHeaderRecord {
+            run,
+            workflow_id: vb_core::WorkflowId::new(0),
+            compiled_digest: compiled.digest(),
+            status: 0,
+            accepted_at_ms: 1,
+        };
+        vb_storage::put_run_header(&journal, &header)?;
+        journal.append_strict_batch(&[vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: compiled.digest(),
+        }])?;
+        let before_headers = journal.run_headers()?;
+        let before_events = journal.events_for_run(run)?;
+        let result = subprocess(&["vb-run", "--db", &db.to_string_lossy(), "--input", &dir.join("input.bin").to_string_lossy(), &dir.join("wf.yaml").to_string_lossy()])?;
+        assert_eq!(result.status.code(), Some(2));
+        assert_eq!(result.stdout, b"");
+        assert_eq!(result.stderr, b"INPUT_MAPPING_FAILED: input-bin decode failed\n");
+        let after_headers = journal.run_headers()?;
+        let after_events = journal.events_for_run(run)?;
+        assert_eq!(before_headers, after_headers);
+        assert_eq!(before_events, after_events);
+        journal.close()?;
+    }
+    Ok(())
+}
+```
