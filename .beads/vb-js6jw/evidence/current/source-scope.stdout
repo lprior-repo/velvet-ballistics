@@ -1,0 +1,2 @@
+crates/vb_compile/src/lib.rs
+crates/vb_compile/src/migration_compat.rs

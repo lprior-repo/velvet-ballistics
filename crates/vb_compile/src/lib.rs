@@ -19,18 +19,18 @@
 pub mod ast;
 
 // Preserve the original public paths while the dedicated crates own the code.
-pub use vb_expr::{expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs,
-    expr_stack_ops, expr_typecheck};
-pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile,
-    yaml_source_map};
+pub use vb_expr::{
+    expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs, expr_stack_ops, expr_typecheck,
+};
 #[cfg(kani)]
 pub use vb_yaml::yaml_kani;
-#[cfg(test)]
-mod migration_compat;
+pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile, yaml_source_map};
 mod control_flow;
 pub mod expression;
 mod expression_bytecode;
 mod limits;
+#[cfg(test)]
+mod migration_compat;
 mod mod_compile_core;
 mod mod_compile_errors;
 pub mod mod_compile_lowering;
@@ -42,27 +42,20 @@ mod type_taint;
 
 // Import expression and YAML modules from dedicated crates
 pub use vb_expr::{
-    ExprError, ExprResult,
-    bytecode, eval, lexer, parser, stack_ops, typecheck,
-    compile_expr, compile_expr_to_bytecode, compile_expr_with_pool,
-    compile_expr_with_resolver, check_expr_stack_bound, ReferenceResolver,
-    eval_binary_op, eval_expr_program, eval_expr_program_with_store,
-    eval_helper, eval_helper_with_store, eval_unary_op,
+    ExprError, ExprResult, ReferenceResolver, bytecode, check_expr_stack_bound, compile_expr,
+    compile_expr_to_bytecode, compile_expr_with_pool, compile_expr_with_resolver, eval,
+    eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
+    eval_helper_with_store, eval_unary_op, lexer, parser, stack_ops, typecheck,
 };
 
 pub use vb_yaml::{
-    YamlError, YamlResult,
-    YamlEvent, EventSpan, ScalarStyle,
-    collect_events, convert_event,
-    reject_anchors_aliases_merges, reject_duplicate_keys,
-    reject_forbidden_features, reject_multiple_documents,
-    reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
-    SourceMap, SourceSpan, SemanticSourceMap,
-    build_source_map, build_semantic_source_map, span_for_node,
-    WorkflowSource,
-    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst,
-    InputField, ResultMapping, RetryPolicy, ScalarValue, SecretField,
-    StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
+    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, EventSpan, ExampleAst, InputField,
+    ResultMapping, RetryPolicy, ScalarStyle, ScalarValue, SecretField, SemanticSourceMap,
+    SourceMap, SourceSpan, StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
+    WorkflowSource, YamlError, YamlEvent, YamlResult, build_semantic_source_map, build_source_map,
+    collect_events, convert_event, reject_anchors_aliases_merges, reject_duplicate_keys,
+    reject_forbidden_features, reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars,
+    span_for_node, validate_yaml_profile,
 };
 
 #[cfg(any(test, feature = "test-util"))]
@@ -84,7 +77,6 @@ mod proptest_choose_lowering;
 #[cfg(any())]
 // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
 pub mod kani_finish_digest;
-
 
 // Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
 #[cfg(any())]
@@ -146,8 +138,6 @@ pub mod kani_wait_digest;
 #[cfg(any())]
 // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
 pub mod kani_digest_repeat;
-
-
 
 // Internal test modules (error variant completeness, together digest unit tests).
 #[cfg(test)]

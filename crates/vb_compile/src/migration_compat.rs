@@ -31,7 +31,9 @@ mod expr_module_paths {
     #[test]
     fn expr_lexer_behavioral_check() -> Result<(), Box<dyn std::error::Error>> {
         let tokens = expr_lexer::lex_expr("x")?;
-        let has_identifier = tokens.iter().any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
+        let has_identifier = tokens
+            .iter()
+            .any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
         assert!(has_identifier, "Expected an identifier token");
         Ok(())
     }
@@ -83,18 +85,25 @@ mod yaml_module_paths {
     #[test]
     fn yaml_profile_rejects_duplicate_keys() {
         let result = yaml_profile::validate_yaml_profile("version: a\nversion: b\n");
-        assert!(matches!(result,
-            Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
-        ), "Expected DuplicateKey for version, got {result:?}");
+        assert!(
+            matches!(result,
+                Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
+            ),
+            "Expected DuplicateKey for version, got {result:?}"
+        );
     }
 
     /// Behavioral check: validate_yaml_profile rejects multiple documents via old path.
     #[test]
     fn yaml_profile_rejects_multiple_documents() {
         let result = yaml_profile::validate_yaml_profile("a: 1\n---\nb: 2\n");
-        assert!(matches!(result,
-            Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
-        ), "Expected two documents, got {result:?}");
+        assert!(
+            matches!(
+                result,
+                Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
+            ),
+            "Expected two documents, got {result:?}"
+        );
     }
 
     /// Compile-time check that yaml_ast module is accessible via old path.
@@ -105,4 +114,3 @@ mod yaml_module_paths {
         let _ = std::any::type_name::<yaml_ast::StepPrimitive>();
     }
 }
-
