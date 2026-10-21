@@ -61,6 +61,7 @@ fn make_workflow_with_constants(
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         step_names: Box::from([]),
     };
     match CompiledWorkflow::try_from_parts(parts) {

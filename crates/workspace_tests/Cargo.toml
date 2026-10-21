@@ -37,6 +37,8 @@ saphyr.workspace = true
 serde.workspace = true
 toml.workspace = true
 vb_compile = { path = "../vb_compile" }
+vb_expr = { path = "../vb_expr" }
+vb_yaml = { path = "../vb_yaml" }
 vb_core = { path = "../vb_core", features = ["verus-kernels"] }
 vb_cli = { package = "velvet-ballistics", path = "../velvet_ballistics" }
 vb_ipc = { path = "../vb_ipc" }

@@ -7,6 +7,7 @@ pub mod expr_bytecode;
 pub mod expr_eval;
 pub mod expr_lexer;
 pub mod expr_parser;
+pub mod expr_proofs;
 pub mod expr_typecheck;
 pub mod expr_stack_ops;
 

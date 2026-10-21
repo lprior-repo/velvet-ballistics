@@ -12,6 +12,16 @@
 //! `vb_core::CompiledWorkflow` values built from native Rust `saphyr` parsing.
 
 pub mod ast;
+
+// Preserve the original public paths while the dedicated crates own the code.
+pub use vb_expr::{expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs,
+    expr_stack_ops, expr_typecheck};
+pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile,
+    yaml_source_map};
+#[cfg(kani)]
+pub use vb_yaml::yaml_kani;
+#[cfg(test)]
+mod migration_compat;
 mod control_flow;
 pub mod expression;
 mod expression_bytecode;
@@ -61,8 +71,78 @@ mod proptest_finish_digest;
 #[cfg(test)]
 mod proptest_choose_lowering;
 
-// Kani harnesses disabled (see original lib.rs comments)
-// ... (same #[cfg(any())] blocks as original)
+// === Kani harnesses disabled pending upstream StepAst/StepPrimitiveAst refactor port ===
+// Tracked in BLOCK_GLOBAL follow-up: vb_xi2f_29_kani_proofs_post_stepast_refactor
+// Original modules preserved below in cfg(any()) gate for future porting.
+
+// Kani harnesses for Finish digest verification (vb-xi2f.34).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_finish_digest;
+
+
+// Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_canonical_name;
+
+// Kani harnesses for together digest step verification (vb-xi2f.29).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod together_digest_kani;
+
+// Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_idempotency_parity;
+
+// Kani harnesses for vb-a001 for_each lowering fix verification.
+// Proves PRE-002 (body SetConst.next = ForEachNext), PRE-005 (no backward edges),
+// PRE-006 (all nodes reachable), POST-003 (malformed IR rejection).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_foreach_parity;
+
+// Kani harnesses for repeat/ask id+1 lowering overflow rejection.
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_lower_control;
+
+// Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
+// Feature-gated behind test-util because these harnesses depend on
+// WorkflowSourceParts which is pub(crate) in production and only
+// re-exported as pub when test-util feature is active.
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_ask_empty_prompt;
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_ask_field_ordering;
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_ask_prompt_sensitivity;
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_ask_timeout_sensitivity;
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_ask_timeout_sentinel;
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_step_primitive_no_panic;
+
+// Kani harnesses for wait digest coverage verification (vb-xi2f.32).
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_wait_digest;
+
+// Kani harnesses for Repeat digest coverage (bead vb-xi2f.31).
+// PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
+#[cfg(any())]
+// disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+pub mod kani_digest_repeat;
+
+
 
 // Internal test modules (error variant completeness, together digest unit tests).
 #[cfg(test)]

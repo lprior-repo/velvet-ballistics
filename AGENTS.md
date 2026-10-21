@@ -180,3 +180,17 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+## Delivery Flow (Rust Bead Workflow)
+
+The standard delivery flow for Rust beads in this repository is:
+
+1. **Rust contract** — Define the bead contract in `.beads/<id>/contract.md`
+2. **Implementation** — Implement the bead in the isolated workspace
+3. **Tests** — Write and run behavioral tests
+4. **Code review** — Black hat review of the implementation
+5. **Test review** — Independent review of the test suite
+
+This is the user's explicit delivery flow. Do not invoke the Go-skill or full proof-planning stage unless explicitly requested. Local 5090/3090 instances handle approximately 98% of development; Sol is reserved for minimal coordination and escalation.
+
+The master architectural acceptance criteria and GOD RULES for formal harnesses remain in force; this flow does not waive or weaken those gates.
