@@ -33,9 +33,8 @@ fuzz_target!(|data: &[u8]| {
     match known_result {
         Ok(()) => {
             // Kind is known. Verify that is_known_record_kind agrees.
-            assert_eq!(
+            assert!(
                 vb_storage::codec::is_known_record_kind(kind),
-                true,
                 "validate_known_kind Ok but is_known_record_kind false for kind {}",
                 kind
             );
@@ -55,9 +54,8 @@ fuzz_target!(|data: &[u8]| {
             // are accepted without duplicating stale range checks here.
             let accepted_by_production = vb_storage::RecordKind::from_id(kind)
                 .is_some_and(|record_kind| record_kind.belongs_to_magic(magic));
-            assert_eq!(
+            assert!(
                 accepted_by_production,
-                true,
                 "validate_record_kind_family accepted ({magic:#010x}, {kind}) but RecordKind rejected it"
             );
         }
