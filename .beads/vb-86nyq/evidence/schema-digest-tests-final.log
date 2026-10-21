@@ -1,0 +1,27 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.48s
+     Running tests/compiler_input_schema_kinds.rs (target/debug/deps/compiler_input_schema_kinds-03e24e4faf63550a)
+
+running 9 tests
+test test_postcard_ordinals ... ok
+test test_invalid_input_schemas ... ok
+test test_input_slot_ordering ... ok
+test test_constant_change_alters_digest ... ok
+test test_deterministic_compile_and_digest ... ok
+test test_digest_stability_and_roundtrip ... ok
+test test_schema_kind_mapping ... ok
+test schema_kind_mapping ... ok
+test test_journal_rejects_mutated_payload ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/runtime_input_schema_kinds.rs (target/debug/deps/runtime_input_schema_kinds-a1c2a76c5b94b916)
+
+running 2 tests
+test test_any_slot_accepts_all_values ... ok
+test test_i64_slot_rejects_bool ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

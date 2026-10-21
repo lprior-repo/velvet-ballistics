@@ -36,7 +36,7 @@ rtrb.workspace = true
 saphyr.workspace = true
 serde.workspace = true
 toml.workspace = true
-vb_compile = { path = "../vb_compile" }
+vb_compile = { path = "../vb_compile", features = ["test-util"] }
 vb_expr = { path = "../vb_expr" }
 vb_yaml = { path = "../vb_yaml" }
 vb_core = { path = "../vb_core", features = ["verus-kernels"] }

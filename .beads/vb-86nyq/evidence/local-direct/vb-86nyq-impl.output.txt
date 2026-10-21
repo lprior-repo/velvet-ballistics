@@ -1,0 +1,29 @@
+```json
+[
+  {
+    "file": "part_01.rs",
+    "old": "    let parts = WorkflowParts {",
+    "new": "    let mut parts = WorkflowParts {"
+  },
+  {
+    "file": "part_01.rs",
+    "old": "        digest: canonical_digest(source)?,",
+    "new": "        digest: zeroWorkflowDigest,"
+  },
+  {
+    "file": "part_01.rs",
+    "old": "    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;",
+    "new": "    let encoded_parts = postcard::to_allocvec(&parts).map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;\n    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());\n    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;"
+  },
+  {
+    "file": "mod_compile_errors/kind.rs",
+    "old": "    #[error(\"compiled workflow IR failed validation: {0}\")]\n    Workflow(#[from] WorkflowError),",
+    "new": "    #[error(\"compiled workflow IR failed validation: {0}\")]\n    Workflow(#[from] WorkflowError),\n    #[error(\"compiled workflow IR encoding failed: {0}\")]\n    CompiledIrEncode(postcard::Error),"
+  },
+  {
+    "file": "mod_compile_errors/collection.rs",
+    "old": "            Self::Workflow(error) => workflow_error_code(error),",
+    "new": "            Self::Workflow(error) => workflow_error_code(error),\n            Self::CompiledIrEncode(_) => \"INVALID_COMPILED_WORKFLOW\","
+  }
+]
+```

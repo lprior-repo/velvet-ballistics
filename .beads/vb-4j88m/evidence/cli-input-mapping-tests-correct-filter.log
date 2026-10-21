@@ -1,0 +1,24 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)
+
+running 17 tests
+test run_compiled::input_tests::ports_255 ... ok
+test run_compiled::input_tests::full_2_correct_order ... ok
+test run_compiled::input_tests::any_port_maps_primitives ... ok
+test run_compiled::input_tests::slot2_i64_mapping_i64_42 ... ok
+test run_compiled::input_tests::i64_port_bool ... ok
+test run_compiled::input_tests::trailing_bytes_precede_kind_mismatch ... ok
+test run_compiled::input_tests::valid_one_plus_255 ... ok
+test run_compiled::input_tests::two_values_for_one_port ... ok
+test run_compiled::input_tests::slots_2_i64_3_bool_partial_1_maps_2 ... ok
+test run_compiled::input_tests::trailing_bytes_precede_excess_count ... ok
+test run_compiled::input_tests::with_i64_port_empty_raw ... ok
+test run_compiled::input_tests::zeroports_encoded_empty_plus_255 ... ok
+test run_compiled::input_tests::zeroports_encoded_empty ... ok
+test run_compiled::input_tests::zeroports_raw_empty ... ok
+test run_compiled::input_tests::zeroports_malformed_255 ... ok
+test run_compiled::input_tests::zeroports_one_i64 ... ok
+test run_compiled::input_tests::typed_i64_mapping_and_trailing_rejection ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 322 filtered out; finished in 0.00s
+

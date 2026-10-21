@@ -52,6 +52,8 @@ pub enum CompileError {
     ScalarLimit { actual: usize, limit: usize },
     #[error("compiled workflow IR failed validation: {0}")]
     Workflow(#[from] WorkflowError),
+    #[error("compiled workflow IR encoding failed: {0}")]
+    CompiledIrEncode(postcard::Error),
     #[error("validation gate failure: {0}")]
     Validation(#[from] vb_validate::ValidationError),
     #[error("required workflow field is missing: {field}")]

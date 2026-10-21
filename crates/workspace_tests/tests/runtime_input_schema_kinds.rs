@@ -48,10 +48,16 @@ fn test_any_slot_accepts_all_values() -> Result<(), Box<dyn std::error::Error>> 
         kind: InputSlotKind::Any,
     }]))?;
     let values = [
-        SlotValue::Null,
-        SlotValue::Bool(true),
-        SlotValue::I64(i64::MIN),
-        SlotValue::I64(i64::MAX),
+        vb_core::SlotValue::Null,
+        vb_core::SlotValue::Bool(false),
+        vb_core::SlotValue::Bool(true),
+        vb_core::SlotValue::I64(i64::MIN),
+        vb_core::SlotValue::I64(i64::MAX),
+        vb_core::SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+        vb_core::SlotValue::Symbol(vb_core::SymbolId::new(0)),
+        vb_core::SlotValue::List(vb_core::ListId::new(0)),
+        vb_core::SlotValue::Object(vb_core::ObjectId::new(0)),
+        vb_core::SlotValue::Blob(vb_core::BlobId::new(0)),
     ];
     for value in values {
         let mut frame = RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count())?;

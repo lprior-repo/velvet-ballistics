@@ -105,3 +105,120 @@ fn test_postcard_ordinals() -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+#[test]
+fn test_deterministic_compile_and_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src = source("number");
+    let compiled1 = vb_compile::compile_workflow(src.as_bytes())?;
+    let compiled2 = vb_compile::compile_workflow(src.as_bytes())?;
+    assert_eq!(compiled1.digest(), compiled2.digest());
+
+    let parts = compiled1.to_parts();
+    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_ne!(parts.digest, zero);
+
+    let mut parts_for_recompute = parts.clone();
+    parts_for_recompute.digest = zero;
+    let computed = vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts_for_recompute)?).into(),
+    );
+    assert_eq!(computed, parts.digest);
+    Ok(())
+}
+
+#[test]
+fn test_constant_change_alters_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src_a = source("number");
+    let src_b = src_a.replace("value: '42'", "value: '43'");
+    let compiled_a = vb_compile::compile_workflow(src_a.as_bytes())?;
+    let compiled_b = vb_compile::compile_workflow(src_b.as_bytes())?;
+    assert_ne!(compiled_a.digest(), compiled_b.digest());
+
+    let parts_a = compiled_a.to_parts();
+    let parts_b = compiled_b.to_parts();
+    assert_ne!(parts_a.constants, parts_b.constants);
+    Ok(())
+}
+
+#[test]
+fn test_journal_rejects_mutated_payload() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let journal = vb_storage::FjallJournal::open(dir.path(), None)?;
+    let src = source("number");
+    let compiled = vb_compile::compile_workflow(src.as_bytes())?;
+    let accepted =
+        vb_storage::submit_artifact(&journal, &compiled, vb_core::RuntimePolicy::Strict)?;
+    assert_eq!(accepted.ir, postcard::to_allocvec(&compiled.to_parts())?);
+
+    let parts = compiled.to_parts();
+    let mut parts_mut = parts.clone();
+    let slot = parts_mut.input_slots.first_mut().ok_or("missing port")?;
+    slot.kind = vb_core::InputSlotKind::Bool;
+    let rebuilt = vb_core::CompiledWorkflow::try_from_parts(parts_mut)?;
+    assert!(matches!(
+        vb_storage::submit_artifact(&journal, &rebuilt, vb_core::RuntimePolicy::Strict),
+        Err(vb_storage::JournalError::ArtifactChecksumMismatch)
+    ));
+    Ok(())
+}
+
+#[test]
+fn test_input_slot_ordering() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = source("number").replace("  value: number", "  zulu: boolean\n  alpha: number");
+    let compiled = vb_compile::compile_workflow(yaml.as_bytes())?;
+    let kinds: Vec<vb_core::InputSlotKind> =
+        compiled.input_slots().iter().map(|s| s.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![vb_core::InputSlotKind::Bool, vb_core::InputSlotKind::I64]
+    );
+    let slots = compiled.input_slots();
+    for pair in slots.windows(2) {
+        let [a, b] = pair else {
+            return Err("pair".into());
+        };
+        assert!(a.slot.get() < b.slot.get());
+    }
+    Ok(())
+}
+
+#[test]
+fn test_invalid_input_schemas() -> Result<(), Box<dyn std::error::Error>> {
+    let base = vb_compile::parse_workflow_source(&source("number"))?;
+    let invalid_schemas = vec![
+        vb_compile::AuthorValue::Text("list<garbage>".into()),
+        vb_compile::AuthorValue::Text("unknown".into()),
+        vb_compile::AuthorValue::Mapping(vec![]),
+        vb_compile::AuthorValue::Mapping(vec![vb_compile::AuthorEntry {
+            key: "is".into(),
+            value: vb_compile::AuthorValue::Text("unknown".into()),
+        }]),
+    ];
+    for invalid in invalid_schemas {
+        let modified = vb_compile::WorkflowSource::new(vb_compile::WorkflowSourceParts {
+            version: base.version().into(),
+            name: base.name().into(),
+            trigger: base.trigger().clone(),
+            inputs: vec![vb_compile::InputField {
+                key: "value".into(),
+                value: invalid,
+            }],
+            vars: vec![],
+            secrets: vec![],
+            steps: base.steps().to_vec(),
+            result: None,
+            examples: vec![],
+        });
+        let result = vb_compile::compile_source(&modified);
+        assert_eq!(
+            result,
+            Err(vb_compile::CompileErrors(vec![
+                vb_compile::CompileError::InvalidInputSchema {
+                    field: "inputs".into(),
+                    expected: "an allowed input schema".into(),
+                }
+            ]))
+        );
+    }
+    Ok(())
+}
