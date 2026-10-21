@@ -18,11 +18,11 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
-    RetrySafety, SideEffect,
+    ActionFailure, ActionFailureCode, ActionOutputReady, Idempotency, RetryPolicy, RetrySafety,
+    SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -142,14 +142,24 @@ fn required_capability(action: ActionId) -> Capability {
     Capability::new(Box::from("test.contract.required"), action)
 }
 
+fn test_action_name() -> Result<vb_core::action::ActionName, String> {
+    vb_core::action::ActionName::new("test-action")
+        .map_err(|err| format!("test fixture ActionName invalid: {err:?}"))
+}
+
 fn action_contract(
     action: ActionId,
     input_slots: u16,
     output_slots: u16,
-) -> vb_core::action::ActionContract {
-    vb_core::action::ActionContract {
+    required: Option<Capability>,
+) -> Result<vb_core::action::ActionContract, String> {
+    let required_capabilities = match required {
+        Some(cap) => Box::from([cap]),
+        None => Box::from([]),
+    };
+    Ok(vb_core::action::ActionContract {
         id: action,
-        name: vb_core::action::ActionName::new("test-action").unwrap(),
+        name: test_action_name()?,
         input_slot_count: input_slots,
         output_slot_count: output_slots,
         max_input_bytes: 1024,
@@ -158,28 +168,37 @@ fn action_contract(
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
-        required_capabilities: Box::from([required_capability(action)]),
-    }
+        required_capabilities,
+    })
 }
 
 fn action_contracts_through(
     action: ActionId,
     input_slots: u16,
     output_slots: u16,
-) -> Box<[vb_core::action::ActionContract]> {
+) -> Result<Box<[vb_core::action::ActionContract]>, String> {
     let target = action.get();
     let mut contracts = Vec::new();
     let mut id = 0u16;
     loop {
         let current = ActionId::new(id);
         if id == target {
-            contracts.push(action_contract(current, input_slots, output_slots));
+            contracts.push(action_contract(
+                current,
+                input_slots,
+                output_slots,
+                Some(required_capability(current)),
+            )?);
             break;
         }
-        contracts.push(action_contract(current, 0, 0));
+        // Padding contracts must not declare required capabilities — only
+        // the real action contract at index `target` carries requirements.
+        // Production validate_contract_capabilities iterates all contracts
+        // and requires every declared requirement to be granted.
+        contracts.push(action_contract(current, 0, 0, None)?);
         id = id.saturating_add(1);
     }
-    contracts.into_boxed_slice()
+    Ok(contracts.into_boxed_slice())
 }
 
 fn action_grants(action: ActionId) -> CapabilitySet {
@@ -197,20 +216,10 @@ fn submit_action_then_finish(
         workflow,
         Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
         action_grants(action),
-        action_contracts_through(action, 1, 1),
+        action_contracts_through(action, 1, 1).map_err(|err| {
+            vb_runtime::RuntimeError::ContractValidationError { action, error: err }
+        })?,
     )
-}
-
-fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
-    ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: SeqNo::ZERO,
-        action,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    }
 }
 
 fn action_output(value: SlotValue) -> ActionOutputReady {
@@ -298,10 +307,8 @@ fn hp1_cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
 ///
 /// Given a run suspended waiting for an action (Resumable state),
 /// when cancel_run is called, then the pending action is removed
-/// and subsequent action completion returns error.
-// HP-3 and HP-4 tests require runtime fix that was reverted - skip for now
+/// and subsequent action failure returns exact typed error with journal invariant.
 #[test]
-#[ignore]
 fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
@@ -313,8 +320,24 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before cancel (run is suspended waiting for action).
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before cancel".to_string())?;
+
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
+
+    // After cancel, the pending action ticket must be removed.
+    assert!(
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after cancel"
+    );
+
+    // Capture journal state before stale action attempt.
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
 
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
@@ -323,10 +346,22 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
         detail: None,
         encoded_len: 0,
     };
-    let result = runtime.fail_action(action_ticket(run, ActionId::new(7)), failure);
-    assert!(
-        result.is_err(),
-        "action completion after cancel should return error"
+    // fail_action is queued — error appears on tick, not synchronous return.
+    assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
+    let tick_result = runtime.tick_all();
+    // Exact typed error: InvalidActionCompletion for fail_action on cancelled run.
+    assert_eq!(
+        tick_result,
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion)
+    );
+
+    // Journal invariant: stale action attempt after cancel must not append events.
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after, journal_before,
+        "journal must be unchanged after stale action failure on cancelled run"
     );
 
     Ok(())
@@ -336,9 +371,8 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
 // HP-4: action after cancel returns error
 // =============================================================================
 
-/// HP-4: Action completion after cancel returns error.
+/// HP-4: Action completion after cancel returns exact typed error with journal invariant.
 #[test]
-#[ignore]
 fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
@@ -350,16 +384,42 @@ fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before cancel.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before cancel".to_string())?;
+
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    let result = runtime.complete_action_with_output(
-        action_ticket(run, ActionId::new(7)),
-        action_output(SlotValue::I64(42)),
-    );
+    // After cancel, the pending action ticket must be removed.
     assert!(
-        result.is_err(),
-        "action completion after cancel should return error"
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after cancel"
+    );
+
+    // Capture journal state before stale action attempt.
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+
+    // complete_action_with_output enqueues the command; error surfaces during tick
+    // because the run has moved to terminal_runs after cancel (run_state_get returns None).
+    assert_eq!(
+        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(42))),
+        Ok(())
+    );
+    let tick_result = runtime.tick_all();
+    // Exact typed error: RunNotFound because run moved to terminal_runs after cancel.
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
+
+    // Journal invariant: stale action attempt after cancel must not append events.
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after, journal_before,
+        "journal must be unchanged after stale action completion on cancelled run"
     );
 
     Ok(())
@@ -510,11 +570,7 @@ fn cancel_missing_run_returns_run_not_found_error() -> Result<(), String> {
     assert_eq!(runtime.cancel_run(run), Ok(()));
 
     let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for missing run cancel, got {:?}",
-        tick_result
-    );
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
 
     let counters_after = runtime.counters_snapshot();
     assert_eq!(
@@ -525,11 +581,7 @@ fn cancel_missing_run_returns_run_not_found_error() -> Result<(), String> {
     let journal_after = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
-    assert_eq!(
-        journal_after.len(),
-        journal_before.len(),
-        "journal unchanged"
-    );
+    assert_eq!(journal_after, journal_before, "journal unchanged");
 
     Ok(())
 }
@@ -554,7 +606,6 @@ fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
     let journal_before = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
-    let event_count_before = journal_before.len();
 
     // Second cancel on already-cancelled run
     assert_eq!(runtime.cancel_run(run), Ok(()));
@@ -574,7 +625,7 @@ fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
         .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
         .count();
     assert_eq!(cancelled_count, 1, "exactly one RunCancelled event");
-    assert_eq!(journal_after.len(), event_count_before, "journal unchanged");
+    assert_eq!(journal_after, journal_before, "journal unchanged");
 
     Ok(())
 }
@@ -630,7 +681,7 @@ fn second_cancel_after_first_cancel_retains_one_event() -> Result<(), String> {
 // C4: Stale Action/Timer Cleanup — Cancel-Based Tests (vb-b8i8f)
 // =============================================================================
 
-/// B33/B34: Action completion after cancel returns error during tick.
+/// B33/B34: Action completion after cancel returns exact typed error with journal invariant.
 #[test]
 fn action_completion_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -643,29 +694,48 @@ fn action_completion_after_cancel_returns_error() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before cancel.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before cancel".to_string())?;
+
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // C4: enqueue succeeds; error is returned during tick processing.
+    // After cancel, the pending action ticket must be removed.
+    assert!(
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after cancel"
+    );
+
+    // Capture journal state before stale action attempt.
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+
+    // C4: enqueue succeeds; exact typed error is returned during tick processing.
     assert_eq!(
-        runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(SlotValue::I64(42)),
-        ),
+        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(42)),),
         Ok(())
     );
 
     let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action completion, got {:?}",
-        tick_result
+    // Exact typed error: RunNotFound because run moved to terminal_runs after cancel.
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
+
+    // Journal invariant: stale action attempt after cancel must not append events.
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after, journal_before,
+        "journal must be unchanged after stale action completion on cancelled run"
     );
 
     Ok(())
 }
 
-/// B34: Action failure after cancel returns error during tick.
+/// B34: Action failure after cancel returns exact typed error with journal invariant.
 #[test]
 fn action_failure_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -678,8 +748,24 @@ fn action_failure_after_cancel_returns_error() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before cancel.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before cancel".to_string())?;
+
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
+
+    // After cancel, the pending action ticket must be removed.
+    assert!(
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after cancel"
+    );
+
+    // Capture journal state before stale action attempt.
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
 
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
@@ -688,23 +774,29 @@ fn action_failure_after_cancel_returns_error() -> Result<(), String> {
         detail: None,
         encoded_len: 0,
     };
-    // C4: enqueue succeeds; error is returned during tick processing.
-    assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
-        Ok(())
-    );
+    // C4: enqueue succeeds; exact typed error is returned during tick processing.
+    assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
 
     let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action failure, got {:?}",
-        tick_result
+    // Exact typed error: InvalidActionCompletion for fail_action on cancelled run.
+    assert_eq!(
+        tick_result,
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion)
+    );
+
+    // Journal invariant: stale action attempt after cancel must not append events.
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after, journal_before,
+        "journal must be unchanged after stale action failure on cancelled run"
     );
 
     Ok(())
 }
 
-/// B41: Stale action does not mutate state (counters, journal unchanged).
+/// B41: Stale action does not mutate state (counters, journal unchanged) with genuine ticket.
 #[test]
 fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -717,21 +809,33 @@ fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before cancel.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before cancel".to_string())?;
+
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
+
+    // After cancel, the pending action ticket must be removed.
+    assert!(
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after cancel"
+    );
 
     let counters_before = runtime.counters_snapshot();
     let journal_before = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
-    let event_count_before = journal_before.len();
 
     // Stale action completion — enqueue succeeds; tick returns error.
-    let _ = runtime.complete_action_with_output(
-        action_ticket(run, ActionId::new(7)),
-        action_output(SlotValue::I64(99)),
+    assert_eq!(
+        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(99)),),
+        Ok(())
     );
-    let _ = runtime.tick_all();
+    let tick_result = runtime.tick_all();
+    // Exact typed error: RunNotFound because run moved to terminal_runs after cancel.
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
 
     let counters_after = runtime.counters_snapshot();
     assert_eq!(
@@ -747,8 +851,7 @@ fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert_eq!(
-        journal_after.len(),
-        event_count_before,
+        journal_after, journal_before,
         "journal unchanged after stale action attempt"
     );
 
@@ -808,11 +911,7 @@ fn kill_missing_run_returns_run_not_found_error() -> Result<(), String> {
     assert_eq!(runtime.kill_run(run), Ok(()));
 
     let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for missing run kill, got {:?}",
-        tick_result
-    );
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
 
     let counters_after = runtime.counters_snapshot();
     assert_eq!(
@@ -908,7 +1007,7 @@ fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> 
     Ok(())
 }
 
-/// K5: Action completion after kill returns error during tick.
+/// K5: Action completion after kill returns exact typed error with journal invariant.
 #[test]
 fn action_completion_after_kill_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -921,23 +1020,42 @@ fn action_completion_after_kill_returns_error() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
+    // Capture the genuine ticket before kill.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or_else(|| "expected pending action ticket before kill".to_string())?;
+
     assert_eq!(runtime.kill_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // C4: enqueue succeeds; error returned during tick processing.
+    // After kill, the pending action ticket must be removed.
+    assert!(
+        runtime.lookup_pending_action_ticket(run, 0).is_none(),
+        "pending action ticket must be None after kill"
+    );
+
+    // Capture journal state before stale action attempt.
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+
+    // C4: enqueue succeeds; exact typed error returned during tick processing.
     assert_eq!(
-        runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(SlotValue::I64(42)),
-        ),
+        runtime.complete_action_with_output(ticket, action_output(SlotValue::I64(42)),),
         Ok(())
     );
 
     let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action completion after kill, got {:?}",
-        tick_result
+    // Exact typed error: RunNotFound because run moved to terminal_runs after kill.
+    assert_eq!(tick_result, Err(vb_runtime::RuntimeError::RunNotFound));
+
+    // Journal invariant: stale action attempt after kill must not append events.
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after, journal_before,
+        "journal must be unchanged after stale action completion on killed run"
     );
 
     Ok(())
