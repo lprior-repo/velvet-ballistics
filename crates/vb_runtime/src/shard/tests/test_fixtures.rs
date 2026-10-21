@@ -8,11 +8,11 @@ use vb_core::SlotValue;
 /// Create action contracts for all action IDs from 0 through the given maximum.
 pub(crate) fn contracts_through(max_action: ActionId) -> Box<[ActionContract]> {
     let target = u16::from(max_action.get());
-    let mut contracts = Vec::with_capacity(usize::from(target) + 1);
+    let mut contracts = Vec::new();
     let mut id = 0u16;
     loop {
         let current = ActionId::new(id);
-        let name = ActionName::new("test-action").unwrap();
+        let name = ActionName::from_static_infallible("test-action");
         contracts.push(ActionContract {
             id: current,
             name,
@@ -43,7 +43,7 @@ pub(crate) fn contract_capability_for(action: ActionId) -> CapabilitySet {
 /// This is the canonical way to submit workflows with Do actions in tests.
 pub(crate) fn submit_suspended(
     shard: &mut super::super::types::Shard,
-    run: vb_core::ids::RunId,
+    run: RunId,
     workflow: vb_core::workflow::CompiledWorkflow,
 ) -> crate::RuntimeResult<()> {
     shard.handle_submit_with_inputs_and_contracts(
