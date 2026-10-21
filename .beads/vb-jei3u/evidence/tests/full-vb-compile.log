@@ -1,0 +1,32 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_compile)
+warning: unused import: `crate::expr_proofs`
+   --> crates/vb_compile/src/migration_compat.rs:117:13
+    |
+117 |         use crate::expr_proofs;
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_compile` (lib test) generated 1 warning (run `cargo fix --lib -p vb_compile --tests` to apply 1 suggestion)
+error[E0432]: unresolved import `vb_compile::WorkflowSourceParts`
+  --> crates/vb_compile/tests/common/mod.rs:12:70
+   |
+12 |     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
+   |                                                                      ^^^^^^^^^^^^^^^^^^^ no `WorkflowSourceParts` in the root
+   |
+note: found an item that was configured out
+  --> crates/vb_compile/src/lib.rs:64:18
+   |
+63 | #[cfg(any(test, feature = "test-util"))]
+   |          ----------------------------- the item is gated here
+64 | pub use vb_yaml::WorkflowSourceParts;
+   |                  ^^^^^^^^^^^^^^^^^^^
+help: a similar name exists in the module
+   |
+12 -     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
+12 +     ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSource,
+   |
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `vb_compile` (test "digest_ask_empty_prompt") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

@@ -1,0 +1,9 @@
+**Verification and repair complete.**
+
+- Git root: `/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090` ✓
+- JJ root: `/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090` ✓
+- Fixed `u16::MAX as i64` → `i64::from(u16::MAX)` on line 238 of `crates/vb_compile/src/proptest_finish_digest.rs`
+- Test command exited with status 0
+- Final result: **ok. 489 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.39s**
+- Evidence written to `.beads/vb-jei3u/evidence/tests/final-lib.log`
+- No other code changed, nothing pushed.

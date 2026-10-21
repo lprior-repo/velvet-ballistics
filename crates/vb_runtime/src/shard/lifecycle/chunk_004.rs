@@ -40,6 +40,21 @@ impl Shard {
         }
         match self.pending_action_get(ticket.run) {
             Some(pending) if pending == ticket => Ok(()),
+            Some(pending)
+                if ticket.attempt > 0
+                    && ticket.attempt < pending.attempt
+                    && ticket.run == pending.run
+                    && ticket.step == pending.step
+                    && ticket.action == pending.action
+                    && ticket.capacity == pending.capacity
+                    && vb_core::action::action_ticket_has_valid_key(ticket)
+                    && ticket.seq <= pending.seq =>
+            {
+                Err(RuntimeError::StaleAttempt {
+                    incoming: ticket.attempt,
+                    current: pending.attempt,
+                })
+            }
             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
         }
     }

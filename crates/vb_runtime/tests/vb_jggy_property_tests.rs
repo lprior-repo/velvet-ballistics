@@ -64,6 +64,7 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .map_err(|e| format!("workflow construction failed: {}", e))?;
