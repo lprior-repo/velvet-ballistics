@@ -190,3 +190,51 @@ fn valid_one_plus_255() -> TestResult<()> {
     assert_eq!(result, Err(InputMappingError::DecodeFailed));
     Ok(())
 }
+
+#[test]
+fn trailing_bytes_precede_excess_count() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+    ]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+
+#[test]
+fn trailing_bytes_precede_kind_mismatch() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+
+proptest::proptest! {
+    #[test]
+    fn typed_i64_mapping_and_trailing_rejection(value in proptest::num::i64::ANY, junk in proptest::collection::vec(proptest::num::u8::ANY, 1..17)) {
+        let wf = fixture(Box::from([i64_port()]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        let mut bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(value)]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(value))]))
+        );
+        bytes.extend(junk);
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Err(InputMappingError::DecodeFailed)
+        );
+    }
+}

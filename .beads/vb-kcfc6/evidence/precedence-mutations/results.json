@@ -1,0 +1,14 @@
+[
+  {
+    "mutation": "after-count",
+    "test": "trailing_bytes_precede_excess_count",
+    "exit": 101,
+    "killed": true
+  },
+  {
+    "mutation": "after-kind",
+    "test": "trailing_bytes_precede_kind_mismatch",
+    "exit": 101,
+    "killed": true
+  }
+]
