@@ -1,0 +1,3 @@
+Local 5090 implementation applied using exact single-match substitutions. Coordinator expanded the prompt shorthand zeroWorkflowDigest to the actual existing WorkflowDigest::from_bytes([0u8; 32]) expression and mapped abbreviated filenames to their real paths. No fallback or schema assertion was weakened.
+Accepted tests-v2 after replacing invented AcceptedArtifact.workflow_digest with an exact comparison of existing AcceptedArtifact.ir to serialized real compiler parts. Initial tests draft invented compiler APIs and was rejected before application.
+The strict admission test initially named the wrong exact error variant. Inspected existing production checksum branch and corrected PayloadDigestMismatch to ArtifactChecksumMismatch, preserving exact failure checking.

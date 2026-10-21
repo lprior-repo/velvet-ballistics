@@ -44,6 +44,19 @@ pub fn seed_input_slots(
 }
 
 fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
+    if kind == vb_core::InputSlotKind::Any {
+        return matches!(
+            value,
+            SlotValue::Null
+                | SlotValue::Bool(_)
+                | SlotValue::I64(_)
+                | SlotValue::F64(_)
+                | SlotValue::Symbol(_)
+                | SlotValue::List(_)
+                | SlotValue::Object(_)
+                | SlotValue::Blob(_)
+        );
+    }
     matches!(
         (value, kind),
         (SlotValue::Null, vb_core::InputSlotKind::Null)

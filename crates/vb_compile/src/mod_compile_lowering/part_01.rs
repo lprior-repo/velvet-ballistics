@@ -42,9 +42,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         )?;
     }
     allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
-    let parts = WorkflowParts {
+    let mut parts = WorkflowParts {
         name: Box::from(source.name()),
-        digest: canonical_digest(source)?,
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
@@ -56,6 +56,9 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         step_names: step_names.into_boxed_slice(),
         input_slots: builder.input_slots.into_boxed_slice(),
     };
+    let encoded_parts = postcard::to_allocvec(&parts)
+        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
@@ -84,24 +87,15 @@ pub(super) fn allocate_input_slots(
                 .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
         );
         builder.record_slot(slot);
-        let kind = kind_from_author_value(&input.value);
+        let kind = kind_from_input_schema(&input.value)?;
         builder.record_input_slot(slot, kind);
     }
     Ok(())
 }
 
-/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
-pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
-    match value {
-        AuthorValue::Null => InputSlotKind::Null,
-        AuthorValue::Bool(_) => InputSlotKind::Bool,
-        AuthorValue::I64(_) => InputSlotKind::I64,
-        AuthorValue::Text(_) => InputSlotKind::Symbol,
-        AuthorValue::Sequence(_) => InputSlotKind::List,
-        AuthorValue::Mapping(_) => InputSlotKind::Object,
-        _ => InputSlotKind::Null,
-    }
-}
+#[path = "input_schema.rs"]
+mod input_schema;
+use input_schema::kind_from_input_schema;
 
 #[derive(Clone, Copy)]
 pub(super) struct CanonicalStepLayout {
