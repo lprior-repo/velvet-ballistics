@@ -1,0 +1,8 @@
+error[E0599]: no variant, associated function, or constant named `NonIdempotent` found for enum `Idempotency` in the current scope
+  --> crates/workspace_tests/tests/vb_9agmk_code_review_probes.rs:56:51
+   |
+56 |     submitted_contract.idempotency = Idempotency::NonIdempotent;
+   |                                                   ^^^^^^^^^^^^^ variant, associated function, or constant not found in `Idempotency`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_9agmk_code_review_probes") due to 1 previous error

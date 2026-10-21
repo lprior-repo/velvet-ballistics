@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--collect",
+    "-p",
+    "MemoryHigh=12G",
+    "-p",
+    "MemoryMax=16G",
+    "-p",
+    "MemorySwapMax=0",
+    "env",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "timeout",
+    "--kill-after=10",
+    "180",
+    "cargo",
+    "test",
+    "-q",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_9agmk_code_review_probes",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "source": "948f19cb7cd92afec3d95e9fb285216cc6689d41",
+  "temporary_test": "vb_9agmk_code_review_probes.rs"
+}

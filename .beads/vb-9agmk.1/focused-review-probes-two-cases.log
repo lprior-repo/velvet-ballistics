@@ -1,0 +1,16 @@
+warning: function `rebind` is never used
+  --> crates/workspace_tests/tests/artifact_evidence_support/mod.rs:67:15
+   |
+67 | pub(super) fn rebind(
+   |               ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+
+running 2 tests
+artifact and compiler accepted registry; runtime result: Err(ContractValidationError { action: ActionId(7), error: "contract at index 0 has ID 7 (expected 0)" })
+artifact and compiler accepted registry; runtime result: Err(ContractValidationError { action: ActionId(7), error: "duplicate action ID" })
+.strict submit with replacement Writes/AtLeastOnceExternal/Unsafe contract: Ok(())
+.
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
