@@ -1,0 +1,55 @@
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.228
+   Compiling logos-codegen v0.15.1
+   Compiling arraydeque v0.5.1
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.15.5
+   Compiling lazy_static v1.5.0
+   Compiling beef v0.5.2
+   Compiling hashlink v0.10.0
+   Compiling version_check v0.9.5
+   Compiling zmij v1.0.21
+   Compiling ahash v0.8.12
+   Compiling saphyr-parser v0.0.6
+   Compiling logos-derive v0.15.1
+   Compiling ordered-float v5.3.0
+   Compiling saphyr v0.0.6
+   Compiling logos v0.15.1
+   Compiling encoding_rs v0.8.35
+   Compiling unicode-width v0.2.2
+   Compiling serde_json v1.0.150
+   Compiling anstyle v1.0.14
+   Compiling crc32fast v1.5.0
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling heapless v0.7.17
+   Compiling postcard v1.1.3
+   Compiling nohash-hasher v0.2.0
+   Compiling memchr v2.8.0
+   Compiling itoa v1.0.18
+   Compiling base64 v0.22.1
+   Compiling serde-saphyr v0.0.25
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_core)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_storage)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_validate)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_yaml)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_expr)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_runtime)
+   Compiling proptest v1.11.0
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-ipc-review-root-20261021/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.29s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)
+
+running 3 tests
+test ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown ... ok
+test ipc_serve::tests::shutdown_acknowledgement_is_readable_before_service_exits ... ok
+test ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_staging ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 352 filtered out; finished in 0.01s
+
