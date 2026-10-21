@@ -1,0 +1,3 @@
+# Current reviewed CLI result
+
+Actualfreshindependent16productionmapperunit tests,1publicCLItest5payloadsx2commands=10subcases,10incidenttestsallpass0fail0ignore. Propertycases256within16unittests. Rawlogs evidence/independent-v2.2specificprecedencemutationskilled, originalsourcerestored. Separatecode/testreviewsapprovedboundedpatch. No fullCLIpackage/canonicalCI/v1proofclaim. Earlierfailingcommandsandmodelgeneration/applicationprovenanceretained.
