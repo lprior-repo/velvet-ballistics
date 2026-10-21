@@ -288,6 +288,7 @@ mod tests {
                 .map_err(|e| e.to_string())?;
 
         CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("choose_expr_test"),
             digest: WorkflowDigest::from_bytes([0x55; 32]),
             nodes: vec![

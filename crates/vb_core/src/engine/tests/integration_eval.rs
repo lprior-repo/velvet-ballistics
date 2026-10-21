@@ -83,6 +83,7 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
     )
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("div_zero"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![CompiledNode {
@@ -132,6 +133,7 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
     )
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("int_overflow"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![CompiledNode {
@@ -178,6 +180,7 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
     )
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("not_on_int"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
         nodes: vec![CompiledNode {
@@ -226,6 +229,7 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     )
     .map_err(crate::WorkflowError::Expression)?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("eval_add"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![

@@ -49,6 +49,7 @@ fn step_once_with_invalid_pc_rejected_by_set_pc() -> Result<(), String> {
 #[test]
 fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("nop_no_next"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![CompiledNode {
@@ -84,6 +85,7 @@ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
 #[test]
 fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("set_const_no_output"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
@@ -136,6 +138,7 @@ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), Str
 #[test]
 fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("finish_empty_slot"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: vec![CompiledNode {
@@ -228,6 +231,7 @@ fn copy_from_uninitialized_source_slot_returns_slot_uninitialized() -> Result<()
 #[test]
 fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("do_node"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![CompiledNode {
@@ -265,6 +269,7 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
 #[test]
 fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("wait_node"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: vec![CompiledNode {
@@ -301,6 +306,7 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
 #[test]
 fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("ask_node"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
         nodes: vec![CompiledNode {
@@ -343,6 +349,7 @@ fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Re
         ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
             .map_err(|error| error.to_string())?;
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_eval_expr"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -397,6 +404,7 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
         ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
             .map_err(|error| error.to_string())?;
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_eval_clean"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -448,6 +456,7 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
 #[test]
 fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_build_object"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -544,6 +553,7 @@ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
 #[test]
 fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_build_object_clean"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -617,6 +627,7 @@ fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String
 #[test]
 fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_build_list"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -713,6 +724,7 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
 #[test]
 fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("taint_build_list_all_secret"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
@@ -909,6 +921,7 @@ fn join_taint_derived_from_secret_plus_secret_is_secret() {
 
 fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: vec![
@@ -947,6 +960,7 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
 
 fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("copy"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: vec![

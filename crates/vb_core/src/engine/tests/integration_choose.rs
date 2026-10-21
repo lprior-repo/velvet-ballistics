@@ -279,6 +279,7 @@ fn choose_slot_workflow_with_otherwise(
         },
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("choose_slot"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -354,6 +355,7 @@ fn choose_expr_workflow_with(
         },
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("choose_expr"),
         digest: WorkflowDigest::from_bytes([6; 32]),
         nodes: nodes.into_boxed_slice(),

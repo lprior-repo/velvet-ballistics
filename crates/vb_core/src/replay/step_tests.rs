@@ -20,6 +20,7 @@ fn make_plan(
     expressions: Vec<ExprProgram>,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: "test_step".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),
@@ -44,6 +45,7 @@ fn make_plan_with_symbols(
     symbols_count: u32,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: "test_step".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),

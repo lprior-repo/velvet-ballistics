@@ -1,0 +1,839 @@
+Independent Rust code review of fixture-only repair vb-fgq4b. Findingsfirst, STATUS APPROVED onlyno unresolvedfindingelseREJECTEDexactcase. Contractaddmissingexternalinputschemaemptyonlyinternalnumericfixtures, preserveeveryexistingassertionandproductionbehavior. Exactly115E0063diagnostics and115addedemptydecls/0deletedlines over30files; no code/expectations changed. Local3090 semantic inventory previously EMPTY_PORTS_SAFE; doownreviewfromactualdiff+fncontext. Corelib2173testsPASS0fail0ignore PROPTEST_CASES256. ExistingMiri smokeinprogressnotapprovalclaim. Rejectifexternalportintentfound. No proofplanning/newfeatureclaims.
+CONTRACT
+# Rust Contract: Repair WorkflowParts Fixture Initializers
+
+## Scope
+- **Target**: Core unit test fixtures missing newly required `input_slots` field
+- **Diagnostic**: Compile and inventory all 115 E0063 (missing field) errors
+- **Constraint**: Fix only reported initializers; do not modify production code
+
+## Repair Rules
+1. **Self-contained fixtures** (no external ingress): Add empty boxed declaration `input_slots: Box::new([])` after verifying fixture semantics
+2. **Intentionally external fixtures**: Declare actual slots/kinds appropriate to the fixture; do not blindly empty
+3. **Preservation**: Maintain every existing assertion and production behavior unchanged
+
+## Execution
+- **Compile**: `cargo test -p vb_core --lib --no-run --message-format=json` scoped to corelib only
+- **Inventory**: Record exact rustc primary spans and containment files for all 115 errors
+- **Fix**: Update only the reported fixture initializers per repair rules
+- **Verify**: Compile and run corelib tests; execute exact scoped Miri IDs from previous CI
+
+## Reporting
+- No proof closure claimed
+- Miri setup failure must be reported, not waived
+- Production Rust domain remains unchanged
+- Input ports schema feature reviewed separately
+- Code and tests reviewed by independent local models
+Coordinator command clarification: --no-run is cargo-test syntax; rustc is the diagnostic producer.
+
+ACTUALDIFF
+diff --git a/crates/vb_core/src/budget/tests.rs b/crates/vb_core/src/budget/tests.rs
+index 2f2a2feb0..610af7c47 100644
+--- a/crates/vb_core/src/budget/tests.rs
++++ b/crates/vb_core/src/budget/tests.rs
+@@ -3849,4 +3849,5 @@ fn test_step_count_overflow() -> Result<(), String> {
+ 
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("step_count_overflow_test"),
+         digest: crate::ids::WorkflowDigest::from_bytes([0x41; 32]),
+diff --git a/crates/vb_core/src/engine/choose.rs b/crates/vb_core/src/engine/choose.rs
+index 7606db203..1e74ca595 100644
+--- a/crates/vb_core/src/engine/choose.rs
++++ b/crates/vb_core/src/engine/choose.rs
+@@ -289,4 +289,5 @@ mod tests {
+ 
+         CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("choose_expr_test"),
+             digest: WorkflowDigest::from_bytes([0x55; 32]),
+diff --git a/crates/vb_core/src/engine/error_routing.rs b/crates/vb_core/src/engine/error_routing.rs
+index 134d4a83c..41792ebf7 100644
+--- a/crates/vb_core/src/engine/error_routing.rs
++++ b/crates/vb_core/src/engine/error_routing.rs
+@@ -183,4 +183,5 @@ mod tests {
+     fn test_parts_with_error_handler() -> WorkflowParts {
+         WorkflowParts {
++            input_slots: Box::new([]),
+             name: "error_handler_test".into(),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+@@ -241,4 +242,5 @@ mod tests {
+     fn test_parts_without_error_handler() -> WorkflowParts {
+         WorkflowParts {
++            input_slots: Box::new([]),
+             name: "no_handler_test".into(),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+@@ -347,4 +349,5 @@ mod tests {
+     fn route_error_handler_no_error_slot_still_routes() {
+         let parts = WorkflowParts {
++            input_slots: Box::new([]),
+             name: "no_error_slot_test".into(),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+diff --git a/crates/vb_core/src/engine/expr_eval/accessors.rs b/crates/vb_core/src/engine/expr_eval/accessors.rs
+index 0b4c2509e..22f3bba14 100644
+--- a/crates/vb_core/src/engine/expr_eval/accessors.rs
++++ b/crates/vb_core/src/engine/expr_eval/accessors.rs
+@@ -224,4 +224,5 @@ mod tests {
+         };
+         CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("accessor_test"),
+             digest: WorkflowDigest::from_bytes([0xFE; 32]),
+diff --git a/crates/vb_core/src/engine/expr_eval/core.rs b/crates/vb_core/src/engine/expr_eval/core.rs
+index 66c801e83..be61f03be 100644
+--- a/crates/vb_core/src/engine/expr_eval/core.rs
++++ b/crates/vb_core/src/engine/expr_eval/core.rs
+@@ -157,4 +157,5 @@ mod tests {
+             .map_err(|e| e.to_string())?;
+         CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("core_test"),
+             digest: WorkflowDigest::from_bytes([0xFC; 32]),
+@@ -317,4 +318,5 @@ mod tests {
+ 
+         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("accessor_expr_test"),
+             digest: WorkflowDigest::from_bytes([0xFD; 32]),
+diff --git a/crates/vb_core/src/engine/expr_eval/ops.rs b/crates/vb_core/src/engine/expr_eval/ops.rs
+index 29e9024a3..19ee9d397 100644
+--- a/crates/vb_core/src/engine/expr_eval/ops.rs
++++ b/crates/vb_core/src/engine/expr_eval/ops.rs
+@@ -230,4 +230,5 @@ mod tests {
+         };
+         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("ops_test"),
+             digest: WorkflowDigest::from_bytes([0xFA; 32]),
+diff --git a/crates/vb_core/src/engine/expr_eval/ops_text_list.rs b/crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+index f907b29b3..39f23d78e 100644
+--- a/crates/vb_core/src/engine/expr_eval/ops_text_list.rs
++++ b/crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+@@ -357,4 +357,5 @@ mod tests {
+         };
+         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("text_list_test"),
+             digest: WorkflowDigest::from_bytes([0xFB; 32]),
+diff --git a/crates/vb_core/src/engine/expr_eval/tests.rs b/crates/vb_core/src/engine/expr_eval/tests.rs
+index 0fd9340b0..a258a5c6b 100644
+--- a/crates/vb_core/src/engine/expr_eval/tests.rs
++++ b/crates/vb_core/src/engine/expr_eval/tests.rs
+@@ -28,4 +28,5 @@ fn empty_plan_with_expr(
+     })?;
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -1561,4 +1562,5 @@ mod proptests {
+         })?;
+         let plan = CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: "proptest".into(),
+             digest: WorkflowDigest::from_bytes([0; 32]),
+diff --git a/crates/vb_core/src/engine/node_helpers.rs b/crates/vb_core/src/engine/node_helpers.rs
+index dd7f2ed79..9cb92ad0e 100644
+--- a/crates/vb_core/src/engine/node_helpers.rs
++++ b/crates/vb_core/src/engine/node_helpers.rs
+@@ -98,4 +98,5 @@ mod tests {
+     fn minimal_plan_with_const(value: ConstValue) -> Result<CompiledWorkflow, String> {
+         CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("node_helpers_test"),
+             digest: WorkflowDigest::from_bytes([0xAA; 32]),
+diff --git a/crates/vb_core/src/engine/run_loop.rs b/crates/vb_core/src/engine/run_loop.rs
+index 81e0bffbe..24d897347 100644
+--- a/crates/vb_core/src/engine/run_loop.rs
++++ b/crates/vb_core/src/engine/run_loop.rs
+@@ -56,4 +56,5 @@ mod tests {
+     fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
+         CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("run_loop_test"),
+             digest: WorkflowDigest::from_bytes([0x99; 32]),
+@@ -167,4 +168,5 @@ mod tests {
+     fn drive_deterministic_stops_on_do_node_suspension() -> Result<(), String> {
+         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("do_suspend"),
+             digest: WorkflowDigest::from_bytes([0xDD; 32]),
+diff --git a/crates/vb_core/src/engine/step/test_support.rs b/crates/vb_core/src/engine/step/test_support.rs
+index a90971a84..fad410b72 100644
+--- a/crates/vb_core/src/engine/step/test_support.rs
++++ b/crates/vb_core/src/engine/step/test_support.rs
+@@ -34,4 +34,5 @@ pub(super) fn test_frame(workflow: &CompiledWorkflow) -> Result<RunFrame, String
+ pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("nop_finish"),
+         digest: WorkflowDigest::from_bytes([0x11; 32]),
+@@ -139,4 +140,5 @@ pub(super) fn single_do_workflow(
+ ) -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes(digest),
+@@ -161,4 +163,5 @@ pub(super) fn do_then_finish_workflow(
+ ) -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes(digest),
+@@ -191,4 +194,5 @@ pub(super) fn do_with_error_handler_workflow(
+ ) -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes(digest),
+diff --git a/crates/vb_core/src/engine/step/tests_action_resume.rs b/crates/vb_core/src/engine/step/tests_action_resume.rs
+index 19d7a4d47..d8fb9dee0 100644
+--- a/crates/vb_core/src/engine/step/tests_action_resume.rs
++++ b/crates/vb_core/src/engine/step/tests_action_resume.rs
+@@ -280,4 +280,5 @@ fn suspended_run(workflow: &crate::workflow::CompiledWorkflow) -> Result<crate::
+ fn do_then_finish_output_slot_one() -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("do_output_slot_one"),
+         digest: WorkflowDigest::from_bytes([0xBC; 32]),
+diff --git a/crates/vb_core/src/engine/step/tests_basic.rs b/crates/vb_core/src/engine/step/tests_basic.rs
+index e86441ec7..3070c46a6 100644
+--- a/crates/vb_core/src/engine/step/tests_basic.rs
++++ b/crates/vb_core/src/engine/step/tests_basic.rs
+@@ -46,4 +46,5 @@ fn step_once_finish_returns_finished_with_value_and_taint() -> Result<(), String
+ fn step_once_do_returns_awaiting_action() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("do_test"),
+         digest: WorkflowDigest::from_bytes([0x22; 32]),
+@@ -105,4 +106,5 @@ fn step_once_ask_returns_awaiting_ask() -> Result<(), String> {
+ fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("jump_test"),
+         digest: WorkflowDigest::from_bytes([0x55; 32]),
+@@ -176,4 +178,5 @@ fn single_node_workflow(
+ ) -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes(digest),
+diff --git a/crates/vb_core/src/engine/step/tests_state.rs b/crates/vb_core/src/engine/step/tests_state.rs
+index a427fed76..4d5941e20 100644
+--- a/crates/vb_core/src/engine/step/tests_state.rs
++++ b/crates/vb_core/src/engine/step/tests_state.rs
+@@ -14,4 +14,5 @@ use crate::workflow::{
+ fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("error_handler_test"),
+         digest: WorkflowDigest::from_bytes([0xB1; 32]),
+@@ -115,4 +116,5 @@ fn assert_ask_maps_to_asking() -> Result<(), String> {
+ fn single_do_workflow(name: &str, digest: [u8; 32]) -> Result<CompiledWorkflow, String> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes(digest),
+diff --git a/crates/vb_core/src/engine/step/tests_value_nodes.rs b/crates/vb_core/src/engine/step/tests_value_nodes.rs
+index ca349f9d8..abc81e6e1 100644
+--- a/crates/vb_core/src/engine/step/tests_value_nodes.rs
++++ b/crates/vb_core/src/engine/step/tests_value_nodes.rs
+@@ -24,4 +24,5 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
+ 
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("eval_step_test"),
+         digest: WorkflowDigest::from_bytes([0x66; 32]),
+@@ -65,4 +66,5 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
+ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("build_obj_step"),
+         digest: WorkflowDigest::from_bytes([0x77; 32]),
+@@ -124,4 +126,5 @@ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
+ fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("build_list_step"),
+         digest: WorkflowDigest::from_bytes([0x88; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_accessor.rs b/crates/vb_core/src/engine/tests/integration_accessor.rs
+index ed102d677..6e8fcb250 100644
+--- a/crates/vb_core/src/engine/tests/integration_accessor.rs
++++ b/crates/vb_core/src/engine/tests/integration_accessor.rs
+@@ -278,4 +278,5 @@ fn accessor_workflow_with_opts(
+     .map_err(crate::WorkflowError::Expression)?;
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("accessor"),
+         digest: WorkflowDigest::from_bytes([8; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_basic.rs b/crates/vb_core/src/engine/tests/integration_basic.rs
+index f94c7a07e..be1485597 100644
+--- a/crates/vb_core/src/engine/tests/integration_basic.rs
++++ b/crates/vb_core/src/engine/tests/integration_basic.rs
+@@ -293,4 +293,5 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
+ fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("tiny"),
+         digest: WorkflowDigest::from_bytes([1; 32]),
+@@ -356,4 +357,5 @@ fn tiny_finish_node() -> CompiledNode {
+ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("copy"),
+         digest: WorkflowDigest::from_bytes([9; 32]),
+@@ -385,4 +387,5 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
+ fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("construction"),
+         digest: WorkflowDigest::from_bytes([0x36; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_budget.rs b/crates/vb_core/src/engine/tests/integration_budget.rs
+index 3f7744439..3e8b46640 100644
+--- a/crates/vb_core/src/engine/tests/integration_budget.rs
++++ b/crates/vb_core/src/engine/tests/integration_budget.rs
+@@ -30,4 +30,5 @@ fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFr
+ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("tiny"),
+         digest: WorkflowDigest::from_bytes([1; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_choose.rs b/crates/vb_core/src/engine/tests/integration_choose.rs
+index a2171c2d0..dcd352844 100644
+--- a/crates/vb_core/src/engine/tests/integration_choose.rs
++++ b/crates/vb_core/src/engine/tests/integration_choose.rs
+@@ -280,4 +280,5 @@ fn choose_slot_workflow_with_otherwise(
+     ];
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("choose_slot"),
+         digest: WorkflowDigest::from_bytes([5; 32]),
+@@ -355,4 +356,5 @@ fn choose_expr_workflow_with(
+     ];
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("choose_expr"),
+         digest: WorkflowDigest::from_bytes([6; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs b/crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs
+index 580847ab0..bb3e058a2 100644
+--- a/crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs
++++ b/crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs
+@@ -41,4 +41,5 @@ where
+     let slot_count = nodes.len().max(4) as u16;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from(name),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+@@ -1288,4 +1289,5 @@ fn double_fault_when_handler_step_not_in_workflow() -> Result<(), String> {
+ fn invalid_handler_step_workflow_result() -> Result<CompiledWorkflow, WorkflowError> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("doublefault"),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+@@ -1373,4 +1375,5 @@ mod proptest_properties {
+     fn prop_workflow() -> CompiledWorkflow {
+         let parts = WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("proptest"),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_eval.rs b/crates/vb_core/src/engine/tests/integration_eval.rs
+index 9908d2e67..2bbfcd593 100644
+--- a/crates/vb_core/src/engine/tests/integration_eval.rs
++++ b/crates/vb_core/src/engine/tests/integration_eval.rs
+@@ -84,4 +84,5 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
+     .map_err(|error| error.to_string())?;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("div_zero"),
+         digest: WorkflowDigest::from_bytes([0x11; 32]),
+@@ -133,4 +134,5 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(),
+     .map_err(|error| error.to_string())?;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("int_overflow"),
+         digest: WorkflowDigest::from_bytes([0x22; 32]),
+@@ -179,4 +181,5 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
+     .map_err(|error| error.to_string())?;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("not_on_int"),
+         digest: WorkflowDigest::from_bytes([0x33; 32]),
+@@ -227,4 +230,5 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
+     .map_err(crate::WorkflowError::Expression)?;
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("eval_add"),
+         digest: WorkflowDigest::from_bytes([7; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_taint_propagation.rs b/crates/vb_core/src/engine/tests/integration_taint_propagation.rs
+index 69abc593c..71026ecf9 100644
+--- a/crates/vb_core/src/engine/tests/integration_taint_propagation.rs
++++ b/crates/vb_core/src/engine/tests/integration_taint_propagation.rs
+@@ -307,4 +307,5 @@ fn eval_workflow_with_slots(
+ 
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "taint_eval_test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -672,4 +673,5 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
+ 
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "choose_taint_test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -935,4 +937,5 @@ fn copy_slot_destination_taint_equals_source_taint_after_copy() -> Result<(), St
+ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "resume_test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -1235,4 +1238,5 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
+ 
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "expr_oob_test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -1331,4 +1335,5 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
+     // Need at least 2 nodes: node 0 is the Choose, node 1 is a valid branch target
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "choose_missing_test".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -1813,4 +1818,5 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
+ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "resume_random".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+diff --git a/crates/vb_core/src/engine/tests/integration_workflow.rs b/crates/vb_core/src/engine/tests/integration_workflow.rs
+index d600e3abf..620041c7a 100644
+--- a/crates/vb_core/src/engine/tests/integration_workflow.rs
++++ b/crates/vb_core/src/engine/tests/integration_workflow.rs
+@@ -50,4 +50,5 @@ fn step_once_with_invalid_pc_rejected_by_set_pc() -> Result<(), String> {
+ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("nop_no_next"),
+         digest: WorkflowDigest::from_bytes([0xAA; 32]),
+@@ -85,4 +86,5 @@ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
+ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("set_const_no_output"),
+         digest: WorkflowDigest::from_bytes([0xBB; 32]),
+@@ -137,4 +139,5 @@ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), Str
+ fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("finish_empty_slot"),
+         digest: WorkflowDigest::from_bytes([0xCC; 32]),
+@@ -229,4 +232,5 @@ fn copy_from_uninitialized_source_slot_returns_slot_uninitialized() -> Result<()
+ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("do_node"),
+         digest: WorkflowDigest::from_bytes([0xDD; 32]),
+@@ -266,4 +270,5 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
+ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("wait_node"),
+         digest: WorkflowDigest::from_bytes([0xEE; 32]),
+@@ -302,4 +307,5 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
+ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("ask_node"),
+         digest: WorkflowDigest::from_bytes([0xFF; 32]),
+@@ -344,4 +350,5 @@ fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Re
+             .map_err(|error| error.to_string())?;
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_eval_expr"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -398,4 +405,5 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
+             .map_err(|error| error.to_string())?;
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_eval_clean"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -449,4 +457,5 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
+ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_build_object"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -545,4 +554,5 @@ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
+ fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_build_object_clean"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -618,4 +628,5 @@ fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String
+ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_build_list"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -714,4 +725,5 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
+ fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String> {
+     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("taint_build_list_all_secret"),
+         digest: WorkflowDigest::from_bytes([0x43; 32]),
+@@ -910,4 +922,5 @@ fn join_taint_derived_from_secret_plus_secret_is_secret() {
+ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("tiny"),
+         digest: WorkflowDigest::from_bytes([1; 32]),
+@@ -948,4 +961,5 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
+ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::WorkflowError> {
+     CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("copy"),
+         digest: WorkflowDigest::from_bytes([9; 32]),
+diff --git a/crates/vb_core/src/engine/validate.rs b/crates/vb_core/src/engine/validate.rs
+index 25d926d93..dbb2e762d 100644
+--- a/crates/vb_core/src/engine/validate.rs
++++ b/crates/vb_core/src/engine/validate.rs
+@@ -387,4 +387,5 @@ mod tests {
+     fn valid_parts() -> WorkflowParts {
+         WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("test"),
+             digest: WorkflowDigest::from_bytes([0x00; 32]),
+diff --git a/crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs b/crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs
+index f210f6fb0..17be748cf 100644
+--- a/crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs
++++ b/crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs
+@@ -58,4 +58,5 @@ fn nop_node_with_next(id: u16, next: u16) -> CompiledNode {
+ fn valid_parts() -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("test"),
+         digest: WorkflowDigest::from_bytes([0x00; 32]),
+diff --git a/crates/vb_core/src/engine/validate/tests/red_phase_tests.rs b/crates/vb_core/src/engine/validate/tests/red_phase_tests.rs
+index c131c0f24..18fa87cb5 100644
+--- a/crates/vb_core/src/engine/validate/tests/red_phase_tests.rs
++++ b/crates/vb_core/src/engine/validate/tests/red_phase_tests.rs
+@@ -22,4 +22,5 @@ use crate::workflow::{
+ fn valid_parts() -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("test"),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+diff --git a/crates/vb_core/src/replay/ops/tests.rs b/crates/vb_core/src/replay/ops/tests.rs
+index a65b50afd..1bd368907 100644
+--- a/crates/vb_core/src/replay/ops/tests.rs
++++ b/crates/vb_core/src/replay/ops/tests.rs
+@@ -24,4 +24,5 @@ fn make_plan(
+ ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test_ops".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+diff --git a/crates/vb_core/src/replay/step_tests.rs b/crates/vb_core/src/replay/step_tests.rs
+index 4dfddf950..af4a668ac 100644
+--- a/crates/vb_core/src/replay/step_tests.rs
++++ b/crates/vb_core/src/replay/step_tests.rs
+@@ -21,4 +21,5 @@ fn make_plan(
+ ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test_step".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -45,4 +46,5 @@ fn make_plan_with_symbols(
+ ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test_step".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+diff --git a/crates/vb_core/src/replay/tests.rs b/crates/vb_core/src/replay/tests.rs
+index b961e99d2..6b1e07bd8 100644
+--- a/crates/vb_core/src/replay/tests.rs
++++ b/crates/vb_core/src/replay/tests.rs
+@@ -40,4 +40,5 @@ fn make_plan(
+ ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
+     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test_replay".into(),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+diff --git a/crates/vb_core/src/workflow/tests.rs b/crates/vb_core/src/workflow/tests.rs
+index dea455511..e87219163 100644
+--- a/crates/vb_core/src/workflow/tests.rs
++++ b/crates/vb_core/src/workflow/tests.rs
+@@ -513,4 +513,5 @@ fn construction_parts_with_symbols(
+ ) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("construction_validation"),
+         digest: WorkflowDigest::from_bytes([0x42; 32]),
+@@ -558,4 +559,5 @@ fn finish_const_parts_with(
+ ) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("resource_case"),
+         digest: WorkflowDigest::from_bytes([3; 32]),
+@@ -613,4 +615,5 @@ fn branch_parts(
+     let validated_slot_count = slot_count.max(1);
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("branch_case"),
+         digest: WorkflowDigest::from_bytes([4; 32]),
+@@ -691,4 +694,5 @@ const fn resource_contract(
+ fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("empty"),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -713,4 +717,5 @@ fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
+ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("entry_oob"),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -743,4 +748,5 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
+ fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("step_oob"),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -880,4 +886,5 @@ fn workflow_error_empty_branch_table_exact_variant() -> Result<(), String> {
+ fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("empty"),
+         digest: WorkflowDigest::from_bytes([0; 32]),
+@@ -904,4 +911,5 @@ fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String>
+ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("entry_at_boundary"),
+         digest: WorkflowDigest::from_bytes([1; 32]),
+@@ -1105,4 +1113,5 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
+ {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("zero_max_steps"),
+         digest: WorkflowDigest::from_bytes([2; 32]),
+@@ -1436,4 +1445,5 @@ fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> Workfl
+     let max_steps = u16::try_from(nodes.len()).unwrap_or(u16::MAX);
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1650,4 +1660,5 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
+ fn phase46_accepts_foreach_forward() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46_foreach"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1716,4 +1727,5 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
+ fn phase46_rejects_improper_nesting() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46_nesting"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1817,4 +1829,5 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
+ fn phase46_accepts_proper_nesting() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46_proper"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1915,4 +1928,5 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46_acc_field"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1951,4 +1965,5 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("phase46_acc_index"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -1985,4 +2000,5 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
+ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("cycle_next"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2035,4 +2051,5 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
+     // Two nodes with the same StepIdx (both claim to be step 0).
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("dup_step_idx"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2085,4 +2102,5 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
+     // Finish node references slot 99 but slot_count is only 1.
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("slot_oob_finish"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2117,4 +2135,5 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
+ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("slot_oob_list"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2149,4 +2168,5 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String>
+ fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("slot_oob_output"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2183,4 +2203,5 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
+     // Node 0 finishes immediately; node 1 is never reached.
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("unreachable"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2239,4 +2260,5 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_sym_oob"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2278,4 +2300,5 @@ fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_sym_boundary"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2315,4 +2338,5 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_sym_zero_no_syms"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2358,4 +2382,5 @@ fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_deep"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2405,4 +2430,5 @@ fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_max_depth"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2442,4 +2468,5 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_empty_path"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2475,4 +2502,5 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
+ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("const_sym_oob"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2507,4 +2535,5 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
+ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("const_sym_boundary"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2538,4 +2567,5 @@ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
+ fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("const_sym_no_syms"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2621,4 +2651,5 @@ fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_u32max"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2672,4 +2703,5 @@ fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_mixed"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2714,4 +2746,5 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_mixed_bad"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2748,4 +2781,5 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
+ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("sym_roundtrip"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2792,4 +2826,5 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
+ fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> {
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("const_mixed_oob"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -2848,4 +2883,5 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
+     contract.max_accessors = 1;
+     let parts = WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("acc_root_oob"),
+         digest: WorkflowDigest::from_bytes([0x46; 32]),
+@@ -4036,4 +4072,5 @@ fn budget_parts(
+ ) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::<str>::from("budget_validation"),
+         digest: WorkflowDigest::from_bytes([0x71; 32]),
+@@ -4125,4 +4162,5 @@ mod proptests {
+         let max_steps = u16::try_from(nodes.len()).map_or(u16::MAX, |v| v);
+         WorkflowParts {
++            input_slots: Box::new([]),
+             name: Box::<str>::from("proptest_valid_chain"),
+             digest: WorkflowDigest::from_bytes([0xAA; 32]),
+@@ -4220,4 +4258,5 @@ mod proptests {
+             let bad_slot = slot_count.saturating_add(bad_slot_delta);
+             let parts = WorkflowParts {
++                input_slots: Box::new([]),
+                 name: Box::<str>::from("prop_b_finish_oob"),
+                 digest: WorkflowDigest::from_bytes([0xBB; 32]),
+@@ -4264,4 +4303,5 @@ mod proptests {
+             let bad_slot = slot_count.saturating_add(bad_slot_delta);
+             let parts = WorkflowParts {
++                input_slots: Box::new([]),
+                 name: Box::<str>::from("prop_b_output_oob"),
+                 digest: WorkflowDigest::from_bytes([0xBC; 32]),
+@@ -4331,4 +4371,5 @@ mod proptests {
+             let max_steps = u16::try_from(n).map_or(u16::MAX, |v| v);
+             let parts = WorkflowParts {
++                input_slots: Box::new([]),
+                 name: Box::<str>::from("prop_c_dup"),
+                 digest: WorkflowDigest::from_bytes([0xCC; 32]),
+@@ -4380,4 +4421,5 @@ mod proptests {
+             let max_steps = u16::try_from(total).map_or(u16::MAX, |v| v);
+             let parts = WorkflowParts {
++                input_slots: Box::new([]),
+                 name: Box::<str>::from("prop_d_unreachable"),
+                 digest: WorkflowDigest::from_bytes([0xDD; 32]),
+@@ -4450,4 +4492,5 @@ mod proptests {
+             // Single node that uses a slot at the boundary.
+             let parts = WorkflowParts {
++                input_slots: Box::new([]),
+                 name: Box::<str>::from("prop_e_slots"),
+                 digest: WorkflowDigest::from_bytes([0xEE; 32]),
+@@ -4845,4 +4888,5 @@ fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> W
+     let digest = WorkflowDigest::from_bytes([0u8; 32]);
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: name.into(),
+         digest,
+@@ -4912,4 +4956,5 @@ fn blake3_digest_differs_when_node_count_differs() {
+     };
+     let parts1 = WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test".into(),
+         digest,
+@@ -4935,4 +4980,5 @@ fn blake3_digest_differs_when_node_count_differs() {
+     };
+     let parts2 = WorkflowParts {
++        input_slots: Box::new([]),
+         name: "test".into(),
+         digest,

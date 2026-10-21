@@ -512,6 +512,7 @@ fn construction_parts_with_symbols(
     symbols_count: u32,
 ) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("construction_validation"),
         digest: WorkflowDigest::from_bytes([0x42; 32]),
         nodes: vec![CompiledNode {
@@ -557,6 +558,7 @@ fn finish_const_parts_with(
     expressions: Box<[ExprProgram]>,
 ) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("resource_case"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: vec![CompiledNode {
@@ -612,6 +614,7 @@ fn branch_parts(
 ) -> WorkflowParts {
     let validated_slot_count = slot_count.max(1);
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("branch_case"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: vec![
@@ -690,6 +693,7 @@ const fn resource_contract(
 #[test]
 fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::new([]),
@@ -712,6 +716,7 @@ fn workflow_error_empty_nodes_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("entry_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![CompiledNode {
@@ -742,6 +747,7 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("step_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![CompiledNode {
@@ -879,6 +885,7 @@ fn workflow_error_empty_branch_table_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("empty"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::new([]),
@@ -903,6 +910,7 @@ fn workflow_empty_nodes_rejected_with_empty_nodes_error() -> Result<(), String> 
 #[test]
 fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("entry_at_boundary"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: vec![CompiledNode {
@@ -1104,6 +1112,7 @@ fn workflow_nop_next_step_out_of_bounds_returns_step_out_of_bounds() -> Result<(
 fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() -> Result<(), String>
 {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("zero_max_steps"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: vec![CompiledNode {
@@ -1435,6 +1444,7 @@ fn compiled_workflow_to_parts_roundtrip_preserves_fields() -> Result<(), String>
 fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     let max_steps = u16::try_from(nodes.len()).unwrap_or(u16::MAX);
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -1649,6 +1659,7 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
 #[test]
 fn phase46_accepts_foreach_forward() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46_foreach"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -1715,6 +1726,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
 #[test]
 fn phase46_rejects_improper_nesting() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46_nesting"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -1816,6 +1828,7 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
 #[test]
 fn phase46_accepts_proper_nesting() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46_proper"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -1914,6 +1927,7 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46_acc_field"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -1950,6 +1964,7 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("phase46_acc_index"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -1984,6 +1999,7 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
 #[test]
 fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("cycle_next"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -2034,6 +2050,7 @@ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
 fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), String> {
     // Two nodes with the same StepIdx (both claim to be step 0).
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("dup_step_idx"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -2084,6 +2101,7 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
 fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
     // Finish node references slot 99 but slot_count is only 1.
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_finish"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2116,6 +2134,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
 #[test]
 fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_list"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2148,6 +2167,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> 
 #[test]
 fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_output"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2182,6 +2202,7 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
 fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
     // Node 0 finishes immediately; node 1 is never reached.
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -2238,6 +2259,7 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2277,6 +2299,7 @@ fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2314,6 +2337,7 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_zero_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2357,6 +2381,7 @@ fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_deep"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2404,6 +2429,7 @@ fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_max_depth"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2441,6 +2467,7 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_empty_path"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2474,6 +2501,7 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
 #[test]
 fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2506,6 +2534,7 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
 #[test]
 fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2537,6 +2566,7 @@ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
 #[test]
 fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2620,6 +2650,7 @@ fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_u32max"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2671,6 +2702,7 @@ fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_mixed"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2713,6 +2745,7 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_mixed_bad"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2747,6 +2780,7 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
 #[test]
 fn phase46_symbols_count_roundtrip() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("sym_roundtrip"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -2791,6 +2825,7 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
 #[test]
 fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("const_mixed_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
@@ -2847,6 +2882,7 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
     let mut contract = resource_contract(1, 1, 1, 0, 0);
     contract.max_accessors = 1;
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("acc_root_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![CompiledNode {
@@ -4035,6 +4071,7 @@ fn budget_parts(
     resource_contract: ResourceContract,
 ) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("budget_validation"),
         digest: WorkflowDigest::from_bytes([0x71; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -4124,6 +4161,7 @@ mod proptests {
         });
         let max_steps = u16::try_from(nodes.len()).map_or(u16::MAX, |v| v);
         WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("proptest_valid_chain"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
             nodes: nodes.into_boxed_slice(),
@@ -4219,6 +4257,7 @@ mod proptests {
         ) {
             let bad_slot = slot_count.saturating_add(bad_slot_delta);
             let parts = WorkflowParts {
+                input_slots: Box::new([]),
                 name: Box::<str>::from("prop_b_finish_oob"),
                 digest: WorkflowDigest::from_bytes([0xBB; 32]),
                 nodes: vec![CompiledNode {
@@ -4263,6 +4302,7 @@ mod proptests {
         ) {
             let bad_slot = slot_count.saturating_add(bad_slot_delta);
             let parts = WorkflowParts {
+                input_slots: Box::new([]),
                 name: Box::<str>::from("prop_b_output_oob"),
                 digest: WorkflowDigest::from_bytes([0xBC; 32]),
                 nodes: vec![
@@ -4330,6 +4370,7 @@ mod proptests {
                 .collect::<Vec<_>>();
             let max_steps = u16::try_from(n).map_or(u16::MAX, |v| v);
             let parts = WorkflowParts {
+                input_slots: Box::new([]),
                 name: Box::<str>::from("prop_c_dup"),
                 digest: WorkflowDigest::from_bytes([0xCC; 32]),
                 nodes: nodes.into_boxed_slice(),
@@ -4379,6 +4420,7 @@ mod proptests {
 
             let max_steps = u16::try_from(total).map_or(u16::MAX, |v| v);
             let parts = WorkflowParts {
+                input_slots: Box::new([]),
                 name: Box::<str>::from("prop_d_unreachable"),
                 digest: WorkflowDigest::from_bytes([0xDD; 32]),
                 nodes: nodes.into_boxed_slice(),
@@ -4449,6 +4491,7 @@ mod proptests {
             let declared_slots = actual_slots.saturating_sub(shortfall);
             // Single node that uses a slot at the boundary.
             let parts = WorkflowParts {
+                input_slots: Box::new([]),
                 name: Box::<str>::from("prop_e_slots"),
                 digest: WorkflowDigest::from_bytes([0xEE; 32]),
                 nodes: vec![CompiledNode {
@@ -4844,6 +4887,7 @@ fn compiled_node_kind_jump_and_eval_expr_field_access() -> Result<(), String> {
 fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> WorkflowParts {
     let digest = WorkflowDigest::from_bytes([0u8; 32]);
     WorkflowParts {
+        input_slots: Box::new([]),
         name: name.into(),
         digest,
         nodes: Box::new([CompiledNode {
@@ -4911,6 +4955,7 @@ fn blake3_digest_differs_when_node_count_differs() {
         },
     };
     let parts1 = WorkflowParts {
+        input_slots: Box::new([]),
         name: "test".into(),
         digest,
         nodes: Box::new([node.clone()]),
@@ -4934,6 +4979,7 @@ fn blake3_digest_differs_when_node_count_differs() {
         },
     };
     let parts2 = WorkflowParts {
+        input_slots: Box::new([]),
         name: "test".into(),
         digest,
         nodes: Box::new([node, node2]),

@@ -223,6 +223,7 @@ mod tests {
             path,
         };
         CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("accessor_test"),
             digest: WorkflowDigest::from_bytes([0xFE; 32]),
             nodes: vec![CompiledNode {

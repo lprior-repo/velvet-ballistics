@@ -1,0 +1,6 @@
+crates/vb_core/src/lib.rs:1:#![forbid(unsafe_code)]
+crates/vb_core/src/ids/tests_and_verification.rs:153:fn run_id_zero_constant() {
+crates/vb_core/src/ids/mod.rs:1:#![forbid(unsafe_code)]
+crates/vb_core/src/ids/kani_shard_index_bounds.rs:11:#![forbid(unsafe_code)]
+crates/vb_core/src/ids/kani_id_bounds.rs:8:#![forbid(unsafe_code)]
+crates/vb_core/src/ids/kani_id_arbitrary.rs:5:#![forbid(unsafe_code)]

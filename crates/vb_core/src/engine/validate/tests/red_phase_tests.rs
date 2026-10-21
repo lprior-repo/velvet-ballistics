@@ -21,6 +21,7 @@ use crate::workflow::{
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {

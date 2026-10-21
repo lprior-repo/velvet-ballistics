@@ -229,6 +229,7 @@ mod tests {
             u16::try_from(slots.len()).map_err(|_| "slot count overflow")?
         };
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("ops_test"),
             digest: WorkflowDigest::from_bytes([0xFA; 32]),
             nodes: vec![CompiledNode {

@@ -277,6 +277,7 @@ fn accessor_workflow_with_opts(
     )
     .map_err(crate::WorkflowError::Expression)?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("accessor"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: vec![

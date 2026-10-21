@@ -55,6 +55,7 @@ mod tests {
 
     fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
         CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("run_loop_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
             nodes: vec![
@@ -166,6 +167,7 @@ mod tests {
     #[test]
     fn drive_deterministic_stops_on_do_node_suspension() -> Result<(), String> {
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("do_suspend"),
             digest: WorkflowDigest::from_bytes([0xDD; 32]),
             nodes: vec![CompiledNode {

@@ -1,0 +1,1497 @@
+[
+  {
+    "file": "crates/vb_core/src/budget/tests.rs",
+    "byte_start": 119556,
+    "byte_end": 119569,
+    "line": 3850,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/choose.rs",
+    "byte_start": 9521,
+    "byte_end": 9534,
+    "line": 290,
+    "text": [
+      {
+        "highlight_end": 55,
+        "highlight_start": 42,
+        "text": "        CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/error_routing.rs",
+    "byte_start": 7237,
+    "byte_end": 7250,
+    "line": 184,
+    "text": [
+      {
+        "highlight_end": 22,
+        "highlight_start": 9,
+        "text": "        WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/error_routing.rs",
+    "byte_start": 9395,
+    "byte_end": 9408,
+    "line": 242,
+    "text": [
+      {
+        "highlight_end": 22,
+        "highlight_start": 9,
+        "text": "        WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/error_routing.rs",
+    "byte_start": 13185,
+    "byte_end": 13198,
+    "line": 348,
+    "text": [
+      {
+        "highlight_end": 34,
+        "highlight_start": 21,
+        "text": "        let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/accessors.rs",
+    "byte_start": 7307,
+    "byte_end": 7320,
+    "line": 225,
+    "text": [
+      {
+        "highlight_end": 55,
+        "highlight_start": 42,
+        "text": "        CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/core.rs",
+    "byte_start": 4789,
+    "byte_end": 4802,
+    "line": 158,
+    "text": [
+      {
+        "highlight_end": 55,
+        "highlight_start": 42,
+        "text": "        CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/core.rs",
+    "byte_start": 10998,
+    "byte_end": 11011,
+    "line": 318,
+    "text": [
+      {
+        "highlight_end": 70,
+        "highlight_start": 57,
+        "text": "        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/ops.rs",
+    "byte_start": 8339,
+    "byte_end": 8352,
+    "line": 231,
+    "text": [
+      {
+        "highlight_end": 70,
+        "highlight_start": 57,
+        "text": "        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+    "byte_start": 11882,
+    "byte_end": 11895,
+    "line": 358,
+    "text": [
+      {
+        "highlight_end": 70,
+        "highlight_start": 57,
+        "text": "        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/tests.rs",
+    "byte_start": 1018,
+    "byte_end": 1031,
+    "line": 29,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/expr_eval/tests.rs",
+    "byte_start": 46071,
+    "byte_end": 46084,
+    "line": 1562,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "        let plan = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/node_helpers.rs",
+    "byte_start": 2928,
+    "byte_end": 2941,
+    "line": 99,
+    "text": [
+      {
+        "highlight_end": 55,
+        "highlight_start": 42,
+        "text": "        CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/run_loop.rs",
+    "byte_start": 1761,
+    "byte_end": 1774,
+    "line": 57,
+    "text": [
+      {
+        "highlight_end": 55,
+        "highlight_start": 42,
+        "text": "        CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/run_loop.rs",
+    "byte_start": 5736,
+    "byte_end": 5749,
+    "line": 168,
+    "text": [
+      {
+        "highlight_end": 70,
+        "highlight_start": 57,
+        "text": "        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/test_support.rs",
+    "byte_start": 1117,
+    "byte_end": 1130,
+    "line": 35,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/test_support.rs",
+    "byte_start": 4100,
+    "byte_end": 4113,
+    "line": 140,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/test_support.rs",
+    "byte_start": 4805,
+    "byte_end": 4818,
+    "line": 162,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/test_support.rs",
+    "byte_start": 5669,
+    "byte_end": 5682,
+    "line": 192,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_action_resume.rs",
+    "byte_start": 10325,
+    "byte_end": 10338,
+    "line": 281,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_basic.rs",
+    "byte_start": 1784,
+    "byte_end": 1797,
+    "line": 47,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_basic.rs",
+    "byte_start": 3807,
+    "byte_end": 3820,
+    "line": 106,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_basic.rs",
+    "byte_start": 5889,
+    "byte_end": 5902,
+    "line": 177,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_state.rs",
+    "byte_start": 592,
+    "byte_end": 605,
+    "line": 15,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_state.rs",
+    "byte_start": 4629,
+    "byte_end": 4642,
+    "line": 116,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+    "byte_start": 865,
+    "byte_end": 878,
+    "line": 25,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+    "byte_start": 2325,
+    "byte_end": 2338,
+    "line": 66,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+    "byte_start": 4499,
+    "byte_end": 4512,
+    "line": 125,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate.rs",
+    "byte_start": 14375,
+    "byte_end": 14388,
+    "line": 388,
+    "text": [
+      {
+        "highlight_end": 22,
+        "highlight_start": 9,
+        "text": "        WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+    "byte_start": 1664,
+    "byte_end": 1677,
+    "line": 59,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/validate/tests/red_phase_tests.rs",
+    "byte_start": 942,
+    "byte_end": 955,
+    "line": 23,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_accessor.rs",
+    "byte_start": 10374,
+    "byte_end": 10387,
+    "line": 279,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_basic.rs",
+    "byte_start": 9824,
+    "byte_end": 9837,
+    "line": 294,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_basic.rs",
+    "byte_start": 11690,
+    "byte_end": 11703,
+    "line": 357,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_basic.rs",
+    "byte_start": 12619,
+    "byte_end": 12632,
+    "line": 386,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_budget.rs",
+    "byte_start": 1012,
+    "byte_end": 1025,
+    "line": 31,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_choose.rs",
+    "byte_start": 9630,
+    "byte_end": 9643,
+    "line": 281,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_choose.rs",
+    "byte_start": 12032,
+    "byte_end": 12045,
+    "line": 356,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+    "byte_start": 1344,
+    "byte_end": 1357,
+    "line": 42,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+    "byte_start": 40256,
+    "byte_end": 40269,
+    "line": 1289,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+    "byte_start": 43091,
+    "byte_end": 43104,
+    "line": 1374,
+    "text": [
+      {
+        "highlight_end": 34,
+        "highlight_start": 21,
+        "text": "        let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_eval.rs",
+    "byte_start": 2744,
+    "byte_end": 2757,
+    "line": 85,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_eval.rs",
+    "byte_start": 4440,
+    "byte_end": 4453,
+    "line": 134,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_eval.rs",
+    "byte_start": 6092,
+    "byte_end": 6105,
+    "line": 180,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_eval.rs",
+    "byte_start": 7741,
+    "byte_end": 7754,
+    "line": 228,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 10843,
+    "byte_end": 10856,
+    "line": 308,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 25136,
+    "byte_end": 25149,
+    "line": 673,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 34265,
+    "byte_end": 34278,
+    "line": 936,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 46572,
+    "byte_end": 46585,
+    "line": 1236,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 50313,
+    "byte_end": 50326,
+    "line": 1332,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+    "byte_start": 66737,
+    "byte_end": 66750,
+    "line": 1814,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 1637,
+    "byte_end": 1650,
+    "line": 51,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 2840,
+    "byte_end": 2853,
+    "line": 86,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 4651,
+    "byte_end": 4664,
+    "line": 138,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 7829,
+    "byte_end": 7842,
+    "line": 230,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 9130,
+    "byte_end": 9143,
+    "line": 267,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 10386,
+    "byte_end": 10399,
+    "line": 303,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 11918,
+    "byte_end": 11931,
+    "line": 345,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 13930,
+    "byte_end": 13943,
+    "line": 399,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 15750,
+    "byte_end": 15763,
+    "line": 450,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 19365,
+    "byte_end": 19378,
+    "line": 546,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 21971,
+    "byte_end": 21984,
+    "line": 619,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 25517,
+    "byte_end": 25530,
+    "line": 715,
+    "text": [
+      {
+        "highlight_end": 66,
+        "highlight_start": 53,
+        "text": "    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 32417,
+    "byte_end": 32430,
+    "line": 911,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+    "byte_start": 33690,
+    "byte_end": 33703,
+    "line": 949,
+    "text": [
+      {
+        "highlight_end": 51,
+        "highlight_start": 38,
+        "text": "    CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/replay/ops/tests.rs",
+    "byte_start": 907,
+    "byte_end": 920,
+    "line": 25,
+    "text": [
+      {
+        "highlight_end": 68,
+        "highlight_start": 55,
+        "text": "    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/replay/step_tests.rs",
+    "byte_start": 775,
+    "byte_end": 788,
+    "line": 22,
+    "text": [
+      {
+        "highlight_end": 68,
+        "highlight_start": 55,
+        "text": "    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/replay/step_tests.rs",
+    "byte_start": 1572,
+    "byte_end": 1585,
+    "line": 46,
+    "text": [
+      {
+        "highlight_end": 68,
+        "highlight_start": 55,
+        "text": "    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/replay/tests.rs",
+    "byte_start": 1268,
+    "byte_end": 1281,
+    "line": 41,
+    "text": [
+      {
+        "highlight_end": 68,
+        "highlight_start": 55,
+        "text": "    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 16596,
+    "byte_end": 16609,
+    "line": 514,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 18118,
+    "byte_end": 18131,
+    "line": 559,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 19494,
+    "byte_end": 19507,
+    "line": 614,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 21768,
+    "byte_end": 21781,
+    "line": 692,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 22468,
+    "byte_end": 22481,
+    "line": 714,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 23472,
+    "byte_end": 23485,
+    "line": 744,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 27924,
+    "byte_end": 27937,
+    "line": 881,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 28684,
+    "byte_end": 28697,
+    "line": 905,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 35188,
+    "byte_end": 35201,
+    "line": 1106,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 45797,
+    "byte_end": 45810,
+    "line": 1437,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 52495,
+    "byte_end": 52508,
+    "line": 1651,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 54662,
+    "byte_end": 54675,
+    "line": 1717,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 58097,
+    "byte_end": 58110,
+    "line": 1818,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 61403,
+    "byte_end": 61416,
+    "line": 1916,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 62570,
+    "byte_end": 62583,
+    "line": 1952,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 63748,
+    "byte_end": 63761,
+    "line": 1986,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 65473,
+    "byte_end": 65486,
+    "line": 2036,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 67183,
+    "byte_end": 67196,
+    "line": 2086,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 68260,
+    "byte_end": 68273,
+    "line": 2118,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 69363,
+    "byte_end": 69376,
+    "line": 2150,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 70581,
+    "byte_end": 70594,
+    "line": 2184,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 72562,
+    "byte_end": 72575,
+    "line": 2240,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 74009,
+    "byte_end": 74022,
+    "line": 2279,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 75218,
+    "byte_end": 75231,
+    "line": 2316,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 76686,
+    "byte_end": 76699,
+    "line": 2359,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 78288,
+    "byte_end": 78301,
+    "line": 2406,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 79422,
+    "byte_end": 79435,
+    "line": 2443,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 80430,
+    "byte_end": 80443,
+    "line": 2476,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 81542,
+    "byte_end": 81555,
+    "line": 2508,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 82545,
+    "byte_end": 82558,
+    "line": 2539,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 85194,
+    "byte_end": 85207,
+    "line": 2622,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 86833,
+    "byte_end": 86846,
+    "line": 2673,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 88153,
+    "byte_end": 88166,
+    "line": 2715,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 89262,
+    "byte_end": 89275,
+    "line": 2749,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 90692,
+    "byte_end": 90705,
+    "line": 2793,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 92585,
+    "byte_end": 92598,
+    "line": 2849,
+    "text": [
+      {
+        "highlight_end": 30,
+        "highlight_start": 17,
+        "text": "    let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 127052,
+    "byte_end": 127065,
+    "line": 4037,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 130144,
+    "byte_end": 130157,
+    "line": 4126,
+    "text": [
+      {
+        "highlight_end": 22,
+        "highlight_start": 9,
+        "text": "        WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 133349,
+    "byte_end": 133362,
+    "line": 4221,
+    "text": [
+      {
+        "highlight_end": 38,
+        "highlight_start": 25,
+        "text": "            let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 135070,
+    "byte_end": 135083,
+    "line": 4265,
+    "text": [
+      {
+        "highlight_end": 38,
+        "highlight_start": 25,
+        "text": "            let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 137848,
+    "byte_end": 137861,
+    "line": 4332,
+    "text": [
+      {
+        "highlight_end": 38,
+        "highlight_start": 25,
+        "text": "            let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 139977,
+    "byte_end": 139990,
+    "line": 4381,
+    "text": [
+      {
+        "highlight_end": 38,
+        "highlight_start": 25,
+        "text": "            let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 142959,
+    "byte_end": 142972,
+    "line": 4451,
+    "text": [
+      {
+        "highlight_end": 38,
+        "highlight_start": 25,
+        "text": "            let parts = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 155691,
+    "byte_end": 155704,
+    "line": 4846,
+    "text": [
+      {
+        "highlight_end": 18,
+        "highlight_start": 5,
+        "text": "    WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 157903,
+    "byte_end": 157916,
+    "line": 4913,
+    "text": [
+      {
+        "highlight_end": 31,
+        "highlight_start": 18,
+        "text": "    let parts1 = WorkflowParts {"
+      }
+    ]
+  },
+  {
+    "file": "crates/vb_core/src/workflow/tests.rs",
+    "byte_start": 158543,
+    "byte_end": 158556,
+    "line": 4936,
+    "text": [
+      {
+        "highlight_end": 31,
+        "highlight_start": 18,
+        "text": "    let parts2 = WorkflowParts {"
+      }
+    ]
+  }
+]
