@@ -33,13 +33,13 @@ mod hydrate_tests {
         let snapshot_run = RunId::new(1);
         let requested_run = RunId::new(2);
         let result = validate_snapshot_metadata(snapshot_run, EventSeq::new(5), requested_run);
-        assert!(
-            matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
-                snapshot_run: sr,
-                snapshot_seq: _
-            }) if sr == RunId::new(1)),
-            "should reject mismatched run, got {:?}",
-            result
+        assert_eq!(
+            result,
+            Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+                expected_run: requested_run,
+                snapshot_run,
+                snapshot_seq: EventSeq::new(5)
+            })
         );
     }
 

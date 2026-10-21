@@ -44,6 +44,7 @@ mod durability_gate_tests {
 
         let mut parts = WorkflowParts {
             name: Box::<str>::from("vb_2bok_test"),
+            input_slots: Box::new([]),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([
                 CompiledNode {

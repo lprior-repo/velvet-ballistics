@@ -31,6 +31,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> 
 fn deterministic_parts() -> WorkflowParts {
     WorkflowParts {
         name: "recovery_replay".into(),
+        input_slots: Box::new([]),
         digest: sample_digest(44),
         nodes: deterministic_nodes().into(),
         expressions: Vec::new().into(),
@@ -683,6 +684,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
     let action = ActionId::new(4);
     let parts = WorkflowParts {
         name: "action_recovery".into(),
+        input_slots: Box::new([]),
         digest,
         nodes: vec![CompiledNode {
             id: StepIdx::ZERO,
