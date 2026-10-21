@@ -1,0 +1,133 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:19:
+ pub mod ast;
+ 
+ // Preserve the original public paths while the dedicated crates own the code.
+-pub use vb_expr::{expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs,
+-    expr_stack_ops, expr_typecheck};
+-pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile,
+-    yaml_source_map};
++pub use vb_expr::{
++    expr_bytecode, expr_eval, expr_lexer, expr_parser, expr_proofs, expr_stack_ops, expr_typecheck,
++};
+ #[cfg(kani)]
+ pub use vb_yaml::yaml_kani;
+-#[cfg(test)]
+-mod migration_compat;
++pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile, yaml_source_map};
+ mod control_flow;
+ pub mod expression;
+ mod expression_bytecode;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:33:
+ mod limits;
++#[cfg(test)]
++mod migration_compat;
+ mod mod_compile_core;
+ mod mod_compile_errors;
+ pub mod mod_compile_lowering;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:42:
+ 
+ // Import expression and YAML modules from dedicated crates
+ pub use vb_expr::{
+-    ExprError, ExprResult,
+-    bytecode, eval, lexer, parser, stack_ops, typecheck,
+-    compile_expr, compile_expr_to_bytecode, compile_expr_with_pool,
+-    compile_expr_with_resolver, check_expr_stack_bound, ReferenceResolver,
+-    eval_binary_op, eval_expr_program, eval_expr_program_with_store,
+-    eval_helper, eval_helper_with_store, eval_unary_op,
++    ExprError, ExprResult, ReferenceResolver, bytecode, check_expr_stack_bound, compile_expr,
++    compile_expr_to_bytecode, compile_expr_with_pool, compile_expr_with_resolver, eval,
++    eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
++    eval_helper_with_store, eval_unary_op, lexer, parser, stack_ops, typecheck,
+ };
+ 
+ pub use vb_yaml::{
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:54:
+-    YamlError, YamlResult,
+-    YamlEvent, EventSpan, ScalarStyle,
+-    collect_events, convert_event,
+-    reject_anchors_aliases_merges, reject_duplicate_keys,
+-    reject_forbidden_features, reject_multiple_documents,
+-    reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
+-    SourceMap, SourceSpan, SemanticSourceMap,
+-    build_source_map, build_semantic_source_map, span_for_node,
+-    WorkflowSource,
+-    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst,
+-    InputField, ResultMapping, RetryPolicy, ScalarValue, SecretField,
+-    StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
++    AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, EventSpan, ExampleAst, InputField,
++    ResultMapping, RetryPolicy, ScalarStyle, ScalarValue, SecretField, SemanticSourceMap,
++    SourceMap, SourceSpan, StepAst, StepPrimitive, TogetherBranch, TriggerAst, VarField,
++    WorkflowSource, YamlError, YamlEvent, YamlResult, build_semantic_source_map, build_source_map,
++    collect_events, convert_event, reject_anchors_aliases_merges, reject_duplicate_keys,
++    reject_forbidden_features, reject_multiple_documents, reject_yaml_1_1_ambiguous_scalars,
++    span_for_node, validate_yaml_profile,
+ };
+ 
+ #[cfg(any(test, feature = "test-util"))]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:85:
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+ pub mod kani_finish_digest;
+ 
+-
+ // Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
+ #[cfg(any())]
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/lib.rs:146:
+ #[cfg(any())]
+ // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
+ pub mod kani_digest_repeat;
+-
+-
+ 
+ // Internal test modules (error variant completeness, together digest unit tests).
+ #[cfg(test)]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/migration_compat.rs:31:
+     #[test]
+     fn expr_lexer_behavioral_check() -> Result<(), Box<dyn std::error::Error>> {
+         let tokens = expr_lexer::lex_expr("x")?;
+-        let has_identifier = tokens.iter().any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
++        let has_identifier = tokens
++            .iter()
++            .any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
+         assert!(has_identifier, "Expected an identifier token");
+         Ok(())
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/migration_compat.rs:83:
+     #[test]
+     fn yaml_profile_rejects_duplicate_keys() {
+         let result = yaml_profile::validate_yaml_profile("version: a\nversion: b\n");
+-        assert!(matches!(result,
+-            Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
+-        ), "Expected DuplicateKey for version, got {result:?}");
++        assert!(
++            matches!(result,
++                Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
++            ),
++            "Expected DuplicateKey for version, got {result:?}"
++        );
+     }
+ 
+     /// Behavioral check: validate_yaml_profile rejects multiple documents via old path.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/migration_compat.rs:92:
+     #[test]
+     fn yaml_profile_rejects_multiple_documents() {
+         let result = yaml_profile::validate_yaml_profile("a: 1\n---\nb: 2\n");
+-        assert!(matches!(result,
+-            Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
+-        ), "Expected two documents, got {result:?}");
++        assert!(
++            matches!(
++                result,
++                Err(yaml_error::YamlError::MultipleDocuments { count: 2 })
++            ),
++            "Expected two documents, got {result:?}"
++        );
+     }
+ 
+     /// Compile-time check that yaml_ast module is accessible via old path.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-test-review-root/crates/vb_compile/src/migration_compat.rs:105:
+         let _ = std::any::type_name::<yaml_ast::StepPrimitive>();
+     }
+ }
+-
+ 

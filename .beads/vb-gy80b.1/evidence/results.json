@@ -1,0 +1,60 @@
+[
+  {
+    "name": "strict-lib",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--lib"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "strict-doc",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "broken-import-negative",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc"
+    ],
+    "exit": 101
+  },
+  {
+    "name": "strict-doc-restored",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "exact-file-fmt",
+    "command": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/vb_compile/src/lib.rs",
+      "crates/vb_compile/src/migration_compat.rs"
+    ],
+    "exit": 1
+  }
+]
