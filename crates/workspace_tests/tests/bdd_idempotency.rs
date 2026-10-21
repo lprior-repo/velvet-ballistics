@@ -187,7 +187,7 @@ mod bdd_idempotency {
     // IDEM-005 (FWH-009): Cancel duplicate — tracker proxy for CLI cancel idempotency
     // =========================================================================
     // NOTE: This is a tracker-level proxy test for CLI cancel idempotency.
-    // The CLI cancel command (vb_cli::lifecycle::cancel) delegates to the same
+    // The CLI cancel command (velvet_ballistics::lifecycle::cancel) delegates to the same
     // idempotency mechanism. Full CLI-level BDD scenarios require a follow-up bead.
     // Contract C4 surface: CLI (proxy via tracker API)
 

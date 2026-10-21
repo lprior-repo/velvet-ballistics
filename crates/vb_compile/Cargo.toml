@@ -13,6 +13,8 @@ saphyr.workspace = true
 saphyr-parser.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
+vb_yaml = { path = "../vb_yaml" }
+vb_expr = { path = "../vb_expr" }
 vb_validate = { path = "../vb_validate" }
 
 [dev-dependencies]
@@ -36,8 +38,6 @@ path = "tests/vb_xi2f_error_variant_proptest.rs"
 [[test]]
 name = "proptest_digest_foreach"
 path = "tests/proptest_digest_foreach.rs"
-
-# === vb-xi2f.13 Choose Lowering Proptest Targets ===
 
 [[test]]
 name = "proptest_choose_width"

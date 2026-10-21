@@ -20,7 +20,7 @@ crc32fast.workspace = true
 blake3.workspace = true
 
 [lib]
-name = "vb_cli"
+name = "velvet_ballistics"
 path = "src/lib.rs"
 
 [[bin]]
@@ -32,7 +32,6 @@ bytes = { workspace = true }
 proptest = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
-# vb_ui_model is removed from the current workspace scope.
 
 [lints]
 workspace = true

@@ -1,7 +1,7 @@
 //! Public behavior tests for bead vb-ko29.5 idempotency permutations.
 
 use tempfile::TempDir;
-use vb_cli::lifecycle;
+use velvet_ballistics::lifecycle;
 use vb_core::action::{ActionTicket, Idempotency};
 use vb_core::errors::CoreError;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
