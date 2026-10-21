@@ -41,10 +41,10 @@ A disconnected `new_for_tests_and_benchmarks_only` Runtime reproduces the weaker
 | connection_io.rs:96 read_request |29|24|25|Physical-line rule fail; no logical-line failure claimed|
 | reactor.rs:132 service_clients |30|25|25|Physical-line rule fail; no logical-line failure claimed|
 | queue/writer/flush.rs:66 flush_batch_with_durability |87|47|25|Fail|
-| connection_io.rs:70 handle_writable |24|20|25|Pass|
-| connection_io.rs:142 queue_response |20|18|25|Pass|
+| connection_io.rs:70 handle_writable |24|18|25|Pass|
+| connection_io.rs:142 queue_response |20|19|25|Pass|
 | reactor.rs:109 register_client |22|21|25|Pass|
-| ipc_serve.rs:94 IpcJournalService::turn |21|19|25|Pass|
+| ipc_serve.rs:91 IpcJournalService::turn |18|15|25|Pass|
 
 The first and fourth rows exceed25 even after blanks/comments/brace-only lines are excluded. This review does not claim the repository hot-file glob itself covers IPC/storage, nor that a canonical source-length command was executed. Pre-existing large helpers such as send_response and cmd_ipc_serve are not treated as newly introduced whole-repository findings. Extraction must preserve readable execution transitions and commit-before-drain ordering; no lint suppressions or contract weakening.
 
