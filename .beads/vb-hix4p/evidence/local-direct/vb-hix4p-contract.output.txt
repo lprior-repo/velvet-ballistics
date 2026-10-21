@@ -1,0 +1,5 @@
+The `make_parts` fixture omits the `input_slots` field required by `WorkflowParts`. All tests construct parts through this single helper, so adding an empty `input_slots` there fixes E0063 and preserves every existing assertion.
+
+**Contract:** `make_parts` must initialize all `WorkflowParts` fields; `input_slots` is an empty boxed slice for these fixtures.
+
+**Edit:** In `make_parts`, add `input_slots: Box::new([]),` to the struct initializer (after `step_names`).
