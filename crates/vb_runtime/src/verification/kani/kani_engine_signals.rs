@@ -38,6 +38,7 @@ fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkfl
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).ok()

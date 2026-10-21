@@ -92,7 +92,6 @@ impl Shard {
             };
             self.release_frame(state.frame);
             self.terminal_runs_insert(run)?;
-            self.action_abi_digests_remove(run);
             self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
@@ -115,7 +114,6 @@ impl Shard {
         if let Some(state) = self.run_state_remove(run) {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run)?;
-            self.action_abi_digests_remove(run);
             self.runtime_state_remove(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });

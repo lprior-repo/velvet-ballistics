@@ -287,6 +287,31 @@ impl Shard {
         let _removed = self.journal_sequences.swap_remove(&run);
     }
 
+    /// Seeds a journal sequence for a run being recovered.
+    ///
+    /// Recovery provides the next durable sequence from journal replay;
+    /// this sets it as the current sequence so future events advance
+    /// from the correct position.
+    pub(crate) fn seed_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
+        self.reserve_journal_sequence_slot(run)?;
+        let _previous = self.journal_sequences.insert(run, seq);
+        Ok(())
+    }
+
+    /// Re-injects a pending action ticket recovered from journal replay.
+    ///
+    /// When a run was suspended with a pending action (sided effect in
+    /// flight), recovery must restore that action to the shard's pending
+    /// action map so it can be matched with a completion event.
+    pub(crate) fn reinject_pending_action(
+        &mut self,
+        run: RunId,
+        ticket: vb_core::action::ActionTicket,
+    ) -> RuntimeResult<()> {
+        self.pending_action_insert(run, ticket)?;
+        Ok(())
+    }
+
     pub(crate) fn add_executed_step_delta(&mut self, run: RunId, executed: u64) {
         let previous = self
             .accounted_executed_steps
@@ -345,6 +370,30 @@ impl Shard {
             let _removed_action = self.pending_action_remove(run_id);
         }
         Some(state)
+    }
+
+    /// Computes the ABI digest for a specific action on a run.
+    ///
+    /// Looks up the action contract for the given action ID from the run's
+    /// action contracts, serializes it, and returns the blake3 digest.
+    pub(crate) fn action_abi_digest_for_run_action(
+        &self,
+        run: RunId,
+        action: ActionId,
+    ) -> RuntimeResult<WorkflowDigest> {
+        let state = self
+            .run_state_get(run)
+            .ok_or_else(|| RuntimeError::RunNotFound)?;
+        // Find the contract for this action
+        let contract = state
+            .action_contracts
+            .iter()
+            .find(|c| c.id == action)
+            .ok_or(RuntimeError::UnsupportedOperation {
+                operation: "action_contract_not_found",
+            })?;
+        // Compute ABI digest from the contract
+        crate::recovery::action_contract_abi_digest(contract)
     }
 
     /// Returns the runtime state for the given run ID, if it exists.
@@ -693,11 +742,9 @@ impl Shard {
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
             }
-            ShardCommand::Recover {
-                run,
-                frame,
-                workflow_digest,
-            } => self.handle_recover(run, frame, workflow_digest)?,
+            ShardCommand::Recover { command } => {
+                self.handle_recover(command)?;
+            }
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
                 return Ok(false);

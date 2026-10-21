@@ -39,6 +39,7 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }

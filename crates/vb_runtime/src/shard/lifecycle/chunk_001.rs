@@ -303,7 +303,54 @@ impl Shard {
         Ok(())
     }
 
+    /// Validates admission requirements for a submitted run with action contracts.
+    ///
+    /// Checks: duplicate action IDs, well-formed contract names, and that granted
+    /// capabilities cover the required capabilities declared by the contracts.
+    pub(crate) fn validate_submit_admission_with_contracts(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        // Build admission to validate workflow digest
+        self.build_admission(run, digest, caps.clone())?;
+
+        // Validate action contracts for duplicates and well-formedness
+        let mut seen_ids = std::collections::HashSet::new();
+        for contract in action_contracts {
+            if !seen_ids.insert(contract.id) {
+                return Err(RuntimeError::ContractValidationError {
+                    action: contract.id,
+                    error: "duplicate action ID".to_string(),
+                });
+            }
+            if contract.name.as_str().is_empty() {
+                return Err(RuntimeError::ContractValidationError {
+                    action: contract.id,
+                    error: "action name is empty".to_string(),
+                });
+            }
+        }
+
+        // Validate that granted capabilities cover all contract requirements
+        for contract in action_contracts {
+            for required in contract.required_capabilities.iter() {
+                if !caps.grants(required) {
+                    return Err(RuntimeError::AdmissionCapabilityDenied {
+                        action: contract.id,
+                        required: required.clone(),
+                        granted: caps,
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+
         self.validate_run_exists(run)?;
         let current_state = self.get_runtime_state_or_running(run);
         if current_state == RuntimeState::Running {
@@ -345,81 +392,120 @@ impl Shard {
     /// - Admission is built with empty capabilities (caps are not persisted
     ///   per-run in the journal; runs requiring non-empty caps will fail
     ///   admission during recovery, which is the correct fail-closed behavior).
+    /// Recovers a run from full recovery context provided by journal replay.
+    ///
+    /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+    /// digest for verification, workflow digest for identity validation,
+    /// journal sequence for sequencing, collect states for pagination
+    /// resumption, and boundary classification for suspended operations.
+    ///
+    /// Recovery flow:
+    /// 1. Load artifact by artifact_digest (verification)
+    /// 2. Deserialize and compile workflow from artifact IR
+    /// 3. Verify workflow identity matches command workflow_digest
+    /// 4. Seed journal sequence from command next_seq
+    /// 5. Build admission with artifact's required capabilities
+    /// 6. Construct RunState restoring collect_states
+    /// 7. Handle boundary (pending action / open ask)
+    /// 8. Drive run from recovered state
     pub(crate) fn handle_recover(
         &mut self,
-        run: RunId,
-        frame: vb_core::frame::RunFrame,
-        workflow_digest: vb_core::ids::WorkflowDigest,
+        command: crate::shard::types::RecoverRunCommand,
     ) -> RuntimeResult<()> {
-        // Load the accepted artifact from the shard's artifact store.
+        let run = command.run;
+        let frame = command.frame;
+        let artifact_digest = command.artifact_digest;
+        let workflow_digest = command.workflow_digest;
+        let next_seq = command.next_seq;
+        let collect_states = command.collect_states;
+        let boundary = command.boundary;
+
+        // Step 1: Load artifact by artifact_digest for verification
         let artifact = self
             .artifact_store
-            .load_accepted_artifact(workflow_digest)
+            .load_accepted_artifact(artifact_digest)
             .map_err(|e| match e {
                 crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
                     RuntimeError::Recovery {
                         error: format!("artifact not found during recovery: {digest:?}"),
                     }
                 }
-                _ => RuntimeError::Recovery {
-                    error: "artifact decode failed during recovery".to_string(),
+                other => RuntimeError::Recovery {
+                    error: format!("artifact load failed: {other}"),
                 },
             })?;
 
-        // Deserialize the postcard-encoded WorkflowParts from the artifact IR.
+        // Step 2: Deserialize and compile workflow from artifact IR
         let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)
             .map_err(|_| RuntimeError::Recovery {
                 error: "artifact IR decode failed".to_string(),
             })?;
 
-        // Validate and reconstruct the compiled workflow.
-        // Workflow compilation failure means the recovered parts are invalid;
-        // this maps to UnsupportedFrameSeed since the frame cannot be resumed.
         let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
             .map_err(|e| RuntimeError::Recovery {
                 error: format!("workflow compile failed: {e}"),
             })?;
 
-        // Build admission from the artifact (same as submit path).
-        // Use the artifact's required_capabilities as the granted capability set.
-        // These were the original grants at submit time; cardinality-exact
-        // admission (RA-023) will pass because required == granted.
+        // Step 3: Verify workflow identity matches command workflow_digest
+        if workflow.digest() != workflow_digest {
+            return Err(RuntimeError::Recovery {
+                error: format!(
+                    "workflow digest mismatch: expected {workflow_digest:?}, got {:?}",
+                    workflow.digest()
+                ),
+            });
+        }
+
+        // Step 4: Seed journal sequence from recovered next_seq
+        self.seed_journal_sequence(run, next_seq)?;
+
+        // Step 5: Build admission with artifact's required capabilities
         let granted_caps =
-            CapabilitySet::from_grants(artifact.required_capabilities.clone());
+            vb_core::capability::CapabilitySet::from_grants(
+                artifact.required_capabilities.clone(),
+            );
         let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
 
-        // Prepare the run's value store and action attempts from frame dimensions.
+        // Step 6: Prepare run slots and construct RunState with restored collect_states
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;
         self.prepare_run_slots(run)?;
 
-        // Construct the full RunState with all required fields.
         let state = crate::shard::types::RunState {
             frame,
             workflow,
             store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
-            collect_states: crate::primitives::collect::CollectStates::new(),
-            // action_contracts are supplied at submit time and are not journaled;
-            // recovered runs rely on per-step policy enforcement instead.
-            action_contracts: Box::new([]),
+            collect_states,
+            action_contracts: artifact.action_contracts.clone(),
         };
 
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, RuntimeState::Initial)?;
+        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
 
-        // Do not increment submitted counter — recovery is not a submit.
-        // The counters tracking active runs will be updated by drive_run.
+        // Step 7: Handle boundary for suspended operations
+        match boundary.kind() {
+            crate::recovery::RecoveredRunBoundaryKind::None => {}
+            crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+                // Re-inject pending action ticket from boundary
+                let ticket = boundary
+                    .pending_action_ticket()
+                    .map(|t| t.ticket());
+                if let Some(t) = ticket {
+                    self.reinject_pending_action(run, t)?;
+                }
+            }
+            crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
+                // Open ask boundary: resume at ask step, no side effects
+            }
+        }
 
+        // Step 8: Drive run from recovered state
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {
-                // Do NOT discard journal sequence on recovery failure.
-                // The journal sequence is the recovered state; discarding it
-                // would destroy evidence that the recovery attempt produced.
                 if !self.run_state_contains(run) {
-                    // Only discard if run_state_insert failed (no state to drive).
                     self.discard_journal_sequence(run);
                 }
                 Err(error)

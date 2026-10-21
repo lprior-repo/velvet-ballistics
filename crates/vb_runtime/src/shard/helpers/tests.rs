@@ -53,6 +53,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("suspended_workflow"))
 }
@@ -90,6 +91,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("finished_workflow"))
 }
@@ -119,6 +121,7 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_workflow_no_next"))
 }
@@ -179,6 +182,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -243,6 +247,7 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -297,6 +302,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -611,7 +617,30 @@ fn seed_input_slots_rejects_out_of_bounds_slot() {
     };
     // Slot 99 is out of bounds for a workflow with 1 slot
     let inputs = Box::from([(SlotIdx::new(99), SlotValue::I64(1))]);
-    let result = seed_input_slots(&mut frame, &inputs);
+    let node = vb_core::workflow::CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
+    let result = seed_input_slots(&mut frame, &inputs, &workflow);
     assert_eq!(result, Err(RuntimeError::InvalidRecoveryHydration));
 }
 
@@ -675,6 +704,7 @@ fn retry_policy_after_action_rejects_non_i64_policy_slot() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_non_i64_policy_slot");
@@ -780,6 +810,7 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_negative_max_attempts");
@@ -864,6 +895,7 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_zero_max_attempts");
@@ -998,6 +1030,7 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -1113,6 +1146,7 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("seed_input_slots_writes_multiple_distinct_values");
@@ -1126,7 +1160,30 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         (SlotIdx::new(1), SlotValue::Bool(true)),
         (SlotIdx::new(2), SlotValue::I64(-5)),
     ]);
-    assert_eq!(seed_input_slots(&mut frame, &inputs), Ok(()));
+    let node = vb_core::workflow::CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
+    assert_eq!(seed_input_slots(&mut frame, &inputs, &workflow), Ok(()));
     assert_eq!(frame.read_slot(SlotIdx::new(0)), Ok(&SlotValue::I64(10)));
     assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::Bool(true)));
     assert_eq!(frame.read_slot(SlotIdx::new(2)), Ok(&SlotValue::I64(-5)));
@@ -1435,6 +1492,7 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("validate_action_completion_rejects_when_node_is_not_do");
@@ -1693,6 +1751,7 @@ mod proptest_tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
         };
         let wf =
             vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");

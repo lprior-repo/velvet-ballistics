@@ -18,6 +18,7 @@ use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::CollectStates;
+
 use crate::trace::TraceRing;
 
 // Aggregate resource model touchpoints for vb-qi37.2.1:
@@ -185,17 +186,58 @@ pub enum ShardCommand {
     /// Recover a run from durable Fjall journal evidence.
     ///
     /// The runtime has already reconstructed a `RunFrame` from the journal
-    /// replay and is injecting it directly into the shard's frame pool.
-    /// The `workflow_digest` is used to look up the compiled workflow
-    /// from the artifact store before driving the run.
+    /// replay and validated full recovery context. The typed
+    /// `RecoverRunCommand` carries artifact verification, journal sequencing,
+    /// collect pagination, and boundary classification in a single value.
     Recover {
-        /// Run identifier being recovered.
-        run: RunId,
-        /// Hydrated run frame from journal replay.
-        frame: RunFrame,
-        /// Workflow digest for artifact store lookup during recovery.
-        workflow_digest: WorkflowDigest,
+        command: RecoverRunCommand,
     },
+}
+
+/// Typed recovery command carrying full recovery context from journal replay.
+///
+/// Constructed by recovery machinery after validating journal evidence
+/// and before enqueueing a Recover shard command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoverRunCommand {
+    /// Run identifier being recovered.
+    pub run: RunId,
+    /// Hydrated run frame from journal replay.
+    pub frame: RunFrame,
+    /// Artifact digest for artifact store verification.
+    pub artifact_digest: WorkflowDigest,
+    /// Workflow digest for artifact store lookup during recovery.
+    pub workflow_digest: WorkflowDigest,
+    /// Next durable journal sequence for this run.
+    pub next_seq: EventSeq,
+    /// Collect pagination states to resume after recovery.
+    pub collect_states: CollectStates,
+    /// Recovery boundary classification.
+    pub boundary: crate::recovery::RecoveredRunBoundary,
+}
+
+impl RecoverRunCommand {
+    /// Constructs a recovery command from validated journal replay evidence.
+    #[must_use]
+    pub fn new(
+        run: RunId,
+        frame: RunFrame,
+        artifact_digest: WorkflowDigest,
+        workflow_digest: WorkflowDigest,
+        next_seq: EventSeq,
+        collect_states: CollectStates,
+        boundary: crate::recovery::RecoveredRunBoundary,
+    ) -> Self {
+        Self {
+            run,
+            frame,
+            artifact_digest,
+            workflow_digest,
+            next_seq,
+            collect_states,
+            boundary,
+        }
+    }
 }
 
 /// Ticket identifying where an ask answer must resume execution.

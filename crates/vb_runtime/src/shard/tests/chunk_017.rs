@@ -114,6 +114,7 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
     };
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,
