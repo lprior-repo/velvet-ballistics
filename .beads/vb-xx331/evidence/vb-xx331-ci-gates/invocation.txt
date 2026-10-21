@@ -1,0 +1,6 @@
+Command: timeout --signal=TERM --kill-after=15s 300s env CARGO_BUILD_JOBS=2 moon ci --force --summary detailed --concurrency 2 velvet-ballistics:fmt velvet-ballistics:banned-token-gates velvet-ballistics:source-length velvet-ballistics:check velvet-ballistics:lint-src velvet-ballistics:test velvet-ballistics:doc-test velvet-ballistics:doc velvet-ballistics:feature-powerset velvet-ballistics:miri velvet-ballistics:coverage velvet-ballistics:bench-build velvet-ballistics:benchmark-regression-policy velvet-ballistics:fuzz-smoke
+Outer timeout: 300 seconds
+Actual wrapper exit: 124
+Moon summary: interrupted at 4m58s; 15 completed actions, 3 failed, 3 skipped.
+Excluded fleet-wide lanes: kani-baseline, kani-baseline-heavy, mutants-smoke.
+Not reached: coverage, bench-build, benchmark-regression-policy, fuzz-smoke.

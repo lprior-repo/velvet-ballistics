@@ -1,0 +1,1 @@
+Moon action graph interrupted by SIGINT after default targets resolved to kani-baseline, kani-baseline-heavy, and mutants-smoke. Moon reported process exit 0 despite its explicit (interrupted) summary; this is not a passing CI result. Follow-up invokes §40 CI gate targets explicitly while omitting only full-fleet Kani and mutants lanes.

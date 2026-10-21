@@ -1,0 +1,7 @@
+IPC matrix:
+env CARGO_BUILD_JOBS=2 cargo nextest run --no-fail-fast --run-ignored all -p velvet-ballistics-workspace-tests --test restate_ipc_flag_matrix_tests
+Outer timeout: 180 seconds; actual exit 0; summary 38/38 passed. Twelve GAP-coded ignored tests were forced and are source TODO placeholders, so this is not behavioral coverage.
+
+Finish digest integration:
+env CARGO_BUILD_JOBS=2 cargo nextest run --no-fail-fast --run-ignored all -p vb_compile --test finish_digest_integration
+Outer timeout: 180 seconds; actual exit 100; summary 15 run, 10 passed, 5 failed, 0 skipped. The ignored canonical_legacy_digest_equivalence remains a placeholder and does not compare the two implementations.

@@ -1,0 +1,4 @@
+Command: timeout --signal=TERM --kill-after=15s 180s env CARGO_BUILD_JOBS=2 moon ci --force --summary detailed --concurrency 2
+External stop: SIGINT sent to Moon PID 2148919 after observing the default graph includes kani-baseline, kani-baseline-heavy, and mutants-smoke, contrary to the bounded-run instruction.
+Actual wrapper exit: 0
+Moon summary: interrupted after 1m24s; 2 completed actions, 1 skipped action. The process exit 0 is not a CI pass.

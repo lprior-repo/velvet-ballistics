@@ -1,0 +1,141 @@
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.228
+   Compiling zerocopy v0.8.48
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.2.1
+   Compiling ordered-float v5.3.0
+   Compiling once_cell v1.21.4
+   Compiling tempfile v3.27.0
+   Compiling saphyr v0.0.6
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling heapless v0.7.17
+   Compiling ppv-lite86 v0.2.21
+   Compiling rusty-fork v0.3.1
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_core)
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.4
+   Compiling proptest v1.11.0
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_yaml)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_validate)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.51s
+────────────
+ Nextest run ID ac0bdfc5-b05b-4c88-942c-6bec281e397e with nextest profile: default
+    Starting 15 tests across 1 binary
+        FAIL [   0.003s] ( 6/15) vb_compile::finish_digest_integration workflow_version_changes_compiled_digest
+  stdout ───
+
+    running 1 test
+    test workflow_version_changes_compiled_digest ... FAILED
+
+    failures:
+
+    failures:
+        workflow_version_changes_compiled_digest
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'workflow_version_changes_compiled_digest' (2424110) panicked at crates/vb_compile/tests/finish_digest_integration.rs:377:5:
+    assertion `left != right` failed: different workflow versions must produce different compiled digests
+      left: WorkflowDigest([156, 46, 160, 66, 112, 46, 226, 45, 241, 249, 86, 2, 195, 200, 99, 28, 66, 160, 194, 114, 154, 170, 178, 90, 139, 30, 200, 116, 164, 206, 118, 44])
+     right: WorkflowDigest([156, 46, 160, 66, 112, 46, 226, 45, 241, 249, 86, 2, 195, 200, 99, 28, 66, 160, 194, 114, 154, 170, 178, 90, 139, 30, 200, 116, 164, 206, 118, 44])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] ( 7/15) vb_compile::finish_digest_integration trigger_schedule_param_changes_compiled_digest
+  stdout ───
+
+    running 1 test
+    test trigger_schedule_param_changes_compiled_digest ... FAILED
+
+    failures:
+
+    failures:
+        trigger_schedule_param_changes_compiled_digest
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trigger_schedule_param_changes_compiled_digest' (2424109) panicked at crates/vb_compile/tests/finish_digest_integration.rs:459:5:
+    assertion `left != right` failed: different schedule cron expressions must produce different compiled digests
+      left: WorkflowDigest([16, 192, 116, 211, 163, 96, 198, 132, 220, 139, 69, 222, 235, 198, 62, 95, 126, 110, 200, 161, 165, 96, 133, 125, 36, 209, 123, 26, 201, 148, 249, 113])
+     right: WorkflowDigest([16, 192, 116, 211, 163, 96, 198, 132, 220, 139, 69, 222, 235, 198, 62, 95, 126, 110, 200, 161, 165, 96, 133, 125, 36, 209, 123, 26, 201, 148, 249, 113])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] ( 8/15) vb_compile::finish_digest_integration trigger_schedule_vs_manual_changes_compiled_digest
+  stdout ───
+
+    running 1 test
+    test trigger_schedule_vs_manual_changes_compiled_digest ... FAILED
+
+    failures:
+
+    failures:
+        trigger_schedule_vs_manual_changes_compiled_digest
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trigger_schedule_vs_manual_changes_compiled_digest' (2424108) panicked at crates/vb_compile/tests/finish_digest_integration.rs:493:5:
+    assertion `left != right` failed: schedule vs manual trigger must produce different compiled digests
+      left: WorkflowDigest([55, 98, 14, 92, 240, 133, 116, 6, 57, 122, 178, 29, 201, 15, 16, 53, 137, 174, 156, 120, 66, 85, 207, 177, 0, 207, 222, 168, 6, 135, 149, 254])
+     right: WorkflowDigest([55, 98, 14, 92, 240, 133, 116, 6, 57, 122, 178, 29, 201, 15, 16, 53, 137, 174, 156, 120, 66, 85, 207, 177, 0, 207, 222, 168, 6, 135, 149, 254])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.011s] (12/15) vb_compile::finish_digest_integration trigger_event_type_changes_compiled_digest
+  stdout ───
+
+    running 1 test
+    test trigger_event_type_changes_compiled_digest ... FAILED
+
+    failures:
+
+    failures:
+        trigger_event_type_changes_compiled_digest
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trigger_event_type_changes_compiled_digest' (2424120) panicked at crates/vb_compile/tests/finish_digest_integration.rs:527:5:
+    assertion `left != right` failed: different event names must produce different compiled digests
+      left: WorkflowDigest([160, 93, 147, 84, 234, 10, 101, 63, 79, 180, 3, 103, 30, 139, 168, 17, 254, 253, 159, 217, 92, 81, 177, 215, 169, 177, 152, 84, 146, 241, 73, 35])
+     right: WorkflowDigest([160, 93, 147, 84, 234, 10, 101, 63, 79, 180, 3, 103, 30, 139, 168, 17, 254, 253, 159, 217, 92, 81, 177, 215, 169, 177, 152, 84, 146, 241, 73, 35])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.011s] (15/15) vb_compile::finish_digest_integration trigger_type_changes_compiled_digest
+  stdout ───
+
+    running 1 test
+    test trigger_type_changes_compiled_digest ... FAILED
+
+    failures:
+
+    failures:
+        trigger_type_changes_compiled_digest
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trigger_type_changes_compiled_digest' (2424123) panicked at crates/vb_compile/tests/finish_digest_integration.rs:418:5:
+    assertion `left != right` failed: different trigger types (manual vs webhook) must produce different compiled digests
+      left: WorkflowDigest([156, 18, 140, 55, 191, 176, 25, 30, 44, 131, 165, 180, 136, 190, 243, 160, 194, 198, 35, 171, 80, 223, 254, 167, 152, 170, 4, 35, 239, 139, 67, 215])
+     right: WorkflowDigest([156, 18, 140, 55, 191, 176, 25, 30, 44, 131, 165, 180, 136, 190, 243, 160, 194, 198, 35, 171, 80, 223, 254, 167, 152, 170, 4, 35, 239, 139, 67, 215])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [   0.011s] 15 tests run: 10 passed, 5 failed, 0 skipped
+        FAIL [   0.003s] ( 6/15) vb_compile::finish_digest_integration workflow_version_changes_compiled_digest
+        FAIL [   0.003s] ( 7/15) vb_compile::finish_digest_integration trigger_schedule_param_changes_compiled_digest
+        FAIL [   0.003s] ( 8/15) vb_compile::finish_digest_integration trigger_schedule_vs_manual_changes_compiled_digest
+        FAIL [   0.011s] (12/15) vb_compile::finish_digest_integration trigger_event_type_changes_compiled_digest
+        FAIL [   0.011s] (15/15) vb_compile::finish_digest_integration trigger_type_changes_compiled_digest
+error: test run failed

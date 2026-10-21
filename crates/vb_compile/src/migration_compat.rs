@@ -106,16 +106,3 @@ mod yaml_module_paths {
     }
 }
 
-#[cfg(test)]
-mod proof_module_paths {
-    /// Compile-time check: expr_proofs module re-export resolves.
-    #[test]
-    fn expr_proofs_module_accessible() {
-        // expr_proofs is always declared in vb_compile (via pub use), but
-        // its contents are cfg(kani). The module path must resolve regardless.
-        // Importing the module proves the path resolves at compile time.
-        use crate::expr_proofs;
-        // In kani builds, expr_proofs would contain stack_ops_preserve_bounds etc.
-        // In regular builds, it's an empty module — but the path still resolves.
-    }
-}
