@@ -1,0 +1,5 @@
+# Dormant file correction
+
+Coordinator diff inspection found initial local3090worker changed chunk_030.rs even though shard/tests.rs does not include that file.1909unitpassdid not compile that dormant file, whose generated command syntax wasinvalid. Restored exactly from pre-parity a244efa2; no unrelated dormant-source repair or evidence claim accepted. Current migration scope excludes chunk_030.rs. Unused all-in-one submit_suspended fixture wrapper also flagged for removal; explicit contract/grant helpers remainpercontract.
+
+Restored3unnecessary Runtime test edits from a244efa2: submit_ask_waiting, runtime_submit_compiled_delegates_to_submit_direct, scheduler_timer_fire_processes_correct_run. These fixtures have no Do actions and must retain original public entrypoint coverage. Removed the unused new all-in-one test_fixtures::submit_suspended wrapper plus its unused imports; explicit action contract/grant factories remain. Existing positive action-only Runtime helper supplies explicit input/contracts/grants with no caller grants parameter to override.

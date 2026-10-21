@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_inspect_captures_executed_count() {
     // Given a shard with a finished workflow (executes 2 steps: SetConst + Finish)
@@ -9,10 +8,11 @@ fn shard_inspect_captures_executed_count() {
     };
     let run = super::RunId::new(81);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -34,18 +34,20 @@ fn shard_tick_processes_commands_in_fifo_order() {
     };
     // When submitting two runs
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: super::RunId::new(100),
             workflow: wf1,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: super::RunId::new(101),
             workflow: wf2,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -68,10 +70,12 @@ fn shard_resume_continues_suspended_run() {
     };
     let run = super::RunId::new(90);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -103,10 +107,11 @@ fn shard_take_inspect_response_clears_after_take() {
     };
     let run = super::RunId::new(95);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -190,12 +195,12 @@ fn shard_command_equality_submit() {
     let a = ShardCommand::Submit {
         run: super::RunId::new(1),
         workflow: wf.clone(),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     let b = ShardCommand::Submit {
         run: super::RunId::new(1),
         workflow: wf,
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     assert_eq!(a, b);
 }
@@ -205,10 +210,12 @@ fn shard_command_equality_cancel() {
     // Given two identical Cancel commands
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
-    reason: None};
+        reason: None,
+    };
     let b = ShardCommand::Cancel {
         run: super::RunId::new(1),
-    reason: None};
+        reason: None,
+    };
     assert_eq!(a, b);
 }
 
@@ -217,10 +224,12 @@ fn shard_command_equality_differs_run_id() {
     // Given two Cancel commands with different run IDs
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
-    reason: None};
+        reason: None,
+    };
     let b = ShardCommand::Cancel {
         run: super::RunId::new(2),
-    reason: None};
+        reason: None,
+    };
     assert_ne!(a, b);
 }
 

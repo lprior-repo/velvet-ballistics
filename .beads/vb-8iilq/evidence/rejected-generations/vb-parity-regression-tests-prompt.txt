@@ -1,0 +1,276 @@
+Write Rust tests ONLY for vb-8iilq. Return ONLY content of new crates/vb_runtime/src/shard/tests/submission_parity.rs (no markdown). Module child of shard::tests; use super::{suspended_workflow,small_config}; crate::shard::{Shard,ShardCommand}? Shard is reexport? use super::{Shard,ShardCommand} because parent imports exacttypes. Existing suspended_workflow()->Option<CompiledWorkflow>. Use Result<(),Box<dyn std::error::Error>>, .ok_or for Option, no panic/unwrap/expect/unchecked indexes or silent earlyreturn. Need2regression tests that directly kill old cfg(test) grant fabrication: call ShardCommand::Submit with a suspended Do workflow and CapabilitySet::empty, then SubmitWithInputs with same workflow and explicit slot0I64(7),emptycaps. For BOTH use SharedRuntimeJournal clone and assert recorded RunAdmission.granted_capabilities equals EXACT supplied empty CapabilitySet. Do not invent pendingaction/finalerror expectations; plain production handler may journal RunFailed, but main invariant caller grants never overridden. Assert exactly1matching admission record (collect Vec of refs or caps, assert_eq!(vec![empty])). Also assert no fabricated default data written for plain Submit if observable reliably via journal SlotWritten variant suppliedbelow; skip speculative asserts. Add a third exactdeniedcapability test: SubmitWithInputsAndContracts with actual generated contract requiring __contract_required__,caps empty,inputsI647; enqueueOk then tick exactAdmissionCapabilityDenied with exact action/required/granted fields; no journalwrite/runstate/submittedcounter. Preserveall existing negative tests. Do not change production. These are dynamic regressions; later run restoredoldcfgimplementation and require failures to reject oldsubstitution. No claims testsran.
+
+FILE crates/vb_runtime/src/shard/tests/test_fixtures.rs
+//! Shared test fixture helpers for action contracts and capability grants.
+
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::{ActionId, RunId, SlotIdx};
+use vb_core::SlotValue;
+
+/// Create action contracts for all action IDs from 0 through the given maximum.
+pub(crate) fn contracts_through(max_action: ActionId) -> Box<[ActionContract]> {
+    let target = u16::from(max_action.get());
+    let mut contracts = Vec::new();
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        let name = ActionName::from_static_infallible("test-action");
+        contracts.push(ActionContract {
+            id: current,
+            name,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([Capability::new("__contract_required__".into(), current)]),
+        });
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+/// Create a capability set that grants the contract capability for the given action.
+pub(crate) fn contract_capability_for(action: ActionId) -> CapabilitySet {
+    CapabilitySet::from_grants(Box::new([Capability::new("__contract_required__".into(), action)]))
+}
+
+/// Submit a suspended workflow with proper action contracts and capabilities.
+/// This is the canonical way to submit workflows with Do actions in tests.
+pub(crate) fn submit_suspended(
+    shard: &mut super::super::types::Shard,
+    run: RunId,
+    workflow: vb_core::workflow::CompiledWorkflow,
+) -> crate::RuntimeResult<()> {
+    shard.handle_submit_with_inputs_and_contracts(
+        run,
+        workflow,
+        &[(SlotIdx::new(0), SlotValue::I64(0))],
+        contract_capability_for(ActionId::new(0)),
+        &contracts_through(ActionId::new(0)),
+    )
+}
+
+FILE crates/vb_runtime/src/shard/tests/chunk_001.rs
+use std::error::Error;
+use vb_core::ActionFailureCode;
+use vb_core::action::RetryPolicy as VbRetryPolicy;
+use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
+use vb_core::SlotValue;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+use crate::counters::ShardCounters;
+use crate::frame_pool::FramePool;
+use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
+use crate::trace::{TraceEvent, TraceRing};
+use crate::RuntimeError;
+
+use super::{
+    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
+    Shard, ShardCommand, ShardConfig,
+};
+use crate::shard::types::{PendingTimer, PendingTimerKind};
+
+fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
+    let entry = shard.timer_entry(run)?;
+    Some(ShardCommand::TimerFired {
+        run: entry.run,
+        generation: entry.generation,
+        deadline: entry.deadline,
+        kind: entry.kind,
+    })
+}
+
+fn invalid_timer_command(run: super::RunId) -> ShardCommand {
+    ShardCommand::TimerFired {
+        run,
+        generation: 0,
+        deadline: std::time::Instant::now(),
+        kind: PendingTimerKind::Wait,
+    }
+}
+
+fn insert_pending_timer_for_live_run(
+    shard: &mut Shard,
+    run: super::RunId,
+    timer: PendingTimer,
+) -> crate::RuntimeResult<Option<PendingTimer>> {
+    if !shard.run_state_contains(run) && !shard.checked_out_run_contains(run) {
+        shard.checked_out_run_insert(run)?;
+    }
+    shard.pending_timer_insert(run, timer)
+}
+
+fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let node = CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("suspended"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+
+Exact error constructor from contract_validation.rs:
+#![forbid(unsafe_code)]
+//! Contract validation helpers for admission with action contracts.
+//! Validates that submitted action contracts form a well-formed
+//! dense, sorted registry compatible with the production
+//! resolve_contract dispatch path.
+//!
+//! Validation order (first error wins):
+//! 1. build_admission (run/digest/capability set construction)
+//! 2. Duplicate action IDs (global pass)
+//! 3. Empty action names (global pass)
+//! 4. Dense registry index == ID (global pass)
+//! 5. Capability coverage (global pass)
+//! 6. Workflow Do binding (referenced Do actions must have contracts)
+
+use std::collections::HashSet;
+
+use vb_core::action::ActionContract;
+use vb_core::ids::ActionId;
+use vb_core::workflow::CompiledWorkflow;
+
+use crate::{RuntimeError, RuntimeResult};
+
+/// GLOBAL pass: check for duplicate action IDs across all contracts.
+fn check_duplicate_ids(contracts: &[ActionContract]) -> RuntimeResult<()> {
+    let mut seen_ids = HashSet::new();
+    for contract in contracts.iter() {
+        if !seen_ids.insert(contract.id) {
+            return Err(RuntimeError::ContractValidationError {
+                action: contract.id,
+                error: "duplicate action ID".to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// GLOBAL pass: check that all action contract names are non-empty.
+fn check_empty_names(contracts: &[ActionContract]) -> RuntimeResult<()> {
+    for contract in contracts.iter() {
+        if contract.name.as_str().is_empty() {
+            return Err(RuntimeError::ContractValidationError {
+                action: contract.id,
+                error: "action name is empty".to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// GLOBAL pass: validate dense registry — index must equal action ID.
+fn check_dense_index(contracts: &[ActionContract]) -> RuntimeResult<()> {
+    for (index, contract) in contracts.iter().enumerate() {
+        let expected_id = ActionId::new(u16::try_from(index).map_err(|_| {
+            RuntimeError::ContractValidationError {
+                action: contract.id,
+                error: "contract index exceeds ActionId range".to_string(),
+            }
+        })?);
+        if contract.id != expected_id {
+            return Err(RuntimeError::ContractValidationError {
+                action: contract.id,
+                error: format!(
+                    "contract at index {} has ID {} (expected {})",
+                    index,
+                    contract.id.get(),
+                    expected_id.get()
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Validates that action contract IDs match their array indices and are
+/// well-formed. Runs duplicate, empty-name, and index checks as separate
+/// global passes so duplicate detection takes precedence over index errors.
+pub fn validate_contract_ids(contracts: &[ActionContract]) -> RuntimeResult<()> {
+    check_duplicate_ids(contracts)?;
+    check_empty_names(contracts)?;
+    check_dense_index(contracts)?;
+    Ok(())
+}
+
+/// Validates that granted capabilities cover all contract requirements.
+pub fn validate_contract_capabilities(
+    contracts: &[ActionContract],
+    caps: &vb_core::capability::CapabilitySet,
+) -> RuntimeResult<()> {
+    for contract in contracts.iter() {
+        for required in contract.required_capabilities.iter() {
+            if !caps.grants(required) {
+                return Err(RuntimeError::AdmissionCapabilityDenied {
+                    action: contract.id,
+                    required: required.clone(),
+                    granted: caps.clone(),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Validates that every referenced Do action in the workflow has a
+/// contract at its exact registry index with matching ID.
+pub fn validate_workflow_action_binding(
+    workflow: &CompiledWorkflow,
+    contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    for step in 0u16..workflow.node_count() {
+        let step_idx = vb_core::ids::StepIdx::new(step);
+        let node = match workflow.node(step_idx) {
+            Some(node) => node,
+            None => continue,
+        };
+        if let vb_core::workflow::CompiledNodeKind::Do { action, .. } = node.kind {
+            let action_index = usize::from(action.get());
+            let contract = match contracts.get(action_index) {
+                Some(contract) => contract,
+                None => {
+                    return Err(RuntimeError::ContractValidationError {
+                        action,
+                        error: "no contract for workflow Do action".to_string(),
+                    });
+                }
+            };
+            if contract.id != action {
+                return Err(RuntimeError::ContractValidationError {
+                    action,
+                    error: "contract ID mismatch for workflow Do action".to_string(),
+                });
+            }
+        }
+    }
+    Ok(())
+}

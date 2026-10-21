@@ -100,7 +100,7 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(1),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -121,10 +121,12 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
     let run = super::RunId::new(11);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -156,10 +158,11 @@ fn cancel_cleans_pending_timer() -> Result<(), String> {
     let run = super::RunId::new(12);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -183,10 +186,11 @@ fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
     let run = super::RunId::new(13);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -214,10 +218,11 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), St
     let run = super::RunId::new(14);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -275,20 +280,24 @@ fn submit_returns_run_already_exists_for_duplicate() -> Result<(), String> {
     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let run = super::RunId::new(42);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: workflow.clone(),
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID again
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );

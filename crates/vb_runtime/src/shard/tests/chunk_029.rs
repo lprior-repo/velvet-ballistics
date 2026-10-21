@@ -1,4 +1,3 @@
-
 #[test]
 fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_arrives() {
     // Given a timed wait has captured a TimerFired authority token.
@@ -9,10 +8,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
     };
     let run = super::RunId::new(7_106);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -60,7 +60,8 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config());
+    let mut runtime =
+        crate::runtime::Runtime::new_for_tests_and_benchmarks_only(shard_count, small_config());
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for runtime legacy test");
     };
@@ -73,7 +74,10 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
     };
 
     // When legacy run-only delivery is called, it must fail closed rather than fabricate authority.
-    assert_eq!(runtime.timer_fired(run), Err(RuntimeError::InvalidTimerFire));
+    assert_eq!(
+        runtime.timer_fired(run),
+        Err(RuntimeError::InvalidTimerFire)
+    );
 
     // Then the captured typed authority is still valid and can complete the run.
     assert_eq!(runtime.timer_entry_fired(captured), Ok(()));
@@ -91,10 +95,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
     };
     let run = super::RunId::new(7_107);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -109,7 +114,10 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
         deadline: active_timer.deadline,
         kind: active_timer.kind,
     };
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 0);
 
@@ -134,10 +142,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
     };
     let run = super::RunId::new(7_108);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -232,10 +241,11 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     };
     let run = super::RunId::new(7_207);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -244,7 +254,10 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
         panic!("timed wait must register one pending timer before overflow test");
     };
     timer.generation = u64::MAX;
-    assert!(matches!(shard.pending_timer_insert(run, timer), Ok(Some(_))));
+    assert!(matches!(
+        shard.pending_timer_insert(run, timer),
+        Ok(Some(_))
+    ));
     assert_eq!(shard.checked_out_run_insert(run), Ok(()));
     let Some(state) = shard.run_state_remove(run) else {
         panic!("waiting run state must check out for overflow test");
@@ -385,10 +398,11 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
     };
     let run = super::RunId::new(7_208);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -434,10 +448,11 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
     };
     let run = super::RunId::new(7_111);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -474,10 +489,11 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
     };
     let run = super::RunId::new(7_112);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -515,10 +531,11 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
     };
     let run = super::RunId::new(7_113);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

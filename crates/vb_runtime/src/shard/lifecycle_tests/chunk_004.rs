@@ -7,10 +7,14 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
     };
     let run = RunId::new(40_001);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -49,10 +53,14 @@ fn future_attempt_completion_mismatch_is_action_failed_code() {
     };
     let run = RunId::new(40_002);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -89,10 +97,14 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
     };
     let run = RunId::new(41);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -128,10 +140,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
         }),
         Ok(())
     );
-    assert_eq!(
-        shard.tick(),
-        Err(RuntimeError::InvalidActionCompletion)
-    );
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
     let Some(state_after) = shard.run_state_get_mut(run) else {
         assert_eq!(
             None::<()>,
@@ -169,10 +178,16 @@ fn scheduling_propagates_zero_retry_policy_error() {
         return;
     };
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: RunId::new(42),
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(
+                vb_core::ActionId::new(0)
+            ),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+                vb_core::ActionId::new(0)
+            )
         }),
         Ok(())
     );
@@ -192,10 +207,14 @@ fn legacy_action_completed_on_suspended_run_succeeds() {
     };
     let run = RunId::new(50);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -281,10 +300,14 @@ fn legacy_action_completion_journal_first() {
     };
     let run = RunId::new(50_010);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -421,9 +444,7 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
             for (index, event) in events.iter().enumerate() {
                 if self.fail_index == index
                     && self.is_target_answer_event(index, event)
-                    && !self
-                        .failed
-                        .swap(true, std::sync::atomic::Ordering::SeqCst)
+                    && !self.failed.swap(true, std::sync::atomic::Ordering::SeqCst)
                 {
                     return Err(RuntimeError::StorageJournalAppend {
                         source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
@@ -599,9 +620,10 @@ fn handle_action_completion_journal_first() {
             events: &[RuntimeJournalEvent],
             _start_seq: vb_storage::EventSeq,
         ) -> crate::RuntimeResult<()> {
-            if events.iter().any(|event| {
-                matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. })
-            }) {
+            if events
+                .iter()
+                .any(|event| matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }))
+            {
                 return Err(RuntimeError::StorageJournalAppend {
                     source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
                 });
@@ -620,10 +642,14 @@ fn handle_action_completion_journal_first() {
     };
     let run = RunId::new(50_020);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -767,10 +793,14 @@ fn handle_action_failure_journal_first() {
     };
     let run = RunId::new(50_030);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -875,11 +905,7 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
                     ..
                 } if event_run == RunId::new(50_050) && event_step == StepIdx::new(1)
             );
-            if should_fail
-                && !self
-                    .failed
-                    .swap(true, std::sync::atomic::Ordering::SeqCst)
-            {
+            if should_fail && !self.failed.swap(true, std::sync::atomic::Ordering::SeqCst) {
                 return Err(RuntimeError::StorageJournalAppend {
                     source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
                 });
@@ -901,11 +927,7 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
                     } if *event_run == RunId::new(50_050) && *event_step == StepIdx::new(1)
                 )
             });
-            if should_fail
-                && !self
-                    .failed
-                    .swap(true, std::sync::atomic::Ordering::SeqCst)
-            {
+            if should_fail && !self.failed.swap(true, std::sync::atomic::Ordering::SeqCst) {
                 return Err(RuntimeError::StorageJournalAppend {
                     source: std::sync::Arc::new(vb_storage::JournalError::WriteLockPoisoned),
                 });
@@ -988,7 +1010,10 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
         .run_state_get(run)
         .ok_or("run should remain active after retry is scheduled")?;
     assert_eq!(retried_state.action_attempts.get(1).copied(), Some(2));
-    assert_eq!(shard.pending_action_get(run).map(|pending| pending.attempt), Some(2));
+    assert_eq!(
+        shard.pending_action_get(run).map(|pending| pending.attempt),
+        Some(2)
+    );
     Ok(())
 }
 
@@ -1138,7 +1163,9 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         durable_before
     );
 
-    let flushed = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let flushed = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(flushed.drained, target_pending);
     assert_eq!(flushed.written, target_pending);
     let durable_after_rejected_flush = journal
@@ -1171,7 +1198,9 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         .map_err(|error| error.to_string())?;
     assert_eq!(retry_counts.journaled, 2);
     assert_eq!(retry_counts.strict, 0);
-    let retry_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let retry_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(retry_flush.drained, 2);
     assert_eq!(retry_flush.written, 2);
     let durable_after_retry = journal
@@ -1270,7 +1299,9 @@ fn fill_queue_to_one_free_slot(
         .map_err(|error| error.to_string())
 }
 
-fn next_journal_seq(seq: Option<vb_storage::EventSeq>) -> Result<Option<vb_storage::EventSeq>, String> {
+fn next_journal_seq(
+    seq: Option<vb_storage::EventSeq>,
+) -> Result<Option<vb_storage::EventSeq>, String> {
     match seq {
         Some(value) => value
             .get()
@@ -1296,10 +1327,14 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     let workflow = require_workflow("suspended", suspended_workflow())?;
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: workflow.clone(),
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -1320,7 +1355,10 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
     assert_eq!(shard.pending_action_get(run), None);
     assert_eq!(shard.terminal_runs_contains(run), false);
-    assert_eq!(shard.journal_sequences.get(&run).copied(), Some(vb_storage::EventSeq::new(2)));
+    assert_eq!(
+        shard.journal_sequences.get(&run).copied(),
+        Some(vb_storage::EventSeq::new(2))
+    );
     assert_eq!(
         shard.counters().snapshot(),
         crate::counters::CounterSnapshot {
@@ -1345,7 +1383,9 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.is_empty()));
 
-    let header_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let header_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(header_flush.drained, 2);
     assert_eq!(header_flush.written, 2);
     let durable_header = journal
@@ -1370,10 +1410,14 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -1384,13 +1428,18 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         shard.runtime_state_get(run),
         Some(super::super::RuntimeState::Resumable)
     );
-    assert_eq!(shard.pending_action_get(run).map(|ticket| ticket.attempt), Some(1));
+    assert_eq!(
+        shard.pending_action_get(run).map(|ticket| ticket.attempt),
+        Some(1)
+    );
     assert_eq!(
         shard.journal_sequences.get(&run).copied(),
         Some(vb_storage::EventSeq::new(6))
     );
 
-    let resume_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let resume_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(resume_flush.drained, 4);
     assert_eq!(resume_flush.written, 4);
     let durable_after_resume = journal
@@ -1413,7 +1462,10 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     assert_eq!(
         durable_after_resume
             .iter()
-            .filter(|event| matches!(event, vb_storage::JournalEvent::ActionScheduledTicket { .. }))
+            .filter(|event| matches!(
+                event,
+                vb_storage::JournalEvent::ActionScheduledTicket { .. }
+            ))
             .count(),
         1
     );
@@ -1469,10 +1521,16 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
     assert_eq!(state_after.action_attempts.get(1).copied(), Some(2));
     assert_eq!(state_after.frame.pc(), StepIdx::new(1));
     assert_eq!(shard.pending_action_get(run), None);
-    assert_eq!(shard.runtime_state_get(run), Some(super::super::RuntimeState::Resumable));
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(super::super::RuntimeState::Resumable)
+    );
     assert_eq!(shard.counters().snapshot(), counters_before);
     assert_eq!(shard.active_run_count(), active_before);
-    assert_eq!(shard.journal_sequences.get(&run).copied(), next_journal_seq(seq_before)?);
+    assert_eq!(
+        shard.journal_sequences.get(&run).copied(),
+        next_journal_seq(seq_before)?
+    );
     let trace_after = shard
         .trace_ring()
         .snapshot_for_run(run, shard.trace_ring().capacity());
@@ -1495,7 +1553,9 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
         durable_before
     );
 
-    let rejected_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let rejected_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(rejected_flush.drained, QUEUE_CAPACITY);
     assert_eq!(rejected_flush.written, QUEUE_CAPACITY);
     let durable_after_rejected_flush = journal
@@ -1533,14 +1593,19 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
 
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.pending_action_get(run).map(|pending| pending.attempt), Some(2));
+    assert_eq!(
+        shard.pending_action_get(run).map(|pending| pending.attempt),
+        Some(2)
+    );
     assert_eq!(
         shard
             .run_state_get(run)
             .and_then(|state| state.action_attempts.get(1).copied()),
         Some(2)
     );
-    let retry_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let retry_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(retry_flush.written, retry_flush.drained);
     Ok(())
 }
@@ -1597,7 +1662,10 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
     assert_eq!(shard.pending_action_get(run), None);
     assert_eq!(shard.terminal_runs_contains(run), false);
     assert_eq!(shard.counters().snapshot(), counters_before);
-    assert_eq!(shard.journal_sequences.get(&run).copied(), next_journal_seq(seq_before)?);
+    assert_eq!(
+        shard.journal_sequences.get(&run).copied(),
+        next_journal_seq(seq_before)?
+    );
     let trace_after = shard
         .trace_ring()
         .snapshot_for_run(run, shard.trace_ring().capacity());
@@ -1613,7 +1681,9 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
         durable_before
     );
 
-    let rejected_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let rejected_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(rejected_flush.drained, QUEUE_CAPACITY);
     assert_eq!(rejected_flush.written, QUEUE_CAPACITY);
     let durable_after_rejected_flush = journal
@@ -1648,7 +1718,9 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.terminal_runs_contains(run), true);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
-    let retry_flush = adapter.flush_batch().map_err(|error| format!("{error:?}"))?;
+    let retry_flush = adapter
+        .flush_batch()
+        .map_err(|error| format!("{error:?}"))?;
     assert_eq!(retry_flush.written, retry_flush.drained);
     Ok(())
 }
@@ -1778,10 +1850,13 @@ fn handle_action_completion_returns_run_not_found_when_run_finished() {
     };
     let run = RunId::new(422);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow: wf,
-            caps: CapabilitySet::empty(),
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(
+                0
+            )),
         }),
         Ok(())
     );

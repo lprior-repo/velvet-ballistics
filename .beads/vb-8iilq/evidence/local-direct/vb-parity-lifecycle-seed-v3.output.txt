@@ -1,0 +1,169 @@
+```python
+#!/usr/bin/env python3
+import os
+import re
+import glob
+
+WORKDIR = "/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090"
+
+WHITELIST = [
+    'action_failure_drives_error_handler_when_no_retry_metadata',
+    'action_failure_routes_to_error_handler',
+    'admission_rejection_does_not_insert_run_state',
+    'cancel_emits_run_cancelled_journal_event',
+    'cancel_produces_run_cancelled_trace',
+    'cancel_removes_active_run_and_increments_failed',
+    'future_attempt_completion_mismatch_is_action_failed_code',
+    'future_attempt_completion_rejected_when_current_attempt_exists',
+    'handle_action_completion_journal_first',
+    'handle_action_failure_journal_first',
+    'inspect_active_run_returns_found',
+    'legacy_action_completed_on_suspended_run_succeeds',
+    'legacy_action_completion_journal_first',
+    'resubmit_after_cancel_succeeds',
+    'resume_on_suspended_run_re_drives',
+    'scheduling_propagates_zero_retry_policy_error',
+    'stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged',
+    'submit_at_capacity_returns_active_run_capacity_exceeded',
+    'submit_drive_queue_full_after_admission_leaves_resumable_retry',
+    'submit_duplicate_run_returns_run_already_exists',
+    'submit_rejects_duplicate_run_id',
+    'submit_suspended_workflow_suspends_on_action',
+    'submit_with_inputs_rejects_duplicate',
+    'submit_with_inputs_seeds_slots_before_driving',
+    'terminal_retention_does_not_consume_active_capacity',
+]
+
+def find_function_range(source, func_name):
+    pattern = rf'fn\s+{re.escape(func_name)}\s*\('
+    match = re.search(pattern, source)
+    if not match:
+        return None
+    start = match.start()
+    i = match.end()
+    paren_depth = 1
+    while i < len(source):
+        if source[i] == '(':
+            paren_depth += 1
+        elif source[i] == ')':
+            paren_depth -= 1
+            if paren_depth == 0:
+                break
+        i += 1
+    while i < len(source) and source[i] != '{':
+        i += 1
+    if i >= len(source):
+        return None
+    brace_depth = 0
+    while i < len(source):
+        if source[i] == '{':
+            brace_depth += 1
+        elif source[i] == '}':
+            brace_depth -= 1
+            if brace_depth == 0:
+                return (start, i + 1)
+        i += 1
+    return None
+
+def find_submit_exprs(body):
+    results = []
+    variants = [
+        'ShardCommand::SubmitWithInputsAndContracts',
+        'ShardCommand::SubmitWithInputs',
+        'ShardCommand::SubmitWithContracts',
+        'ShardCommand::Submit',
+    ]
+    for variant in variants:
+        idx = 0
+        while True:
+            idx = body.find(variant, idx)
+            if idx == -1:
+                break
+            before_ok = idx == 0 or not (body[idx-1].isalnum() or body[idx-1] == '_')
+            after = idx + len(variant)
+            after_ok = after >= len(body) or body[after] in '{ '
+            if before_ok and after_ok:
+                brace_idx = body.find('{', idx)
+                if brace_idx != -1:
+                    brace_depth = 0
+                    j = brace_idx
+                    while j < len(body):
+                        if body[j] == '{':
+                            brace_depth += 1
+                        elif body[j] == '}':
+                            brace_depth -= 1
+                            if brace_depth == 0:
+                                results.append((idx, variant, brace_idx, j))
+                                break
+                        j += 1
+            idx += 1
+    return results
+
+def transform_expr(body, expr_start, variant, brace_start, brace_end):
+    old_expr = body[expr_start:brace_end+1]
+    inner = body[brace_start+1:brace_end]
+    has_caps = bool(re.search(r'\bcaps\s*:', inner))
+    has_inputs = bool(re.search(r'\binputs\s*:', inner))
+    has_contracts = bool(re.search(r'\baction_contracts\s*:', inner))
+    new_inner = inner
+    if has_caps:
+        new_inner = re.sub(
+            r'caps\s*:\s*CapabilitySet::empty\(\)',
+            'caps: crate::shard::tests::test_fixtures::contract_capability_for(vb_core::ActionId::new(0))',
+            new_inner
+        )
+    injections = []
+    if not has_caps:
+        injections.append('caps: crate::shard::tests::test_fixtures::contract_capability_for(vb_core::ActionId::new(0))')
+    if not has_inputs:
+        injections.append('inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])')
+    if not has_contracts:
+        injections.append('action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))')
+    if injections:
+        stripped = new_inner.rstrip()
+        if stripped and not stripped.endswith(','):
+            new_inner = stripped + ',\n            ' + ',\n            '.join(injections)
+        elif stripped:
+            new_inner = stripped + '\n            ' + ',\n            '.join(injections)
+        else:
+            new_inner = '            ' + ',\n            '.join(injections)
+    new_expr = 'ShardCommand::SubmitWithInputsAndContracts {' + new_inner + '}'
+    return body[:expr_start] + new_expr + body[brace_end+1:]
+
+def process_file(filepath):
+    with open(filepath, 'r') as f:
+        source = f.read()
+    changed_funcs = []
+    for func_name in WHITELIST:
+        func_range = find_function_range(source, func_name)
+        if not func_range:
+            continue
+        start, end = func_range
+        body = source[start:end]
+        original_body = body
+        exprs = find_submit_exprs(body)
+        if not exprs:
+            continue
+        exprs.sort(key=lambda x: x[0], reverse=True)
+        for expr_start, variant, brace_start, brace_end in exprs:
+            body = transform_expr(body, expr_start, variant, brace_start, brace_end)
+        if body != original_body:
+            source = source[:start] + body + source[end:]
+            changed_funcs.append(func_name)
+    if changed_funcs:
+        with open(filepath, 'w') as f:
+            f.write(source)
+    return changed_funcs
+
+def main():
+    all_changed = []
+    test_dir = os.path.join(WORKDIR, "crates/vb_runtime/src/shard/lifecycle_tests")
+    for filepath in glob.glob(os.path.join(test_dir, "chunk_*.rs")):
+        changed = process_file(filepath)
+        all_changed.extend(changed)
+    for func_name in all_changed:
+        print(func_name)
+
+if __name__ == '__main__':
+    main()
+```

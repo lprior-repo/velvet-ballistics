@@ -1,0 +1,12 @@
+STATUS: APPROVED
+
+No actionable findings in this file group. The test changes consistently replace implicit `Submit`/`SubmitWithInputs` calls with explicit `SubmitWithContracts`/`SubmitWithInputsAndContracts` variants, supplying typed capability sets, action contracts, and inputs via `test_fixtures` helpers. This aligns with the contract's requirement to remove test-only fabrication and require explicit fixture parameters.
+
+Verified:
+- No new panics, unwraps, index operations, or casts introduced
+- Negative admission tests (e.g., over-capacity in chunk_019) retain original expectations
+- Formatting normalization (rustfmt) is cosmetic and noted in submission
+- Test fixture helpers (`contract_capability_for`, `contracts_through`) are used appropriately without overriding caller grants
+- No fabricated contracts, grants, or default inputs in production paths
+
+The 3 new regression tests mentioned in the submission notes (preserving empty caps, denying required caps) are not in this file group but are accounted for in the combined review scope.

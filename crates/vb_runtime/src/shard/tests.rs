@@ -1,6 +1,8 @@
 //! Tests for the shard module.
 #![allow(dead_code, unused_imports)]
 
+pub(crate) mod test_fixtures;
+
 include!("tests/chunk_001.rs");
 include!("tests/chunk_002.rs");
 include!("tests/chunk_003.rs");
@@ -31,3 +33,6 @@ include!("tests/chunk_027.rs");
 include!("tests/chunk_028.rs");
 include!("tests/chunk_029.rs");
 include!("tests/chunk_031.rs");
+
+#[path = "tests/submission_parity.rs"]
+mod submission_parity;

@@ -1,4 +1,3 @@
-
 // BH-SHD-10: Cancel non-existent run produces no journal event.
 #[test]
 fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
@@ -7,7 +6,10 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(config, shared);
     let run = super::RunId::new(810);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     let events = journal.snapshot().unwrap_or_default();
     let cancelled_count = events
@@ -39,10 +41,11 @@ fn bh_shd_11_zero_step_budget_never_executes() {
     };
     let run = super::RunId::new(811);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -66,10 +69,11 @@ fn bh_shd_12_legacy_completion_on_finished_run_errors() {
     };
     let run = super::RunId::new(812);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -95,16 +99,20 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     };
     let run = super::RunId::new(813);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
@@ -121,10 +129,11 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
     };
     let run = super::RunId::new(814);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -174,10 +183,11 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
 
     // Submit a finishing run (completes immediately)
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: super::RunId::new(900),
             workflow: wf_finish,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -185,10 +195,11 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
 
     // Submit a suspended run
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: super::RunId::new(901),
             workflow: wf_suspend,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -198,7 +209,8 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(901),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -237,11 +249,12 @@ fn shard_submit_with_empty_inputs_matches_submit() {
     let run = super::RunId::new(910);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithInputs {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
             inputs: Box::from([]),
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

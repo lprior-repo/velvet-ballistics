@@ -1,4 +1,3 @@
-
 #[test]
 fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
     // Given: a shard with runs suspended on both Wait and Ask timers
@@ -17,10 +16,11 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
 
     // Submit wait workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run_wait,
             workflow: wait_workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -28,10 +28,11 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
 
     // Submit ask workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run_ask,
             workflow: ask_workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

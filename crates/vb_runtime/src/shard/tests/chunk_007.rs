@@ -227,10 +227,11 @@ fn shard_cancel_then_inspect_returns_not_found() {
     };
     let run = super::RunId::new(200);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

@@ -1,4 +1,3 @@
-
 #[test]
 fn submit_returns_active_run_capacity_exceeded_at_limit() {
     // Given a shard with max_active_runs = 1 and one active run
@@ -14,10 +13,12 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
         return;
     };
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: super::RunId::new(1),
             workflow: wf,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -27,10 +28,12 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() {
         return;
     };
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: super::RunId::new(2),
             workflow: wf2,
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -52,10 +55,12 @@ fn shard_submit_creates_run_state_in_runs_map() {
     let run = super::RunId::new(10);
     // When submitting a run
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -93,10 +98,11 @@ fn shard_submit_records_run_submitted_trace_event() {
     let run = super::RunId::new(20);
     // When submitting a run
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -120,10 +126,11 @@ fn shard_submit_drives_run_immediately_for_finished_workflow() {
     let run = super::RunId::new(30);
     // When submitting a run with a finishing workflow
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -192,10 +199,12 @@ fn shard_action_completed_marks_step_succeeded() {
     };
     let run = super::RunId::new(55);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -235,10 +244,12 @@ fn shard_action_completed_records_trace_event() {
     };
     let run = super::RunId::new(56);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );

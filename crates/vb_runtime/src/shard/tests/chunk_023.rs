@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_submit_with_run_id_one_accepted() {
     let config = small_config();
@@ -8,10 +7,11 @@ fn shard_submit_with_run_id_one_accepted() {
     };
     let run = super::RunId::new(1);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -192,9 +192,9 @@ fn shard_submit_with_inputs_completes_finished_workflow() {
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
             run: super::RunId::new(42),
-            workflow,
+            workflow: workflow,
             inputs,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -213,8 +213,8 @@ fn shard_multiple_submits_complete() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(0),
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -225,8 +225,8 @@ fn shard_multiple_submits_complete() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(1),
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -237,8 +237,8 @@ fn shard_multiple_submits_complete() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(2),
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -251,7 +251,8 @@ fn shard_multiple_submits_complete() {
 fn shard_command_variants_cross_inequality() {
     let cancel = ShardCommand::Cancel {
         run: super::RunId::new(1),
-    reason: None};
+        reason: None,
+    };
     let resume = ShardCommand::Resume {
         run: super::RunId::new(1),
     };

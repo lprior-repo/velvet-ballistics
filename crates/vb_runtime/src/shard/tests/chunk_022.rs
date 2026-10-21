@@ -1,4 +1,3 @@
-
 // =========================================================================
 // Additional unit tests -- variant equality/inequality, debug format,
 // PendingTimer edge cases, AskAnswer, and boundary RunId values
@@ -12,12 +11,12 @@ fn shard_command_submit_inequality_different_run_id() {
     let a = ShardCommand::Submit {
         run: super::RunId::new(10),
         workflow: wf.clone(),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     let b = ShardCommand::Submit {
         run: super::RunId::new(20),
         workflow: wf,
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     assert_ne!(a, b);
 }
@@ -33,13 +32,13 @@ fn shard_command_submit_with_inputs_equality() {
         run: super::RunId::new(5),
         workflow: wf.clone(),
         inputs: inputs.clone(),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     let b = ShardCommand::SubmitWithInputs {
         run: super::RunId::new(5),
         workflow: wf,
         inputs,
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     assert_eq!(a, b);
 }
@@ -53,13 +52,13 @@ fn shard_command_submit_with_inputs_inequality_different_inputs() {
         run: super::RunId::new(5),
         workflow: wf.clone(),
         inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(1))]),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     let b = ShardCommand::SubmitWithInputs {
         run: super::RunId::new(5),
         workflow: wf,
         inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(2))]),
-        caps: vb_core::capability::CapabilitySet::empty(),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
     };
     assert_ne!(a, b);
 }
@@ -280,10 +279,11 @@ fn shard_submit_with_run_id_zero_accepted() {
     };
     let run = super::RunId::new(0);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty(),
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );

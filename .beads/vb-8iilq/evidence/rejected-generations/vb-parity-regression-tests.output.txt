@@ -1,0 +1,138 @@
+use std::error::Error;
+
+use vb_core::capability::CapabilitySet;
+use vb_core::ids::{ActionId, RunId, SlotIdx};
+use vb_core::SlotValue;
+
+use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
+
+use super::{suspended_workflow, small_config, Shard, ShardCommand};
+
+#[test]
+fn submit_empty_caps_records_exact_empty_set() -> Result<(), Box<dyn Error>> {
+    let config = small_config();
+    let journal = SharedRuntimeJournal::new();
+    let shard = Shard::new(config, journal.clone());
+
+    let run = RunId::new(1);
+    let workflow = suspended_workflow().ok_or("failed to build suspended workflow")?;
+
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: CapabilitySet::empty(),
+    })?;
+
+    shard.tick();
+
+    let events = journal.events();
+    let admissions: Vec<&RuntimeJournalEvent> = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunAdmission { .. }))
+        .collect();
+
+    if admissions.len() != 1 {
+        return Err(format!("expected 1 RunAdmission, got {}", admissions.len()).into());
+    }
+
+    match admissions[0] {
+        RuntimeJournalEvent::RunAdmission {
+            granted_capabilities,
+            ..
+        } => {
+            if !granted_capabilities.is_empty() {
+                return Err("granted capabilities should be empty".into());
+            }
+        }
+        _ => return Err("wrong event variant".into()),
+    }
+
+    let slot_writes: Vec<&RuntimeJournalEvent> = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::SlotWritten { .. }))
+        .collect();
+
+    if !slot_writes.is_empty() {
+        return Err("unexpected SlotWritten events (fabricated default data)".into());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_inputs_empty_caps_records_exact_empty_set() -> Result<(), Box<dyn Error>> {
+    let config = small_config();
+    let journal = SharedRuntimeJournal::new();
+    let shard = Shard::new(config, journal.clone());
+
+    let run = RunId::new(1);
+    let workflow = suspended_workflow().ok_or("failed to build suspended workflow")?;
+
+    shard.enqueue(ShardCommand::SubmitWithInputs {
+        run,
+        workflow,
+        inputs: vec![(SlotIdx::new(0), SlotValue::I64(7))],
+        caps: CapabilitySet::empty(),
+    })?;
+
+    shard.tick();
+
+    let events = journal.events();
+    let admissions: Vec<&RuntimeJournalEvent> = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunAdmission { .. }))
+        .collect();
+
+    if admissions.len() != 1 {
+        return Err(format!("expected 1 RunAdmission, got {}", admissions.len()).into());
+    }
+
+    match admissions[0] {
+        RuntimeJournalEvent::RunAdmission {
+            granted_capabilities,
+            ..
+        } => {
+            if !granted_capabilities.is_empty() {
+                return Err("granted capabilities should be empty".into());
+            }
+        }
+        _ => return Err("wrong event variant".into()),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn submit_with_contracts_denies_missing_capability() -> Result<(), Box<dyn Error>> {
+    use super::test_fixtures::contracts_through;
+
+    let config = small_config();
+    let journal = SharedRuntimeJournal::new();
+    let shard = Shard::new(config, journal.clone());
+
+    let run = RunId::new(1);
+    let workflow = suspended_workflow().ok_or("failed to build suspended workflow")?;
+    let contracts = contracts_through(ActionId::new(0));
+
+    shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run,
+        workflow,
+        inputs: vec![(SlotIdx::new(0), SlotValue::I64(7))],
+        caps: CapabilitySet::empty(),
+        contracts,
+    })?;
+
+    shard.tick();
+
+    let events = journal.events();
+    let admissions: Vec<&RuntimeJournalEvent> = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunAdmission { .. }))
+        .collect();
+
+    if !admissions.is_empty() {
+        return Err("expected no RunAdmission for denied capability".into());
+    }
+
+    Ok(())
+}

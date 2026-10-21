@@ -1,4 +1,3 @@
-
 #[test]
 fn vb1u88_shutdown_is_permanent_no_unshutdown() {
     let config = small_config();
@@ -132,10 +131,11 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
     };
     for i in 0..5 {
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run: super::RunId::new(i as u64),
                 workflow: workflow.clone(),
-                caps: vb_core::capability::CapabilitySet::empty()
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -184,10 +184,11 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
     };
     for i in 0..4 {
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run: super::RunId::new(i as u64),
                 workflow: workflow.clone(),
-                caps: vb_core::capability::CapabilitySet::empty()
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );
@@ -210,7 +211,7 @@ fn vb1u88_run_id_zero_handled_correctly() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(0),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -229,7 +230,7 @@ fn vb1u88_max_run_id_handled_correctly() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(u64::MAX),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -248,10 +249,11 @@ fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
     for i in 0..10 {
         let run_id = super::RunId::new(i);
         assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
+            shard.enqueue(ShardCommand::SubmitWithContracts {
                 run: run_id,
                 workflow: workflow.clone(),
-                caps: vb_core::capability::CapabilitySet::empty()
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
             }),
             Ok(())
         );

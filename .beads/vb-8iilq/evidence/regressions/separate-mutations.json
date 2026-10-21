@@ -1,0 +1,20 @@
+[
+  {
+    "mutation": "input-only",
+    "exit": 101,
+    "assertion_failure": true,
+    "log": ".beads/vb-8iilq/evidence/regressions/input-only-mutation.log"
+  },
+  {
+    "mutation": "contracts-only",
+    "exit": 101,
+    "assertion_failure": false,
+    "log": ".beads/vb-8iilq/evidence/regressions/contracts-only-mutation.log"
+  },
+  {
+    "mutation": "contracts-only-corrected-qualified-action-id",
+    "exit": 101,
+    "assertion_failure": true,
+    "log": ".beads/vb-8iilq/evidence/regressions/contracts-only-mutation-corrected.log"
+  }
+]

@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
     // Given a shard with a cancelled run that is then re-submitted
@@ -17,7 +16,10 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -29,7 +31,10 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the re-submitted run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then failed counter is 2 (both cancellations counted)
     assert_eq!(shard.counters().snapshot().runs_failed, 2);
@@ -46,10 +51,12 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
     };
     let run = super::RunId::new(302);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
         }),
         Ok(())
     );
@@ -88,10 +95,11 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
     };
     let run = super::RunId::new(303);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
@@ -119,15 +127,19 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
     };
     let run = super::RunId::new(304);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When snapshotting the cancelled run
     let response = shard.snapshot_run(run, 7);
@@ -151,15 +163,19 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(305);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When a timer fires for the cancelled run
     assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
@@ -177,15 +193,19 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() {
     };
     let run = super::RunId::new(306);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When resuming the cancelled run
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
@@ -211,7 +231,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(401),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -223,7 +243,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(402),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -235,7 +255,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(403),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())
@@ -247,7 +267,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(404),
-            workflow,
+            workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
         Ok(())

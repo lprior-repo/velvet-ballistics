@@ -270,10 +270,12 @@ mod tests {
         run: vb_core::ids::RunId,
         wf: vb_core::workflow::CompiledWorkflow,
     ) -> crate::RuntimeResult<()> {
-        runtime.submit_compiled_with_inputs(
+        runtime.submit_direct_with_inputs_grants_and_contracts(
             run,
             wf,
             Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+            crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
         )
     }
 

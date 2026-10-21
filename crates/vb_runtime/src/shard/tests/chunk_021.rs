@@ -1,4 +1,3 @@
-
 /// Submit a finished workflow, then inspect it -- counters correct.
 #[test]
 fn shard_submit_finish_then_inspect_counters() {
@@ -13,7 +12,7 @@ fn shard_submit_finish_then_inspect_counters() {
         shard.enqueue(ShardCommand::Submit {
             run,
             workflow: wf,
-            caps: vb_core::capability::CapabilitySet::empty(),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         }),
         Ok(())
     );
