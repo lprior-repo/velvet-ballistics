@@ -1,0 +1,27 @@
+All defects in vb-jei3u have been repaired. Here's what was done:
+
+## Changes to `crates/vb_compile/src/proptest_finish_digest.rs`
+
+1. **Fixed `slot_below_max()` and `slot_above_max()`**: Changed return type from `u16` to `Result<u16, String>`, replaced `.expect()` with `.ok_or_else()` for checked arithmetic.
+
+2. **Fixed error pattern matching**: Changed from `errors.first()` to `errors.as_slice()` for complete slice matching. Pattern match on the entire error slice with exact type and value checks:
+   - `[CompileError::Workflow(WorkflowError::ResourceContractExceeded { resource })]` with `resource == "max_slots"`
+   - `[CompileError::SlotIndexOutOfRange { value }]` with `value == u16::MAX as i64`
+
+3. **Restored `slot_5000_fails_with_max_slots_error`**: Explicit boundary test for slot value 5000.
+
+4. **All boundary tests return `Result<(), String>`**: Use `?` for error propagation; `Err` causes test failure.
+
+## Verification Results
+
+- **No unwrap/expect/panic**: `rg '\.(expect|unwrap)\('` returns no matches
+- **Focused vb_compile --lib**: 489 passed, 0 failed, 0 ignored
+- **Specific proptest_finish_digest tests**: 10 passed, 0 failed, 0 ignored
+  - 4 digest properties
+  - 5 boundary tests
+  - 1 invalid slot values proptest
+
+## Evidence
+- `.beads/vb-jei3u/evidence/tests/focused-vb-compile-lib.log`
+- `.beads/vb-jei3u/evidence/tests/proptest-finish-digest-specific.log`
+- `.beads/vb-jei3u/implementation-report.md`

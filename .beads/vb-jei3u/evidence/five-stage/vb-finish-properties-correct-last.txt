@@ -1,0 +1,25 @@
+Done. All vb-jei3u requirements met and verified by actual test execution.
+
+**Changes to `crates/vb_compile/src/proptest_finish_digest.rs`:**
+
+1. **MAX_SLOTS**: Hardcoded `1024` replaced with `vb_core::workflow::ResourceContract::DEFAULT.max_slots` (derived via `max_slots()` accessor function).
+
+2. **expect() calls in `canonical_digest_is_deterministic`**: All 3 replaced with `map_err(|e| TestCaseError::fail(...))?` — parse error, compile error (c1), compile error (c2).
+
+3. **errors.0[0] unchecked indexing**: Replaced with `errors.first()` + pattern matching on the Option.
+
+4. **Unchecked arithmetic**: `MAX_SLOTS - 1` and `MAX_SLOTS + 1` now use `checked_sub(1)` / `checked_add(1)` with typed Result.
+
+5. **u16::MAX case**: Added explicit test `slot_at_u16_max_fails_with_slot_index_out_of_range` asserting the real `SlotIndexOutOfRange` error variant.
+
+6. **Invalid-slot proptest**: Added `invalid_slot_values_rejected` proptest over `max_slots()..u16::MAX` range asserting `ResourceContractExceeded` with `resource="max_slots"`.
+
+7. **All 4 positive digest properties preserved**: `canonical_digest_is_deterministic`, `finish_result_change_changes_digest_integer`, `finish_result_change_changes_digest_string`, `finish_position_change_changes_digest`.
+
+8. **All 4 boundary cases preserved**: `slot_at_max_minus_one_compiles`, `slot_at_max_fails_with_max_slots_error`, `slot_at_max_plus_one_fails_with_max_slots_error`, `slot_at_u16_max_fails_with_slot_index_out_of_range`.
+
+**Test results (saved to `.beads/vb-jei3u/evidence/tests/`):**
+- `proptest_finish_digest.log`: 9/9 tests pass (0.33s)
+- `full_lib_tests.log`: 488/488 tests pass (2.41s)
+
+**Verification via `rg`** confirms no new `expect`/`unwrap`/`panic`/unchecked indexing/unchecked arithmetic in test execution paths.

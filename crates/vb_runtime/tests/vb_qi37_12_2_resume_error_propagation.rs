@@ -755,6 +755,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -792,6 +793,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

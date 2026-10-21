@@ -1,0 +1,23 @@
+**Bead vb-90e4k complete.** Summary of work performed:
+
+**Production fix** (`crates/vb_storage/src/recovery/hydrate.rs`):
+- Changed `SnapshotRunMismatch` mapping from `ReplayDivergence` to `CorruptSnapshot { run: expected_run, seq: snapshot_seq }`
+- Used `..` pattern to discard the unused `snapshot_run` binding
+- All tail/journal mismatch paths (TailRunMismatch, TailSeqNotAfterSnapshot, TailSeqGap) remain mapped to `ReplayDivergence`
+
+**Test strengthening** (2 files):
+- `recovery_hydration_tests::corrupt_snapshot_run_mismatch_rejected` — now asserts exact `run` and `seq` fields
+- `recovery_bdd_tests::corrupt_snapshot_returns_corrupt_snapshot_error` — now asserts exact `run` and `seq` fields
+
+**Actual test counts** (not guessed):
+- Bounded recovery tests: 82 + 43 passed, 0 failed, 1 ignored
+- Full runtime suite: **2445 passed, 0 failed, 1 ignored** across 34 test binaries
+- Baseline was 2437 passed, 2 failed; both previously-failing tests now pass
+
+**Evidence saved to:**
+- `.beads/vb-90e4k/contract.md`
+- `.beads/vb-90e4k/implementation-report.md`
+- `.beads/vb-90e4k/evidence/recovery-errors.log`
+- `.beads/vb-90e4k/evidence/runtime-package.log`
+
+No push, bead close, or self-approval performed as requested.

@@ -1,0 +1,31 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/vb_5m8w_step_budget_suspension_runtime.rs (target/debug/deps/vb_5m8w_step_budget_suspension_runtime-630960e9c970ec8b)
+
+running 6 tests
+test given_one_step_completed_when_next_budget_exhausts_then_completed_step_remains_succeeded ... ok
+test given_action_suspension_when_drive_returns_then_signal_is_awaiting_action_and_no_false_success ... ok
+test given_action_wait_or_ask_suspension_when_drive_returns_then_signal_is_not_step_budget_exhausted_and_no_false_success ... ok
+test given_zero_budget_when_drive_runs_then_no_step_started_or_succeeded_evidence ... ok
+test given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_and_drive_continue_emitted ... ok
+test given_terminal_run_when_resume_attempted_then_invalid_resume_error ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
