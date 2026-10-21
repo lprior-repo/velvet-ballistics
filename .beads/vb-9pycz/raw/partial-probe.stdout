@@ -1,0 +1,6 @@
+
+running 1 test
+test queue::writer::flush_tests::review_partial_shutdown_keeps_failed_later_batch_and_retries ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1601 filtered out; finished in 0.01s
+
