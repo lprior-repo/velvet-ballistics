@@ -1,0 +1,281 @@
+Rust contract only, Markdown no code. vb-16buk repairs4missing WorkflowParts.input_slots initializers in cross_crate_adversarial tests. Actual fixtures below: minimal_parts helper covers directcore/engineinvalidIR tests, concrete3SetConst workflows produce their own slots (no CLI binaryinputpayload). Add empty input_slots only if no declared externalports; do not infer ports from manualframe.write_slot (runtimeinternal inputseeding not CLI schema). Scope no productionorassertion changes. Contract max300words actualfacts, no proofplanning.
+#![forbid(unsafe_code)]
+//! Adversarial BDD-style integration tests attacking cross-crate seams.
+//!
+//! These tests exercise the boundaries between crates to find bugs in
+//! error propagation, resource limit enforcement, taint tracking, and
+//! data flow across the pipeline.
+
+use std::str::FromStr;
+use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::{ConstValue, SlotValue, Taint};
+use vb_core::value_store::ValueStore;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes,
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    }
+}
+
+fn fail_assert(_message: std::fmt::Arguments<'_>) -> bool {
+    false
+}
+
+// ===========================================================================
+// SEAM 4: vb_core -> vb_runtime (engine drives compiled workflow)
+// ===========================================================================
+
+#[test]
+fn core_to_runtime_simple_set_workflow_runs_deterministic() {
+    // Given: a compiled workflow with a single SetConst + Finish node
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+    };
+    let node1 = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("set_finish"),
+        digest: WorkflowDigest::from_bytes([1u8; 32]),
+        nodes: Box::from([node0, node1]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };
+    let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+        Ok(w) => w,
+        Err(err) => {
+            fail_assert!("compiled workflow construction failed: {err:?}");
+            return;
+        }
+    };
+
+    // When: creating a run frame and driving deterministically
+    let run_id = RunId::new(1);
+    let mut frame = match vb_core::engine::new_run_frame(run_id, &workflow) {
+        Ok(f) => f,
+        Err(err) => {
+            fail_assert!("frame creation failed: {err:?}");
+            return;
+        }
+    };
+    let mut budget = vb_core::engine::StepBudget::new(100);
+    let mut store = ValueStore::new();
+    let signal =
+        vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+
+    // Then: the engine signals completion
+    assert!(
+        matches!(signal, Ok(vb_core::engine::EngineSignal::Finished(_, _))),
+        "simple set+finish should finish, got {:?}",
+        signal
+    );
+    assert!(result.is_err(), "empty branch table should be rejected");
+}
+
+#[test]
+fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
+    // Given: a 3-node chain that exceeds a budget of 2
+    // Node 0: SetConst(42) -> node 1
+    // Node 1: Copy slot 0 -> slot 1, -> node 2
+    // Node 2: Finish result=slot 0
+    // With budget=2, only nodes 0 and 1 can execute, leaving budget exhausted before node 2.
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+    };
+    let node1 = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Copy {
+            source: SlotIdx::new(0),
+        },
+    };
+    let node2 = CompiledNode {
+        id: StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("budget_test"),
+        digest: WorkflowDigest::from_bytes([2u8; 32]),
+        nodes: Box::from([node0, node1, node2]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };
+    let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+        Ok(w) => w,
+        Err(err) => {
+            fail_assert!("workflow construction failed: {err:?}");
+            return;
+        }
+    };
+    let run_id = RunId::new(2);
+    let mut frame = match vb_core::engine::new_run_frame(run_id, &workflow) {
+        Ok(f) => f,
+        Err(err) => {
+            fail_assert!("frame creation failed: {err:?}");
+            return;
+        }
+    };
+    // When: driving with budget=2 (enough for 2 steps, not 3)
+    let mut budget = vb_core::engine::StepBudget::new(2);
+    let mut store = ValueStore::new();
+    let signal =
+        vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+
+    // Then: budget exhaustion signal (2 of 3 steps executed)
+    match signal {
+        Ok(vb_core::engine::EngineSignal::StepBudgetExhausted) => {}
+        Ok(other) => fail_assert!("expected StepBudgetExhausted, got {other:?}"),
+        Err(err) => fail_assert!("unexpected error: {err:?}"),
+    }
+// ===========================================================================
+
+#[test]
+fn runtime_submit_and_tick_simple_workflow() {
+    use std::num::NonZeroUsize;
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
+
+    // Given: a compiled set+finish workflow
+    let node0 = CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+    };
+    let node1 = CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("rt_test"),
+        digest: WorkflowDigest::from_bytes([3u8; 32]),
+        nodes: Box::from([node0, node1]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };
+    let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+        Ok(w) => w,
+        Err(err) => {
+            fail_assert!("workflow construction failed: {err:?}");
+            return;
+        }
+    };
+
+    let shard_count = NonZeroUsize::new(1).unwrap_or(NonZeroUsize::MIN);
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 256,
+        step_budget_per_tick: 100,
+        max_active_runs: 16,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+    let run_id = RunId::new(100);
+
+    // When: submitting and ticking
+    match runtime.submit_direct(run_id, workflow) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit failed: {err:?}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick failed: {err:?}");
+            return;
+        }
+    }
+
+    // Then: the run should have been processed (inspect should find it)
+    match runtime.snapshot_run(run_id, 1) {
+        Ok(response) => {
+            // The run should have finished since it's a simple set+finish
+            match response {
+                vb_runtime::shard::InspectResponse::Found(snapshot) => {
+                    assert_eq!(snapshot.correlation, 1);
+                }
+                vb_runtime::shard::InspectResponse::NotFound { correlation, .. } => {
+                    assert_eq!(correlation, 1);
+                }
+                other => fail_assert!("unexpected inspect response: {other:?}"),
+            }
+        }
+        Err(err) => {
+            // Even if inspect fails, the tick itself should have succeeded
+            assert!(!err.to_string().is_empty());
+        }
