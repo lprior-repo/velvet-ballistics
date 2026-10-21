@@ -381,9 +381,7 @@ impl Shard {
         run: RunId,
         action: ActionId,
     ) -> RuntimeResult<WorkflowDigest> {
-        let state = self
-            .run_state_get(run)
-            .ok_or_else(|| RuntimeError::RunNotFound)?;
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         // Find the contract for this action
         let contract = state
             .action_contracts
@@ -532,12 +530,8 @@ impl Shard {
         run_id: RunId,
         timer: PendingTimer,
     ) -> RuntimeResult<Option<PendingTimer>> {
-        self.run_aggregate.pending_timer_insert(
-            &self.runs,
-            self.max_active_runs,
-            run_id,
-            timer,
-        )
+        self.run_aggregate
+            .pending_timer_insert(&self.runs, self.max_active_runs, run_id, timer)
     }
 
     /// Returns the pending timer for the given run ID, if it exists.
@@ -577,20 +571,13 @@ impl Shard {
         run_id: RunId,
         ticket: vb_core::action::ActionTicket,
     ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
-        self.run_aggregate.pending_action_insert(
-            &self.runs,
-            self.max_active_runs,
-            run_id,
-            ticket,
-        )
+        self.run_aggregate
+            .pending_action_insert(&self.runs, self.max_active_runs, run_id, ticket)
     }
 
     /// Returns the in-flight action ticket for the given run, if any.
     #[must_use]
-    pub fn pending_action_get(
-        &self,
-        run_id: RunId,
-    ) -> Option<vb_core::action::ActionTicket> {
+    pub fn pending_action_get(&self, run_id: RunId) -> Option<vb_core::action::ActionTicket> {
         self.run_aggregate.pending_action_get(run_id)
     }
 
@@ -898,20 +885,18 @@ impl Shard {
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
             }
-            EvidenceEvent::StepSucceeded { step, output } => {
-                Self::push_drive_journal_event(
-                    journal_events,
-                    RuntimeJournalEvent::StepSucceeded {
-                        run,
-                        step,
-                        output: match output {
-                            Some(slot) => slot,
-                            None => SlotIdx::ZERO,
-                        },
-                        attempt: 1,
+            EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
+                journal_events,
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step,
+                    output: match output {
+                        Some(slot) => slot,
+                        None => SlotIdx::ZERO,
                     },
-                )
-            }
+                    attempt: 1,
+                },
+            ),
             EvidenceEvent::SlotWritten {
                 slot,
                 value,

@@ -1,0 +1,62 @@
+[ WARN 2026-10-21 14:57:03.210] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 14:57:03.210] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 14:57:03.211] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 14:57:03.290] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="c2dd76dd06c269d43603e0fc107c53c249b60936da63b52cc5fd5fc27e4d02cd" blob_hash="c2dd76dd06c269d43603e0fc107c53c249b60936da63b52cc5fd5fc27e4d02cd" details=[] code=Internal
+[ WARN 14:57:03.291] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/c2/c2dd76dd06c269d43603e0fc107c53c249b60936da63b52cc5fd5fc27e4d02cd-626842580: no such file or directory  hash="c2dd76dd06c269d43603e0fc107c53c249b60936da63b52cc5fd5fc27e4d02cd"
+▮▮▮▮ velvet-ballistics:panic-surface (e847943b)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (2a3914c2)
+▮▮▮▮ velvet-ballistics:unsafe-audit (c2dd76dd)
+▮▮▮▮ velvet-ballistics:unsafe-audit (8ms, c2dd76dd)
+[ WARN 14:57:06.929] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="e847943bb31207e4641188b5f037c4088c35ae739d660d6f57ed41c0edefa275" blob_hash="e847943bb31207e4641188b5f037c4088c35ae739d660d6f57ed41c0edefa275" details=[] code=Internal
+[ WARN 14:57:06.930] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="e847943bb31207e4641188b5f037c4088c35ae739d660d6f57ed41c0edefa275" blob_hash="ab76aadca2bac2897e3cce408272b9176c29c0ef54e58d42350e8ed6e3757114" details=[] code=Internal
+[ WARN 14:57:06.930] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/e8/e847943bb31207e4641188b5f037c4088c35ae739d660d6f57ed41c0edefa275-437441357: no such file or directory  hash="e847943bb31207e4641188b5f037c4088c35ae739d660d6f57ed41c0edefa275"
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-yx3ux-lint-5090
+velvet-ballistics:panic-surface | CommitSHA: 5601ba50e64be1300551062d67b7bb468869749e
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 660ms, e847943b)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+[ WARN 14:57:28.701] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="2a3914c2a1ddc2d3fec43b9d1f6d8b1eb755d745aa142afeb1a0960f041d113c" blob_hash="2a3914c2a1ddc2d3fec43b9d1f6d8b1eb755d745aa142afeb1a0960f041d113c" details=[] code=Internal
+[ WARN 14:57:28.701] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="2a3914c2a1ddc2d3fec43b9d1f6d8b1eb755d745aa142afeb1a0960f041d113c" blob_hash="4c1eb320882678dbaee53081fc8abeba2799db5c7e78ee0c45f36c36dc1a647e" details=[] code=Internal
+[ WARN 14:57:28.701] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/2a/2a3914c2a1ddc2d3fec43b9d1f6d8b1eb755d745aa142afeb1a0960f041d113c-750065338: no such file or directory  hash="2a3914c2a1ddc2d3fec43b9d1f6d8b1eb755d745aa142afeb1a0960f041d113c"
+[ WARN 14:57:28.712] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (25s 444ms, 2a3914c2)
+▮▮▮▮ velvet-ballistics:lint-src (440d95d1)
+velvet-ballistics:lint-src | error: this expression creates a reference which is immediately dereferenced by the compiler
+velvet-ballistics:lint-src |   --> crates/vb_compile/src/mod_compile_lowering/part_01.rs:46:26
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src | 46 |     allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+velvet-ballistics:lint-src |    |                          ^^^^^^^^^^^^^^^^ help: change this to: `source.inputs()`
+velvet-ballistics:lint-src |    |
+velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow
+velvet-ballistics:lint-src |    = note: `-D clippy::needless-borrow` implied by `-D warnings`
+velvet-ballistics:lint-src |    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+velvet-ballistics:lint-src | error: could not compile `vb_compile` (lib) due to 1 previous error
+▮▮▮▮ velvet-ballistics:lint-src (14s 902ms, 440d95d1)
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:lint-src failed to run.
+  ╰─▶ Process set failed: exit code 101
+
