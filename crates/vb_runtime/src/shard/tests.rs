@@ -33,3 +33,6 @@ include!("tests/chunk_027.rs");
 include!("tests/chunk_028.rs");
 include!("tests/chunk_029.rs");
 include!("tests/chunk_031.rs");
+
+#[path = "tests/submission_parity.rs"]
+mod submission_parity;

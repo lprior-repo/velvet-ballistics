@@ -1,0 +1,169 @@
+Implementation repair for Rust test fixture migration vb-8iilq. Actual full-lib1905passed4failed. Four named positive setup tests now explicit action contracts but fully-qualified CapabilitySet::empty() wasn't converted. Fix only exact empty caps expressions in positive submit commands inside these4functions to crate::shard::tests::test_fixtures::contract_capability_for(vb_core::ActionId::new(0)). Preserve inputs, workflows, assertions, errors and all production/other tests. Return JSON array [{"path":"...","old":"exact whole function text from context","new":"function with only capability expression replacement"}], no markdown. No invented APIs. This is NOT permission to grant caps in negative-admission tests. These4fixtures expect setup accepted before duplicate/capacity checks, and their exact denial failures included.
+
+FILE crates/vb_runtime/src/shard/tests/chunk_008.rs
+fn shard_submit_two_runs_same_id_second_fails() {
+    // Given a shard with an active run
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(203);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When submitting the same run ID without cancelling
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])}),
+        Ok(())
+    );
+    // Then tick returns RunAlreadyExists
+    assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+}
+
+FILE crates/vb_runtime/src/shard/tests/chunk_010.rs
+fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
+    // Given a shard with max_active_runs = 3
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 3,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: super::RunId::new(501),
+            workflow: workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: super::RunId::new(502),
+            workflow: workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: super::RunId::new(503),
+            workflow: workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Then all 3 are submitted successfully
+    assert_eq!(shard.counters().snapshot().runs_submitted, 3);
+    // And submitting a 4th returns ActiveRunCapacityExceeded
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: super::RunId::new(504),
+            workflow: workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 3 })
+    );
+}
+
+FILE crates/vb_runtime/src/shard/tests/chunk_011.rs
+fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> Result<(), String> {
+    // Given a shard with an active run
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let wf1 = workflow_fixture(suspended_workflow(), "suspended_workflow wf1")?;
+    let wf2 = workflow_fixture(suspended_workflow(), "suspended_workflow wf2")?;
+    let run = super::RunId::new(42);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: wf1,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When submitting the same run ID again with a different workflow
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: wf2,
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    // Then tick returns RunAlreadyExists (cannot replace workflow)
+    assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
+}
+
+FILE crates/vb_runtime/src/shard/tests/chunk_013.rs
+fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
+    let run = super::RunId::new(701);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(false))]);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(vb_core::ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(vb_core::ActionId::new(0))}),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
+}

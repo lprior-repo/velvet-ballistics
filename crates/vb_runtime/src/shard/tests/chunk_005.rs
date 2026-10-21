@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_timer_rejects_run_without_pending_timer() {
     // Given a shard with an action-suspended run, not a timed wait/ask
@@ -14,7 +13,7 @@ fn shard_timer_rejects_run_without_pending_timer() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -39,7 +38,7 @@ fn shard_wait_suspension_registers_pending_timer() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -66,11 +65,14 @@ fn shard_timer_fired_advances_timed_wait_to_finish() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
+    assert_eq!(
+        timer_command(&shard, run).map(|command| shard.enqueue(command)),
+        Some(Ok(()))
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timer_count(), 0);
@@ -106,12 +108,15 @@ fn shard_cancel_removes_run_from_runs_map() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then inspect returns NotFound (run removed from map)
     assert_eq!(
@@ -141,17 +146,21 @@ fn shard_cancel_records_run_cancelled_trace_event() {
     };
     let run = super::RunId::new(71);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then the trace ring contains a RunCancelled event
     let events = shard.trace_ring_mut().drain();
@@ -173,18 +182,22 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
     };
     let run = super::RunId::new(73);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
 
     // When cancelling the active run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     // Then cancellation is a distinct journal/trace event, while the legacy failed counter
@@ -217,12 +230,15 @@ fn shard_cancel_increments_failed_counter() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then the failed counter is incremented
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
@@ -238,12 +254,13 @@ fn shard_inspect_captures_current_pc() {
     };
     let run = super::RunId::new(80);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

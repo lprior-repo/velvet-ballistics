@@ -1,4 +1,3 @@
-
 // =========================================================================
 // Additional unit tests -- variant equality/inequality, debug format,
 // PendingTimer edge cases, AskAnswer, and boundary RunId values
@@ -283,9 +282,9 @@ fn shard_submit_with_run_id_zero_accepted() {
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run,
             workflow: workflow,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

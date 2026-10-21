@@ -279,18 +279,11 @@ impl Shard {
         let digest = workflow.digest();
         self.build_admission(run, digest, caps.clone())?;
         super::contract_validation::validate_contract_ids(action_contracts)?;
-        super::contract_validation::validate_contract_capabilities(
-            action_contracts,
-            &caps,
-        )?;
-        super::contract_validation::validate_workflow_action_binding(
-            workflow,
-            action_contracts,
-        )?;
+        super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
+        super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
-
         self.validate_run_exists(run)?;
         let current_state = self.get_runtime_state_or_running(run);
         if current_state == RuntimeState::Running {
@@ -376,15 +369,16 @@ impl Shard {
             })?;
 
         // Step 2: Deserialize and compile workflow from artifact IR
-        let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)
-            .map_err(|_| RuntimeError::Recovery {
+        let parts: vb_core::workflow::WorkflowParts =
+            postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
                 error: "artifact IR decode failed".to_string(),
             })?;
 
-        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
-            .map_err(|e| RuntimeError::Recovery {
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
+            RuntimeError::Recovery {
                 error: format!("workflow compile failed: {e}"),
-            })?;
+            }
+        })?;
 
         // Step 3: Verify workflow identity matches command workflow_digest
         if workflow.digest() != workflow_digest {
@@ -401,9 +395,7 @@ impl Shard {
 
         // Step 5: Build admission with artifact's required capabilities
         let granted_caps =
-            vb_core::capability::CapabilitySet::from_grants(
-                artifact.required_capabilities.clone(),
-            );
+            vb_core::capability::CapabilitySet::from_grants(artifact.required_capabilities.clone());
         let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
 
         // Step 6: Prepare run slots and construct RunState with restored collect_states
@@ -429,9 +421,7 @@ impl Shard {
             crate::recovery::RecoveredRunBoundaryKind::None => {}
             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
                 // Re-inject pending action ticket from boundary
-                let ticket = boundary
-                    .pending_action_ticket()
-                    .map(|t| t.ticket());
+                let ticket = boundary.pending_action_ticket().map(|t| t.ticket());
                 if let Some(t) = ticket {
                     self.reinject_pending_action(run, t)?;
                 }

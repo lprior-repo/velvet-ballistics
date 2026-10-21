@@ -412,7 +412,7 @@ mod tests {
         run: vb_core::ids::RunId,
         wf: vb_core::workflow::CompiledWorkflow,
     ) -> crate::RuntimeResult<()> {
-        runtime.submit_direct_with_grants_and_contracts(run, wf, crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)), crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)))
+        runtime.submit_compiled(run, wf)
     }
 
     fn submit_action_then_finish(
@@ -1056,7 +1056,7 @@ mod tests {
         };
         let run = vb_core::ids::RunId::new(42);
         // When using submit_compiled
-        assert_eq!(runtime.submit_direct_with_grants_and_contracts(run, wf, crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)), crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+        assert_eq!(runtime.submit_compiled(run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then the run is processed
         let snap = runtime.counters_snapshot();
@@ -2371,9 +2371,9 @@ mod tests {
         let run1 = vb_core::ids::RunId::new(607);
         let run2 = vb_core::ids::RunId::new(608);
 
-        assert_eq!(runtime.submit_direct_with_grants_and_contracts(run1, wf1, crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)), crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+        assert_eq!(runtime.submit_compiled(run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(runtime.submit_direct_with_grants_and_contracts(run2, wf2, crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)), crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0))), Ok(()));
+        assert_eq!(runtime.submit_compiled(run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Both runs are now in wait state. Fire captured timer authority for run1 only.

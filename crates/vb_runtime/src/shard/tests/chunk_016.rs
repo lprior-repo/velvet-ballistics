@@ -1,4 +1,3 @@
-
 // ---------------------------------------------------------------------------
 // handle_submit: trace event includes correct run id
 // ---------------------------------------------------------------------------
@@ -17,7 +16,7 @@ fn shard_submit_trace_event_contains_submitted_run_id() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -42,12 +41,13 @@ fn shard_action_failure_with_wrong_step_returns_invalid_completion() {
     };
     let run = super::RunId::new(790);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -75,12 +75,13 @@ fn shard_legacy_action_completed_with_wrong_step_returns_error() {
     };
     let run = super::RunId::new(791);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -114,11 +115,14 @@ fn shard_ask_answer_after_cancel_returns_run_not_found() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     let answer = AskAnswer {
@@ -154,11 +158,14 @@ fn shard_action_failure_after_cancel_returns_run_not_found() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
@@ -188,12 +195,15 @@ fn shard_resume_after_cancel_returns_run_not_found() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
@@ -237,7 +247,7 @@ fn bh_shd_01_shard_drive_state_uses_empty_contracts() {
     let run = super::RunId::new(801);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
-        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
             run,
             workflow,
             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(42))]),

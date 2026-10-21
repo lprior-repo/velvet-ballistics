@@ -1,14 +1,15 @@
+use std::error::Error;
 use vb_core::ActionFailureCode;
+use vb_core::SlotValue;
 use vb_core::action::RetryPolicy as VbRetryPolicy;
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
-use vb_core::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+use crate::RuntimeError;
 use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
-use crate::RuntimeError;
 
 use super::{
     AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
@@ -237,12 +238,13 @@ fn action_failed_routes_to_nearby_error_handler() {
     let run = super::RunId::new(301);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -261,27 +263,27 @@ fn action_failed_routes_to_nearby_error_handler() {
 }
 
 #[test]
-fn action_failed_without_error_handler_fails_run() {
+fn action_failed_without_error_handler_fails_run() -> Result<(), Box<dyn Error>> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = suspended_workflow().ok_or("no workflow")?;
     let run = super::RunId::new(302);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
-            run: run,
-            workflow: workflow,
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    let ticket = shard.pending_action_get(run).ok_or("missing ticket")?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
-            ticket: action_ticket(run, vb_core::ids::StepIdx::ZERO),
+            ticket,
             failure: timeout_failure(),
         }),
         Ok(())
@@ -289,36 +291,39 @@ fn action_failed_without_error_handler_fails_run() {
 
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn submit_rejects_duplicate_run_id() {
+fn submit_rejects_duplicate_run_id() -> Result<(), Box<dyn Error>> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = suspended_workflow().ok_or("no workflow")?;
     let run = super::RunId::new(451);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: workflow.clone(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
-            run: run,
-            workflow: workflow,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
 
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
     assert_eq!(shard.active_run_count(), 1);
+    Ok(())
 }

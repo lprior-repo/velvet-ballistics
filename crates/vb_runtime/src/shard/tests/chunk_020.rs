@@ -1,4 +1,3 @@
-
 /// Frame pool metrics reflect submissions and completions.
 #[test]
 fn shard_frame_pool_metrics_after_submit_and_finish() {
@@ -16,11 +15,11 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
     };
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: super::RunId::new(980),
-    workflow: wf,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            run: super::RunId::new(980),
+            workflow: wf,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -49,10 +48,14 @@ fn shard_snapshot_after_error_handler_finish() {
     let run = super::RunId::new(990);
 
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: wf,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+                vb_core::ActionId::new(0)
+            )
         }),
         Ok(())
     );
@@ -104,17 +107,23 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     let run1 = super::RunId::new(1000);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: run1,
-    workflow: wf1,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            run: run1,
+            workflow: wf1,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
 
     // Cancel + tick
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: run1,
+            reason: None
+        }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     // New submit should succeed (capacity freed)
@@ -124,11 +133,11 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     let run2 = super::RunId::new(1001);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: run2,
-    workflow: wf2,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            run: run2,
+            workflow: wf2,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -151,9 +160,9 @@ fn shard_pending_timer_fields_are_correct() {
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run,
             workflow: workflow,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -182,9 +191,9 @@ fn shard_ask_answered_with_i64_value() {
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run,
             workflow: workflow,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

@@ -8,12 +8,13 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result
     )?;
     let run = super::RunId::new(743);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -84,7 +85,7 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), String> {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -126,7 +127,7 @@ fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -169,7 +170,7 @@ fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Re
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -209,7 +210,7 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), Stri
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -244,7 +245,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), String> {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -341,7 +342,7 @@ fn shard_cancel_append_failure_preserves_run_state_and_pending_timer() -> Result
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -433,7 +434,7 @@ fn shard_cancel_removes_pending_ask_timer() -> Result<(), String> {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_duplicate_submit_after_cancel_succeeds() {
     // Given a shard with a cancelled run
@@ -17,7 +16,10 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When re-submitting the same run ID
     assert_eq!(
@@ -26,7 +28,7 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     // Then it succeeds (run was removed by cancel)
@@ -48,7 +50,7 @@ fn shard_snapshot_run_for_active_run_returns_found() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -142,22 +144,29 @@ fn shard_submit_two_runs_same_id_second_fails() {
     };
     let run = super::RunId::new(203);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow: workflow.clone(),
-            caps: vb_core::capability::CapabilitySet::empty()
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(
+                vb_core::ActionId::new(0)
+            ),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+                vb_core::ActionId::new(0)
+            )
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When submitting the same run ID without cancelling
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     // Then tick returns RunAlreadyExists
@@ -186,7 +195,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -226,14 +235,20 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling twice
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then failed counter is 1 (not 2)
     assert_eq!(shard.counters().snapshot().runs_failed, 1);

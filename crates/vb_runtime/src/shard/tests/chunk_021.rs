@@ -1,4 +1,3 @@
-
 /// Submit a finished workflow, then inspect it -- counters correct.
 #[test]
 fn shard_submit_finish_then_inspect_counters() {

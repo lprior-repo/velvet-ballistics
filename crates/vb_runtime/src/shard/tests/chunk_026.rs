@@ -1,4 +1,3 @@
-
 #[test]
 fn vb1u88_queue_full_at_capacity_boundary() {
     let config = ShardConfig {
@@ -26,12 +25,13 @@ fn vb1u88_action_ticket_step_idx_boundary() {
     };
     let run = super::RunId::new(9001);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -87,7 +87,8 @@ fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(9999),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
@@ -116,20 +117,24 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
     };
     let run = super::RunId::new(5001);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().expect("journal snapshot should succeed");
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}),
+        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None }),
         "RunCancelled journal event should be present"
     );
     assert_eq!(shard.run_state_get(run), None);
@@ -157,7 +162,7 @@ fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -187,7 +192,7 @@ fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));

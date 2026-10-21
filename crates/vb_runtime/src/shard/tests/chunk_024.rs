@@ -1,4 +1,3 @@
-
 // =========================================================================
 // vb-1u88: Graceful Shutdown and Cancellation Edges — RED PHASE TESTS
 // These tests compile but fail assertions until implementation matches spec.
@@ -70,7 +69,8 @@ fn vb1u88_cancel_unknown_run_returns_ok() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(9999),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
@@ -86,20 +86,24 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() {
     };
     let run = super::RunId::new(1001);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().expect("journal snapshot should succeed");
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}),
+        events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None }),
         "journal should contain RunCancelled event"
     );
 }
@@ -113,16 +117,20 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() {
     };
     let run = super::RunId::new(1002);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = shard.trace_ring_mut().drain();
     assert!(
@@ -140,7 +148,8 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(8888),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
@@ -168,12 +177,13 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
     };
     let run = super::RunId::new(1003);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -182,7 +192,10 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
         Some(3)
     );
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.run_state_get(run), None);
     // After cancel, frame returned to pool; all 4 available
@@ -207,12 +220,15 @@ fn vb1u88_cancel_removes_pending_timer() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 0);
 }

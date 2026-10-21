@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_submit_with_run_id_one_accepted() {
     let config = small_config();
@@ -11,9 +10,9 @@ fn shard_submit_with_run_id_one_accepted() {
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run: run,
             workflow: workflow,
-    caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -252,7 +251,8 @@ fn shard_multiple_submits_complete() {
 fn shard_command_variants_cross_inequality() {
     let cancel = ShardCommand::Cancel {
         run: super::RunId::new(1),
-    reason: None};
+        reason: None,
+    };
     let resume = ShardCommand::Resume {
         run: super::RunId::new(1),
     };

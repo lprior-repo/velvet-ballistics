@@ -1,4 +1,3 @@
-
 #[test]
 fn vb1u88_shutdown_is_permanent_no_unshutdown() {
     let config = small_config();
@@ -133,11 +132,11 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
     for i in 0..5 {
         assert_eq!(
             shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: super::RunId::new(i as u64),
-    workflow: workflow.clone(),
-            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+                run: super::RunId::new(i as u64),
+                workflow: workflow.clone(),
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            }),
             Ok(())
         );
         let _ = shard.tick();
@@ -186,11 +185,11 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
     for i in 0..4 {
         assert_eq!(
             shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: super::RunId::new(i as u64),
-    workflow: workflow.clone(),
-            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+                run: super::RunId::new(i as u64),
+                workflow: workflow.clone(),
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
@@ -251,11 +250,11 @@ fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
         let run_id = super::RunId::new(i);
         assert_eq!(
             shard.enqueue(ShardCommand::SubmitWithContracts {
-    run: run_id,
-    workflow: workflow.clone(),
-            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
-            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+                run: run_id,
+                workflow: workflow.clone(),
+                caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+                action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            }),
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));

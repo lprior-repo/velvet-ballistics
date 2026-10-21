@@ -1,4 +1,3 @@
-
 // BH-SHD-02: take_run_state removes run from map before drive.
 // If an error occurs between take and apply_drive_result, the run is lost.
 // Severity: Low. Current code structure is safe but fragile.
@@ -11,12 +10,13 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
     };
     let run = super::RunId::new(802);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -37,12 +37,13 @@ fn bh_shd_03_action_failure_trace_events_count() {
     };
     let run = super::RunId::new(803);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -171,11 +172,14 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     };
     let run = super::RunId::new(806);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithInputs {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]),
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+                vb_core::ActionId::new(0)
+            )
         }),
         Ok(())
     );
@@ -233,26 +237,24 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
     let timer1 = shard.pending_timer_get(run);
-    assert!(
-        matches!(
-            shard.pending_timer_insert(
-                run,
-                super::types::PendingTimer {
-                    step: vb_core::ids::StepIdx::new(99),
-                    kind: super::types::PendingTimerKind::Ask,
-                    generation: 2,
-                    deadline: std::time::Instant::now(),
-                },
-            ),
-            Ok(Some(_))
-        )
-    );
+    assert!(matches!(
+        shard.pending_timer_insert(
+            run,
+            super::types::PendingTimer {
+                step: vb_core::ids::StepIdx::new(99),
+                kind: super::types::PendingTimerKind::Ask,
+                generation: 2,
+                deadline: std::time::Instant::now(),
+            },
+        ),
+        Ok(Some(_))
+    ));
     let timer2 = shard.pending_timer_get(run);
     assert_ne!(timer1, timer2, "BH-SHD-08: second timer replaced first");
     assert_eq!(

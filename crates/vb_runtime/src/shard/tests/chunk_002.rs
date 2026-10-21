@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_rejects_active_run_capacity_overflow() {
     let config = ShardConfig {
@@ -13,19 +12,24 @@ fn shard_rejects_active_run_capacity_overflow() {
         return;
     };
 
-    let first = shard.enqueue(ShardCommand::SubmitWithContracts {
+    let first = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run: super::RunId::new(1),
         workflow: workflow.clone(),
         caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
     });
     assert_eq!(first, Ok(()));
     assert_eq!(shard.tick(), Ok(true));
 
-    let second = shard.enqueue(ShardCommand::Submit {
+    let second = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run: super::RunId::new(2),
         workflow: workflow,
         caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+        action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+            vb_core::ActionId::new(0),
+        ),
     });
     assert_eq!(second, Ok(()));
     assert_eq!(
@@ -49,11 +53,12 @@ fn inspect_command_stores_retrievable_snapshot() {
     };
     let run = super::RunId::new(7);
 
-    let submitted = shard.enqueue(ShardCommand::SubmitWithContracts {
+    let submitted = shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run: run,
         workflow: workflow,
         caps: test_fixtures::contract_capability_for(ActionId::new(0)),
         action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
     });
     assert_eq!(submitted, Ok(()));
     assert_eq!(shard.tick(), Ok(true));
@@ -103,7 +108,8 @@ fn cancel_nonexistent_run_returns_run_not_found() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(999),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
@@ -129,7 +135,7 @@ fn counters_reflect_submitted_after_submit_tick() {
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
-}),
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
