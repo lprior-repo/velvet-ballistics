@@ -5,19 +5,22 @@ use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 use vb_runtime::{RuntimeError, runtime::Runtime};
 
-fn config() -> ShardConfig {
+fn config(policy: RuntimePolicy) -> ShardConfig {
     ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
-        policy: RuntimePolicy::Strict,
+        policy,
     }
 }
-fn runtime(journal: Arc<vb_storage::FjallJournal>) -> Result<Runtime, Box<dyn std::error::Error>> {
+fn runtime(
+    journal: Arc<vb_storage::FjallJournal>,
+    policy: RuntimePolicy,
+) -> Result<Runtime, Box<dyn std::error::Error>> {
     Ok(Runtime::new(
         NonZeroUsize::new(1).ok_or("zero shard count")?,
-        config(),
+        config(policy),
         StorageRuntimeJournal::shared_strict(journal),
     ))
 }
@@ -29,8 +32,7 @@ fn pure_contract() -> Result<vb_core::ActionContract, Box<dyn std::error::Error>
     Ok(contract)
 }
 
-#[test]
-fn public_runtime_rejects_replacement_execution_contracts_before_enqueue() -> TestResult {
+fn replacement_contracts_rejected(policy: RuntimePolicy) -> TestResult {
     let dir = tempfile::tempdir()?;
     let journal = Arc::new(vb_storage::FjallJournal::open(dir.path(), None)?);
     let workflow = action_workflow()?;
@@ -38,10 +40,10 @@ fn public_runtime_rejects_replacement_execution_contracts_before_enqueue() -> Te
     vb_storage::submit_artifact_with_contracts(
         journal.as_ref(),
         &workflow,
-        RuntimePolicy::Strict,
+        policy,
         &[original.clone()],
     )?;
-    let mut runtime = runtime(journal.clone())?;
+    let mut runtime = runtime(journal.clone(), policy)?;
     // Matching declarations establish this is a valid production submit path.
     assert_eq!(
         runtime.submit_direct_with_grants_and_contracts(
@@ -87,8 +89,10 @@ fn public_runtime_rejects_replacement_execution_contracts_before_enqueue() -> Te
     assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
     runtime.tick_all()?;
     assert_eq!(runtime.counters_snapshot().runs_submitted, 1);
-    let mut shard =
-        Shard::new_with_journal(config(), StorageRuntimeJournal::shared_strict(journal));
+    let mut shard = Shard::new_with_journal(
+        config(policy),
+        StorageRuntimeJournal::shared_strict(journal),
+    );
     let mut replacement = contract()?;
     replacement.idempotency = vb_core::Idempotency::AtLeastOnceExternal;
     replacement.retry_safety = vb_core::RetrySafety::Unsafe;
@@ -108,13 +112,12 @@ fn public_runtime_rejects_replacement_execution_contracts_before_enqueue() -> Te
     Ok(())
 }
 
-#[test]
-fn public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest() -> TestResult {
+fn changed_ir_rejected(policy: RuntimePolicy) -> TestResult {
     let dir = tempfile::tempdir()?;
     let journal = Arc::new(vb_storage::FjallJournal::open(dir.path(), None)?);
     let workflow = workflow()?;
-    vb_storage::submit_artifact(journal.as_ref(), &workflow, RuntimePolicy::Strict)?;
-    let runtime = runtime(journal.clone())?;
+    vb_storage::submit_artifact(journal.as_ref(), &workflow, policy)?;
+    let runtime = runtime(journal.clone(), policy)?;
     assert_eq!(
         runtime.submit_direct(RunId::new(40), workflow.clone()),
         Ok(())
@@ -133,8 +136,10 @@ fn public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest(
         runtime.submit_compiled_with_inputs(RunId::new(42), altered.clone(), Box::new([])),
         expected
     );
-    let mut shard =
-        Shard::new_with_journal(config(), StorageRuntimeJournal::shared_strict(journal));
+    let mut shard = Shard::new_with_journal(
+        config(policy),
+        StorageRuntimeJournal::shared_strict(journal),
+    );
     shard.enqueue(ShardCommand::Submit {
         run: RunId::new(43),
         workflow: altered,
@@ -189,4 +194,24 @@ fn compiler_and_storage_reject_sparse_and_duplicate_dispatch_registries() -> Tes
         }
     }
     Ok(())
+}
+
+#[test]
+fn public_runtime_rejects_replacement_execution_contracts_before_enqueue() -> TestResult {
+    replacement_contracts_rejected(RuntimePolicy::Strict)
+}
+
+#[test]
+fn journaled_runtime_and_processing_reject_replacement_execution_contracts() -> TestResult {
+    replacement_contracts_rejected(RuntimePolicy::Journaled)
+}
+
+#[test]
+fn public_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest() -> TestResult {
+    changed_ir_rejected(RuntimePolicy::Strict)
+}
+
+#[test]
+fn journaled_runtime_and_processing_reject_changed_ir_with_retained_claimed_digest() -> TestResult {
+    changed_ir_rejected(RuntimePolicy::Journaled)
 }
