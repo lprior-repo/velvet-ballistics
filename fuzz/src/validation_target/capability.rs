@@ -90,6 +90,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     }
 }
 

@@ -1,0 +1,15 @@
+2026-10-21T19:03:08.435901Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-21T19:03:08.435920Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-21T19:03:08.438163Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.438516Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.438741Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.438930Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.439160Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.440180Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-10-21T19:03:08.966861Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-21T19:03:08.966880Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-21T19:03:08.971354Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T19:04:00.200915Z  WARN codex_core::responses_retry: stream disconnected - retrying sampling request (1/5 in 200ms)... turn_id=01a15fd8-889d-7db3-9099-a8e83456f169 retries=1 max_retries=5 sampling_error=stream disconnected before completion: Incomplete response returned, reason: max_output_tokens
+2026-10-21T19:04:00.402576Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090
+2026-10-21T19:04:38.668107Z  WARN codex_core::responses_retry: stream disconnected - retrying sampling request (2/5 in 408ms)... turn_id=01a15fd8-889d-7db3-9099-a8e83456f169 retries=2 max_retries=5 sampling_error=stream disconnected before completion: Incomplete response returned, reason: max_output_tokens
+2026-10-21T19:04:39.077526Z  WARN codex_core::client: model_verbosity is set but ignored as the model does not support verbosity: qwen3.8-27b-uncensored-5090

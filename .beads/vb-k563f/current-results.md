@@ -1,0 +1,3 @@
+# Current bounded results
+
+Actual local5090-authored oracle repair plus fuzz-only existing compiler test-util dependency feature: canonical four property suites pass6tests (1digest+2IPC+1journal+2roundtrip),0failed,0ignored. Raw evidence/canonical-properties-with-fixture-feature.log. Fuzz library unit tests pass2,0failed,0ignored; evidence/unit-tests.log. Static script check-error-exhaustiveness.sh passes all current variants; evidence/exhaustiveness.log. Actual failed earlier property logs retained. No ignored/error swallowing/property deletion or production enum visibility changes. Source includes ordinary Cargo feature unification for builds selecting fuzz. Independent code and test reviews remain required. Full moonCI/v1 not approved.

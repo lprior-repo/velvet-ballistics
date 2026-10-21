@@ -79,6 +79,7 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
         entry: vb_core::StepIdx::ZERO,
         resource_contract: vb_core::ResourceContract::DEFAULT,
         step_names: Box::new([]),
+        input_slots: Box::from([]),
     }
 }
 
