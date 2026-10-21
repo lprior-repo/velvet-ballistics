@@ -28,6 +28,7 @@ pub mod codec_miri_tests;
 pub mod constants;
 pub mod error;
 pub mod events;
+pub mod executor;
 pub mod headers;
 pub mod indexes;
 pub mod journal;

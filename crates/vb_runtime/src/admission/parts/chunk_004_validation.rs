@@ -1,4 +1,5 @@
 fn validate_accepted_artifact_envelope(
+    store: &dyn AcceptedArtifactStore,
     artifact: &vb_storage::admission::AcceptedArtifact,
 ) -> Result<(), ArtifactEnvelopeError> {
     if artifact.verification.digest != artifact.digest {
@@ -7,9 +8,7 @@ fn validate_accepted_artifact_envelope(
             found: artifact.verification.digest,
         });
     }
-    vb_storage::admission::verify_accepted_artifact(artifact)
-        .map(|_| ())
-        .map_err(|_| ArtifactEnvelopeError::ArtifactEvidenceInvalid)
+    verify_stored_artifact(store, artifact, None).map(|_| ())
 }
 
 fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError {

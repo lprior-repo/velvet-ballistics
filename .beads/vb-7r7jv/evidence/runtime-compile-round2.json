@@ -1,0 +1,14 @@
+{
+  "command": [
+    "cargo",
+    "check",
+    "-p",
+    "vb_runtime",
+    "-j",
+    "2"
+  ],
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-7r7jv-conformance-sol",
+  "exit": 0,
+  "duration_seconds": 0.07701611518859863,
+  "cargo_build_jobs": 2
+}

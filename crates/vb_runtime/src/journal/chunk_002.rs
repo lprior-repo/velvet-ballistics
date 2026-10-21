@@ -1,9 +1,15 @@
 impl StorageRuntimeJournal {
+    /// Strict journal with explicitly checked registered executor startup authority.
+    pub fn shared_strict_with_catalog(journal: Arc<FjallJournal>, catalog: Arc<vb_storage::executor::ExecutorCatalog>) -> SharedRuntimeJournal {
+        Arc::new(Self { journal, catalog: Some(catalog), profile: DurabilityProfile::Strict })
+    }
+
     /// Creates an adapter that uses journaled appends without a per-event sync barrier.
     #[must_use]
     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
+            catalog: None,
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -13,6 +19,7 @@ impl StorageRuntimeJournal {
     pub fn strict(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
+            catalog: None,
             profile: DurabilityProfile::Strict,
         }
     }
@@ -399,6 +406,8 @@ fn encoded_slot_taint_extra(
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {
+    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> { self.catalog.clone() }
+
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Err(RuntimeError::UnsupportedOperation {
             operation: "unsequenced_storage_journal_append",

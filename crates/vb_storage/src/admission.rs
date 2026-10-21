@@ -332,7 +332,7 @@ pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
 }
 
 #[path = "admission/verification.rs"]
-mod verification;
+pub(crate) mod verification;
 pub use verification::{
     prepare_compiled_artifact, verify_accepted_artifact, verify_accepted_artifact_for_policy,
 };

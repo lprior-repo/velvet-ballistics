@@ -146,3 +146,7 @@ mod artifact_envelope_tests {
     // but we include them here via the module system.
     include!("admission/artifact_envelope_tests.rs");
 }
+
+#[path = "admission/registered_verification.rs"]
+mod registered_verification;
+pub(crate) use registered_verification::verify_stored_artifact;

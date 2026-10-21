@@ -61,7 +61,7 @@ mod artifact_envelope_bdd_tests {
             let proof = &mut artifact.verification;
             proof.gate_count = self.gate_count;
             // Validate envelope - this is what StorageArtifactStore does
-            validate_accepted_artifact_envelope(&artifact)?;
+            validate_accepted_artifact_envelope(self, &artifact)?;
             Ok(artifact)
         }
     }
@@ -99,7 +99,7 @@ mod artifact_envelope_bdd_tests {
                 ProofFlagVariant::IdempotencyVerified => proof.idempotency_verified_claimed = false,
             }
             // Validate envelope - this is what StorageArtifactStore does
-            validate_accepted_artifact_envelope(&artifact)?;
+            validate_accepted_artifact_envelope(self, &artifact)?;
             Ok(artifact)
         }
     }
@@ -124,7 +124,7 @@ mod artifact_envelope_bdd_tests {
             proof.idempotency_keyed = self.keyed.clone();
             proof.idempotency_attested = self.attested.clone();
             // Validate envelope - this is what StorageArtifactStore does
-            validate_accepted_artifact_envelope(&artifact)?;
+            validate_accepted_artifact_envelope(self, &artifact)?;
             Ok(artifact)
         }
     }

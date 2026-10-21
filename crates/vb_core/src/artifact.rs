@@ -103,4 +103,6 @@ pub enum ArtifactEvidence {
     Unverified,
     /// Serialized claims that still require independent verifier acceptance.
     Verified(Box<ArtifactVerificationEvidence>),
+    /// External packs require a trusted registered catalog and cannot verify as legacy claims.
+    Packed(Box<crate::action_pack::PackedArtifactEvidence>),
 }

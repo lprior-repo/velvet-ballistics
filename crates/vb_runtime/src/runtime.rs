@@ -428,12 +428,12 @@ impl Runtime {
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let fjall_journal = self.recovery_storage_journal()?;
         let prefix = Self::load_recovery_prefix_evidence(fjall_journal.as_ref(), run)?;
-        let recovered = Self::load_recovery_artifact_and_workflow(
+        let recovered = self.load_recovery_artifact_and_workflow(
             fjall_journal,
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
-        Self::build_runtime_recovery_product(run, prefix, recovered)
+        self.build_runtime_recovery_product(run, prefix, recovered)
     }
 
     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
@@ -539,6 +539,7 @@ impl Runtime {
     }
 
     fn build_runtime_recovery_product(
+        &self,
         run: RunId,
         prefix: RecoveryPrefixEvidence,
         recovered: RecoveryArtifactWorkflow,
@@ -553,6 +554,7 @@ impl Runtime {
             &recovered.workflow,
             &expected,
         )?;
+        self.validate_registered_recovery(&recovered.artifact, boundary)?;
         Self::product_from_recovered_seed(run, prefix, seed, boundary)
     }
 
@@ -673,12 +675,13 @@ impl Runtime {
     }
 
     fn load_recovery_artifact_and_workflow(
+        &self,
         journal: std::sync::Arc<vb_storage::FjallJournal>,
         artifact_digest: WorkflowDigest,
     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
         use crate::admission::AcceptedArtifactStore;
 
-        let store = crate::admission::StorageArtifactStore::new(journal);
+        let store = crate::admission::StorageArtifactStore::with_catalog(journal, self.journal.executor_catalog());
         let artifact = store
             .load_accepted_artifact(artifact_digest)
             .map_err(|error| RuntimeError::RecoveryCannotResume {
@@ -851,6 +854,9 @@ impl Runtime {
     /// Completes an action for a run.
     pub fn complete_action(&self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        if let Some(ticket) = self.lookup_pending_action_ticket(run, u64::from(step.get())) {
+            shard.reject_unregistered_completion(ticket)?;
+        }
         shard.enqueue(ShardCommand::ActionCompletedLegacy { run, step })
     }
 
@@ -865,6 +871,7 @@ impl Runtime {
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for_mut(ticket.run)?;
+        shard.reject_unregistered_completion(ticket)?;
         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
         // if the ticket doesn't match the current run state.
         if let Some(state) = shard.run_state_get(ticket.run) {
@@ -1220,3 +1227,7 @@ impl Runtime {
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
+
+#[path = "runtime/registered_executor.rs"]
+mod registered_executor;
+pub use registered_executor::RegisteredExecutionError;

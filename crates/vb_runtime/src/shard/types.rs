@@ -123,6 +123,15 @@ pub enum ShardCommand {
         /// Typed action output payload.
         output: vb_core::action::ActionOutputReady,
     },
+    /// A registered adapter produced an opaque checked durable receipt.
+    RegisteredActionCompleted {
+        /// Canonical pending action ticket.
+        ticket: vb_core::action::ActionTicket,
+        /// Receipt can only be produced by the concrete registered adapter.
+        receipt: vb_storage::executor::RegisterReceipt,
+        /// Runtime output derived from the adapter receipt.
+        output: vb_core::action::ActionOutputReady,
+    },
     /// An external action completed without a typed output payload.
     ActionCompletedLegacy {
         /// Run identifier.
@@ -298,9 +307,20 @@ impl AskAnswer {
     }
 }
 
+/// Origin determines whether registered production effects may execute.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegisteredExecutionMode {
+    /// A newly admitted live run can execute with an exact issued grant.
+    Live,
+    /// Replayed runs may only reconcile existing receipts.
+    ReconcileOnly,
+}
+
 /// Mutable run state owned directly by the shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunState {
+    /// Replayed state never authorizes a new registered production effect.
+    pub registered_execution: RegisteredExecutionMode,
     /// Active run frame.
     pub frame: RunFrame,
     /// Compiled workflow for this run.

@@ -142,6 +142,7 @@ impl Shard {
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;
         let state = RunState {
+            registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
             frame,
             workflow,
             store: ValueStore::with_max_slots(max_slots),
@@ -410,6 +411,7 @@ impl Shard {
         self.prepare_run_slots(run)?;
 
         let state = crate::shard::types::RunState {
+            registered_execution: crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
             frame,
             workflow,
             store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
@@ -508,6 +510,15 @@ impl Shard {
         ticket: ActionTicket,
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
+        self.reject_unregistered_completion(ticket)?;
+        self.apply_action_completion(ticket, output)
+    }
+
+    pub(crate) fn apply_action_completion(
+        &mut self,
+        ticket: ActionTicket,
+        output: ActionOutputReady,
+    ) -> RuntimeResult<()> {
         let run = ticket.run;
         self.require_pending_action_ownership(ticket)?;
         let preflight = {
@@ -554,6 +565,7 @@ impl Shard {
         step: StepIdx,
     ) -> RuntimeResult<()> {
         let ticket = self.require_legacy_pending_action_ownership(run, step)?;
+        self.reject_unregistered_completion(ticket)?;
         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame

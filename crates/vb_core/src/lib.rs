@@ -12,6 +12,7 @@
 //! no storage, no HTTP, and no YAML dependencies.
 
 pub mod action;
+pub mod action_pack;
 pub mod artifact;
 pub mod budget;
 pub mod capability;

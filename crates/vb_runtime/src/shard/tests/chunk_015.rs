@@ -374,6 +374,7 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
     let frame = vb_core::frame::RunFrame::new(run, vb_core::ids::StepIdx::ZERO, 1, 1)
         .map_err(|error| error.to_string())?;
     let state = RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::new(),

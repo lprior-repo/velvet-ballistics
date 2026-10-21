@@ -14,6 +14,7 @@ postcard.workspace = true
 rustix.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+tempfile.workspace = true
 vb_core = { path = "../vb_core" }
 vb_validate = { path = "../vb_validate" }
 

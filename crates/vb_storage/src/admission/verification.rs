@@ -7,7 +7,11 @@ use vb_core::artifact::{
 };
 use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
 
-const EVIDENCE_VERSION: u16 = 3;
+pub(crate) const EVIDENCE_VERSION: u16 = 3;
+
+#[path = "verification/executor_profile.rs"]
+mod executor_profile;
+pub(crate) use executor_profile::ExecutorProfile;
 
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
@@ -16,13 +20,22 @@ pub fn prepare_compiled_artifact(
     policy: RuntimePolicy,
     contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
-    let parts = checked_parts(workflow, policy, contracts)?;
+    prepare_with_profile(workflow, policy, contracts, ExecutorProfile::Legacy)
+}
+
+pub(crate) fn prepare_with_profile(
+    workflow: &CompiledWorkflow,
+    policy: RuntimePolicy,
+    contracts: &[ActionContract],
+    profile: ExecutorProfile<'_>,
+) -> Result<AcceptedArtifact, JournalError> {
+    let parts = checked_parts(workflow, policy, contracts, &profile)?;
     let ir = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
     let evidence = build_evidence(&parts, &ir, policy, contracts)?;
     let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
     proof.bounded_claimed = true;
     proof.idempotency_verified_claimed = true;
-    proof.evidence = ArtifactEvidence::Verified(Box::new(evidence));
+    proof.evidence = profile.wrap(evidence);
     let mut artifact = AcceptedArtifact {
         digest: zero_workflow_digest(),
         source_digest: workflow.digest(),
@@ -87,6 +100,7 @@ fn checked_evidence_schema(
     evidence: &ArtifactEvidence,
 ) -> Result<&ArtifactVerificationEvidence, JournalError> {
     match evidence {
+        ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
             from: 1,
             to: EVIDENCE_VERSION,
@@ -106,7 +120,7 @@ fn checked_evidence_schema(
     }
 }
 
-fn verify_expected_bindings(
+pub(crate) fn verify_expected_bindings(
     actual: &AcceptedArtifact,
     expected: &AcceptedArtifact,
 ) -> Result<(), JournalError> {
@@ -127,6 +141,7 @@ fn checked_parts(
     workflow: &CompiledWorkflow,
     policy: RuntimePolicy,
     contracts: &[ActionContract],
+    profile: &ExecutorProfile<'_>,
 ) -> Result<WorkflowParts, JournalError> {
     match policy {
         RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict => {}
@@ -140,7 +155,7 @@ fn checked_parts(
     vb_core::action::validate_action_registry(contracts)
         .map_err(JournalError::ArtifactActionRegistry)?;
     validate_idempotency_contracts(contracts)?;
-    check_executor_profile(policy, contracts)?;
+    profile.check(policy, contracts)?;
     parts.digest = zero_workflow_digest();
     let canonical = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
     if digest(&canonical) != workflow.digest() {
@@ -148,21 +163,6 @@ fn checked_parts(
     }
     parts.digest = workflow.digest();
     Ok(parts)
-}
-
-fn check_executor_profile(
-    policy: RuntimePolicy,
-    contracts: &[ActionContract],
-) -> Result<(), JournalError> {
-    if policy == RuntimePolicy::Strict
-        && contracts.iter().any(|c| c.side_effect != SideEffect::None)
-    {
-        // No executor identity/conformance evidence is supplied by this API.
-        return Err(JournalError::MissingRequiredProofFlag {
-            flag: "executor_conformance",
-        });
-    }
-    Ok(())
 }
 
 fn build_evidence(

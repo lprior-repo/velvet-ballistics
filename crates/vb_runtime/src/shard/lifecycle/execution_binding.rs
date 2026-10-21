@@ -21,7 +21,7 @@ pub(super) fn validate(
     }
     let digest = workflow.digest();
     let artifact = load_artifact(store, digest)?;
-    vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy)
+    crate::admission::verify_stored_artifact(store, &artifact, Some(policy))
         .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
     compare_execution_tuple(&artifact, workflow, contracts)
 }

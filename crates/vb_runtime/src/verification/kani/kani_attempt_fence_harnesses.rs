@@ -92,6 +92,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         .expect("kani harness: valid frame");
 
     let mut state = RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: ValueStore::new(),

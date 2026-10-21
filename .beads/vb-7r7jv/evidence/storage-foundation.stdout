@@ -1,0 +1,10 @@
+
+running 5 tests
+test recovery_axis_defaults_blocked_and_unsupported_classes_reject ... ok
+test strict_pack_requires_registered_context_and_raw_metadata_cannot_self_certify ... ok
+test registered_suite_executes_duplicate_conflicts_and_reopen ... ok
+test duplicate_and_reopen_return_one_actual_effect_and_capacity_never_evicts ... ok
+test stored_pack_reopens_with_fresh_executed_catalog_and_exact_classification ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

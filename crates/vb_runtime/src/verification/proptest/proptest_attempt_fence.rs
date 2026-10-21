@@ -116,6 +116,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).expect("proptest: valid frame");
 
     RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: ValueStore::new(),

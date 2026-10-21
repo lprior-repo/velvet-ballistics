@@ -212,6 +212,7 @@ fn symbolic_run_state(run: RunId) -> Option<RunState> {
         Err(_) => return None,
     };
     Some(RunState {
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::with_max_slots(slot_count),
