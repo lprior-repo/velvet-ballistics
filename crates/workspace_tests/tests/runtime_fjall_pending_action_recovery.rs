@@ -752,7 +752,7 @@ fn strict_submit_rejects_unbound_action_abi_before_ticket_persist() -> Result<()
         Box::from([divergent_action_contract(action)?]);
 
     let journal = open_journal(temp.path())?;
-    let artifact = submit_artifact_with_contracts(
+    let _artifact = submit_artifact_with_contracts(
         &journal,
         &workflow,
         RuntimePolicy::Strict,
@@ -1477,5 +1477,50 @@ fn runtime_recover_product_cannot_resume_witness_carries_through_for_pending_ask
     assert_storage_typed_witness_carries_through(&journal, run, "pending_asks", |state| {
         state.pending_asks
     })?;
+    Ok(())
+}
+
+#[test]
+fn runtime_records_actual_action_abi_at_schedule_boundary() -> Result<(), String> {
+    let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
+    let run = RunId::new(7_801);
+    let action = ActionId::new(0);
+    let workflow = action_then_finish_workflow()?;
+    let contracts = Box::from([action_contract(action)?]);
+
+    let journal = open_journal(temp.path())?;
+    let _artifact = submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &contracts,
+    )
+    .map_err(|err| err.to_string())?;
+    let contract = contracts
+        .first()
+        .ok_or_else(|| String::from("missing action contract"))?;
+    let expected_digest = action_contract_abi_digest(contract)?;
+
+    let shared = StorageRuntimeJournal::shared_strict(journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+    runtime
+        .submit_direct_with_inputs_grants_and_contracts(
+            run,
+            workflow,
+            Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            action_grants(action),
+            contracts,
+        )
+        .map_err(|err| err.to_string())?;
+    runtime.tick_all().map_err(|err| err.to_string())?;
+
+    let events = journal
+        .events_for_run_full(run)
+        .map_err(|err| err.to_string())?;
+    let (ticket, stored_digest) = stored_action_schedule(&events, action)?;
+    assert_eq!(ticket.action, action);
+    assert_eq!(stored_digest, expected_digest);
+    assert_ne!(stored_digest, zero_digest());
+
     Ok(())
 }
