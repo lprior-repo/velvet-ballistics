@@ -1,5 +1,6 @@
 //! Migration regression coverage: verifies all old public module paths
-//! are still accessible after folding vb_expr and vb_yaml into vb_compile.
+//! are still accessible after extracting vb_expr and vb_yaml into
+//! separate crates and re-exporting them through vb_compile.
 //!
 //! Each test uses actual, real APIs — not fabricated signatures.
 //! The purpose is compile-time reachability + one sharp behavioral check.
@@ -28,24 +29,24 @@ mod expr_module_paths {
 
     /// Behavioral check: lexer handles a simple identifier via old path.
     #[test]
-    fn expr_lexer_behavioral_check() {
-        let tokens = expr_lexer::lex_expr("x").expect("lex_expr(x) should succeed");
+    fn expr_lexer_behavioral_check() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = expr_lexer::lex_expr("x")?;
         let has_identifier = tokens.iter().any(|t| matches!(t, expr_lexer::Token::Identifier(_)));
         assert!(has_identifier, "Expected an identifier token");
+        Ok(())
     }
 
     /// Full pipeline check: 1 + 2 = I64(3) via old module paths.
     #[test]
-    fn expr_full_pipeline_via_old_paths() {
-        let tokens = expr_lexer::lex_expr("1 + 2").expect("lex should succeed");
-        let ast = expr_parser::parse_expr(&tokens).expect("parse should succeed");
+    fn expr_full_pipeline_via_old_paths() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = expr_lexer::lex_expr("1 + 2")?;
+        let ast = expr_parser::parse_expr(&tokens)?;
         // Use compile_expr_with_pool to get both the program and constants
         let mut constants: Vec<vb_core::ConstValue> = Vec::new();
-        let program = expr_bytecode::compile_expr_with_pool(&ast, &mut constants)
-            .expect("compile should succeed");
-        let result = expr_eval::eval_expr_program(&program, &[], &constants)
-            .expect("eval should succeed");
+        let program = expr_bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = expr_eval::eval_expr_program(&program, &[], &constants)?;
         assert_eq!(result, vb_core::SlotValue::I64(3));
+        Ok(())
     }
 }
 
@@ -71,34 +72,43 @@ mod yaml_module_paths {
     #[test]
     fn yaml_profile_rejects_anchors() {
         let result = yaml_profile::validate_yaml_profile("value: &anchor test\n");
-        match result {
-            Err(yaml_error::YamlError::AnchorAliasMerge) => {} // Expected
-            other => panic!("Expected AnchorAliasMerge, got {:?}", other),
-        }
+        assert!(
+            matches!(result, Err(yaml_error::YamlError::AnchorAliasMerge)),
+            "Expected AnchorAliasMerge, got {:?}",
+            result
+        );
     }
 
     /// Behavioral check: validate_yaml_profile rejects duplicate keys via old path.
     #[test]
     fn yaml_profile_rejects_duplicate_keys() {
         let result = yaml_profile::validate_yaml_profile("version: a\nversion: b\n");
-        match result {
-            Err(yaml_error::YamlError::DuplicateKey { key }) => {
-                assert_eq!(key, "version".into());
-            }
+        assert!(
+            matches!(result, Err(yaml_error::YamlError::DuplicateKey { key: _ })),
+            "Expected DuplicateKey, got {:?}",
+            result
+        );
+        let key = match result {
+            Err(yaml_error::YamlError::DuplicateKey { key }) => key,
             other => panic!("Expected DuplicateKey, got {:?}", other),
-        }
+        };
+        assert_eq!(key, "version".into());
     }
 
     /// Behavioral check: validate_yaml_profile rejects multiple documents via old path.
     #[test]
     fn yaml_profile_rejects_multiple_documents() {
         let result = yaml_profile::validate_yaml_profile("a: 1\n---\nb: 2\n");
-        match result {
-            Err(yaml_error::YamlError::MultipleDocuments { count }) => {
-                assert_eq!(count, 2);
-            }
+        assert!(
+            matches!(result, Err(yaml_error::YamlError::MultipleDocuments { count: _ })),
+            "Expected MultipleDocuments, got {:?}",
+            result
+        );
+        let count = match result {
+            Err(yaml_error::YamlError::MultipleDocuments { count }) => count,
             other => panic!("Expected MultipleDocuments, got {:?}", other),
-        }
+        };
+        assert_eq!(count, 2);
     }
 
     /// Compile-time check that yaml_ast module is accessible via old path.
@@ -121,7 +131,5 @@ mod proof_module_paths {
         use crate::expr_proofs;
         // In kani builds, expr_proofs would contain stack_ops_preserve_bounds etc.
         // In regular builds, it's an empty module — but the path still resolves.
-        let module_resolves = true;
-        let _ = module_resolves;
     }
 }

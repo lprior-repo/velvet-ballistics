@@ -191,6 +191,6 @@ The standard delivery flow for Rust beads in this repository is:
 4. **Code review** — Black hat review of the implementation
 5. **Test review** — Independent review of the test suite
 
-This is the user's explicit delivery flow. Do not invoke the Go-skill or full proof-planning stage unless explicitly requested. Local 5090/3090 instances handle approximately 98% of development; Sol is reserved for minimal coordination and escalation.
+This is the user's explicit delivery flow. Do not invoke the Go-skill or full proof-planning stage unless explicitly requested. Local 5090/3090 instances target at least 98% of coding effort; Sol is reserved for minimal coordination and escalation.
 
 The master architectural acceptance criteria and GOD RULES for formal harnesses remain in force; this flow does not waive or weaken those gates.

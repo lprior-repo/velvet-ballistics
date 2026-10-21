@@ -92,17 +92,16 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-// Pre-existing issue: package name drift check not working
+// Regression: package name drift reports exact member and expected name
 #[test]
-#[ignore]
 fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     let dir = workspace()?;
-    write_manifest(dir.path(), "crates/velvet_ballistics", "velvet-ballistics")?;
+    write_manifest(dir.path(), "crates/velvet_ballistics", "wrong-product")?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/velvet_ballistics/Cargo.toml: package.name expected \"velvet-ballistics\", got Some(\"velvet-ballistics\")\n"
+        "crates/velvet_ballistics/Cargo.toml: package.name expected \"velvet-ballistics\", got Some(\"wrong-product\")\n"
     );
     Ok(())
 }
