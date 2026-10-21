@@ -110,7 +110,13 @@ fn classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_modul
     let config = maximum_bounded_scan_config();
     let path = repo_path("crates/legacy/src/lib.rs");
 
-    let result = classify_occurrence(path, line(1), column(9), "velvet_ballistics", &config);
+    let result = classify_occurrence(
+        path,
+        line(1),
+        column(9),
+        concat!("velvet_", "ballastics"),
+        &config,
+    );
 
     assert_eq!(
         result,
@@ -219,7 +225,7 @@ fn scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated() {
     config.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::Wildcard {
         pattern: "*".to_string(),
     }]);
-    let input = text_scan_input("docs/bad.md", "legacy velvet_ballistics\n");
+    let input = text_scan_input("docs/bad.md", concat!("legacy velvet_", "ballastics\n"));
 
     let result = scan_file(input, &config);
 

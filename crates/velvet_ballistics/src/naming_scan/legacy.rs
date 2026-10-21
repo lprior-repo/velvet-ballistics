@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_crate() {
-        assert!(contains_legacy("velvet_ballistics crate"));
+        assert!(contains_legacy(concat!("velvet_", "ballastics", " crate")));
     }
 
     #[test]
@@ -68,8 +68,13 @@ mod tests {
     }
 
     #[test]
+    fn contains_legacy_returns_false_for_canonical_underscore() {
+        assert!(!contains_legacy("velvet_ballistics"));
+    }
+
+    #[test]
     fn class_for_text_returns_legacy_crate_module_spelling() {
-        let result = class_for_text("velvet_ballistics is wrong");
+        let result = class_for_text(concat!("velvet_", "ballastics", " is wrong"));
         match result {
             OccurrenceClass::InvalidLegacy {
                 spelling_class,

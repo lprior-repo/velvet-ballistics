@@ -1,0 +1,34 @@
+**Audit findings**
+
+The 14 failures split into two root causes:
+
+1. **Production constant mismatch (10 failures):** `CANONICAL_UNDERSCORE` is `"vb_cli"` but the authoritative master requires `"velvet_ballistics"` for crate/module and bead database. Every config-validation test that supplies `velvet_ballistics` as the crate_module token fails with "contradictory token for crate_module: velvet_ballistics" because the validator compares against the wrong canonical value.
+
+2. **Negative fixtures rewritten to canonical (4 failures):** Four negative tests use `"velvet_ballistics"` as the legacy input token. Once `CANONICAL_UNDERSCORE` is corrected, that string becomes canonical, so the scanner no longer reports it as legacy. These tests must use the true legacy crate spelling `"velvet_ballastics"` (with 'a').
+
+**Minimum production repair**
+
+In `crates/velvet_ballistics/src/naming_scan/types.rs`:
+
+```rust
+// Before
+pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
+pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
+
+// After
+pub(crate) const CANONICAL_UNDERSCORE: &str = "velvet_ballistics";
+pub(crate) const LEGACY_CRATE: &str = "velvet_ballastics";
+```
+
+This aligns production with the authoritative master: `velvet-ballistics` (hyphen) for product/binary/package/bead_rig, `velvet_ballistics` (underscore) for crate_module/bead_database, and `velvet-ballastics`/`velvet_ballastics` (with 'a') as the legacy spellings.
+
+**Negative test input corrections**
+
+Restore true invalid tokens in the four negative fixtures:
+
+- `part_03.rs` `classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen`: change input `"velvet_ballistics"` → `"velvet_ballastics"`
+- `part_03.rs` `scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated`: change input `"legacy velvet_ballistics\n"` → `"legacy velvet_ballastics\n"`
+- `part_04.rs` `scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen`: change input `"pub mod velvet_ballistics;\n"` → `"pub mod velvet_ballastics;\n"`
+- `part_04.rs` `scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file`: change fixture content `"pub mod velvet_ballistics;\n"` → `"pub mod velvet_ballastics;\n"`
+
+All exact error/remediation assertions remain unchanged; the naming gate is not weakened. No liveDB rename. The dev-dependency alias fix (vb-i5ett) is a separate contract.

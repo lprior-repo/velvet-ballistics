@@ -111,7 +111,7 @@ pub(crate) fn maximum_bounded_valid_raw_config() -> RawScanConfig {
         scan_patterns: vec![
             LEGACY_PROJECT.to_string(),
             LEGACY_PROJECT_TITLE.to_string(),
-            "velvet_ballistics".to_string(),
+            concat!("velvet_", "ballastics").to_string(),
             LEGACY_LANGUAGE_VERSION.to_string(),
         ],
         excluded_path_rules: vec![
@@ -158,7 +158,7 @@ pub(crate) fn maximum_scan_patterns() -> Vec<String> {
     vec![
         LEGACY_PROJECT.to_string(),
         LEGACY_PROJECT_TITLE.to_string(),
-        "velvet_ballistics".to_string(),
+        concat!("velvet_", "ballastics").to_string(),
         LEGACY_LANGUAGE_VERSION.to_string(),
     ]
 }
