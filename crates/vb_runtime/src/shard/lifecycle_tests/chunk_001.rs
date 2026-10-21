@@ -283,6 +283,38 @@ mod vb_3l40a_contract_validation_tests {
     use crate::shard::Shard;
     use crate::shard::ShardConfig;
     use crate::RuntimeError;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+    // ResourceContract imported via vb_core::workflow::ResourceContract
+
+    fn do_workflow() -> CompiledWorkflow {
+        let node = CompiledNode {
+            id: vb_core::ids::StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(0),
+                input: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("test-do"),
+            digest: vb_core::ids::WorkflowDigest::from_bytes([3u8; 32]),
+            nodes: Box::from([node]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: vb_core::ids::StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
+        };
+        CompiledWorkflow::try_from_parts(parts)
+            .expect("test workflow must compile")
+    }
 
     fn make_contract(
         id: vb_core::ids::ActionId,
@@ -315,7 +347,7 @@ mod vb_3l40a_contract_validation_tests {
         };
         let mut shard = Shard::new(shard_config);
         let run = vb_core::ids::RunId::new(1);
-        let digest = vb_core::ids::WorkflowDigest::from_bytes([1u8; 32]);
+        let workflow = do_workflow();
 
         // Contract requires a cap that is not granted
         let cap = vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
@@ -328,7 +360,7 @@ mod vb_3l40a_contract_validation_tests {
             ]));
 
         let result = shard.validate_submit_admission_with_contracts(
-            run, digest, granted, &vec![contract],
+            run, &workflow, granted, &vec![contract],
         );
 
         assert!(result.is_err());
@@ -354,7 +386,7 @@ mod vb_3l40a_contract_validation_tests {
         };
         let mut shard = Shard::new(shard_config);
         let run = vb_core::ids::RunId::new(2);
-        let digest = vb_core::ids::WorkflowDigest::from_bytes([2u8; 32]);
+        let workflow = do_workflow();
 
         // Contract requires cap that is granted
         let cap = vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
@@ -364,7 +396,7 @@ mod vb_3l40a_contract_validation_tests {
             vb_core::capability::CapabilitySet::from_grants(Box::new([cap.clone()]));
 
         let result = shard.validate_submit_admission_with_contracts(
-            run, digest, granted, &vec![contract],
+            run, &workflow, granted, &vec![contract],
         );
 
         assert!(result.is_ok(), "expected Ok, got: {result:?}");

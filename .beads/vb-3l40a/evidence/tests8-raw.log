@@ -1,0 +1,21 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error[E0308]: mismatched types
+   --> crates/vb_runtime/src/shard/helpers/tests.rs:626:69
+    |
+626 |         kind: vb_core::workflow::CompiledNodeKind::Finish { result: None },
+    |                                                                     ^^^^ expected `SlotIdx`, found `Option<_>`
+    |
+    = note: expected struct `vb_core::SlotIdx`
+                 found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+    --> crates/vb_runtime/src/shard/helpers/tests.rs:1169:69
+     |
+1169 |         kind: vb_core::workflow::CompiledNodeKind::Finish { result: None },
+     |                                                                     ^^^^ expected `SlotIdx`, found `Option<_>`
+     |
+     = note: expected struct `vb_core::SlotIdx`
+                  found enum `std::option::Option<_>`
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors

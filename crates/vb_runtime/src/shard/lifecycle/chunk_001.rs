@@ -107,6 +107,12 @@ impl Shard {
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
     ) -> RuntimeResult<()> {
+        self.validate_submit_admission_with_contracts(
+            run,
+            &workflow,
+            caps.clone(),
+            action_contracts,
+        )?;
         self.handle_submit_with_inputs_contracts_and_header_mode(
             run,
             workflow,
@@ -125,6 +131,12 @@ impl Shard {
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
     ) -> RuntimeResult<()> {
+        self.validate_submit_admission_with_contracts(
+            run,
+            &workflow,
+            caps.clone(),
+            action_contracts,
+        )?;
         self.handle_submit_with_inputs_contracts_and_header_mode(
             run,
             workflow,
@@ -305,48 +317,28 @@ impl Shard {
 
     /// Validates admission requirements for a submitted run with action contracts.
     ///
-    /// Checks: duplicate action IDs, well-formed contract names, and that granted
-    /// capabilities cover the required capabilities declared by the contracts.
+    /// Checks: contract ID matches its registry index, duplicate action IDs,
+    /// well-formed contract names, that granted capabilities cover the required
+    /// capabilities declared by the contracts, and that each workflow Do action
+    /// has a corresponding contract at its registry index.
     pub(crate) fn validate_submit_admission_with_contracts(
         &self,
         run: RunId,
-        digest: vb_core::ids::WorkflowDigest,
+        workflow: &CompiledWorkflow,
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
     ) -> RuntimeResult<()> {
-        // Build admission to validate workflow digest
+        let digest = workflow.digest();
         self.build_admission(run, digest, caps.clone())?;
-
-        // Validate action contracts for duplicates and well-formedness
-        let mut seen_ids = std::collections::HashSet::new();
-        for contract in action_contracts {
-            if !seen_ids.insert(contract.id) {
-                return Err(RuntimeError::ContractValidationError {
-                    action: contract.id,
-                    error: "duplicate action ID".to_string(),
-                });
-            }
-            if contract.name.as_str().is_empty() {
-                return Err(RuntimeError::ContractValidationError {
-                    action: contract.id,
-                    error: "action name is empty".to_string(),
-                });
-            }
-        }
-
-        // Validate that granted capabilities cover all contract requirements
-        for contract in action_contracts {
-            for required in contract.required_capabilities.iter() {
-                if !caps.grants(required) {
-                    return Err(RuntimeError::AdmissionCapabilityDenied {
-                        action: contract.id,
-                        required: required.clone(),
-                        granted: caps,
-                    });
-                }
-            }
-        }
-
+        super::contract_validation::validate_contract_ids(action_contracts)?;
+        super::contract_validation::validate_contract_capabilities(
+            action_contracts,
+            &caps,
+        )?;
+        super::contract_validation::validate_workflow_action_binding(
+            workflow,
+            action_contracts,
+        )?;
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {

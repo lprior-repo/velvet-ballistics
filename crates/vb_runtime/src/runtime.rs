@@ -273,7 +273,7 @@ impl Runtime {
         let shard = self.shard_for(run)?;
         shard.validate_submit_admission_with_contracts(
             run,
-            workflow.digest(),
+            &workflow,
             caps.clone(),
             &action_contracts,
         )?;
@@ -297,7 +297,7 @@ impl Runtime {
         let shard = self.shard_for(run)?;
         shard.validate_submit_admission_with_contracts(
             run,
-            workflow.digest(),
+            &workflow,
             caps.clone(),
             &action_contracts,
         )?;

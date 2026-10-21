@@ -1,0 +1,59 @@
+## Test Cleanup Complete for vb-3l40a
+
+**Workspace:** `/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090` (both git and jj roots verified)
+
+### What I Did
+
+1. **Replaced test indexing with exact ActionContract assertion:**
+   - Old: Count check + unchecked id/name indexing (`state.action_contracts[i].id`)
+   - New: Single exact assertion `assert_eq!(state.action_contracts, expected_artifact.action_contracts)` using ActionContract's PartialEq/Eq derives
+   - This validates ALL contract fields and eliminates unchecked indexing
+
+2. **Extended test to full lifecycle with real ActionCompleted API:**
+   - Uses actual `ShardCommand::ActionCompleted` with real `ActionOutputReady` value
+   - Uses real pending action ticket captured from `pending_action_get`
+   - Drives tick() to completion via ActionCompleted → Finish → RunFinished
+   - Verifies journal evidence using `Arc<VolatileRuntimeJournal>` + `journal.snapshot()`:
+     - Exactly 1 action completion event (ActionCompletedEnvelope)
+     - Exactly 1 RunFinished event with correct run id and result slot
+   - Duplicate completion rejected with error, no second RunFinished
+
+3. **Removed all new unwrap/expect/panic in test modules:**
+   - recovery_context_tests: 4 tests, 0 unwraps (was 3)
+   - contract_validation_tests: 2 tests, 0 unwraps (was 1)
+   - Replaced with fallible Result propagation, explicit error matches
+
+4. **Moved test modules out of production file:**
+   - Extracted from `lifecycle/chunk_001.rs` (production) to 3 separate `cfg(test)` files under `lifecycle_tests/`
+   - Each file ≤300 lines
+   - Test count preserved: 7 tests (identical to original)
+
+### Test Results
+
+```
+test result: ok. 1878 passed; 0 failed; 0 ignored; 0 measured
+```
+
+### Bounded Mutation Test
+
+- **Mutation:** Set `action_contracts` to empty array after recovery restoration
+- **Result:** Test fails (detected mutation) — "run state not found after recovery"
+- **Restoration:** Original code restored; test passes again
+
+### Files Changed
+
+- `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs` (removed embedded tests)
+- `crates/vb_runtime/src/shard/lifecycle.rs` (added test includes)
+- `crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs` (new)
+- `crates/vb_runtime/src/shard/lifecycle_tests/recovery_context_tests.rs` (new)
+- `crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs` (new)
+
+### Evidence
+
+- Test logs: `.beads/vb-3l40a/evidence/test-cleanup/cargo-test-vb_runtime-lib.txt`
+- Report: `.beads/vb-3l40a/test-cleanup-report.md`
+
+### Root Coordinates Next
+
+No production edits. No push. No acceptance claim. Ready for root code review / test review.
+

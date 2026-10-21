@@ -1,0 +1,25 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error[E0533]: expected value, found struct variant `vb_core::workflow::CompiledNodeKind::Finish`
+   --> crates/vb_runtime/src/shard/helpers/tests.rs:626:15
+    |
+626 |         kind: vb_core::workflow::CompiledNodeKind::Finish,
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+    |
+help: you might have meant to create a new value of the struct
+    |
+626 |         kind: vb_core::workflow::CompiledNodeKind::Finish { result: /* value */ },
+    |                                                           +++++++++++++++++++++++
+
+error[E0533]: expected value, found struct variant `vb_core::workflow::CompiledNodeKind::Finish`
+    --> crates/vb_runtime/src/shard/helpers/tests.rs:1169:15
+     |
+1169 |         kind: vb_core::workflow::CompiledNodeKind::Finish,
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+     |
+help: you might have meant to create a new value of the struct
+     |
+1169 |         kind: vb_core::workflow::CompiledNodeKind::Finish { result: /* value */ },
+     |                                                           +++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0533`.
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors

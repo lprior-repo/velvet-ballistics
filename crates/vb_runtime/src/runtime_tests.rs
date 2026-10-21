@@ -270,13 +270,10 @@ mod tests {
         run: vb_core::ids::RunId,
         wf: vb_core::workflow::CompiledWorkflow,
     ) -> crate::RuntimeResult<()> {
-        let action = ActionId::new(0);
-        runtime.submit_direct_with_inputs_grants_and_contracts(
+        runtime.submit_compiled_with_inputs(
             run,
             wf,
             Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
-            action_grants(action),
-            action_contracts_through(action, 1, 0),
         )
     }
 
@@ -413,14 +410,7 @@ mod tests {
         run: vb_core::ids::RunId,
         wf: vb_core::workflow::CompiledWorkflow,
     ) -> crate::RuntimeResult<()> {
-        let action = ActionId::new(0);
-        runtime.submit_direct_with_inputs_grants_and_contracts(
-            run,
-            wf,
-            Box::from([]),
-            action_grants(action),
-            action_contracts_through(action, 0, 0),
-        )
+        runtime.submit_compiled(run, wf)
     }
 
     fn submit_action_then_finish(
@@ -766,10 +756,13 @@ mod tests {
             return;
         };
         let run = vb_core::ids::RunId::new(11);
-        assert_eq!(submit_action_then_finish(&runtime, run, wf), Ok(()));
-        assert_eq!(runtime.tick_all(), Ok(true));
+        let submit_result = submit_action_then_finish(&runtime, run, wf);
+        assert_eq!(submit_result, Ok(()));
+        let tick_result = runtime.tick_all();
+        assert_eq!(tick_result, Ok(true));
 
         let events = runtime.list_events(run);
+        let snap = runtime.counters_snapshot();
         assert!(matches!(
             events,
             Ok(ref evts) if evts.contains(&TraceEvent::ActionScheduled {
@@ -2376,9 +2369,9 @@ mod tests {
         let run1 = vb_core::ids::RunId::new(607);
         let run2 = vb_core::ids::RunId::new(608);
 
-        assert_eq!(submit_action_then_finish(&runtime, run1, wf1), Ok(()));
+        assert_eq!(runtime.submit_compiled(run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(submit_action_then_finish(&runtime, run2, wf2), Ok(()));
+        assert_eq!(runtime.submit_compiled(run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Both runs are now in wait state. Fire captured timer authority for run1 only.
