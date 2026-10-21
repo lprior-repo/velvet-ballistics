@@ -415,7 +415,13 @@ impl Shard {
         };
 
         self.terminal_runs_remove(run);
-        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+                let admission_state = match boundary.kind() {
+            crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+                crate::shard::types::RuntimeState::Resumable
+            }
+            _ => crate::shard::types::RuntimeState::Initial,
+        };
+        self.admit_run_state(run, state, admission_state)?;
 
         // Step 7: Handle boundary for suspended operations
         match boundary.kind() {
@@ -424,7 +430,11 @@ impl Shard {
                 // Re-inject pending action ticket from boundary
                 let ticket = boundary.pending_action_ticket().map(|t| t.ticket());
                 if let Some(t) = ticket {
-                    self.reinject_pending_action(run, t)?;
+                                        self.reinject_pending_action(run, t)?;
+                    // Update action_attempts to reflect the reinjected ticket's attempt
+                    if let Some(state) = self.run_state_get_mut(run) {
+                        crate::shard::helpers::record_scheduled_attempt(state, t);
+                    }
                 }
             }
             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
@@ -433,13 +443,18 @@ impl Shard {
         }
 
         // Step 8: Drive run from recovered state
-        match self.drive_run(run) {
-            Ok(()) => Ok(()),
-            Err(error) => {
-                if !self.run_state_contains(run) {
-                    self.discard_journal_sequence(run);
+        if boundary.kind() == crate::recovery::RecoveredRunBoundaryKind::PendingAction {
+            // Run is already waiting for action; do not drive further
+            Ok(())
+        } else {
+            match self.drive_run(run) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    if !self.run_state_contains(run) {
+                        self.discard_journal_sequence(run);
+                    }
+                    Err(error)
                 }
-                Err(error)
             }
         }
     }
@@ -587,6 +602,9 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         let code = failure.code;
+                if let Some(pending) = self.pending_action_get(run) {
+                    } else {
+                    }
         self.require_pending_action_ownership(ticket)?;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
         // 1. Preflight (read-only): validate and decide the failure outcome.
@@ -594,7 +612,8 @@ impl Shard {
         //    below cannot diverge memory-only state from durable evidence.
         let preflight = {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-            preflight_action_failure(state, ticket, &failure)?
+            let step_state = state.frame.step_state(ticket.step);
+                        preflight_action_failure(state, ticket, &failure)?
         };
         // 2. Journal append FIRST. FailRun needs both ActionFailed and
         //    RunFailed to append as one same-run batch before any pending

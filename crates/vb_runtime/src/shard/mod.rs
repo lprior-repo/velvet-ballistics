@@ -27,6 +27,24 @@ pub use types::{
     TimerDeadline, TimerDuration, TimerKind, TimerTick, UnregisterOutcome,
 };
 
+
+/// Computes ABI digest for action from run state.
+pub(crate) fn compute_abi_digest_from_state(
+    state: &RunState,
+    action: vb_core::ids::ActionId,
+) -> crate::RuntimeResult<vb_core::ids::WorkflowDigest> {
+    state
+        .action_contracts
+        .iter()
+        .find(|c| c.id == action)
+        .ok_or(crate::RuntimeError::UnsupportedOperation {
+            operation: "action_contract_not_found",
+        })?;
+    crate::recovery::action_contract_abi_digest(
+        state.action_contracts.iter().find(|c| c.id == action).unwrap(),
+    )
+}
+
 // Re-export vb_core types needed by tests
 pub use vb_core::ids::RunId;
 

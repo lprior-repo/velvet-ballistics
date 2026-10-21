@@ -78,7 +78,7 @@ impl Shard {
                 ticket,
                 input,
                 output,
-                action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+                action_abi_digest: crate::shard::compute_abi_digest_from_state(&state, ticket.action)?,
             },
         )?;
         Ok((journal_events, trace_events, state, ticket, step))

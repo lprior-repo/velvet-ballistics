@@ -876,7 +876,7 @@ impl Runtime {
     /// Fails an action with a typed failure payload.
     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
         let shard = self.shard_for(ticket.run)?;
-        shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
+                shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
     /// Looks up the canonical in-flight action ticket for `run`.

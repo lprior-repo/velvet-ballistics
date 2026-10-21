@@ -394,6 +394,45 @@ impl Shard {
         crate::recovery::action_contract_abi_digest(contract)
     }
 
+/// Computes ABI digest for action from run state, returning zero if no contract.
+pub fn compute_abi_digest_from_state(
+    state: &RunState,
+    action: ActionId,
+) -> RuntimeResult<WorkflowDigest> {
+    let contract = state
+        .action_contracts
+        .iter()
+        .find(|c| c.id == action)
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "action_contract_not_found",
+        })?;
+    crate::recovery::action_contract_abi_digest(contract)
+}
+
+    /// Computes ABI digest for action, returning zero if no contract exists.
+    /// This is used by scheduling paths that must not fail on missing contracts.
+    pub(crate) fn abi_digest_for_action_or_zero(
+        &self,
+        run: RunId,
+        action: ActionId,
+    ) -> WorkflowDigest {
+        eprintln!("abi_digest_for_action_or_zero called: run={:?} action={:?}", run, action);
+        let state = self.run_state_get(run);
+        eprintln!("  run_state_get: {:?}", state.is_some());
+        let runs_len = self.runs.len();
+        eprintln!("  runs map length: {}", runs_len);
+        match self.action_abi_digest_for_run_action(run, action) {
+            Ok(digest) => {
+                eprintln!("  OK: digest computed");
+                digest
+            }
+            Err(e) => {
+                eprintln!("  ERR: {:?}", e);
+                WorkflowDigest::from_bytes([0; 32])
+            }
+        }
+    }
+
     /// Returns the runtime state for the given run ID, if it exists.
     #[must_use]
     pub fn runtime_state_get(&self, run_id: RunId) -> Option<RuntimeState> {
