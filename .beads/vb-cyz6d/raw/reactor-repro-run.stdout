@@ -1,0 +1,7 @@
+large_read: complete 8216-byte frame, 20 polling turns, response=Err(Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" })
+accept_burst: client=0, response=Ok(25)
+accept_burst: client=1, response=Err(Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" })
+accept_burst: client=2, response=Err(Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" })
+overloaded_accept: accepted 256, next poll=Err(TooManyClients)
+overwrite_response: sent correlation=11, pending correlation=11, pending bytes=25
+overwrite_response: sent correlation=22, pending correlation=22, pending bytes=25

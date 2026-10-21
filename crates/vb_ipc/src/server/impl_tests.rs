@@ -84,7 +84,14 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
 fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::io::Error> {
     let mut buf = vec![0u8; n];
     let mut read_total = 0usize;
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while read_total < n {
+        if std::time::Instant::now() >= deadline {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "response deadline exceeded",
+            ));
+        }
         match stream.read(&mut buf[read_total..]) {
             Ok(0) => {
                 return Err(std::io::Error::new(
@@ -671,19 +678,22 @@ fn server_processes_multiple_commands_from_same_client() {
         .expect("client should write pipelined frames");
     client.flush().expect("client should flush");
 
-    // Server processes both commands.
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .expect("process poll should succeed");
-
-    // Read both response headers.
+    // Each bounded turn dispatches at most one request per connection.
     for i in 1..=2 {
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .expect("process poll should succeed");
         let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
         assert!(
             response_header_bytes.is_ok(),
             "should read response header {i}"
         );
         let response_header = response_header_bytes.expect("header");
+        let header_bytes: [u8; IPC_HEADER_LEN] =
+            response_header.as_slice().try_into().expect("fixed header");
+        let decoded =
+            IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT).expect("valid header");
+        assert_eq!(decoded.correlation, i);
         let payload_len = u32::from_le_bytes(
             response_header
                 .get(20..24)
@@ -1570,7 +1580,7 @@ use super::impl_::MAX_CLIENTS;
 // ── 1. accept_client when max clients reached ────────────────────────────────
 
 #[test]
-fn accept_client_returns_too_many_clients_when_at_capacity() {
+fn poll_rejects_extra_client_without_stopping_when_at_capacity() {
     let path = temp_socket_path("max_clients");
     let _cleanup = CleanupPath(&path);
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
@@ -1584,13 +1594,12 @@ fn accept_client_returns_too_many_clients_when_at_capacity() {
             .expect("accept should succeed");
     }
 
-    let _extra = make_client(&path);
+    let mut extra = make_client(&path);
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert_eq!(
-        result,
-        Err(IpcServerError::TooManyClients),
-        "should fail when max clients reached"
-    );
+    assert_eq!(result, Ok(true));
+    assert_eq!(server.client_count(), MAX_CLIENTS);
+    assert_eq!(server.rejected_clients(), 1);
+    assert_eq!(extra.read(&mut [0; 1]).expect("rejected peer closes"), 0);
 }
 
 // ── 2. handle_readable when WouldBlock ───────────────────────────────────────
@@ -1836,7 +1845,7 @@ fn handle_writable_partial_write_leaves_remaining_bytes() {
 // ── 9. handle_writable when write fails with non-WouldBlock error ────────────
 
 #[test]
-fn handle_writable_returns_true_on_broken_pipe() {
+fn handle_writable_preserves_broken_pipe_error() {
     let path = temp_socket_path("write_broken");
     let _cleanup = CleanupPath(&path);
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
@@ -1852,11 +1861,13 @@ fn handle_writable_returns_true_on_broken_pipe() {
         .expect("client should exist");
     write_buf.extend_from_slice(&[0xFF; 10]);
 
-    let result = server.handle_writable(1);
-    let Ok(val) = result else {
-        panic!("handle_writable should not error")
-    };
-    assert_eq!(val, true, "should return true on broken pipe");
+    let error = server
+        .handle_writable(1)
+        .expect_err("broken pipe must remain observable");
+    assert!(
+        matches!(error, IpcServerError::ResponseWriteFailed { source }
+        if matches!(source.kind(), std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionReset))
+    );
 }
 
 // ── 10. remove_client actually removes from internal maps ────────────────────

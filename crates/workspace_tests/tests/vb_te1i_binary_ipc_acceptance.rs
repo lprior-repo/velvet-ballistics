@@ -24,7 +24,9 @@ use std::time::Duration;
 use mio::net::UnixStream;
 use vb_core::{RunId, WorkflowDigest};
 use vb_ipc::server::{IpcResponse, IpcServer};
-use vb_ipc::{IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
+use vb_ipc::{
+    IPC_HEADER_LEN, IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunPayload,
+};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 
@@ -308,13 +310,41 @@ fn ipc_rejects_bad_magic_before_payload_allocation() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("process poll should succeed");
 
-    match read_response_header(&mut client) {
-        Err(message) => assert_eq!(
-            message, "eof",
-            "bad magic must disconnect without allocating or writing a response"
-        ),
-        Ok(header) => panic!("bad magic unexpectedly produced response header {header:?}"),
+    // Early validation consumes only the four magic bytes. Unix may reset a
+    // socket closed with unread request bytes; both terminal outcomes must
+    // carry zero response bytes. WouldBlock is not a successful rejection.
+    match client.read(&mut [0; IPC_HEADER_LEN]) {
+        Ok(0) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::ConnectionReset => {}
+        result => panic!("bad magic must disconnect with no response bytes: {result:?}"),
     }
+    // Internal removal is also asserted by the production server unit test
+    // server_disconnects_invalid_magic_without_response.
+
+    let mut healthy = std::os::unix::net::UnixStream::connect(&path).expect("healthy connect");
+    healthy
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .expect("bounded read");
+    healthy
+        .write_all(&build_frame(IpcCommand::Health, 91, &[]))
+        .expect("health request");
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(10)))
+        .expect("healthy poll");
+    let mut bytes = [0; IPC_HEADER_LEN];
+    healthy
+        .read_exact(&mut bytes)
+        .expect("healthy response header");
+    let header = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT).expect("valid response");
+    let mut payload = vec![0; usize::try_from(header.payload_len).expect("payload length")];
+    healthy
+        .read_exact(&mut payload)
+        .expect("healthy response payload");
+    assert_eq!(header.correlation, 91);
+    assert_eq!(
+        postcard::from_bytes::<IpcResponse>(&payload).expect("typed response"),
+        IpcResponse::Healthy
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

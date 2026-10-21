@@ -68,6 +68,9 @@ pub fn append_read_bytes(
     if next_len > max_buffer {
         return Err(IpcServerError::ReadBufferTooLarge);
     }
+    read_buffer
+        .try_reserve(read_slice.len())
+        .map_err(|_| IpcServerError::ReadBufferTooLarge)?;
     read_buffer.extend_from_slice(read_slice);
     Ok(())
 }
@@ -144,6 +147,9 @@ pub fn send_response(
     request_header: &IpcFrameHeader,
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
+    if !write_buffer.is_empty() {
+        return Err(IpcServerError::ResponsePending);
+    }
     #[cfg(test)]
     let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.get() {
         Err(postcard::Error::SerializeBufferFull)
@@ -179,13 +185,26 @@ pub fn send_response(
         .encode()
         .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
-    write_buffer.clear();
+    let frame_len = header_bytes
+        .len()
+        .checked_add(payload_bytes.len())
+        .ok_or(IpcServerError::ResponseEncodeFailed)?;
+    write_buffer
+        .try_reserve(frame_len)
+        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
     write_buffer.extend_from_slice(&header_bytes);
     write_buffer.extend_from_slice(&payload_bytes);
 
     let written = match stream.write(write_buffer) {
         Ok(count) => count,
-        Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => 0,
+        Err(ref source)
+            if matches!(
+                source.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+            ) =>
+        {
+            0
+        }
         Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
     };
     if written > 0 {

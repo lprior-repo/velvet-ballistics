@@ -15,16 +15,21 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket};
 use vb_runtime::trace::TraceEvent;
 
+mod connection_io;
 pub mod dispatch;
 pub mod error;
 pub mod handlers;
 pub mod helpers;
 pub mod impl_;
+mod reactor;
 pub mod ticket;
 pub mod trace;
 
 #[cfg(test)]
 mod impl_tests;
+
+#[cfg(test)]
+mod reactor_tests;
 
 use crate::{
     IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
@@ -43,6 +48,10 @@ pub struct IpcServer {
     events: mio::Events,
     clients: std::collections::HashMap<usize, ClientConnection>,
     next_token: usize,
+    accept_ready: bool,
+    shutdown_requested: bool,
+    rejected_clients: u64,
+    last_client_error: Option<IpcServerError>,
     #[cfg(test)]
     test_poll_result: Option<Result<bool, IpcServerError>>,
 }
@@ -53,6 +62,15 @@ struct ClientConnection {
     write_buffer: Vec<u8>,
     /// Magic validation state — starts as AwaitingMagic, transitions to MagicValidated.
     magic_state: helpers::MagicValidationState,
+    read_ready: bool,
+    write_ready: bool,
+    close_policy: ClosePolicy,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ClosePolicy {
+    KeepAlive,
+    AfterResponse,
 }
 
 /// Response payload sent back to IPC clients after command processing.

@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running tests/vb_te1i_binary_ipc_acceptance.rs (target/debug/deps/vb_te1i_binary_ipc_acceptance-5e8ff05892383d65)

@@ -1,0 +1,19 @@
+
+running 1 test
+test queue::writer::flush_tests::idempotent_visible_event_requires_barrier_before_durable_drain ... FAILED
+
+failures:
+
+---- queue::writer::flush_tests::idempotent_visible_event_requires_barrier_before_durable_drain stdout ----
+
+thread 'queue::writer::flush_tests::idempotent_visible_event_requires_barrier_before_durable_drain' (2763261) panicked at crates/vb_storage/src/queue/writer/flush_tests.rs:72:5:
+assertion failed: matches!(queue.flush_batch_durable(&journal),
+    Err(JournalError::StrictDurabilityFailed))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    queue::writer::flush_tests::idempotent_visible_event_requires_barrier_before_durable_drain
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1598 filtered out; finished in 0.01s
+

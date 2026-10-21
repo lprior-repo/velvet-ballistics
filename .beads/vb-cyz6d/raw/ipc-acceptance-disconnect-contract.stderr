@@ -1,0 +1,32 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/workspace_tests)
+error[E0425]: cannot find value `IPC_HEADER_LEN` in this scope
+   --> crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs:314:32
+    |
+314 |     match client.read(&mut [0; IPC_HEADER_LEN]) {
+    |                                ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this constant
+    |
+ 19 + use vb_ipc::IPC_HEADER_LEN;
+    |
+
+error[E0425]: cannot find value `IPC_HEADER_LEN` in this scope
+   --> crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs:325:25
+    |
+325 |     let mut bytes = [0; IPC_HEADER_LEN];
+    |                         ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this constant
+    |
+ 19 + use vb_ipc::IPC_HEADER_LEN;
+    |
+
+error[E0599]: no method named `client_count` found for struct `IpcServer` in the current scope
+   --> crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs:319:23
+    |
+319 |     assert_eq!(server.client_count(), 0, "invalid peer must be removed");
+    |                       ^^^^^^^^^^^^ method not found in `IpcServer`
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_te1i_binary_ipc_acceptance") due to 3 previous errors

@@ -1,0 +1,942 @@
+    Checking libc v0.2.186
+    Checking crossbeam-utils v0.8.21
+    Checking cfg-if v1.0.4
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking serde_core v1.0.228
+    Checking equivalent v1.0.2
+   Compiling num-traits v0.2.19
+    Checking spin v0.9.8
+    Checking once_cell v1.21.4
+    Checking log v0.4.29
+    Checking bitflags v2.11.1
+    Checking linux-raw-sys v0.12.1
+    Checking rustix v1.1.4
+    Checking thiserror v2.0.18
+    Checking getrandom v0.4.2
+    Checking crossbeam-epoch v0.9.18
+    Checking hashbrown v0.16.1
+    Checking byteorder v1.5.0
+    Checking twox-hash v2.1.2
+    Checking xxhash-rust v0.8.15
+    Checking fastrand v2.4.1
+    Checking smallvec v1.15.1
+    Checking serde v1.0.228
+    Checking compare v0.0.6
+    Checking byteorder-lite v0.1.0
+    Checking sfa v1.0.0
+    Checking interval-heap v0.0.5
+    Checking parking_lot_core v0.9.12
+    Checking tempfile v3.27.0
+   Compiling enum_dispatch v0.3.13
+    Checking lz4_flex v0.13.1
+    Checking hash32 v0.2.1
+    Checking quick_cache v0.6.22
+    Checking crossbeam-skiplist v0.1.3
+    Checking stable_deref_trait v1.2.1
+    Checking byteview v0.10.1
+    Checking hashbrown v0.17.1
+    Checking varint-rs v2.2.0
+    Checking hashbrown v0.14.5
+    Checking iana-time-zone v0.1.65
+    Checking rustc-hash v2.1.2
+    Checking self_cell v1.2.2
+    Checking dashmap v6.2.1
+    Checking lsm-tree v3.1.4
+    Checking chrono v0.4.44
+    Checking indexmap v2.14.0
+    Checking heapless v0.7.17
+    Checking bytes v1.11.1
+    Checking cobs v0.3.0
+    Checking flume v0.12.0
+    Checking cpufeatures v0.3.0
+    Checking arrayref v0.3.9
+    Checking arrayvec v0.7.6
+    Checking constant_time_eq v0.4.2
+    Checking blake3 v1.8.5
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_core)
+    Checking fjall v3.1.4
+    Checking postcard v1.1.3
+error: long literal lacking separators
+  --> crates/vb_core/src/action/ticket.rs:30:23
+   |
+30 |         .wrapping_mul(0x6c62272e07bb0143_u128)
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x6c62_272e_07bb_0143_u128`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unreadable_literal)]`
+
+error: long literal lacking separators
+  --> crates/vb_core/src/action/ticket.rs:32:23
+   |
+32 |         .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x3b4f_1a5b_6c2d_8e7f_u128`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+
+error: long literal lacking separators
+  --> crates/vb_core/src/action/ticket.rs:34:23
+   |
+34 |         .wrapping_mul(0x5bd1e9956c7b4d3a_u128)
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x5bd1_e995_6c7b_4d3a_u128`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+
+    Checking crc32c v0.6.8
+    Checking crossbeam-queue v0.3.12
+    Checking rtrb v0.3.4
+    Checking mio v1.2.0
+    Checking crossbeam-channel v0.5.15
+error: these match arms have identical bodies
+  --> crates/vb_core/src/action/error.rs:28:13
+   |
+28 |             ActionFailureCode::Rejected => RetryPolicy::NonRetryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+33 |             ActionFailureCode::InvalidInput => RetryPolicy::NonRetryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 |             ActionFailureCode::PermissionDenied => RetryPolicy::NonRetryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |             ActionFailureCode::Conflict => RetryPolicy::Retryable,
+36 |             ActionFailureCode::Unknown => RetryPolicy::NonRetryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: otherwise merge the patterns into a single arm
+   |
+28 ~             ActionFailureCode::Timeout => RetryPolicy::Retryable,
+29 |             ActionFailureCode::RateLimited => RetryPolicy::Retryable,
+30 |             ActionFailureCode::ResourceExhausted => RetryPolicy::Retryable,
+31 |             ActionFailureCode::ExternalUnavailable => RetryPolicy::Retryable,
+32 ~             ActionFailureCode::Conflict => RetryPolicy::Retryable,
+33 ~             ActionFailureCode::Rejected | ActionFailureCode::InvalidInput | ActionFailureCode::PermissionDenied | ActionFailureCode::Unknown => RetryPolicy::NonRetryable,
+   |
+
+error: these match arms have identical bodies
+  --> crates/vb_core/src/action/error.rs:29:13
+   |
+29 |             ActionFailureCode::Timeout => RetryPolicy::Retryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30 |             ActionFailureCode::RateLimited => RetryPolicy::Retryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 |             ActionFailureCode::ResourceExhausted => RetryPolicy::Retryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 |             ActionFailureCode::ExternalUnavailable => RetryPolicy::Retryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+35 |             ActionFailureCode::Conflict => RetryPolicy::Retryable,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+   |
+29 ~             ActionFailureCode::Timeout | ActionFailureCode::RateLimited | ActionFailureCode::ResourceExhausted | ActionFailureCode::ExternalUnavailable | ActionFailureCode::Conflict => RetryPolicy::Retryable,
+30 ~             ActionFailureCode::InvalidInput => RetryPolicy::NonRetryable,
+31 |             ActionFailureCode::PermissionDenied => RetryPolicy::NonRetryable,
+32 ~             ActionFailureCode::Unknown => RetryPolicy::NonRetryable,
+   |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/budget.rs:259:9
+    |
+259 |         [] => false,
+    |         ^^^^^^^^^^^
+...
+267 |         _ => false,
+    |         ^^^^^^^^^^ the wildcard arm
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise remove the non-wildcard arm
+    |
+259 -         [] => false,
+    |
+
+error: this function has too many lines (109/100)
+    --> crates/vb_core/src/budget.rs:1401:1
+     |
+1401 | / fn visit_node_for_total_steps(
+1402 | |     nodes: &[crate::workflow::CompiledNode],
+1403 | |     current: StepIdx,
+1404 | |     node_count: usize,
+...    |
+1409 | |     stack: &mut Vec<StepIdx>,
+1410 | | ) -> Result<u64, BudgetTraversalError> {
+     | |______________________________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
+     = note: `-D clippy::too-many-lines` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/budget.rs:1428:9
+     |
+1428 | /         CompiledNodeKind::ForEachStart {
+1429 | |             limit, body, done, ..
+1430 | |         } => {
+1431 | |             total = count_and_push_loop_body(
+...    |
+1441 | |             .map_err(map_loop_body_budget_error)?;
+1442 | |         }
+     | |_________^
+1443 | /         CompiledNodeKind::CollectStart {
+1444 | |             limit, body, done, ..
+1445 | |         } => {
+1446 | |             total = count_and_push_loop_body(
+...    |
+1456 | |             .map_err(map_loop_body_budget_error)?;
+1457 | |         }
+     | |_________^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+1428 ~         CompiledNodeKind::ForEachStart {
+1429 +             limit, body, done, ..
+1430 ~         } | CompiledNodeKind::CollectStart {
+     |
+
+error: this could be rewritten as `let...else`
+    --> crates/vb_core/src/budget.rs:1459:13
+     |
+1459 | /             let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
+1460 | |                 Ok(value) => value,
+1461 | |                 Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
+1462 | |             };
+     | |______________^ help: consider writing: `let Ok(iter_count) = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) else { return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }) };`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+     = note: `-D clippy::manual-let-else` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+
+error: this argument is passed by value, but not consumed in the function body
+    --> crates/vb_core/src/budget.rs:1525:38
+     |
+1525 | fn map_loop_body_budget_error(error: BudgetError) -> BudgetTraversalError {
+     |                                      ^^^^^^^^^^^
+     |
+help: or consider marking this type as `Copy`
+    --> crates/vb_core/src/budget.rs:535:1
+     |
+ 535 | pub enum BudgetError {
+     | ^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
+     = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
+help: consider taking a reference instead
+     |
+1525 | fn map_loop_body_budget_error(error: &BudgetError) -> BudgetTraversalError {
+     |                                      +
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/budget.rs:1688:9
+     |
+1688 | /         CompiledNodeKind::ForEachStart {
+1689 | |             limit, body, done, ..
+1690 | |         } => {
+1691 | |             if *body != current {
+...    |
+1702 | |         }
+     | |_________^
+1703 | /         CompiledNodeKind::CollectStart {
+1704 | |             limit, body, done, ..
+1705 | |         } => {
+1706 | |             if *body != current {
+...    |
+1717 | |         }
+     | |_________^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+1688 ~         CompiledNodeKind::ForEachStart {
+1689 +             limit, body, done, ..
+1690 ~         } | CompiledNodeKind::CollectStart {
+     |
+
+error: this could be rewritten as `let...else`
+    --> crates/vb_core/src/budget.rs:1719:13
+     |
+1719 | /             let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
+1720 | |                 Ok(value) => value,
+1721 | |                 Err(_) => {
+1722 | |                     return Err(BudgetError::TotalStepsExceeded {
+...    |
+1727 | |             };
+     | |______________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+help: consider writing
+     |
+1719 ~             let Ok(iter) = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) else {
+1720 +                     return Err(BudgetError::TotalStepsExceeded {
+1721 +                         actual: u64::MAX,
+1722 +                         limit: u64::MAX,
+1723 +                     });
+1724 +                 };
+     |
+
+error: consider adding a `;` to the last statement for consistent formatting
+    --> crates/vb_core/src/budget.rs:1820:13
+     |
+1820 |             push_together_start_successors(branches, *join, stack)
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `push_together_start_successors(branches, *join, stack);`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
+     = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+    --> crates/vb_core/src/budget.rs:1823:13
+     |
+1823 |             push_together_branch_successors(*entry, *join, stack)
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `push_together_branch_successors(*entry, *join, stack);`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
+
+error: consider adding a `;` to the last statement for consistent formatting
+    --> crates/vb_core/src/budget.rs:1826:13
+     |
+1826 |             push_error_handler_successors(*body, *handler, stack)
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `push_error_handler_successors(*body, *handler, stack);`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
+
+error: the following explicit lifetimes could be elided: 'de
+    --> crates/vb_core/src/diagnostic.rs:1758:14
+     |
+1758 |         impl<'de> Visitor<'de> for SymbolicCodeVisitor {
+     |              ^^^          ^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#elidable_lifetime_names
+     = note: `-D clippy::elidable-lifetime-names` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::elidable_lifetime_names)]`
+help: elide the lifetimes
+     |
+1758 -         impl<'de> Visitor<'de> for SymbolicCodeVisitor {
+1758 +         impl Visitor<'_> for SymbolicCodeVisitor {
+     |
+
+error: struct constructor field order is inconsistent with struct definition field order
+    --> crates/vb_core/src/diagnostic.rs:1945:13
+     |
+1945 | /             code,
+1946 | |             numeric_code,
+1947 | |             message,
+1948 | |             severity,
+1949 | |             source_file,
+1950 | |             span,
+     | |________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor
+     = note: `-D clippy::inconsistent-struct-constructor` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::inconsistent_struct_constructor)]`
+help: try
+     |
+1945 ~             code,
+1946 +             numeric_code,
+1947 +             message,
+1948 +             severity,
+1949 +             span,
+1950 ~             source_file,
+     |
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/diagnostic.rs:2031:9
+     |
+2031 |         0x15 => CodeCategory::Lifecycle,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+2035 |         0x33 => CodeCategory::Lifecycle,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+2031 ~         0x15 | 0x33 => CodeCategory::Lifecycle,
+2032 |         0x20 => CodeCategory::Storage,
+2033 |         0x30 => CodeCategory::Runtime,
+2034 |         0x32 => CodeCategory::Ipc,
+2035 ~         0x40 => CodeCategory::RuntimeBoundary,
+     |
+
+error: usage of wildcard import for enum variants
+  --> crates/vb_core/src/engine/error_routing.rs:55:9
+   |
+55 |     use CoreError::*;
+   |         ^^^^^^^^^^^^ help: try: `CoreError::{InvalidProgramCounter, MissingNextStep, MissingOutputSlot, InvalidCompiledWorkflow, SlotOutOfBounds, ExprOutOfBounds, ConstOutOfBounds, StepStateOutOfBounds, ListIndexOutOfBounds, SymbolOutOfBounds, ListOutOfBounds, ObjectOutOfBounds, BlobOutOfBounds, TypeMismatch, NonBoolCondition, DivisionByZero, NonFiniteNumber, StepBudgetExhausted, StepCounterOverflow, QueueFull, AllocationFailed, ExpressionStackOverflow, ExpressionStackUnderflow, UnsupportedPrimitive, UnsupportedAccessorTraversal, ObjectFieldNotFound, InternalInvariantViolation, IterationLimitExceeded, RepeatExhausted, InvalidRepeatState, CollectPageLimitExceeded, CollectItemLimitExceeded, CollectTimeLimitExceeded, TogetherBranchLimitExceeded, ParallelLimitExceeded, BudgetExceeded, BudgetParse, ResourceLimitExceeded, CapabilityDenied, ActionFailed, ActionResumeRejected, CollectPageOrderViolation, CollectExtraHydrationFailed, CollectEvidenceCapacityExceeded, EvidenceCapacityExceeded, LifecycleStorageUnavailable, LifecycleDuplicateRequest, LifecycleStaleRequest, LifecycleInvalidTransition, JournalWriteFailure, ReplayCorruption, InvalidSpan}`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#enum_glob_use
+   = note: `-D clippy::enum-glob-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_glob_use)]`
+
+error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
+   --> crates/vb_core/src/engine/error_routing.rs:114:5
+    |
+114 | /     error
+115 | |         .runtime_code()
+116 | |         .map(|code| code.into())
+117 | |         .unwrap_or_else(|| engine_error_static_code(error).into())
+    | |__________________________________________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or
+    = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
+help: try
+    |
+114 ~     error
+115 +         .runtime_code().map_or_else(|| engine_error_static_code(error).into(), |code| code.into())
+    |
+
+error: redundant closure
+   --> crates/vb_core/src/engine/error_routing.rs:116:14
+    |
+116 |         .map(|code| code.into())
+    |              ^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::convert::Into::into`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
+    = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_for_method_calls)]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+   --> crates/vb_core/src/engine/validate.rs:222:29
+    |
+222 |         for branch_entry in branches.iter() {
+    |                             ^^^^^^^^^^^^^^^ help: to write this more concisely, try: `branches`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#explicit_iter_loop
+    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> crates/vb_core/src/frame.rs:72:5
+   |
+72 | /     const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
+73 | |         (StepState::Pending, StepState::Running),
+74 | |         (StepState::Pending, StepState::Succeeded),
+75 | |         (StepState::Pending, StepState::Failed),
+...  |
+90 | |         (StepState::Skipped, StepState::Skipped),
+91 | |     ];
+   | |______^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+   = note: `-D clippy::items-after-statements` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::items_after_statements)]`
+
+error: these match arms have identical bodies
+  --> crates/vb_core/src/replay/choose/mod.rs:23:13
+   |
+23 |             EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+24 |             EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+   |
+23 -             EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+24 -             EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+23 +             EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+   |
+
+error: these match arms have identical bodies
+  --> crates/vb_core/src/replay/ops.rs:53:9
+   |
+53 |         EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+54 |         EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+   |
+53 -         EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+54 -         EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+53 +         EngineError::SlotOutOfBounds { slot: s } | EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+   |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/ops.rs:195:9
+    |
+195 |         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+196 |         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+195 -         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+196 -         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+195 +         EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/step.rs:408:9
+    |
+408 |         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+409 |         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+408 -         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+409 -         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+408 +         EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/step.rs:460:9
+    |
+460 |         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+461 |         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+460 -         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+461 -         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+460 +         EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/step.rs:513:13
+    |
+513 |             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+514 |             EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+513 -             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+514 -             EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+513 +             EngineError::SlotOutOfBounds { slot: s } | EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/step.rs:563:13
+    |
+563 |             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+564 |             EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+563 -             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+564 -             EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+563 +             EngineError::SlotOutOfBounds { slot: s } | EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+    |
+
+error: this argument is passed by value, but not consumed in the function body
+   --> crates/vb_core/src/replay/mod.rs:141:28
+    |
+141 | fn engine_to_replay_err(e: EngineError) -> ReplayError {
+    |                            ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
+help: consider taking a reference instead
+    |
+141 | fn engine_to_replay_err(e: &EngineError) -> ReplayError {
+    |                            +
+
+error: these match arms have identical bodies
+   --> crates/vb_core/src/replay/mod.rs:144:9
+    |
+144 |         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+145 |         EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is unintentional make the arms return different values
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+    |
+144 ~         EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
+145 ~         _ => ReplayError::Internal {
+    |
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:255:9
+    |
+255 | /         let span = match u128::from(kmax)
+256 | |             .checked_sub(u128::from(kmin))
+257 | |             .and_then(|s| s.checked_add(1))
+...   |
+266 | |         };
+    | |__________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+help: consider writing
+    |
+255 ~         let Some(span) = u128::from(kmax)
+256 +             .checked_sub(u128::from(kmin))
+257 +             .and_then(|s| s.checked_add(1)) else {
+258 +                 return Err(PartitionError::InvalidKeyRange {
+259 +                     start: kmin,
+260 +                     end: kmax,
+261 +                 });
+262 +             };
+    |
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:269:9
+    |
+269 | /         let step_u128 = match span.checked_div(n_u128) {
+270 | |             Some(s) => s,
+271 | |             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+272 | |         };
+    | |__________^ help: consider writing: `let Some(step_u128) = span.checked_div(n_u128) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:273:9
+    |
+273 | /         let rem_u128 = match span.checked_rem(n_u128) {
+274 | |             Some(r) => r,
+275 | |             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+276 | |         };
+    | |__________^ help: consider writing: `let Some(rem_u128) = span.checked_rem(n_u128) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:278:9
+    |
+278 | /         let step = match u64::try_from(step_u128) {
+279 | |             Ok(s) => s,
+280 | |             Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+281 | |         };
+    | |__________^ help: consider writing: `let Ok(step) = u64::try_from(step_u128) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:282:9
+    |
+282 | /         let rem = match u64::try_from(rem_u128) {
+283 | |             Ok(r) => r,
+284 | |             Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+285 | |         };
+    | |__________^ help: consider writing: `let Ok(rem) = u64::try_from(rem_u128) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:287:9
+    |
+287 | /         let capacity = match usize::try_from(n) {
+288 | |             Ok(value) => value,
+289 | |             Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+290 | |         };
+    | |__________^ help: consider writing: `let Ok(capacity) = usize::try_from(n) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:294:9
+    |
+294 | /         let n_minus_1 = match n.checked_sub(1) {
+295 | |             Some(v) => v,
+296 | |             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+297 | |         };
+    | |__________^ help: consider writing: `let Some(n_minus_1) = n.checked_sub(1) else { return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: boolean to int conversion using if
+   --> crates/vb_core/src/shard/partition/mod.rs:299:25
+    |
+299 |             let extra = if i < rem { 1u64 } else { 0u64 };
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `u64::from(i < rem)`
+    |
+    = note: `(i < rem) as u64` or `(i < rem).into()` can also be valid options
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#bool_to_int_with_if
+    = note: `-D clippy::bool-to-int-with-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::bool_to_int_with_if)]`
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:300:13
+    |
+300 | /             let size = match step.checked_add(extra) {
+301 | |                 Some(s) => s,
+302 | |                 None => return Err(PartitionError::ArithmeticOverflow { shard_index: i }),
+303 | |             };
+    | |______________^ help: consider writing: `let Some(size) = step.checked_add(extra) else { return Err(PartitionError::ArithmeticOverflow { shard_index: i }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:304:13
+    |
+304 | /             let end = match cursor.checked_add(size).and_then(|s| s.checked_sub(1)) {
+305 | |                 Some(e) => e,
+306 | |                 None => return Err(PartitionError::ArithmeticOverflow { shard_index: i }),
+307 | |             };
+    | |______________^ help: consider writing: `let Some(end) = cursor.checked_add(size).and_then(|s| s.checked_sub(1)) else { return Err(PartitionError::ArithmeticOverflow { shard_index: i }) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+   --> crates/vb_core/src/shard/partition/mod.rs:370:22
+    |
+370 |         for range in ranges.iter() {
+    |                      ^^^^^^^^^^^^^ help: to write this more concisely, try: `ranges`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#explicit_iter_loop
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:376:13
+    |
+376 | /             let curr = match pair.first().copied() {
+377 | |                 Some(value) => value,
+378 | |                 None => return Err("partition plan pair missing current range"),
+379 | |             };
+    | |______________^ help: consider writing: `let Some(curr) = pair.first().copied() else { return Err("partition plan pair missing current range") };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/shard/partition/mod.rs:380:13
+    |
+380 | /             let next = match pair.get(1).copied() {
+381 | |                 Some(value) => value,
+382 | |                 None => return Err("partition plan pair missing next range"),
+383 | |             };
+    | |______________^ help: consider writing: `let Some(next) = pair.get(1).copied() else { return Err("partition plan pair missing next range") };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+   --> crates/vb_core/src/value.rs:338:25
+    |
+338 | /                         let key_display = match self.1.symbol(field.key) {
+339 | |                             Ok(s) => s,
+340 | |                             Err(_) => return write!(f, "{}:", field.key.get()),
+341 | |                         };
+    | |__________________________^ help: consider writing: `let Ok(key_display) = self.1.symbol(field.key) else { return write!(f, "{}:", field.key.get()) };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: redundant closure
+   --> crates/vb_core/src/workflow/mod.rs:161:50
+    |
+161 |         self.step_names.get(step.as_usize()).map(|s| s.as_ref())
+    |                                                  ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::convert::AsRef::as_ref`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
+
+error: this function has too many lines (128/100)
+    --> crates/vb_core/src/workflow/mod.rs:1071:1
+     |
+1071 | fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<(), WorkflowError> {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/workflow/mod.rs:1170:9
+     |
+1170 |         CompiledNodeKind::RepeatFinish { result } => validate_slot(*result, parts.slot_count),
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1198 |         CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+1170 ~         CompiledNodeKind::RepeatFinish { result } | CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),
+1171 |         CompiledNodeKind::WaitUntil { deadline_slot } => {
+ ...
+1197 |         CompiledNodeKind::Jump { target } => validate_step(*target, parts.nodes.len()),
+1198 ~         }
+     |
+
+error: this could be rewritten as `let...else`
+    --> crates/vb_core/src/workflow/mod.rs:1534:9
+     |
+1534 | /         let current = match queue.get(head) {
+1535 | |             Some(&v) => v,
+1536 | |             None => break,
+1537 | |         };
+     | |__________^ help: consider writing: `let Some(&v) = queue.get(head) else { break };`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: this could be rewritten as `let...else`
+    --> crates/vb_core/src/workflow/mod.rs:1544:9
+     |
+1544 | /         let node = match parts.nodes.get(current) {
+1545 | |             Some(n) => n,
+1546 | |             None => break,
+1547 | |         };
+     | |__________^ help: consider writing: `let Some(node) = parts.nodes.get(current) else { break };`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/workflow/mod.rs:1747:9
+     |
+1747 | /         CompiledNodeKind::ForEachStart { body, done, .. } => {
+1748 | |             validate_loop_start_edges(*body, *done, ci, cid)
+1749 | |         }
+     | |_________^
+...
+1757 | /         CompiledNodeKind::CollectStart { body, done, .. }
+1758 | |         | CompiledNodeKind::ReduceStart { body, done, .. }
+1759 | |         | CompiledNodeKind::RepeatStart { body, done, .. } => {
+1760 | |             validate_loop_start_edges(*body, *done, ci, cid)
+1761 | |         }
+     | |_________^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+1747 ~         CompiledNodeKind::ForEachStart { body, done, .. } | CompiledNodeKind::CollectStart { body, done, .. }
+1748 +         | CompiledNodeKind::ReduceStart { body, done, .. }
+1749 ~         | CompiledNodeKind::RepeatStart { body, done, .. } => {
+1750 |             validate_loop_start_edges(*body, *done, ci, cid)
+ ...
+1758 |         }
+1759 ~         CompiledNodeKind::CollectPage { done, .. }
+     |
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/workflow/mod.rs:1750:9
+     |
+1750 |           CompiledNodeKind::ForEachNext { done, .. } => validate_loop_done_only(*done, ci, cid),
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1762 | /         CompiledNodeKind::CollectPage { done, .. }
+1763 | |         | CompiledNodeKind::CollectNext { done, .. }
+1764 | |         | CompiledNodeKind::ReduceNext { done, .. }
+1765 | |         | CompiledNodeKind::RepeatAttempt { done, .. } => validate_loop_done_only(*done, ci, cid),
+     | |_________________________________________________________________________________________________^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+1750 ~         CompiledNodeKind::ForEachNext { done, .. } | CompiledNodeKind::CollectPage { done, .. }
+1751 +         | CompiledNodeKind::CollectNext { done, .. }
+1752 +         | CompiledNodeKind::ReduceNext { done, .. }
+1753 ~         | CompiledNodeKind::RepeatAttempt { done, .. } => validate_loop_done_only(*done, ci, cid),
+1754 |         CompiledNodeKind::TogetherStart { branches, join } => {
+ ...
+1764 |         }
+1765 ~         CompiledNodeKind::RepeatCheck { done, .. } => validate_forward_target(*done, ci, cid),
+     |
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+    --> crates/vb_core/src/workflow/mod.rs:1776:1
+     |
+1776 | / fn validate_choose_slot_edges(
+1777 | |     branches: &[SlotBranch],
+1778 | |     otherwise: &Option<StepIdx>,
+1779 | |     ci: usize,
+...    |
+1788 | |     Ok(())
+1789 | | }
+     | |_^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ref_option
+     = note: `-D clippy::ref-option` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
+help: change this to
+     |
+1778 -     otherwise: &Option<StepIdx>,
+1778 +     otherwise: Option<&StepIdx>,
+     |
+
+error: this argument (4 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
+    --> crates/vb_core/src/workflow/mod.rs:1778:16
+     |
+1778 |     otherwise: &Option<StepIdx>,
+     |                ^^^^^^^^^^^^^^^^ help: consider passing by value instead: `Option<StepIdx>`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
+     = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::trivially_copy_pass_by_ref)]`
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+    --> crates/vb_core/src/workflow/mod.rs:1791:1
+     |
+1791 | / fn validate_choose_expr_edges(
+1792 | |     branches: &[ExprBranch],
+1793 | |     otherwise: &Option<StepIdx>,
+1794 | |     ci: usize,
+...    |
+1803 | |     Ok(())
+1804 | | }
+     | |_^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ref_option
+help: change this to
+     |
+1793 -     otherwise: &Option<StepIdx>,
+1793 +     otherwise: Option<&StepIdx>,
+     |
+
+error: this argument (4 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
+    --> crates/vb_core/src/workflow/mod.rs:1793:16
+     |
+1793 |     otherwise: &Option<StepIdx>,
+     |                ^^^^^^^^^^^^^^^^ help: consider passing by value instead: `Option<StepIdx>`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
+
+error: these match arms have identical bodies
+    --> crates/vb_core/src/workflow/mod.rs:2021:9
+     |
+2021 |         (LifecycleState::Active, LifecycleCommand::Cancel) => true,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2022 |         (LifecycleState::WaitingAnswer, LifecycleCommand::Cancel) => true,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2023 |         // Resume is valid from WaitingAnswer
+2024 |         (LifecycleState::WaitingAnswer, LifecycleCommand::Resume) => true,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025 |         // Retry is valid from Failed
+2026 |         (LifecycleState::Failed, LifecycleCommand::Retry) => true,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2027 |         // Answer is valid from WaitingAnswer
+2028 |         (LifecycleState::WaitingAnswer, LifecycleCommand::Answer) => true,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: if this is unintentional make the arms return different values
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+     |
+2021 ~         // Resume is valid from WaitingAnswer
+2022 ~         // Retry is valid from Failed
+2023 ~         // Answer is valid from WaitingAnswer
+2024 ~         (LifecycleState::Active, LifecycleCommand::Cancel) | (LifecycleState::WaitingAnswer, LifecycleCommand::Cancel) | (LifecycleState::WaitingAnswer, LifecycleCommand::Resume) | (LifecycleState::Failed, LifecycleCommand::Retry) | (LifecycleState::WaitingAnswer, LifecycleCommand::Answer) => true,
+     |
+
+error: could not compile `vb_core` (lib) due to 58 previous errors
