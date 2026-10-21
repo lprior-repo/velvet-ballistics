@@ -1,0 +1,13 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_runtime)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_expr)
+    Checking clap v4.6.1
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_yaml)
+    Checking anyhow v1.0.102
+    Checking regex v1.12.3
+    Checking arbitrary v1.4.2
+    Checking libfuzzer-sys v0.4.13
+    Checking xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/xtask)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_ipc)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.25s
