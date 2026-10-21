@@ -45,6 +45,7 @@ fn policy_limit_budget(policy: BoundednessPolicy) -> WholeWorkflowBudget {
 
 fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("vb-qi37-2-5-two-step"),
         digest: WorkflowDigest::from_bytes([37; 32]),
         nodes: Box::from([
@@ -82,6 +83,7 @@ fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
 
 fn workflow_parts(name: &'static str, nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([45; 32]),
         nodes,

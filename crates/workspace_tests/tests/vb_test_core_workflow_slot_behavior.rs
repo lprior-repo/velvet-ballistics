@@ -45,6 +45,7 @@ use vb_core::{
 /// A minimal 2-step workflow: SetConst -> Finish
 fn two_step_workflow(value: i64) -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("test_two_step"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![
@@ -85,6 +86,7 @@ fn two_step_workflow(value: i64) -> CompiledWorkflow {
 /// A 3-step workflow: SetConst -> Copy -> Finish
 fn three_step_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("test_three_step"),
         digest: WorkflowDigest::from_bytes([0xCD; 32]),
         nodes: vec![
@@ -135,6 +137,7 @@ fn three_step_workflow() -> CompiledWorkflow {
 /// Workflow that suspends on a Do node (action)
 fn suspend_on_action_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("test_do_suspend"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![CompiledNode {
@@ -194,6 +197,7 @@ mod behavior_new_run_frame {
     fn given_workflow_with_zero_slots_when_new_run_frame_then_returns_valid_frame() {
         // GIVEN: A workflow with 2 steps but 0 slots (Nop-only, no Finish with slots)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("zero_slots"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: vec![
@@ -476,6 +480,7 @@ mod behavior_slot_management {
     fn given_empty_frame_when_write_and_read_slot_then_roundtrips_correctly() {
         // GIVEN: A frame with 2 slots, all uninitialized
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
             nodes: vec![CompiledNode {
@@ -526,6 +531,7 @@ mod behavior_slot_management {
     fn given_frame_when_read_uninitialized_slot_then_returns_error() {
         // GIVEN: A frame with uninitialized slot 0
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
             nodes: vec![CompiledNode {
@@ -562,6 +568,7 @@ mod behavior_slot_management {
     fn given_frame_when_read_out_of_bounds_slot_then_returns_error() {
         // GIVEN: A frame with 2 slots (indices 0 and 1)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),
             nodes: vec![CompiledNode {
@@ -598,6 +605,7 @@ mod behavior_slot_management {
     fn given_frame_when_write_and_read_taint_then_roundtrips() {
         // GIVEN: A frame with initialized slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x33; 32]),
             nodes: vec![CompiledNode {
@@ -642,6 +650,7 @@ mod behavior_slot_management {
     fn given_frame_when_write_taint_to_uninitialized_slot_then_returns_error() {
         // GIVEN: A frame with uninitialized slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x44; 32]),
             nodes: vec![CompiledNode {
@@ -678,6 +687,7 @@ mod behavior_slot_management {
     fn given_frame_when_overwrite_slot_then_new_value_replaces_old() {
         // GIVEN: A frame with slot 0 containing I64(10)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("overwrite_test"),
             digest: WorkflowDigest::from_bytes([0x55; 32]),
             nodes: vec![CompiledNode {
@@ -731,6 +741,7 @@ mod behavior_step_state_transitions {
     fn given_frame_when_mark_steps_through_state_machine_then_states_correct() {
         // GIVEN: A frame with 3 steps (need 3 nodes in workflow)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x66; 32]),
             nodes: vec![
@@ -829,6 +840,7 @@ mod behavior_step_state_transitions {
     fn given_frame_when_mark_step_out_of_bounds_then_returns_error() {
         // GIVEN: A frame with 2 steps
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x77; 32]),
             nodes: vec![CompiledNode {
@@ -863,6 +875,7 @@ mod behavior_step_state_transitions {
     fn given_frame_when_mark_terminal_state_then_transition_blocked() {
         // GIVEN: A frame with step in Succeeded (terminal) state
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x88; 32]),
             nodes: vec![CompiledNode {
@@ -1046,6 +1059,7 @@ mod behavior_error_propagation {
     fn given_workflow_with_empty_nodes_when_validated_then_returns_error() {
         // GIVEN: Workflow parts with empty nodes array
         let parts = WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("empty_nodes"),
             digest: WorkflowDigest::from_bytes([0x33; 32]),
             nodes: vec![].into_boxed_slice(),
@@ -1078,6 +1092,7 @@ mod behavior_parallel_in_flight {
     fn given_frame_when_add_sub_parallel_in_flight_then_counts_correct() {
         // GIVEN: A frame
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
             nodes: vec![CompiledNode {
@@ -1121,6 +1136,7 @@ mod behavior_parallel_in_flight {
     fn given_frame_when_parallel_in_flight_underflows_then_returns_error() {
         // GIVEN: A frame with parallel_in_flight = 0
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
             nodes: vec![CompiledNode {
@@ -1163,6 +1179,7 @@ mod behavior_slot_snapshots {
     fn given_frame_with_written_slots_when_slots_snapshot_then_contains_all_values() {
         // GIVEN: A frame with 3 slots, slots 0 and 2 written
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xBB; 32]),
             nodes: vec![CompiledNode {
@@ -1207,6 +1224,7 @@ mod behavior_slot_snapshots {
     fn given_frame_when_initialized_slots_then_returns_only_written() {
         // GIVEN: A frame with 3 slots, only slot 1 written
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xCC; 32]),
             nodes: vec![CompiledNode {
@@ -1264,6 +1282,7 @@ mod behavior_validate_compiled_workflow {
     fn given_valid_workflow_parts_when_validate_then_returns_ok() {
         // GIVEN: Valid workflow parts for a 2-step workflow
         let parts = WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("validate_test"),
             digest: WorkflowDigest::from_bytes([0x12; 32]),
             nodes: vec![
@@ -1310,6 +1329,7 @@ mod behavior_validate_compiled_workflow {
     fn given_workflow_with_empty_nodes_when_validate_then_returns_error() {
         // GIVEN: A workflow with no nodes
         let result = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("empty"),
             digest: WorkflowDigest::from_bytes([0xDD; 32]),
             nodes: vec![].into_boxed_slice(),
@@ -1339,6 +1359,7 @@ mod behavior_taint_propagation {
     fn given_frame_when_write_slot_with_taint_then_both_set() {
         // GIVEN: A frame with 1 slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: vec![CompiledNode {
@@ -1386,6 +1407,7 @@ mod behavior_taint_propagation {
     fn given_frame_when_write_taint_out_of_bounds_then_returns_error() {
         // GIVEN: A frame with 1 slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
             nodes: vec![CompiledNode {
@@ -1428,6 +1450,7 @@ mod behavior_pc_manipulation {
     fn given_frame_when_set_pc_valid_then_pc_updated() {
         // GIVEN: A frame with 5 steps (need 5 nodes in workflow)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
             nodes: vec![
@@ -1497,6 +1520,7 @@ mod behavior_pc_manipulation {
     fn given_frame_when_set_pc_out_of_bounds_then_pc_unchanged() {
         // GIVEN: A frame with 3 steps
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),
             nodes: vec![

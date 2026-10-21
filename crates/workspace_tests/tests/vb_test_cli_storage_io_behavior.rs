@@ -83,6 +83,7 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("finish"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([set_const, finish]),

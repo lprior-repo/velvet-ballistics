@@ -34,6 +34,7 @@ fn workflow_parts_with_accessors(
     accessors: Box<[AccessorProgram]>,
 ) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("gate_08_accessor_parity"),
         digest: WorkflowDigest::from_bytes([8u8; 32]),
         nodes: Box::new([finish_node()]),
