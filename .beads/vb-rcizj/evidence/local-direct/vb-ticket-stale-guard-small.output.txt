@@ -1,0 +1,147 @@
+```hemlock
+// tests/ticket_stale_guards.rs
+// Tests that stale (superseded) action tickets are rejected on delivery.
+
+use super::*;
+use std::sync::Arc;
+
+#[derive(Debug)]
+enum StaleTamper {
+    Step,
+    Action,
+    Capacity,
+    Key,
+    Sequence,
+}
+
+#[derive(Debug)]
+enum Delivery {
+    Completion,
+    Failure,
+}
+
+fn check(
+    tamper: &StaleTamper,
+    delivery: &Delivery,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shard = {
+        let config = small_config();
+        let mut shard = Shard::new(config);
+        shard.bind_journal(journal.clone());
+        shard
+    };
+
+    let workflow = retry_workflow().ok_or("no retry workflow")?;
+    let run = RunId::next();
+    let submit_res = submit_with_contracts(&shard, run, workflow);
+    if let Err(e) = submit_res {
+        return Err(e.into());
+    }
+
+    let ticket1 = loop {
+        if let Some(t) = shard.pending_action_get(run) {
+            break t;
+        }
+        shard.tick()?;
+        if shard.is_run_complete(run) {
+            return Err("run completed before pending action".into());
+        }
+    };
+
+    shard.enqueue_action_failure(run, ticket1, retryable_failure())?;
+    shard.tick()?;
+    let ticket2 = shard.pending_action_get(run).ok_or("missing ticket2")?;
+
+    shard.enqueue_action_failure(run, ticket2, retryable_failure())?;
+    shard.tick()?;
+    let ticket3 = shard.pending_action_get(run).ok_or("missing ticket3")?;
+
+    assert_eq!(ticket2.attempt, 2);
+    assert_eq!(ticket3.attempt, 3);
+
+    let current_ticket = ticket3;
+    let current_key = compute_action_idempotency_key(ticket3.run, ticket3.seq, ticket3.action);
+    let snap_before = journal.snapshot()?;
+
+    let frame_before = shard.run_state_get(run).ok_or("frame missing")?;
+    let pc_before = frame_before.pc();
+    let slot0_before = *frame_before.read_slot(SlotIdx::ZERO)?;
+    let slot1_before = *frame_before.read_slot(SlotIdx::ONE)?;
+    let taint0_before = frame_before.read_taint(SlotIdx::ZERO)?;
+    let taint1_before = frame_before.read_taint(SlotIdx::ONE)?;
+
+    let mut stale = ticket2;
+    match tamper {
+        StaleTamper::Step => { stale.step = 99; }
+        StaleTamper::Action => { stale.action = 99; }
+        StaleTamper::Capacity => {
+            stale.capacity = stale.capacity.checked_add(1).ok_or("cap overflow")?;
+        }
+        StaleTamper::Key => { stale.key ^= 1; }
+        StaleTamper::Sequence => {
+            let seq_plus = current_ticket.seq.get().checked_add(1).ok_or("seq overflow")?;
+            stale.seq = Seq::from(seq_plus);
+        }
+    }
+
+    let result = match delivery {
+        Delivery::Completion => {
+            shard.complete_action(run, stale, vec![Value::I64(42)])
+        }
+        Delivery::Failure => {
+            shard.fail_action(run, stale, retryable_failure())
+        }
+    };
+
+    match result {
+        Err(RuntimeError::InvalidActionCompletion(_)) => {}
+        other => {
+            return Err(format!("expected InvalidActionCompletion, got {:?}", other).into());
+        }
+    }
+
+    let snap_after = journal.snapshot()?;
+    assert_eq!(snap_before, snap_after);
+
+    let current_pending = shard.pending_action_get(run).ok_or("current ticket gone")?;
+    assert_eq!(current_pending.key, current_key);
+
+    let frame_after = shard.run_state_get(run).ok_or("frame gone after")?;
+    assert_eq!(pc_before, frame_after.pc());
+    assert_eq!(slot0_before, *frame_after.read_slot(SlotIdx::ZERO)?);
+    assert_eq!(slot1_before, *frame_after.read_slot(SlotIdx::ONE)?);
+    assert_eq!(taint0_before, frame_after.read_taint(SlotIdx::ZERO)?);
+    assert_eq!(taint1_before, frame_after.read_taint(SlotIdx::ONE)?);
+
+    Ok(())
+}
+
+#[test]
+fn stale_completions_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    for tamper in [
+        StaleTamper::Step,
+        StaleTamper::Action,
+        StaleTamper::Capacity,
+        StaleTamper::Key,
+        StaleTamper::Sequence,
+    ] {
+        check(&tamper, &Delivery::Completion)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn stale_failures_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    for tamper in [
+        StaleTamper::Step,
+        StaleTamper::Action,
+        StaleTamper::Capacity,
+        StaleTamper::Key,
+        StaleTamper::Sequence,
+    ] {
+        check(&tamper, &Delivery::Failure)?;
+    }
+    Ok(())
+}
+```
