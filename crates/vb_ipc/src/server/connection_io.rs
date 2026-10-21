@@ -18,6 +18,17 @@ enum ReadProgress {
     Request(IpcFrameHeader),
 }
 
+enum WriteResult {
+    /// Connection closed (peer EOF).
+    Closed,
+    /// Bytes written; caller should continue writing.
+    Wrote,
+    /// Would block; try again later.
+    WouldBlock,
+    /// Interrupted; retry immediately.
+    Interrupted,
+}
+
 struct ReadyRequest {
     token: usize,
     header: IpcFrameHeader,
@@ -105,8 +116,11 @@ impl IpcServer {
             if client.write_buffer.is_empty() {
                 return finish_response(client, self.poll.registry(), token);
             }
-            if let Some(close) = write_pending_chunk(client)? {
-                return Ok(close);
+            match write_pending_chunk(client)? {
+                WriteResult::Closed => return Ok(true),
+                WriteResult::Wrote => continue,
+                WriteResult::WouldBlock => return Ok(false),
+                WriteResult::Interrupted => continue,
             }
         }
         client.write_ready = true;
@@ -120,18 +134,20 @@ fn clone_registry(poll: &mio::Poll) -> Result<mio::Registry, IpcServerError> {
         .map_err(|source| IpcServerError::PollFailed { source })
 }
 
-fn write_pending_chunk(client: &mut ClientConnection) -> Result<Option<bool>, IpcServerError> {
+fn write_pending_chunk(client: &mut ClientConnection) -> Result<WriteResult, IpcServerError> {
     match client.stream.write(&client.write_buffer) {
-        Ok(0) => Ok(Some(true)),
+        Ok(0) => Ok(WriteResult::Closed),
         Ok(count) => {
             client.write_buffer.drain(..count).for_each(|_| ());
-            Ok(None)
+            Ok(WriteResult::Wrote)
         }
         Err(source) if source.kind() == std::io::ErrorKind::WouldBlock => {
             client.write_ready = false;
-            Ok(Some(false))
+            Ok(WriteResult::WouldBlock)
         }
-        Err(source) if source.kind() == std::io::ErrorKind::Interrupted => Ok(None),
+        Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {
+            Ok(WriteResult::Interrupted)
+        }
         Err(source) => Err(IpcServerError::ResponseWriteFailed { source }),
     }
 }

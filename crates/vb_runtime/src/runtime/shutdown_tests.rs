@@ -1,6 +1,7 @@
 //! Actual Runtime + Fjall shutdown ownership regressions.
 #[path = "shutdown_fixtures.rs"]
 mod fixtures;
+use crate::RuntimeError;
 use fixtures::*;
 use vb_core::RunId;
 use vb_storage::{EventSeq, JournalEvent};
@@ -38,7 +39,23 @@ fn failed_shutdown_preserves_actual_pending_timer_authority() -> TestResult {
     assert_eq!(failure.phase(), super::ShutdownPhase::JournalDrain);
     assert_eq!(failure.completed_shards(), 1);
     assert_eq!(failure.remaining(), &before);
-    assert!(std::error::Error::source(&failure).is_some());
+    let source = failure.cause();
+    let journal_error = match source {
+        RuntimeError::StorageJournalAppend { source } => source.as_ref(),
+        RuntimeError::AdmissionHeaderPersistenceFailed { source } => source.as_ref(),
+        other => return Err(format!("expected storage journal error, got {other:?}").into()),
+    };
+    match journal_error {
+        vb_storage::JournalError::DuplicateEvent { run: r, seq } => {
+            assert_eq!(r.get(), run.get(), "DuplicateEvent must carry the colliding run");
+            assert_eq!(
+                seq.get(),
+                first_queued_seq,
+                "DuplicateEvent must carry the colliding seq"
+            );
+        }
+        other => return Err(format!("expected DuplicateEvent, got {other:?}").into()),
+    }
     let after = runtime.pending_boundary_snapshot(64);
     assert_eq!(after.active_run_count(), 1);
     assert_eq!(

@@ -21,6 +21,7 @@ pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
     Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::from("shutdown_wait"),
         digest: WorkflowDigest::from_bytes([33; 32]),
+        semantic_source_identity: None,
         nodes: Box::from([
             node(
                 0,
@@ -127,6 +128,7 @@ fn workflow(nodes: Vec<CompiledNode>, constants: Vec<ConstValue>) -> TestResult<
     Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::from("shutdown_fixture"),
         digest: WorkflowDigest::from_bytes([34; 32]),
+        semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
         constants: constants.into_boxed_slice(),
         expressions: Box::from([]),

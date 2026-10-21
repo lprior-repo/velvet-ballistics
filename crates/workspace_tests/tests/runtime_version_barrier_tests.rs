@@ -143,16 +143,22 @@ fn relaxed_policy_skips_evidence_validation() -> TestResult {
     let mut artifact = valid_artifact()?;
     artifact.verification.evidence = ArtifactEvidence::Unverified;
     let digest = artifact.digest;
-    assert!(
-        admit_artifact_run(
-            &FixedStore(artifact),
-            RuntimePolicy::Relaxed,
-            RunId::new(3),
-            digest,
-            CapabilitySet::empty(),
-        )
-        .is_ok()
+    let run_id = RunId::new(3);
+    let result = admit_artifact_run(
+        &FixedStore(artifact),
+        RuntimePolicy::Relaxed,
+        run_id,
+        digest,
+        CapabilitySet::empty(),
     );
+    assert!(result.is_ok(), "relaxed policy should accept artifact with any evidence");
+    let admission = result?;
+    assert_eq!(
+        admission.artifact_digest(),
+        digest,
+        "admission must carry exact admitted artifact digest"
+    );
+    assert_eq!(admission.run_id(), run_id, "admission must carry exact run identity");
     Ok(())
 }
 
