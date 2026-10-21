@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--collect",
+    "-p",
+    "MemoryHigh=12G",
+    "-p",
+    "MemoryMax=16G",
+    "-p",
+    "MemorySwapMax=0",
+    "env",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "timeout",
+    "--kill-after=10",
+    "180",
+    "cargo",
+    "test",
+    "-q",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "inputs::"
+  ],
+  "exit_code": 0,
+  "source": "9f0557e59ab55203cc94196d67395c3bb3efe92f"
+}
