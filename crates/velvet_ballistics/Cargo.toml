@@ -39,3 +39,7 @@ workspace = true
 [[test]]
 name = "submit_input_boundary"
 path = "../workspace_tests/tests/cli/submit_input_boundary.rs"
+
+[[test]]
+name = "finish_input_execution"
+path = "../workspace_tests/tests/cli/finish_input_execution.rs"

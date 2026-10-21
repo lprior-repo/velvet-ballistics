@@ -1,0 +1,2 @@
+Local test draft v1 rejected (invented APIs, indexing, panic, incorrect Finish semantics). v2 mechanically corrected two invented import module names to supplied vb_core APIs and restored explicit numeric port assertions omitted from the prompt. Final exact source is provided to independent code and test reviewers. No local autonomous tool execution claimed.
+Reviewer-requested extra test module placed under tests/finish_input_binding/extra.rs to prevent Cargo discovering it as a standalone integration target. Original rejected review retained.

@@ -1,0 +1,15 @@
+Your previous draft is REJECTED: violated no indexing/no unwrap/no panic; invented errors.errors()/terminal.result; invented $output.saved; 2 finish nodes means first terminates, not second; number Finish is SLOT READ not literal constant. Return complete corrected Rust testfile only. All testfunctions return Result<(),Box<dyn std::error::Error>>. 
+Use EXACT helpers:
+fn compile(yaml:&str)->Result<CompiledWorkflow,Box<dyn std::error::Error>> { Ok(vb_compile::compile_source(&vb_compile::parse_workflow_source(yaml)?)?) }
+fn run(workflow:&CompiledWorkflow,values:&[i64])->Result<EngineSignal,Box<dyn std::error::Error>> { let mut frame=new_run_frame(RunId::new(1),workflow)?; for (port,value) in workflow.input_slots().iter().zip(values.iter()) { frame.write_slot_with_taint(port.slot,SlotValue::I64(*value),Taint::Secret)?; } Ok(run_until_blocked(workflow,&mut frame,StepBudget::MAX,&mut ValueStore::new())?) }
+Schema YAML string base: version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n (actual Rust escapes 
+). 
+7 tests:
+1 compilebase; assert_eq!(workflow.input_slots(), &[CompiledInputSlot{slot:SlotIdx::new(0),kind:InputSlotKind::I64}]); loopMIN,-1,0,42,MAX exact EngineSignal::Finished(I64(value),Secret).
+2 insert one save before done: idwrite_internal, save.output:saved save.value:'42'; result$input.count. port1; run99 exact99Secret.
+3 two INPUT declarations first:number second:number; only one Finish result$input.second; ports0,1; run[11,99] ->99Secret.
+4 unknownref use base.replace("$input.count","$input.missing"); match compile_source(...) { Err(errors)=>assert_eq!(errors,CompileErrors(vec![CompileError::UnknownOutputName{name:Box::from("$input.missing")}])), Ok(_)=>return Err("expected UnknownOutputName".into()) }.
+5 namedinternal save output saved value'42', Finish result:saved,unusedcountport1; run999 ->42 CLEAN (notSecret).
+6 same preceding save; numeric Finish result:3 (readslot3). assert input4, parts.nodes.last().ok_or("missing terminal")?.kind == CompiledNodeKind::Finish{result:SlotIdx::new(3)}. Do NOT execute expectingconstant3: slot3 uninitialized.
+7 roundtrip postcard WorkflowParts; exactparts equality; recompile samebase exactparts equality; restore CompiledWorkflow::try_from_parts then run42 ->42Secret.
+Use .first().ok_or(...) or .last().ok_or(...) only, never [0]/[1]. No custom errors accessor. No unchecked arithmetic. Imports from vb_core include CompiledInputSlot,CompiledNodeKind,CompiledWorkflow,WorkflowParts,SlotIdx,InputSlotKind,SlotValue,Taint,RunId; engine imports EngineSignal,StepBudget,new_run_frame,run_until_blocked; ValueStore under value_store. Only code <250lines.

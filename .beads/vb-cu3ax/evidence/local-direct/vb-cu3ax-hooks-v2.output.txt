@@ -1,0 +1,20 @@
+```json
+[
+  {
+    "old": "use vb_core::{\n    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,\n    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,\n    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,\n};",
+    "new": "use vb_core::{\n    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,\n    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,\n    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,\n};\n\n#[path = \"finish_inputs.rs\"]\nmod finish_inputs;\nuse finish_inputs::prepare_finish_input_slots;"
+  },
+  {
+    "old": "    let mut step_names =\n        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;\n    for (index, step) in steps.iter().enumerate() {",
+    "new": "    let mut step_names =\n        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;\n    let mut inputs_allocated = false;\n    for (index, step) in steps.iter().enumerate() {"
+  },
+  {
+    "old": "        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;\n        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;\n        lower_canonical_step(",
+    "new": "        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;\n        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;\n        if index == last {\n            if let crate::StepPrimitive::Finish { result } = &step.primitive {\n                prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;\n                inputs_allocated = true;\n            }\n        }\n        lower_canonical_step("
+  },
+  {
+    "old": "    }\n    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;",
+    "new": "    }\n    if !inputs_allocated {\n        allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;\n    }"
+  }
+]
+```

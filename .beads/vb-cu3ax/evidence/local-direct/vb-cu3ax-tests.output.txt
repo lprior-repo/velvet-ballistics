@@ -1,0 +1,106 @@
+```rust
+use vb_compile::{parse_workflow_source, compile_source};
+use vb_core::{RunId, SlotIdx, SlotValue, Taint, InputSlotKind, CompiledWorkflow, WorkflowParts};
+use vb_core::value_store::ValueStore;
+use vb_core::engine::{new_run_frame, run_until_blocked, StepBudget, EngineSignal};
+use postcard::{to_allocvec, from_bytes};
+
+const CANONICAL_YAML: &str = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
+
+fn compile_and_run(workflow: &CompiledWorkflow, input_value: i64) -> Result<EngineSignal, Box<dyn std::error::Error>> {
+    let mut run = new_run_frame(RunId::new(7), workflow)?;
+    let input_slot = workflow.input_slots()[0].slot;
+    run.write_slot_with_taint(input_slot, SlotValue::I64(input_value), Taint::Secret)?;
+    let mut store = ValueStore::new();
+    let signal = run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store)?;
+    Ok(signal)
+}
+
+#[test]
+fn test_finish_only_exact_values() -> Result<(), Box<dyn std::error::Error>> {
+    let source = parse_workflow_source(CANONICAL_YAML)?;
+    let workflow = compile_source(&source)?;
+    for value in [i64::MIN, -1, 0, 42, i64::MAX] {
+        let signal = compile_and_run(&workflow, value)?;
+        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(value), Taint::Secret));
+    }
+    Ok(())
+}
+
+#[test]
+fn test_preceding_save_does_not_override_input() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: save_then_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: $input.count\n";
+    let source = parse_workflow_source(yaml)?;
+    let workflow = compile_source(&source)?;
+    let signal = compile_and_run(&workflow, 99)?;
+    assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(99), Taint::Secret));
+    Ok(())
+}
+
+#[test]
+fn test_two_finish_declarations_second_wins() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: double_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: first\n    finish:\n      result: 10\n  - id: second\n    finish:\n      result: $input.count\n";
+    let source = parse_workflow_source(yaml)?;
+    let workflow = compile_source(&source)?;
+    let signal = compile_and_run(&workflow, 77)?;
+    assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(77), Taint::Secret));
+    Ok(())
+}
+
+#[test]
+fn test_unknown_input_name_error() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: bad_input\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: $input.missing\n";
+    let source = parse_workflow_source(yaml)?;
+    let result = compile_source(&source);
+    let errors = result.unwrap_err();
+    assert_eq!(errors.errors().len(), 1);
+    let err = &errors.errors()[0];
+    match err {
+        vb_compile::CompileError::UnknownOutputName { name } => {
+            assert_eq!(name.as_ref(), "$input.missing");
+        }
+        other => panic!("expected UnknownOutputName, got {:?}", other),
+    }
+    Ok(())
+}
+
+#[test]
+fn test_finish_with_saved_value_ignores_input() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: finish_saved\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: $output.saved\n";
+    let source = parse_workflow_source(yaml)?;
+    let workflow = compile_source(&source)?;
+    let signal = compile_and_run(&workflow, 999)?;
+    assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Secret));
+    Ok(())
+}
+
+#[test]
+fn test_numeric_finish_slot_allocation() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = "version: velvet-ballistics/v1\nname: numeric_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: write_internal\n    save:\n      output: saved\n      value: '1'\n  - id: done\n    finish:\n      result: 3\n";
+    let source = parse_workflow_source(yaml)?;
+    let workflow = compile_source(&source)?;
+    let parts = workflow.to_parts();
+    let terminal = &parts.nodes[1];
+    assert_eq!(terminal.result, Some(SlotIdx::new(3)));
+    let input_slot = workflow.input_slots()[0].slot;
+    assert_eq!(input_slot, SlotIdx::new(4));
+    let signal = compile_and_run(&workflow, 4)?;
+    assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(3), Taint::Secret));
+    Ok(())
+}
+
+#[test]
+fn test_postcard_roundtrip_deterministic() -> Result<(), Box<dyn std::error::Error>> {
+    let source = parse_workflow_source(CANONICAL_YAML)?;
+    let workflow = compile_source(&source)?;
+    let parts = workflow.to_parts();
+    let encoded = to_allocvec(&parts)?;
+    let restored: WorkflowParts = from_bytes(&encoded)?;
+    let restored_workflow = CompiledWorkflow::try_from_parts(restored)?;
+    let signal = compile_and_run(&restored_workflow, 42)?;
+    assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Secret));
+    let reencoded = to_allocvec(&restored_workflow.to_parts())?;
+    assert_eq!(encoded, reencoded);
+    Ok(())
+}
+```

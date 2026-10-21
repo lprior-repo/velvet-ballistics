@@ -1,0 +1,90 @@
+Independent final code review. Return APPROVED or REJECTED with concrete defect. Previous code review approved before clippy mechanical nested-if to let-chain. Review FINAL diff and contract. Mainissues exact $input binding terminalFinish only; reserve prior numeric/internal reads, checkedslots, no runtime string resolution, sourceorder. cargo check and497 compiler tests pass. No full input support claim.
+**Contract: Declared Input Resolution for Terminal Finish**
+
+The cold compiler resolves declared inputs by binding exact `$input.name` references to numeric ports in declaration order. Inputs are represented as bounded slices of `SlotValue` via Postcard serialization. The schema shorthand accepts `number` or `{is:number}`.
+
+During lowering, the compiler processes preceding internal nodes first. Before allocating input ports, it reserves the non-input terminal `Finish` slot using the existing `canonical_finish_slot` and `builder.record_slot` mechanisms. This reservation prevents integer slot collisions between the `Finish` node and input ports. Input ports are then bound after the largest internal index, and the `Finish` node is lowered last. This sequence ensures that the `Finish` node's internal read is reserved before input port allocation, avoiding aliasing at the numeric boundary.
+
+If no `Finish` node is present, input ports are allocated after all nodes are processed. The layout preserves the existing internal-first port numbering scheme without renumbering. All index arithmetic uses checked addition and u16 conversion. The public `allocate_input_slots` signature remains unchanged.
+
+At runtime, an I64 input value must produce the exact input value for the `Finish` node and any preceding save fixture. Unknown input references produce the existing `CompileError::UnknownOutputName` error with the literal `$input.missing` name. Duplicate input validation continues to run as before.
+
+The deterministic digest and roundtrip properties are preserved. Non-finish consumers of inputs remain explicitly unsupported. This contract does not claim full v1 input support or required input defaults. Broader input use cases remain open under parent issue vb-3ruqy.
+Clarification: preceding save writes its own slot; only Finish returns the external input. This child covers terminal Finish; parent vb-3ruqy remains open for non-Finish consumers.
+
+diff --git a/crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs b/crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs
+new file mode 100644
+index 0000000000..83ad8ab12e
+--- /dev/null
++++ b/crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs
+@@ -0,0 +1,27 @@
++use super::*;
++
++pub(super) fn prepare_finish_input_slots(
++    source: &crate::WorkflowSource,
++    result: &crate::ScalarValue,
++    outputs: &mut std::collections::HashMap<String, vb_core::SlotIdx>,
++    builder: &mut SlotCompiler,
++) -> Result<(), CompileErrors> {
++    if !matches!(result, crate::ScalarValue::String(name) if name.starts_with("$input.")) {
++        let internal = canonical_finish_slot(result, outputs)?;
++        builder.record_slot(internal);
++    }
++
++    allocate_input_slots(source.inputs(), builder).map_err(|e| CompileErrors(vec![e]))?;
++
++    for (input, port) in source.inputs().iter().zip(builder.input_slots.iter()) {
++        let name = format!("$input.{}", input.key);
++        if outputs.contains_key(&name) {
++            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
++                name: name.into_boxed_str(),
++            }]));
++        }
++        outputs.insert(name, port.slot);
++    }
++
++    Ok(())
++}
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_01.rs b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+index 4e92f06cb7..3686fee8ac 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_01.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+@@ -13,6 +13,10 @@
+     StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+ };
+ 
++#[path = "finish_inputs.rs"]
++mod finish_inputs;
++use finish_inputs::prepare_finish_input_slots;
++
+ /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
+ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
+     validate_canonical_compile_scope(source)?;
+@@ -27,9 +31,16 @@
+     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+     let mut step_names =
+         canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
++    let mut inputs_allocated = false;
+     for (index, step) in steps.iter().enumerate() {
+         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+         let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
++        if index == last
++            && let crate::StepPrimitive::Finish { result } = &step.primitive
++        {
++            prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
++            inputs_allocated = true;
++        }
+         lower_canonical_step(
+             step,
+             index,
+@@ -41,7 +52,9 @@
+             &mut builder,
+         )?;
+     }
+-    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
++    if !inputs_allocated {
++        allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
++    }
+     let mut parts = WorkflowParts {
+         name: Box::from(source.name()),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
