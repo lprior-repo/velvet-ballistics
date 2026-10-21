@@ -24,7 +24,7 @@ use vb_core::action::{
     RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -176,7 +176,11 @@ fn action_contracts_through(
     while id <= target {
         let current = ActionId::new(id);
         let outputs = if id == target { output_slots } else { 0 };
-        contracts.push(action_contract(current, outputs));
+        let mut contract = action_contract(current, outputs);
+        if id != target {
+            contract.required_capabilities = Box::new([]);
+        }
+        contracts.push(contract);
         id = id.saturating_add(1);
     }
     contracts.into_boxed_slice()
@@ -201,16 +205,10 @@ fn submit_action_workflow(
     )
 }
 
-fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
-    ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: SeqNo::ZERO,
-        action,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    }
+fn action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
+    runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or_else(|| format!("run {run:?} has no pending action ticket for step 0"))
 }
 
 fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
@@ -358,7 +356,7 @@ fn run_reaches_failed_state_when_action_fails() -> Result<(), String> {
         encoded_len: 0,
     };
     assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        runtime.fail_action(action_ticket(&runtime, run)?, failure),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -440,9 +438,7 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
 // =============================================================================
 
 // Scenario D1: Complete action resumes at correct step
-// KNOWN ISSUE: Returns InvalidActionCompletion - pre-existing bug
 #[test]
-#[ignore]
 fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal);
@@ -458,7 +454,7 @@ fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), S
     let output_value = SlotValue::I64(4242);
     assert_eq!(
         runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
+            action_ticket(&runtime, run)?,
             action_output(output_value, Taint::Clean),
         ),
         Ok(())
@@ -481,11 +477,6 @@ fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), S
 // FIXED: Removed catch-all error arm. The invalid ticket error MUST be
 // InvalidActionCompletion specifically — accepting any error variant masks bugs.
 //
-// KNOWN GAP (D2): The implementation currently returns Ok(()) for invalid action ID
-// via complete_action_with_output instead of Err(InvalidActionCompletion).
-// The validate_action_completion helper correctly returns InvalidActionCompletion,
-// but the error may be swallowed upstream. This test documents the contract
-// violation. Once the implementation is fixed, restore the strict assertion.
 #[test]
 fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
@@ -498,33 +489,19 @@ fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<
     );
     run_one_tick(&mut runtime)?;
 
-    // Try to complete with wrong action id (action 99 instead of 7)
+    // Try to complete with the genuine ticket identity but wrong action id.
     let result = runtime.complete_action_with_output(
-        action_ticket(run, ActionId::new(99)), // wrong action
+        ActionTicket {
+            action: ActionId::new(99),
+            ..action_ticket(&runtime, run)?
+        }, // wrong action
         action_output(SlotValue::I64(1), Taint::Clean),
     );
 
-    // The intended behavior: returns Err(InvalidActionCompletion) immediately
-    // No other error variant is acceptable — the contract specifies this exact error.
-    // NOTE: Currently the implementation may return Ok(()) due to a bug in the
-    // complete_action_with_output path. This test accepts any result but documents
-    // that InvalidActionCompletion is the required contract.
-    match result {
-        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
-        Ok(()) => {
-            // Contract violation — implementation returns success for invalid ticket.
-            // This branch exists to prevent test failure until the bug is fixed.
-            eprintln!(
-                "WARNING: D2 contract violation — InvalidActionCompletion expected, got Ok(())"
-            );
-        }
-        Err(e) => {
-            return Err(format!(
-                "D2: expected InvalidActionCompletion or Ok(()), got error: {:?}",
-                e
-            ));
-        }
-    }
+    assert_eq!(
+        result,
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion)
+    );
     Ok(())
 }
 
@@ -549,7 +526,7 @@ fn fail_action_transitions_run_to_failed_state() -> Result<(), String> {
         encoded_len: 0,
     };
     assert_eq!(
-        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        runtime.fail_action(action_ticket(&runtime, run)?, failure),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -757,54 +734,49 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
         Ok(())
     );
 
-    // First tick: SetConst + Do (budget exhausted after 2 steps)
+    // First tick executes SetConst and schedules Do; the run must suspend.
     assert_eq!(runtime.tick_all(), Ok(true));
 
-    // Run should be suspended (AwaitingAction) or completed if budget allowed more steps
+    // Run is retained at the pending action step until its canonical ticket completes.
     let snap = runtime.snapshot_run(run, 1);
-    match &snap {
-        Ok(InspectResponse::Found(_)) => {
-            // Correctly suspended waiting for action completion
-        }
-        Ok(InspectResponse::NotFound { .. }) => {
-            // Run completed in one tick - budget allowed enough steps
-            // This is also valid behavior
-        }
-        Ok(_) => {
-            // Other Found variants - treat as suspended
-        }
-        Err(e) => return Err(format!("snapshot_run failed: {e:?}")),
-    }
+    assert!(matches!(snap, Ok(InspectResponse::Found(_))));
 
-    // If run is still active, complete the action
-    if matches!(snap, Ok(InspectResponse::Found(_))) {
-        let seq = SeqNo::ZERO;
-        let action = ActionId::new(7);
-        let ticket = ActionTicket {
-            run,
-            step: StepIdx::new(1),
-            seq,
-            action,
-            attempt: 1,
-            idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
-            capacity: 1,
-        };
-        assert_eq!(
-            runtime.complete_action_with_output(
-                ticket,
-                action_output(SlotValue::I64(1), Taint::Clean),
-            ),
-            Ok(())
-        );
-        assert_eq!(runtime.tick_all(), Ok(true));
-    }
+    // Complete the pending action with its canonical ticket.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 1)
+        .ok_or_else(|| "step 1 pending action ticket must exist".to_owned())?;
+    assert_eq!(ticket.step, StepIdx::new(1));
+    assert_eq!(ticket.action, ActionId::new(7));
+    assert_eq!(
+        runtime
+            .complete_action_with_output(ticket, action_output(SlotValue::I64(1), Taint::Clean),),
+        Ok(())
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
 
-    // Run should have made progress - verify counters reflect work done
+    let next_ticket = runtime
+        .lookup_pending_action_ticket(run, 2)
+        .ok_or_else(|| "step 2 pending action ticket must exist".to_owned())?;
+    assert_eq!(next_ticket.action, ActionId::new(7));
+    assert_eq!(
+        runtime.complete_action_with_output(
+            next_ticket,
+            action_output(SlotValue::I64(2), Taint::Clean),
+        ),
+        Ok(())
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    // Run finishes only after both action tickets complete.
     let counters = runtime.counters_snapshot();
-    // At minimum, the run was submitted
-    assert!(
-        counters.runs_submitted >= 1,
-        "run should have been submitted"
+    assert_eq!(counters.runs_submitted, 1, "run should be submitted once");
+    assert_eq!(
+        counters.runs_completed, 1,
+        "run should finish after both actions complete"
+    );
+    assert_eq!(
+        counters.runs_failed, 0,
+        "valid action completion must not fail the run"
     );
     Ok(())
 }
