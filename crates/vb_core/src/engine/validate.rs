@@ -386,6 +386,7 @@ mod tests {
 
     fn valid_parts() -> WorkflowParts {
         WorkflowParts {
+            input_slots: Box::new([]),
             name: Box::<str>::from("test"),
             digest: WorkflowDigest::from_bytes([0x00; 32]),
             nodes: vec![CompiledNode {

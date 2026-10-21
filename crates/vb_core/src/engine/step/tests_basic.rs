@@ -45,6 +45,7 @@ fn step_once_finish_returns_finished_with_value_and_taint() -> Result<(), String
 #[test]
 fn step_once_do_returns_awaiting_action() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("do_test"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![CompiledNode {
@@ -104,6 +105,7 @@ fn step_once_ask_returns_awaiting_ask() -> Result<(), String> {
 #[test]
 fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("jump_test"),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
         nodes: vec![
@@ -175,6 +177,7 @@ fn single_node_workflow(
     kind: CompiledNodeKind,
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![CompiledNode {

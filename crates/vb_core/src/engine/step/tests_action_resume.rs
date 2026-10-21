@@ -279,6 +279,7 @@ fn suspended_run(workflow: &crate::workflow::CompiledWorkflow) -> Result<crate::
 
 fn do_then_finish_output_slot_one() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("do_output_slot_one"),
         digest: WorkflowDigest::from_bytes([0xBC; 32]),
         nodes: vec![

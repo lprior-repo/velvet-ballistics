@@ -57,6 +57,7 @@ fn nop_node_with_next(id: u16, next: u16) -> CompiledNode {
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([0x00; 32]),
         nodes: vec![finish_node(0, 0)].into_boxed_slice(),
