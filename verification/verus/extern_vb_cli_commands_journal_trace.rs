@@ -8,7 +8,7 @@
 //
 // This file is a thin re-export surface for the production mirror at
 // `verification/verus/production_inner/cli_commands_journal_trace_production.rs`,
-// which is a structural mirror of `crates/vb_cli/src/commands_journal.rs`.
+// which is a structural mirror of `crates/velvet_ballistics/src/commands_journal.rs`.
 //
 // The companion spec file (`vb_cli_commands_journal_trace.rs`)
 // attaches spec contracts to the projections via

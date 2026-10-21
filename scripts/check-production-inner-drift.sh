@@ -42,8 +42,8 @@
 #
 # Bare paths (e.g. `exit_code.rs:56-61`) inside section headers are
 # resolved against the directory of the master DRIFT POLICY claim
-# (e.g., `crates/vb_cli/src/exit_code.rs:1-68`), so the bare path
-# resolves to `crates/vb_cli/src/exit_code.rs:56-61`.
+# (e.g., `crates/velvet_ballistics/src/exit_code.rs:1-68`), so the bare path
+# resolves to `crates/velvet_ballistics/src/exit_code.rs:56-61`.
 #
 # Exit code:
 #   0  no drift detected

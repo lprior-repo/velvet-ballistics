@@ -8,12 +8,12 @@
 // STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
 // =============================================================================
 //
-// This file is bound to `crates/vb_cli/src/exit_code.rs` through the
+// This file is bound to `crates/velvet_ballistics/src/exit_code.rs` through the
 // companion extern surface
 // `verification/verus/extern_diagnostic_envelope_verus.rs`, which
 // contains a direct `#[path]` inclusion of the production
 // `exit_code.rs` source file (`#[path =
-// "../../crates/vb_cli/src/exit_code.rs"]`). The `#[path]`
+// "../../crates/velvet_ballistics/src/exit_code.rs"]`). The `#[path]`
 // inclusion is structural binding: any drift in production variant
 // names, repr(u8) discriminant tags, or `From<...>` impl signatures
 // breaks Rust resolution at compile time.
@@ -31,10 +31,10 @@
 //
 // BINDING LEDGER:
 //   - Mirror `CliExitCode` enum (9 variants)
-//                            <- crates/vb_cli/src/exit_code.rs:9-32
+//                            <- crates/velvet_ballistics/src/exit_code.rs:9-32
 //   - Mirror `cli_exit_code_to_u8(code)`
 //                            <- production `From<CliExitCode> for u8`
-//                               at crates/vb_cli/src/exit_code.rs:40-54
+//                               at crates/velvet_ballistics/src/exit_code.rs:40-54
 //   - Mirror `core_error_to_cli_exit_code(err)`
 //                            <- production
 //                               `From<vb_core::errors::CoreError>
@@ -87,7 +87,7 @@ pub struct ExJournalError(pub production::production_exit_code::JournalError);
 //
 // `spec_cli_exit_code_discriminant` returns the spec-side projection
 // of the production `From<CliExitCode> for u8` impl at
-// `crates/vb_cli/src/exit_code.rs:42-53`. The integer encoding
+// `crates/velvet_ballistics/src/exit_code.rs:42-53`. The integer encoding
 // matches the production repr(u8) tags:
 //
 //   Success            -> 0
@@ -126,7 +126,7 @@ pub open spec fn spec_cli_exit_code_in_range_0_to_8(code: production::CliExitCod
 /// Spec predicate: two `CliExitCode` values have distinct
 /// discriminants iff they are distinct variants. Mirrors the
 /// production test `all_variants_are_distinct` at
-/// `crates/vb_cli/src/exit_code.rs:136-153`.
+/// `crates/velvet_ballistics/src/exit_code.rs:136-153`.
 pub open spec fn spec_cli_exit_code_distinct(code1: production::CliExitCode, code2: production::CliExitCode) -> bool {
     spec_cli_exit_code_discriminant(code1) != spec_cli_exit_code_discriminant(code2)
 }
@@ -136,7 +136,7 @@ pub open spec fn spec_cli_exit_code_distinct(code1: production::CliExitCode, cod
 // =============================================================================
 //
 // Production schema version is `velvet-ballistics/cli-output/v1`
-// (production at `crates/vb_cli/src/cli_envelope.rs:18`). Spec
+// (production at `crates/velvet_ballistics/src/cli_envelope.rs:18`). Spec
 // projection is the integer 1; the invariant is `version >= 1`.
 //
 // Drift in the production schema version string would be detected by
@@ -163,7 +163,7 @@ pub open spec fn spec_schema_version_valid(version: int) -> bool {
 // Bridge contract 1: `cli_exit_code_to_u8(code)` returns the
 // production repr(u8) tag for the input variant. Mirrors the
 // production body of `From<CliExitCode> for u8` at
-// `crates/vb_cli/src/exit_code.rs:42-53`.
+// `crates/velvet_ballistics/src/exit_code.rs:42-53`.
 pub assume_specification[ production::cli_exit_code_to_u8 ](
     code: production::CliExitCode,
 ) -> (r: u8)
@@ -176,7 +176,7 @@ pub assume_specification[ production::cli_exit_code_to_u8 ](
 // `CliExitCode::RuntimeFailed` regardless of the input `CoreError`
 // variant. Mirrors the production body of
 // `From<vb_core::errors::CoreError> for CliExitCode` at
-// `crates/vb_cli/src/exit_code.rs:57-60`.
+// `crates/velvet_ballistics/src/exit_code.rs:57-60`.
 pub assume_specification[ production::core_error_to_cli_exit_code ](
     err: production::production_exit_code::CoreError,
 ) -> (r: production::CliExitCode)
@@ -189,7 +189,7 @@ pub assume_specification[ production::core_error_to_cli_exit_code ](
 // returns `CliExitCode::StorageError` regardless of the input
 // `JournalError` variant. Mirrors the production body of
 // `From<vb_storage::error::JournalError> for CliExitCode` at
-// `crates/vb_cli/src/exit_code.rs:64-67`.
+// `crates/velvet_ballistics/src/exit_code.rs:64-67`.
 pub assume_specification[ production::journal_error_to_cli_exit_code ](
     err: production::production_exit_code::JournalError,
 ) -> (r: production::CliExitCode)

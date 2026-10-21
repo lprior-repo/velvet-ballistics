@@ -11,7 +11,7 @@
 // `#[path]` inclusion of the in-tree mirror at
 // `verification/verus/production_inner/vb_ahfl_redaction_production_inner.rs`,
 // which is a verbatim copy of the relevant production surface from
-//   crates/vb_cli/src/commands_ai_context.rs:399-422
+//   crates/velvet_ballistics/src/commands_ai_context.rs:399-422
 //   crates/vb_core/src/value.rs:14-25
 //   xtask/src/evidence/release_contract.rs:54-64
 // with `serde_json` / `postcard` / `vb_storage::RunSnapshot` extern
@@ -38,7 +38,7 @@
 //   - spec_taint_invariant(sens, taint, view)
 //
 // The `vb_ui_model` crate has been REMOVED from the current workspace
-// (see `crates/vb_cli/Cargo.toml:35`:
+// (see `crates/velvet_ballistics/Cargo.toml:35`:
 //     `# vb_ui_model is removed from the current workspace scope.`).
 // None of the original mirror types exist in production source. After
 // auditing the workspace, the ACTUAL production redaction surface
@@ -106,7 +106,7 @@ verus! {
 //
 // Direct `#[path]` inclusion of the in-tree mirror at
 // `production_inner/vb_ahfl_redaction_production_inner.rs`. The mirror
-// is a verbatim copy of `crates/vb_cli/src/commands_ai_context.rs:399-422`
+// is a verbatim copy of `crates/velvet_ballistics/src/commands_ai_context.rs:399-422`
 // and `crates/vb_core/src/value.rs:14-25` and
 // `xtask/src/evidence/release_contract.rs:54-64` with
 // `serde_json`/`postcard`/`vb_storage::RunSnapshot` extern type

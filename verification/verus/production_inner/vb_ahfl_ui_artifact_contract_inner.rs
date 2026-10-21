@@ -6,10 +6,10 @@
 // ============================================================================
 //
 // This file is a MIRROR of the relevant production surface from
-//   crates/vb_cli/src/cli_envelope.rs:18-174
+//   crates/velvet_ballistics/src/cli_envelope.rs:18-174
 //   crates/vb_storage/src/journal/core.rs:25-48
 //   crates/vb_storage/src/preview.rs:58-130
-//   crates/vb_cli/src/commands_ai_context.rs:399-413
+//   crates/velvet_ballistics/src/commands_ai_context.rs:399-413
 // with SUBSTITUTIONS required to compile under
 // `verus --crate-type=lib` without the `serde_json` extern crate
 // (no installs allowed by the task brief).
@@ -20,7 +20,7 @@
 // `--crate-type=lib` compile time) is type-checked in spec context.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_cli/src/cli_envelope.rs:18-174` whenever production
+// `crates/velvet_ballistics/src/cli_envelope.rs:18-174` whenever production
 // changes. Drift that changes the `Kind` discriminant set, the
 // `build_envelope` / `serialize_with_version` bodies, the
 // `EventReplayLimit` / `DecodedPreview` field shapes, or the
@@ -41,7 +41,7 @@ verus! {
 // ============================================================================
 //
 // Mirror of production `vb_cli::cli_envelope::SCHEMA_VERSION` at
-// `crates/vb_cli/src/cli_envelope.rs:18`. The literal value is
+// `crates/velvet_ballistics/src/cli_envelope.rs:18`. The literal value is
 // preserved byte-for-byte. The constant visibility is relaxed from
 // `pub(crate)` to `pub` so the spec file can read it through the
 // `production::*` re-export path.
@@ -61,7 +61,7 @@ pub spec const SPEC_SCHEMA_VERSION_LEN: usize = 35;
 // ============================================================================
 //
 // Mirror of production `vb_cli::cli_envelope::Kind` at
-// `crates/vb_cli/src/cli_envelope.rs:42-63`. All 17 variants preserved
+// `crates/velvet_ballistics/src/cli_envelope.rs:42-63`. All 17 variants preserved
 // with identical names AND identical source ordering so the
 // `discriminant()` mapping below is a stable 0..=16 range. Visibility
 // is relaxed from `pub(crate)` to `pub`.
@@ -173,7 +173,7 @@ impl SpecKindProduction {
 impl SpecKindProduction {
     // ----------------------------------------------------------------------
     // Production: `Kind::as_str(&self) -> &'static str`
-    //             crates/vb_cli/src/cli_envelope.rs:68-88
+    //             crates/velvet_ballistics/src/cli_envelope.rs:68-88
     // ----------------------------------------------------------------------
     //
     // Body is a verbatim copy of the production match arms. All 17
@@ -202,7 +202,7 @@ impl SpecKindProduction {
 
     // ----------------------------------------------------------------------
     // Production: `Kind::from_str(s: &str) -> Option<Kind>`
-    //             crates/vb_cli/src/cli_envelope.rs:92-113
+    //             crates/velvet_ballistics/src/cli_envelope.rs:92-113
     // ----------------------------------------------------------------------
     //
     // Body is a verbatim copy of the production match arms. All 17
@@ -239,7 +239,7 @@ impl SpecKindProduction {
 //
 // Mirror of the production `build_envelope(data: Value, kind: Kind)
 // -> Value` output structure at
-// `crates/vb_cli/src/cli_envelope.rs:133-142`.
+// `crates/velvet_ballistics/src/cli_envelope.rs:133-142`.
 //
 // Production builds a `serde_json::Value::Object` with three keys:
 //   {
@@ -325,7 +325,7 @@ impl SpecEnvelopeProduction {
 // ============================================================================
 //
 // Mirror of production `build_envelope(data: Value, kind: Kind) -> Value`
-// at `crates/vb_cli/src/cli_envelope.rs:133-142`.
+// at `crates/velvet_ballistics/src/cli_envelope.rs:133-142`.
 //
 // Body is `#[verifier::external]` — Verus does NOT verify it. The
 // projection contract is attached in the companion spec file via
@@ -432,7 +432,7 @@ pub fn make_bounded_collection_mirror(
 // ============================================================================
 //
 // Mirror of production `redacted_slot_value(slot, value, snapshot) ->
-// Value` at `crates/vb_cli/src/commands_ai_context.rs:399-413`.
+// Value` at `crates/velvet_ballistics/src/commands_ai_context.rs:399-413`.
 //
 // Production replaces the raw secret bytes with the literal
 // `"[REDACTED]"` when the slot's taint is Secret (==2) or Derived
@@ -488,7 +488,7 @@ impl SpecRedactedValueViewProduction {
 //
 // Mirror of production
 // `redacted_slot_value(slot, value, snapshot) -> Value`
-// at `crates/vb_cli/src/commands_ai_context.rs:399-413`.
+// at `crates/velvet_ballistics/src/commands_ai_context.rs:399-413`.
 //
 // Body is `#[verifier::external]` — Verus does NOT verify it. The
 // projection contract is attached in the companion spec file via
@@ -528,9 +528,9 @@ pub fn redacted_slot_value_mirror(
 // Mirror of the production graph/event envelope surface:
 //
 //   - `Kind::WorkflowGraph` discriminant at
-//     `crates/vb_cli/src/cli_envelope.rs:49`.
+//     `crates/velvet_ballistics/src/cli_envelope.rs:49`.
 //   - `Kind::RunEvents` discriminant at
-//     `crates/vb_cli/src/cli_envelope.rs:53`.
+//     `crates/velvet_ballistics/src/cli_envelope.rs:53`.
 //   - `EventReplayLimit.max_events: usize` at
 //     `crates/vb_storage/src/journal/core.rs:26`.
 //
