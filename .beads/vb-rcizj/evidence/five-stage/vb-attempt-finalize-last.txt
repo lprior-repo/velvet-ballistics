@@ -1,0 +1,57 @@
+<tool_call>
+<function=write_file>
+<parameter=path>
+/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/.beads/vb-rcizj/evidence/fixed-funcs/action_failed_carries_attempt_field.rs
+</parameter>
+<parameter=content>
+fn action_failed_carries_attempt_field() -> Result<(), Box<dyn std::error::Error>> {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = suspended_workflow() else {
+        return Err("missing workflow fixture".into());
+    };
+    let run = RunId::new(11);
+
+    submit_with_contracts(&shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = journal.snapshot()?;
+    let action_failed_events: Vec<u32> = events
+        .iter()
+        .filter_map(|e| match e {
+            RuntimeJournalEvent::ActionFailed {
+                run: r,
+                step: s,
+                action: _,
+                attempt: a,
+            } if *r == run && *s == StepIdx::ZERO => Some(*a),
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(
+        action_failed_events,
+        vec![1],
+        "ActionFailed should carry attempt=1 from ticket"
+    );
+
+    Ok(())
+}
+
+</parameter>
+</function>
+</tool_call>

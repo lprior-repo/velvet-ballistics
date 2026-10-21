@@ -1,0 +1,31 @@
+## Implementation Complete: vb-bwdf0
+
+**Summary:** Fixed 21 stale `WorkflowParts` test fixtures across 9 files by adding the missing `input_slots` field. Both compiler and runtime test suites now compile.
+
+### Compile Verification ✓
+```bash
+cargo test -p vb_compile --features test-util --tests --no-run    # exit 0
+cargo test -p vb_runtime --tests --no-run                         # exit 0
+```
+
+### Test Results
+- **89 tests passed** across 9 impacted integration suites
+- **9 behavioral failures** in `durable_retry_red_phase` and `vb_jggy_lifecycle_tests` - all `InvalidActionCompletion` errors, unrelated to fixture drift (production behavior issue, should be separate bead)
+
+### Files Modified
+- `crates/vb_compile/tests/vb_xi2f_error_variant_proptest.rs` (3 fixtures)
+- `crates/vb_runtime/tests/durability_matrix_integration.rs` (4 fixtures)
+- `crates/vb_runtime/tests/durable_retry_red_phase.rs` (4 fixtures)
+- `crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs` (3 fixtures)
+- `crates/vb_runtime/tests/durable_resume_red_phase.rs` (1 fixture)
+- `crates/vb_runtime/tests/slot_validation_test.rs` (1 fixture)
+- `crates/vb_runtime/tests/vb_5m8w_step_budget_suspension_runtime.rs` (2 fixtures)
+- `crates/vb_runtime/tests/vb_jggy_property_tests.rs` (1 fixture)
+- `crates/vb_runtime/tests/vb_qi37_12_2_resume_error_propagation.rs` (2 fixtures)
+
+All received `input_slots: Box::new([])` since none of these test workflows declare external inputs. No production code changes. No ignored tests or weakened assertions.
+
+### Evidence
+All compile and test logs saved to `.beads/vb-bwdf0/evidence/`. Implementation report at `.beads/vb-bwdf0/implementation-report.md`.
+
+JJ change described, bead closed, and beads data pushed to Dolt remote.

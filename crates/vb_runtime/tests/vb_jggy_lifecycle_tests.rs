@@ -143,6 +143,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -182,6 +183,7 @@ fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -242,6 +244,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -411,22 +414,22 @@ fn step_succeeded_carries_attempt_field() {
 
 /// B31: RuntimeJournalEvent::ActionFailed carries attempt field
 #[test]
-fn action_failed_carries_attempt_field() {
+fn action_failed_carries_attempt_field() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+        return Err("missing workflow fixture".into());
     };
     let run = RunId::new(11);
 
-    // Submit and drive to action
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Fail action with attempt=1 (matching current after scheduling)
-    let ticket = make_ticket(run, StepIdx::ZERO, 1, 3);
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket")?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -436,8 +439,7 @@ fn action_failed_carries_attempt_field() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Check journal event carries attempt
-    let events = journal.snapshot().expect("journal snapshot should work");
+    let events = journal.snapshot()?;
     let action_failed_events: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
@@ -445,51 +447,70 @@ fn action_failed_carries_attempt_field() {
                 run: r,
                 step: s,
                 action: _,
-                attempt: a, // POST-003: attempt field should exist
+                attempt: a,
             } if *r == run && *s == StepIdx::ZERO => Some(*a),
             _ => None,
         })
         .collect();
 
-    assert!(
-        !action_failed_events.is_empty(),
-        "ActionFailed event should be in journal"
-    );
     assert_eq!(
-        action_failed_events[0], 1,
+        action_failed_events,
+        vec![1],
         "ActionFailed should carry attempt=1 from ticket"
     );
+
+    Ok(())
 }
 
 /// Verify StepSucceeded with higher attempt number is persisted correctly
 #[test]
-fn step_succeeded_carries_retry_attempt_number() {
+fn step_succeeded_carries_retry_attempt_number() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
-    let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
     };
     let run = RunId::new(12);
 
-    // Submit
+    // Submit and drive to first action
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Simulate: action_attempts[0] was advanced to 3 via record_scheduled_attempt
-    {
-        let Some(state) = shard.run_state_get_mut(run) else {
-            panic!("run should exist");
-        };
-        if let Some(attempt) = state.action_attempts.get_mut(0) {
-            *attempt = 3;
-        }
-    }
+    // Fail ticket 1 (retryable)
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
 
-    // Complete action with stale attempt=2 (should be rejected - tested elsewhere)
-    // This test: complete with matching attempt=3
-    let ticket = make_ticket(run, StepIdx::ZERO, 3, 5);
+    // Fail ticket 2 (retryable)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Complete ticket 3 (matching attempt=3)
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(99),
@@ -497,24 +518,29 @@ fn step_succeeded_carries_retry_attempt_number() {
         encoded_len: 3,
     };
     assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: ticket3,
+            output,
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
 
     // Check attempt=3 was persisted in the durable action completion envelope.
-    let events = journal.snapshot().expect("journal snapshot should work");
+    let events = journal.snapshot()?;
     let completion_with_attempt_3: bool = events.iter().any(|e| {
         matches!(
             e,
             RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. }
-                if ticket.run == run && ticket.step == StepIdx::ZERO && ticket.attempt == 3
+                if ticket.run == run && ticket.step == StepIdx::new(1) && ticket.attempt == 3
         )
     });
     assert!(
         completion_with_attempt_3,
         "ActionCompletedEnvelope ticket should carry attempt=3"
     );
+
+    Ok(())
 }
 
 // =============================================================================
@@ -523,36 +549,65 @@ fn step_succeeded_carries_retry_attempt_number() {
 
 /// B21: handle_action_completion rejects stale attempt BEFORE journal write
 #[test]
-fn stale_attempt_completion_rejected_before_journal_write() {
+fn stale_attempt_completion_rejected_before_journal_write() -> Result<(), Box<dyn std::error::Error>>
+{
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
-    let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
     };
     let run = RunId::new(20);
 
-    // Submit
+    // Submit and drive to first action
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Manually advance action_attempts[0] to 3 (simulating prior attempt)
-    {
-        let Some(state) = shard.run_state_get_mut(run) else {
-            panic!("run should exist");
-        };
-        if let Some(attempt) = state.action_attempts.get_mut(0) {
-            *attempt = 3;
-        }
-    }
+    // Drive failure to advance to ticket 2
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Capture real ticket 2 (will become stale)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    let ticket2_attempt = ticket2.attempt;
+    assert_eq!(ticket2_attempt, 2, "ticket2 should have attempt=2");
+
+    // Drive failure to advance to ticket 3
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Now current attempt is 3, but we'll try to complete with the saved ticket 2 attempt
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
 
     // Capture state before stale completion attempt
-    let journal_before = journal.snapshot().expect("journal snapshot should work");
+    let journal_before = journal.snapshot()?;
     let counters_before = shard.counters().snapshot();
 
-    // Attempt stale completion with attempt=2
-    let stale_ticket = make_ticket(run, StepIdx::ZERO, 2, 3);
+    // Attempt stale completion with saved ticket 2 attempt number
+    let stale_ticket = ticket2;
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
@@ -569,13 +624,13 @@ fn stale_attempt_completion_rejected_before_journal_write() {
     assert_eq!(
         shard.tick(),
         Err(RuntimeError::StaleAttempt {
-            incoming: 2,
-            current: 3,
+            incoming: ticket2_attempt,
+            current: ticket3.attempt,
         })
     );
 
     // Verify NO new journal events were written
-    let journal_after = journal.snapshot().expect("journal snapshot should work");
+    let journal_after = journal.snapshot()?;
     assert_eq!(
         journal_before, journal_after,
         "Journal must not be mutated when stale attempt is rejected"
@@ -591,39 +646,69 @@ fn stale_attempt_completion_rejected_before_journal_write() {
         counters_before.runs_failed, counters_after.runs_failed,
         "runs_failed counter must not change on stale rejection"
     );
+
+    Ok(())
 }
 
 /// B28: handle_action_failure rejects stale attempt BEFORE journal write
 #[test]
-fn stale_attempt_failure_rejected_before_journal_write() {
+fn stale_attempt_failure_rejected_before_journal_write() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
-    let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
     };
     let run = RunId::new(21);
 
-    // Submit
+    // Submit and drive to first action
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Manually advance action_attempts[0] to 5
-    {
-        let Some(state) = shard.run_state_get_mut(run) else {
-            panic!("run should exist");
-        };
-        if let Some(attempt) = state.action_attempts.get_mut(0) {
-            *attempt = 5;
-        }
-    }
+    // Drive failure to advance to ticket 2
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket1,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Capture real ticket 2 (will become stale)
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
+    let ticket2_attempt = ticket2.attempt;
+    assert_eq!(ticket2_attempt, 2, "ticket2 should have attempt=2");
+
+    // Drive failure to advance to ticket 3
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: ticket2,
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Now current attempt is 3, but we'll try to fail with the saved ticket 2 attempt
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket3 should have attempt=3");
 
     // Capture state before stale failure attempt
-    let journal_before = journal.snapshot().expect("journal snapshot should work");
+    let journal_before = journal.snapshot()?;
 
-    // Attempt stale failure with attempt=3
-    let stale_ticket = make_ticket(run, StepIdx::ZERO, 3, 5);
+    // Attempt stale failure with saved ticket 2 attempt number
+    let stale_ticket = ticket2;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: stale_ticket,
@@ -634,25 +719,19 @@ fn stale_attempt_failure_rejected_before_journal_write() {
     assert_eq!(
         shard.tick(),
         Err(RuntimeError::StaleAttempt {
-            incoming: 3,
-            current: 5,
+            incoming: ticket2_attempt,
+            current: ticket3.attempt,
         })
     );
 
-    // Verify NO ActionFailed event was written to journal
-    let journal_after = journal.snapshot().expect("journal snapshot should work");
-    let action_failed_count_before = journal_before
-        .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::ActionFailed { run: r, .. } if *r == run))
-        .count();
-    let action_failed_count_after = journal_after
-        .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::ActionFailed { run: r, .. } if *r == run))
-        .count();
+    // Verify NO new journal events were written
+    let journal_after = journal.snapshot()?;
     assert_eq!(
-        action_failed_count_before, action_failed_count_after,
-        "No ActionFailed event should be written when stale attempt is rejected"
+        journal_before, journal_after,
+        "Journal must not be mutated when stale attempt is rejected"
     );
+
+    Ok(())
 }
 
 // =============================================================================
@@ -682,13 +761,13 @@ fn action_attempts_advances_after_scheduling() {
 
 /// Verify action_attempts monotonically advances on retry scheduling
 #[test]
-fn action_attempts_monotonically_advances_on_retry() {
+fn action_attempts_monotonically_advances_on_retry() -> Result<(), Box<dyn std::error::Error>> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let Some(wf) = retry_workflow() else {
-        panic!("missing retry workflow fixture");
+        return Err("missing retry workflow fixture".into());
     };
     let run = RunId::new(31);
 
@@ -698,7 +777,7 @@ fn action_attempts_monotonically_advances_on_retry() {
 
     // action_attempts[1] should be 1 after first scheduling
     {
-        let state = shard.run_state_get_mut(run).expect("run should exist");
+        let state = shard.run_state_get_mut(run).ok_or("run should exist")?;
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(1),
@@ -707,7 +786,10 @@ fn action_attempts_monotonically_advances_on_retry() {
     }
 
     // Fail with retryable policy - this should trigger a retry
-    let ticket1 = make_ticket(run, StepIdx::new(1), 1, 3);
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    assert_eq!(ticket1.attempt, 1, "ticket1 should have attempt=1");
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: ticket1,
@@ -721,7 +803,7 @@ fn action_attempts_monotonically_advances_on_retry() {
     {
         let state = shard
             .run_state_get_mut(run)
-            .expect("run should exist after retry");
+            .ok_or("run should exist after retry")?;
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(2),
@@ -729,8 +811,11 @@ fn action_attempts_monotonically_advances_on_retry() {
         );
     }
 
-    // Fail again with retry
-    let ticket2 = make_ticket(run, StepIdx::new(1), 2, 3);
+    // Fail again with retry using real issued ticket
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket2 should have attempt=2");
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: ticket2,
@@ -742,13 +827,15 @@ fn action_attempts_monotonically_advances_on_retry() {
 
     // action_attempts[1] should now be 3
     {
-        let state = shard.run_state_get_mut(run).expect("run should exist");
+        let state = shard.run_state_get_mut(run).ok_or("run should exist")?;
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(3),
             "action_attempts[1] should be 3 after second retry scheduling"
         );
     }
+
+    Ok(())
 }
 
 // =============================================================================
@@ -840,28 +927,20 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
 
 /// B7: validate_ticket_attempt accepts valid ticket (current=1, attempt=2)
 #[test]
-fn validate_ticket_attempt_accepts_valid_ticket() {
+fn validate_ticket_attempt_accepts_valid_ticket() -> Result<(), Box<dyn std::error::Error>> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
+        return Err("missing workflow fixture".into());
     };
     let run = RunId::new(60);
 
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Advance action_attempts[0] to 1
-    {
-        let Some(state) = shard.run_state_get_mut(run) else {
-            panic!("run should exist");
-        };
-        if let Some(attempt) = state.action_attempts.get_mut(0) {
-            *attempt = 1;
-        }
-    }
-
-    // Complete with attempt=1 (equal to current=1 — valid)
-    let ticket = make_ticket(run, StepIdx::ZERO, 1, 3);
+    // Complete with real issued ticket (attempt=1, equal to current=1 — valid)
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket")?;
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(100),
@@ -873,6 +952,8 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true), "valid ticket should be accepted");
+
+    Ok(())
 }
 
 // =============================================================================

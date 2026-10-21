@@ -1,0 +1,20 @@
+Both reviews are complete. Here is the summary:
+
+**Code Review — STATUS: APPROVED** (`.beads/vb-3l40a/admission-code-review.md`)
+- Both Runtime APIs (`submit_direct_with_grants_and_contracts` and `submit_direct_with_inputs_grants_and_contracts`) now validate before enqueue
+- Both shard command handlers (`handle_submit_with_grants_and_contracts` and `handle_submit_with_inputs_grants_and_contracts`) validate before any journal/header/state mutation
+- Dense registry model correctly implemented with `index == ID` matching via `validate_contract_ids`
+- Error precedence matches admission contract addendum: duplicate IDs > index/name validation > capability coverage > workflow action binding
+- No engineering rules violations in production code (no unwrap/expect/panic, bounded iteration, safe access)
+- Contract validation is bound to production types (`CompiledWorkflow`, `ActionId`, `ActionContract`) and actual Do node inspection
+- Parent commit verified: candidate 1b0fe1f87 has correct baseline parent 61930db10
+
+**Test Suite Review — STATUS: REJECTED** (`.beads/vb-3l40a/admission-test-suite-review.md`)
+- **BLOCKER:** Negative shard boundary tests (`shard_boundary_validates_fabricated_id_before_admission`, `shard_boundary_validates_fabricated_id_with_inputs_before_admission`) check `!shard.run_state_contains(run)` but do not attach a recording journal or assert no journal events were written. A regression that writes journal events before validation would pass these tests.
+- **MINOR:** Substring error matching (`error.contains("999")`) instead of exact error variant/field matching
+- **MINOR:** Positive tests check terminal membership without distinguishing RunFinished from RunFailed or verifying output value
+- **MINOR:** Missing test for empty action name rejection (production code checks it, no test covers it)
+- **MINOR:** Missing test for multiple distinct action IDs requiring multiple contracts
+- **INFORMATIONAL:** Missing test for out-of-bounds action index
+
+Test execution: `RUSTC_WRAPPER= CARGO_BUILD_JOBS=2 timeout 300 cargo test -p vb_runtime --lib shard::lifecycle::tests` ran 114 tests in 0.31s (0 failed, 1789 filtered out). Evidence: `.beads/vb-3l40a/evidence/admission-review/lifecycle.log`. Filter ran >0 actual tests. No proof tools or global CI used. No source edits, bead closure, or pushes performed.

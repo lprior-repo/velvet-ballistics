@@ -1,0 +1,66 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+warning: unused import: `RecoveredPendingActionTicket`
+  --> crates/vb_runtime/src/recovery.rs:20:60
+   |
+20 |     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::recovery::RecoveredRunBoundary`
+  --> crates/vb_runtime/src/shard/types.rs:21:5
+   |
+21 | use crate::recovery::RecoveredRunBoundary;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0559]: variant `RuntimeError::AdmissionActionRegistryMismatch` has no field named `action`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:376:17
+    |
+376 |                 action,
+    |                 ^^^^^^ `RuntimeError::AdmissionActionRegistryMismatch` does not have this field
+    |
+    = note: available fields are: `digest`, `expected_count`
+
+error[E0559]: variant `RuntimeError::AdmissionActionRegistryMismatch` has no field named `registered_count`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:377:17
+    |
+377 |                 registered_count: state.action_contracts.len(),
+    |                 ^^^^^^^^^^^^^^^^ `RuntimeError::AdmissionActionRegistryMismatch` does not have this field
+    |
+    = note: available fields are: `digest`, `expected_count`
+
+warning: unused variable: `run`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:352:56
+    |
+352 |     pub(crate) fn action_abi_digests_remove(&mut self, run: RunId) {
+    |                                                        ^^^ help: if this is intentional, prefix it with an underscore: `_run`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `artifact_digest`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:733:17
+    |
+733 |                 artifact_digest,
+    |                 ^^^^^^^^^^^^^^^ help: try ignoring the field: `artifact_digest: _`
+
+warning: unused variable: `next_seq`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:735:17
+    |
+735 |                 next_seq,
+    |                 ^^^^^^^^ help: try ignoring the field: `next_seq: _`
+
+warning: unused variable: `collect_states`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:736:17
+    |
+736 |                 collect_states,
+    |                 ^^^^^^^^^^^^^^ help: try ignoring the field: `collect_states: _`
+
+warning: unused variable: `boundary`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:737:17
+    |
+737 |                 boundary,
+    |                 ^^^^^^^^ help: try ignoring the field: `boundary: _`
+
+For more information about this error, try `rustc --explain E0559`.
+warning: `vb_runtime` (lib) generated 7 warnings
+error: could not compile `vb_runtime` (lib) due to 2 previous errors; 7 warnings emitted

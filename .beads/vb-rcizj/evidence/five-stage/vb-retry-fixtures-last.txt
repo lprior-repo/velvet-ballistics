@@ -1,0 +1,17 @@
+The three failing durable-retry tests have been repaired by replacing synthetic `make_ticket()` fixtures with runtime-issued tickets obtained via `shard.pending_action_get(run)`.
+
+**Tests modified** (3 functions in `crates/vb_runtime/tests/durable_retry_red_phase.rs`):
+- `apply_action_failure_to_state_resets_pc_to_failed_step_on_retry`
+- `apply_error_handler_writes_step_index_to_error_slot_integration_gap`
+- `retry_is_available_returns_false_for_nonretryable_policy`
+
+**Changes per function**:
+1. Replaced `make_ticket(run, step, attempt, capacity)` with `shard.pending_action_get(run).ok_or("...")?`
+2. Changed return type from `()` to `Result<(), Box<dyn std::error::Error>>`
+3. Added `Ok(())` return at end of each test
+4. Preserved all existing retry PC, error-slot, and nonretryability assertions
+5. Other 6 `make_ticket` uses in the file (different tests) remain unchanged
+
+**Test result**: `cargo test -p vb_runtime --test durable_retry_red_phase` — **9 passed, 0 failed**, exit code 0.
+
+Log saved to `.beads/vb-rcizj/evidence/durable-retry-real-tickets.log`. The production file change in `chunk_004.rs` is pre-existing from prior admission/fixture candidate work; this session only touched the test file.
