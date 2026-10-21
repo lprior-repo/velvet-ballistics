@@ -47,6 +47,7 @@ fn small_workflow() -> vb_core::workflow::CompiledWorkflow {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("proptest_sxkz6"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([node]),

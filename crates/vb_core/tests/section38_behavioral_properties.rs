@@ -23,6 +23,7 @@ fn default_contract() -> ResourceContract {
 /// Minimal two-step workflow: SetConst(42) -> Finish(slot 0).
 fn simple_workflow() -> Result<CompiledWorkflow, String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "behavioral_test".into(),
         digest: WorkflowDigest::from_bytes([0x38; 32]),
@@ -223,6 +224,7 @@ fn step_budget_exhaustion_resource_contract_rejects_oversized() -> Result<(), St
 
 fn simple_workflow_parts() -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "budget_test".into(),
         digest: WorkflowDigest::from_bytes([0xB5; 32]),
@@ -269,6 +271,7 @@ fn taint_safety_secret_taint_propagates_to_finish_signal() -> Result<(), String>
     // Build a workflow where we manually write a secret-tainted value into
     // the finish result slot and verify the engine signals the taint.
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "taint_runtime".into(),
         digest: WorkflowDigest::from_bytes([0x54; 32]),

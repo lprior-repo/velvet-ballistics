@@ -93,6 +93,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("suspended"),
             digest: WorkflowDigest::from_bytes([1; 32]),
             nodes: Box::from([node]),
@@ -132,6 +133,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("action_then_finish"),
             digest: WorkflowDigest::from_bytes([3; 32]),
             nodes: Box::from([do_node, finish]),
@@ -332,6 +334,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("ask_waiting_test"),
             digest: WorkflowDigest::from_bytes([42; 32]),
             nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -391,6 +394,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("ask_without_timeout_test"),
             digest: WorkflowDigest::from_bytes([43; 32]),
             nodes: Box::from([set_prompt, ask, resume, finish]),
@@ -657,6 +661,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("finished"),
             digest: WorkflowDigest::from_bytes([2; 32]),
             nodes: Box::from([set_const, finish]),
@@ -2932,6 +2937,7 @@ mod tests {
             },
         };
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("wait_then_finish"),
             digest: WorkflowDigest::from_bytes([6; 32]),
             nodes: Box::from([set_deadline, wait, finish]),

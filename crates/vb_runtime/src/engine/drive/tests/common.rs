@@ -174,6 +174,7 @@ pub(crate) fn mkwfc(
         .map(|i| format!("s{i}").into_boxed_str())
         .collect();
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -184,7 +185,7 @@ pub(crate) fn mkwfc(
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e}"))

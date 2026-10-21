@@ -2,7 +2,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionName, Idempotency, RetrySafety, SideEffect, compute_action_idempotency_key,
+    ActionContract, ActionName, Idempotency, RetrySafety, SideEffect,
+    compute_action_idempotency_key,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -49,6 +50,7 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("set_finish"),
         digest,
         input_slots: Box::from([]),
@@ -89,6 +91,7 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("do_action"),
         digest,
         input_slots: Box::from([]),
@@ -138,6 +141,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("taint_expr"),
         digest,
         input_slots: Box::from([]),
@@ -288,7 +292,9 @@ fn restart_lookup_finds_persisted_header() {
             assert_eq!(record.verification.digest, record.digest);
             match journal.compiled_ir(record.digest) {
                 Ok(Some(stored)) => assert_eq!(stored.digest, record.digest),
-                Ok(None) => fail_assert!("persisted compiled IR should be found by artifact digest"),
+                Ok(None) => {
+                    fail_assert!("persisted compiled IR should be found by artifact digest")
+                }
                 Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
             }
             match journal.compiled_ir_for_source_digest(digest) {
@@ -368,8 +374,16 @@ fn multiple_runs_concurrent_produce_correct_completion_counters() {
     }
 
     let snap = runtime.counters_snapshot();
-    assert!(snap.runs_submitted >= 1, "at least one run should have been submitted, got {}", snap.runs_submitted);
-    assert!(snap.runs_completed >= 1, "at least one run should have completed, got {}", snap.runs_completed);
+    assert!(
+        snap.runs_submitted >= 1,
+        "at least one run should have been submitted, got {}",
+        snap.runs_submitted
+    );
+    assert!(
+        snap.runs_completed >= 1,
+        "at least one run should have completed, got {}",
+        snap.runs_completed
+    );
 }
 
 #[test]
@@ -441,10 +455,7 @@ fn submit_artifact_under_strict_policy_requires_matching_digest() {
         }
     }
     assert!(
-        result.is_ok()
-            || result
-                .as_ref()
-                .is_err_and(|e| !e.to_string().is_empty()),
+        result.is_ok() || result.as_ref().is_err_and(|e| !e.to_string().is_empty()),
         "strict submit_artifact must validate digest: {result:?}"
     );
 }
@@ -501,9 +512,9 @@ fn submit_with_tainted_input_propagates_taint_through_runtime() {
             return;
         }
     };
-    let finished = trace.iter().any(|e| {
-        matches!(e, vb_runtime::trace::TraceEvent::RunFinished { run, .. } if *run == run_id)
-    });
+    let finished = trace.iter().any(
+        |e| matches!(e, vb_runtime::trace::TraceEvent::RunFinished { run, .. } if *run == run_id),
+    );
     assert!(finished, "tainted run should finish: {trace:?}");
 }
 
@@ -519,21 +530,18 @@ fn journal_persistence_survives_runtime_drop_and_reopen() {
         return;
     };
 
-    let artifact_digest = match vb_storage::submit_artifact(
-        &journal,
-        &workflow,
-        vb_core::RuntimePolicy::Relaxed,
-    ) {
-        Ok(record) => {
-            assert_eq!(record.source_digest, digest);
-            assert_eq!(record.verification.digest, record.digest);
-            record.digest
-        }
-        Err(err) => {
-            fail_assert!("submit_artifact failed: {err}");
-            return;
-        }
-    };
+    let artifact_digest =
+        match vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed) {
+            Ok(record) => {
+                assert_eq!(record.source_digest, digest);
+                assert_eq!(record.verification.digest, record.digest);
+                record.digest
+            }
+            Err(err) => {
+                fail_assert!("submit_artifact failed: {err}");
+                return;
+            }
+        };
 
     drop(journal);
 

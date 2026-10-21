@@ -32,6 +32,7 @@ fn make_parts(
     constants: Vec<ConstValue>,
 ) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),

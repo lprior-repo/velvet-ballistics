@@ -39,6 +39,7 @@ fn make_plan(
     expressions: Vec<ExprProgram>,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "test_replay".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

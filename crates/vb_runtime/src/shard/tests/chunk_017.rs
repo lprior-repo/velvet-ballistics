@@ -106,6 +106,7 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         .chain(std::iter::once(last_node))
         .collect::<Vec<_>>();
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("bh_large_wf"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: nodes.into_boxed_slice(),

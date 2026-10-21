@@ -20,6 +20,7 @@ fn make_minimal_plan(
     constants: Vec<ConstValue>,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: "kani_plan".into(),
         digest: crate::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),

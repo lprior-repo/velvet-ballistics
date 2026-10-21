@@ -3848,6 +3848,7 @@ fn test_step_count_overflow() -> Result<(), String> {
     }];
 
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("step_count_overflow_test"),
         digest: crate::ids::WorkflowDigest::from_bytes([0x41; 32]),

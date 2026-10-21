@@ -32,6 +32,7 @@ fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

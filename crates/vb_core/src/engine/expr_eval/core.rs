@@ -156,6 +156,7 @@ mod tests {
         let expr = ExprProgram::try_from_parts(expr_ops.into_boxed_slice(), max_stack)
             .map_err(|e| e.to_string())?;
         CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("core_test"),
             digest: WorkflowDigest::from_bytes([0xFC; 32]),
@@ -317,6 +318,7 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("accessor_expr_test"),
             digest: WorkflowDigest::from_bytes([0xFD; 32]),

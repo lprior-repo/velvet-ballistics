@@ -45,6 +45,7 @@ fn simple_workflow() -> CompiledWorkflow {
         },
     }];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_action_queue"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),

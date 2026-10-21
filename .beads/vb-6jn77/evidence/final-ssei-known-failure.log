@@ -1,0 +1,27 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s
+     Running tests/vb_ssei_verification_admission_acceptance.rs (target/debug/deps/vb_ssei_verification_admission_acceptance-3703d2bafdebd6b9)
+
+running 4 tests
+test test_admission_rejects_when_ir_digest_mismatches_artifact ... ok
+test test_admission_accepts_when_all_verification_gates_pass ... ok
+test test_admission_rejects_when_capability_missing ... ok
+test test_strict_verify_emits_certificate_when_workflow_is_safe ... FAILED
+
+failures:
+
+---- test_strict_verify_emits_certificate_when_workflow_is_safe stdout ----
+
+thread 'test_strict_verify_emits_certificate_when_workflow_is_safe' (3073283) panicked at crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs:168:5:
+assertion failed: matches!(observed, Ok(admission) if admission.granted_capabilities() ==
+    &grants && admission.idempotency_attested() == [action] &&
+    admission.policy() == RuntimePolicy::Strict)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_strict_verify_emits_certificate_when_workflow_is_safe
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance`

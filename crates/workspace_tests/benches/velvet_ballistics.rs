@@ -957,6 +957,7 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
         },
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_for_each"),
         digest: WorkflowDigest::from_bytes([0x44; 32]),
@@ -979,6 +980,7 @@ fn compiled_from_nodes(
     constants: Box<[vb_core::ConstValue]>,
 ) -> Option<CompiledWorkflow> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
@@ -1252,6 +1254,7 @@ fn taint_expr_workflow(
         },
     }];
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
@@ -1473,6 +1476,7 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
     });
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_build_object"),
         digest: WorkflowDigest::from_bytes([0x57; 32]),
@@ -1587,6 +1591,7 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
     });
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_build_list"),
         digest: WorkflowDigest::from_bytes([0x58; 32]),
@@ -1731,6 +1736,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
     ];
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_full"),
         digest: WorkflowDigest::from_bytes([0x59; 32]),

@@ -57,6 +57,7 @@ fn nop_node_with_next(id: u16, next: u16) -> CompiledNode {
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([0x00; 32]),
@@ -74,6 +75,7 @@ fn valid_parts() -> WorkflowParts {
 
 fn valid_parts_with_nodes(nodes: Vec<CompiledNode>) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
         ..valid_parts()
     }
@@ -146,6 +148,7 @@ mod valid_workflow_graph_acceptance {
             },
         ]);
         let p = WorkflowParts {
+            semantic_source_identity: None,
             expressions: vec![ExprProgram {
                 ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
                 max_stack: 1,
@@ -279,6 +282,7 @@ mod cycle_detection_and_backward_edges {
             },
         ]);
         let p = WorkflowParts {
+            semantic_source_identity: None,
             expressions: vec![ExprProgram {
                 ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
                 max_stack: 1,
@@ -489,6 +493,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_setconst_when_const_index_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -515,6 +520,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_copy_when_source_slot_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -541,6 +547,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_evalexpr_when_expr_index_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -573,6 +580,7 @@ mod per_node_kind_invalid_configurations {
             fields.push((SymbolId::new(i as u32), SlotIdx::new(0)));
         }
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -602,6 +610,7 @@ mod per_node_kind_invalid_configurations {
             items.push(SlotIdx::new(0));
         }
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -627,6 +636,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_chooseslot_with_empty_branch_table_and_no_otherwise() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -648,6 +658,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_choose_with_empty_branch_table_and_no_otherwise() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -669,6 +680,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_foreachstart_with_out_of_bounds_item_slot() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -699,6 +711,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_togetherstart_with_zero_branches() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -726,6 +739,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_togetherjoin_with_branch_count_zero() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -752,6 +766,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_repeatstart_with_zero_max_attempts() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -779,6 +794,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_do_with_out_of_bounds_input_slot() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -806,6 +822,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_finish_with_out_of_bounds_result_slot() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -832,6 +849,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_output_slot_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(99)),
@@ -856,6 +874,7 @@ mod per_node_kind_invalid_configurations {
     #[test]
     fn rejects_waituntil_with_out_of_bounds_deadline_slot() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -890,6 +909,7 @@ mod resource_contract_exceeded {
     #[test]
     fn rejects_node_count_exceeding_max_steps_contract() {
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![nop_node(0), nop_node(1), nop_node(2)].into_boxed_slice(),
             ..valid_parts()
         };
@@ -906,6 +926,7 @@ mod resource_contract_exceeded {
     #[test]
     fn rejects_slot_count_exceeding_max_slots_contract() {
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             slot_count: 5,
             ..valid_parts()
         };
@@ -922,6 +943,7 @@ mod resource_contract_exceeded {
     #[test]
     fn rejects_constant_count_exceeding_max_constants_contract() {
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             constants: vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3)]
                 .into_boxed_slice(),
             ..valid_parts()
@@ -941,6 +963,7 @@ mod resource_contract_exceeded {
         let mut parts = valid_parts();
         parts.resource_contract.max_accessors = 0;
         let parts_with_accessors = WorkflowParts {
+            semantic_source_identity: None,
             accessors: vec![crate::workflow::AccessorProgram {
                 root: SlotIdx::new(0),
                 path: Box::new([]),
@@ -962,6 +985,7 @@ mod resource_contract_exceeded {
         let mut parts = valid_parts();
         parts.resource_contract.max_expressions = 0;
         let parts_with_expr = WorkflowParts {
+            semantic_source_identity: None,
             expressions: vec![ExprProgram {
                 ops: Box::new([]),
                 max_stack: 0,
@@ -1033,6 +1057,7 @@ mod target_out_of_bounds {
     #[test]
     fn compiled_workflow_rejects_entry_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             entry: StepIdx::new(42),
             nodes: vec![finish_node(0, 0)].into_boxed_slice(),
             ..valid_parts()
@@ -1066,6 +1091,7 @@ mod target_out_of_bounds {
     #[test]
     fn compiled_workflow_rejects_slot_out_of_bounds_via_kind() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1091,6 +1117,7 @@ mod target_out_of_bounds {
     #[test]
     fn compiled_workflow_rejects_const_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1124,6 +1151,7 @@ mod taint_secret_validation {
     #[test]
     fn rejects_node_with_out_of_bounds_on_error_step() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1147,6 +1175,7 @@ mod taint_secret_validation {
     #[test]
     fn rejects_node_with_out_of_bounds_error_slot() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1202,6 +1231,7 @@ mod error_message_exactness_verification {
     #[test]
     fn emptynodes_error_is_exact_unit_variant() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: Box::new([]),
             ..valid_parts()
         };
@@ -1232,6 +1262,7 @@ mod error_message_exactness_verification {
     #[test]
     fn entryoutofbounds_error_contains_exact_entry_field() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             entry: StepIdx::new(55),
             nodes: vec![finish_node(0, 0)].into_boxed_slice(),
             ..valid_parts()
@@ -1248,6 +1279,7 @@ mod error_message_exactness_verification {
     #[test]
     fn resourcecontractexceeded_contains_exact_resource_name() {
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![nop_node(0), nop_node(1), nop_node(2)].into_boxed_slice(),
             ..valid_parts()
         };
@@ -1292,6 +1324,7 @@ mod complex_nested_workflow_validation {
 
     fn improperly_nested_loop_parts() -> WorkflowParts {
         WorkflowParts {
+            semantic_source_identity: None,
             nodes: improperly_nested_loop_nodes(),
             ..valid_parts()
         }
@@ -1337,6 +1370,7 @@ mod complex_nested_workflow_validation {
     #[test]
     fn accepts_valid_foreach_loop() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1378,6 +1412,7 @@ mod complex_nested_workflow_validation {
     #[test]
     fn accepts_valid_together_workflow() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1441,6 +1476,7 @@ mod complex_nested_workflow_validation {
     #[test]
     fn accepts_choose_slot_workflow_with_otherwise() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1534,6 +1570,7 @@ mod determinism_idempotency_of_validation {
     #[test]
     fn validation_is_idempotent_on_error_paths() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: Box::new([]),
             ..valid_parts()
         };

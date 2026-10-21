@@ -79,6 +79,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -108,6 +109,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -156,6 +158,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("timed_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish]),
@@ -225,6 +228,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),

@@ -38,6 +38,7 @@ fn input_slot_parts() -> WorkflowParts {
         },
     };
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("cli-input"),
         digest: WorkflowDigest::from_bytes([7u8; 32]),
         input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
@@ -62,6 +63,7 @@ fn input_slot_parts() -> WorkflowParts {
 
 fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         input_slots: Box::from([]),

@@ -1,0 +1,71 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/finish_digest_integration.rs (target/debug/deps/finish_digest_integration-ba9f56374276dd3a)
+
+running 15 tests
+test canonical_legacy_digest_equivalence ... ignored, BLOCKED: legacy canonical_digest is not accessible from integration test crate
+test digest_is_computed_before_validation_error ... ok
+test finish_result_value_changes_compiled_digest_integer ... ok
+test finish_step_id_changes_compiled_digest ... ok
+test finish_result_type_changes_compiled_digest ... ok
+test finish_result_value_changes_compiled_digest_string ... ok
+test compiled_digest_stable_across_independent_compilations ... ok
+test trigger_event_type_changes_compiled_digest ... FAILED
+test multi_step_workflow_step_ordering_changes_compiled_digest ... ok
+test trigger_schedule_param_changes_compiled_digest ... FAILED
+test compiled_digest_matches_on_recompile ... ok
+test workflow_name_changes_compiled_digest ... ok
+test trigger_schedule_vs_manual_changes_compiled_digest ... FAILED
+test workflow_version_changes_compiled_digest ... FAILED
+test trigger_type_changes_compiled_digest ... FAILED
+
+failures:
+
+---- trigger_event_type_changes_compiled_digest stdout ----
+
+thread 'trigger_event_type_changes_compiled_digest' (2814022) panicked at crates/vb_compile/tests/finish_digest_integration.rs:527:5:
+assertion `left != right` failed: different event names must produce different compiled digests
+  left: WorkflowDigest([160, 93, 147, 84, 234, 10, 101, 63, 79, 180, 3, 103, 30, 139, 168, 17, 254, 253, 159, 217, 92, 81, 177, 215, 169, 177, 152, 84, 146, 241, 73, 35])
+ right: WorkflowDigest([160, 93, 147, 84, 234, 10, 101, 63, 79, 180, 3, 103, 30, 139, 168, 17, 254, 253, 159, 217, 92, 81, 177, 215, 169, 177, 152, 84, 146, 241, 73, 35])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- trigger_schedule_param_changes_compiled_digest stdout ----
+
+thread 'trigger_schedule_param_changes_compiled_digest' (2814023) panicked at crates/vb_compile/tests/finish_digest_integration.rs:459:5:
+assertion `left != right` failed: different schedule cron expressions must produce different compiled digests
+  left: WorkflowDigest([16, 192, 116, 211, 163, 96, 198, 132, 220, 139, 69, 222, 235, 198, 62, 95, 126, 110, 200, 161, 165, 96, 133, 125, 36, 209, 123, 26, 201, 148, 249, 113])
+ right: WorkflowDigest([16, 192, 116, 211, 163, 96, 198, 132, 220, 139, 69, 222, 235, 198, 62, 95, 126, 110, 200, 161, 165, 96, 133, 125, 36, 209, 123, 26, 201, 148, 249, 113])
+
+---- trigger_schedule_vs_manual_changes_compiled_digest stdout ----
+
+thread 'trigger_schedule_vs_manual_changes_compiled_digest' (2814024) panicked at crates/vb_compile/tests/finish_digest_integration.rs:493:5:
+assertion `left != right` failed: schedule vs manual trigger must produce different compiled digests
+  left: WorkflowDigest([55, 98, 14, 92, 240, 133, 116, 6, 57, 122, 178, 29, 201, 15, 16, 53, 137, 174, 156, 120, 66, 85, 207, 177, 0, 207, 222, 168, 6, 135, 149, 254])
+ right: WorkflowDigest([55, 98, 14, 92, 240, 133, 116, 6, 57, 122, 178, 29, 201, 15, 16, 53, 137, 174, 156, 120, 66, 85, 207, 177, 0, 207, 222, 168, 6, 135, 149, 254])
+
+---- workflow_version_changes_compiled_digest stdout ----
+
+thread 'workflow_version_changes_compiled_digest' (2814027) panicked at crates/vb_compile/tests/finish_digest_integration.rs:377:5:
+assertion `left != right` failed: different workflow versions must produce different compiled digests
+  left: WorkflowDigest([156, 46, 160, 66, 112, 46, 226, 45, 241, 249, 86, 2, 195, 200, 99, 28, 66, 160, 194, 114, 154, 170, 178, 90, 139, 30, 200, 116, 164, 206, 118, 44])
+ right: WorkflowDigest([156, 46, 160, 66, 112, 46, 226, 45, 241, 249, 86, 2, 195, 200, 99, 28, 66, 160, 194, 114, 154, 170, 178, 90, 139, 30, 200, 116, 164, 206, 118, 44])
+
+---- trigger_type_changes_compiled_digest stdout ----
+
+thread 'trigger_type_changes_compiled_digest' (2814025) panicked at crates/vb_compile/tests/finish_digest_integration.rs:418:5:
+assertion `left != right` failed: different trigger types (manual vs webhook) must produce different compiled digests
+  left: WorkflowDigest([156, 18, 140, 55, 191, 176, 25, 30, 44, 131, 165, 180, 136, 190, 243, 160, 194, 198, 35, 171, 80, 223, 254, 167, 152, 170, 4, 35, 239, 139, 67, 215])
+ right: WorkflowDigest([156, 18, 140, 55, 191, 176, 25, 30, 44, 131, 165, 180, 136, 190, 243, 160, 194, 198, 35, 171, 80, 223, 254, 167, 152, 170, 4, 35, 239, 139, 67, 215])
+
+
+failures:
+    trigger_event_type_changes_compiled_digest
+    trigger_schedule_param_changes_compiled_digest
+    trigger_schedule_vs_manual_changes_compiled_digest
+    trigger_type_changes_compiled_digest
+    workflow_version_changes_compiled_digest
+
+test result: FAILED. 9 passed; 5 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_compile --test finish_digest_integration`
+
+exit_code=101

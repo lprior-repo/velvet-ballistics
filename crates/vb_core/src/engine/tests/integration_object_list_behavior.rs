@@ -8,12 +8,10 @@ use crate::errors::EngineError;
 use crate::ids::{ConstIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 use crate::workflow::ResourceContract;
+use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
-use crate::engine::{
-    EngineSignal, new_run_frame, run_until_blocked, StepBudget,
-};
+use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
 
 use proptest::prelude::*;
 
@@ -41,7 +39,9 @@ where
 #[test]
 fn list_creation_empty_produces_empty_list() -> Result<(), String> {
     let mut store = test_store();
-    let lid = store.insert_list(vec![].into_boxed_slice()).map_err(|e| e.to_string())?;
+    let lid = store
+        .insert_list(vec![].into_boxed_slice())
+        .map_err(|e| e.to_string())?;
     let items = store.list(lid).map_err(|e| e.to_string())?;
     ensure_equal(items.is_empty(), true)
 }
@@ -77,12 +77,7 @@ fn list_creation_mixed_types_preserves_all_variants() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
         .insert_list(
-            vec![
-                SlotValue::Null,
-                SlotValue::Bool(false),
-                SlotValue::I64(-42),
-            ]
-            .into_boxed_slice(),
+            vec![SlotValue::Null, SlotValue::Bool(false), SlotValue::I64(-42)].into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let items = store.list(lid).map_err(|e| e.to_string())?;
@@ -160,8 +155,7 @@ fn list_index_access_valid_index_returns_correct_item() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
         .insert_list(
-            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
-                .into_boxed_slice(),
+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     ensure_equal(
@@ -241,7 +235,9 @@ fn object_field_access_missing_key_returns_not_found() -> Result<(), String> {
 fn object_field_access_out_of_bounds_object_returns_error() -> Result<(), String> {
     let store = test_store();
     match store.object_field(ObjectId::new(99), SymbolId::new(0)) {
-        Err(crate::errors::CoreError::ObjectOutOfBounds { object }) if object == ObjectId::new(99) => {
+        Err(crate::errors::CoreError::ObjectOutOfBounds { object })
+            if object == ObjectId::new(99) =>
+        {
             Ok(())
         }
         other => Err(format!("expected ObjectOutOfBounds, got {other:?}")),
@@ -252,7 +248,9 @@ fn object_field_access_out_of_bounds_object_returns_error() -> Result<(), String
 fn list_index_access_out_of_bounds_list_returns_error() -> Result<(), String> {
     let store = test_store();
     match store.list_item(ListId::new(99), 0) {
-        Err(crate::errors::CoreError::ListOutOfBounds { list }) if list == ListId::new(99) => Ok(()),
+        Err(crate::errors::CoreError::ListOutOfBounds { list }) if list == ListId::new(99) => {
+            Ok(())
+        }
         other => Err(format!("expected ListOutOfBounds, got {other:?}")),
     }
 }
@@ -351,9 +349,7 @@ fn list_length_single_returns_one() -> Result<(), String> {
 fn list_length_many_returns_correct_count() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
-        .insert_list(
-            vec![SlotValue::I64(0); 42].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::I64(0); 42].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     ensure_equal(store.list(lid).map_err(|e| e.to_string())?.len(), 42)
 }
@@ -389,9 +385,7 @@ fn object_length_multiple_returns_correct_count() -> Result<(), String> {
 fn list_first_non_empty_returns_first_element() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
-        .insert_list(
-            vec![SlotValue::I64(5), SlotValue::I64(6)].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::I64(5), SlotValue::I64(6)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     ensure_equal(
         store.list(lid).map_err(|e| e.to_string())?.first(),
@@ -403,9 +397,7 @@ fn list_first_non_empty_returns_first_element() -> Result<(), String> {
 fn list_last_non_empty_returns_last_element() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
-        .insert_list(
-            vec![SlotValue::I64(5), SlotValue::I64(6)].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::I64(5), SlotValue::I64(6)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     ensure_equal(
         store.list(lid).map_err(|e| e.to_string())?.last(),
@@ -453,8 +445,13 @@ fn list_filter_keeps_matching_elements() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
         .insert_list(
-            vec![SlotValue::I64(-1), SlotValue::I64(0), SlotValue::I64(3), SlotValue::I64(-4)]
-                .into_boxed_slice(),
+            vec![
+                SlotValue::I64(-1),
+                SlotValue::I64(0),
+                SlotValue::I64(3),
+                SlotValue::I64(-4),
+            ]
+            .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let items = store.list(lid).map_err(|e| e.to_string())?;
@@ -466,9 +463,7 @@ fn list_filter_keeps_matching_elements() -> Result<(), String> {
 fn list_filter_all_rejected_returns_empty_collection() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
-        .insert_list(
-            vec![SlotValue::I64(-1), SlotValue::I64(-2)].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::I64(-1), SlotValue::I64(-2)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     let items = store.list(lid).map_err(|e| e.to_string())?;
     let positive: Vec<SlotValue> = items.iter().copied().filter(|v| is_positive(v)).collect();
@@ -539,9 +534,7 @@ fn list_map_empty_produces_empty() -> Result<(), String> {
 fn list_map_preserves_original_unchanged() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
-        .insert_list(
-            vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     let _doubled: Vec<SlotValue> = store
         .list(lid)
@@ -600,8 +593,14 @@ fn list_dedup_removes_consecutive_duplicates() -> Result<(), String> {
     let mut store = test_store();
     let lid = store
         .insert_list(
-            vec![SlotValue::I64(1), SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(2), SlotValue::I64(3)]
-                .into_boxed_slice(),
+            vec![
+                SlotValue::I64(1),
+                SlotValue::I64(1),
+                SlotValue::I64(2),
+                SlotValue::I64(2),
+                SlotValue::I64(3),
+            ]
+            .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let items = store.list(lid).map_err(|e| e.to_string())?;
@@ -643,6 +642,7 @@ fn list_dedup_empty_does_not_panic() -> Result<(), String> {
 
 fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![
@@ -681,8 +681,7 @@ fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::Work
 
 #[test]
 fn set_const_i64_writes_to_slot_and_finishes() -> Result<(), String> {
-    let workflow =
-        set_const_workflow(ConstValue::I64(99)).map_err(|e| e.to_string())?;
+    let workflow = set_const_workflow(ConstValue::I64(99)).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(1), &workflow)?;
     let mut store = test_store();
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
@@ -694,8 +693,7 @@ fn set_const_i64_writes_to_slot_and_finishes() -> Result<(), String> {
 
 #[test]
 fn set_const_null_writes_null_and_finishes() -> Result<(), String> {
-    let workflow =
-        set_const_workflow(ConstValue::Null).map_err(|e| e.to_string())?;
+    let workflow = set_const_workflow(ConstValue::Null).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(5), &workflow)?;
     let mut store = test_store();
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
@@ -707,8 +705,7 @@ fn set_const_null_writes_null_and_finishes() -> Result<(), String> {
 
 #[test]
 fn set_const_bool_writes_bool_and_finishes() -> Result<(), String> {
-    let workflow =
-        set_const_workflow(ConstValue::Bool(false)).map_err(|e| e.to_string())?;
+    let workflow = set_const_workflow(ConstValue::Bool(false)).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(6), &workflow)?;
     let mut store = test_store();
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
@@ -720,6 +717,7 @@ fn set_const_bool_writes_bool_and_finishes() -> Result<(), String> {
 
 fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("copy_slot_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
@@ -758,12 +756,14 @@ fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> 
 
 #[test]
 fn copy_slot_copies_value_and_taint_correctly() -> Result<(), String> {
-    let workflow =
-        copy_slot_taint_workflow()
-            .map_err(|e| e.to_string())?;
+    let workflow = copy_slot_taint_workflow().map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(10), &workflow)?;
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::DerivedFromSecret)
-        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::I64(77),
+        Taint::DerivedFromSecret,
+    )
+    .map_err(|e| e.to_string())?;
     let mut store = test_store();
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
     ensure_equal(
@@ -777,8 +777,7 @@ fn copy_slot_copies_value_and_taint_correctly() -> Result<(), String> {
 
 #[test]
 fn multi_step_progression_accumulates_executed_count() -> Result<(), String> {
-    let workflow =
-        set_const_workflow(ConstValue::I64(42)).map_err(|e| e.to_string())?;
+    let workflow = set_const_workflow(ConstValue::I64(42)).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(11), &workflow)?;
     let mut store = test_store();
     let _ = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
@@ -788,9 +787,7 @@ fn multi_step_progression_accumulates_executed_count() -> Result<(), String> {
 
 #[test]
 fn copy_slot_clean_taint_preserves_clean() -> Result<(), String> {
-    let workflow =
-        copy_slot_taint_workflow()
-            .map_err(|e| e.to_string())?;
+    let workflow = copy_slot_taint_workflow().map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(12), &workflow)?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
         .map_err(|e| e.to_string())?;
@@ -896,6 +893,7 @@ fn node_kind_detects_nop() {
 
 fn three_node_chain_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("chain_test"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: vec![
@@ -1003,6 +1001,7 @@ fn workflow_children_reachable_via_next_pointers() -> Result<(), String> {
 
 fn missing_output_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![CompiledNode {
@@ -1041,6 +1040,7 @@ fn error_on_missing_output_returns_missing_output_slot() -> Result<(), String> {
 
 fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("const_oob"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: vec![CompiledNode {
@@ -1079,9 +1079,7 @@ fn error_on_const_out_of_bounds_within_frame() -> Result<(), String> {
 
 #[test]
 fn finish_taint_secret_propagates_to_signal() -> Result<(), String> {
-    let workflow =
-        copy_slot_taint_workflow()
-            .map_err(|e| e.to_string())?;
+    let workflow = copy_slot_taint_workflow().map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(50), &workflow)?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(33), Taint::Secret)
         .map_err(|e| e.to_string())?;
@@ -1095,9 +1093,7 @@ fn finish_taint_secret_propagates_to_signal() -> Result<(), String> {
 
 #[test]
 fn finish_taint_derived_from_secret_propagates() -> Result<(), String> {
-    let workflow =
-        copy_slot_taint_workflow()
-            .map_err(|e| e.to_string())?;
+    let workflow = copy_slot_taint_workflow().map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(51), &workflow)?;
     run.write_slot_with_taint(
         SlotIdx::new(0),
@@ -1109,15 +1105,16 @@ fn finish_taint_derived_from_secret_propagates() -> Result<(), String> {
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
     ensure_equal(
         result,
-        Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)),
+        Ok(EngineSignal::Finished(
+            SlotValue::Bool(true),
+            Taint::DerivedFromSecret,
+        )),
     )
 }
 
 #[test]
 fn finish_on_uninitialized_slot_returns_error() -> Result<(), String> {
-    let workflow =
-        copy_slot_taint_workflow()
-            .map_err(|e| e.to_string())?;
+    let workflow = copy_slot_taint_workflow().map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(52), &workflow)?;
     let mut store = test_store();
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);

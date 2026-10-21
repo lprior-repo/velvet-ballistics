@@ -192,6 +192,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -240,6 +241,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("timed_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish]),

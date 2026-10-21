@@ -306,6 +306,7 @@ fn eval_workflow_with_slots(
     })?;
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "taint_eval_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -672,6 +673,7 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
             .map_err(|e| e.to_string())?;
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "choose_taint_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -936,6 +938,7 @@ fn copy_slot_destination_taint_equals_source_taint_after_copy() -> Result<(), St
 #[test]
 fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "resume_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -1237,6 +1240,7 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
     let expr = ExprProgram::try_from_parts(ops, max_stack).map_err(|e| e.to_string())?;
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "expr_oob_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -1334,6 +1338,7 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
 
     // Need at least 2 nodes: node 0 is the Choose, node 1 is a valid branch target
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "choose_missing_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
@@ -1817,6 +1822,7 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
 #[test]
 fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "resume_random".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

@@ -63,6 +63,7 @@ fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<Compiled
         kind,
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test_wf"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([node]),

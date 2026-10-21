@@ -28,6 +28,7 @@ fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkfl
         .map(|i| format!("s{i}").into_boxed_str())
         .collect();
     let parts = WorkflowParts {
+        semantic_source_identity: kani::any(),
         name: "kani".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -38,7 +39,7 @@ fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkfl
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).ok()

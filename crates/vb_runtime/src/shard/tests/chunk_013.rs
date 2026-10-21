@@ -52,6 +52,7 @@ fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),

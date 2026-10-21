@@ -18,11 +18,13 @@
 use proptest::prelude::*;
 
 use crate::budget::{
-    AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage,
-    BoundednessPolicy, BudgetError, WholeWorkflowBudget,
+    AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage, BoundednessPolicy,
+    BudgetError, WholeWorkflowBudget,
 };
 use crate::ids::{StepIdx, WorkflowDigest};
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Generation strategies
@@ -43,81 +45,104 @@ fn arb_usage() -> impl Strategy<Value = AggregateResourceUsage> {
     // max_parallel_in_flight is u64 in usage but u32 in capacity; bound to
     // u32::MAX so fits_within and try_add/try_sub comparisons work correctly.
     // Layer 1: 7 fields, Layer 2: 5 fields, Layer 3: 5 fields = 17 total
-    let l1 = (safe_u64(), safe_u64(), safe_u32_max_u64(), safe_u64(), safe_u64(), safe_u64(), safe_u64());
+    let l1 = (
+        safe_u64(),
+        safe_u64(),
+        safe_u32_max_u64(),
+        safe_u64(),
+        safe_u64(),
+        safe_u64(),
+        safe_u64(),
+    );
     let l2 = (safe_u64(), safe_u64(), safe_u64(), safe_u64(), safe_u64());
     let l3 = (safe_u64(), safe_u64(), safe_u64(), safe_u64(), safe_u64());
 
-    (l1, l2, l3).prop_map(|((a1, a2, a3, a4, a5, a6, a7),
-                              (b1, b2, b3, b4, b5),
-                              (c1, c2, c3, c4, c5))| {
-        AggregateResourceUsage {
-            max_steps_executable: a1,
-            max_action_tickets: a2,
-            max_parallel_in_flight: a3,
-            max_gather_pages: a4,
-            max_gather_items: a5,
-            max_result_bytes: a6,
-            max_total_slots_written: a7,
-            max_timer_entries: b1,
-            max_trace_events: b2,
-            max_active_runs: b3,
-            max_queue_depth: b4,
-            max_journal_batch_bytes: b5,
-            max_ipc_payload_bytes: c1,
-            max_blob_bytes: c2,
-            max_input_bytes: c3,
-            max_step_budget_per_tick: c4,
-            max_transitions_per_tick: c5,
-        }
-    })
+    (l1, l2, l3).prop_map(
+        |((a1, a2, a3, a4, a5, a6, a7), (b1, b2, b3, b4, b5), (c1, c2, c3, c4, c5))| {
+            AggregateResourceUsage {
+                max_steps_executable: a1,
+                max_action_tickets: a2,
+                max_parallel_in_flight: a3,
+                max_gather_pages: a4,
+                max_gather_items: a5,
+                max_result_bytes: a6,
+                max_total_slots_written: a7,
+                max_timer_entries: b1,
+                max_trace_events: b2,
+                max_active_runs: b3,
+                max_queue_depth: b4,
+                max_journal_batch_bytes: b5,
+                max_ipc_payload_bytes: c1,
+                max_blob_bytes: c2,
+                max_input_bytes: c3,
+                max_step_budget_per_tick: c4,
+                max_transitions_per_tick: c5,
+            }
+        },
+    )
 }
 
 /// Generate an AggregateResourceBudget by layering smaller tuples.
 fn arb_budget() -> impl Strategy<Value = AggregateResourceBudget> {
     let l1 = (
-        safe_u64().prop_map(|v| v as u32), safe_u64().prop_map(|v| v as u32),
-        safe_u64().prop_map(|v| v as u16), safe_u64().prop_map(|v| v as u16),
-        safe_u64().prop_map(|v| v as u32), safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u16),
+        safe_u64().prop_map(|v| v as u16),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
         safe_u64().prop_map(|v| v as u32),
     );
     let l2 = (
-        safe_u64().prop_map(|v| v as u16), safe_u64().prop_map(|v| v as u16),
-        safe_u64(), safe_u64().prop_map(|v| v as u32), safe_u64().prop_map(|v| v as u32),
-        safe_u64().prop_map(|v| v as u32), safe_u64(),
+        safe_u64().prop_map(|v| v as u16),
+        safe_u64().prop_map(|v| v as u16),
+        safe_u64(),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64(),
     );
     let l3 = (
-        safe_u64().prop_map(|v| v as u32), safe_u64().prop_map(|v| v as u32),
-        safe_u64().prop_map(|v| v as u32), safe_u64(), safe_u64().prop_map(|v| v as u32),
-        (1u64..=1_000_000u64), (1u64..=1_000_000u64),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64().prop_map(|v| v as u32),
+        safe_u64(),
+        safe_u64().prop_map(|v| v as u32),
+        (1u64..=1_000_000u64),
+        (1u64..=1_000_000u64),
     );
 
-    (l1, l2, l3).prop_map(|((a1, a2, a3, a4, a5, a6, a7),
-                              (b1, b2, b3, b4, b5, b6, b7),
-                              (c1, c2, c3, c4, c5, c6, c7))| {
-        AggregateResourceBudget {
-            max_steps_executable: a1,
-            max_action_tickets: a2,
-            max_parallel_in_flight: a3,
-            max_retries_per_action: a4,
-            max_gather_pages: a5,
-            max_gather_items: a6,
-            max_for_each_iterations: a7,
-            max_together_branches: b1,
-            max_repeat_attempts: b2,
-            max_run_time_seconds: b3,
-            max_result_bytes: b4,
-            max_total_slots_written: b5,
-            max_timer_entries: b6,
-            max_trace_events: b7,
-            max_queue_depth: c1,
-            max_journal_batch_bytes: c2,
-            max_ipc_payload_bytes: c3,
-            max_blob_bytes: c4,
-            max_input_bytes: c5,
-            max_step_budget_per_tick: c6,
-            max_transitions_per_tick: c7,
-        }
-    })
+    (l1, l2, l3).prop_map(
+        |(
+            (a1, a2, a3, a4, a5, a6, a7),
+            (b1, b2, b3, b4, b5, b6, b7),
+            (c1, c2, c3, c4, c5, c6, c7),
+        )| {
+            AggregateResourceBudget {
+                max_steps_executable: a1,
+                max_action_tickets: a2,
+                max_parallel_in_flight: a3,
+                max_retries_per_action: a4,
+                max_gather_pages: a5,
+                max_gather_items: a6,
+                max_for_each_iterations: a7,
+                max_together_branches: b1,
+                max_repeat_attempts: b2,
+                max_run_time_seconds: b3,
+                max_result_bytes: b4,
+                max_total_slots_written: b5,
+                max_timer_entries: b6,
+                max_trace_events: b7,
+                max_queue_depth: c1,
+                max_journal_batch_bytes: c2,
+                max_ipc_payload_bytes: c3,
+                max_blob_bytes: c4,
+                max_input_bytes: c5,
+                max_step_budget_per_tick: c6,
+                max_transitions_per_tick: c7,
+            }
+        },
+    )
 }
 
 /// Generate a capacity starting from usage, ensuring it's large enough.
@@ -128,7 +153,10 @@ fn arb_capacity_larger_than(usage: &AggregateResourceUsage) -> AggregateResource
     AggregateResourceCapacity {
         max_steps_executable: usage.max_steps_executable.saturating_add(1_000_000),
         max_action_tickets: usage.max_action_tickets.saturating_add(1_000_000),
-        max_parallel_in_flight: (usage.max_parallel_in_flight.saturating_add(1_000_000).min(u64::from(u32::MAX)) as u32),
+        max_parallel_in_flight: (usage
+            .max_parallel_in_flight
+            .saturating_add(1_000_000)
+            .min(u64::from(u32::MAX)) as u32),
         max_gather_pages: usage.max_gather_pages.saturating_add(1_000_000),
         max_gather_items: usage.max_gather_items.saturating_add(1_000_000),
         max_result_bytes: usage.max_result_bytes.saturating_add(1_000_000),
@@ -210,6 +238,7 @@ fn minimal_nop_workflow() -> Option<CompiledWorkflow> {
         kind: CompiledNodeKind::Nop,
     }]);
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("minimal_nop"),
         digest,
         slot_count: 0,
@@ -388,9 +417,9 @@ struct ResourceContractSeed {
 
 fn arb_resource_contract_seed() -> impl Strategy<Value = ResourceContractSeed> {
     (
-        (1u16..=1000u16),  // max_steps
-        (1u16..=1024u16),  // max_slots
-        (1u16..=64u16),    // max_fanout
+        (1u16..=1000u16), // max_steps
+        (1u16..=1024u16), // max_slots
+        (1u16..=64u16),   // max_fanout
     )
         .prop_map(|(max_steps, max_slots, max_fanout)| ResourceContractSeed {
             max_steps,
@@ -418,7 +447,12 @@ fn try_add_budget_overflow_specific_dim() {
     let original = usage;
     let result = original.try_add_budget(&budget);
     assert!(
-        matches!(result, Err(crate::budget::AggregateBudgetError::Overflow { resource: "max_steps_executable" })),
+        matches!(
+            result,
+            Err(crate::budget::AggregateBudgetError::Overflow {
+                resource: "max_steps_executable"
+            })
+        ),
         "expected Overflow on max_steps_executable, got {result:?}"
     );
     assert_eq!(original, usage, "original usage unchanged on overflow");
@@ -498,9 +532,18 @@ fn try_add_budget_happy_path_increments_all_dims() {
         Ok(u) => u,
         Err(_) => return, // skip rest if unexpected failure
     };
-    assert_eq!(new_usage.max_steps_executable, 10, "max_steps_executable incremented");
-    assert_eq!(new_usage.max_action_tickets, 5, "max_action_tickets incremented");
-    assert_eq!(new_usage.max_active_runs, 1, "max_active_runs incremented by 1");
+    assert_eq!(
+        new_usage.max_steps_executable, 10,
+        "max_steps_executable incremented"
+    );
+    assert_eq!(
+        new_usage.max_action_tickets, 5,
+        "max_action_tickets incremented"
+    );
+    assert_eq!(
+        new_usage.max_active_runs, 1,
+        "max_active_runs incremented by 1"
+    );
 }
 
 #[test]
@@ -562,7 +605,10 @@ fn budget_from_contract_default_is_constant() {
         },
         ResourceContract::DEFAULT,
     );
-    assert_eq!(result_a, result_b, "from_whole_workflow_budget must be deterministic given same inputs");
+    assert_eq!(
+        result_a, result_b,
+        "from_whole_workflow_budget must be deterministic given same inputs"
+    );
 }
 
 #[test]
@@ -583,7 +629,10 @@ fn check_policy_ok_when_within_bounds() {
     let usage = AggregateResourceUsage::default();
     let policy = BoundednessPolicy::DEFAULT;
     let result = usage.check_policy(&policy);
-    assert!(result.is_ok(), "empty usage should be within default policy");
+    assert!(
+        result.is_ok(),
+        "empty usage should be within default policy"
+    );
 }
 
 #[test]
@@ -595,7 +644,10 @@ fn check_policy_policy_exceeded_when_over_limit() {
     let policy = BoundednessPolicy::DEFAULT;
     let result = usage.check_policy(&policy);
     assert!(
-        matches!(result, Err(crate::budget::AggregateBudgetError::PolicyExceeded { .. })),
+        matches!(
+            result,
+            Err(crate::budget::AggregateBudgetError::PolicyExceeded { .. })
+        ),
         "should return PolicyExceeded"
     );
 }

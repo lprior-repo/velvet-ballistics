@@ -37,6 +37,7 @@ fn nop_node(step: u16, next: Option<u16>) -> CompiledNode {
 
 fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("handcrafted-admission"),
         digest: WorkflowDigest::from_bytes([0xA7; 32]),
         nodes,

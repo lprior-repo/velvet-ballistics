@@ -51,6 +51,7 @@ fn make_workflow_with_constants(
     constants: Box<[vb_core::value::ConstValue]>,
 ) -> CompiledWorkflow {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("test_exec"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into_boxed_slice(),

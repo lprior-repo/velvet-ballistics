@@ -179,6 +179,7 @@ fn workflow_from_parts(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0; 32]),

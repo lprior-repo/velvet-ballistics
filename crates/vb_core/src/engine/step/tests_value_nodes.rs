@@ -23,6 +23,7 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("eval_step_test"),
         digest: WorkflowDigest::from_bytes([0x66; 32]),
@@ -65,6 +66,7 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
 #[test]
 fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("build_obj_step"),
         digest: WorkflowDigest::from_bytes([0x77; 32]),
@@ -125,6 +127,7 @@ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
 #[test]
 fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("build_list_step"),
         digest: WorkflowDigest::from_bytes([0x88; 32]),

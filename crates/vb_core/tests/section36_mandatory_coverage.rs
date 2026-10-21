@@ -496,6 +496,7 @@ fn default_contract() -> ResourceContract {
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -595,6 +596,7 @@ fn try_from_parts_rejects_backward_edge() {
 fn try_from_parts_rejects_unreachable_node() {
     // Create a 3-node workflow where node 2 is unreachable
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -715,6 +717,7 @@ fn try_from_parts_rejects_resource_contract_exceeded_steps() {
 #[test]
 fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -820,6 +823,7 @@ fn terminal_cancelled_state_never_transitions_to_running() -> CoreResult<()> {
 fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), String> {
     // Set up a workflow that fails (Copy node without output slot)
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("copy_fail"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -919,6 +923,7 @@ fn budget_exhaustion_does_not_advance_pc() -> Result<(), String> {
 #[test]
 fn missing_output_slot_returns_typed_error() -> Result<(), String> {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
@@ -1115,6 +1120,7 @@ fn eval_expr_value(
 ) -> Result<SlotValue, CoreError> {
     let expression = ExprProgram::try_from_ops(ops)?;
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("section36_expr"),
         digest: WorkflowDigest::from_bytes([0x36; 32]),
@@ -1163,6 +1169,7 @@ fn eval_expr_value(
 
 fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("validate_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
@@ -1838,6 +1845,7 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
         };
     }
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("budget_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
@@ -2268,6 +2276,7 @@ fn forward_edge_rejects_backward_next() {
 fn branch_route_rejects_empty_branches_without_otherwise() {
     // Single-node workflow with empty branches and no otherwise
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),

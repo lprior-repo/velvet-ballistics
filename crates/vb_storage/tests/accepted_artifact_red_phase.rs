@@ -18,6 +18,7 @@ fn temp_journal() -> Result<FjallJournal, String> {
 
 fn minimal_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("scope.valid_workflow"),
         digest: WorkflowDigest::from_bytes([0_u8; 32]),
@@ -294,6 +295,7 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
     let bad_workflow = CompiledWorkflow::try_from_parts(vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("scope.bad"),
         digest: WorkflowDigest::from_bytes([0_u8; 32]),

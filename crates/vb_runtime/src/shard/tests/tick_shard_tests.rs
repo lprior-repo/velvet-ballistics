@@ -13,8 +13,8 @@
 //!    (shard alive) from `Ok(false)` (shard dead) with separate explicit assertions.
 
 use vb_core::action::{
-    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety,
-    SideEffect,
+    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -22,10 +22,10 @@ use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+use crate::RuntimeError;
 use crate::counters::ShardCounters;
 use crate::runtime::Runtime;
 use crate::shard::{Shard, ShardCommand, ShardConfig, ShardDirective};
-use crate::RuntimeError;
 
 // =============================================================================
 // Workflow helpers (matching existing test infrastructure in runtime.rs)
@@ -44,6 +44,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -85,6 +86,7 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("action_then_finish"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([do_node, finish]),
@@ -124,6 +126,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -270,7 +273,10 @@ fn shard_directive_continue_not_equals_suspend() {
 
 #[test]
 fn shard_directive_continue_not_equals_migrate() {
-    assert_ne!(ShardDirective::Continue, ShardDirective::Migrate { target: 0 });
+    assert_ne!(
+        ShardDirective::Continue,
+        ShardDirective::Migrate { target: 0 }
+    );
 }
 
 #[test]
@@ -280,7 +286,10 @@ fn shard_directive_continue_not_equals_shutdown() {
 
 #[test]
 fn shard_directive_suspend_not_equals_migrate() {
-    assert_ne!(ShardDirective::Suspend, ShardDirective::Migrate { target: 0 });
+    assert_ne!(
+        ShardDirective::Suspend,
+        ShardDirective::Migrate { target: 0 }
+    );
 }
 
 #[test]
@@ -290,7 +299,10 @@ fn shard_directive_suspend_not_equals_shutdown() {
 
 #[test]
 fn shard_directive_migrate_not_equals_shutdown() {
-    assert_ne!(ShardDirective::Migrate { target: 0 }, ShardDirective::Shutdown);
+    assert_ne!(
+        ShardDirective::Migrate { target: 0 },
+        ShardDirective::Shutdown
+    );
 }
 
 #[test]

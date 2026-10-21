@@ -1,7 +1,6 @@
 //! Public behavior tests for bead vb-ko29.5 idempotency permutations.
 
 use tempfile::TempDir;
-use velvet_ballistics::lifecycle;
 use vb_core::action::{ActionTicket, Idempotency};
 use vb_core::errors::CoreError;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -10,6 +9,7 @@ use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvel
 use vb_storage::{
     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
 };
+use velvet_ballistics::lifecycle;
 
 struct FixedArtifactStore {
     artifact: vb_storage::AcceptedArtifact,
@@ -64,6 +64,7 @@ fn valid_artifact(artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifa
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         },
         accepted_at_seq: EventSeq::new(1),
         required_capabilities: Box::new([]),

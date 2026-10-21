@@ -296,6 +296,7 @@ fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("do_with_retry"),
         digest: WorkflowDigest::from_bytes([6; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),

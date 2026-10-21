@@ -306,6 +306,7 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
     };
 
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![CompiledNode {
@@ -325,7 +326,7 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).unwrap()
 }
@@ -1208,6 +1209,7 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
     };
 
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![CompiledNode {
@@ -1227,7 +1229,7 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+        input_slots: Box::from([]),
     };
     CompiledWorkflow::try_from_parts(parts).unwrap()
 }
@@ -1271,6 +1273,7 @@ mod proptest_reentry {
         };
 
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::from("proptest_reduce"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([9; 32]),
             nodes: vec![CompiledNode {

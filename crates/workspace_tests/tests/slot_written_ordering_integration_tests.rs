@@ -49,6 +49,7 @@ fn make_workflow(
         .map(|i| format!("s{i}").into_boxed_str())
         .collect();
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),

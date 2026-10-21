@@ -23,6 +23,7 @@ fn make_plan(
     accessors: Vec<AccessorProgram>,
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: "test_ops".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

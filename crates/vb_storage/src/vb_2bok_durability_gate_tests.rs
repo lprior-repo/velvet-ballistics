@@ -43,6 +43,7 @@ mod durability_gate_tests {
         use vb_core::{CompiledNode, CompiledNodeKind, ConstIdx, SlotIdx, StepIdx};
 
         let mut parts = WorkflowParts {
+            semantic_source_identity: None,
             name: Box::<str>::from("vb_2bok_test"),
             input_slots: Box::new([]),
             digest: WorkflowDigest::from_bytes([0u8; 32]),

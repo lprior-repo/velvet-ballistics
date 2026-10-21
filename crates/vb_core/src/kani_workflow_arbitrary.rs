@@ -16,8 +16,8 @@ use crate::ids::{
 };
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, SlotBranch, WorkflowParts,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp,
+    ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
 };
 
 impl kani::Arbitrary for FiniteF64 {
@@ -366,9 +366,28 @@ impl kani::Arbitrary for WorkflowParts {
         kani::assume(step_name_count <= 4);
         let mut step_names: Vec<Box<str>> = Vec::with_capacity(usize::from(step_name_count));
         step_names.extend((0..step_name_count).map(kani_step_name));
+        let input_slot_count: u8 = kani::any();
+        kani::assume(input_slot_count <= 4);
+        let mut input_slots: Vec<CompiledInputSlot> =
+            Vec::with_capacity(usize::from(input_slot_count));
+        input_slots.extend((0..input_slot_count).map(|index| CompiledInputSlot {
+            slot: SlotIdx::new(u16::from(index)),
+            kind: match kani::any::<u8>() {
+                0 => InputSlotKind::Null,
+                1 => InputSlotKind::Bool,
+                2 => InputSlotKind::I64,
+                3 => InputSlotKind::F64,
+                4 => InputSlotKind::Symbol,
+                5 => InputSlotKind::List,
+                6 => InputSlotKind::Object,
+                7 => InputSlotKind::Blob,
+                _ => InputSlotKind::Any,
+            },
+        }));
         Self {
             name: Box::from("kani_workflow"),
             digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
+            semantic_source_identity: kani::any(),
             nodes: nodes.into_boxed_slice(),
             expressions: expressions.into_boxed_slice(),
             accessors: bounded_accessors(),
@@ -386,6 +405,7 @@ impl kani::Arbitrary for WorkflowParts {
             },
             resource_contract: kani::any::<ResourceContract>(),
             step_names: step_names.into_boxed_slice(),
+            input_slots: input_slots.into_boxed_slice(),
         }
     }
 }

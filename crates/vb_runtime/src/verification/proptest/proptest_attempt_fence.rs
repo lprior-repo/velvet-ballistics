@@ -97,6 +97,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("proptest_do_wf"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([do_node]),

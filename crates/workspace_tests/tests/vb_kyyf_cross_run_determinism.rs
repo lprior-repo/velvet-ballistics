@@ -359,6 +359,7 @@ fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, St
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("vb-kyyf-deterministic-finish"),
         digest: WorkflowDigest::from_bytes([digest_byte; 32]),

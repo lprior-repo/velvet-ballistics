@@ -101,6 +101,7 @@ fn failure_payload(
 
 fn make_simple_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("simple_test"),
         digest: digest(0x01),
@@ -154,6 +155,7 @@ fn workflow_with_error_handler(
     handler_target: StepIdx,
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("error_handler_workflow"),
         digest: digest(0x02),
@@ -204,6 +206,7 @@ fn workflow_with_error_handler(
 
 fn workflow_without_error_handler() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("no_handler_workflow"),
         digest: digest(0x03),
@@ -244,6 +247,7 @@ fn workflow_without_error_handler() -> Result<CompiledWorkflow, String> {
 
 fn do_node_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("do_node_workflow"),
         digest: digest(0x04),
@@ -436,6 +440,7 @@ mod trigger_condition_evaluation {
     #[test]
     fn step_once_emit_awaiting_wait_on_wait_until() -> Result<(), String> {
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("wait_test"),
             digest: digest(0x05),
@@ -476,6 +481,7 @@ mod trigger_condition_evaluation {
     #[test]
     fn step_once_emit_awaiting_ask_on_ask() -> Result<(), String> {
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("ask_test"),
             digest: digest(0x06),
@@ -670,6 +676,7 @@ mod fail_closed_vs_fail_open {
         .map_err(|e| e.to_string())?;
 
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("div_zero"),
             digest: digest(0x07),
@@ -742,6 +749,7 @@ mod fail_closed_vs_fail_open {
         .map_err(|e| e.to_string())?;
 
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("div_zero_no_handler"),
             digest: digest(0x08),
@@ -1132,6 +1140,7 @@ mod resource_contract_admission {
 
         // Validation happens in CompiledWorkflow::try_from_parts
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("excessive"),
             digest: digest(0x09),

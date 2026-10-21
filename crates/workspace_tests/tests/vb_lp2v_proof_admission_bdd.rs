@@ -2,54 +2,89 @@
 
 use std::sync::Arc;
 
-use vb_core::{ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
-use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
-    StorageArtifactStore, admit_artifact_run,
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::{
+    ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
 };
-use vb_storage::admission::{AcceptedArtifact, VerificationProof, accepted_artifact_digest};
-use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
+use vb_runtime::admission::{
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, StorageArtifactStore,
+    admit_artifact_run,
+};
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+use vb_storage::{CompiledIrRecord, FjallJournal, put_compiled_ir};
 
 fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
 }
 
 fn required_capability() -> Capability {
-    Capability::new("net.fetch".into(), ActionId::new(7))
+    Capability::new("net.fetch".into(), ActionId::new(0))
 }
 
 fn granted_capabilities(required: Capability) -> CapabilitySet {
     CapabilitySet::from_grants(Box::new([required]))
 }
 
-fn accepted_artifact(source_digest: WorkflowDigest) -> Result<AcceptedArtifact, String> {
-    let zero = digest(0);
-    let mut artifact = AcceptedArtifact {
-        digest: zero,
-        source_digest,
-        policy_digest: source_digest,
-        ir: Vec::new(),
-        verification: VerificationProof {
-            digest: zero,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        },
-        accepted_at_seq: EventSeq::new(42),
-        required_capabilities: Box::new([required_capability()]),
-        action_contracts: Box::new([]),
+fn accepted_artifact(_requested_source_digest: WorkflowDigest) -> Result<AcceptedArtifact, String> {
+    let mut parts = WorkflowParts {
+        name: Box::from("lp2v_proof_admission"),
+        digest: digest(0),
+        semantic_source_identity: None,
+        nodes: Box::new([
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(0),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+        input_slots: Box::new([]),
     };
-    let artifact_digest = accepted_artifact_digest(&artifact).map_err(|error| error.to_string())?;
-    artifact.digest = artifact_digest;
-    artifact.verification.digest = artifact_digest;
-    Ok(artifact)
+    parts.digest = digest(0);
+    parts.digest = WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts).map_err(|error| error.to_string())?).into(),
+    );
+    let workflow =
+        vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let contract = ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::new("lp2v_admission_action").map_err(|error| error.to_string())?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 64,
+        timeout_ms: 1000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([required_capability()]),
+    };
+    prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[contract])
+        .map_err(|error| error.to_string())
 }
 
 struct FixedAcceptedStore {
@@ -138,8 +173,8 @@ fn given_storage_record_requested_by_source_digest_when_strict_admission_runs_th
 -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
     let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
-    let requested = digest(0xC1);
-    let artifact = accepted_artifact(requested)?;
+    let artifact = accepted_artifact(digest(0xC1))?;
+    let requested = artifact.source_digest;
     let found = artifact.digest;
     persist_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));

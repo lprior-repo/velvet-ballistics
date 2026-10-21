@@ -386,6 +386,7 @@ mod tests {
 
     fn valid_parts() -> WorkflowParts {
         WorkflowParts {
+            semantic_source_identity: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("test"),
             digest: WorkflowDigest::from_bytes([0x00; 32]),
@@ -449,6 +450,7 @@ mod tests {
     #[test]
     fn validate_compiled_workflow_rejects_empty_nodes() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: Box::new([]),
             ..valid_parts()
         };
@@ -459,6 +461,7 @@ mod tests {
     #[test]
     fn validate_compiled_workflow_rejects_entry_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             entry: StepIdx::new(99),
             ..valid_parts()
         };
@@ -474,6 +477,7 @@ mod tests {
     #[test]
     fn validate_compiled_workflow_rejects_node_id_mismatch() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(5), // should be 0
                 output: None,
@@ -498,6 +502,7 @@ mod tests {
     #[test]
     fn validate_compiled_workflow_rejects_unreachable_node() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -644,6 +649,7 @@ mod tests {
     #[test]
     fn validate_node_bounds_accepts_valid_linear_chain() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -674,6 +680,7 @@ mod tests {
     #[test]
     fn validate_node_bounds_rejects_node_id_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(5),
                 output: None,
@@ -697,6 +704,7 @@ mod tests {
     #[test]
     fn validate_node_bounds_rejects_next_step_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -731,6 +739,7 @@ mod tests {
     #[test]
     fn validate_transition_target_accepts_valid_linear_chain() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -761,6 +770,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_jump_to_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -786,6 +796,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -816,6 +827,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -842,6 +854,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -872,6 +885,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_choose_slot_otherwise_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -898,6 +912,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_for_each_start_body_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -927,6 +942,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_for_each_start_done_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -956,6 +972,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -982,6 +999,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1008,6 +1026,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_together_branch_entry_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1036,6 +1055,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1064,6 +1084,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1090,6 +1111,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1117,6 +1139,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1144,6 +1167,7 @@ mod tests {
     #[test]
     fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
                 output: None,
@@ -1173,6 +1197,7 @@ mod tests {
     #[test]
     fn validate_transition_target_accepts_valid_jump() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1205,6 +1230,7 @@ mod tests {
     #[test]
     fn validate_transition_target_accepts_valid_for_each_start() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1249,6 +1275,7 @@ mod tests {
     #[test]
     fn validate_transition_target_accepts_valid_together_start() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -1311,6 +1338,7 @@ mod tests {
     #[test]
     fn all_validators_accept_three_node_linear_chain() {
         let parts = WorkflowParts {
+            semantic_source_identity: None,
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),

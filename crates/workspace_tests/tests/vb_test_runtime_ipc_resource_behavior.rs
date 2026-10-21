@@ -72,6 +72,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -101,6 +102,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -141,6 +143,7 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("action_then_finish"),
         digest: WorkflowDigest::from_bytes([3; 32]),

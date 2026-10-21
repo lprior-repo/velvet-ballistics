@@ -21,16 +21,13 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, Workfl
 // ─────────────────────────────────────────────────────────────────
 
 /// Creates a valid 4-node Collect workflow for testing.
-fn make_collect_workflow(
-    start_id: u16,
-    limit: u32,
-    page_size: u32,
-) -> WorkflowParts {
+fn make_collect_workflow(start_id: u16, limit: u32, page_size: u32) -> WorkflowParts {
     let source_slot = SlotIdx::new(0);
     let body_step = StepIdx::new(start_id + 1);
     let done_step = StepIdx::new(start_id + 3);
 
     WorkflowParts {
+        semantic_source_identity: None,
         name: "test_collect".to_string(),
         digest: vb_core::ids::WorkflowDigest::new(&[]),
         nodes: vec![

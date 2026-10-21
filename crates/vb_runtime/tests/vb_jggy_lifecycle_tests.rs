@@ -132,6 +132,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -172,6 +173,7 @@ fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("suspended_2step"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([node0, node1]),
@@ -233,6 +235,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("retry"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -911,7 +914,10 @@ fn completion_happy_path_writes_output_and_event() -> Result<(), Box<dyn std::er
     assert_eq!(shard.tick(), Ok(true));
 
     let journal_len_after = journal.snapshot()?.len();
-    assert!(journal_len_after > journal_len_before, "journal should have grown after completion");
+    assert!(
+        journal_len_after > journal_len_before,
+        "journal should have grown after completion"
+    );
 
     let events = journal.snapshot()?;
     let expected_value = postcard::to_allocvec(&SlotValue::I64(42))?;

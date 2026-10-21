@@ -369,6 +369,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         },
     };
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("ask_timeout_only"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask]),

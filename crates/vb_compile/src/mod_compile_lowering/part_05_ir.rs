@@ -2,9 +2,8 @@
 
 use crate::mod_compile_errors::CompileErrors;
 use vb_core::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ConstIdx, ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowParts,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 use super::super::SlotCompiler;
@@ -24,6 +23,7 @@ pub fn lower_steps_to_ir(
     let parts = WorkflowParts {
         name: Box::from(name),
         digest,
+        semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
         expressions: expressions.into_boxed_slice(),
         accessors: accessors.into_boxed_slice(),

@@ -16,6 +16,7 @@ use vb_validate::shared::{ValidationPipeline, validate};
 
 fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
     WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -249,6 +250,7 @@ fn pipeline_validate_all_gates_disabled_accepts_anything() {
 #[test]
 fn pipeline_validate_rejects_slot_reference_out_of_range() {
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

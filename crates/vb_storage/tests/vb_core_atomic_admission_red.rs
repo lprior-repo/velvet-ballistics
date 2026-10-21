@@ -154,6 +154,7 @@ fn workflow_source_bytes() -> Vec<u8> {
 
 fn minimal_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::<str>::from("atomic.admission.contract"),
         digest: WorkflowDigest::from_bytes([0_u8; 32]),
         nodes: Box::new([
@@ -837,6 +838,7 @@ fn arb_minimal_workflow() -> impl Strategy<Value = CompiledWorkflow> {
                 .collect();
 
             let mut parts = WorkflowParts {
+                semantic_source_identity: None,
                 name: Box::<str>::from("proptest_workflow"),
                 digest: WorkflowDigest::from_bytes([0u8; 32]),
                 nodes: nodes.into_boxed_slice(),
@@ -858,6 +860,7 @@ fn arb_minimal_workflow() -> impl Strategy<Value = CompiledWorkflow> {
             CompiledWorkflow::try_from_parts(parts).unwrap_or_else(|_| {
                 // Fallback: create something that can be constructed.
                 let parts = WorkflowParts {
+                    semantic_source_identity: None,
                     name: Box::<str>::from("proptest_fallback"),
                     digest: WorkflowDigest::from_bytes([0u8; 32]),
                     nodes: Box::new([CompiledNode {

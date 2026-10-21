@@ -1,4 +1,3 @@
-
 // ===========================================================================
 // Test 5: budget validation rejects oversized workflow
 // ===========================================================================
@@ -85,6 +84,7 @@ fn budget_validation_rejects_oversized_workflow() {
     let mut tight_contract = ResourceContract::DEFAULT;
     tight_contract.max_steps = 1;
     let oversized_parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("oversized"),
         digest: WorkflowDigest::from_bytes([5u8; 32]),
         input_slots: Box::from([]),
@@ -120,6 +120,7 @@ fn budget_validation_rejects_oversized_workflow() {
     let mut slot_contract = ResourceContract::DEFAULT;
     slot_contract.max_slots = 0;
     let slot_parts = WorkflowParts {
+        semantic_source_identity: None,
         name: Box::from("slot_exceeded"),
         digest: WorkflowDigest::from_bytes([6u8; 32]),
         input_slots: Box::from([]),
@@ -256,12 +257,17 @@ fn taint_clean_propagates_preserved_through_set_const() {
     };
     let mut budget = vb_core::engine::StepBudget::new(100);
     let mut store = vb_core::value_store::ValueStore::new();
-    let signal = vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+    let signal =
+        vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
 
     match signal {
         Ok(vb_core::engine::EngineSignal::Finished(value, taint)) => {
             assert_eq!(value, SlotValue::I64(42));
-            assert_eq!(taint, Taint::Clean, "SetConst with constant value should produce Clean taint");
+            assert_eq!(
+                taint,
+                Taint::Clean,
+                "SetConst with constant value should produce Clean taint"
+            );
         }
         Ok(other) => {
             fail_assert!("expected Finished signal, got {other:?}");
@@ -295,11 +301,16 @@ fn taint_secret_propagates_through_finish_signal() {
     }
     let mut budget = vb_core::engine::StepBudget::new(100);
     let mut store = vb_core::value_store::ValueStore::new();
-    let signal = vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+    let signal =
+        vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
 
     match signal {
         Ok(vb_core::engine::EngineSignal::Finished(value, taint)) => {
-            assert_eq!(taint, Taint::Secret, "Finish signal should propagate Secret taint from expression input");
+            assert_eq!(
+                taint,
+                Taint::Secret,
+                "Finish signal should propagate Secret taint from expression input"
+            );
             assert_eq!(value, SlotValue::I64(100));
         }
         Ok(other) => {

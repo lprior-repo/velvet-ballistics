@@ -45,6 +45,7 @@ fn do_workflow() -> CompiledWorkflow {
         },
     }]);
     let parts = WorkflowParts {
+        semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::from("do_wf"),
         digest,
