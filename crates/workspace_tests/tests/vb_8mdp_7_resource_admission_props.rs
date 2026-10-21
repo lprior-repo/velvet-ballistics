@@ -45,6 +45,7 @@ fn do_workflow() -> CompiledWorkflow {
         },
     }]);
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("do_wf"),
         digest,
         slot_count: 1,

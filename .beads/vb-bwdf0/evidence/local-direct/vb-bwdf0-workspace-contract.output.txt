@@ -1,0 +1,39 @@
+**Contract:** All 38 fixture files construct `WorkflowParts` with internal constants, expressions, or `Do` nodes only. None declare or consume external inputs. An empty `input_slots` array preserves intended behavior for every initializer.
+
+**Per-file exceptions:** None. All fixtures are self-contained (SetConst/Copy/EvalExpr/BuildObject/BuildList/ChooseSlot/Nop/Do/WaitUntil/Ask/Finish). No fixture requires declared external inputs.
+
+**Required insertion:** Add `input_slots: Box::new([]),` inside each `WorkflowParts { ... }` initializer at the supplied byte offset.
+
+**Tests to execute:**
+```bash
+cargo test -p workspace_tests --test vb_qi37_4_2_strict_runtime_admission
+cargo test -p workspace_tests --test vb_vt2f_direct_runtime_api_acceptance
+cargo test -p workspace_tests --test integration_validate_policy_enforcement
+cargo test -p workspace_tests --test vb_test_runtime_ipc_resource_behavior
+cargo test -p workspace_tests --test runtime_fjall_pending_action_recovery
+cargo test -p workspace_tests --test integration_storage_runtime_validate_pipeline
+cargo test -p workspace_tests --test cancel_kill_lattice_tests
+cargo test -p workspace_tests --test vb_test_runtime_lifecycle_state_behavior
+cargo test -p workspace_tests --test vb_lp2v_admission_proptests
+cargo test -p workspace_tests --test raii_introspection_registry_tests
+cargo test -p workspace_tests --test vb_c1s0_orchestration_runtime_tests
+cargo test -p workspace_tests --test vb_test_core_admission_trigger_behavior
+cargo test -p workspace_tests --test slot_written_ordering_integration_tests
+cargo test -p workspace_tests --test vb_kyyf_cross_run_determinism
+cargo test -p workspace_tests --test vb_test_core_workflow_slot_behavior
+cargo test -p workspace_tests --test vb_8mdp_7_resource_admission_props
+cargo test -p workspace_tests --test vb_test_core_yaml_chain_behavior
+cargo test -p workspace_tests --test vb_test_cli_storage_io_behavior
+cargo test -p workspace_tests --test vb_test_validate_yaml_parsing_behavior
+cargo test -p vb_validate --test gate_08_accessor_parity
+cargo test -p vb_core --test resource_contract_type_integrity
+cargo test -p vb_validate --test red_phase_validation
+cargo test -p vb_core --test resource_contract_validation
+cargo test -p vb_core --test vb_5m8w_step_budget_suspension
+cargo test -p vb_core --test vb_qi37_2_5_boundedness_adversarial
+cargo test -p vb_core --test section36_mandatory_coverage
+cargo test -p vb_validate --test capability_contract_schema
+cargo test -p vb_core --test section38_behavioral_properties
+cargo test -p vb_validate --test idempotency_contract_red
+cargo test -p vb_storage --test accepted_artifact_red_phase
+```

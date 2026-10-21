@@ -46,6 +46,7 @@ fn contract(
 /// Creates a minimal single-node Nop WorkflowParts with the given contract.
 fn nop_parts(contract: ResourceContract) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::<str>::from("validation_test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![CompiledNode {

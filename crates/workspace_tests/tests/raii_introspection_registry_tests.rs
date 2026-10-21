@@ -71,6 +71,7 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
     ]);
 
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test_finished"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0x21; 32]),
         nodes,

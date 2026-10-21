@@ -495,6 +495,7 @@ fn validate_with_contracts_rejects_missing_action_contract() {
     };
 
     let parts = vb_core::WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![do_node, finish_node].into_boxed_slice(),
@@ -542,6 +543,7 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
     };
 
     let parts = vb_core::WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![finish_node].into_boxed_slice(),
@@ -610,6 +612,7 @@ fn validate_with_contracts_accepts_matching_contract() {
     };
 
     let parts = vb_core::WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![do_node, finish_node].into_boxed_slice(),
@@ -734,6 +737,7 @@ fn workflow_parts_accepts_resource_contract_at_exact_usage_bounds() {
     };
 
     let parts = vb_core::WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("bounds_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![finish_node].into_boxed_slice(),

@@ -47,6 +47,7 @@ fn make_compiled_workflow(name: &str, node_count: u16, slot_count: u16) -> Compi
         .collect();
 
     let parts = WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([42; 32]),
         nodes: nodes.into_boxed_slice(),
