@@ -37,7 +37,7 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::Do {
-                action: ActionId::new(7),
+                action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
         },
@@ -50,7 +50,7 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::
 
 pub(super) fn contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
     Ok(ActionContract {
-        id: ActionId::new(7),
+        id: ActionId::new(0),
         name: ActionName::new("artifact_action")?,
         input_slot_count: 1,
         output_slot_count: 1,

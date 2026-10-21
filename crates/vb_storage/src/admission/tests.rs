@@ -7,6 +7,9 @@
 use crate::admission::*;
 use crate::error::JournalError;
 use vb_core::workflow::ResourceContract;
+#[path = "evidence_test_support.rs"]
+mod evidence_test_support;
+use evidence_test_support::{action_workflow, assert_checked, assert_declarations};
 
 #[test]
 fn verification_warning_display_formats_gate_code_message() {
@@ -68,8 +71,12 @@ fn verification_proof_new_initializes_empty_warnings() {
     let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
     let proof = VerificationProof::new(digest, 2, true);
     assert!(proof.warnings.is_empty());
-    assert_eq!(proof.gate_count, 2);
-    assert!(proof.durable);
+    assert_eq!(proof.gate_count, 0);
+    assert_eq!(proof.durable, false);
+    assert_eq!(
+        proof.evidence,
+        vb_core::artifact::ArtifactEvidence::Unverified
+    );
 }
 
 #[test]
@@ -355,40 +362,31 @@ fn submit_artifact_relaxed_performs_immediate_live_readback() -> Result<(), Stri
 }
 
 #[test]
-fn submit_artifact_journaled_runs_both_gates() -> Result<(), String> {
-    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+fn submit_artifact_journaled_has_independently_checked_evidence() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| e.to_string())?;
     let workflow = minimal_workflow()?;
-
-    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
-        .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
-
-    // Journaled passes 15 gates but is not durable (no SyncAll).
-    assert_eq!(
-        result.verification.gate_count, 15,
-        "journaled must pass 15 verification gates"
-    );
-    assert!(
-        !result.verification.durable,
-        "journaled must not be durable"
-    );
-    assert_eq!(result.source_digest, workflow.digest());
-    assert_eq!(result.verification.digest, result.digest);
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+        .map_err(|e| e.to_string())?;
+    assert_checked(&artifact, vb_core::RuntimePolicy::Journaled)?;
+    assert_eq!(artifact.source_digest, workflow.digest());
     Ok(())
 }
 
 #[test]
-fn submit_artifact_strict_is_durable() -> Result<(), String> {
-    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+fn strict_submission_returns_checked_metadata_after_persistence() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| e.to_string())?;
     let workflow = minimal_workflow()?;
-
-    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
-        .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
-
-    // Strict passes 15 gates AND is durable.
-    assert_eq!(result.verification.gate_count, 15);
-    assert!(result.verification.durable, "strict must be durable");
-    assert_eq!(result.source_digest, workflow.digest());
-    assert_eq!(result.verification.digest, result.digest);
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+        .map_err(|e| e.to_string())?;
+    assert_checked(&artifact, vb_core::RuntimePolicy::Strict)?;
+    let stored = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|e| e.to_string())?
+        .ok_or("missing artifact after strict persistence")?;
+    assert_eq!(
+        postcard::from_bytes::<AcceptedArtifact>(&stored.ir).map_err(|e| e.to_string())?,
+        artifact
+    );
     Ok(())
 }
 
@@ -486,14 +484,14 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
 fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability()
 -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
+    let workflow = action_workflow(&[vb_core::ActionId::new(0)])?;
     let required = vb_core::capability::Capability::new(
         Box::<str>::from("network.github"),
-        vb_core::ActionId::new(7),
+        vb_core::ActionId::new(0),
     );
     let contract = vb_core::action::ActionContract {
-        id: vb_core::ActionId::new(7),
-        name: vb_core::action::ActionName::new("test-action").unwrap(),
+        id: vb_core::ActionId::new(0),
+        name: vb_core::action::ActionName::new("test-action").map_err(|e| e.to_string())?,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -527,11 +525,11 @@ fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requir
 #[test]
 fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
-    let action = vb_core::ActionId::new(11);
+    let workflow = action_workflow(&[vb_core::ActionId::new(0)])?;
+    let action = vb_core::ActionId::new(0);
     let contract = vb_core::action::ActionContract {
         id: action,
-        name: vb_core::action::ActionName::new("test-action").unwrap(),
+        name: vb_core::action::ActionName::new("test-action").map_err(|e| e.to_string())?,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -552,11 +550,7 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
     .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
 
     assert!(artifact.verification.idempotency_verified_claimed);
-    assert_eq!(artifact.verification.idempotency_keyed.as_ref(), &[action]);
-    assert_eq!(
-        artifact.verification.idempotency_attested.as_ref(),
-        &[action]
-    );
+    assert_declarations(&artifact, &[action])?;
     Ok(())
 }
 
@@ -570,11 +564,11 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
 #[test]
 fn sa013_relaxed_carries_idempotency_evidence_from_contracts() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
-    let action = vb_core::ActionId::new(11);
+    let workflow = action_workflow(&[vb_core::ActionId::new(0)])?;
+    let action = vb_core::ActionId::new(0);
     let contract = vb_core::action::ActionContract {
         id: action,
-        name: vb_core::action::ActionName::new("sa013-relaxed").unwrap(),
+        name: vb_core::action::ActionName::new("sa013-relaxed").map_err(|e| e.to_string())?,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -595,24 +589,22 @@ fn sa013_relaxed_carries_idempotency_evidence_from_contracts() -> Result<(), Str
     .map_err(|e| format!("submit_artifact_with_contracts(relaxed) failed: {e}"))?;
 
     assert!(artifact.verification.idempotency_verified_claimed);
-    assert_eq!(artifact.verification.idempotency_keyed.as_ref(), &[action]);
-    assert_eq!(
-        artifact.verification.idempotency_attested.as_ref(),
-        &[action]
-    );
+    assert_declarations(&artifact, &[action])?;
     Ok(())
 }
 
 #[test]
 fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
-    let action_a = vb_core::ActionId::new(13);
-    let action_b = vb_core::ActionId::new(14);
-    let build_contract =
-        |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+    let workflow = action_workflow(&[vb_core::ActionId::new(0), vb_core::ActionId::new(1)])?;
+    let action_a = vb_core::ActionId::new(0);
+    let action_b = vb_core::ActionId::new(1);
+    let build_contract = |id: vb_core::ActionId,
+                          name: &'static str|
+     -> Result<vb_core::action::ActionContract, String> {
+        Ok(vb_core::action::ActionContract {
             id,
-            name: vb_core::action::ActionName::new(name).unwrap(),
+            name: vb_core::action::ActionName::new(name).map_err(|e| e.to_string())?,
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -622,11 +614,14 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
             side_effect: vb_core::action::SideEffect::Writes,
             retry_safety: vb_core::action::RetrySafety::KeyRequired,
             required_capabilities: Box::new([]),
-        };
-    let build_pure_contract =
-        |id: vb_core::ActionId, name: &'static str| vb_core::action::ActionContract {
+        })
+    };
+    let build_pure_contract = |id: vb_core::ActionId,
+                               name: &'static str|
+     -> Result<vb_core::action::ActionContract, String> {
+        Ok(vb_core::action::ActionContract {
             id,
-            name: vb_core::action::ActionName::new(name).unwrap(),
+            name: vb_core::action::ActionName::new(name).map_err(|e| e.to_string())?,
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -636,14 +631,15 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
             side_effect: vb_core::action::SideEffect::None,
             retry_safety: vb_core::action::RetrySafety::Safe,
             required_capabilities: Box::new([]),
-        };
+        })
+    };
     let relaxed_contracts = [
-        build_contract(action_a, "sa013-parity-relaxed-a"),
-        build_pure_contract(action_b, "sa013-parity-relaxed-b"),
+        build_contract(action_a, "sa013-parity-relaxed-a")?,
+        build_pure_contract(action_b, "sa013-parity-relaxed-b")?,
     ];
     let journaled_contracts = [
-        build_contract(action_a, "sa013-parity-journaled-a"),
-        build_pure_contract(action_b, "sa013-parity-journaled-b"),
+        build_contract(action_a, "sa013-parity-journaled-a")?,
+        build_pure_contract(action_b, "sa013-parity-journaled-b")?,
     ];
 
     let relaxed = submit_artifact_with_contracts(
@@ -661,6 +657,8 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
     )
     .map_err(|e| format!("submit_artifact_with_contracts(journaled) failed: {e}"))?;
 
+    assert_declarations(&relaxed, &[action_a, action_b])?;
+    assert_declarations(&journaled, &[action_a, action_b])?;
     assert_eq!(
         relaxed.verification.idempotency_keyed.as_ref(),
         journaled.verification.idempotency_keyed.as_ref(),
@@ -677,10 +675,10 @@ fn sa013_relaxed_and_journaled_idempotency_evidence_parity() -> Result<(), Strin
 #[test]
 fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
+    let workflow = action_workflow(&[vb_core::ActionId::new(0)])?;
     let contract = vb_core::action::ActionContract {
-        id: vb_core::ActionId::new(12),
-        name: vb_core::action::ActionName::new("test-action").unwrap(),
+        id: vb_core::ActionId::new(0),
+        name: vb_core::action::ActionName::new("test-action").map_err(|e| e.to_string())?,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -750,41 +748,34 @@ fn accepted_artifact_serde_roundtrip() -> Result<(), String> {
 // =========================================================================
 
 #[test]
-fn relaxed_skips_gates_while_journaled_passes_them() -> Result<(), String> {
-    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
-
-    let relaxed = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
-        .map_err(|e| format!("relaxed failed: {e}"))?;
-    let journaled = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
-        .map_err(|e| format!("journaled failed: {e}"))?;
-
-    assert!(
-        relaxed.verification.gate_count < journaled.verification.gate_count,
-        "relaxed gate count ({}) must be less than journaled ({})",
-        relaxed.verification.gate_count,
-        journaled.verification.gate_count
-    );
+fn every_prepared_artifact_policy_uses_checked_evidence() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| e.to_string())?;
+    for policy in [
+        vb_core::RuntimePolicy::Relaxed,
+        vb_core::RuntimePolicy::Journaled,
+    ] {
+        let artifact =
+            submit_artifact(&journal, &minimal_workflow()?, policy).map_err(|e| e.to_string())?;
+        assert_checked(&artifact, policy)?;
+    }
     Ok(())
 }
 
 #[test]
-fn strict_and_journaled_have_same_gate_count() -> Result<(), String> {
-    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+fn strict_and_journaled_bind_their_actual_requested_policies() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| e.to_string())?;
     let workflow = minimal_workflow()?;
-
     let journaled = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
-        .map_err(|e| format!("journaled failed: {e}"))?;
+        .map_err(|e| e.to_string())?;
     let strict = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
-        .map_err(|e| format!("strict failed: {e}"))?;
-
-    assert_eq!(
-        journaled.verification.gate_count, strict.verification.gate_count,
-        "journaled and strict must have identical gate count"
-    );
-    // Only difference is durable flag.
-    assert!(!journaled.verification.durable);
-    assert!(strict.verification.durable);
+        .map_err(|e| e.to_string())?;
+    assert_checked(&journaled, vb_core::RuntimePolicy::Journaled)?;
+    assert_checked(&strict, vb_core::RuntimePolicy::Strict)?;
+    assert_ne!(journaled.digest, strict.digest);
+    assert!(matches!(
+        verify_accepted_artifact_for_policy(&journaled, vb_core::RuntimePolicy::Strict),
+        Err(JournalError::ArtifactMalformed)
+    ));
     Ok(())
 }
 
@@ -929,119 +920,73 @@ fn verification_warning_serde_roundtrip() -> Result<(), String> {
 // =========================================================================
 // Proof Flag Gap Tests (demonstrate VB-STORAGE-GAP)
 //
-// These tests document the gap: VerificationProof::new() sets all proof
-// flags to true UNCONDITIONALLY, without any actual per-gate validation.
-// The flags should be set based on actual verification results.
+// Regression coverage: caller gate/digest claims cannot mint verification.
+// Runtime evidence is checked independently and external assumptions stay explicit.
 // =========================================================================
 
 #[test]
-fn gap_proof_flags_always_true_regardless_of_gate_count() -> Result<(), String> {
-    let digest = vb_core::WorkflowDigest::from_bytes([0xAB_u8; 32]);
-
-    let proof_zero = VerificationProof::new(digest, 0, false);
-    assert!(
-        proof_zero.bounded_claimed,
-        "GAP: bounded_claimed=true even with gate_count=0 (no verification performed)"
-    );
-    assert!(
-        proof_zero.taint_safe_claimed,
-        "GAP: taint_safe_claimed=true even with gate_count=0 (no verification performed)"
-    );
-    assert!(
-        proof_zero.retry_safe_claimed,
-        "GAP: retry_safe_claimed=true even with gate_count=0 (no verification performed)"
-    );
-    assert!(
-        proof_zero.replayable_claimed,
-        "GAP: replayable_claimed=true even with gate_count=0 (no verification performed)"
-    );
-
-    let proof_fifteen = VerificationProof::new(digest, 15, true);
-    assert!(
-        proof_fifteen.bounded_claimed,
-        "GAP: bounded_claimed=true with gate_count=15 (verification claimed but not performed)"
-    );
-    assert!(
-        proof_fifteen.taint_safe_claimed,
-        "GAP: taint_safe_claimed=true with gate_count=15 (verification claimed but not performed)"
-    );
-    assert!(
-        proof_fifteen.retry_safe_claimed,
-        "GAP: retry_safe_claimed=true with gate_count=15 (verification claimed but not performed)"
-    );
-    assert!(
-        proof_fifteen.replayable_claimed,
-        "GAP: replayable_claimed=true with gate_count=15 (verification claimed but not performed)"
-    );
-
+fn constructor_never_mints_flags_from_a_gate_count() -> Result<(), String> {
+    for gates in [0, 15, u8::MAX] {
+        let proof =
+            VerificationProof::new(vb_core::WorkflowDigest::from_bytes([0xAB; 32]), gates, true);
+        assert_eq!(
+            (
+                proof.bounded_claimed,
+                proof.taint_safe_claimed,
+                proof.retry_safe_claimed,
+                proof.idempotency_verified_claimed,
+                proof.replayable_claimed,
+                proof.durable
+            ),
+            (false, false, false, false, false, false)
+        );
+        assert_eq!(proof.gate_count, 0);
+        assert_eq!(
+            proof.evidence,
+            vb_core::artifact::ArtifactEvidence::Unverified
+        );
+    }
     Ok(())
 }
 
 #[test]
-fn gap_proof_flags_true_for_any_digest_value() -> Result<(), String> {
-    let zero_digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let proof_zero = VerificationProof::new(zero_digest, 15, true);
-    assert!(
-        proof_zero.bounded_claimed
-            && proof_zero.taint_safe_claimed
-            && proof_zero.retry_safe_claimed
-            && proof_zero.replayable_claimed,
-        "GAP: proof flags are true for zero digest"
-    );
-
-    let max_digest = vb_core::WorkflowDigest::from_bytes([0xFFu8; 32]);
-    let proof_max = VerificationProof::new(max_digest, 15, true);
-    assert!(
-        proof_max.bounded_claimed
-            && proof_max.taint_safe_claimed
-            && proof_max.retry_safe_claimed
-            && proof_max.replayable_claimed,
-        "GAP: proof flags are true for max digest"
-    );
-
-    let arbitrary_digest = vb_core::WorkflowDigest::from_bytes([
-        0x12_u8, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
-        0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
-        0x66, 0x77, 0x88,
-    ]);
-    let proof_arb = VerificationProof::new(arbitrary_digest, 15, false);
-    assert!(
-        proof_arb.bounded_claimed
-            && proof_arb.taint_safe_claimed
-            && proof_arb.retry_safe_claimed
-            && proof_arb.replayable_claimed,
-        "GAP: proof flags are true for arbitrary digest"
-    );
-
+fn constructor_never_treats_arbitrary_digests_as_proof() -> Result<(), String> {
+    for bytes in [[0; 32], [0xFF; 32], [0x12; 32]] {
+        let digest = vb_core::WorkflowDigest::from_bytes(bytes);
+        let proof = VerificationProof::new(digest, 15, true);
+        assert_eq!(proof.digest, digest);
+        assert_eq!(
+            (
+                proof.bounded_claimed,
+                proof.taint_safe_claimed,
+                proof.retry_safe_claimed,
+                proof.idempotency_verified_claimed,
+                proof.replayable_claimed,
+                proof.durable
+            ),
+            (false, false, false, false, false, false)
+        );
+        assert_eq!(
+            proof.evidence,
+            vb_core::artifact::ArtifactEvidence::Unverified
+        );
+    }
     Ok(())
 }
 
 #[test]
-fn gap_submit_artifact_journaled_produces_unconditional_true_flags() -> Result<(), String> {
-    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
-    let workflow = minimal_workflow()?;
-
-    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
-        .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
-
-    assert_eq!(result.verification.gate_count, 15);
-    assert!(
-        result.verification.bounded_claimed,
-        "GAP: submit_artifact produces bounded_claimed=true without checking workflow size"
-    );
-    assert!(
-        result.verification.taint_safe_claimed,
-        "GAP: submit_artifact produces taint_safe_claimed=true without checking taint propagation"
-    );
-    assert!(
-        result.verification.retry_safe_claimed,
-        "GAP: submit_artifact produces retry_safe_claimed=true without checking idempotency"
-    );
-    assert!(
-        result.verification.replayable_claimed,
-        "GAP: submit_artifact produces replayable_claimed=true without checking replay invariants"
-    );
-
+fn checked_submission_records_only_scoped_validation_claims() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| e.to_string())?;
+    let artifact = submit_artifact(
+        &journal,
+        &minimal_workflow()?,
+        vb_core::RuntimePolicy::Journaled,
+    )
+    .map_err(|e| e.to_string())?;
+    assert_checked(&artifact, vb_core::RuntimePolicy::Journaled)?;
+    assert_eq!(artifact.verification.bounded_claimed, true);
+    assert_eq!(artifact.verification.idempotency_verified_claimed, true);
+    assert_eq!(artifact.verification.retry_safe_claimed, false);
     Ok(())
 }
 

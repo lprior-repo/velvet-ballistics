@@ -1,0 +1,24 @@
+{
+  "restored_formatter_only_paths": [
+    "crates/vb_compile/src/migration_compat.rs",
+    "crates/vb_compile/src/mod_compile_errors/collection.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_07.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_08.rs",
+    "crates/vb_runtime/src/engine/drive/tests/common.rs",
+    "crates/vb_runtime/src/error/display.rs",
+    "crates/vb_runtime/src/error/equality.rs",
+    "crates/vb_runtime/src/error/mod.rs",
+    "crates/vb_runtime/src/error/tests_equality.rs",
+    "crates/vb_runtime/src/primitives/reduce/tests.rs",
+    "crates/vb_runtime/src/primitives/reentry_tests.rs",
+    "crates/vb_runtime/src/recovery.rs",
+    "crates/vb_runtime/src/recovery/full/admission.rs",
+    "crates/vb_runtime/src/shard/helpers/tests.rs",
+    "crates/vb_runtime/src/shard/mod.rs",
+    "crates/vb_runtime/src/shard/types.rs",
+    "crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs",
+    "crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs",
+    "crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs"
+  ]
+}

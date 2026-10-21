@@ -1,0 +1,7 @@
+    Blocking waiting for file lock on build directory
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.35s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-029e3942d93f9ae1)
+error: test failed, to rerun pass `-p vb_storage --lib`

@@ -2,6 +2,7 @@
 //! Runtime recovery boundary over storage summary hydration.
 
 mod frame;
+mod input_binding;
 mod full;
 mod product;
 
@@ -16,11 +17,17 @@ pub use full::{
     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
 };
 pub(crate) use full::{
+    hydrate_frame_for_full_recovery_with_inputs,
     action_contract_abi_digest,
     RecoveredAdmissionContext, RecoveredAdmissionEvidence,
     ResumableRecoveryParts, action_abi_digests_from_contracts, classify_full_recovery_resume,
-    hydrate_frame_for_full_recovery, pending_action_ticket_from_events,
+    pending_action_ticket_from_events,
     recovered_run_boundary_from_seed, validate_recovered_admission_evidence,
+};
+
+pub use input_binding::{
+    admission_is_new_bound, validate_input_record_artifact, validate_input_record_binding,
+    validate_input_record_workflow,
 };
 
 use crate::{RuntimeError, RuntimeResult};

@@ -1,3 +1,19 @@
+use vb_core::ids::ActionId;
+
+fn schedule_action_abi_digest(
+    state: &RunState,
+    action: ActionId,
+) -> RuntimeResult<vb_core::ids::WorkflowDigest> {
+    let contract = state
+        .action_contracts
+        .iter()
+        .find(|c| c.id == action)
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "action_contract_missing",
+        })?;
+    crate::recovery::action_contract_abi_digest(contract)
+}
+
 impl Shard {
     fn drive_state(
         state: &mut RunState,
@@ -103,7 +119,7 @@ impl Shard {
                 ticket,
                 input,
                 output,
-                action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+                action_abi_digest: schedule_action_abi_digest(&state, ticket.action)?,
             },
         )?;
         Ok((journal_events, trace_events, state, ticket, step))
@@ -251,11 +267,8 @@ impl Shard {
         let (mut journal_events, trace_events) = self
             .prepare_evidence_events(run, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        Self::push_drive_journal_event(
-            &mut journal_events,
-            RuntimeJournalEvent::RunFailed { run },
-        )
-        .map_err(DriveApplyFailure::BeforeCommit)?;
+        Self::push_drive_journal_event(&mut journal_events, RuntimeJournalEvent::RunFailed { run })
+            .map_err(DriveApplyFailure::BeforeCommit)?;
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);

@@ -43,6 +43,7 @@ fn compiler_candidate_binds_actual_source_and_exact_payload_with_named_checks() 
             CompilerCheck::WorkflowReconstruction,
             CompilerCheck::SharedIrGatesWithContracts,
             CompilerCheck::IdempotencyDeclarations,
+            CompilerCheck::ActionRegistry,
             CompilerCheck::CanonicalWorkflowDigest,
             CompilerCheck::WholeWorkflowBudget
         ]

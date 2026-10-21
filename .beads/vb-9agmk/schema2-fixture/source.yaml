@@ -1,0 +1,8 @@
+version: velvet-ballistics/v1
+name: legacy_wire_fixture
+when: { manual: {} }
+steps:
+  - id: make
+    set: { output: answer, value: "42" }
+  - id: done
+    finish: { result: answer }

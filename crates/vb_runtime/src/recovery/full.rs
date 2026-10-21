@@ -67,13 +67,25 @@ impl RecoveredPendingActionTicket {
 /// Unlike `RuntimeRecoveryBoundary::hydrate_run_frame`, this path is allowed
 /// to proceed when a pending action has durable ticket authority and the
 /// caller will hydrate the surrounding `RunState` components from artifacts.
-pub(crate) fn hydrate_frame_for_full_recovery(
+
+/// Hydrates a frame for the full runtime recovery path with initial input seeds.
+///
+/// Retained inputs are seeded into the frame BEFORE applying journal slot writes
+/// from the seed. Slots written by journal events after the initial seeding
+/// retain their values (later writes win). This ensures journal replay
+/// determinism while accepting retained typed inputs at cold startup.
+pub(crate) fn hydrate_frame_for_full_recovery_with_inputs(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
+    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue)>>,
 ) -> RuntimeResult<RunFrame> {
     super::frame::validate_recovery_seed_shape(seed)?;
     reject_unrecoverable_full_recovery_state(seed, boundary)?;
-    super::frame::hydrate_shape_checked_run_frame(seed)
+    if let Some(inputs) = initial_inputs {
+        super::frame::hydrate_shape_checked_run_frame_with_inputs(seed, inputs)
+    } else {
+        super::frame::hydrate_shape_checked_run_frame(seed)
+    }
 }
 
 pub(crate) fn recovered_run_boundary_from_seed(

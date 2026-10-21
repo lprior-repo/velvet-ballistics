@@ -8,6 +8,7 @@ mod journal;
 mod lifecycle_error;
 mod name;
 mod payload;
+mod registry;
 mod ticket;
 mod validation;
 
@@ -30,6 +31,7 @@ pub use name::{ActionName, ActionNameError};
 pub use payload::{
     ActionInput, ActionOutcome, ActionOutput, ActionOutputReady, EncodedActionInputLen,
 };
+pub use registry::{ActionRegistryError, validate_action_registry};
 pub use ticket::{
     ActionTicket, action_ticket_has_valid_key, compute_action_idempotency_key, issue_action_ticket,
 };

@@ -50,6 +50,7 @@
                     policy_digest: self.digest,
                     ir: self.workflow_ir.clone(),
                     verification: vb_storage::admission::VerificationProof {
+                        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
                         digest: self.digest,
                         gate_count: 8,
                         durable: true,

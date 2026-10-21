@@ -1,0 +1,296 @@
+
+running 55 tests
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_run_with_budget_returns_resource_capacity_exceeded_when_budget_too_large ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_bounded_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15 ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_durable_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_verified_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_replayable_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_retry_safe_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_taint_safe_flag ... FAILED
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_not_found_for_unknown_digest ... ok
+test admission::tests::admission_admit_run_journaled_without_artifact_rejected ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_postcard_decode_failed_for_corrupt_bytes ... ok
+test admission::tests::admission_admit_run_relaxed_without_artifact ... ok
+test admission::tests::admission_admit_run_strict_rejects_loaded_proof_digest_mismatch ... ok
+test admission::tests::admission_admit_run_strict_rejects_loaded_digest_mismatch ... FAILED
+test admission::tests::admission_admit_run_strict_without_artifact_rejected ... ok
+test admission::tests::admission_artifact_not_found_error_equality ... ok
+test admission::tests::admission_admit_run_strict_with_present_artifact ... FAILED
+test admission::tests::admission_capability_denied_error_fields ... ok
+test admission::tests::admission_check_capability_denied ... ok
+test admission::tests::admission_check_capability_granted ... ok
+test admission::tests::admission_check_capability_rejects_hierarchical_grant ... ok
+test admission::tests::admission_check_capability_rejects_partial_prefix_grant ... ok
+test admission::tests::admission_clone_is_equal ... ok
+test admission::tests::admission_error_match_covers_all_variants ... ok
+test admission::tests::admission_new_stores_all_fields ... ok
+test admission::tests::admission_policy_journaled_stored ... ok
+test admission::tests::admission_policy_relaxed_stored ... ok
+test admission::tests::admit_artifact_run_accepts_capability_exact_match ... FAILED
+test admission::tests::admit_artifact_run_carries_idempotency_evidence_to_dispatch ... FAILED
+test admission::tests::admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied ... FAILED
+test admission::tests::admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied ... FAILED
+test admission::tests::admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial ... FAILED
+test admission::tests::admit_artifact_run_preserves_non_empty_required_capabilities ... FAILED
+test admission::tests::admit_artifact_run_rejects_capability_duplicate ... FAILED
+test admission::tests::admit_artifact_run_rejects_keyed_action_without_attestation ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_bounded_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_capability_superset ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_durable_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_grants_without_allocation ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_attestation ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_gate ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_verified_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_replayable_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_retry_safe_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_missing_taint_safe_flag ... FAILED
+test admission::tests::admit_artifact_run_rejects_non_exact_grant_without_allocation ... FAILED
+test admission::tests::admit_artifact_run_returns_digest_mismatch ... FAILED
+test admission::tests::admit_run_with_budget_policy_rejects_over_policy_before_capacity ... ok
+test admission::tests::admit_run_with_budget_rejects_strict_without_artifact ... ok
+test admission::tests::admit_run_with_budget_returns_resource_capacity_exceeded ... ok
+test admission::tests::load_accepted_artifact_returns_invalid_gate_count ... ok
+test admission::tests::capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied ... FAILED
+test admission::tests::load_accepted_artifact_returns_postcard_decode_failed ... ok
+
+failures:
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested' (2581723) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:511:9:
+expected MissingIdempotencyAttestation for action ActionId(99), got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_bounded_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_bounded_flag' (2581721) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:292:9:
+expected MissingRequiredProofFlagBounded, got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15 stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15' (2581720) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:269:9:
+expected InvalidGateCount { found: 7, required: 15 }, got Err(ArtifactEvidenceInvalid)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs' (2581718) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:403:9:
+expected ArtifactDigestMismatch with requested=WorkflowDigest([170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170, 170]), found=WorkflowDigest([187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187]), got Err(ArtifactInvalidProofFlag { flag: "evidence" })
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_durable_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_durable_flag' (2581722) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:343:9:
+expected MissingRequiredProofFlagDurable, got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_verified_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_verified_flag' (2581724) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:377:9:
+expected MissingRequiredProofFlagIdempotencyVerified, got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_replayable_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_replayable_flag' (2581725) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:360:9:
+expected MissingRequiredProofFlagReplayable, got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_retry_safe_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_retry_safe_flag' (2581726) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:326:9:
+expected MissingRequiredProofFlagRetrySafe, got Err(ArtifactEvidenceInvalid)
+
+---- admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_taint_safe_flag stdout ----
+
+thread 'admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_taint_safe_flag' (2581727) panicked at crates/vb_runtime/src/admission/artifact_envelope_tests.rs:309:9:
+expected MissingRequiredProofFlagTaintSafe, got Err(ArtifactEvidenceInvalid)
+
+---- admission::tests::admission_admit_run_strict_rejects_loaded_digest_mismatch stdout ----
+
+thread 'admission::tests::admission_admit_run_strict_rejects_loaded_digest_mismatch' (2581732) panicked at crates/vb_runtime/src/admission/tests.rs:668:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactDigestMismatch { requested: WorkflowDigest([171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171]), found: WorkflowDigest([66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66]) })
+
+---- admission::tests::admission_admit_run_strict_with_present_artifact stdout ----
+
+thread 'admission::tests::admission_admit_run_strict_with_present_artifact' (2581734) panicked at crates/vb_runtime/src/admission/tests.rs:636:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Ok(RunAdmission { artifact_digest: WorkflowDigest([171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171]), run_id: RunId(1), granted_capabilities: CapabilitySet { grants: [Capability { name: "", action: ActionId(0) }] }, policy: Strict, budget: None, idempotency_attested: [] })
+
+---- admission::tests::admit_artifact_run_accepts_capability_exact_match stdout ----
+
+thread 'admission::tests::admit_artifact_run_accepts_capability_exact_match' (2581747) panicked at crates/vb_runtime/src/admission/tests.rs:451:27:
+exact-match capability set must admit: ArtifactInvalidProofFlag { flag: "evidence" }
+
+---- admission::tests::admit_artifact_run_carries_idempotency_evidence_to_dispatch stdout ----
+
+thread 'admission::tests::admit_artifact_run_carries_idempotency_evidence_to_dispatch' (2581748) panicked at crates/vb_runtime/src/admission/tests.rs:591:5:
+assertion failed: matches!(admission, Ok(run) if run.idempotency_attested() == [action])
+
+---- admission::tests::admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied stdout ----
+
+thread 'admission::tests::admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied' (2581749) panicked at crates/vb_runtime/src/admission/tests.rs:423:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityDenied { action: ActionId(8), required: Capability { name: "filesystem.read", action: ActionId(8) }, granted: CapabilitySet { grants: [Capability { name: "network.github", action: ActionId(7) }, Capability { name: "network.other", action: ActionId(11) }] } })
+
+---- admission::tests::admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied stdout ----
+
+thread 'admission::tests::admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied' (2581750) panicked at crates/vb_runtime/src/admission/tests.rs:253:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityCountMismatch { required_count: 1, granted_count: 2 })
+
+---- admission::tests::admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial stdout ----
+
+thread 'admission::tests::admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial' (2581751) panicked at crates/vb_runtime/src/admission/tests.rs:289:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityCountMismatch { required_count: 2, granted_count: 3 })
+
+---- admission::tests::admit_artifact_run_preserves_non_empty_required_capabilities stdout ----
+
+thread 'admission::tests::admit_artifact_run_preserves_non_empty_required_capabilities' (2581752) panicked at crates/vb_runtime/src/admission/tests.rs:526:5:
+assertion failed: matches!(admission, Ok(run) if run.granted_capabilities() == &granted)
+
+---- admission::tests::admit_artifact_run_rejects_capability_duplicate stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_capability_duplicate' (2581753) panicked at crates/vb_runtime/src/admission/tests.rs:219:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityCountMismatch { required_count: 1, granted_count: 2 })
+
+---- admission::tests::admit_artifact_run_rejects_keyed_action_without_attestation stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_keyed_action_without_attestation' (2581755) panicked at crates/vb_runtime/src/admission/tests.rs:567:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "idempotency_attested" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_bounded_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_bounded_flag' (2581756) panicked at crates/vb_runtime/src/admission/tests.rs:849:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "bounded" })
+
+---- admission::tests::admit_artifact_run_rejects_capability_superset stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_capability_superset' (2581754) panicked at crates/vb_runtime/src/admission/tests.rs:191:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityCountMismatch { required_count: 1, granted_count: 2 })
+
+---- admission::tests::admit_artifact_run_rejects_missing_durable_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_durable_flag' (2581757) panicked at crates/vb_runtime/src/admission/tests.rs:930:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "durable" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_grants_without_allocation stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_grants_without_allocation' (2581758) panicked at crates/vb_runtime/src/admission/tests.rs:472:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityDenied { action: ActionId(8), required: Capability { name: "filesystem.read", action: ActionId(8) }, granted: CapabilitySet { grants: [Capability { name: "network.github", action: ActionId(7) }] } })
+
+---- admission::tests::admit_artifact_run_rejects_missing_idempotency_attestation stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_idempotency_attestation' (2581759) panicked at crates/vb_runtime/src/admission/tests.rs:1019:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "idempotency_attested" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_idempotency_gate stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_idempotency_gate' (2581760) panicked at crates/vb_runtime/src/admission/tests.rs:543:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "idempotency_verified" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_idempotency_verified_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_idempotency_verified_flag' (2581761) panicked at crates/vb_runtime/src/admission/tests.rs:984:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "idempotency_verified" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_replayable_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_replayable_flag' (2581762) panicked at crates/vb_runtime/src/admission/tests.rs:957:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "replayable" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_retry_safe_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_retry_safe_flag' (2581763) panicked at crates/vb_runtime/src/admission/tests.rs:903:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "retry_safe" })
+
+---- admission::tests::admit_artifact_run_rejects_missing_taint_safe_flag stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_missing_taint_safe_flag' (2581764) panicked at crates/vb_runtime/src/admission/tests.rs:876:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactInvalidProofFlag { flag: "taint_safe" })
+
+---- admission::tests::admit_artifact_run_rejects_non_exact_grant_without_allocation stdout ----
+
+thread 'admission::tests::admit_artifact_run_rejects_non_exact_grant_without_allocation' (2581765) panicked at crates/vb_runtime/src/admission/tests.rs:499:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(CapabilityDenied { action: ActionId(7), required: Capability { name: "network.github", action: ActionId(7) }, granted: CapabilitySet { grants: [Capability { name: "network", action: ActionId(7) }] } })
+
+---- admission::tests::admit_artifact_run_returns_digest_mismatch stdout ----
+
+thread 'admission::tests::admit_artifact_run_returns_digest_mismatch' (2581766) panicked at crates/vb_runtime/src/admission/tests.rs:1057:5:
+assertion `left == right` failed
+  left: Err(ArtifactInvalidProofFlag { flag: "evidence" })
+ right: Err(ArtifactDigestMismatch { requested: WorkflowDigest([171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171]), found: WorkflowDigest([66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66, 66]) })
+
+---- admission::tests::capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied stdout ----
+
+thread 'admission::tests::capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied' (2581770) panicked at crates/vb_runtime/src/admission/tests.rs:342:18:
+expected CapabilityCountMismatch { required_count: 3, granted_count: 4 }, got Err(ArtifactInvalidProofFlag { flag: "evidence" })
+
+
+failures:
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_bounded_flag
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_durable_flag
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_verified_flag
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_replayable_flag
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_retry_safe_flag
+    admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_taint_safe_flag
+    admission::tests::admission_admit_run_strict_rejects_loaded_digest_mismatch
+    admission::tests::admission_admit_run_strict_with_present_artifact
+    admission::tests::admit_artifact_run_accepts_capability_exact_match
+    admission::tests::admit_artifact_run_carries_idempotency_evidence_to_dispatch
+    admission::tests::admit_artifact_run_count_match_with_missing_capability_still_returns_capability_denied
+    admission::tests::admit_artifact_run_count_mismatch_returns_typed_error_not_capability_denied
+    admission::tests::admit_artifact_run_count_mismatch_under_grant_returns_typed_error_not_per_cap_denial
+    admission::tests::admit_artifact_run_preserves_non_empty_required_capabilities
+    admission::tests::admit_artifact_run_rejects_capability_duplicate
+    admission::tests::admit_artifact_run_rejects_capability_superset
+    admission::tests::admit_artifact_run_rejects_keyed_action_without_attestation
+    admission::tests::admit_artifact_run_rejects_missing_bounded_flag
+    admission::tests::admit_artifact_run_rejects_missing_durable_flag
+    admission::tests::admit_artifact_run_rejects_missing_grants_without_allocation
+    admission::tests::admit_artifact_run_rejects_missing_idempotency_attestation
+    admission::tests::admit_artifact_run_rejects_missing_idempotency_gate
+    admission::tests::admit_artifact_run_rejects_missing_idempotency_verified_flag
+    admission::tests::admit_artifact_run_rejects_missing_replayable_flag
+    admission::tests::admit_artifact_run_rejects_missing_retry_safe_flag
+    admission::tests::admit_artifact_run_rejects_missing_taint_safe_flag
+    admission::tests::admit_artifact_run_rejects_non_exact_grant_without_allocation
+    admission::tests::admit_artifact_run_returns_digest_mismatch
+    admission::tests::capability_count_mismatch_vb_ia7sq_typed_error_not_fabricated_capability_denied
+
+test result: FAILED. 23 passed; 32 failed; 0 ignored; 0 measured; 1859 filtered out; finished in 0.00s
+
