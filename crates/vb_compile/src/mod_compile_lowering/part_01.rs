@@ -84,24 +84,15 @@ pub(super) fn allocate_input_slots(
                 .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
         );
         builder.record_slot(slot);
-        let kind = kind_from_author_value(&input.value);
+        let kind = kind_from_input_schema(&input.value)?;
         builder.record_input_slot(slot, kind);
     }
     Ok(())
 }
 
-/// Derive a runtime `InputSlotKind` from a compiled `AuthorValue`.
-pub(super) fn kind_from_author_value(value: &AuthorValue) -> InputSlotKind {
-    match value {
-        AuthorValue::Null => InputSlotKind::Null,
-        AuthorValue::Bool(_) => InputSlotKind::Bool,
-        AuthorValue::I64(_) => InputSlotKind::I64,
-        AuthorValue::Text(_) => InputSlotKind::Symbol,
-        AuthorValue::Sequence(_) => InputSlotKind::List,
-        AuthorValue::Mapping(_) => InputSlotKind::Object,
-        _ => InputSlotKind::Null,
-    }
-}
+#[path = "input_schema.rs"]
+mod input_schema;
+use input_schema::kind_from_input_schema;
 
 #[derive(Clone, Copy)]
 pub(super) struct CanonicalStepLayout {

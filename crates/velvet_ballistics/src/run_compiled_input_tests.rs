@@ -238,3 +238,25 @@ proptest::proptest! {
         );
     }
 }
+
+#[test]
+fn any_port_maps_primitives() -> TestResult<()> {
+    let wf = fixture(Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::Any,
+    }]))?;
+    let values: [SlotValue; 4] = [
+        SlotValue::Null,
+        SlotValue::Bool(true),
+        SlotValue::I64(i64::MIN),
+        SlotValue::I64(i64::MAX),
+    ];
+    for value in values {
+        let bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([value]))?;
+        assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), value)]))
+        );
+    }
+    Ok(())
+}

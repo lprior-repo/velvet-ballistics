@@ -301,6 +301,8 @@ pub enum InputSlotKind {
     Object,
     /// Slot holds a blob handle.
     Blob,
+    /// Slot accepts any recognized value shape (schema wildcard).
+    Any,
 }
 
 /// A compiled input slot: numeric index plus production classification.

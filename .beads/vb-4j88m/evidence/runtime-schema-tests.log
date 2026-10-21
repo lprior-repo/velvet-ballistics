@@ -1,0 +1,10 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4j88m-schema-5090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running tests/runtime_input_schema_kinds.rs (target/debug/deps/runtime_input_schema_kinds-2e2e64cd2e65dfca)
+
+running 2 tests
+test test_any_slot_accepts_all_values ... ok
+test test_i64_slot_rejects_bool ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
