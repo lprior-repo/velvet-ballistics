@@ -57,13 +57,10 @@ pub enum ProofFlag {
     Replayable,
 }
 
-/// Proof that artifact verification passed at admission time.
+/// Legacy display flags plus typed, payload-bound artifact evidence.
 ///
-/// GAP-001 FIX: Fields ending in `_claimed` are set unconditionally by
-/// `VerificationProof::new()` because the actual verification gates are not
-/// yet implemented. The `_claimed` suffix makes the intent explicit: these
-/// are unverified claims, not proven facts. When proper verification is
-/// implemented, the suffix should be removed and flags set based on results.
+/// Flags and counts are not admission authority. Consumers must independently
+/// run `verify_accepted_artifact`; legacy constructors are unverified.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationProof {
     /// Confirmed digest of the verified artifact.
@@ -88,6 +85,8 @@ pub struct VerificationProof {
     pub idempotency_attested: Box<[vb_core::ActionId]>,
     /// Soft verification failures encountered during admission.
     pub warnings: Vec<VerificationWarning>,
+    /// Typed evidence bound by the accepted envelope digest.
+    pub evidence: vb_core::artifact::ArtifactEvidence,
 }
 
 /// Allocation-free core of [`VerificationProof`] construction.
@@ -113,28 +112,25 @@ pub(crate) struct VerificationProofCore {
 
 pub(crate) const fn verification_proof_core(
     digest: vb_core::WorkflowDigest,
-    gate_count: u8,
-    durable: bool,
+    _gate_count: u8,
+    _durable: bool,
 ) -> VerificationProofCore {
     VerificationProofCore {
         digest,
-        gate_count,
-        durable,
-        bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
-        idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        gate_count: 0,
+        durable: false,
+        bounded_claimed: false,
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
+        idempotency_verified_claimed: false,
+        replayable_claimed: false,
     }
 }
 
 impl VerificationProof {
-    /// Creates a new verification proof with all proof flags set to true.
-    ///
-    /// GAP-001 NOTE: All `_claimed` flags are unconditionally set to `true`
-    /// because actual per-gate verification is not yet implemented. The flags
-    /// are named with `_claimed` suffix to indicate they represent unverified
-    /// claims, not proven facts. See `VerificationProof` struct docs.
+    /// Creates unverified legacy metadata. Supplied counts and durability are
+    /// intentionally ignored: caller assertions cannot mint verification.
+    /// Use `prepare_compiled_artifact` for checked artifact construction.
     #[must_use]
     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
         let core = verification_proof_core(digest, gate_count, durable);
@@ -150,6 +146,7 @@ impl VerificationProof {
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         }
     }
 }
@@ -334,21 +331,13 @@ pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
         + HEADROOM
 }
 
-/// Number of verification gates in the accepted artifact v1 admission flow.
-/// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
-const ADMISSION_GATE_COUNT: u8 = 15;
+#[path = "admission/verification.rs"]
+mod verification;
+pub use verification::{
+    prepare_compiled_artifact, verify_accepted_artifact, verify_accepted_artifact_for_policy,
+};
 
-/// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
-///
-/// This is the full admission flow. It performs:
-/// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
-/// 2. Structure validation: re-parse the workflow from serialized parts.
-/// 3. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 4. Proof validation: gate count must be 15 and all proof flags must be true.
-/// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
-/// 6. Durability: under `Strict` policy, calls SyncAll before returning.
-///
-/// Returns the `AcceptedArtifact` on success.
+/// Validate and persist an artifact without action declarations.
 pub fn submit_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
@@ -357,108 +346,25 @@ pub fn submit_artifact(
     submit_artifact_with_contracts(journal, workflow, policy, &[])
 }
 
-/// Validates, verifies, and persists a compiled workflow artifact with the
-/// required capability profile extracted from validated action contracts.
+/// Check artifact evidence before writing; Strict returns only after SyncAll.
+/// The durable display flag is not a persisted fsync certificate.
 pub fn submit_artifact_with_contracts(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
     action_contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
-    let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
-    let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
-    match policy {
-        vb_core::RuntimePolicy::Relaxed => {
-            // Relaxed: skip gate validation, no durability, gate_count=0
-            let parts = workflow.to_parts();
-            let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-            let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
-            proof.idempotency_keyed = idempotency_evidence.keyed;
-            proof.idempotency_attested = idempotency_evidence.attested;
-            let mut artifact = AcceptedArtifact {
-                digest: zero_workflow_digest(),
-                source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow)?,
-                ir: ir_bytes,
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities,
-                action_contracts: action_contracts.to_vec().into_boxed_slice(),
-            };
-            bind_artifact_digest(&mut artifact)?;
-            let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
-            let record = CompiledIrRecord {
-                digest: artifact.digest,
-                ir: artifact_bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-            let stored = journal
-                .compiled_ir(artifact.digest)
-                .map_err(|_| JournalError::ArtifactMalformed)?;
-            if stored.is_none() {
-                return Err(JournalError::ArtifactMalformed);
-            }
-            Ok(artifact)
-        }
-        vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
-            let parts = workflow.to_parts();
-
-            vb_core::CompiledWorkflow::try_from_parts(parts.clone())
-                .map_err(JournalError::WorkflowReconstruction)?;
-
-            let mut parts_for_hash = parts.clone();
-            parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-            let hash_bytes = postcard::to_allocvec(&parts_for_hash)
-                .map_err(JournalError::PostcardEncodeFailed)?;
-            let computed = blake3::hash(&hash_bytes);
-            if computed.as_bytes() != &workflow.digest().as_bytes() {
-                return Err(JournalError::ArtifactChecksumMismatch);
-            }
-
-            let durable = policy == vb_core::RuntimePolicy::Strict;
-
-            let mut proof =
-                VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
-            proof.idempotency_keyed = idempotency_evidence.keyed;
-            proof.idempotency_attested = idempotency_evidence.attested;
-
-            let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-
-            let mut artifact = AcceptedArtifact {
-                digest: zero_workflow_digest(),
-                source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow)?,
-                ir: ir_bytes,
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities,
-                action_contracts: action_contracts.to_vec().into_boxed_slice(),
-            };
-            bind_artifact_digest(&mut artifact)?;
-
-            let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
-            let record = CompiledIrRecord {
-                digest: artifact.digest,
-                ir: artifact_bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-
-            if durable {
-                journal.persist_strict()?;
-            }
-
-            verify_artifact_persisted(journal, artifact.digest)?;
-
-            Ok(artifact)
-        }
-        // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
-        // fail closed rather than silently accept malformed artifacts.
-        _ => Err(JournalError::ArtifactMalformed),
+    let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
+    let ir = postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+    journal.put_compiled_ir(&CompiledIrRecord {
+        digest: artifact.digest,
+        ir,
+    })?;
+    if policy == vb_core::RuntimePolicy::Strict {
+        journal.persist_strict()?;
     }
+    verify_artifact_persisted(journal, artifact.digest)?;
+    Ok(artifact)
 }
 
 /// Verifies that the artifact identified by `digest` is actually readable
@@ -503,40 +409,13 @@ fn required_capabilities_from_contracts(
     Ok(required.into_boxed_slice())
 }
 
-#[derive(Debug, Clone)]
-struct IdempotencyEvidence {
-    keyed: Box<[vb_core::ActionId]>,
-    attested: Box<[vb_core::ActionId]>,
-}
-
-fn idempotency_evidence_from_contracts(
-    action_contracts: &[ActionContract],
-) -> Result<IdempotencyEvidence, JournalError> {
-    let keyed = action_contracts
-        .iter()
-        .filter(|contract| requires_idempotency_key(contract))
-        .map(|contract| contract.id)
-        .collect::<Vec<_>>()
-        .into_boxed_slice();
-    let attested = action_contracts
-        .iter()
-        .map(attested_action_id)
-        .collect::<Result<Vec<_>, _>>()?
-        .into_boxed_slice();
-    Ok(IdempotencyEvidence { keyed, attested })
-}
-
-fn attested_action_id(contract: &ActionContract) -> Result<vb_core::ActionId, JournalError> {
-    is_contract_idempotency_accepted(contract)
-        .then_some(contract.id)
-        .ok_or(JournalError::ArtifactMalformed)
-}
-
-fn requires_idempotency_key(contract: &ActionContract) -> bool {
-    matches!(
-        (contract.retry_safety, contract.idempotency),
-        (RetrySafety::KeyRequired, _) | (_, Idempotency::AtLeastOnceExternal)
-    )
+fn validate_idempotency_contracts(action_contracts: &[ActionContract]) -> Result<(), JournalError> {
+    for contract in action_contracts {
+        if !is_contract_idempotency_accepted(contract) {
+            return Err(JournalError::ArtifactMalformed);
+        }
+    }
+    Ok(())
 }
 
 fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {

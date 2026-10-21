@@ -29,6 +29,7 @@ mod artifact_envelope_bdd_tests {
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         }
     }
 

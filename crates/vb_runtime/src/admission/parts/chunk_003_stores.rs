@@ -82,6 +82,7 @@ fn always_present_verification_proof(
         idempotency_keyed: Box::new([]),
         idempotency_attested: Box::new([]),
         warnings: Vec::new(),
+        evidence: vb_core::artifact::ArtifactEvidence::Unverified,
     }
 }
 

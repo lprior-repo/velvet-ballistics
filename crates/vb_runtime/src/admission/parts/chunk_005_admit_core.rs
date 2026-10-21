@@ -17,6 +17,11 @@ pub fn admit_run(
                 .load_accepted_artifact(digest)
                 .map_err(map_artifact_envelope_error)?;
             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
+            vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy).map_err(
+                |_| AdmissionError::ArtifactInvalidProofFlag {
+                    flag: "admission_policy",
+                },
+            )?;
             if artifact.digest != digest && artifact.source_digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
@@ -85,6 +90,11 @@ pub fn admit_artifact_run_with_certificate_floor(
                 .load_accepted_artifact(artifact_digest)
                 .map_err(map_artifact_envelope_error)?;
             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
+            vb_storage::admission::verify_accepted_artifact_for_policy(&artifact, policy).map_err(
+                |_| AdmissionError::ArtifactInvalidProofFlag {
+                    flag: "admission_policy",
+                },
+            )?;
 
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with

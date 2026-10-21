@@ -40,6 +40,7 @@ fn accepted_artifact_with_caps(
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
+            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
         },
         accepted_at_seq: vb_storage::EventSeq::new(0),
         required_capabilities,
