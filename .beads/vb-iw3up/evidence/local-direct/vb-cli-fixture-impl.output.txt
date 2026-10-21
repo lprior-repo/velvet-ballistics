@@ -1,0 +1,1 @@
+[{"path":"crates/velvet_ballistics/tests/ir_artifact_admission.rs","old":"        step_names: Box::default(),\n    }","new":"        step_names: Box::default(),\n        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {\n            slot: SlotIdx::ZERO,\n            kind: vb_core::workflow::InputSlotKind::I64,\n        }]),\n    }"}]
