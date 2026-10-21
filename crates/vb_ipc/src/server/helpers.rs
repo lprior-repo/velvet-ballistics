@@ -9,6 +9,7 @@ use crate::{IPC_HEADER_LEN, IPC_MAGIC, MaxPayloadBytes};
 use mio::Registry;
 use mio::Token;
 use mio::net::UnixStream;
+#[cfg(test)]
 use std::io::Write;
 
 /// Maximum bytes to read while still in AwaitingMagic state.
@@ -150,96 +151,9 @@ pub fn send_response(
     if !write_buffer.is_empty() {
         return Err(IpcServerError::ResponsePending);
     }
-    #[cfg(test)]
-    let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.get() {
-        Err(postcard::Error::SerializeBufferFull)
-    } else {
-        postcard::to_allocvec(response)
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    #[cfg(not(test))]
-    let payload_bytes =
-        postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let payload_len =
-        u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let header = IpcFrameHeader::new(
-        request_header.command,
-        0,
-        request_header.correlation,
-        payload_len,
-    );
-
-    #[cfg(test)]
-    let header_bytes = if test_hooks::FORCE_HEADER_ENCODE_FAIL.get() {
-        Err(crate::IpcError::HeaderEncodeFailed)
-    } else {
-        header.encode()
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    #[cfg(not(test))]
-    let header_bytes = header
-        .encode()
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let frame_len = header_bytes
-        .len()
-        .checked_add(payload_bytes.len())
-        .ok_or(IpcServerError::ResponseEncodeFailed)?;
-    write_buffer
-        .try_reserve(frame_len)
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-    write_buffer.extend_from_slice(&header_bytes);
-    write_buffer.extend_from_slice(&payload_bytes);
-
-    let written = match stream.write(write_buffer) {
-        Ok(count) => count,
-        Err(ref source)
-            if matches!(
-                source.kind(),
-                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
-            ) =>
-        {
-            0
-        }
-        Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-    };
-    if written > 0 {
-        write_buffer.drain(..written).for_each(|_| ());
-    }
-    if write_buffer.is_empty() {
-        #[cfg(test)]
-        let flush_result = if test_hooks::FORCE_FLUSH_FAIL.get() {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::BrokenPipe,
-                "flush fail",
-            ))
-        } else {
-            stream.flush()
-        };
-
-        #[cfg(not(test))]
-        let flush_result = stream.flush();
-
-        match flush_result {
-            Ok(()) => {}
-            Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => {}
-            Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-        }
-    } else {
-        registry
-            .reregister(
-                stream,
-                token,
-                mio::Interest::READABLE | mio::Interest::WRITABLE,
-            )
-            .map_err(|source| IpcServerError::PollFailed { source })?;
-    }
-
-    Ok(())
+    super::response_io::prepare_response(write_buffer, request_header, response)?;
+    super::response_io::write_response_once(stream, write_buffer)?;
+    super::response_io::finish_write(stream, write_buffer, registry, token)
 }
 
 #[cfg(test)]

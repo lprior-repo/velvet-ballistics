@@ -116,17 +116,18 @@ impl IpcServer {
             .registry()
             .register(&mut stream, token, Interest::READABLE)
             .map_err(|source| IpcServerError::PollFailed { source })?;
-        let client = ClientConnection {
-            stream,
-            read_buffer: Vec::new(),
-            write_buffer: Vec::new(),
-            magic_state: MagicValidationState::AwaitingMagic,
-            read_ready: true,
-            write_ready: false,
-            close_policy: ClosePolicy::KeepAlive,
-        };
-        drop(self.clients.insert(token.0, client));
+        drop(self.clients.insert(token.0, new_client(stream)));
         Ok(())
+    }
+
+    fn client_tokens(&self) -> Result<ArrayVec<usize, MAX_CLIENTS>, IpcServerError> {
+        let mut tokens = ArrayVec::new();
+        for token in self.clients.keys().copied() {
+            tokens
+                .try_push(token)
+                .map_err(|_| IpcServerError::TooManyClients)?;
+        }
+        Ok(tokens)
     }
 
     fn service_clients(
@@ -134,27 +135,32 @@ impl IpcServer {
         runtime: &mut Runtime,
         resolver: Option<&mut dyn WorkflowResolver>,
     ) -> Result<(), IpcServerError> {
-        let mut tokens: ArrayVec<usize, MAX_CLIENTS> = ArrayVec::new();
-        for token in self.clients.keys().copied() {
-            tokens
-                .try_push(token)
-                .map_err(|_| IpcServerError::TooManyClients)?;
-        }
+        let tokens = self.client_tokens()?;
         let mut resolver = resolver;
         for token in tokens {
             let resolution = super::borrow_workflow_resolver(&mut resolver);
-            match self.service_client(token, runtime, resolution) {
-                Ok(true) => self.remove_client(token),
-                Ok(false) => {}
-                Err(
-                    error @ (IpcServerError::PollFailed { .. }
-                    | IpcServerError::ResponseEncodeFailed
-                    | IpcServerError::ResponsePending),
-                ) => return Err(error),
-                Err(error) => {
-                    self.last_client_error = Some(error);
-                    self.remove_client(token);
-                }
+            let result = self.service_client(token, runtime, resolution);
+            self.apply_client_result(token, result)?;
+        }
+        Ok(())
+    }
+
+    fn apply_client_result(
+        &mut self,
+        token: usize,
+        result: Result<bool, IpcServerError>,
+    ) -> Result<(), IpcServerError> {
+        match result {
+            Ok(true) => self.remove_client(token),
+            Ok(false) => {}
+            Err(
+                error @ (IpcServerError::PollFailed { .. }
+                | IpcServerError::ResponseEncodeFailed
+                | IpcServerError::ResponsePending),
+            ) => return Err(error),
+            Err(error) => {
+                self.last_client_error = Some(error);
+                self.remove_client(token);
             }
         }
         Ok(())
@@ -186,5 +192,17 @@ impl IpcServer {
         {
             self.last_client_error = Some(IpcServerError::PollFailed { source });
         }
+    }
+}
+
+fn new_client(stream: mio::net::UnixStream) -> ClientConnection {
+    ClientConnection {
+        stream,
+        read_buffer: Vec::new(),
+        write_buffer: Vec::new(),
+        magic_state: MagicValidationState::AwaitingMagic,
+        read_ready: true,
+        write_ready: false,
+        close_policy: ClosePolicy::KeepAlive,
     }
 }
