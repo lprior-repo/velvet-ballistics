@@ -1,0 +1,12 @@
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna/crates/vb_yaml)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s
+     Running tests/vb_test_validate_yaml_parsing_behavior.rs (target/debug/deps/vb_test_validate_yaml_parsing_behavior-975e2430a817102f)
+
+running 1 test
+test validate_trigger_accepts_event_trigger_with_name ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 61 filtered out; finished in 0.00s
+

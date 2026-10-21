@@ -113,7 +113,7 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "name"),
+        "event" => validate_named_string_trigger(kind, body, "type"),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
