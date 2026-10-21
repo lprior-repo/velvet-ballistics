@@ -1,0 +1,342 @@
+Act as Rustcontractauthor and fixtureauditor. Need compilefixonlyfive WorkflowParts constructors nowmissing input_slots. Inspectactualcontexts: certify whether explicitemptyports safe becauseonlyinternalreads/writes andnoexternalinput schema, or REJECTifexternalinputintended. Return concisecontract withperfile rationale, exact mutation input_slots: Box::new([]), preserveallassertions/invalidfixturetarget, run5testsuites? actualvalidatorlib/property256, no proofplan. Publicinputkindcoverage separatealreadyexists. These areactualrustcE0063spans.
+
+FILE crates/vb_validate/src/shared/tests.rs
+#[cfg(test)]
+use crate::ValidationError;
+#[cfg(test)]
+use crate::shared::{ValidationPipeline, validate};
+#[cfg(test)]
+use vb_core::ids::{SlotIdx, StepIdx};
+#[cfg(test)]
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+
+fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::WorkflowParts {
+    crate::shared::WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
+fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(result_slot),
+        },
+    }
+}
+
+#[test]
+fn pipeline_default_is_all_gates() {
+    let pipeline = ValidationPipeline::default();
+    assert!(pipeline.gate_07_expression_stack);
+    assert!(pipeline.gate_08_accessor_paths);
+    assert!(pipeline.gate_09_slot_references);
+    assert!(pipeline.gate_10_node_kind_specific);
+    assert!(pipeline.gate_11_loop_body_graph);
+    assert!(pipeline.gate_12_action_contracts);
+    assert!(pipeline.gate_13_no_slot_cycles);
+    assert!(pipeline.gate_14_slot_type_consistency);
+    assert!(pipeline.gate_15_determinism_proof);
+}
+
+#[test]
+fn pipeline_no_gates_disables_all() {
+    let pipeline = ValidationPipeline::no_gates();
+    assert!(!pipeline.gate_07_expression_stack);
+    assert!(!pipeline.gate_08_accessor_paths);
+    assert!(!pipeline.gate_09_slot_references);
+    assert!(!pipeline.gate_10_node_kind_specific);
+    assert!(!pipeline.gate_11_loop_body_graph);
+    assert!(!pipeline.gate_12_action_contracts);
+    assert!(!p
+
+FILE crates/vb_validate/src/gate_08_accessor/tests.rs
+use super::*;
+use proptest::prelude::*;
+use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+
+fn workflow_parts_with_accessors(
+    slot_count: u16,
+    symbols_count: u32,
+    accessors: Box<[AccessorProgram]>,
+) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }]),
+        expressions: Box::new([]),
+        accessors,
+        constants: Box::new([]),
+        slot_count,
+        symbols_count,
+        entry: StepIdx::new(0),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
+fn accessor_allocating_boxed_path(root: u16, path: Box<[PathSegment]>) -> AccessorProgram {
+    AccessorProgram {
+        root: SlotIdx::new(root),
+        path,
+    }
+}
+
+fn one_accessor_parts_with_segment(
+    slot_count: u16,
+    symbols_count: u32,
+    root: u16,
+    segment: PathSegment,
+) -> WorkflowParts {
+    workflow_parts_with_accessors(
+        slot_count,
+        symbols_count,
+        Box::new([accessor_allocating_boxed_path(root, Box::new([segment]))]),
+    )
+}
+
+fn expected_single_field_result(symbols_count: u32, field_id: u32) -> ValidationResult<()> {
+    if field_id < symbols_count {
+        Ok(())
+    } else {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index: 0,
+            segment_index: 0,
+            symbol: field_id,
+            symbols_count,
+        })
+    }
+}
+
+fn expected_single_index_result(index: u32) -> ValidationResult<()> {
+    if index == u32::MAX {
+        Err(ValidationError::AccessorPathInvalid {
+            accessor_index: 0,
+
+
+FILE crates/vb_validate/src/red_phase_proptest.rs
+olId};
+use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+};
+
+// ---------------------------------------------------------------------------
+// Helper: WorkflowParts factory
+// ---------------------------------------------------------------------------
+
+fn arb_parts(
+    slot_count: u16,
+    symbols_count: u32,
+    accessors: Vec<AccessorProgram>,
+) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("prop"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }]),
+        expressions: Box::new([]),
+        accessors: accessors.into_boxed_slice(),
+        constants: Box::new([]),
+        slot_count,
+        symbols_count,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
+fn arb_accessor(root: u16, path: Vec<PathSegment>) -> AccessorProgram {
+    AccessorProgram {
+        root: SlotIdx::new(root),
+        path: path.into_boxed_slice(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// INV-01: Symbol bounds — validate_gate_08
+//
+// For any accessor with a Field segment:
+// - If symbol < symbols_count → validate returns Ok
+// - If symbol >= symbols_count → validate returns Err(AccessorSymbolOutOfBounds)
+// ---------------------------------------------------------------------------
+
+proptest! {
+    /// When symbol < symbols_count, gate_08 must return Ok.
+    #[test]
+    fn gate_08_symbol_in_bounds_returns_ok(
+        // Use prop_filter to ensure symbol < symbols_count
+        symbol in 0u32..100u32,
+        symbols_count in 1u32..200u32,
+    ) {
+        prop_assume!(symbol < symbols_count, "symbol must be < symbols_count for this test");
+        let sym_id = SymbolId::new(symbol);
+        let accessor = arb_accessor
+
+FILE crates/vb_validate/src/gate_tests.rs
+rIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts,
+};
+
+// ---------------------------------------------------------------------------
+// Helper constructors
+// ---------------------------------------------------------------------------
+
+fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        step_names: Box::new([]),
+        resource_contract: ResourceContract::DEFAULT,
+    }
+}
+
+fn nop_node(index: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: Some(StepIdx::new(index.saturating_add(1))),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    }
+}
+
+fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(result_slot),
+        },
+    }
+}
+
+fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: Some(SlotIdx::new(output)),
+        next: Some(StepIdx::new(index.saturating_add(1))),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Copy {
+            source: SlotIdx::new(source),
+        },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Gate 7 tests
+// ---------------------------------------------------------------------------
+
+use crate::gate_07_stack::compute_stack_depth;
+use crate::gate_07_stack::validate_gate_07_expression_stack_depth;
+
+#[test]
+fn gat
+
+FILE crates/vb_validate/src/test_helpers.rs
+//! Shared test helpers for validation gate tests.
+//!
+//! These helpers are duplicated across multiple gate test modules. Extract them
+//! here to avoid copy-paste maintenance burden.
+
+use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+pub(crate) fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
+pub(crate) fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(result_slot),
+        },
+    }
+}
+
+pub(crate) fn nop_node(index: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: Some(StepIdx::new(index.saturating_add(1))),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    }
+}
+
+pub(crate) fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: Some(SlotIdx::new(output)),
+        next: Some(StepIdx::new(index.saturating_add(1))),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Copy {
+            source: SlotIdx::new(source),
+        },
+    }
+}
+

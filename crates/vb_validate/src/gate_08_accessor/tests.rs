@@ -9,6 +9,7 @@ fn workflow_parts_with_accessors(
     accessors: Box<[AccessorProgram]>,
 ) -> WorkflowParts {
     WorkflowParts {
+        input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {
