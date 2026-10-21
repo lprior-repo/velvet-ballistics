@@ -1,0 +1,24 @@
+**vb-16jfp repair complete. All 18 tests pass (0 failed, 0 ignored).**
+
+**Root cause:** `action_contracts_through` assigned `required_capability(current)` to every padding contract (IDs 0–6), but grants included only Action 7's capability. Production `validate_contract_capabilities` iterates all contracts and requires every declared requirement to be granted, causing `AdmissionCapabilityDenied` at submit for all 13 failing tests.
+
+**Changes made:**
+
+- **Padding contracts now have empty `required_capabilities`:** Modified `action_contract` to accept optional `required` parameter. Padding IDs 0–6 pass `None`; only real Action 7 contract carries its actual requirement and matching grant. Production cold admission checks preserved.
+
+- **Replaced fabricated `ActionTicket` with genuine lookup:** Both HP-3 and HP-4 now capture the real ticket via `runtime.lookup_pending_action_ticket(run, 0)` before cancel/kill — no more fabricated `seq`, `attempt`, `idempotency_key`, or `capacity` fields.
+
+- **Asserted pending ticket removal after cancel:** Both re-enabled tests assert `lookup_pending_action_ticket(run, 0).is_none()` after cancel, proving the pending action was removed from the shard's index.
+
+- **Used correct synchronous vs queued error semantics:** `fail_action` and `complete_action_with_output` both enqueue commands; errors surface during `tick_all()`, not as synchronous returns (run moves to `terminal_runs` after cancel, so `run_state_get` returns `None` and preflight is skipped).
+
+- **Re-enabled both previously-ignored tests:** Removed `#[ignore]` from `hp3_cancel_action_suspended_run_removes_pending_action` and `hp4_action_after_cancel_returns_error`.
+
+**Evidence:**
+- Test run log: `.beads/vb-16jfp/evidence/cli-agent/test-run-final.log`
+- Summary: `.beads/vb-16jfp/evidence/cli-agent/summary.md`
+- JJ change: `ulqvmuyw a9669a66` — "vb-16jfp: repair cancel_kill_lattice_tests padding contracts and action ticket fabrication"
+- Bookmark: `codex/vb-16jfp-cli-candidate`
+- Changed path: `crates/workspace_tests/tests/cancel_kill_lattice_tests.rs` (51 insertions, 16 deletions)
+
+**Remaining:** Awaiting independent code review and test review per your delivery flow. Bead not closed until reviews complete.

@@ -1,0 +1,9 @@
+2026-10-21T22:32:21.738275Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:32:21.743629Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:32:21.743723Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:32:21.975396Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:33:51.801149Z ERROR codex_core::tools::router: error=write_stdin failed: stdin is closed for this session; rerun exec_command with tty=true to keep stdin open
+2026-10-21T22:34:17.797727Z ERROR codex_core::session: failed to record rollout items: thread 01a16098-13e6-7050-a991-119eba1d0a02 not found
+2026-10-21T22:34:17.797761Z ERROR codex_core::session: failed to record rollout items: thread 01a16098-13e6-7050-a991-119eba1d0a02 not found
+2026-10-21T22:34:17.797773Z ERROR codex_core::session: failed to record rollout items: thread 01a16098-13e6-7050-a991-119eba1d0a02 not found
+2026-10-21T22:34:17.797789Z ERROR codex_core::session: failed to record rollout items: thread 01a16098-13e6-7050-a991-119eba1d0a02 not found

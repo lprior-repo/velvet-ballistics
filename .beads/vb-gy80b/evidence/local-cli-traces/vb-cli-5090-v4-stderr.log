@@ -1,0 +1,6 @@
+2026-10-21T22:35:40.109706Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:35:40.118504Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:35:40.118718Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:35:40.161864Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:35:40.641926Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:36:54.215830Z ERROR codex_core::tools::router: error=failed to parse function arguments: invalid type: integer `2710`, expected a string at line 1 column 16

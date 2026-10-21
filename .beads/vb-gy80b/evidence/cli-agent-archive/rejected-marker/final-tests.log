@@ -1,0 +1,17 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-module-guard-5090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-34f00b1bf5b42342)
+
+running 9 tests
+test migration_compat::expr_module_paths::expr_lexer_behavioral_check ... ok
+test migration_compat::expr_module_paths::expr_full_pipeline_via_old_paths ... ok
+test migration_compat::expr_module_paths::expr_modules_resolve ... ok
+test migration_compat::yaml_module_paths::yaml_ast_module_accessible ... ok
+test migration_compat::yaml_module_paths::yaml_modules_resolve ... ok
+test migration_compat::proof_module_paths::expr_proofs_module_accessible ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_multiple_documents ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_anchors ... ok
+test migration_compat::yaml_module_paths::yaml_profile_rejects_duplicate_keys ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.00s
+

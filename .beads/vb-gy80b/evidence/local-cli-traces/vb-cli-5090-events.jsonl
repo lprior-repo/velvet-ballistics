@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"01a16097-dc4a-7ad3-9534-ecd61ceac51f"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Model metadata for `qwen3.8-27b-uncensored-5090` not found. Defaulting to fallback metadata; this can degrade performance and cause issues."}}
+{"type":"turn.started"}
+{"type":"error","message":"{\"error\":{\"code\":\"reasoning_option_not_supported\",\"message\":\"reasoning.summary changes reasoning input or output and is not supported\",\"param\":\"reasoning\",\"type\":\"invalid_request_error\"}}"}
+{"type":"turn.failed","error":{"message":"{\"error\":{\"code\":\"reasoning_option_not_supported\",\"message\":\"reasoning.summary changes reasoning input or output and is not supported\",\"param\":\"reasoning\",\"type\":\"invalid_request_error\"}}"}}

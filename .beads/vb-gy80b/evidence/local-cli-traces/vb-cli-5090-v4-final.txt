@@ -1,0 +1,14 @@
+Fixed the vb-gy80b migration path guard using a crate doc doctest approach. The supervisor rejected the marker-type candidate, so I moved the path guard to a compile-pass rustdoc example in `crates/vb_compile/src/lib.rs`.
+
+**Changes:**
+- Added doctest to crate documentation that imports `vb_compile::expr_proofs`
+- Removed old `proof_module_paths` unit test module from `crates/vb_compile/src/migration_compat.rs`
+- No production APIs added; the doctest is a pure compile-time path verification
+
+**Verification:**
+- Doctest passes: `cargo test -p vb_compile --doc` runs 1 test successfully
+- Negative test verified: changing import to `expr_proofs_broken` causes doctest failure with "unresolved import"
+- Full lib test suite: 496 tests pass (one fewer than before, as guard moved to doctest)
+- Moon canonical check: `moon run :check` completes successfully (exit 0)
+
+**Published:** codex/vb-gy80b-cli-candidate bookmark pushed to origin. Bead stays open pending independent code/test review as requested.

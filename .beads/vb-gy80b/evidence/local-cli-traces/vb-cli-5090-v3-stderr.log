@@ -1,0 +1,6 @@
+2026-10-21T22:34:34.827475Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:34:34.839276Z ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion: failed to decode models response: Data at line 1 column 139 (body: 139 bytes)
+2026-10-21T22:34:34.839489Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:34:34.875060Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:34:35.255385Z  WARN codex_models_manager::model_info: Unknown model qwen3.8-27b-uncensored-5090 is used. This will use fallback model metadata.
+2026-10-21T22:35:27.828759Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"`/bin/zsh -lc 'cp /tmp/migration_compat_original.rs crates/vb_compile/src/migration_compat.rs && rm -f crates/vb_compile/tests/migration_expr_proofs_path.rs'` rejected: rm -f style commands are not permitted. Use a safer approach\")" }
