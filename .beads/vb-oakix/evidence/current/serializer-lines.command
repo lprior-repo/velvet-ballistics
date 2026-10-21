@@ -1,0 +1,1 @@
+awk /\^fn\ serialize_\(admission\|admission_payload\|bound_admission_payload\)\</\ \{\ count=0\;\ active=1\;\ name=\$2\ \}\ active\ \{\ count++\ \}\ active\ \&\&\ /\^\}/\ \{\ print\ name\,\ count\;\ if\ \(count\>25\)\ bad=1\;\ active=0\ \}\ END\ \{\ exit\ bad\ \} crates/vb_storage/src/events/wire_serialize_run.rs 

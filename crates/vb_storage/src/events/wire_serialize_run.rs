@@ -42,6 +42,14 @@ where
     }
 }
 
+type AdmissionFields<'a> = (
+    &'a vb_core::RunId,
+    &'a crate::EventSeq,
+    &'a vb_core::WorkflowDigest,
+    &'a vb_core::CapabilitySet,
+    &'a vb_core::RuntimePolicy,
+);
+
 fn serialize_admission<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -52,31 +60,51 @@ where
             seq,
             artifact_digest,
             input_digest,
-            granted_capabilities,
+            granted_capabilities: caps,
             policy,
-        } => match input_digest {
-            crate::RunInputBinding::LegacyUnbound => serialize_record_kind_variant(
-                serializer,
-                TAG_RUN_ADMISSION,
-                "RunAdmission",
-                &(run, seq, artifact_digest, granted_capabilities, policy),
-            ),
-            crate::RunInputBinding::Digest(digest) => serialize_record_kind_variant(
-                serializer,
-                TAG_RUN_ADMISSION_BOUND,
-                "RunAdmission",
-                &(
-                    run,
-                    seq,
-                    artifact_digest,
-                    digest,
-                    granted_capabilities,
-                    policy,
-                ),
-            ),
-        },
+        } => serialize_admission_payload(
+            serializer,
+            (run, seq, artifact_digest, caps, policy),
+            input_digest,
+        ),
         _ => serialize_routing_error::<S>(),
     }
+}
+
+fn serialize_admission_payload<S>(
+    serializer: S,
+    fields: AdmissionFields<'_>,
+    binding: &crate::RunInputBinding,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match binding {
+        crate::RunInputBinding::LegacyUnbound => {
+            serialize_record_kind_variant(serializer, TAG_RUN_ADMISSION, "RunAdmission", &fields)
+        }
+        crate::RunInputBinding::Digest(digest) => {
+            serialize_bound_admission_payload(serializer, fields, digest)
+        }
+    }
+}
+
+fn serialize_bound_admission_payload<S>(
+    serializer: S,
+    fields: AdmissionFields<'_>,
+    input_digest: &vb_core::WorkflowDigest,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let (run, seq, artifact, caps, policy) = fields;
+    let payload = (run, seq, artifact, input_digest, caps, policy);
+    serialize_record_kind_variant(
+        serializer,
+        TAG_RUN_ADMISSION_BOUND,
+        "RunAdmission",
+        &payload,
+    )
 }
 
 fn serialize_cancelled<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
