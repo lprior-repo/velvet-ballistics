@@ -327,7 +327,15 @@ pub(crate) struct RetryAnalysis {
 ///
 /// Returns structured data; the caller is responsible for formatting.
 pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
-    let state = events.iter().fold(
+    let latest_attempt = events
+        .iter()
+        .filter_map(JournalEvent::attempt)
+        .max()
+        .unwrap_or(1);
+    let latest_events = events
+        .iter()
+        .filter(|event| event.attempt().unwrap_or(1) == latest_attempt);
+    let state = latest_events.fold(
         (None, None),
         |(last_successful, pending), event| match event {
             JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),
@@ -347,7 +355,9 @@ pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
 
     let (last_successful_step, pending_step) = state;
 
-    let is_failed = matches!(events.last(), Some(JournalEvent::RunFailedEvent { .. }));
+    let is_failed = events.last().is_some_and(|event| {
+        matches!(event, JournalEvent::RunFailedEvent { attempt, .. } if *attempt == latest_attempt)
+    });
 
     if !is_failed {
         return RetryAnalysis {

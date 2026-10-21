@@ -95,9 +95,12 @@ pub(crate) fn run_from_env() -> ExitCode {
             output,
             filters,
         }) => crate::trace::cmd_trace(&run_id, &db, output, filters),
-        Ok(Command::Retry { run_id, db, output }) => {
-            crate::run_ops::cmd_retry(&run_id, &db, output)
-        }
+        Ok(Command::Retry {
+            run_id,
+            step,
+            db,
+            output,
+        }) => crate::run_ops::cmd_retry(&run_id, step, &db, output),
         Ok(Command::Resume { run_id, db, output }) => {
             crate::replay::cmd_resume(&run_id, &db, output)
         }

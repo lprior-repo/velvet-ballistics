@@ -90,8 +90,13 @@ pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
 pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "retry")?;
     let a = parse_run_db_args(args, "retry")?;
+    let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
+    let step = step_raw
+        .parse::<u16>()
+        .map_err(|_| ParseError::InvalidStep(step_raw))?;
     Ok(Command::Retry {
         run_id: a.run_id,
+        step,
         db: a.db,
         output: a.output,
     })

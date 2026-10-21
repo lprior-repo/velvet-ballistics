@@ -85,6 +85,7 @@ pub mod kani_admission_store;
 pub mod models;
 pub mod primitives;
 pub mod recovery;
+pub mod retry;
 pub mod runtime;
 pub mod shard;
 pub mod taint;
