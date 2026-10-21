@@ -1,0 +1,29 @@
+[
+  {
+    "name": "tests",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "cancel_kill_lattice_tests",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "fmt",
+    "argv": [
+      "rustfmt",
+      "--check",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs"
+    ],
+    "exit": 0
+  }
+]

@@ -1,0 +1,26 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-16jfp-test-review-root/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running tests/cancel_kill_lattice_tests.rs (target/debug/deps/cancel_kill_lattice_tests-1e11f043688cd45c)
+
+running 18 tests
+test cancel_missing_run_returns_run_not_found_error ... ok
+test kill_missing_run_returns_run_not_found_error ... ok
+test action_failure_after_cancel_returns_error ... ok
+test cancel_after_kill_is_idempotent ... ok
+test action_completion_after_cancel_returns_error ... ok
+test kill_live_run_produces_runkilled_journal_event ... ok
+test cancel_terminal_run_produces_no_side_effects ... ok
+test ec1_terminal_cancelled_state_does_not_regress ... ok
+test hp3_cancel_action_suspended_run_removes_pending_action ... ok
+test second_kill_after_first_kill_produces_no_extra_event ... ok
+test hp1_cancel_running_run_transitions_to_cancelled ... ok
+test kill_on_cancelled_run_is_idempotent ... ok
+test hp4_action_after_cancel_returns_error ... ok
+test action_completion_after_kill_returns_error ... ok
+test inv1_completed_run_terminal_never_regresses ... ok
+test stale_action_after_cancel_does_not_mutate_state ... ok
+test inv1_terminal_never_regresses_after_cancel ... ok
+test second_cancel_after_first_cancel_retains_one_event ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
