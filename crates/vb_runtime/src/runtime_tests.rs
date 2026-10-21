@@ -765,6 +765,7 @@ mod tests {
 
         let events = runtime.list_events(run);
         let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_completed, 0);
         assert!(matches!(
             events,
             Ok(ref evts) if evts.contains(&TraceEvent::ActionScheduled {

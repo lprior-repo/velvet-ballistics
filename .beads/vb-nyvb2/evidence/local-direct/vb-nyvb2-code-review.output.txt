@@ -1,0 +1,17 @@
+APPROVE
+
+**Verification against contract:**
+
+1. **15 `mut` removals**: chunk_001.rs (2) + contract_validation_tests.rs (13) = 15. All on `shard` variables in validation tests where `validate_submit_admission_with_contracts` is non-mutating. Correct.
+
+2. **Counter snapshot assertion**: Added `assert_eq!(snap.runs_completed, 0)` at the precise point after action scheduling but before `complete_action_with_output`. The counters source confirms `runs_completed` starts at 0 and increments only on completion. The test then verifies it becomes 1 after completion. Correct placement and semantics.
+
+3. **Original assertions preserved**: No existing assertions removed or modified. Only one new assertion added.
+
+4. **Production behavior**: All changes are in test files (`runtime_tests.rs`, `chunk_001.rs`, `contract_validation_tests.rs`). No production code touched.
+
+5. **No lint suppressions**: No `#[allow(...)]` or similar attributes introduced.
+
+6. **Test run**: 1914/1914 passed, 0 failed. Clean.
+
+No actionable issues.
