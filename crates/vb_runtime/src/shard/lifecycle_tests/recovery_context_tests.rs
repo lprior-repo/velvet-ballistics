@@ -13,7 +13,7 @@
     }
 
     #[test]
-    fn recover_rejects_malformed_command() {
+    fn recover_rejects_malformed_command() -> Result<(), Box<dyn std::error::Error>> {
         let mut shard = recovery_context_test_shard();
 
         let frame = vb_core::frame::RunFrame::new(
@@ -21,8 +21,7 @@
             vb_core::ids::StepIdx::new(0),
             1,
             1,
-        )
-        .expect("test frame construction must succeed with valid args");
+        )?;
 
         let command = crate::shard::types::RecoverRunCommand::new(
             vb_core::ids::RunId::new(1),
@@ -35,10 +34,10 @@
         );
 
         let result = shard.handle_recover(command);
-        assert!(
-            result.is_err(),
-            "malformed command with no artifact store should fail recovery"
-        );
+        assert_eq!(result, Err(crate::RuntimeError::Recovery {
+            error: "artifact IR decode failed".to_string(),
+        }));
+        Ok(())
     }
 
     #[test]
@@ -74,11 +73,7 @@
             result.is_err(),
             "reinject for non-existent run must fail"
         );
-        match result {
-            Err(crate::RuntimeError::RunNotFound) => {}
-            Err(other) => panic!("expected RunNotFound, got {other:?}"),
-            Ok(_) => panic!("reinject for non-existent run must fail"),
-        }
+        assert_eq!(result, Err(crate::RuntimeError::RunNotFound));
     }
 
     #[test]
