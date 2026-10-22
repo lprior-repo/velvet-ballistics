@@ -1,0 +1,44 @@
+Gnuplot not found, using plotters backend
+NOTE: heaptrack detected DEBUGINFOD_URLS but will disable it to prevent 
+unintended network delays during recording
+If you really want to use DEBUGINFOD, export HEAPTRACK_ENABLE_DEBUGINFOD=1
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Warming up for 1.0000 s
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=2; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=5; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=56; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=3; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=54; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=60; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=54; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=454; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=63; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=89; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=257; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=386; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Collecting 10 samples in estimated 1.0000 s (2.6M iterations)
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=53; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=53; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=127; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=213; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=128; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=55; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=55; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=83; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=56; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=55; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Analyzing
+heaptrack stats:
+	allocations:          	14141084
+	leaked allocations:   	755
+	temporary allocations:	113768
