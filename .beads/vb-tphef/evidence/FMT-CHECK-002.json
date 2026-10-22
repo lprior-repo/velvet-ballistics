@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-repair",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--check",
+    "--",
+    "crates/vb_core/src/policy/new_tests.rs",
+    "crates/vb_runtime/src/policy/emergency_and_admission_tests.rs",
+    "crates/vb_runtime/src/policy/tests.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 2.072,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/FMT-CHECK-002"
+}

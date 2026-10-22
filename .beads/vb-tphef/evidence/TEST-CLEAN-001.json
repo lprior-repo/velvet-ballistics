@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-repair",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "policy",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 19.951,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/TEST-CLEAN-001"
+}
