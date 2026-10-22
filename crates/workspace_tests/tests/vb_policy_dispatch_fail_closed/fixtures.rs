@@ -18,7 +18,7 @@ use vb_runtime::shard::ShardConfig;
 use vb_storage::executor::{ExecutorCatalog, FjallRegister};
 use vb_storage::{FjallConfig, FjallJournal};
 
-#[path = "../test_journal.rs"]
+#[path = "test_journal.rs"]
 mod test_journal;
 pub use test_journal::FailingPolicyPortJournal;
 
