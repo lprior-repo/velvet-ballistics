@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-l5ru0-behavior-tests-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_7x0ol_probe_registered_executor"
+  ],
+  "exit_code": 101,
+  "seconds": 0.198,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-l5ru0/evidence/ROOT_TESTS_V15_ALLOWED_BOUNDS"
+}
