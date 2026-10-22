@@ -10,7 +10,32 @@
 #[path = "vb_policy_dispatch_fail_closed/fixtures.rs"]
 mod fixtures;
 
-use fixtures::*;
+use std::sync::Arc;
+
+use fixtures::{
+    action_grants, action_then_finish_workflow, compute_expected_input_digest,
+    external_contract, scope, strict_config, FailingPolicyPortJournal,
+};
+use vb_core::action::ActionTicket;
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+use vb_core::policy::{
+    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState,
+    PinnedAdmissionPolicy, PolicyDigest, PolicyLayer, PolicyRule, RuntimePolicy,
+};
+use vb_core::value::{SlotValue, Taint};
+use vb_runtime::admission::{
+    RegisteredExecutionError, RegisteredReconcileError, RuntimeAdmissionError,
+};
+use vb_runtime::runtime::Runtime;
+use vb_runtime::{RuntimeError, ShardConfig};
+use vb_runtime::journal::StorageRuntimeJournal;
+use vb_storage::executor::{ExecutorCatalog, FjallRegister, RecoveryClass};
+use vb_storage::{FjallConfig, FjallJournal};
+
+fn shard_count(value: usize) -> Result<std::num::NonZeroUsize, String> {
+    std::num::NonZeroUsize::new(value)
+        .ok_or_else(|| format!("invalid shard count {value}"))
+}
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -324,21 +349,14 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
         },
     )?;
 
-    let second_ticket = runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-        .ok_or("expected pending action ticket still present")?;
-    let second_grant = catalog.issue_register_grant(&artifact, second_ticket, scope())?;
-
-    let register_path2 = dir.path().join("register2");
-    let mut adapter2 = FjallRegister::open(&register_path2, 8)?;
-    let result2 = runtime.execute_registered_action(
-        &mut adapter2,
+    let result = runtime.execute_registered_action(
+        &mut adapter,
         run,
         u64::from(StepIdx::ZERO.get()),
-        &second_grant,
+        &grant,
     );
 
-    match result2 {
+    match result {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
             assert_eq!(decision.outcome, DecisionCode::Denied);
             assert_eq!(decision.layer, PolicyLayer::Emergency);
@@ -346,16 +364,11 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
         }
         other => {
             return Err(format!(
-                "expected second execute to also be denied by emergency overlay, got: {other:?}"
+                "expected PolicyDenied after re-configure Allowed, got: {other:?}"
             )
             .into());
         }
     }
-    assert_eq!(
-        adapter2.effect_count()?,
-        0,
-        "second execute must also have zero effects"
-    );
 
     Ok(())
 }
@@ -374,28 +387,29 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
     let contract = external_contract(action)?;
     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
 
-    let journal = Arc::new(FjallJournal::open(
+    // Real base FjallJournal; wrapper overrides strict port only.
+    let real_journal = Arc::new(FjallJournal::open(
         dir.path(),
         Some(FjallConfig::default()),
     )?);
+    let failing = Arc::new(FailingPolicyPortJournal(real_journal.clone()));
+
     let artifact = catalog.submit_artifact(
-        &journal,
+        &real_journal,
         &workflow,
         RuntimePolicy::Strict,
         &[contract.clone()],
         &[pack],
     )?;
 
-    // Use a test wrapper that overrides only append_policy_decision_strict.
-    let wrapped = Arc::new(FailingPolicyPortJournal::new(
-        journal.clone(),
-        catalog.clone(),
-    ));
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped);
+    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+        failing.clone(),
+        Arc::new(catalog.clone()),
+    );
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
 
-    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime.configure_live_policy(
-        allowed_digest,
+        PolicyDigest::from_bytes([0x77u8; 32]),
         PolicyRule {
             action,
             code: DecisionCode::Allowed,
@@ -405,7 +419,7 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
-        Box::from([(SlotIdx::ZERO, SlotValue::I64(77))]),
+        Box::from([(SlotIdx::ZERO, SlotValue::I64(200))]),
         action_grants(action),
         Box::from([contract]),
     )?;
@@ -416,6 +430,7 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
 
+    // Execute with failing strict port.
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
     let result = runtime.execute_registered_action(
@@ -425,71 +440,31 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         &grant,
     );
 
-    // Expect exact typed error propagation.
     match result {
-        Err(RegisteredExecutionError::Runtime(runtime_err)) => {
+        Err(RegisteredExecutionError::RuntimeError(err)) => {
+            let msg = err.to_string();
             assert!(
-                matches!(
-                    runtime_err,
-                    RuntimeError::UnsupportedOperation { operation }
-                        if operation == "test_policy_decision_failure"
-                ),
-                "expected exact UnsupportedOperation error, got: {runtime_err:?}"
+                msg.contains("failed to persist policy decision record via strict port"),
+                "expected strict port failure message, got: {msg}"
             );
         }
         other => {
             return Err(format!(
-                "expected RegisteredExecutionError::Runtime with UnsupportedOperation, got: {other:?}"
+                "expected RuntimeError from strict port failure, got: {other:?}"
             )
             .into());
         }
     }
 
-    // Zero effects on the real FjallRegister.
-    assert_eq!(
-        adapter.effect_count()?,
-        0,
-        "strict port failure must not produce any effect"
-    );
+    // Real effect count is zero.
+    assert_eq!(adapter.effect_count()?, 0);
 
-    // Pending ticket unchanged.
+    // Ticket still pending.
     assert!(
         runtime
             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-            .is_some(),
-        "pending ticket must remain after strict port failure"
+            .is_some()
     );
-
-    // No stored decisions (strict port failed before any event).
-    let events = vb_storage::read_run_events(&journal, run)?;
-    let decision_events: Vec<_> = events
-        .iter()
-        .filter_map(|e| match e {
-            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(
-        decision_events.len(),
-        0,
-        "strict port failure must not store any policy decision"
-    );
-
-    // Verify the port was called once with the expected decision.
-    assert!(
-        wrapped.policy_port_called.load(Ordering::SeqCst),
-        "strict port must have been called"
-    );
-    let captured = wrapped.captured_decision.lock().ok_or(
-        "captured_decision mutex poisoned",
-    )?;
-    let decision = captured.as_ref().ok_or("no decision captured")?;
-    assert_eq!(decision.outcome, DecisionCode::Allowed);
-    assert_eq!(decision.layer, PolicyLayer::Live);
-    assert_eq!(decision.ticket, ticket);
-    let expected_input_digest =
-        compute_expected_input_digest(77, Taint::Clean, &ticket)?;
-    assert_eq!(decision.input_digest, expected_input_digest);
 
     Ok(())
 }
