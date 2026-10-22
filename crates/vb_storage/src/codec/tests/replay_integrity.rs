@@ -229,7 +229,10 @@ fn kind_28_29_31_through_35_admission_for_journal_magic() {
         );
     }
     // Kinds outside the journal range remain rejected.
-    assert!(is_known_record_kind(38), "kind 38 (PolicyDecision) must be known");
+    assert!(
+        is_known_record_kind(38),
+        "kind 38 (PolicyDecision) must be known"
+    );
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 38).is_ok(),
         "kind 38 must be admitted for journal magic"

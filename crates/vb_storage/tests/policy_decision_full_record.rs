@@ -9,6 +9,7 @@ use vb_core::value::Taint;
 #[path = "policy_decision_full_record/pd_helpers.rs"]
 mod pd_helpers;
 use vb_core::workflow::LifecycleState;
+use vb_storage::JournalError;
 use vb_storage::codec::{decode_journal_event, encode_record};
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::derive_lifecycle_state_from_events;
@@ -16,7 +17,6 @@ use vb_storage::events::JournalEvent;
 use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
-use vb_storage::JournalError;
 
 #[test]
 fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> {

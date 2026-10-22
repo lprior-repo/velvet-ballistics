@@ -1,0 +1,7 @@
+# Scope and report corrections
+
+All twelve production hashes match the review manifest after the review. Strict library Clippy all-features exit0 is real. Library tests exited101 on two missing exhaustive test match arms; this is not a passed library suite. Final assembled tests and the mechanical additions are still required.
+
+The report's flattened field count17 is incorrect: eight ActionTicket fields plus eight other DecisionRecord fields equal16 (DecisionRecord itself has nine top-level fields). Its claim PolicyDecisionEvent implies an active run in isolation is unsupported and conflicts with a neutral fact appended after a terminal state. Current source callers of event_to_lifecycle are the filtering derive_lifecycle_state_from_events function and existing tests; that production derivation now preserves terminal states. The fallback single-event mapping remains an API limitation, not evidence of active authority. The source doc comment does not explicitly list PolicyDecisionEvent despite the report saying it does.
+
+The final test author formatted three production files: two module declarations sorted and one import sorted. No function body or behavior changed in those three adjustments. Exact final source hashes and applicability will be recorded after final freeze. This review covers only stable decision storage production and does not accept runtime dispatch, admission pin recovery, durable emergency controls, or full v1.

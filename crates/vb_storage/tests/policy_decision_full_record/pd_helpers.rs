@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use vb_core::action::{compute_action_idempotency_key, ActionTicket};
+use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::policy::{
     DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy, PolicyDigest, PolicyLayer,
