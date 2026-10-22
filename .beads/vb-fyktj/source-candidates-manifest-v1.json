@@ -1,0 +1,10 @@
+{
+  "scope": "Mechanical source/gate candidate inventory; no acceptance disposition.",
+  "uncompressed": ".beads/vb-fyktj/source-candidates-v1.json",
+  "sha256": "d4dccd5abac759e3aaccfd37acb308bba84ec12a20452e5b4d601cd2389179dd",
+  "compressed": ".beads/vb-fyktj/source-candidates-v1.json.gz",
+  "compressed_sha256": "07b42d5d3d7c0296983ac5437841d080087677393cd765ca8650de24bf29ca5b",
+  "unique_source_or_gate_candidate_tips": 246,
+  "metadata_candidate_tips": 96,
+  "all_nonancestor_unique_tips": 342
+}
