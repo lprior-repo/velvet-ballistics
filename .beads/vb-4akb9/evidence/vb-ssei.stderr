@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4akb9-local3090-artifact-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running tests/vb_ssei_verification_admission_acceptance.rs (target/debug/deps/vb_ssei_verification_admission_acceptance-0273a4d64e906b60)

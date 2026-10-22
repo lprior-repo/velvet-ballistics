@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4akb9-local3090-artifact-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.50s
+     Running tests/vb_9agmk_artifact_evidence.rs (target/debug/deps/vb_9agmk_artifact_evidence-3b9d392bed4aaa83)
