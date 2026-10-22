@@ -1,0 +1,29 @@
+metric: engine_run_until_blocked_budget_10_small_workflow
+claim_scope: current-head IR interpreter small-workflow baseline snapshot; no speedup claim
+commit: 2990ccb0e5db2f15046562adb20a5ea4e2d9591f
+criterion_command: target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+criterion_output_excerpt:
+  runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
+                          time:   [16.616 ns 16.640 ns 16.669 ns]
+                          change: [−1.1431% −0.7860% −0.4818%] (p = 0.00 < 0.05)
+                          Change within noise threshold.
+criterion_sample_percentiles_from_target_criterion_sample_json:
+  p50_latency: 16.653869 ns
+  p95_latency: 16.705365 ns
+  p99_latency: 16.719095 ns
+perf_command: perf stat -x, -e instructions,cycles -o /tmp/opencode/vb-bench-evidence/engine_run_until_blocked_budget_10_small_workflow.perf.log -- target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+perf_summary:
+  instructions: 54402803901
+  cycles: 37229414974
+heaptrack_command: heaptrack --record-only -o /tmp/opencode/vb-bench-evidence/heaptrack-engine_run_until_blocked_budget_10_small_workflow target/release/deps/velvet_ballistics-80a7ce22525a11f8 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+heaptrack_summary:
+  allocation_count_process_level: 888242
+  peak_heap_memory: 7.68M
+  total_memory_leaked: 259.08K
+metadata:
+  rustc_version: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+  cpu_model: AMD Ryzen 9 9950X3D 16-Core Processor
+  cpu_governor: performance
+  kernel_version: Linux omarchy 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 x86_64 GNU/Linux
+  benchmark_tool_version: criterion 0.8.2
+  fixture_digest: sha256:43a599ec8f5195977aae4eb6ec30496a64a80518c25101d50178554b1ba88793
