@@ -1,0 +1,33 @@
+[PASS] fuzz-smoke: bash -n exit 0
+[PASS] fuzz-tsan: bash -n exit 0
+[PASS] fuzz-regress: bash -n exit 0
+  fuzz-smoke: build --target-dir=$PWD/target/fuzz-asan/build
+  fuzz-smoke: lookup=target/fuzz-asan/build/x86_64-unknown-linux-gnu/release
+  fuzz-tsan: build --target-dir=$PWD/target/fuzz-tsan/build
+  fuzz-tsan: lookup=target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}
+  fuzz-regress: build --target-dir=$PWD/target/fuzz-asan/build
+  fuzz-regress: lookup=target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}
+[PASS] fuzz-smoke: lookup under target-dir
+[PASS] fuzz-tsan: lookup under target-dir
+[PASS] fuzz-regress: lookup under target-dir
+[PASS] TSAN isolated from ASAN: tsan=target/fuzz-tsan/build asan={'target/fuzz-asan/build'}
+[PASS] fuzz-smoke: build log redirection (target/fuzz-smoke/build.log)
+[PASS] fuzz-tsan: build log redirection (target/fuzz-tsan/build.log)
+[PASS] fuzz-regress: build log redirection (target/fuzz-regress/build.log)
+[PASS] fuzz-smoke: fail-closed empty fuzz_targets
+[PASS] fuzz-tsan: fail-closed empty fuzz_targets
+[PASS] fuzz-regress: artifact-driven loop (no fuzz_targets listing; unchanged)
+[PASS] fuzz-smoke: fail-closed executable check
+[PASS] fuzz-tsan: fail-closed executable check
+[PASS] fuzz-regress: fail-closed executable check
+[PASS] fuzz-tsan: --sanitizer thread + --build-std
+[PASS] ASAN tasks: no --sanitizer flag (default)
+[PASS] fuzz-smoke: target triple x86_64-unknown-linux-gnu
+[PASS] fuzz-tsan: target triple x86_64-unknown-linux-gnu
+[PASS] fuzz-regress: target triple x86_64-unknown-linux-gnu
+[PASS] fuzz-smoke: timeout 30s
+[PASS] fuzz-regress: timeout 5s
+[PASS] fuzz-smoke: corpus copy preserved
+[PASS] fuzz-regress: artifacts find preserved
+
+All independent validations passed

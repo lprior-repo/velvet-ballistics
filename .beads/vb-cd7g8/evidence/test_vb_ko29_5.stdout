@@ -1,0 +1,15 @@
+
+running 10 tests
+test given_completed_run_when_lifecycle_retry_uses_stale_key_then_lifecycle_stale_request ... ok
+test given_distinct_run_scopes_when_lifecycle_retry_runs_then_each_scope_appends_its_own_retry ... ok
+test given_diverged_attempt_count_when_duplicate_appended_then_duplicate_event_variant ... ok
+test given_duplicate_failure_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok
+test given_duplicate_lifecycle_command_when_retried_then_lifecycle_duplicate_request_and_count_unchanged ... ok
+test given_duplicate_success_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok
+test given_retry_required_policy_when_same_key_dispatched_twice_then_second_dispatch_is_denied ... ok
+test given_same_run_different_sequence_when_appended_then_order_is_preserved ... ok
+test given_same_sequence_different_run_when_appended_then_cross_run_sequences_are_independent ... ok
+test given_same_sequence_in_different_runs_when_appended_then_cross_scope_journals_are_isolated ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+

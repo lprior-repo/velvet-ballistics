@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation",
+  "argv": [
+    "verus",
+    "--crate-type=lib",
+    "verification/verus/try_from_parts.rs"
+  ],
+  "exit_code": 1,
+  "seconds": 0.196,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hrvix/evidence/draft-try-from-parts"
+}

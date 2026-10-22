@@ -1,0 +1,482 @@
+[ WARN 2026-10-21 22:17:00.259] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:17:00.259] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:25:44.622] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:25:50.570] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:25:54.821] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:26:22.139] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:26:22.201] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:26:23.761] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+        velvet-ballistics:verify-kani-vb-validate |    Compiling proc-macro2 v1.0.106
+        velvet-ballistics:verify-kani-vb-validate |    Compiling unicode-ident v1.0.24
+        velvet-ballistics:verify-kani-vb-validate |    Compiling quote v1.0.45
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde_core v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling syn v2.0.117
+        velvet-ballistics:verify-kani-vb-validate |    Compiling autocfg v1.5.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling num-traits v0.2.19
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde_derive v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror v2.0.18
+        velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror-impl v2.0.18
+        velvet-ballistics:verify-kani-vb-validate |    Compiling iana-time-zone v0.1.65
+        velvet-ballistics:verify-kani-vb-validate |    Compiling equivalent v1.0.2
+        velvet-ballistics:verify-kani-vb-validate |    Compiling hashbrown v0.17.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling indexmap v2.14.0
+        velvet-ballistics:verify-kani-vb-validate |    Compiling chrono v0.4.44
+        velvet-ballistics:verify-kani-vb-validate |    Compiling bytes v1.11.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_core)
+        velvet-ballistics:verify-kani-vb-validate |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_validate)
+        velvet-ballistics:verify-kani-vb-validate | error: could not compile `vb_validate` (lib) due to 1 previous error
+
+  velvet-ballistics:verify-production-inner-drift | PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log
+                   velvet-ballistics:verify-verus | Verus target failed: verification/verus/recovery_verification.rs (exit 1)
+                    velvet-ballistics:verify-kani |    Compiling proc-macro2 v1.0.106
+                    velvet-ballistics:verify-kani |    Compiling quote v1.0.45
+                    velvet-ballistics:verify-kani |    Compiling unicode-ident v1.0.24
+                    velvet-ballistics:verify-kani |    Compiling serde_core v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling syn v2.0.117
+                    velvet-ballistics:verify-kani |    Compiling serde v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling autocfg v1.5.1
+                    velvet-ballistics:verify-kani |    Compiling num-traits v0.2.19
+                    velvet-ballistics:verify-kani |    Compiling serde_derive v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling thiserror v2.0.18
+                    velvet-ballistics:verify-kani |    Compiling thiserror-impl v2.0.18
+                    velvet-ballistics:verify-kani |    Compiling iana-time-zone v0.1.65
+                    velvet-ballistics:verify-kani |    Compiling hashbrown v0.17.1
+                    velvet-ballistics:verify-kani |    Compiling equivalent v1.0.2
+                    velvet-ballistics:verify-kani |    Compiling indexmap v2.14.0
+                    velvet-ballistics:verify-kani |    Compiling chrono v0.4.44
+                    velvet-ballistics:verify-kani |    Compiling bytes v1.11.1
+                    velvet-ballistics:verify-kani |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_core)
+                    velvet-ballistics:verify-kani |     Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.01s
+                    velvet-ballistics:verify-loom | error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+                    velvet-ballistics:verify-loom |   --> crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:34:5
+                    velvet-ballistics:verify-loom |    |
+                    velvet-ballistics:verify-loom | 34 |     ActionTicket {
+                    velvet-ballistics:verify-loom |    |     ^^^^^^^^^^^^ missing `run_attempt`
+
+                    velvet-ballistics:verify-loom | For more information about this error, try `rustc --explain E0063`.
+                    velvet-ballistics:verify-loom | error: could not compile `vb_runtime` (lib test) due to 1 previous error
+[ WARN 22:27:17.475] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on build directory
+                velvet-ballistics:benchmark-proof |    Compiling proc-macro2 v1.0.106
+                velvet-ballistics:benchmark-proof |    Compiling unicode-ident v1.0.24
+                velvet-ballistics:benchmark-proof |    Compiling quote v1.0.45
+[ WARN 22:32:22.437] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof |    Compiling libc v0.2.186
+                velvet-ballistics:benchmark-proof |    Compiling cfg-if v1.0.4
+                velvet-ballistics:benchmark-proof |    Compiling syn v2.0.117
+                velvet-ballistics:benchmark-proof |    Compiling serde_core v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling proc-macro2 v1.0.106
+                  velvet-ballistics:fuzz-proptest |    Compiling unicode-ident v1.0.24
+                  velvet-ballistics:fuzz-proptest |    Compiling quote v1.0.45
+                  velvet-ballistics:fuzz-proptest |    Compiling libc v0.2.186
+                  velvet-ballistics:fuzz-proptest |    Compiling syn v2.0.117
+                velvet-ballistics:benchmark-proof |    Compiling serde v1.0.228
+                velvet-ballistics:benchmark-proof |    Compiling serde_derive v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling cfg-if v1.0.4
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_core v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling serde v1.0.228
+                  velvet-ballistics:fuzz-proptest |    Compiling autocfg v1.5.1
+                  velvet-ballistics:fuzz-proptest |    Compiling semver v1.0.28
+                  velvet-ballistics:fuzz-proptest |    Compiling rustc_version v0.4.1
+                  velvet-ballistics:fuzz-proptest |    Compiling num-traits v0.2.19
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_derive v1.0.228
+                velvet-ballistics:benchmark-proof |    Compiling autocfg v1.5.1
+                velvet-ballistics:benchmark-proof |    Compiling num-traits v0.2.19
+                velvet-ballistics:benchmark-proof |    Compiling jobserver v0.1.35
+                velvet-ballistics:benchmark-proof |    Compiling shlex v1.3.0
+                velvet-ballistics:benchmark-proof |    Compiling find-msvc-tools v0.1.9
+                velvet-ballistics:benchmark-proof |    Compiling cc v1.2.62
+                  velvet-ballistics:fuzz-proptest |    Compiling thiserror v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling once_cell v1.21.4
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-utils v0.8.21
+                  velvet-ballistics:fuzz-proptest |    Compiling thiserror-impl v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling thiserror v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling thiserror-impl v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling semver v1.0.28
+                velvet-ballistics:benchmark-proof |    Compiling rustc_version v0.4.1
+                  velvet-ballistics:fuzz-proptest |    Compiling equivalent v1.0.2
+                velvet-ballistics:benchmark-proof |    Compiling equivalent v1.0.2
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-utils v0.8.21
+                velvet-ballistics:benchmark-proof |    Compiling zerocopy v0.8.48
+                  velvet-ballistics:fuzz-proptest |    Compiling once_cell v1.21.4
+                  velvet-ballistics:fuzz-proptest |    Compiling jobserver v0.1.35
+                velvet-ballistics:benchmark-proof |    Compiling zerocopy-derive v0.8.48
+                  velvet-ballistics:fuzz-proptest |    Compiling find-msvc-tools v0.1.9
+                  velvet-ballistics:fuzz-proptest |    Compiling bitflags v2.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling scopeguard v1.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling shlex v1.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling lock_api v0.4.14
+                  velvet-ballistics:fuzz-proptest |    Compiling cc v1.2.62
+                velvet-ballistics:benchmark-proof |    Compiling bitflags v2.11.1
+                velvet-ballistics:benchmark-proof |    Compiling getrandom v0.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.17.1
+                  velvet-ballistics:fuzz-proptest |    Compiling getrandom v0.4.2
+                velvet-ballistics:benchmark-proof |    Compiling rustix v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling rustix v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling indexmap v2.14.0
+                  velvet-ballistics:fuzz-proptest |    Compiling iana-time-zone v0.1.65
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.17.1
+                  velvet-ballistics:fuzz-proptest |    Compiling linux-raw-sys v0.12.1
+                velvet-ballistics:benchmark-proof |    Compiling indexmap v2.14.0
+                  velvet-ballistics:fuzz-proptest |    Compiling getrandom v0.3.4
+                  velvet-ballistics:fuzz-proptest |    Compiling chrono v0.4.44
+                velvet-ballistics:benchmark-proof |    Compiling linux-raw-sys v0.12.1
+                velvet-ballistics:benchmark-proof |    Compiling getrandom v0.3.4
+                  velvet-ballistics:fuzz-proptest |    Compiling spin v0.9.8
+                  velvet-ballistics:fuzz-proptest |    Compiling bytes v1.11.1
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-epoch v0.9.18
+                velvet-ballistics:benchmark-proof |    Compiling fastrand v2.4.1
+                velvet-ballistics:benchmark-proof |    Compiling iana-time-zone v0.1.65
+                velvet-ballistics:benchmark-proof |    Compiling tempfile v3.27.0
+                velvet-ballistics:benchmark-proof |    Compiling chrono v0.4.44
+                velvet-ballistics:benchmark-proof |    Compiling bytes v1.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling smallvec v1.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling regex-syntax v0.8.10
+                  velvet-ballistics:fuzz-proptest |    Compiling fastrand v2.4.1
+                  velvet-ballistics:fuzz-proptest |    Compiling tempfile v3.27.0
+                  velvet-ballistics:fuzz-proptest |    Compiling heapless v0.7.17
+                  velvet-ballistics:fuzz-proptest |    Compiling zerocopy v0.8.48
+                  velvet-ballistics:fuzz-proptest |    Compiling byteorder v1.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_core)
+                  velvet-ballistics:fuzz-proptest |    Compiling arrayvec v0.7.6
+                  velvet-ballistics:fuzz-proptest |    Compiling byteorder-lite v0.1.0
+                velvet-ballistics:benchmark-proof |    Compiling scopeguard v1.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling hash32 v0.2.1
+                velvet-ballistics:benchmark-proof |    Compiling memchr v2.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling blake3 v1.8.5
+                velvet-ballistics:benchmark-proof |    Compiling lock_api v0.4.14
+                velvet-ballistics:benchmark-proof |    Compiling regex-syntax v0.8.10
+                  velvet-ballistics:fuzz-proptest |    Compiling arraydeque v0.5.1
+                  velvet-ballistics:fuzz-proptest |    Compiling fnv v1.0.7
+                velvet-ballistics:benchmark-proof |    Compiling spin v0.9.8
+                  velvet-ballistics:fuzz-proptest |    Compiling stable_deref_trait v1.2.1
+                velvet-ballistics:benchmark-proof |    Compiling arrayvec v0.7.6
+                  velvet-ballistics:fuzz-proptest |    Compiling log v0.4.29
+                velvet-ballistics:benchmark-proof |    Compiling zmij v1.0.21
+                  velvet-ballistics:fuzz-proptest |    Compiling parking_lot_core v0.9.12
+                velvet-ballistics:benchmark-proof |    Compiling log v0.4.29
+                velvet-ballistics:benchmark-proof |    Compiling smallvec v1.15.1
+                velvet-ballistics:benchmark-proof |    Compiling rand_core v0.9.5
+                velvet-ballistics:benchmark-proof |    Compiling heapless v0.7.17
+                velvet-ballistics:benchmark-proof |    Compiling byteorder v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling hash32 v0.2.1
+                velvet-ballistics:benchmark-proof |    Compiling ppv-lite86 v0.2.21
+                velvet-ballistics:benchmark-proof |    Compiling blake3 v1.8.5
+                velvet-ballistics:benchmark-proof |    Compiling serde_json v1.0.150
+                velvet-ballistics:benchmark-proof |    Compiling anstyle v1.0.14
+                velvet-ballistics:benchmark-proof |    Compiling itoa v1.0.18
+                velvet-ballistics:benchmark-proof |    Compiling stable_deref_trait v1.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-epoch v0.9.18
+                velvet-ballistics:benchmark-proof |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_core)
+                  velvet-ballistics:fuzz-proptest |    Compiling cobs v0.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling logos-codegen v0.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling compare v0.0.6
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle v1.0.14
+                  velvet-ballistics:fuzz-proptest |    Compiling cpufeatures v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling rand_chacha v0.9.0
+                  velvet-ballistics:fuzz-proptest |    Compiling memchr v2.8.0
+                velvet-ballistics:benchmark-proof |    Compiling cobs v0.3.0
+                  velvet-ballistics:fuzz-proptest |    Compiling zmij v1.0.21
+                  velvet-ballistics:fuzz-proptest |    Compiling crc32fast v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling arrayref v0.3.9
+                velvet-ballistics:benchmark-proof |    Compiling cpufeatures v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling constant_time_eq v0.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.16.1
+                velvet-ballistics:benchmark-proof |    Compiling byteorder-lite v0.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling xxhash-rust v0.8.15
+                  velvet-ballistics:fuzz-proptest |    Compiling simd-adler32 v0.3.9
+                velvet-ballistics:benchmark-proof |    Compiling postcard v1.1.3
+                  velvet-ballistics:fuzz-proptest |    Compiling constant_time_eq v0.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling foldhash v0.1.5
+                  velvet-ballistics:fuzz-proptest |    Compiling arrayref v0.3.9
+                  velvet-ballistics:fuzz-proptest |    Compiling twox-hash v2.1.2
+                  velvet-ballistics:fuzz-proptest |    Compiling lz4_flex v0.13.1
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.15.5
+                velvet-ballistics:benchmark-proof |    Compiling rand v0.9.4
+                  velvet-ballistics:fuzz-proptest |    Compiling sfa v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling quick_cache v0.6.22
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_validate)
+                  velvet-ballistics:fuzz-proptest |    Compiling interval-heap v0.0.5
+                  velvet-ballistics:fuzz-proptest |    Compiling postcard v1.1.3
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-skiplist v0.1.3
+                  velvet-ballistics:fuzz-proptest |    Compiling enum_dispatch v0.3.13
+                  velvet-ballistics:fuzz-proptest |    Compiling crc32c v0.6.8
+                  velvet-ballistics:fuzz-proptest |    Compiling beef v0.5.2
+                  velvet-ballistics:fuzz-proptest |    Compiling hashbrown v0.14.5
+                  velvet-ballistics:fuzz-proptest |    Compiling rustc-hash v2.1.2
+                  velvet-ballistics:fuzz-proptest |    Compiling utf8parse v0.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling varint-rs v2.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling lazy_static v1.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling self_cell v1.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling version_check v0.9.5
+                  velvet-ballistics:fuzz-proptest |    Compiling byteview v0.10.1
+                  velvet-ballistics:fuzz-proptest |    Compiling adler2 v2.0.1
+                  velvet-ballistics:fuzz-proptest |    Compiling lsm-tree v3.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling miniz_oxide v0.8.9
+                  velvet-ballistics:fuzz-proptest |    Compiling ahash v0.8.12
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle-parse v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling dashmap v6.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling hashlink v0.10.0
+                  velvet-ballistics:fuzz-proptest |    Compiling flume v0.12.0
+                  velvet-ballistics:fuzz-proptest |    Compiling colorchoice v1.0.5
+                  velvet-ballistics:fuzz-proptest |    Compiling is_terminal_polyfill v1.70.2
+                  velvet-ballistics:fuzz-proptest |    Compiling camino v1.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling itoa v1.0.18
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_json v1.0.150
+                  velvet-ballistics:fuzz-proptest |    Compiling anstyle-query v1.1.5
+                  velvet-ballistics:fuzz-proptest |    Compiling anstream v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling fjall v3.1.4
+                velvet-ballistics:benchmark-proof |    Compiling aho-corasick v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr-parser v0.0.6
+                  velvet-ballistics:fuzz-proptest |    Compiling flate2 v1.1.9
+                velvet-ballistics:benchmark-proof |    Compiling wait-timeout v0.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling logos-derive v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling quick-error v1.2.3
+                velvet-ballistics:benchmark-proof |    Compiling fnv v1.0.7
+                  velvet-ballistics:fuzz-proptest |    Compiling fdeflate v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling parking_lot_core v0.9.12
+                  velvet-ballistics:fuzz-proptest |    Compiling aho-corasick v1.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling ordered-float v5.3.0
+                velvet-ballistics:benchmark-proof |    Compiling bit-vec v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling encoding_rs v0.8.35
+                velvet-ballistics:benchmark-proof |    Compiling bit-set v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling strsim v0.11.1
+                velvet-ballistics:benchmark-proof |    Compiling rusty-fork v0.3.1
+                  velvet-ballistics:fuzz-proptest |    Compiling pxfm v0.1.29
+                velvet-ballistics:benchmark-proof |    Compiling regex-automata v0.4.14
+                  velvet-ballistics:fuzz-proptest |    Compiling winnow v1.0.3
+                  velvet-ballistics:fuzz-proptest |    Compiling anyhow v1.0.102
+                velvet-ballistics:benchmark-proof |    Compiling rand_xorshift v0.4.0
+                  velvet-ballistics:fuzz-proptest |    Compiling heck v0.5.0
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_lex v1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling twox-hash v2.1.2
+                  velvet-ballistics:fuzz-proptest |    Compiling unicode-width v0.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_builder v4.6.0
+                  velvet-ballistics:fuzz-proptest |    Compiling annotate-snippets v0.12.16
+                  velvet-ballistics:fuzz-proptest |    Compiling clap_derive v4.6.1
+                  velvet-ballistics:fuzz-proptest |    Compiling moxcms v0.8.1
+                velvet-ballistics:benchmark-proof |    Compiling compare v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling arraydeque v0.5.1
+                velvet-ballistics:benchmark-proof |    Compiling unarray v0.1.4
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.16.1
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_parser v1.1.2+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling xxhash-rust v0.8.15
+                velvet-ballistics:benchmark-proof |    Compiling sfa v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling encoding_rs_io v0.1.7
+                velvet-ballistics:benchmark-proof |    Compiling quick_cache v0.6.22
+                  velvet-ballistics:fuzz-proptest |    Compiling regex-automata v0.4.14
+                velvet-ballistics:benchmark-proof |    Compiling proptest v1.11.0
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling interval-heap v0.0.5
+                  velvet-ballistics:fuzz-proptest |    Compiling logos v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling enum_dispatch v0.3.13
+                  velvet-ballistics:fuzz-proptest |    Compiling png v0.18.1
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_storage)
+                velvet-ballistics:benchmark-proof |    Compiling lz4_flex v0.13.1
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-skiplist v0.1.3
+                velvet-ballistics:benchmark-proof |    Compiling byteview v0.10.1
+                velvet-ballistics:benchmark-proof |    Compiling rustc-hash v2.1.2
+                velvet-ballistics:benchmark-proof |    Compiling varint-rs v2.2.0
+                velvet-ballistics:benchmark-proof |    Compiling utf8parse v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling self_cell v1.2.2
+                velvet-ballistics:benchmark-proof |    Compiling foldhash v0.1.5
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.14.5
+                velvet-ballistics:benchmark-proof |    Compiling dashmap v6.2.1
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.15.5
+                velvet-ballistics:benchmark-proof |    Compiling lsm-tree v3.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling saphyr-parser-bw v0.0.611
+                velvet-ballistics:benchmark-proof |    Compiling anstyle-parse v1.0.0
+                velvet-ballistics:benchmark-proof |    Compiling flume v0.12.0
+                velvet-ballistics:benchmark-proof |    Compiling logos-codegen v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling crc32c v0.6.8
+                velvet-ballistics:benchmark-proof |    Compiling anstyle-query v1.1.5
+                velvet-ballistics:benchmark-proof |    Compiling is_terminal_polyfill v1.70.2
+                velvet-ballistics:benchmark-proof |    Compiling colorchoice v1.0.5
+                velvet-ballistics:benchmark-proof |    Compiling anstream v1.0.0
+                  velvet-ballistics:fuzz-proptest |    Compiling libfuzzer-sys v0.4.13
+                velvet-ballistics:benchmark-proof |    Compiling fjall v3.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-channel v0.5.15
+                velvet-ballistics:benchmark-proof |    Compiling hashlink v0.10.0
+                  velvet-ballistics:fuzz-proptest |    Compiling crossbeam-queue v0.3.12
+                velvet-ballistics:benchmark-proof |    Compiling strsim v0.11.1
+                  velvet-ballistics:fuzz-proptest |    Compiling cargo-platform v0.1.9
+                velvet-ballistics:benchmark-proof |    Compiling beef v0.5.2
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_datetime v0.7.5+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling clap_lex v1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling lazy_static v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling heck v0.5.0
+                velvet-ballistics:benchmark-proof |    Compiling clap_derive v4.6.1
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_spanned v1.1.1
+                velvet-ballistics:benchmark-proof |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_validate)
+                  velvet-ballistics:fuzz-proptest |    Compiling base64 v0.22.1
+                  velvet-ballistics:fuzz-proptest |    Compiling toml_writer v1.1.1+spec-1.1.0
+                  velvet-ballistics:fuzz-proptest |    Compiling nohash-hasher v0.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling bytemuck v1.25.0
+                  velvet-ballistics:fuzz-proptest |    Compiling winnow v0.7.15
+                  velvet-ballistics:fuzz-proptest |    Compiling ryu v1.0.23
+                  velvet-ballistics:fuzz-proptest |    Compiling rtrb v0.3.4
+                  velvet-ballistics:fuzz-proptest |    Compiling unsafe-libyaml v0.2.11
+                velvet-ballistics:benchmark-proof |    Compiling clap_builder v4.6.0
+                  velvet-ballistics:fuzz-proptest |    Compiling serde_yaml v0.9.34+deprecated
+                velvet-ballistics:benchmark-proof |    Compiling saphyr-parser v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling ordered-float v5.3.0
+                velvet-ballistics:benchmark-proof |    Compiling crc32fast v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling rayon-core v1.13.0
+                velvet-ballistics:benchmark-proof |    Compiling either v1.16.0
+                velvet-ballistics:benchmark-proof |    Compiling saphyr v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling clap v4.6.1
+                velvet-ballistics:benchmark-proof |    Compiling logos-derive v0.15.1
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_runtime)
+                velvet-ballistics:benchmark-proof |    Compiling regex v1.12.3
+                velvet-ballistics:benchmark-proof |    Compiling half v2.7.1
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-deque v0.8.6
+                velvet-ballistics:benchmark-proof |    Compiling alloca v0.4.0
+                velvet-ballistics:benchmark-proof |    Compiling ciborium-io v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling version_check v0.9.5
+                velvet-ballistics:benchmark-proof |    Compiling plotters-backend v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling ahash v0.8.12
+                  velvet-ballistics:fuzz-proptest |    Compiling toml v0.9.12+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling plotters-svg v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling ciborium-ll v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_storage)
+                velvet-ballistics:benchmark-proof |    Compiling logos v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling itertools v0.13.0
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-queue v0.3.12
+                velvet-ballistics:benchmark-proof |    Compiling same-file v1.0.6
+                velvet-ballistics:benchmark-proof |    Compiling cast v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling rtrb v0.3.4
+                velvet-ballistics:benchmark-proof |    Compiling criterion-plot v0.8.2
+                velvet-ballistics:benchmark-proof |    Compiling walkdir v2.5.0
+                velvet-ballistics:benchmark-proof |    Compiling rayon v1.12.0
+                velvet-ballistics:benchmark-proof |    Compiling ciborium v0.2.2
+                  velvet-ballistics:fuzz-proptest |    Compiling image v0.25.10
+                  velvet-ballistics:fuzz-proptest |    Compiling serde-saphyr v0.0.25
+                velvet-ballistics:benchmark-proof |    Compiling plotters v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling tinytemplate v1.2.1
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-channel v0.5.15
+                velvet-ballistics:benchmark-proof |    Compiling page_size v0.6.0
+                velvet-ballistics:benchmark-proof |    Compiling encoding_rs v0.8.35
+                  velvet-ballistics:fuzz-proptest |    Compiling cargo_metadata v0.19.2
+                velvet-ballistics:benchmark-proof |    Compiling simd-adler32 v0.3.9
+                velvet-ballistics:benchmark-proof |    Compiling anes v0.1.6
+                velvet-ballistics:benchmark-proof |    Compiling oorandom v11.1.5
+                velvet-ballistics:benchmark-proof |    Compiling unicode-width v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling annotate-snippets v0.12.16
+                velvet-ballistics:benchmark-proof |    Compiling criterion v0.8.2
+                  velvet-ballistics:fuzz-proptest |    Compiling clap v4.6.1
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_expr)
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_yaml)
+                  velvet-ballistics:fuzz-proptest |    Compiling regex v1.12.3
+                  velvet-ballistics:fuzz-proptest |    Compiling mio v1.2.0
+                  velvet-ballistics:fuzz-proptest |    Compiling arbitrary v1.4.2
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_ipc)
+                  velvet-ballistics:fuzz-proptest |    Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/xtask)
+                  velvet-ballistics:fuzz-proptest |    Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_compile)
+                  velvet-ballistics:fuzz-proptest |    Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/fuzz)
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_core v0.9.5
+                  velvet-ballistics:fuzz-proptest |    Compiling ppv-lite86 v0.2.21
+                  velvet-ballistics:fuzz-proptest |    Compiling wait-timeout v0.2.1
+                  velvet-ballistics:fuzz-proptest |    Compiling bit-vec v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling quick-error v1.2.3
+                  velvet-ballistics:fuzz-proptest |    Compiling bit-set v0.8.0
+                  velvet-ballistics:fuzz-proptest |    Compiling rusty-fork v0.3.1
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_chacha v0.9.0
+                  velvet-ballistics:fuzz-proptest |    Compiling rand v0.9.4
+                  velvet-ballistics:fuzz-proptest |    Compiling rand_xorshift v0.4.0
+                  velvet-ballistics:fuzz-proptest |    Compiling unarray v0.1.4
+                  velvet-ballistics:fuzz-proptest |    Compiling proptest v1.11.0
+                velvet-ballistics:benchmark-proof |    Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_runtime)
+                velvet-ballistics:benchmark-proof |    Compiling encoding_rs_io v0.1.7
+                velvet-ballistics:benchmark-proof |    Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_expr)
+                velvet-ballistics:benchmark-proof |    Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_yaml)
+                velvet-ballistics:benchmark-proof |    Compiling saphyr-parser-bw v0.0.611
+                velvet-ballistics:benchmark-proof |    Compiling mio v1.2.0
+                velvet-ballistics:benchmark-proof |    Compiling base64 v0.22.1
+                velvet-ballistics:benchmark-proof |    Compiling nohash-hasher v0.2.0
+                  velvet-ballistics:fuzz-proptest |     Finished `test` profile [unoptimized + debuginfo] target(s) in 25.98s
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-fbac866e13eb11ec)
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-b77b7498c6265a09)
+                velvet-ballistics:benchmark-proof |    Compiling adler2 v2.0.1
+                velvet-ballistics:benchmark-proof |    Compiling miniz_oxide v0.8.9
+                velvet-ballistics:benchmark-proof |    Compiling serde-saphyr v0.0.25
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-26ec313b9a5d2f64)
+                  velvet-ballistics:fuzz-proptest |      Running tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-0d13f9af6a0ff170)
+                velvet-ballistics:benchmark-proof |    Compiling camino v1.2.2
+                velvet-ballistics:benchmark-proof |    Compiling winnow v1.0.3
+                velvet-ballistics:benchmark-proof |    Compiling toml_parser v1.1.2+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_ipc)
+[ WARN 22:32:51.701] moon_task_hasher::task_hasher  Attempted to hash input .beads/vb-jpq7/closure-evidence-manifest.jsonl but it does not exist, skipping 
+[ WARN 22:32:51.839] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:32:51.895] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof |    Compiling flate2 v1.1.9
+                velvet-ballistics:benchmark-proof |    Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/vb_compile)
+                velvet-ballistics:benchmark-proof |    Compiling fdeflate v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling serde_spanned v1.1.1
+                velvet-ballistics:benchmark-proof |    Compiling toml_datetime v0.7.5+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling pxfm v0.1.29
+                velvet-ballistics:benchmark-proof |    Compiling ryu v1.0.23
+                velvet-ballistics:benchmark-proof |    Compiling toml_writer v1.1.1+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling unsafe-libyaml v0.2.11
+                velvet-ballistics:benchmark-proof |    Compiling winnow v0.7.15
+                velvet-ballistics:benchmark-proof |    Compiling anyhow v1.0.102
+                velvet-ballistics:benchmark-proof |    Compiling toml v0.9.12+spec-1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling serde_yaml v0.9.34+deprecated
+                  velvet-ballistics:source-length | source-length gate summary:
+                  velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+                  velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+                  velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+                  velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+                  velvet-ballistics:source-length |   test_in_src        scanned=304   warn=48   over_limit=0    limit=1500 warn_at=1200
+                  velvet-ballistics:source-length |   test_top_level     scanned=383   warn=6    over_limit=0    limit=3000 warn_at=2400
+                  velvet-ballistics:source-length |   production         scanned=943   warn=195  over_limit=0    limit=300 warn_at=240
+                  velvet-ballistics:source-length |   ledger rows used:    384
+[ WARN 22:32:56.737] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof |    Compiling moxcms v0.8.1
+                velvet-ballistics:benchmark-proof |    Compiling png v0.18.1
+                velvet-ballistics:benchmark-proof |    Compiling cargo-platform v0.1.9
+                velvet-ballistics:benchmark-proof |    Compiling bytemuck v1.25.0
+                velvet-ballistics:benchmark-proof |    Compiling image v0.25.10
+                velvet-ballistics:benchmark-proof |    Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/velvet_ballistics)
+                velvet-ballistics:benchmark-proof |    Compiling cargo_metadata v0.19.2
+                velvet-ballistics:benchmark-proof |    Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/crates/workspace_tests)
+                velvet-ballistics:benchmark-proof |    Compiling rustversion v1.0.22
+                velvet-ballistics:benchmark-proof |    Compiling tracing-core v0.1.36
+                velvet-ballistics:benchmark-proof |    Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/xtask)
+                velvet-ballistics:benchmark-proof |    Compiling generator v0.8.8
+                velvet-ballistics:benchmark-proof |    Compiling pin-project-lite v0.2.17
+                velvet-ballistics:benchmark-proof |    Compiling tracing v0.1.44
+                velvet-ballistics:benchmark-proof |    Compiling sharded-slab v0.1.7
+                velvet-ballistics:benchmark-proof |    Compiling tracing-log v0.2.0
+                velvet-ballistics:benchmark-proof |    Compiling matchers v0.2.0
+                velvet-ballistics:benchmark-proof |    Compiling libfuzzer-sys v0.4.13
+                velvet-ballistics:benchmark-proof |    Compiling thread_local v1.1.9
+                velvet-ballistics:benchmark-proof |    Compiling nu-ansi-term v0.50.3
+                velvet-ballistics:benchmark-proof |    Compiling tracing-subscriber v0.3.23
+                velvet-ballistics:benchmark-proof |    Compiling scoped-tls v1.0.1
+                velvet-ballistics:benchmark-proof |    Compiling arbitrary v1.4.2
+                velvet-ballistics:benchmark-proof |    Compiling loom v0.7.2
+                          velvet-ballistics:check | error: function `assert_tick_cannot_resume` is never used
+                          velvet-ballistics:check |    --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:564:4
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check | 564 | fn assert_tick_cannot_resume(
+                          velvet-ballistics:check |     |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+                          velvet-ballistics:check |     |
+                          velvet-ballistics:check |     = note: `-D dead-code` implied by `-D warnings`
+                          velvet-ballistics:check |     = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+                          velvet-ballistics:check | error: could not compile `velvet-ballistics-workspace-tests` (test "runtime_fjall_pending_action_recovery") due to 1 previous error
+[ WARN 22:33:28.537] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof | error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+                velvet-ballistics:benchmark-proof |   --> crates/workspace_tests/benches/action_dispatch.rs:55:9
+                velvet-ballistics:benchmark-proof |    |
+                velvet-ballistics:benchmark-proof | 55 |         vb_core::action::ActionTicket {
+                velvet-ballistics:benchmark-proof |    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `run_attempt`
+
+                velvet-ballistics:benchmark-proof | For more information about this error, try `rustc --explain E0063`.
+                velvet-ballistics:benchmark-proof | error: could not compile `velvet-ballistics-workspace-tests` (bench "action_dispatch") due to 1 previous error
+                velvet-ballistics:benchmark-proof | warning: build failed, waiting for other jobs to finish...
+[ WARN 22:33:37.218] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 22:34:03.160] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 

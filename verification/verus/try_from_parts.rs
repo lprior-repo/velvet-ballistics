@@ -115,6 +115,9 @@ pub open spec fn spec_workflow_error_is_bound_violation_spec(e: SpecWorkflowErro
             | SpecWorkflowError::ExpressionInvalid
             | SpecWorkflowError::SymbolOutOfBounds
             | SpecWorkflowError::AccessorPathTooDeep
+            | SpecWorkflowError::InputSlotOutOfBounds
+            | SpecWorkflowError::DuplicateInputSlot
+            | SpecWorkflowError::NonCanonicalInputSlotOrder
     )
 }
 
@@ -405,7 +408,10 @@ pub proof fn lemma_bound_violation_in_closed_set(e: SpecWorkflowError)
             || e == SpecWorkflowError::ConstOutOfBounds
             || e == SpecWorkflowError::ExpressionInvalid
             || e == SpecWorkflowError::SymbolOutOfBounds
-            || e == SpecWorkflowError::AccessorPathTooDeep,
+            || e == SpecWorkflowError::AccessorPathTooDeep
+            || e == SpecWorkflowError::InputSlotOutOfBounds
+            || e == SpecWorkflowError::DuplicateInputSlot
+            || e == SpecWorkflowError::NonCanonicalInputSlotOrder,
 {
     // The closed-set enumeration in spec_workflow_error_is_bound_violation_spec
     // exactly enumerates these 8 variants.
@@ -549,12 +555,6 @@ pub proof fn lemma_projection_deterministic(parts: &SpecWorkflowParts)
 /// opaque to Verus; this mirror is the contract layer the spec
 /// proofs reason about.)
 pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecValidationResult {
-    // The spec mirror re-states the production decision at the
-    // mathematical layer. The actual projection body is opaque to
-    // Verus; the spec mirror is the contract that the
-    // `assume_specification` ensures clause references. The mirror
-    // uses an uninterpreted result encoding: every discriminant
-    // outcome is captured so the postcondition lemmas discharge.
     if parts.nodes_meta.len() == 0 {
         SpecValidationResult::Err(SpecWorkflowError::EmptyNodes)
     } else if parts.entry >= parts.nodes_len {
@@ -574,8 +574,48 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else {
-        SpecValidationResult::Ok
+        let slot_err = input_slots_valid(parts);
+        if (slot_err != None::<SpecWorkflowError>) {
+            SpecValidationResult::Err(slot_err.unwrap())
+        } else {
+            SpecValidationResult::Ok
+        }
     }
+}
+
+/// Spec predicate: check input slots for the first violation,
+/// returning the specific error variant or None if all valid.
+/// Mirrors production validate_input_slots at workflow/mod.rs:876-906
+/// with exact first-error semantics: bounds check first, then
+/// duplicate, then strict ordering.
+pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: Option<int>) -> Option<SpecWorkflowError>
+    decreases parts.input_slots.len() - index
+{
+    if (index >= parts.input_slots.len()) {
+        None
+    } else {
+        let current = parts.input_slots[index];
+        if (current >= parts.slot_count) {
+            Some(SpecWorkflowError::InputSlotOutOfBounds)
+        } else if (match prev {
+            Some(p) => p == current,
+            None => false,
+        }) {
+            Some(SpecWorkflowError::DuplicateInputSlot)
+        } else if (match prev {
+            Some(p) => current < p,
+            None => false,
+        }) {
+            Some(SpecWorkflowError::NonCanonicalInputSlotOrder)
+        } else {
+            check_input_slots(parts, index + 1, Some(current as int))
+        }
+    }
+}
+
+/// Convenience wrapper: validate all input slots starting from index 0.
+pub open spec fn input_slots_valid(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    check_input_slots(parts, 0, None)
 }
 
 /// Lemma 10: the slot-bounds rejection. A per-node check whose
@@ -662,6 +702,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
     ensures
         // The projection returns Ok for these inputs. The spec
         // mirror walks through the chain of conditional guards
@@ -690,6 +731,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if input_slots_valid(parts) != None::<SpecWorkflowError> {
+        // Input slot validation: skip (already required valid).
     } else {
         assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Ok);
     }

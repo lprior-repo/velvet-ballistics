@@ -89,6 +89,9 @@ impl SlotIdx {
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
+    pub const fn get(self) -> u16 {
+        self.0
+    }
 }
 
 #[repr(transparent)]
@@ -531,6 +534,34 @@ pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }
 
-pub fn validate_input_slots(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
+pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let slot_count = parts.slot_count;
+    let mut prev_slot: Option<SlotIdx> = None;
+    for input_slot in parts.input_slots.iter() {
+        let current: SlotIdx = input_slot.slot;
+        let current_value = current.get();
+        if current_value >= slot_count {
+            return Err(WorkflowError::InputSlotOutOfBounds {
+                slot: current,
+                kind: input_slot.kind,
+            });
+        }
+        if let Some(prev) = prev_slot {
+            let prev_value = prev.get();
+            if current_value == prev_value {
+                return Err(WorkflowError::DuplicateInputSlot {
+                    slot: current,
+                    kind: input_slot.kind,
+                });
+            }
+            if current_value < prev_value {
+                return Err(WorkflowError::NonCanonicalInputSlotOrder {
+                    prev_slot: prev,
+                    curr_slot: current,
+                });
+            }
+        }
+        prev_slot = Some(current);
+    }
     Ok(())
 }

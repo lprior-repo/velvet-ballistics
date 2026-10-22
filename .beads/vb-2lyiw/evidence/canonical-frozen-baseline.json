@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci",
+  "argv": [
+    "moon",
+    "ci",
+    "--base",
+    "da633fe0bbde9e414173d5f7aabe314a37f8752d",
+    "--head",
+    "d20e121c",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 124,
+  "seconds": 3600.202,
+  "timeout_seconds": 3600,
+  "timed_out": true,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/canonical-frozen-baseline"
+}

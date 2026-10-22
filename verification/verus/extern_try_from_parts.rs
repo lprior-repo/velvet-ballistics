@@ -164,6 +164,14 @@ pub enum SpecWorkflowError {
     JumpCycle,
     /// `WorkflowError::NestedTogether { .. }`.
     NestedTogether,
+    /// `WorkflowError::InputSlotOutOfBounds { .. }` — compiled input slot
+    /// references a slot index outside slot_count.
+    InputSlotOutOfBounds,
+    /// `WorkflowError::DuplicateInputSlot { .. }` — duplicate input slot index.
+    DuplicateInputSlot,
+    /// `WorkflowError::NonCanonicalInputSlotOrder { .. }` — input slots not in
+    /// strictly increasing index order.
+    NonCanonicalInputSlotOrder,
 }
 
 /// Mirrors the production `WorkflowParts` validation outcome. `Ok` means
@@ -432,6 +440,11 @@ pub struct SpecWorkflowParts {
     pub expressions: Vec<SpecExprProgram>,
     pub accessors: Vec<SpecAccessor>,
     pub resource_contract: SpecResourceContract,
+    /// Flattened input slot indices consumed by `validate_input_slots`
+    /// (workflow/mod.rs:876-906). Each value is the slot index of one
+    /// input slot declaration. The projection checks: all in-bounds,
+    /// no duplicates, strictly increasing order.
+    pub input_slots: Vec<u32>,
 }
 
 /// Per-node metadata feeding the validator. See `SpecWorkflowParts`
@@ -793,5 +806,24 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // The projection returns Ok for the well-formed inputs the spec
     // proves; malformed budget inputs are out of scope (they're
     // exhaustively covered by `budget_bounded.rs`).
+    // ---- Step 3: input slot validation ----
+    // Production calls validate_input_slots(&parts)? (workflow/mod.rs:40,
+    // body at workflow/mod.rs:876-906). The projection checks: all
+    // input slot indices in-bounds, no duplicates, strictly increasing.
+    let mut prev_slot: Option<u32> = None;
+    for current in &parts.input_slots {
+        if *current >= parts.slot_count {
+            return SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds);
+        }
+        if let Some(prev) = prev_slot {
+            if *current == prev {
+                return SpecValidationResult::Err(SpecWorkflowError::DuplicateInputSlot);
+            }
+            if *current < prev {
+                return SpecValidationResult::Err(SpecWorkflowError::NonCanonicalInputSlotOrder);
+            }
+        }
+        prev_slot = Some(*current);
+    }
     SpecValidationResult::Ok
 }

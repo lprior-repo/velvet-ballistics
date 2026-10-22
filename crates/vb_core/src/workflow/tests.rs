@@ -5,9 +5,9 @@ use crate::ids::{
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
 use crate::value::ConstValue;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch,
-    ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
-    check_expr_stack_bound, validate_budget_result,
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    CoreError, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract,
+    SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound, validate_budget_result,
 };
 use std::fmt::Debug;
 
@@ -580,6 +580,240 @@ fn finish_const_parts_with(
         entry: StepIdx::new(0),
         resource_contract,
         step_names: Box::default(),
+    }
+}
+#[test]
+fn workflow_input_slots_accept_valid_increasing_indices() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::I64,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(1),
+                kind: InputSlotKind::Bool,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(2),
+                kind: InputSlotKind::Symbol,
+            },
+        ]),
+        name: Box::<str>::from("input_slot_case"),
+        digest: WorkflowDigest::from_bytes([5; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 4, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("unexpected error: {e:?}")),
+    }
+}
+
+#[test]
+fn workflow_input_slots_accept_empty() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([]),
+        name: Box::<str>::from("input_slot_empty"),
+        digest: WorkflowDigest::from_bytes([6; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 1, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("unexpected error: {e:?}")),
+    }
+}
+
+#[test]
+fn workflow_input_slots_reject_out_of_bounds() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: SlotIdx::new(5),
+            kind: InputSlotKind::I64,
+        }]),
+        name: Box::<str>::from("input_slot_oob"),
+        digest: WorkflowDigest::from_bytes([7; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 3, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::InputSlotOutOfBounds { .. }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn workflow_input_slots_reject_duplicate() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::I64,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::Bool,
+            },
+        ]),
+        name: Box::<str>::from("input_slot_dup"),
+        digest: WorkflowDigest::from_bytes([8; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 3, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::DuplicateInputSlot { .. }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn workflow_input_slots_reject_non_canonical_order() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([
+            CompiledInputSlot {
+                slot: SlotIdx::new(1),
+                kind: InputSlotKind::I64,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::Bool,
+            },
+        ]),
+        name: Box::<str>::from("input_slot_order"),
+        digest: WorkflowDigest::from_bytes([9; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 3, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::NonCanonicalInputSlotOrder { .. }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn workflow_input_slots_out_of_bounds_before_duplicate() -> Result<(), String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([
+            CompiledInputSlot {
+                slot: SlotIdx::new(5),
+                kind: InputSlotKind::I64,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(5),
+                kind: InputSlotKind::Bool,
+            },
+        ]),
+        name: Box::<str>::from("input_slot_prec"),
+        digest: WorkflowDigest::from_bytes([10; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: resource_contract(1, 3, 1, 1, 1),
+        step_names: Box::default(),
+    };
+
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::InputSlotOutOfBounds { .. }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
     }
 }
 
