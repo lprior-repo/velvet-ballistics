@@ -138,7 +138,7 @@ fn build_batch(
         counter_value.as_ref(),
     );
     let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
-    batch.insert(&journal.compiled_ir, &artifact_key, encoded);
+    batch.insert(&journal.compiled_ir, artifact_key, encoded);
     Ok(batch)
 }
 

@@ -1,0 +1,9 @@
+{
+  "base": "806917730d7013d973ed6d27d57b48a94db885ee",
+  "core_lines_before": 306,
+  "core_lines_after": 299,
+  "core_rust_preservation": "Same4complete import blocks; rustfmt reordered import groups after native blankline removal. All noncomment/nonblank remaining lines identical. No runtime-token or cfgattachment changes outside importordering.",
+  "helper_rust_delta": "Only let write_guard -> let _write_guard and remove explicitdrop; guard remains scoped through functionreturn.",
+  "new_test_sources_changed": false,
+  "acceptance": "pending independent delta CODE review and actual gates"
+}
