@@ -2,7 +2,6 @@
 
 use crate::FjallJournal;
 use crate::admission::*;
-use crate::error::JournalError;
 use vb_core::RuntimePolicy;
 
 use super::{minimal_workflow, temp_journal};
