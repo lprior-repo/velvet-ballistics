@@ -1,0 +1,43 @@
+warning: field `actual` has inconsistent type or visibility in different variants
+         ->actual syntax will not be available for this field
+         use #[allow(inconsistent_fields)] on the struct to silence the warnign
+   --> verification/verus/extern_vb_xi2f_error_mapping.rs:190:1
+    |
+190 | / /// Mirror of production `WorkflowError` enum at
+191 | | /// `crates/vb_core/src/workflow/mod.rs:321-452`. The 20-variant
+192 | | /// discriminant set is preserved EXACTLY:
+193 | | ///
+...   |
+318 | |     },
+319 | | }
+    | |_^
+
+warning: field `depth` has inconsistent type or visibility in different variants
+         ->depth syntax will not be available for this field
+         use #[allow(inconsistent_fields)] on the struct to silence the warnign
+   --> verification/verus/extern_vb_xi2f_error_mapping.rs:190:1
+    |
+190 | / /// Mirror of production `WorkflowError` enum at
+191 | | /// `crates/vb_core/src/workflow/mod.rs:321-452`. The 20-variant
+192 | | /// discriminant set is preserved EXACTLY:
+193 | | ///
+...   |
+318 | |     },
+319 | | }
+    | |_^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_vb_xi2f_error_mapping.rs:184:17
+    |
+184 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_vb_xi2f_error_mapping.rs:214:17
+    |
+214 | #[derive(Debug, Clone, PartialEq, Eq)]
+    |                 ^^^^^
+
+verification results:: 13 verified, 0 errors
+warning: 4 warnings emitted
+

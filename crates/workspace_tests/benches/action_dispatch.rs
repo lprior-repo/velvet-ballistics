@@ -57,6 +57,7 @@ fn action_input(action: ActionId) -> vb_core::action::ActionResult<ActionInput> 
             step: StepIdx::new(0),
             seq: SeqNo::new(0),
             action,
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,

@@ -260,6 +260,30 @@
 // binding-debt tracked outside Verus.
 use vstd::prelude::*;
 
+// DRIFT D3 (binding ledger): production `CANNOT_RESUME_REASONS` array at
+// `crates/vb_storage/src/recovery/types.rs:1251-1265` (13 reason tokens,
+// classification priority order). Declared here as plain Rust OUTSIDE the
+// `verus!` macro because Verus erasure ICEs on module-level `const`
+// items of reference type (`[&str; 13]`) whose `thir_body` requires
+// lifetime erasure before `VerusErasureCtxt` is initialized. The const
+// carries no Verus contract; keeping it outside the macro preserves the
+// exact production token order without weakening any proof.
+pub const CANNOT_RESUME_REASONS: [&str; 13] = [
+    "slot_values",
+    "slot_taint",
+    "action_payloads",
+    "pending_actions",
+    "pending_timers",
+    "pending_asks",
+    "workflow_missing",
+    "store_missing",
+    "action_attempts_missing",
+    "admission_missing",
+    "collect_states_missing",
+    "action_contracts_missing",
+    "action_abi_digests_missing",
+];
+
 verus! {
 
 #[path = "extern_recovery_verification.rs"]
@@ -282,7 +306,6 @@ pub use production_strong::{
 // Re-export the production-bound types and exec wrappers so the spec
 // proofs below reference them as `UnsupportedRecoveryState`, etc.
 pub use production::{
-    CANNOT_RESUME_REASONS,
     ActionAbiDigestComparison,
     ActionId,
     DigestCheck,

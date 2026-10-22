@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-eq4ff-deepseek-verus-repair",
+  "argv": [
+    "verus",
+    "--crate-type=lib",
+    "verification/verus/recovery_verification.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.4,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/velvet-ballistics-vb-eq4ff-deepseek-verus-repair/.beads/vb-eq4ff/evidence/recovery-verification-success",
+  "coordinator_message": "Root canonical union check actual exit101: unused helper assert_tick_cannot_resume at crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:564 under -Dwarnings (not visible in earlier short stderr reads). Include bounded vb-r8t6e fixture cleanup: wire helper into meaningful exact typed assertions if appropriate, or remove genuinely redundant dead helper preserving strong existing assertions. No allow(dead_code), expect, warning relaxation, removed tests. New root diagnostic rawlog /home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/.beads/vb-wlnl4/evidence/check-diagnostics.stderr can expose more sites after this one. Actual3earlier sites still run_attempt Loom+benchmark and input_slots validateKani. Scope exact compile repairs only. Other3090 task vb-hrvix owns input-slot Verus decision/projection/test coverage; do not edit its proof files. Canonical baseline still running with13 actualKani harnesses passed, no fullCIresultyet. Keep default Verus lifetime checks.\nRoot actual diagnostics also has7 dead-code helpers in vb_ko29_5_public_idempotency.rs. Read root check-diagnostics.stderr full. Repair exact dead fixtures, preserve tests/exact assertions; do not add allows. You own these fixture compile fixes. 5090 vb-ja1zd owns only TSAN outputdirectory .moon fix. 3090 vb-hrvix owns only inputslot proof model/new behavior test, no surface overlap. When done freeze for independent review; do not keep expanding beyond actual compile issues and recovery ICE."
+}

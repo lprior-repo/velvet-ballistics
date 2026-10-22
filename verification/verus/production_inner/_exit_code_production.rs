@@ -128,10 +128,10 @@ pub enum JournalError {
 use std::process::ExitCode;
 
 // ---------------------------------------------------------------------------
-// Production `crates/velvet_ballistics/src/exit_code.rs:5-32` — `CliExitCode` enum
+// Production `crates/velvet_ballistics/src/exit_code.rs:5-34` — `CliExitCode` enum
 // ---------------------------------------------------------------------------
 //
-// Production lines 5-32: `CliExitCode` enum declaration with 9
+// Production lines 5-34: `CliExitCode` enum declaration with 10
 // variants and explicit `#[repr(u8)]` tags. Retained verbatim. The
 // production visibility is `pub(crate)`; the mirror uses `pub` so
 // the verification crate can re-export it via `pub use`.
@@ -158,14 +158,16 @@ pub enum CliExitCode {
     /// divergence after the internal error has been mapped to a
     /// public CLI status.
     ReplayDivergence = 8,
+    /// Lifecycle command rejected (e.g. resume on completed, retry on active).
+    LifecycleError = 9,
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/velvet_ballistics/src/exit_code.rs:34-38` —
+// Production `crates/velvet_ballistics/src/exit_code.rs:36-40` —
 //   `impl From<CliExitCode> for ExitCode`
 // ---------------------------------------------------------------------------
 //
-// Production lines 34-38. Retained verbatim.
+// Production lines 36-40. Retained verbatim.
 impl From<CliExitCode> for ExitCode {
     fn from(code: CliExitCode) -> Self {
         ExitCode::from(u8::from(code))
@@ -173,13 +175,13 @@ impl From<CliExitCode> for ExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// Production `crates/velvet_ballistics/src/exit_code.rs:40-54` —
+// Production `crates/velvet_ballistics/src/exit_code.rs:42-57` —
 //   `impl From<CliExitCode> for u8`
 // ---------------------------------------------------------------------------
 //
-// Production lines 40-54. Retained verbatim. This is the canonical
+// Production lines 42-57. Retained verbatim. This is the canonical
 // mapping that the spec file's `spec_cli_exit_code_discriminant`
-// function mirrors. The 9 match arms map each variant to its
+// function mirrors. The 10 match arms map each variant to its
 // `#[repr(u8)]` discriminant tag.
 impl From<CliExitCode> for u8 {
     fn from(code: CliExitCode) -> Self {
@@ -193,16 +195,17 @@ impl From<CliExitCode> for u8 {
             CliExitCode::IpcError => 6,
             CliExitCode::ActionPolicyError => 7,
             CliExitCode::ReplayDivergence => 8,
+            CliExitCode::LifecycleError => 9,
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:56-61` —
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:59-64` —
 //   `impl From<vb_core::errors::CoreError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
-// Production lines 56-61 declare
+// Production lines 59-64 declare
 //   impl From<vb_core::errors::CoreError> for CliExitCode {
 //       fn from(err: vb_core::errors::CoreError) -> Self {
 //           let _ = err;
@@ -226,11 +229,11 @@ impl From<CoreError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:63-68` —
+// SUBSTITUTED: Production `crates/velvet_ballistics/src/exit_code.rs:66-71` —
 //   `impl From<vb_storage::error::JournalError> for CliExitCode`
 // ---------------------------------------------------------------------------
 //
-// Production lines 63-68 declare
+// Production lines 66-71 declare
 //   impl From<vb_storage::error::JournalError> for CliExitCode {
 //       fn from(err: vb_storage::error::JournalError) -> Self {
 //           let _ = err;
@@ -250,11 +253,11 @@ impl From<JournalError> for CliExitCode {
 }
 
 // ---------------------------------------------------------------------------
-// REMOVED: Production `crates/velvet_ballistics/src/exit_code.rs:70-171` —
+// REMOVED: Production `crates/velvet_ballistics/src/exit_code.rs:73-181` —
 //   `#[cfg(test)] mod tests`
 // ---------------------------------------------------------------------------
 //
-// Production lines 70-171 declare a `#[cfg(test)] mod tests` block
+// Production lines 73-181 declare a `#[cfg(test)] mod tests` block
 // with 6 tests. REMOVED (see file header for rationale). The
 // semantic content of all 6 tests is captured by the spec proofs in
 // the companion spec file `diagnostic_envelope_verus.rs`.

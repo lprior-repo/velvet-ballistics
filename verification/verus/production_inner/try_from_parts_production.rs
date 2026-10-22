@@ -321,11 +321,58 @@ pub enum CompiledNodeKind {
     Other,
 }
 
+// ---------------------------------------------------------------------------
+// Local stub: `vb_core::workflow::ExprBranch` / `SlotBranch`
+// ---------------------------------------------------------------------------
+//
+// Production `ExprBranch` at workflow/mod.rs:282-288 and `SlotBranch`
+// at workflow/mod.rs:291-296. Final choose IR scaffolding targets.
+// Mirror preserves field NAMES and TYPES exactly.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExprBranch {
+    pub condition: ExprIdx,
+    pub target: StepIdx,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlotBranch {
+    pub condition: SlotIdx,
+    pub target: StepIdx,
+}
+
+// ---------------------------------------------------------------------------
+// Local stub: `vb_core::workflow::InputSlotKind` / `CompiledInputSlot`
+// ---------------------------------------------------------------------------
+//
+// Production `InputSlotKind` at workflow/mod.rs:301-320 (9-variant enum)
+// and `CompiledInputSlot` at workflow/mod.rs:328-335. Mirror preserves
+// the variant NAMES and field NAMES/TYPES exactly.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputSlotKind {
+    Null,
+    Bool,
+    I64,
+    F64,
+    Symbol,
+    List,
+    Object,
+    Blob,
+    Any,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompiledInputSlot {
+    pub slot: SlotIdx,
+    pub kind: InputSlotKind,
+}
+
 // ===========================================================================
 // VERBATIM PRODUCTION: `WorkflowParts` struct declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:272-297
+// Source: crates/vb_core/src/workflow/mod.rs:337-370
 // Drift policy: any change to the field NAMES or TYPES in production
 // MUST be mirrored here. The `Box<[T]>` production fields are replaced
 // with `Vec<T>` because `Box<[T]>` requires the `alloc` crate to be
@@ -335,6 +382,7 @@ pub enum CompiledNodeKind {
 pub struct WorkflowParts {
     pub name: Box<str>,
     pub digest: WorkflowDigest,
+    pub semantic_source_identity: Option<WorkflowDigest>,
     pub nodes: Vec<CompiledNode>,
     pub expressions: Vec<ExprProgram>,
     pub accessors: Vec<AccessorProgram>,
@@ -344,20 +392,21 @@ pub struct WorkflowParts {
     pub entry: StepIdx,
     pub resource_contract: ResourceContract,
     pub step_names: Vec<Box<str>>,
+    pub input_slots: Vec<CompiledInputSlot>,
 }
 
 // ===========================================================================
 // VERBATIM PRODUCTION: `CompiledWorkflow::try_from_parts` method body
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:33-51
+// Source: crates/vb_core/src/workflow/mod.rs:37-62
 // Drift policy: any change to this function in production MUST be
-// mirrored here. The spec proofs reason about the four structural
+// mirrored here. The spec proofs reason about the structural
 // invariants the production `try_from_parts` enforces (entry in
 // nodes bounds, slot_count u16-bounded, symbols_count u32-bounded,
 // nodes non-empty), but the full body is included verbatim so any
-// rename of `validate_parts`, `validate_budget`, `parts.name`, or
-// any field breaks this mirror at compile time.
+// rename of `validate_parts`, `validate_budget`, `validate_input_slots`,
+// `parts.name`, or any field breaks this mirror at compile time.
 
 /// Production `CompiledWorkflow` at workflow/mod.rs:17-31. The mirror
 /// preserves the field NAMES exactly; the field VISIBILITY is `pub` so
@@ -366,6 +415,7 @@ pub struct WorkflowParts {
 pub struct CompiledWorkflow {
     pub name: Box<str>,
     pub digest: WorkflowDigest,
+    pub semantic_source_identity: Option<WorkflowDigest>,
     pub nodes: Vec<CompiledNode>,
     pub expressions: Vec<ExprProgram>,
     pub accessors: Vec<AccessorProgram>,
@@ -375,22 +425,25 @@ pub struct CompiledWorkflow {
     pub entry: StepIdx,
     pub resource_contract: ResourceContract,
     pub step_names: Vec<Box<str>>,
+    pub input_slots: Vec<CompiledInputSlot>,
 }
 
 impl CompiledWorkflow {
     /// Verbatim copy of production `CompiledWorkflow::try_from_parts`
-    /// at crates/vb_core/src/workflow/mod.rs:33-51. The body delegates
-    /// to the production `validate_parts` and `validate_budget` helpers
-    /// (workflow/mod.rs:753-785). The mirror provides stub bodies for
-    /// these helpers (return Ok) because the spec proofs reason about
-    /// the postcondition contracts, not about the validation
+    /// at crates/vb_core/src/workflow/mod.rs:37-62. The body delegates
+    /// to the production `validate_parts`, `validate_budget`, and
+    /// `validate_input_slots` helpers. The mirror provides stub bodies
+    /// for these helpers (return Ok) because the spec proofs reason
+    /// about the postcondition contracts, not about the validation
     /// implementation details.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         validate_budget(&parts)?;
+        validate_input_slots(&parts)?;
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
+            semantic_source_identity: parts.semantic_source_identity,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -400,6 +453,7 @@ impl CompiledWorkflow {
             entry: parts.entry,
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
+            input_slots: parts.input_slots,
         })
     }
 }
@@ -408,7 +462,7 @@ impl CompiledWorkflow {
 // VERBATIM PRODUCTION: `WorkflowError` enum declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:319-452
+// Source: crates/vb_core/src/workflow/mod.rs:394-549
 // Drift policy: any change to the `WorkflowError` discriminant set in
 // production MUST be mirrored here. The mirror preserves the variant
 // NAMES and FIELD STRUCTURES verbatim; the `thiserror::Error` derive
@@ -438,6 +492,9 @@ pub enum WorkflowError {
     AccessorPathTooDeep { depth: usize, max: usize },
     JumpCycle { step: StepIdx, target: StepIdx },
     NestedTogether { outer: StepIdx, inner: StepIdx },
+    InputSlotOutOfBounds { slot: SlotIdx, kind: InputSlotKind },
+    DuplicateInputSlot { slot: SlotIdx, kind: InputSlotKind },
+    NonCanonicalInputSlotOrder { prev_slot: SlotIdx, curr_slot: SlotIdx },
 }
 
 // ===========================================================================
@@ -471,5 +528,9 @@ pub fn validate_parts(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
 }
 
 pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    Ok(())
+}
+
+pub fn validate_input_slots(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }

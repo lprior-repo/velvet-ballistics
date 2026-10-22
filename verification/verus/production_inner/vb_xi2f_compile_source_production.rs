@@ -98,8 +98,9 @@
 pub mod try_from_parts_mirror;
 
 pub use try_from_parts_mirror::{
-    validate_parts, validate_budget, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-    ConstValue, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    validate_parts, validate_budget, validate_input_slots, CompiledInputSlot, CompiledNode,
+    CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, InputSlotKind, ResourceContract,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 // ===========================================================================
@@ -300,6 +301,7 @@ pub struct SlotCompiler {
     pub constants: Vec<ConstValue>,
     pub expressions: Vec<try_from_parts_mirror::ExprProgram>,
     pub accessors: Vec<try_from_parts_mirror::AccessorProgram>,
+    pub input_slots: Vec<CompiledInputSlot>,
     pub max_slot: Option<usize>,
 }
 
@@ -318,7 +320,12 @@ impl SlotCompiler {
         });
     }
 
-    /// Production `SlotCompiler::push_node` at part_08.rs:86-88.
+    /// Production `SlotCompiler::record_input_slot` at part_08.rs:86-88.
+    pub fn record_input_slot(&mut self, slot: SlotIdx, kind: InputSlotKind) {
+        self.input_slots.push(CompiledInputSlot { slot, kind });
+    }
+
+    /// Production `SlotCompiler::push_node` at part_08.rs:91-93.
     pub fn push_node(&mut self, node: CompiledNode) {
         self.nodes.push(node);
     }
@@ -378,8 +385,8 @@ impl SlotCompiler {
 // ===========================================================================
 //
 // Production `CanonicalStepLayout` struct + canonical_layout fn +
-// canonical_step_width helper at part_01.rs:62-202.
-// Source: crates/vb_compile/src/mod_compile_lowering/part_01.rs:62-202
+// canonical_step_width helper at part_01.rs:116-255.
+// Source: crates/vb_compile/src/mod_compile_lowering/part_01.rs:116-255
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanonicalStepLayout {
@@ -760,11 +767,16 @@ pub fn compile_source_production(
         })?;
     }
 
-    // Step 6: WorkflowParts construction (part_01.rs:45-57).
-    // entry=0, symbols_count=0, ResourceContract::DEFAULT.
+    // Step 6: WorkflowParts construction (part_01.rs:59-73).
+    // entry=0, symbols_count=0, ResourceContract::DEFAULT. The
+    // projection carries the supplied digest as the source identity
+    // (production computes `semantic_source_identity = canonical_digest`
+    // and `digest = blake3(encoded_parts)`; the projection has a single
+    // digest parameter and no opaque crypto step).
     let parts = WorkflowParts {
         name: Box::from(name),
         digest,
+        semantic_source_identity: Some(digest),
         slot_count: builder
             .slot_count()
             .map_err(|_| SpecCompileError::StepIndexOutOfRange { value: 0 })?,
@@ -776,6 +788,7 @@ pub fn compile_source_production(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into(),
+        input_slots: builder.input_slots.into(),
     };
 
     // Step 7: vb_validate::shared::validate(&parts)? (part_01.rs:58).

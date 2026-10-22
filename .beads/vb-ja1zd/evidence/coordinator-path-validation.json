@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ja1zd-local5090-tsan",
+  "argv": [
+    "python3",
+    ".beads/vb-ja1zd/evidence/path-fix-validation.py"
+  ],
+  "exit_code": 0,
+  "seconds": 0.034,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ja1zd/evidence/coordinator-path-validation",
+  "coordinator_message": "Root exact baseline state lastRun: fuzz-tsan exit1 TSAN-MISSING; fuzz-smoke also exit1 (target/fuzz-smoke/accessor_traversal.compile.log says MISSING fuzz/target...). All3 fuzz-smoke/regress/tsan hardcode obsolete fuzz/target at .moon/tasks/all.yml545/604/639; same cause proved by actual root workspace Cargo metadata. Repair same bounded outputdir contract across these3 tasks if needed, not arbitrary gates. Prefer explicit --target-dir \"$PWD/target/fuzz-tsan/build\" and consistent lookup for TSAN isolated from ASAN tasks: concurrent ASAN/TSAN currently share target path, so simply target/ lookup can race/check wrong instrumentation. ASAN smoke+regress may share a declared ASAN targetdir because identical flags; preserve existing corpus/replay/time limits and failclosed requirements. No fake cached build claim: raw baseline build success is historical read evidence; root owns fresh actual final canonical after freeze. Current baseline Kani stillrunning13proofs0sofar. OtherDeepSeek owns Loom/bench/dead-helper fixtures+recovery ICE;3090 owns inputslot proof+tests. Root will independently review and rerun canonical."
+}

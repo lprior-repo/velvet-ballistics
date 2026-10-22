@@ -80,9 +80,9 @@
 //   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:925-946
 //   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:1063-1098
 //   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:776-790
-//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:792-799
-//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:801-810
-//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:812-819
+//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:806-811
+//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:815-822
+//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:826-831
 //   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:547-562
 //   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:564-589
 //   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:604-645
@@ -152,7 +152,7 @@
 //        steps_apply_ok, slots_apply_ok, pc_in_bounds,
 //        unsupported_passes_through_reject).)
 //   - `SummaryRecoveryBoundary::hydrate_run_frame`
-//        <- crates/vb_runtime/src/recovery.rs:194-209
+//        <- crates/vb_runtime/src/recovery.rs:220-222
 //        (production body: returns Err(UnsupportedFullRecoveryHydration).
 //        Pure projection: never succeeds.)
 //
@@ -723,37 +723,6 @@ impl RecoveryCannotResumeState {
         "resumable"
     }
 }
-
-/// Canonical reason strings for [`RecoveryCannotResumeState`], ordered
-    /// by classification priority (the first true flag wins). The order
-    /// MUST match [`RecoveryCannotResumeState`]'s flag-accessor
-    /// contract.
-    ///
-    /// DRIFT D3 (binding ledger): the production array is named
-    /// `CANNOT_RESUME_REASONS` at
-    /// `crates/vb_storage/src/recovery/types.rs:1213-1227`. The mirror
-    /// redeclares it in the extern layer because `crate::recovery::types`
-    /// is not reachable from this standalone `verus --crate-type=lib`
-    /// invocation (see "WHY NOT FULL `#[path]` INCLUSION OF PRODUCTION
-    /// SOURCES" at the top of this file). The spec proof
-    /// `proof_unsupported_reason_first_match_wins` in
-    /// `recovery_verification.rs` demonstrates the priority invariant
-    /// over this mirror.
-    pub const CANNOT_RESUME_REASONS: [&str; 13] = [
-        "slot_values",
-        "slot_taint",
-        "action_payloads",
-        "pending_actions",
-        "pending_timers",
-        "pending_asks",
-        "workflow_missing",
-        "store_missing",
-        "action_attempts_missing",
-        "admission_missing",
-        "collect_states_missing",
-        "action_contracts_missing",
-        "action_abi_digests_missing",
-    ];
 
 // ============================================================================
 // Digest* mirrors — types.rs:346-526, 1606-1652

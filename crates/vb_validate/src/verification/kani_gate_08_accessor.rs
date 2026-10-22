@@ -194,6 +194,7 @@ fn workflow_parts_with_accessors(
         entry: kani::any(),
         resource_contract: kani::any::<ResourceContract>(),
         step_names: bounded_step_names(),
+        input_slots: Box::new([]),
     }
 }
 
