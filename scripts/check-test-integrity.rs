@@ -40,6 +40,22 @@ fn tool_output(tool: &str, args: &[&str], cwd: &Path) -> Result<String, String> 
         Err(format!("{tool} {} failed: {stderr}", args.join(" ")))
     }
 }
+fn tool_output_bytes(tool: &str, args: &[&str], cwd: &Path) -> Result<Vec<u8>, String> {
+    let output = Command::new(tool)
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .map_err(|error| format!("{tool} {} failed to start: {error}", args.join(" ")))?;
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("{tool} {} failed: {stderr}", args.join(" ")))
+    }
+}
+fn command_output_abs(binary: &str, args: &[&str], cwd: &Path) -> Result<String, String> {
+    tool_output(binary, args, cwd)
+}
 
 fn command_output(args: &[&str], cwd: &Path) -> Result<String, String> {
     tool_output("git", args, cwd)
@@ -279,11 +295,74 @@ fn scan_deleted_files(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<Finding>,
     })
 }
 
-fn diff_text(root: &Path, base: &str, vcs: Vcs) -> Result<String, String> {
+fn diff_bytes(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<u8>, String> {
     match vcs {
-        Vcs::Git => command_output(&["diff", "--find-renames", "--unified=0", base, "--"], root),
-        Vcs::Jj => jj_output(&["diff", "--git", "--from", base, "--to", "@"], root),
+        Vcs::Git => tool_output_bytes("git", &["diff", "--find-renames", "--unified=0", base, "--"], root),
+        Vcs::Jj => tool_output_bytes("jj", &["diff", "--git", "--from", base, "--to", "@"], root),
     }
+}
+
+fn split_hunks(diff: &[u8]) -> Vec<Vec<u8>> {
+    let mut hunks: Vec<Vec<u8>> = Vec::new();
+    let mut current: Vec<u8> = Vec::new();
+    let lines = diff.split(|&byte| byte == b'\n');
+    for line in lines {
+        if line.starts_with(b"diff --git ") {
+            if !current.is_empty() {
+                hunks.push(current);
+            }
+            current = Vec::new();
+        }
+        current.extend_from_slice(line);
+        current.push(b'\n');
+    }
+    if !current.is_empty() {
+        hunks.push(current);
+    }
+    hunks
+}
+
+fn hunk_test_path(hunk: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(hunk);
+    for line in text.lines() {
+        if let Some(path) = line.strip_prefix("+++ b/") {
+            if is_test_path(path) {
+                return Some(path.to_owned());
+            }
+        } else if let Some(path) = line.strip_prefix("--- a/") {
+            if is_test_path(path) {
+                return Some(path.to_owned());
+            }
+        }
+    }
+    None
+}
+
+fn scan_diff_bytes(diff: Vec<u8>) -> Vec<Finding> {
+    let hunks = split_hunks(&diff);
+    let mut findings = Vec::new();
+    for hunk in hunks {
+        let path = match hunk_test_path(&hunk) {
+            Some(p) => p,
+            None => continue,
+        };
+        if !is_test_path(&path) {
+            continue;
+        }
+        let text = match String::from_utf8(hunk) {
+            Ok(t) => t,
+            Err(error) => {
+                findings.push(Finding {
+                    kind: "NonUtf8TestFile",
+                    path,
+                    detail: format!("test file contains non-UTF8 bytes: {error}"),
+                });
+                continue;
+            }
+        };
+        findings.extend(scan_diff(&text));
+    }
+    findings
 }
 
 fn scan_diff(diff: &str) -> Vec<Finding> {
@@ -397,7 +476,7 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
 fn check(root: &Path, base: &str, vcs: Vcs) -> Result<i32, String> {
     validate_base_revision(root, base, vcs)?;
     let mut findings = scan_deleted_files(root, base, vcs)?;
-    findings.extend(scan_diff(&diff_text(root, base, vcs)?));
+    findings.extend(scan_diff_bytes(diff_bytes(root, base, vcs)?));
     if findings.is_empty() {
         println!("test integrity: PASS base={base}");
         Ok(0)
@@ -434,11 +513,10 @@ fn run_self_test_case(label: &str, test_path: &str, mutate: &str, expected: i32)
     let init = fs::create_dir_all(&root)
         .and_then(|()| write(&test_file, base_text))
         .map_err(|error| error.to_string())
-        .and_then(|()| command_output(&["init", "-q"], &root).map(|_| ()))
-        .and_then(|()| command_output(&["add", "."], &root).map(|_| ()))
+        .and_then(|()| command_output_abs("/usr/bin/git", &["init", "-q"], &root).map(|_| ()))
+        .and_then(|()| command_output_abs("/usr/bin/git", &["add", "."], &root).map(|_| ()))
         .and_then(|()| {
-            command_output(
-                &[
+            command_output_abs("/usr/bin/git", &[
                     "-c",
                     "user.name=guard",
                     "-c",
@@ -492,6 +570,62 @@ fn run_self_test_case(label: &str, test_path: &str, mutate: &str, expected: i32)
     );
     passed
 }
+fn run_self_test_case_with_evidence(label: &str, test_path: &str, mutate: &str, expected: i32) -> bool {
+    let root = std::env::temp_dir().join(format!("test-integrity-{}-{label}", std::process::id()));
+    let cleanup_result = fs::remove_dir_all(&root);
+    match cleanup_result {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => {
+            eprintln!("SelfTest:{label}: cleanup failed: {error}");
+            return false;
+        }
+    }
+    let test_file = root.join(test_path);
+    let base_text = "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n}\n";
+    let init = fs::create_dir_all(&root)
+        .and_then(|()| write(&test_file, base_text))
+        .map_err(|error| error.to_string())
+        .and_then(|()| command_output_abs("/usr/bin/git", &["init", "-q"], &root).map(|_| ()))
+        .and_then(|()| command_output_abs("/usr/bin/git", &["add", "."], &root).map(|_| ()))
+        .and_then(|()| {
+            command_output_abs("/usr/bin/git", &[
+                "-c", "user.name=guard", "-c", "user.email=guard@example.invalid",
+                "commit", "-q", "-m", "base",
+            ], &root)
+            .map(|_| ())
+        });
+    if let Err(error) = init {
+        eprintln!("SelfTest:{label}: setup failed: {error}");
+        return false;
+    }
+    let mutation = match mutate {
+        "delete" => fs::remove_file(&test_file),
+        "weaken" => write(
+            &test_file,
+            "#[test]\nfn behavior_test() {\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n",
+        ),
+        _ => Ok(()),
+    };
+    if let Err(error) = mutation {
+        eprintln!("SelfTest:{label}: mutation failed: {error}");
+        return false;
+    }
+    let evidence_dir = root.join(".beads/evidence");
+    fs::create_dir_all(&evidence_dir).ok();
+    let evidence_file = evidence_dir.join("proof.dat");
+    let binary_bytes: [u8; 16] = [
+        0xff, 0xfe, 0x00, 0x01, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b,
+    ];
+    fs::write(&evidence_file, &binary_bytes).ok();
+    let actual = check(&root, "HEAD", Vcs::Git).unwrap_or(2);
+    let passed = actual == expected;
+    println!(
+        "SelfTest:{label}: {} expected={expected} actual={actual}",
+        if passed { "PASS" } else { "FAIL" }
+    );
+    passed
+}
 
 fn self_test() -> i32 {
     let workspace_test_path = "crates/workspace_tests/tests/behavior.rs";
@@ -534,7 +668,11 @@ fn self_test() -> i32 {
     let ok = cases.iter().all(|(label, test_path, mutate, expected)| {
         run_self_test_case(label, test_path, mutate, *expected)
     });
-    if ok { 0 } else { 1 }
+    let binary_pass = run_self_test_case_with_evidence("unrelated-binary-passes", workspace_test_path, "none", 0);
+    let binary_fail_delete = run_self_test_case_with_evidence("binary-with-test-delete", workspace_test_path, "delete", 1);
+    let binary_fail_weaken = run_self_test_case_with_evidence("binary-with-weak-assertion", workspace_test_path, "weaken", 1);
+    let all_ok = ok && binary_pass && binary_fail_delete && binary_fail_weaken;
+    if all_ok { 0 } else { 1 }
 }
 
 fn argument_value(args: &[String], flag: &str) -> Option<String> {
