@@ -265,8 +265,8 @@ mod durability_gate_tests {
         // accepted_at_seq must be a valid EventSeq (non-null, properly constructed)
         assert_eq!(
             result.accepted_at_seq.get(),
-            0,
-            "accepted_at_seq should be initialized to 0 in current implementation"
+            1,
+            "accepted_at_seq should be the first issued sequence number (1)"
         );
         Ok(())
     }
