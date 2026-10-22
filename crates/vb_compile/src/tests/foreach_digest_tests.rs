@@ -129,11 +129,12 @@ fn foreach_at_once_none_some1_produces_identical_step_digest() {
     let digest_none = step_digest_bytes(&step_none);
     let digest_some1 = step_digest_bytes(&step_some1);
 
-    // Then: Both hashers produce identical bytes
-    // (None → 1u32, Some(1) → 1u32 — semantic equivalence)
-    assert_eq!(
+    // Then: None and Some(1) produce different digests (explicit discriminants)
+    // This is the fix for the boundary collision: None means "unspecified"
+    // while Some(1) means "explicitly set to 1".
+    assert_ne!(
         digest_none, digest_some1,
-        "at_once=None and at_once=Some(1) must produce identical digest contributions"
+        "at_once=None and at_once=Some(1) must produce different digest contributions"
     );
 }
 
@@ -148,10 +149,10 @@ fn foreach_at_once_none_some1_produces_identical_workflow_digest() {
     let digest_none = canonical_digest_part05(&source_none);
     let digest_some1 = canonical_digest_part05(&source_some1);
 
-    // Then: Both produce identical WorkflowDigest values
-    assert_eq!(
+    // Then: None and Some(1) produce different digests (explicit discriminants)
+    assert_ne!(
         digest_none, digest_some1,
-        "at_once=None and at_once=Some(1) must produce identical workflow digests"
+        "at_once=None and at_once=Some(1) must produce different workflow digests"
     );
 }
 
