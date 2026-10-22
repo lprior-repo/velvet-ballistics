@@ -1187,3 +1187,9 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
         "`From<postcard::Error>` for `JournalError` must continue to produce the Encode variant"
     );
 }
+
+#[path = "acceptance_sequence_failure_tests.rs"]
+mod acceptance_sequence_failure_tests;
+
+#[path = "acceptance_sequence_concurrency_tests.rs"]
+mod acceptance_sequence_concurrency_tests;

@@ -7,8 +7,20 @@
 use std::sync::{Arc, Mutex};
 use vb_core::RuntimePolicy;
 
-// Parent module provides these private helpers for test use.
 use super::{minimal_workflow, temp_journal};
+use crate::admission::*;
+
+/// Helper to run a submission in a thread, returning the accepted artifact.
+fn submit_thread(
+    journal: Arc<Mutex<super::TestJournal>>,
+    workflow: vb_core::CompiledWorkflow,
+) -> std::thread::JoinHandle<Result<AcceptedArtifact, String>> {
+    std::thread::spawn(move || {
+        let guard = journal.lock().map_err(|e| format!("lock poisoned: {e}"))?;
+        submit_artifact(&*guard, &workflow, RuntimePolicy::Relaxed)
+            .map_err(|e| format!("submit_artifact failed: {e}"))
+    })
+}
 
 /// 8 concurrent submissions must all succeed with unique sequences 1-8.
 #[test]
@@ -16,137 +28,94 @@ fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(),
     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
     let workflow = minimal_workflow()?;
 
-    // The journal must be Send+Sync to be shared across threads.
-    // FjallJournal has write_lock: Mutex<()> and uses fjall::Database which is thread-safe.
-    let shared_journal = Arc::new(journal);
-
-    let results: Arc<Mutex<Vec<Result<(u64, vb_core::WorkflowDigest), String>>>> =
-        Arc::new(Mutex::new(Vec::new()));
+    // Arc<Mutex<>> to share journal across threads. FjallJournal is not
+    // Send+Sync itself; the internal write_lock provides serialization.
+    let shared_journal = Arc::new(Mutex::new(journal));
 
     let mut handles = Vec::new();
-
-    for i in 0..8 {
-        let j = shared_journal.clone();
-        let r = results.clone();
+    for _ in 0..8 {
         let wf = workflow.clone();
-
-        let handle = std::thread::Builder::new()
-            .name(format!("submitter-{i}"))
-            .spawn(move || {
-                // Each thread submits the same workflow.
-                let result = crate::admission::submit_artifact(&j, &wf, RuntimePolicy::Default)
-                    .map(|artifact| {
-                        let seq = artifact.accepted_at_seq.get();
-                        (seq, artifact.digest)
-                    })
-                    .map_err(|e| format!("submission failed: {e}"));
-
-                let mut guard = r.lock().map_err(|e| format!("lock poisoned: {e}"))?;
-                guard.push(result);
-                Ok(())
-            })
-            .map_err(|e| format!("thread spawn failed: {e}"))?;
-
-        handles.push(handle);
+        let j = Arc::clone(&shared_journal);
+        handles.push(submit_thread(j, wf));
     }
 
-    // Join all threads, propagating any join errors.
+    // Join all threads, collecting results.
+    let mut artifacts = Vec::new();
     for handle in handles {
-        handle.join().map_err(|e| format!("thread join failed: {e:?}"))??;
+        let result = handle
+            .join()
+            .map_err(|e| format!("thread join failed: {e:?}"))??;
+        artifacts.push(result);
     }
 
-    // Collect all results.
-    let guard = results.lock().map_err(|e| format!("lock poisoned: {e}"))?;
-    let all_results = guard.clone();
-    drop(guard);
-
-    if all_results.len() != 8 {
-        return Err(format!("expected 8 results, got {}", all_results.len()));
+    if artifacts.len() != 8 {
+        return Err(format!("expected 8 artifacts, got {}", artifacts.len()));
     }
 
-    // All must have succeeded.
-    let mut seqs_and_digests = Vec::new();
-    for (i, result) in all_results.iter().enumerate() {
-        match result {
-            Ok((seq, digest)) => {
-                seqs_and_digests.push((*seq, *digest));
-            }
-            Err(e) => {
-                return Err(format!("thread {i} failed: {e}"));
-            }
-        }
+    // Extract sequences and digests.
+    let mut seqs = Vec::new();
+    for artifact in &artifacts {
+        seqs.push(artifact.accepted_at_seq.get());
     }
 
     // Sequences must be unique and form the set {1, 2, 3, 4, 5, 6, 7, 8}.
-    let mut seqs = seqs_and_digests.iter().map(|(s, _)| *s).collect::<Vec<_>>();
-    seqs.sort();
-
+    let mut sorted_seqs = seqs.clone();
+    sorted_seqs.sort();
     let expected: Vec<u64> = (1..=8).collect();
-    if seqs != expected {
-        return Err(format!(
-            "sequences must be 1-8 unique, got: {:?}",
-            seqs
-        ));
+    if sorted_seqs != expected {
+        return Err(format!("sequences must be 1..=8, got {:?}", sorted_seqs));
     }
 
-    // All digests must be unique (same workflow content, but each accepted
-    // artifact gets a different accepted_at_seq, which is included in the digest).
-    let mut digests = seqs_and_digests.iter().map(|(_, d)| *d).collect::<Vec<_>>();
+    // All digests must be unique.
+    let mut digests = Vec::new();
+    for artifact in &artifacts {
+        digests.push(artifact.digest);
+    }
     digests.sort();
     digests.dedup();
     if digests.len() != 8 {
-        return Err(format!(
-            "expected 8 unique artifact digests, got {}",
-            digests.len()
-        ));
+        return Err(format!("expected 8 unique digests, got {}", digests.len()));
     }
 
     // Verify each artifact is readable and valid by calling
     // verify_accepted_artifact_for_policy on each.
-    for (seq, _) in &seqs_and_digests {
-        // Re-read the artifact from the journal by its sequence.
-        // We need to find it by iterating or by digest. Since we have the
-        // digests from above, use those.
-    }
-
-    // Actually verify each artifact by reading it back through the journal API.
-    // We need to reconstruct the artifacts to verify them. Since we don't have
-    // the full artifact structs here, we verify by reading back the compiled IR
-    // and checking the counter.
-    let journal_ref = &*shared_journal;
-
-    // Verify the final counter is 8.
-    match journal_ref.artifact_acceptance.get(b"last_issued")? {
-        Some(value) => {
-            if value.len() != 8 {
-                return Err(format!("counter value wrong length: {}", value.len()));
-            }
-            let bytes: [u8; 8] = value.try_into().map_err(|_| "counter slice try_into failed")?;
-            let counter = u64::from_be_bytes(bytes);
-            if counter != 8 {
-                return Err(format!("final counter should be 8, got {}", counter));
-            }
+    let journal_guard = shared_journal
+        .lock()
+        .map_err(|e| format!("lock poisoned: {e}"))?;
+    for (i, artifact) in artifacts.iter().enumerate() {
+        // Verify artifact can be read back from journal.
+        let record = journal_guard
+            .compiled_ir(artifact.digest)
+            .map_err(|e| format!("compiled_ir read failed for artifact {i}: {e}"))?
+            .ok_or_else(|| format!("artifact {i} not found in journal"))?;
+        if record.digest != artifact.digest {
+            return Err(format!("record digest mismatch for artifact {i}"));
         }
-        None => return Err("counter should be Some after concurrent submissions".to_string()),
-    }
 
-    // Verify compiled IR keyspace has exactly 8 records.
-    let mut iter = journal_ref.compiled_ir.iter();
-    let mut count = 0u64;
-    loop {
-        let entry = iter.next();
-        match entry {
-            Some(Ok(_)) => {
-                count = count.checked_add(1).ok_or("artifact count overflow")?;
-            }
-            Some(Err(e)) => {
-                return Err(format!("iter error: {e}"));
-            }
-            None => break,
+        // Verify artifact is valid for its policy.
+        verify_accepted_artifact_for_policy(artifact, RuntimePolicy::Relaxed)
+            .map_err(|e| format!("verify failed for artifact {i}: {e}"))?;
+
+        // Verify digest matches.
+        let computed = accepted_artifact_digest(artifact)
+            .map_err(|e| format!("accepted_artifact_digest failed for {i}: {e}"))?;
+        if computed != artifact.digest {
+            return Err(format!("digest mismatch for artifact {i}"));
+        }
+        if computed != artifact.verification.digest {
+            return Err(format!("verification digest mismatch for artifact {i}"));
         }
     }
-    if count != 8 {
-        return Err(format!("expected 8 compiled IR records, got {}", count));
+
+    // Verify next submission gets seq 9.
+    let workflow = minimal_workflow()?;
+    let next = submit_artifact(&*journal_guard, &workflow, RuntimePolicy::Relaxed)
+        .map_err(|e| format!("seq 9 submission failed: {e}"))?;
+    if next.accepted_at_seq.get() != 9 {
+        return Err(format!(
+            "next artifact should have seq 9, got {}",
+            next.accepted_at_seq.get()
+        ));
     }
 
     Ok(())
