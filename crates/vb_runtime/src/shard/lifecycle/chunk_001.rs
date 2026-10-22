@@ -405,6 +405,13 @@ impl Shard {
         // Step 5: Restore the full validated checkpoint when this is a retry.
         // The checkpoint's accepted artifact digest and action registry are
         // checked against the independently loaded artifact before run state mutates.
+        let registered_execution = if boundary.kind()
+            == crate::recovery::RecoveredRunBoundaryKind::PendingAction
+        {
+            crate::shard::types::RegisteredExecutionMode::ReconcileOnly
+        } else {
+            crate::shard::types::RegisteredExecutionMode::Live
+        };
         let state = if let Some(checkpoint) = retry_checkpoint {
             let (state, _attempt, _retry_step, _prior_seq) = checkpoint
                 .restore(workflow, artifact_digest, &artifact.action_contracts)
@@ -428,7 +435,7 @@ impl Shard {
             let max_slots = workflow.resource_contract().max_slots;
             self.prepare_run_slots(run)?;
             crate::shard::types::RunState {
-                registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
+                registered_execution,
                 frame,
                 run_attempt: core::num::NonZeroU16::MIN,
                 workflow,

@@ -1,0 +1,4 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-integration-local5090-20261021/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-integration-local5090-20261021/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.31s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-bda23c7f702841f8)

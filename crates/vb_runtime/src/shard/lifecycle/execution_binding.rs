@@ -55,10 +55,40 @@ fn compare_execution_tuple(
             found: artifact.source_digest,
         });
     }
+    compare_action_abi_digests(artifact, contracts)?;
     let payload = postcard::to_allocvec(&workflow.to_parts())
         .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
     if payload != artifact.ir || contracts != artifact.action_contracts.as_ref() {
         return Err(RuntimeError::AdmissionArtifactInvalid { digest });
+    }
+    Ok(())
+}
+
+/// Compares submitter action ABI digests against the accepted artifact's
+/// contracts before the full contract-equality comparison, so a divergent
+/// submitter contract surfaces as a specific `AdmissionActionAbiDigestMismatch`
+/// rather than a generic `AdmissionArtifactInvalid`.
+fn compare_action_abi_digests(
+    artifact: &AcceptedArtifact,
+    contracts: &[ActionContract],
+) -> RuntimeResult<()> {
+    for contract in contracts {
+        let Some(accepted) = artifact
+            .action_contracts
+            .iter()
+            .find(|accepted| accepted.id == contract.id)
+        else {
+            continue;
+        };
+        let expected = crate::recovery::action_contract_abi_digest(accepted)?;
+        let submitted = crate::recovery::action_contract_abi_digest(contract)?;
+        if submitted != expected {
+            return Err(RuntimeError::AdmissionActionAbiDigestMismatch {
+                action: contract.id,
+                expected,
+                submitted,
+            });
+        }
     }
     Ok(())
 }

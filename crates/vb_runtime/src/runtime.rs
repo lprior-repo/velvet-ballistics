@@ -603,6 +603,10 @@ impl Runtime {
             &recovered.workflow,
             &expected,
         )?;
+        // Enforce receipt-only reconciliation for recovered registered actions:
+        // a pending registered action must be reconciliable from the durable
+        // receipt before the run is allowed to resume (no live re-execution).
+        self.validate_registered_recovery(&recovered.artifact, boundary)?;
         Self::product_from_recovered_seed(run, prefix, seed, boundary, retained_inputs)
     }
 
