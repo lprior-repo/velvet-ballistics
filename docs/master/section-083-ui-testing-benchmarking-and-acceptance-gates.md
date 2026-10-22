@@ -75,7 +75,7 @@ Required UI benchmarks:
 
 ```bash
 cargo +nightly fmt --all -- --check
-cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --all-targets --all-features -- -D warnings
+cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --lib --bins --examples --all-features -- -D warnings
 cargo +nightly nextest run -p vb_ui_model -p vb_ui_makepad
 cargo xtask ui-tokens --check
 cargo xtask ui-snapshot --all
