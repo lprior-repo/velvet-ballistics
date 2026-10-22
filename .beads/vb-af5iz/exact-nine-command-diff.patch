@@ -1,0 +1,105 @@
+diff --git a/docs/master/section-040-ci-gate.md b/docs/master/section-040-ci-gate.md
+index ef11ca1be..4cdb9b4e8 100644
+--- a/docs/master/section-040-ci-gate.md
++++ b/docs/master/section-040-ci-gate.md
+@@ -28,7 +28,7 @@ Mandatory CI commands:
+ 
+ ```bash
+ cargo +nightly fmt --all -- --check
+-cargo +nightly clippy --workspace --all-targets --all-features -- \
++cargo +nightly clippy --workspace --lib --bins --examples --all-features -- \
+   -D warnings \
+   -D clippy::unwrap_used -D clippy::expect_used \
+   -D clippy::panic -D clippy::panic_in_result_fn \
+diff --git a/docs/master/section-044-evidence-and-bead-contract.md b/docs/master/section-044-evidence-and-bead-contract.md
+index 0f7897fa8..9455f955a 100644
+--- a/docs/master/section-044-evidence-and-bead-contract.md
++++ b/docs/master/section-044-evidence-and-bead-contract.md
+@@ -20,7 +20,7 @@ exit = 0
+ log = "logs/fmt.txt"
+ 
+ [[commands]]
+-command = "cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings"
++command = "cargo +nightly clippy --workspace --lib --bins --examples --all-features -- -D warnings"
+ exit = 0
+ log = "logs/clippy.txt"
+ 
+diff --git a/docs/master/section-077-ai-safe-quality-infrastructure.md b/docs/master/section-077-ai-safe-quality-infrastructure.md
+index 0e651af5b..69a060299 100644
+--- a/docs/master/section-077-ai-safe-quality-infrastructure.md
++++ b/docs/master/section-077-ai-safe-quality-infrastructure.md
+@@ -83,7 +83,7 @@ AI needs fast feedback first, then deep proof later. Three levels provide a ladd
+ ```bash
+ cargo +nightly fmt --all -- --check
+ cargo +nightly check --workspace --all-targets
+-cargo +nightly clippy -p <touched-crate> --all-targets --all-features -- -D warnings
++cargo +nightly clippy -p <touched-crate> --lib --bins --examples --all-features -- -D warnings
+ cargo +nightly nextest run -p <touched-crate>
+ cargo xtask forbidden-scan --changed
+ cargo xtask hotpath-scan --changed
+@@ -130,7 +130,7 @@ commands:
+   - command: cargo +nightly fmt --all -- --check
+     exit_code: 0
+     log: logs/fmt.txt
+-  - command: cargo +nightly clippy -p vb_core --all-targets --all-features -- -D warnings
++  - command: cargo +nightly clippy -p vb_core --lib --bins --examples --all-features -- -D warnings
+     exit_code: 0
+     log: logs/clippy-vb-core.txt
+   - command: cargo +nightly nextest run -p vb_core
+diff --git a/docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md b/docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md
+index 7797c6338..060e7858a 100644
+--- a/docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md
++++ b/docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md
+@@ -75,7 +75,7 @@ Required UI benchmarks:
+ 
+ ```bash
+ cargo +nightly fmt --all -- --check
+-cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --all-targets --all-features -- -D warnings
++cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --lib --bins --examples --all-features -- -D warnings
+ cargo +nightly nextest run -p vb_ui_model -p vb_ui_makepad
+ cargo xtask ui-tokens --check
+ cargo xtask ui-snapshot --all
+diff --git a/docs/rust-governance.md b/docs/rust-governance.md
+index 9164c8cbd..eee56af05 100644
+--- a/docs/rust-governance.md
++++ b/docs/rust-governance.md
+@@ -67,7 +67,7 @@ Routine acceptance uses:
+ ```bash
+ cargo fmt --all -- --check
+ cargo test --workspace --all-targets
+-cargo clippy --workspace --all-targets --all-features -- -D warnings
++cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings
+ ```
+ 
+ Governance and deeper verification are represented as Moon tasks. A represented task/probe is not the same as a passing gate; implementation reports must say whether each task was actually executed and passed, skipped, run with `--no-actions`, or left as a placeholder.
+diff --git a/velvet-ballistics-MASTER.md b/velvet-ballistics-MASTER.md
+index cdf836cda..545e84c10 100644
+--- a/velvet-ballistics-MASTER.md
++++ b/velvet-ballistics-MASTER.md
+@@ -1686,7 +1686,7 @@ Mandatory CI commands:
+ 
+ ```bash
+ cargo +nightly fmt --all -- --check
+-cargo +nightly clippy --workspace --all-targets --all-features -- \
++cargo +nightly clippy --workspace --lib --bins --examples --all-features -- \
+   -D warnings \
+   -D clippy::unwrap_used -D clippy::expect_used \
+   -D clippy::panic -D clippy::panic_in_result_fn \
+@@ -4432,7 +4432,7 @@ AI needs fast feedback first, then deep proof later. Three levels provide a ladd
+ ```bash
+ cargo +nightly fmt --all -- --check
+ cargo +nightly check --workspace --all-targets
+-cargo +nightly clippy -p <touched-crate> --all-targets --all-features -- -D warnings
++cargo +nightly clippy -p <touched-crate> --lib --bins --examples --all-features -- -D warnings
+ cargo +nightly nextest run -p <touched-crate>
+ cargo xtask forbidden-scan --changed
+ cargo xtask hotpath-scan --changed
+@@ -4479,7 +4479,7 @@ commands:
+   - command: cargo +nightly fmt --all -- --check
+     exit_code: 0
+     log: logs/fmt.txt
+-  - command: cargo +nightly clippy -p vb_core --all-targets --all-features -- -D warnings
++  - command: cargo +nightly clippy -p vb_core --lib --bins --examples --all-features -- -D warnings
+     exit_code: 0
+     log: logs/clippy-vb-core.txt
+   - command: cargo +nightly nextest run -p vb_core

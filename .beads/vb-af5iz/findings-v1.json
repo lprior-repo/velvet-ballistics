@@ -1,0 +1,81 @@
+{
+  "bead": "vb-af5iz",
+  "reviewer": "RTX5090-HIGH",
+  "workspace": "/home/lewis/src/isoloated/vb-af5iz-clippy-docs-review-v1",
+  "candidate": "ead54b85c83fc43782a263236be0c3c41d7433e4",
+  "parent": "4cf251fe1f11978788a587feae125e1ed87c8b7f",
+  "date": "2026-10-22",
+  "verdict": "APPROVED",
+  "scope_documents": [
+    "velvet-ballistics-MASTER.md",
+    "docs/rust-governance.md",
+    "docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md",
+    "docs/master/section-040-ci-gate.md",
+    "docs/master/section-077-ai-safe-quality-infrastructure.md",
+    "docs/master/section-044-evidence-and-bead-contract.md"
+  ],
+  "total_clippy_commands_found": 9,
+  "correctly_substituted": 9,
+  "moon_task_alignment": true,
+  "non_clippy_preserved": true,
+  "warning_unsafe_flags_preserved": true,
+  "nightly_pin_preserved": true,
+  "residual_all_targets_for_clippy": 0,
+  "findings": [
+    {
+      "file": "velvet-ballistics-MASTER.md",
+      "line": 1689,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "velvet-ballistics-MASTER.md",
+      "line": 4435,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "velvet-ballistics-MASTER.md",
+      "line": 4482,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/rust-governance.md",
+      "line": 70,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md",
+      "line": 78,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/master/section-040-ci-gate.md",
+      "line": 31,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/master/section-077-ai-safe-quality-infrastructure.md",
+      "line": 86,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/master/section-077-ai-safe-quality-infrastructure.md",
+      "line": 133,
+      "type": "substitution",
+      "status": "correct"
+    },
+    {
+      "file": "docs/master/section-044-evidence-and-bead-contract.md",
+      "line": 23,
+      "type": "substitution",
+      "status": "correct"
+    }
+  ],
+  "issues": []
+}
