@@ -2264,12 +2264,12 @@ mod tests {
     }
 
     #[test]
-    fn declared_keyspaces_returns_eleven_entries() {
+    fn declared_keyspaces_returns_twelve_entries() {
         // Given FjallJournal::declared_keyspaces()
         // When called
-        // Then it returns exactly 11 keyspace names including emergency_deny
+        // Then it returns exactly 12 keyspace names including artifact_acceptance
         let keyspaces = FjallJournal::declared_keyspaces();
-        assert_eq!(keyspaces.len(), 11);
+        assert_eq!(keyspaces.len(), 12);
         assert_eq!(keyspaces[0], "workflow_source");
         assert_eq!(keyspaces[1], "compiled_ir");
         assert_eq!(keyspaces[2], "run_header");
@@ -2281,6 +2281,7 @@ mod tests {
         assert_eq!(keyspaces[8], "index_action");
         assert_eq!(keyspaces.get(9), Some(&"run_inputs"));
         assert_eq!(keyspaces.get(10), Some(&"emergency_deny"));
+        assert_eq!(keyspaces.get(11), Some(&"artifact_acceptance"));
     }
 
     #[test]

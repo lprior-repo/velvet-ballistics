@@ -1,0 +1,200 @@
+//! Behavioral tests for default artifact submission sequence counter.
+//!
+//! Validates that submit_artifact and submit_artifact_with_contracts
+//! monotonically issue EventSeq values starting at 1, persist the
+//! counter across reopen, and produce correct readback behavior.
+
+use crate::admission::*;
+use crate::journal::artifact_acceptance::{encode_counter_value, LAST_ISSUED_KEY};
+use crate::journal::core::FjallJournal;
+use crate::keys::compiled_ir_key;
+use crate::{MAGIC_COMPILED_ARTIFACT, MAX_COMPILED_IR_BYTES, RecordKind};
+use std::sync::Arc;
+use std::thread;
+
+#[path = "fixtures.rs"]
+mod fixtures;
+use fixtures::{
+    minimal_workflow, prepare_artifact, read_counter, submit, submit_concurrent, submit_journaled,
+    submit_relaxed, submit_strict,
+};
+
+#[path = "failures.rs"]
+mod failures;
+use failures::*;
+
+#[path = "concurrency.rs"]
+mod concurrency;
+use concurrency::*;
+
+// First submission gets seq 1 regardless of durability policy.
+#[test]
+fn first_submission_is_seq_1_for_relaxed() -> Result<(), String> {
+    fixtures::submit_first_is_seq_1(vb_core::RuntimePolicy::Relaxed)
+}
+
+#[test]
+fn first_submission_is_seq_1_for_journaled() -> Result<(), String> {
+    fixtures::submit_first_is_seq_1(vb_core::RuntimePolicy::Journaled)
+}
+
+#[test]
+fn first_submission_is_seq_1_for_strict() -> Result<(), String> {
+    fixtures::submit_first_is_seq_1(vb_core::RuntimePolicy::Strict)
+}
+
+// Repeated workflows on same journal get strictly increasing sequences.
+#[test]
+fn repeated_submissions_increments_sequence() -> Result<(), String> {
+    fixtures::repeated_submissions_increase_sequence()
+}
+
+// Repeated workflows on same journal get strictly increasing sequences.
+#[test]
+fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), String> {
+    fixtures::repeated_submissions_distinct_digests_readback()
+}
+
+// Pure prepare remains seq 0.
+#[test]
+fn pure_prepare_remains_seq_0() -> Result<(), String> {
+    fixtures::pure_prepare_stays_seq_0()
+}
+
+// Submit after pure prepare gets seq 1.
+#[test]
+fn submit_after_prepare_is_seq_1() -> Result<(), String> {
+    fixtures::submit_after_prepare_is_seq_1()
+}
+
+// Counter persists across close/reopen.
+#[test]
+fn counter_persists_across_reopen() -> Result<(), String> {
+    fixtures::counter_persists_across_reopen()
+}
+
+// Counter value is stored as 8 bytes big-endian u64.
+#[test]
+fn counter_bytes_are_8_be_u64() -> Result<(), String> {
+    fixtures::counter_bytes_are_8_be_u64()
+}
+
+// Short counter value (7 bytes) causes MalformedKeyspaceRow with correct lengths.
+#[test]
+fn counter_length_7_causes_malformed_row() -> Result<(), String> {
+    failures::corrupted_counter_length_7()
+}
+
+// Long counter value (9 bytes) causes MalformedKeyspaceRow with correct lengths.
+#[test]
+fn counter_length_9_causes_malformed_row() -> Result<(), String> {
+    failures::corrupted_counter_length_9()
+}
+
+// Corrupt counter: actual counter value unchanged, compiled_ir unchanged.
+#[test]
+fn counter_corruption_leaves_actual_values_unchanged() -> Result<(), String> {
+    failures::counter_corruption_leaves_actual_values_unchanged()
+}
+
+// u64::MAX counter value causes SequenceOverflow on increment.
+#[test]
+fn counter_u64_max_causes_sequence_overflow() -> Result<(), String> {
+    failures::counter_at_u64_max_causes_sequence_overflow()
+}
+
+// u64::MAX - 1 can issue u64::MAX, then next fails.
+#[test]
+fn counter_at_max_minus_one_issues_max_then_fails() -> Result<(), String> {
+    failures::counter_at_max_minus_one_issues_max_then_fails()
+}
+
+// Invalid workflow digest rejected with ArtifactChecksumMismatch.
+#[test]
+fn invalid_workflow_digest_rejected() -> Result<(), String> {
+    failures::invalid_workflow_digest_rejected()
+}
+
+// Failed validation does not advance counter or write compiled_ir.
+#[test]
+fn failed_validation_does_not_advance_counter() -> Result<(), String> {
+    failures::failed_validation_does_not_advance_counter()
+}
+
+// Next valid submission after invalid is seq 1.
+#[test]
+fn next_valid_submission_after_invalid_is_seq_1() -> Result<(), String> {
+    failures::next_valid_submission_after_invalid_is_seq_1()
+}
+
+// Strict policy persist fault causes StrictDurabilityFailed.
+#[test]
+fn strict_persist_fault_causes_strict_durability_failed() -> Result<(), String> {
+    failures::strict_persist_fault_causes_strict_durability_failed()
+}
+
+// Persist fault: counter not updated, no artifact persisted.
+#[test]
+fn persist_fault_leaves_counter_and_artifact_unchanged() -> Result<(), String> {
+    failures::persist_fault_leaves_counter_and_artifact_unchanged()
+}
+
+// Retry after persist fault gets seq 1.
+#[test]
+fn retry_after_persist_fault_gets_seq_1() -> Result<(), String> {
+    failures::retry_after_persist_fault_gets_seq_1()
+}
+
+// Batch commit fault causes Fjall error.
+#[test]
+fn batch_commit_fault_causes_fjall_error() -> Result<(), String> {
+    failures::batch_commit_fault_causes_fjall_error()
+}
+
+// Batch commit fault: counter and artifact not mutated.
+#[test]
+fn batch_commit_fault_leaves_counter_and_artifact_unchanged() -> Result<(), String> {
+    failures::batch_commit_fault_leaves_counter_and_artifact_unchanged()
+}
+
+// Retry after batch commit fault gets seq 1.
+#[test]
+fn retry_after_batch_commit_fault_gets_seq_1() -> Result<(), String> {
+    failures::retry_after_batch_commit_fault_gets_seq_1()
+}
+
+// Post-commit readback fault causes ArtifactMalformed.
+#[test]
+fn post_commit_readback_fault_causes_artifact_malformed() -> Result<(), String> {
+    failures::post_commit_readback_fault_causes_artifact_malformed()
+}
+
+// Post-commit readback fault: counter is 1, artifact persisted.
+#[test]
+fn post_commit_readback_fault_counter_and_artifact_persisted() -> Result<(), String> {
+    failures::post_commit_readback_fault_counter_and_artifact_persisted()
+}
+
+// Followup submission after readback fault gets seq 2.
+#[test]
+fn followup_after_readback_fault_gets_seq_2() -> Result<(), String> {
+    failures::followup_after_readback_fault_gets_seq_2()
+}
+
+// Concurrent submissions get strictly increasing sequences 1..N.
+#[test]
+fn concurrent_submissions_get_increasing_sequences() -> Result<(), String> {
+    concurrency::concurrent_submissions_get_increasing_sequences()
+}
+
+// Concurrent submissions all readable with valid digests.
+#[test]
+fn concurrent_submissions_all_readable_valid_digests() -> Result<(), String> {
+    concurrency::concurrent_submissions_all_readable_valid_digests()
+}
+
+// Next submission after concurrent batch gets seq N+1.
+#[test]
+fn next_after_concurrent_gets_next_sequence() -> Result<(), String> {
+    concurrency::next_after_concurrent_gets_next_sequence()
+}

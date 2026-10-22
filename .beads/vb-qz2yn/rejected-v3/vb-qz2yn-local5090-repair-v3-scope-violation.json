@@ -1,0 +1,6 @@
+{
+  "reason": "worker mutation outside explicitly assigned source paths",
+  "path": "/btmp/compile-vb-qz2yn.sh",
+  "workspace": "/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2",
+  "tool": "write"
+}

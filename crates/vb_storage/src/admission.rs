@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
+use crate::{CompiledIrRecord, error::JournalError, types::EventSeq};
 
 use crate::journal::FjallJournal;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
@@ -176,7 +176,7 @@ pub fn accepted_artifact_digest(
     ))
 }
 
-fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
     let digest = accepted_artifact_digest(artifact)?;
     artifact.digest = digest;
     artifact.verification.digest = digest;
@@ -354,17 +354,20 @@ pub fn submit_artifact_with_contracts(
     policy: vb_core::RuntimePolicy,
     action_contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
+    // Prepare validates first; pure prepare stays seq=0/unpersisted unchanged.
     let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
-    let ir = postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
-    journal.put_compiled_ir(&CompiledIrRecord {
-        digest: artifact.digest,
-        ir,
-    })?;
-    if policy == vb_core::RuntimePolicy::Strict {
-        journal.persist_strict()?;
-    }
-    verify_artifact_persisted(journal, artifact.digest)?;
-    Ok(artifact)
+
+    // Delegate issuance to private journal helper. The helper holds the
+    // write_lock across the entire RMW sequence: read counter, increment,
+    // stamp, rebind digest, encode, stage both writes in one batch, commit
+    // with policy-appropriate durability.
+    let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+        journal, artifact, policy,
+    )?;
+
+    // Existing readback verification after commit.
+    verify_artifact_persisted(journal, stamped.digest)?;
+    Ok(stamped)
 }
 
 /// Verifies that the artifact identified by `digest` is actually readable

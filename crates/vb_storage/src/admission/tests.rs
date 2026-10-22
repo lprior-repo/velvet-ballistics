@@ -467,11 +467,11 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
     let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
         .map_err(|e| format!("submit failed: {e}"))?;
 
-    // accepted_at_seq should be 0 (no journal sequence tracking in current impl).
+    // accepted_at_seq should be 1 (first submission gets sequence 1).
     assert_eq!(
         artifact.accepted_at_seq.get(),
-        0,
-        "accepted_at_seq must be 0"
+        1,
+        "accepted_at_seq must be 1"
     );
     // required_capabilities should be empty for minimal workflow.
     assert!(
@@ -1187,3 +1187,6 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
         "`From<postcard::Error>` for `JournalError` must continue to produce the Encode variant"
     );
 }
+
+#[path = "acceptance_sequence_tests.rs"]
+mod acceptance_sequence_tests;
