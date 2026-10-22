@@ -20,7 +20,7 @@ use vb_storage::{
     types::EventSeq,
 };
 const FIXTURE_DIR: &str = "../../.beads/vb-79ffw/old-golden";
-const OLD_SHA: &str = "production423d8ae8b667d82b4d36e57d29d7ef2aede08bdf";
+const OLD_SHA: &str = "423d8ae8b667d82b4d36e57d29d7ef2aede08bdf";
 
 #[derive(Debug, Clone)]
 struct CaseSpec {
@@ -135,17 +135,34 @@ fn old_golden_export_all_cases() {
         },
     ];
 
-    std::fs::create_dir_all(FIXTURE_DIR).expect("failed to create fixture directory");
+    let mut errors = Vec::new();
+    match std::fs::create_dir_all(FIXTURE_DIR) {
+        Ok(()) => {}
+        Err(e) => {
+            errors.push(format!("failed to create fixture directory: {}", e));
+        }
+    }
 
     let mut manifest = Vec::new();
     manifest.push(format!("{{\n  \"oldSHA\": \"{}\",\n  \"cases\": [", OLD_SHA));
 
+    let mut valid_count = 0u32;
+    let mut valid_names = Vec::new();
+
     for (i, spec) in cases.iter().enumerate() {
-        match test_case(spec) {
+        let result = test_case(spec);
+        match result {
             Ok(bytes) => {
                 let path = format!("{}/{}.bin", FIXTURE_DIR, spec.name);
-                std::fs::write(&path, &bytes).expect("failed to write fixture");
+                match std::fs::write(&path, &bytes) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        errors.push(format!("failed to write fixture {}: {}", spec.name, e));
+                    }
+                }
                 let digest = blake3::hash(&bytes);
+                valid_count += 1;
+                valid_names.push(spec.name.to_string());
                 let case_json = format!(
                     "
       {{
@@ -182,6 +199,7 @@ fn old_golden_export_all_cases() {
             }
             Err(e) => {
                 eprintln!("[FAIL] {}: {}", spec.name, e);
+                errors.push(format!("{}: {}", spec.name, e));
                 let case_json = format!(
                     "
       {{
@@ -214,10 +232,35 @@ fn old_golden_export_all_cases() {
 
     manifest.push("\n  ]\n}\n".to_string());
     let manifest_str = manifest.join("");
-    std::fs::write(
+    match std::fs::write(
         format!("{}/manifest.json", FIXTURE_DIR),
         manifest_str,
-    )
-    .expect("failed to write manifest");
-    eprintln!("[DONE] Manifest written to {}/manifest.json", FIXTURE_DIR);
+    ) {
+        Ok(()) => {
+            eprintln!("[DONE] Manifest written to {}/manifest.json", FIXTURE_DIR);
+        }
+        Err(e) => {
+            errors.push(format!("failed to write manifest: {}", e));
+        }
+    }
+
+    // All three intended cases must be valid
+    assert!(
+        errors.is_empty(),
+        "export test failed for case(s): {}",
+        errors.join("; ")
+    );
+    assert_eq!(
+        valid_count,
+        3,
+        "expected 3 valid exported cases, got {}",
+        valid_count
+    );
+    assert!(
+        valid_names.contains(&"small-canonical".to_string())
+            && valid_names.contains(&"high-values".to_string())
+            && valid_names.contains(&"max-attempt-capacity".to_string()),
+        "missing expected valid case names: {:?}",
+        valid_names
+    );
 }
