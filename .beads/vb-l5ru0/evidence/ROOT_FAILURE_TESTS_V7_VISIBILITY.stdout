@@ -1,0 +1,29 @@
+
+running 3 tests
+suspended_policy_denies_execution_with_full_record --- FAILED
+emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config --- FAILED
+.
+failures:
+
+---- suspended_policy_denies_execution_with_full_record stdout ----
+
+thread 'suspended_policy_denies_execution_with_full_record' (2404373) panicked at crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:138:13:
+assertion `left == right` failed
+  left: NotEvaluated
+ right: Inactive
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config stdout ----
+
+thread 'emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config' (2404371) panicked at crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:262:13:
+assertion `left == right` failed
+  left: NotEvaluated
+ right: Inactive
+
+
+failures:
+    emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config
+    suspended_policy_denies_execution_with_full_record
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

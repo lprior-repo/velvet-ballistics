@@ -1,10 +1,9 @@
 //! Fixtures and helpers for policy dispatch fail-closed tests.
 
 use std::num::NonZeroUsize;
-use std::sync::Arc;
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
-use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+use vb_core::action_pack::CapabilityScopeSpec;
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::{PolicyDigest, RuntimePolicy};
@@ -12,21 +11,17 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_runtime::journal::StorageRuntimeJournal;
-use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
-use vb_storage::executor::{ExecutorCatalog, FjallRegister};
-use vb_storage::{FjallConfig, FjallJournal};
 
 #[path = "test_journal.rs"]
 mod test_journal;
-pub use test_journal::FailingPolicyPortJournal;
+pub(crate) use test_journal::FailingPolicyPortJournal;
 
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
 }
 
-pub fn strict_config() -> ShardConfig {
+pub(crate) fn strict_config() -> ShardConfig {
     ShardConfig {
         command_queue_capacity: 32,
         trace_capacity: 64,
@@ -36,7 +31,7 @@ pub fn strict_config() -> ShardConfig {
     }
 }
 
-pub fn node(
+pub(crate) fn node(
     id: u16,
     output: Option<u16>,
     next: Option<u16>,
@@ -52,7 +47,7 @@ pub fn node(
     }
 }
 
-pub fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+pub(crate) fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
@@ -91,7 +86,7 @@ pub fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
 }
 
-pub fn external_contract(
+pub(crate) fn external_contract(
     action: ActionId,
 ) -> Result<ActionContract, Box<dyn std::error::Error>> {
     Ok(ActionContract {
@@ -105,21 +100,18 @@ pub fn external_contract(
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::Writes,
         retry_safety: RetrySafety::KeyRequired,
-        required_capabilities: Box::new([Capability::new(
-            "velvet.register.write".into(),
-            action,
-        )]),
+        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
     })
 }
 
-pub fn scope() -> CapabilityScopeSpec {
+pub(crate) fn scope() -> CapabilityScopeSpec {
     CapabilityScopeSpec {
         namespace: 15,
         key: 29,
     }
 }
 
-pub fn action_grants(action: ActionId) -> CapabilitySet {
+pub(crate) fn action_grants(action: ActionId) -> CapabilitySet {
     CapabilitySet::from_grants(Box::from([Capability::new(
         "velvet.register.write".into(),
         action,
@@ -128,15 +120,16 @@ pub fn action_grants(action: ActionId) -> CapabilitySet {
 
 /// Compute the expected input digest for a given value, matching the policy
 /// evaluator's canonical encoding.
-pub fn compute_expected_input_digest(
+pub(crate) fn compute_expected_input_digest(
     value: i64,
     taint: Taint,
     ticket: &vb_core::action::ActionTicket,
 ) -> Result<PolicyDigest, String> {
-    let input_bytes =
-        postcard::to_allocvec(&SlotValue::I64(value)).map_err(|e| e.to_string())?;
-    let taint_byte = vb_core::policy::encode_taint_canonical(taint)
-        .ok_or_else(|| "unexpected taint variant".to_string())?;
+    let input_bytes = postcard::to_allocvec(&SlotValue::I64(value)).map_err(|e| e.to_string())?;
+    let taint_byte = match taint {
+        Taint::Clean => 0,
+        other => return Err(format!("unexpected taint variant: {other:?}")),
+    };
 
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"velvet-ballistics:policy:input:");

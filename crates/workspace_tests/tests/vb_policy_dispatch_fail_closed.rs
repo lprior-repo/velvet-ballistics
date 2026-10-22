@@ -12,6 +12,20 @@ mod fixtures;
 
 use fixtures::*;
 
+use std::sync::Arc;
+use vb_core::action_pack::RecoveryClass;
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+use vb_core::policy::{
+    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
+    PolicyDigest, PolicyLayer, PolicyRule, RuntimePolicy,
+};
+use vb_core::value::{SlotValue, Taint};
+use vb_runtime::RuntimeError;
+use vb_runtime::journal::StorageRuntimeJournal;
+use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
+use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+use vb_storage::{FjallConfig, FjallJournal};
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 /// Test 1: Actual current Suspended policy before execute on a genuine
@@ -70,6 +84,26 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
 
+    // Compute expected full DecisionRecord independently of returned decision.
+    let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
+    let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
+    let expected = DecisionRecord {
+        ticket,
+        admission: PinnedAdmissionPolicy::Artifact(expected_admission),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: suspended_digest,
+        },
+        input_digest: expected_input_digest,
+        taint: Taint::Clean,
+        outcome: DecisionCode::Suspended,
+        layer: PolicyLayer::Live,
+        emergency_influence: InfluenceState::Inactive,
+        compat_influence: InfluenceState::NotEvaluated,
+    };
+
+    // Save pending state before execute for fail-closed verification.
+    let pending_before = runtime.pending_boundary_snapshot(8);
+
     // Execute with suspended policy — must be rejected before any effect.
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
@@ -82,10 +116,10 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
 
     match result {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+            // Retain existing individual field checks.
             assert_eq!(decision.outcome, DecisionCode::Suspended);
             assert_eq!(decision.layer, PolicyLayer::Live);
 
-            // Verify current_live is the Suspended config we set.
             match decision.current_live {
                 CurrentPolicyIdentity::Configured { digest } => {
                     assert_eq!(digest, suspended_digest);
@@ -98,8 +132,6 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
                 }
             }
 
-            // Verify admission pin matches the artifact's policy digest.
-            let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
             match decision.admission {
                 PinnedAdmissionPolicy::Artifact(admitted_digest) => {
                     assert_eq!(admitted_digest, expected_admission);
@@ -109,25 +141,23 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
                 }
             }
 
-            // Verify ticket identity (full 8-field).
             assert_eq!(decision.ticket, ticket);
-
-            // Verify exact input digest.
-            let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
             assert_eq!(decision.input_digest, expected_input_digest);
-
-            // Verify taint field.
             assert_eq!(decision.taint, Taint::Clean);
-
-            // Verify influence states (no emergency, no compat).
             assert_eq!(decision.emergency_influence, InfluenceState::Inactive);
-            assert_eq!(decision.compat_influence, InfluenceState::Inactive);
+            assert_eq!(decision.compat_influence, InfluenceState::NotEvaluated);
+
+            // Compare full returned record against independently computed expected.
+            assert_eq!(
+                decision.as_ref(),
+                &expected,
+                "returned decision must match full expected record"
+            );
         }
         other => {
-            return Err(format!(
-                "expected PolicyDenied with Suspended decision, got: {other:?}"
-            )
-            .into());
+            return Err(
+                format!("expected PolicyDenied with Suspended decision, got: {other:?}").into(),
+            );
         }
     }
 
@@ -138,15 +168,24 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
         "suspended policy must not produce any effect"
     );
 
-    // Pending ticket unchanged.
-    assert!(
-        runtime
-            .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-            .is_some(),
-        "pending ticket must remain after suspended policy rejection"
+    // Pending state unchanged after suspended policy rejection.
+    let pending_after = runtime.pending_boundary_snapshot(8);
+    assert_eq!(
+        pending_after, pending_before,
+        "suspended policy rejection must not alter pending state"
     );
 
-    // Exactly one stored decision event.
+    // Pending ticket unchanged — compare exact ticket identity.
+    let ticket_after = runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or("expected pending action ticket after rejection")?;
+    assert_eq!(
+        Some(ticket_after),
+        Some(ticket),
+        "pending ticket must remain identical after suspended policy rejection"
+    );
+
+    // Exactly one stored decision event matching full expected record.
     let events = vb_storage::read_run_events(&journal, run)?;
     let decision_events: Vec<_> = events
         .iter()
@@ -160,8 +199,11 @@ fn suspended_policy_denies_execution_with_full_record() -> TestResult {
         1,
         "exactly one policy decision event must be stored"
     );
-    assert_eq!(decision_events[0].outcome, DecisionCode::Suspended);
-    assert_eq!(decision_events[0].layer, PolicyLayer::Live);
+    assert_eq!(
+        decision_events,
+        vec![&expected],
+        "stored decision event must exactly match expected full record"
+    );
 
     Ok(())
 }
@@ -225,6 +267,26 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
     // Activate emergency deny via actual dedicated store persist.
     runtime.activate_emergency_deny()?;
 
+    // Compute expected full DecisionRecord for first emergency denial attempt.
+    let expected_input_digest_first = compute_expected_input_digest(100, Taint::Clean, &ticket)?;
+    let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
+    let expected_first = DecisionRecord {
+        ticket,
+        admission: PinnedAdmissionPolicy::Artifact(expected_admission),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: allowed_digest,
+        },
+        input_digest: expected_input_digest_first,
+        taint: Taint::Clean,
+        outcome: DecisionCode::Denied,
+        layer: PolicyLayer::Emergency,
+        emergency_influence: InfluenceState::Active,
+        compat_influence: InfluenceState::NotEvaluated,
+    };
+
+    // Save pending state before first execute.
+    let pending_before_first = runtime.pending_boundary_snapshot(8);
+
     // Execute — emergency overlay must reject even though live config is Allowed.
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
     let register_path = dir.path().join("register");
@@ -238,23 +300,15 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
 
     match result {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+            // Retain existing individual field checks.
             assert_eq!(decision.outcome, DecisionCode::Denied);
             assert_eq!(decision.layer, PolicyLayer::Emergency);
-
-            // Verify emergency influence is Active.
             assert_eq!(decision.emergency_influence, InfluenceState::Active);
-
-            // Verify compat influence is Inactive.
-            assert_eq!(decision.compat_influence, InfluenceState::Inactive);
-
-            // Verify ticket and input digest are correct.
+            assert_eq!(decision.compat_influence, InfluenceState::NotEvaluated);
             assert_eq!(decision.ticket, ticket);
-            let expected_input_digest =
-                compute_expected_input_digest(100, Taint::Clean, &ticket)?;
-            assert_eq!(decision.input_digest, expected_input_digest);
+            assert_eq!(decision.input_digest, expected_input_digest_first);
             assert_eq!(decision.taint, Taint::Clean);
 
-            // Verify current_live is still the Allowed config.
             match decision.current_live {
                 CurrentPolicyIdentity::Configured { digest } => {
                     assert_eq!(digest, allowed_digest);
@@ -267,8 +321,6 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
                 }
             }
 
-            // Verify admission pin is the artifact's digest.
-            let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
             match decision.admission {
                 PinnedAdmissionPolicy::Artifact(admitted_digest) => {
                     assert_eq!(admitted_digest, expected_admission);
@@ -277,12 +329,18 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
                     return Err(format!("expected Artifact admission pin, got: {other:?}").into());
                 }
             }
+
+            // Compare full returned record against independently computed expected.
+            assert_eq!(
+                decision.as_ref(),
+                &expected_first,
+                "first emergency denial record must match full expected"
+            );
         }
         other => {
-            return Err(format!(
-                "expected PolicyDenied with Emergency decision, got: {other:?}"
-            )
-            .into());
+            return Err(
+                format!("expected PolicyDenied with Emergency decision, got: {other:?}").into(),
+            );
         }
     }
 
@@ -293,26 +351,22 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
         "emergency deny must not produce any effect"
     );
 
-    // Pending ticket unchanged.
-    assert!(
-        runtime
-            .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-            .is_some(),
-        "pending ticket must remain after emergency deny"
+    // Pending state unchanged after first emergency deny.
+    let pending_after_first = runtime.pending_boundary_snapshot(8);
+    assert_eq!(
+        pending_after_first, pending_before_first,
+        "first emergency deny must not alter pending state"
     );
 
-    // Exactly one stored decision event.
-    let events = vb_storage::read_run_events(&journal, run)?;
-    let decision_events: Vec<_> = events
-        .iter()
-        .filter_map(|e| match e {
-            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(decision_events.len(), 1);
-    assert_eq!(decision_events[0].outcome, DecisionCode::Denied);
-    assert_eq!(decision_events[0].layer, PolicyLayer::Emergency);
+    // Pending ticket unchanged — compare exact identity.
+    let ticket_after_first = runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or("expected pending action ticket after first deny")?;
+    assert_eq!(
+        Some(ticket_after_first),
+        Some(ticket),
+        "pending ticket must remain identical after first emergency deny"
+    );
 
     // Show that configuring Allowed after emergency cannot loosen the overlay.
     let later_allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
@@ -329,6 +383,27 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
         .ok_or("expected pending action ticket still present")?;
     let second_grant = catalog.issue_register_grant(&artifact, second_ticket, scope())?;
 
+    // Compute expected full record for second attempt.
+    let second_input_value = 100; // same workflow, same input
+    let expected_input_digest_second =
+        compute_expected_input_digest(second_input_value, Taint::Clean, &second_ticket)?;
+    let expected_second = DecisionRecord {
+        ticket: second_ticket,
+        admission: PinnedAdmissionPolicy::Artifact(expected_admission),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: later_allowed_digest,
+        },
+        input_digest: expected_input_digest_second,
+        taint: Taint::Clean,
+        outcome: DecisionCode::Denied,
+        layer: PolicyLayer::Emergency,
+        emergency_influence: InfluenceState::Active,
+        compat_influence: InfluenceState::NotEvaluated,
+    };
+
+    // Save pending state before second execute.
+    let pending_before_second = runtime.pending_boundary_snapshot(8);
+
     let register_path2 = dir.path().join("register2");
     let mut adapter2 = FjallRegister::open(&register_path2, 8)?;
     let result2 = runtime.execute_registered_action(
@@ -340,9 +415,21 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
 
     match result2 {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+            // Retain existing individual field checks.
             assert_eq!(decision.outcome, DecisionCode::Denied);
             assert_eq!(decision.layer, PolicyLayer::Emergency);
             assert_eq!(decision.emergency_influence, InfluenceState::Active);
+            assert_eq!(decision.compat_influence, InfluenceState::NotEvaluated);
+            assert_eq!(decision.ticket, second_ticket);
+            assert_eq!(decision.input_digest, expected_input_digest_second);
+            assert_eq!(decision.taint, Taint::Clean);
+
+            // Compare full returned record against independently computed expected.
+            assert_eq!(
+                decision.as_ref(),
+                &expected_second,
+                "second emergency denial record must match full expected"
+            );
         }
         other => {
             return Err(format!(
@@ -355,6 +442,33 @@ fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> TestRe
         adapter2.effect_count()?,
         0,
         "second execute must also have zero effects"
+    );
+
+    // Pending state unchanged after second emergency deny.
+    let pending_after_second = runtime.pending_boundary_snapshot(8);
+    assert_eq!(
+        pending_after_second, pending_before_second,
+        "second emergency deny must not alter pending state"
+    );
+
+    // Both stored decision events must exactly match the two expected records in order.
+    let events = vb_storage::read_run_events(&journal, run)?;
+    let decision_events: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e {
+            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        decision_events.len(),
+        2,
+        "exactly two policy decision events must be stored"
+    );
+    assert_eq!(
+        decision_events,
+        vec![&expected_first, &expected_second],
+        "stored decision events must exactly match expected records in order"
     );
 
     Ok(())
@@ -391,7 +505,7 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         journal.clone(),
         catalog.clone(),
     ));
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped);
+    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped.clone());
 
     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime.configure_live_policy(
@@ -415,6 +529,9 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+
+    // Save pending state before execute for fail-closed verification.
+    let pending_before = runtime.pending_boundary_snapshot(8);
 
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
@@ -452,12 +569,21 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         "strict port failure must not produce any effect"
     );
 
-    // Pending ticket unchanged.
-    assert!(
-        runtime
-            .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-            .is_some(),
-        "pending ticket must remain after strict port failure"
+    // Pending state unchanged after strict port failure.
+    let pending_after = runtime.pending_boundary_snapshot(8);
+    assert_eq!(
+        pending_after, pending_before,
+        "strict port failure must not alter pending state"
+    );
+
+    // Pending ticket unchanged — compare exact identity.
+    let ticket_after = runtime
+        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+        .ok_or("expected pending action ticket after failure")?;
+    assert_eq!(
+        Some(ticket_after),
+        Some(ticket),
+        "pending ticket must remain identical after strict port failure"
     );
 
     // No stored decisions (strict port failed before any event).
@@ -477,18 +603,14 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
 
     // Verify the port was called once with the expected decision.
     assert!(
-        wrapped.policy_port_called.load(Ordering::SeqCst),
+        wrapped.policy_port_called(),
         "strict port must have been called"
     );
-    let captured = wrapped.captured_decision.lock().ok_or(
-        "captured_decision mutex poisoned",
-    )?;
-    let decision = captured.as_ref().ok_or("no decision captured")?;
+    let decision = wrapped.captured_decision()?.ok_or("no decision captured")?;
     assert_eq!(decision.outcome, DecisionCode::Allowed);
     assert_eq!(decision.layer, PolicyLayer::Live);
     assert_eq!(decision.ticket, ticket);
-    let expected_input_digest =
-        compute_expected_input_digest(77, Taint::Clean, &ticket)?;
+    let expected_input_digest = compute_expected_input_digest(77, Taint::Clean, &ticket)?;
     assert_eq!(decision.input_digest, expected_input_digest);
 
     Ok(())

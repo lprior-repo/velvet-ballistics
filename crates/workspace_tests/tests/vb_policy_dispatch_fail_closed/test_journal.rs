@@ -2,8 +2,8 @@
 //! append_policy_decision_strict to return a controlled failure.
 //! All other methods delegate to the real underlying journal.
 
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use vb_runtime::journal::{RuntimeJournal, SharedRuntimeJournal, StorageRuntimeJournal};
 use vb_runtime::{RuntimeError, RuntimeResult};
@@ -11,14 +11,14 @@ use vb_storage::{EventSeq, FjallJournal};
 
 /// Test wrapper that delegates all real methods but overrides
 /// append_policy_decision_strict to return a specific test error.
-pub struct FailingPolicyPortJournal {
+pub(crate) struct FailingPolicyPortJournal {
     inner: SharedRuntimeJournal,
     policy_port_called: Arc<AtomicBool>,
     captured_decision: Arc<Mutex<Option<vb_core::policy::DecisionRecord>>>,
 }
 
 impl FailingPolicyPortJournal {
-    pub fn new(
+    pub(crate) fn new(
         inner: Arc<FjallJournal>,
         catalog: vb_storage::executor::ExecutorCatalog,
     ) -> Self {
@@ -29,12 +29,17 @@ impl FailingPolicyPortJournal {
         }
     }
 
-    pub fn policy_port_called(&self) -> bool {
+    pub(crate) fn policy_port_called(&self) -> bool {
         self.policy_port_called.load(Ordering::SeqCst)
     }
 
-    pub fn captured_decision(&self) -> Option<vb_core::policy::DecisionRecord> {
-        self.captured_decision.lock().ok()?.take()
+    pub(crate) fn captured_decision(
+        &self,
+    ) -> Result<Option<vb_core::policy::DecisionRecord>, String> {
+        self.captured_decision
+            .lock()
+            .map_err(|_| "captured_decision mutex poisoned".to_owned())
+            .map(|guard| guard.clone())
     }
 }
 
@@ -77,13 +82,14 @@ impl RuntimeJournal for FailingPolicyPortJournal {
         _seq: EventSeq,
     ) -> RuntimeResult<()> {
         self.policy_port_called.store(true, Ordering::SeqCst);
-        let mut captured = self.captured_decision.lock().map_err(|_| {
-            RuntimeError::Core {
+        let mut captured = self
+            .captured_decision
+            .lock()
+            .map_err(|_| RuntimeError::Core {
                 source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
                     reason: "captured_decision mutex poisoned",
                 }),
-            }
-        })?;
+            })?;
         *captured = Some(decision);
         Err(RuntimeError::UnsupportedOperation {
             operation: "test_policy_decision_failure",

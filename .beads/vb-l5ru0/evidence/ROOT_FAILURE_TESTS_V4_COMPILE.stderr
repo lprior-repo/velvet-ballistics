@@ -1,0 +1,24 @@
+error[E0616]: field `policy_port_called` of struct `test_journal::FailingPolicyPortJournal` is private
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:495:17
+    |
+495 |         wrapped.policy_port_called.load(Ordering::SeqCst),
+    |                 ^^^^^^^^^^^^^^^^^^ private field
+    |
+help: a method `policy_port_called` also exists, call it with parentheses
+    |
+495 |         wrapped.policy_port_called().load(Ordering::SeqCst),
+    |                                   ++
+
+error[E0616]: field `captured_decision` of struct `test_journal::FailingPolicyPortJournal` is private
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:498:28
+    |
+498 |     let captured = wrapped.captured_decision.lock().ok_or(
+    |                            ^^^^^^^^^^^^^^^^^ private field
+    |
+help: a method `captured_decision` also exists, call it with parentheses
+    |
+498 |     let captured = wrapped.captured_decision().lock().ok_or(
+    |                                             ++
+
+For more information about this error, try `rustc --explain E0616`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 2 previous errors

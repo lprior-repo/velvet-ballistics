@@ -1,0 +1,1229 @@
+error[E0433]: cannot find type `RunId` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:23:15
+   |
+23 |     let run = RunId::new(11_001);
+   |               ^^^^^ use of undeclared type `RunId`
+   |
+help: consider importing one of these structs
+   |
+13 + use vb_core::RunId;
+   |
+13 + use vb_runtime::shard::RunId;
+   |
+
+error[E0433]: cannot find type `ActionId` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:24:18
+   |
+24 |     let action = ActionId::new(0);
+   |                  ^^^^^^^^ use of undeclared type `ActionId`
+   |
+help: consider importing one of these structs
+   |
+13 + use vb_core::ActionId;
+   |
+13 + use vb_validate::ActionId;
+   |
+
+error[E0433]: cannot find type `ExecutorCatalog` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:26:19
+   |
+26 |     let catalog = ExecutorCatalog::run_registered_conformance()?;
+   |                   ^^^^^^^^^^^^^^^ use of undeclared type `ExecutorCatalog`
+   |
+help: consider importing this struct
+   |
+13 + use vb_storage::executor::ExecutorCatalog;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:58
+   |
+29 |     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+   |                                                          ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `Arc` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:31:19
+   |
+31 |     let journal = Arc::new(FjallJournal::open(
+   |                   ^^^ use of undeclared type `Arc`
+   |
+help: consider importing this struct
+   |
+13 + use std::sync::Arc;
+   |
+
+error[E0433]: cannot find type `FjallJournal` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:31:28
+   |
+31 |     let journal = Arc::new(FjallJournal::open(
+   |                            ^^^^^^^^^^^^ use of undeclared type `FjallJournal`
+   |
+help: consider importing this struct
+   |
+13 + use vb_storage::FjallJournal;
+   |
+
+error[E0433]: cannot find type `FjallConfig` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:33:14
+   |
+33 |         Some(FjallConfig::default()),
+   |              ^^^^^^^^^^^ use of undeclared type `FjallConfig`
+   |
+help: consider importing this struct
+   |
+13 + use vb_storage::FjallConfig;
+   |
+
+error[E0433]: cannot find type `RuntimePolicy` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:38:9
+   |
+38 |         RuntimePolicy::Strict,
+   |         ^^^^^^^^^^^^^ use of undeclared type `RuntimePolicy`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::RuntimePolicy;
+   |
+
+error[E0433]: cannot find type `StorageRuntimeJournal` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:43:19
+   |
+43 |     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+   |                   ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `StorageRuntimeJournal`
+   |
+help: consider importing this struct
+   |
+13 + use vb_runtime::journal::StorageRuntimeJournal;
+   |
+
+error[E0433]: cannot find type `Arc` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:45:9
+   |
+45 |         Arc::new(catalog.clone()),
+   |         ^^^ use of undeclared type `Arc`
+   |
+help: consider importing this struct
+   |
+13 + use std::sync::Arc;
+   |
+
+error[E0433]: cannot find type `Runtime` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:47:23
+   |
+47 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+   |                       ^^^^^^^ use of undeclared type `Runtime`
+   |
+help: consider importing this struct
+   |
+13 + use vb_runtime::runtime::Runtime;
+   |
+
+error[E0425]: cannot find function `shard_count` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:47:36
+   |
+47 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+   |                                    ^^^^^^^^^^^ not found in this scope
+   |
+note: function `crate::fixtures::shard_count` exists but is inaccessible
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:25:1
+   |
+25 | fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:50:28
+   |
+50 |     let suspended_digest = PolicyDigest::from_bytes([0x99u8; 32]);
+   |                            ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+   |
+help: consider importing this struct
+   |
+13 + use vb_core::policy::PolicyDigest;
+   |
+
+error[E0422]: cannot find struct, variant or union type `PolicyRule` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:53:9
+   |
+53 |         PolicyRule {
+   |         ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+13 + use vb_core::policy::PolicyRule;
+   |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:55:19
+   |
+55 |             code: DecisionCode::Suspended,
+   |                   ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::policy::DecisionCode;
+   |
+
+error[E0433]: cannot find type `SlotIdx` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:62:21
+   |
+62 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
+   |                     ^^^^^^^ use of undeclared type `SlotIdx`
+   |
+help: consider importing one of these structs
+   |
+13 + use vb_core::SlotIdx;
+   |
+13 + use vb_validate::SlotIdx;
+   |
+
+error[E0433]: cannot find type `SlotValue` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:62:36
+   |
+62 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
+   |                                    ^^^^^^^^^ use of undeclared type `SlotValue`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::SlotValue;
+   |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:69:54
+   |
+69 |         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+   |                                                      ^^^^^^^ use of undeclared type `StepIdx`
+   |
+help: consider importing one of these structs
+   |
+13 + use vb_core::StepIdx;
+   |
+13 + use vb_validate::StepIdx;
+   |
+
+error[E0433]: cannot find type `FjallRegister` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:75:23
+   |
+75 |     let mut adapter = FjallRegister::open(&register_path, 8)?;
+   |                       ^^^^^^^^^^^^^ use of undeclared type `FjallRegister`
+   |
+help: consider importing this struct
+   |
+13 + use vb_storage::executor::FjallRegister;
+   |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:79:19
+   |
+79 |         u64::from(StepIdx::ZERO.get()),
+   |                   ^^^^^^^ use of undeclared type `StepIdx`
+   |
+help: consider importing one of these structs
+   |
+13 + use vb_core::StepIdx;
+   |
+13 + use vb_validate::StepIdx;
+   |
+
+error[E0433]: cannot find type `RegisteredExecutionError` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:84:13
+   |
+84 |         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RegisteredExecutionError`
+   |
+help: consider importing this enum
+   |
+13 + use vb_runtime::runtime::RegisteredExecutionError;
+   |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:85:42
+   |
+85 |             assert_eq!(decision.outcome, DecisionCode::Suspended);
+   |                                          ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::policy::DecisionCode;
+   |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:86:40
+   |
+86 |             assert_eq!(decision.layer, PolicyLayer::Live);
+   |                                        ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::policy::PolicyLayer;
+   |
+
+error[E0433]: cannot find type `CurrentPolicyIdentity` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:90:17
+   |
+90 |                 CurrentPolicyIdentity::Configured { digest } => {
+   |                 ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `CurrentPolicyIdentity`
+   |
+help: consider importing this enum
+   |
+13 + use vb_core::policy::CurrentPolicyIdentity;
+   |
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:102:38
+    |
+102 |             let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
+    |                                      ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyDigest;
+    |
+
+error[E0433]: cannot find type `PinnedAdmissionPolicy` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:104:17
+    |
+104 |                 PinnedAdmissionPolicy::Artifact(admitted_digest) => {
+    |                 ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `PinnedAdmissionPolicy`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PinnedAdmissionPolicy;
+    |
+
+error[E0433]: cannot find type `Taint` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:116:75
+    |
+116 |             let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
+    |                                                                           ^^^^^ use of undeclared type `Taint`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use vb_core::Taint;
+    |
+ 13 + use vb_core::proof_kernels::taint::Taint;
+    |
+ 13 + use vb_validate::type_taint::Taint;
+    |
+
+error[E0433]: cannot find type `Taint` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:120:40
+    |
+120 |             assert_eq!(decision.taint, Taint::Clean);
+    |                                        ^^^^^ use of undeclared type `Taint`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use vb_core::Taint;
+    |
+ 13 + use vb_core::proof_kernels::taint::Taint;
+    |
+ 13 + use vb_validate::type_taint::Taint;
+    |
+
+error[E0433]: cannot find type `InfluenceState` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:123:54
+    |
+123 |             assert_eq!(decision.emergency_influence, InfluenceState::Inactive);
+    |                                                      ^^^^^^^^^^^^^^ use of undeclared type `InfluenceState`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::InfluenceState;
+    |
+
+error[E0433]: cannot find type `InfluenceState` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:124:51
+    |
+124 |             assert_eq!(decision.compat_influence, InfluenceState::Inactive);
+    |                                                   ^^^^^^^^^^^^^^ use of undeclared type `InfluenceState`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::InfluenceState;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:144:58
+    |
+144 |             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                          ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:163:44
+    |
+163 |     assert_eq!(decision_events[0].outcome, DecisionCode::Suspended);
+    |                                            ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:164:42
+    |
+164 |     assert_eq!(decision_events[0].layer, PolicyLayer::Live);
+    |                                          ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PolicyLayer;
+    |
+
+error[E0433]: cannot find type `RunId` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:176:15
+    |
+176 |     let run = RunId::new(11_002);
+    |               ^^^^^ use of undeclared type `RunId`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::RunId;
+    |
+ 13 + use vb_runtime::shard::RunId;
+    |
+
+error[E0433]: cannot find type `ActionId` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:177:18
+    |
+177 |     let action = ActionId::new(0);
+    |                  ^^^^^^^^ use of undeclared type `ActionId`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::ActionId;
+    |
+ 13 + use vb_validate::ActionId;
+    |
+
+error[E0433]: cannot find type `ExecutorCatalog` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:179:19
+    |
+179 |     let catalog = ExecutorCatalog::run_registered_conformance()?;
+    |                   ^^^^^^^^^^^^^^^ use of undeclared type `ExecutorCatalog`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::executor::ExecutorCatalog;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:182:58
+    |
+182 |     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+    |                                                          ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `Arc` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:184:19
+    |
+184 |     let journal = Arc::new(FjallJournal::open(
+    |                   ^^^ use of undeclared type `Arc`
+    |
+help: consider importing this struct
+    |
+ 13 + use std::sync::Arc;
+    |
+
+error[E0433]: cannot find type `FjallJournal` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:184:28
+    |
+184 |     let journal = Arc::new(FjallJournal::open(
+    |                            ^^^^^^^^^^^^ use of undeclared type `FjallJournal`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::FjallJournal;
+    |
+
+error[E0433]: cannot find type `FjallConfig` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:186:14
+    |
+186 |         Some(FjallConfig::default()),
+    |              ^^^^^^^^^^^ use of undeclared type `FjallConfig`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::FjallConfig;
+    |
+
+error[E0433]: cannot find type `RuntimePolicy` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:191:9
+    |
+191 |         RuntimePolicy::Strict,
+    |         ^^^^^^^^^^^^^ use of undeclared type `RuntimePolicy`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::RuntimePolicy;
+    |
+
+error[E0433]: cannot find type `StorageRuntimeJournal` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:196:19
+    |
+196 |     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+    |                   ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `StorageRuntimeJournal`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_runtime::journal::StorageRuntimeJournal;
+    |
+
+error[E0433]: cannot find type `Arc` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:198:9
+    |
+198 |         Arc::new(catalog.clone()),
+    |         ^^^ use of undeclared type `Arc`
+    |
+help: consider importing this struct
+    |
+ 13 + use std::sync::Arc;
+    |
+
+error[E0433]: cannot find type `Runtime` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:200:23
+    |
+200 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    |                       ^^^^^^^ use of undeclared type `Runtime`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_runtime::runtime::Runtime;
+    |
+
+error[E0425]: cannot find function `shard_count` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:200:36
+    |
+200 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    |                                    ^^^^^^^^^^^ not found in this scope
+    |
+note: function `crate::fixtures::shard_count` exists but is inaccessible
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:25:1
+    |
+ 25 | fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:203:26
+    |
+203 |     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
+    |                          ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyDigest;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PolicyRule` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:206:9
+    |
+206 |         PolicyRule {
+    |         ^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyRule;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:208:19
+    |
+208 |             code: DecisionCode::Allowed,
+    |                   ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `SlotIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:215:21
+    |
+215 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
+    |                     ^^^^^^^ use of undeclared type `SlotIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::SlotIdx;
+    |
+ 13 + use vb_validate::SlotIdx;
+    |
+
+error[E0433]: cannot find type `SlotValue` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:215:36
+    |
+215 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
+    |                                    ^^^^^^^^^ use of undeclared type `SlotValue`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::SlotValue;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:222:54
+    |
+222 |         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                      ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `FjallRegister` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:231:23
+    |
+231 |     let mut adapter = FjallRegister::open(&register_path, 8)?;
+    |                       ^^^^^^^^^^^^^ use of undeclared type `FjallRegister`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::executor::FjallRegister;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:235:19
+    |
+235 |         u64::from(StepIdx::ZERO.get()),
+    |                   ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `RegisteredExecutionError` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:240:13
+    |
+240 |         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RegisteredExecutionError`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_runtime::runtime::RegisteredExecutionError;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:241:42
+    |
+241 |             assert_eq!(decision.outcome, DecisionCode::Denied);
+    |                                          ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:242:40
+    |
+242 |             assert_eq!(decision.layer, PolicyLayer::Emergency);
+    |                                        ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PolicyLayer;
+    |
+
+error[E0433]: cannot find type `InfluenceState` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:245:54
+    |
+245 |             assert_eq!(decision.emergency_influence, InfluenceState::Active);
+    |                                                      ^^^^^^^^^^^^^^ use of undeclared type `InfluenceState`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::InfluenceState;
+    |
+
+error[E0433]: cannot find type `InfluenceState` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:248:51
+    |
+248 |             assert_eq!(decision.compat_influence, InfluenceState::Inactive);
+    |                                                   ^^^^^^^^^^^^^^ use of undeclared type `InfluenceState`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::InfluenceState;
+    |
+
+error[E0433]: cannot find type `Taint` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:253:52
+    |
+253 |                 compute_expected_input_digest(100, Taint::Clean, &ticket)?;
+    |                                                    ^^^^^ use of undeclared type `Taint`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use vb_core::Taint;
+    |
+ 13 + use vb_core::proof_kernels::taint::Taint;
+    |
+ 13 + use vb_validate::type_taint::Taint;
+    |
+
+error[E0433]: cannot find type `Taint` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:255:40
+    |
+255 |             assert_eq!(decision.taint, Taint::Clean);
+    |                                        ^^^^^ use of undeclared type `Taint`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use vb_core::Taint;
+    |
+ 13 + use vb_core::proof_kernels::taint::Taint;
+    |
+ 13 + use vb_validate::type_taint::Taint;
+    |
+
+error[E0433]: cannot find type `CurrentPolicyIdentity` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:259:17
+    |
+259 |                 CurrentPolicyIdentity::Configured { digest } => {
+    |                 ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `CurrentPolicyIdentity`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::CurrentPolicyIdentity;
+    |
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:271:38
+    |
+271 |             let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
+    |                                      ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyDigest;
+    |
+
+error[E0433]: cannot find type `PinnedAdmissionPolicy` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:273:17
+    |
+273 |                 PinnedAdmissionPolicy::Artifact(admitted_digest) => {
+    |                 ^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `PinnedAdmissionPolicy`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PinnedAdmissionPolicy;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:299:58
+    |
+299 |             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                          ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:314:44
+    |
+314 |     assert_eq!(decision_events[0].outcome, DecisionCode::Denied);
+    |                                            ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:315:42
+    |
+315 |     assert_eq!(decision_events[0].layer, PolicyLayer::Emergency);
+    |                                          ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PolicyLayer;
+    |
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:318:32
+    |
+318 |     let later_allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
+    |                                ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyDigest;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PolicyRule` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:321:9
+    |
+321 |         PolicyRule {
+    |         ^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyRule;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:323:19
+    |
+323 |             code: DecisionCode::Allowed,
+    |                   ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:328:54
+    |
+328 |         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                      ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `FjallRegister` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:333:24
+    |
+333 |     let mut adapter2 = FjallRegister::open(&register_path2, 8)?;
+    |                        ^^^^^^^^^^^^^ use of undeclared type `FjallRegister`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::executor::FjallRegister;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:337:19
+    |
+337 |         u64::from(StepIdx::ZERO.get()),
+    |                   ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `RegisteredExecutionError` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:342:13
+    |
+342 |         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RegisteredExecutionError`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_runtime::runtime::RegisteredExecutionError;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:343:42
+    |
+343 |             assert_eq!(decision.outcome, DecisionCode::Denied);
+    |                                          ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:344:40
+    |
+344 |             assert_eq!(decision.layer, PolicyLayer::Emergency);
+    |                                        ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PolicyLayer;
+    |
+
+error[E0433]: cannot find type `InfluenceState` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:345:54
+    |
+345 |             assert_eq!(decision.emergency_influence, InfluenceState::Active);
+    |                                                      ^^^^^^^^^^^^^^ use of undeclared type `InfluenceState`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::InfluenceState;
+    |
+
+error[E0433]: cannot find type `RunId` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:369:15
+    |
+369 |     let run = RunId::new(11_003);
+    |               ^^^^^ use of undeclared type `RunId`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::RunId;
+    |
+ 13 + use vb_runtime::shard::RunId;
+    |
+
+error[E0433]: cannot find type `ActionId` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:370:18
+    |
+370 |     let action = ActionId::new(0);
+    |                  ^^^^^^^^ use of undeclared type `ActionId`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::ActionId;
+    |
+ 13 + use vb_validate::ActionId;
+    |
+
+error[E0433]: cannot find type `ExecutorCatalog` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:372:19
+    |
+372 |     let catalog = ExecutorCatalog::run_registered_conformance()?;
+    |                   ^^^^^^^^^^^^^^^ use of undeclared type `ExecutorCatalog`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::executor::ExecutorCatalog;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:375:58
+    |
+375 |     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+    |                                                          ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `Arc` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:377:19
+    |
+377 |     let journal = Arc::new(FjallJournal::open(
+    |                   ^^^ use of undeclared type `Arc`
+    |
+help: consider importing this struct
+    |
+ 13 + use std::sync::Arc;
+    |
+
+error[E0433]: cannot find type `FjallJournal` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:377:28
+    |
+377 |     let journal = Arc::new(FjallJournal::open(
+    |                            ^^^^^^^^^^^^ use of undeclared type `FjallJournal`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::FjallJournal;
+    |
+
+error[E0433]: cannot find type `FjallConfig` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:379:14
+    |
+379 |         Some(FjallConfig::default()),
+    |              ^^^^^^^^^^^ use of undeclared type `FjallConfig`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::FjallConfig;
+    |
+
+error[E0433]: cannot find type `RuntimePolicy` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:384:9
+    |
+384 |         RuntimePolicy::Strict,
+    |         ^^^^^^^^^^^^^ use of undeclared type `RuntimePolicy`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::RuntimePolicy;
+    |
+
+error[E0433]: cannot find type `Arc` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:390:19
+    |
+390 |     let wrapped = Arc::new(FailingPolicyPortJournal::new(
+    |                   ^^^ use of undeclared type `Arc`
+    |
+help: consider importing this struct
+    |
+ 13 + use std::sync::Arc;
+    |
+
+error[E0433]: cannot find type `Runtime` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:394:23
+    |
+394 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped);
+    |                       ^^^^^^^ use of undeclared type `Runtime`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_runtime::runtime::Runtime;
+    |
+
+error[E0425]: cannot find function `shard_count` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:394:36
+    |
+394 |     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped);
+    |                                    ^^^^^^^^^^^ not found in this scope
+    |
+note: function `crate::fixtures::shard_count` exists but is inaccessible
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:25:1
+    |
+ 25 | fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0433]: cannot find type `PolicyDigest` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:396:26
+    |
+396 |     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
+    |                          ^^^^^^^^^^^^ use of undeclared type `PolicyDigest`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyDigest;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PolicyRule` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:399:9
+    |
+399 |         PolicyRule {
+    |         ^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_core::policy::PolicyRule;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:401:19
+    |
+401 |             code: DecisionCode::Allowed,
+    |                   ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `SlotIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:408:21
+    |
+408 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(77))]),
+    |                     ^^^^^^^ use of undeclared type `SlotIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::SlotIdx;
+    |
+ 13 + use vb_validate::SlotIdx;
+    |
+
+error[E0433]: cannot find type `SlotValue` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:408:36
+    |
+408 |         Box::from([(SlotIdx::ZERO, SlotValue::I64(77))]),
+    |                                    ^^^^^^^^^ use of undeclared type `SlotValue`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::SlotValue;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:415:54
+    |
+415 |         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                      ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `FjallRegister` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:420:23
+    |
+420 |     let mut adapter = FjallRegister::open(&register_path, 8)?;
+    |                       ^^^^^^^^^^^^^ use of undeclared type `FjallRegister`
+    |
+help: consider importing this struct
+    |
+ 13 + use vb_storage::executor::FjallRegister;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:424:19
+    |
+424 |         u64::from(StepIdx::ZERO.get()),
+    |                   ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `RegisteredExecutionError` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:430:13
+    |
+430 |         Err(RegisteredExecutionError::Runtime(runtime_err)) => {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RegisteredExecutionError`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_runtime::runtime::RegisteredExecutionError;
+    |
+
+error[E0433]: cannot find type `RuntimeError` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:434:21
+    |
+434 |                     RuntimeError::UnsupportedOperation { operation }
+    |                     ^^^^^^^^^^^^ use of undeclared type `RuntimeError`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_runtime::RuntimeError;
+    |
+
+error[E0433]: cannot find type `StepIdx` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:458:58
+    |
+458 |             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+    |                                                          ^^^^^^^ use of undeclared type `StepIdx`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::StepIdx;
+    |
+ 13 + use vb_validate::StepIdx;
+    |
+
+error[E0433]: cannot find type `Ordering` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:480:41
+    |
+480 |         wrapped.policy_port_called.load(Ordering::SeqCst),
+    |                                         ^^^^^^^^ use of undeclared type `Ordering`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use std::cmp::Ordering;
+    |
+ 13 + use std::sync::atomic::Ordering;
+    |
+
+error[E0433]: cannot find type `DecisionCode` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:487:34
+    |
+487 |     assert_eq!(decision.outcome, DecisionCode::Allowed);
+    |                                  ^^^^^^^^^^^^ use of undeclared type `DecisionCode`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::DecisionCode;
+    |
+
+error[E0433]: cannot find type `PolicyLayer` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:488:32
+    |
+488 |     assert_eq!(decision.layer, PolicyLayer::Live);
+    |                                ^^^^^^^^^^^ use of undeclared type `PolicyLayer`
+    |
+help: consider importing this enum
+    |
+ 13 + use vb_core::policy::PolicyLayer;
+    |
+
+error[E0433]: cannot find type `Taint` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:491:43
+    |
+491 |         compute_expected_input_digest(77, Taint::Clean, &ticket)?;
+    |                                           ^^^^^ use of undeclared type `Taint`
+    |
+help: consider importing one of these enums
+    |
+ 13 + use vb_core::Taint;
+    |
+ 13 + use vb_core::proof_kernels::taint::Taint;
+    |
+ 13 + use vb_validate::type_taint::Taint;
+    |
+
+error: unused import: `std::sync::Arc`
+ --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:4:5
+  |
+4 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `RecoveryClass`
+ --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:7:49
+  |
+7 | use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+  |                                                 ^^^^^^^^^^^^^
+
+error: unused import: `vb_runtime::journal::StorageRuntimeJournal`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:15:5
+   |
+15 | use vb_runtime::journal::StorageRuntimeJournal;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `vb_runtime::runtime::Runtime`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:16:5
+   |
+16 | use vb_runtime::runtime::Runtime;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused imports: `ExecutorCatalog` and `FjallRegister`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:18:28
+   |
+18 | use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+   |                            ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+error: unused imports: `FjallConfig` and `FjallJournal`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs:19:18
+   |
+19 | use vb_storage::{FjallConfig, FjallJournal};
+   |                  ^^^^^^^^^^^  ^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0422, E0425, E0433.
+For more information about an error, try `rustc --explain E0422`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 108 previous errors
