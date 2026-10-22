@@ -1,0 +1,5 @@
+# Unaccepted test candidate v4 source audit
+
+Raw TEST_V4_05 proves12pass/2fail against oldproduction. Those failures correctly expose missing neutral lifecycle behavior and runbinding. Handoff claim allcastsremoved is false: actualsource has i asu64 twice, encoded[..half] slice and seq+=1. Ticketfixtureidempotency_key0 is noncanonical; strengthen actualticket identity via productionkeycalculator. Handoff manualcombo135 contradicts3*3*5*3*3=405; actual rawtests14, nothandwrittencomboassurance. Existing oldtagtestfirstbyte10 proves tagidentityonly, notfulllegacyfixture; oldpartialcodeccontains established fullfixture.
+
+Next merged localrepair mustretain realterminalderivation assertions, separatelyassert invalidencode AND forgedmalformeddecode rejection (current encode? wouldpropagateexpectederrorandfailtest). NewFjall orderedrecords testedactualappend_strict/drop/reopen/read, noacceptedparentdispatchclaim. Sourcefile576rawtestcategorywithin3000canonical butnewfunctionlogical25policy stillneedsactualreview. All reports remainhistorical untilnewrawgates/independentreviews.

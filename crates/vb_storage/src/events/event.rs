@@ -307,6 +307,17 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Full typed policy decision persisted with complete identity and
+    /// influence factor retention. Carries the immutable public record
+    /// without minting new effect authority.
+    PolicyDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete policy decision record.
+        decision: vb_core::policy::DecisionRecord,
+    },
     /// Run failed.
     RunFailedEvent {
         /// Run identifier.
