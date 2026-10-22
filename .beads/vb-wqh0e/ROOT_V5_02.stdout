@@ -1,0 +1,28 @@
+
+running 23 tests
+test all_prefixes_distinct_unit ... ok
+test declared_keyspaces_contains_required_names ... ok
+test declared_keyspaces_count ... ok
+test declared_keyspaces_no_duplicates ... ok
+test encode_determinism_blob ... ok
+test encode_determinism_compiled_ir ... ok
+test encode_determinism_index_action ... ok
+test encode_determinism_run_header ... ok
+test encode_determinism_run_event ... ok
+test encode_exact_length_blob ... ok
+test encode_determinism_workflow_source ... ok
+test encode_exact_length_compiled_ir ... ok
+test encode_exact_length_index_action ... ok
+test encode_exact_length_run_event ... ok
+test encode_exact_length_run_header ... ok
+test encode_exact_length_workflow_source ... ok
+test max_sequence_ordering ... ok
+test smoke_test_module_loads ... ok
+test index_action_ordering ... ok
+test prefix_distinctness ... ok
+test bigendian_u64_ordering ... ok
+test run_event_ordering ... ok
+test cross_keyspace_non_collision ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

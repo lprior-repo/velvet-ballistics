@@ -1,0 +1,26 @@
+{
+  "candidate": "917f89d539f96a9f2b5d1f295c2c44d54258b3d8",
+  "files": [
+    {
+      "path": "crates/vb_storage/src/journal/emergency_deny.rs",
+      "sha256": "6f7b6d2950e47593bd7ceb1daf3f0428c77a76abb2d85d3d8534a3b507e00176",
+      "matches": true
+    },
+    {
+      "path": "crates/vb_storage/src/journal/emergency_deny_tests.rs",
+      "sha256": "a82754ae76c52a4a816f0f95e135083e1e16739dc6df6c34ac33054caf5ef22c",
+      "matches": true
+    },
+    {
+      "path": "crates/vb_storage/src/batch/emergency_deny.rs",
+      "sha256": "0ac5fbe9feba724acdbec4f4e4b56fd7741ceeed7d6affc08282bfe0135f4589",
+      "matches": true
+    },
+    {
+      "path": "crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs",
+      "sha256": "9ca5401bcfc39a7e8e5b0a13479200328f68ecf4db5379750b2129ab7e10ec6d",
+      "matches": true
+    }
+  ],
+  "review": "Static independent TEST review. Root executed original provided immutable focused 13/23 gates; reviewer did not execute them."
+}
