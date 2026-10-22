@@ -8,6 +8,8 @@ mod run;
 mod step;
 #[path = "wire_serialize_wait_ask.rs"]
 mod wait_ask;
+#[path = "wire_serialize_policy.rs"]
+mod policy;
 
 use super::super::JournalEvent;
 use super::category::{JournalRecordCategory, journal_record_category};
@@ -53,6 +55,7 @@ where
         Some(JournalRecordCategory::Step) => step::serialize(event, serializer),
         Some(JournalRecordCategory::Action) => action::serialize(event, serializer),
         Some(JournalRecordCategory::WaitAsk) => wait_ask::serialize(event, serializer),
+        Some(JournalRecordCategory::Policy) => policy::serialize(event, serializer),
         None => serialize_routing_error::<S>(),
     }
 }

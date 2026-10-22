@@ -211,6 +211,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::RunRetried { .. } => LifecycleState::Active,
         JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
+        JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
     }
 }
 
