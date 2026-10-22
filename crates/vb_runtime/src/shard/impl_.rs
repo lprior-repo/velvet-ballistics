@@ -11,4 +11,5 @@ include!("impl_parts/policy_decision.rs");
 mod tests {
     include!("impl_tests/chunk_001.rs");
     include!("impl_tests/chunk_002.rs");
+    include!("impl_tests/policy_decision_tests.rs");
 }
