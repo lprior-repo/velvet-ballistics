@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-sue37-local5090-governance",
+  "argv": [
+    "bash",
+    ".beads/vb-e7rjr/supply-chain-status-selftest.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 1.136,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "actual-extracted-script-selftest-v2",
+  "coordinator_message": "REVIEW CURRENT SCRIPT AGAIN REJECT: test_audit_pass/fail STILLHANDWRITTEN audit cargo --version, NOTrealMooncode; script_exit mismatchonlyNOTEdoesnotFAIL; functionregex [^}] truncatesat${name}. RequirementFULLACTUALscriptnotjustfunction. Simplest Python stdlibselftest driver: extract linesbetween supply-chain script:| and nextindent4key(toolchains), dedent6, writefullscript inTemporaryDirectory; createall11 crates/package fixture directories; PATHfixture QUOTEDheredocs rustup shift2 thenexec cargo args, timeout skipflagargs+duration thenexec, cargo casefirstargaudit/deny/vet/geiger/machete codefromenvironment; recordinvocations tologespecially11geiger. subprocess.run([bash,fullscript],cwd=freshfixture,env=fixtures) capturesREALproductionrc andread.actual.statusfiles. Matrix0/1/2/124/127advisoriescontinuewithaudit0; audit1/3samefailure. Nevercopyaudit/functioninselftest, nochangingflags/logic. No ...||true/set+e masking. Root sawrevisedscriptstillwrong; donotfinalizeuntilfixed. Also restoreVerustrustcommentsandremoveblanklinesinstead; no newmath/tokens/exceptions. Keepworkbounded."
+}
