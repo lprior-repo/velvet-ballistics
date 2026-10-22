@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wop2u-local5090-production",
+  "argv": [
+    "cargo",
+    "check",
+    "--workspace"
+  ],
+  "exit_code": 0,
+  "seconds": 12.714,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-wop2u/evidence/wop2u_check_new_test"
+}

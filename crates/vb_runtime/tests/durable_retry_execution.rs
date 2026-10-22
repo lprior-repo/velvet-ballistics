@@ -236,6 +236,7 @@ fn durable_retry_reopens_and_completes_failed_step() -> Result<(), String> {
         "retry must re-execute the failed step"
     );
     assert_eq!(retry_ticket.attempt, 1, "re-executed action is its first action attempt");
+    assert_eq!(retry_ticket.run_attempt, 2, "retry must carry new run attempt number");
 
     runtime
         .complete_action_with_output(retry_ticket, action_output(SlotValue::I64(42))?)

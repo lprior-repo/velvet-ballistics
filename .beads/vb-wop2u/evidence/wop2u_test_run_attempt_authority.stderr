@@ -1,0 +1,124 @@
+   Compiling cfg-if v1.0.4
+   Compiling libc v0.2.186
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling cc v1.2.62
+   Compiling log v0.4.29
+   Compiling scopeguard v1.2.0
+   Compiling num-traits v0.2.19
+   Compiling lock_api v0.4.14
+   Compiling crossbeam-utils v0.8.21
+   Compiling equivalent v1.0.2
+   Compiling bitflags v2.11.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.2
+   Compiling fastrand v2.4.1
+   Compiling smallvec v1.15.1
+   Compiling tempfile v3.27.0
+   Compiling thiserror v2.0.18
+   Compiling spin v0.9.8
+   Compiling rustversion v1.0.22
+   Compiling getrandom v0.3.4
+   Compiling crossbeam-epoch v0.9.18
+   Compiling xxhash-rust v0.8.15
+   Compiling hashbrown v0.16.1
+   Compiling byteorder v1.5.0
+   Compiling regex-syntax v0.8.10
+   Compiling iana-time-zone v0.1.65
+   Compiling byteorder-lite v0.1.0
+   Compiling twox-hash v2.1.2
+   Compiling hashbrown v0.17.1
+   Compiling compare v0.0.6
+   Compiling chrono v0.4.44
+   Compiling interval-heap v0.0.5
+   Compiling bytes v1.11.1
+   Compiling indexmap v2.14.0
+   Compiling lz4_flex v0.13.1
+   Compiling sfa v1.0.0
+   Compiling hash32 v0.2.1
+   Compiling quick_cache v0.6.22
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling rand_core v0.9.5
+   Compiling parking_lot_core v0.9.12
+   Compiling blake3 v1.8.5
+   Compiling enum_dispatch v0.3.13
+   Compiling tracing-core v0.1.36
+   Compiling varint-rs v2.2.0
+   Compiling hashbrown v0.14.5
+   Compiling byteview v0.10.1
+   Compiling self_cell v1.2.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling rustc-hash v2.1.2
+   Compiling heapless v0.7.17
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling generator v0.8.8
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wop2u-local5090-production/crates/vb_core)
+   Compiling zerocopy v0.8.48
+   Compiling regex-automata v0.4.14
+   Compiling flume v0.12.0
+   Compiling cobs v0.3.0
+   Compiling cpufeatures v0.3.0
+   Compiling arrayref v0.3.9
+   Compiling constant_time_eq v0.4.2
+   Compiling lazy_static v1.5.0
+   Compiling pin-project-lite v0.2.17
+   Compiling arrayvec v0.7.6
+   Compiling tracing v0.1.44
+   Compiling sharded-slab v0.1.7
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling matchers v0.2.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling crc32c v0.6.8
+   Compiling tracing-log v0.2.0
+   Compiling wait-timeout v0.2.1
+   Compiling thread_local v1.1.9
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.8.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling quick-error v1.2.3
+   Compiling rusty-fork v0.3.1
+   Compiling tracing-subscriber v0.3.23
+   Compiling bit-set v0.8.0
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling crossbeam-queue v0.3.12
+   Compiling scoped-tls v1.0.1
+   Compiling unarray v0.1.4
+   Compiling rtrb v0.3.4
+   Compiling proptest v1.11.0
+   Compiling loom v0.7.2
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wop2u-local5090-production/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wop2u-local5090-production/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wop2u-local5090-production/crates/vb_runtime)
+warning: unused variable: `tick_before`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:258:9
+    |
+258 |     let tick_before = runtime.tick_all();
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_before`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tick_after_fail`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:310:9
+    |
+310 |     let tick_after_fail = runtime.tick_all();
+    |         ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_after_fail`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:351:9
+    |
+351 |     let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (test "durable_retry_run_attempt_authority") generated 3 warnings (run `cargo fix --test "durable_retry_run_attempt_authority" -p vb_runtime` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.24s
+     Running tests/durable_retry_run_attempt_authority.rs (target/debug/deps/durable_retry_run_attempt_authority-b180fa8f9d632497)
