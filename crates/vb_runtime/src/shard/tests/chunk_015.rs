@@ -157,26 +157,86 @@ fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), String> {
 }
 
 #[test]
-fn shard_ask_ticket_lookup_rejects_wrong_ask_step() -> Result<(), String> {
+fn shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion() -> Result<(), String> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared);
     let workflow = workflow_fixture(ask_then_finish_workflow(), "ask_then_finish_workflow")?;
     let run = super::RunId::new(752);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithContracts {
-            run: run,
-            workflow: workflow,
+            run,
+            workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    // Run is now waiting on an ask with a pending timer
+    assert_eq!(shard.pending_timer_count(), 1);
 
+    // Get the real ticket for the suspended ask at step 2.
+    let valid_ticket = shard
+        .lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(2))
+        .ok_or("suspended ask must issue a ticket")?;
+
+    // Mutate the ticket's ask_step to 99 (nonexistent step). Fields are pub(crate).
+    let invalid_ticket = AskTicket {
+        ask_step: vb_core::ids::StepIdx::new(99),
+        ..valid_ticket
+    };
+
+    // Capture journal snapshot before submitting the invalid answer.
+    let journal_before_invalid = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot before invalid answer failed: {e:?}"))?;
+
+    // Submit the invalid answer. The shard command handler must reject it.
+    let answer = AskAnswer {
+        ticket: invalid_ticket,
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::Bool(true),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+
+    // The invalid answer must not have consumed the pending ask.
+    assert_eq!(shard.pending_timer_count(), 1);
+    assert_eq!(shard.counters().snapshot().runs_completed, 0);
+
+    // Journal must be unchanged after the rejected invalid answer.
+    let journal_after_invalid = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot after invalid answer failed: {e:?}"))?;
     assert_eq!(
-        shard.lookup_pending_ask_ticket(run, vb_core::ids::StepIdx::new(99)),
-        None
+        journal_after_invalid, journal_before_invalid,
+        "rejected invalid answer must leave journal unchanged"
     );
+
+    // Now the original valid ticket completes the ask.
+    let valid_answer = AskAnswer {
+        ticket: valid_ticket,
+        answer_slot: SlotIdx::new(2),
+        value: vb_core::value::SlotValue::I64(99),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::AskAnswered {
+            answer: valid_answer
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Run completes with the correct answer.
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(shard.pending_timer_count(), 0);
     Ok(())
 }
 
