@@ -41,7 +41,7 @@ fn decision_code_variants_are_distinct() {
 }
 
 #[test]
-fn decision_code_serde_encoding_is_stable() -> Result<(), Box<dyn std::error::Error>> {
+fn decision_code_discriminants() -> Result<(), Box<dyn std::error::Error>> {
     let allowed_bytes = postcard::to_allocvec(&DecisionCode::Allowed)?;
     let denied_bytes = postcard::to_allocvec(&DecisionCode::Denied)?;
     let suspended_bytes = postcard::to_allocvec(&DecisionCode::Suspended)?;
@@ -60,7 +60,7 @@ fn policy_layer_variants_are_distinct() {
 }
 
 #[test]
-fn policy_layer_serde_encoding_is_stable() -> Result<(), Box<dyn std::error::Error>> {
+fn policy_layer_discriminants() -> Result<(), Box<dyn std::error::Error>> {
     let live_bytes = postcard::to_allocvec(&PolicyLayer::Live)?;
     let admission_bytes = postcard::to_allocvec(&PolicyLayer::Admission)?;
     let emergency_bytes = postcard::to_allocvec(&PolicyLayer::Emergency)?;

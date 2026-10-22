@@ -83,3 +83,18 @@ fn configured_policy_after_emergency_still_denied() -> RuntimeResult<()> {
     assert_eq!(record.layer, PolicyLayer::Emergency);
     Ok(())
 }
+
+#[test]
+fn same_inputs_produce_same_decision_record() -> RuntimeResult<()> {
+    let policy = LivePolicy::new();
+    let admission = PinnedAdmissionPolicy::Unverified;
+    let input = b"same input";
+    let taint = Taint::Clean;
+
+    let ticket = baseline_ticket();
+    let r1 = policy.evaluate(ticket, admission, input, taint)?;
+    let r2 = policy.evaluate(ticket, admission, input, taint)?;
+
+    assert_eq!(r1, r2);
+    Ok(())
+}

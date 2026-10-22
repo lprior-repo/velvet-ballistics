@@ -187,16 +187,23 @@ fn overlay_remains_restrictive_after_configure() -> RuntimeResult<()> {
 #[test]
 fn decision_record_preserves_ticket_identity() -> RuntimeResult<()> {
     let policy = LivePolicy::new();
-    let ticket = test_ticket(42);
+    let expected_ticket = ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(2),
+        seq: SeqNo::new(3),
+        action: ActionId::new(42),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 12345,
+        capacity: 10,
+    };
     let record = policy.evaluate(
-        ticket,
+        expected_ticket,
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
     )?;
-    assert_eq!(record.ticket, ticket);
-    assert_eq!(record.ticket.run, RunId::new(1));
-    assert_eq!(record.ticket.action, ActionId::new(42));
+    assert_eq!(record.ticket, expected_ticket);
     Ok(())
 }
 
@@ -303,19 +310,5 @@ fn missing_admission_distinguishable_from_artifact() -> RuntimeResult<()> {
         Taint::Clean,
     )?;
     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
-    Ok(())
-}
-
-#[test]
-fn same_inputs_produce_same_decision_record() -> RuntimeResult<()> {
-    let policy = LivePolicy::new();
-    let admission = PinnedAdmissionPolicy::Unverified;
-    let input = b"same input";
-    let taint = Taint::Clean;
-
-    let r1 = policy.evaluate(test_ticket(42), admission, input, taint)?;
-    let r2 = policy.evaluate(test_ticket(42), admission, input, taint)?;
-
-    assert_eq!(r1, r2);
     Ok(())
 }

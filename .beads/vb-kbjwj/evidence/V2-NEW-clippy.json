@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-strengthening",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 0.099,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-kbjwj/evidence/V2-NEW-clippy",
+  "coordinator_message": "Coordinator follow-up: Whole-repeat record test should assert_eq!(r1,r2) (DecisionRecord derives PartialEq), retain any meaningful existing field assertions; current piecemeal repeat omitted ticket. New tests.rs raw330>300; compact the NEW repetitive assertions/calls with pinnedfmt, or move new repeat test into emergency_and_admission_tests.rs rather than addprodmodulewiring (stillnewtestfile). taint test current &digests[..] and split_at(1) areuncheckedoperations even if guarded; use digests.as_slice() + while let Some((first,rest))=remaining.split_first() iterator and for second in rest, no unchecked split/index/slice/arithmetic. Earlier instruction still applies: restore stable serialization discrim tests names+expectedbytes, no weaker enum inequality. Otheroriginaltestnames/casesretained.\n"
+}

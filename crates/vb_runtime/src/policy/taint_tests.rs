@@ -111,10 +111,9 @@ fn all_taint_variants_produce_distinct_digests() -> RuntimeResult<()> {
     }
 
     // Verify all digests are distinct using pairwise comparison via iterators
-    let mut remaining = &digests[..];
+    let mut remaining = digests.as_slice();
     while remaining.len() > 1 {
-        let (first, rest) = remaining.split_at(1);
-        if let Some(first_item) = first.first() {
+        if let Some((first_item, rest)) = remaining.split_first() {
             for second_item in rest.iter() {
                 assert_ne!(
                     first_item.1, second_item.1,
@@ -122,8 +121,8 @@ fn all_taint_variants_produce_distinct_digests() -> RuntimeResult<()> {
                     first_item.0, second_item.0
                 );
             }
+            remaining = rest;
         }
-        remaining = rest;
     }
     Ok(())
 }
