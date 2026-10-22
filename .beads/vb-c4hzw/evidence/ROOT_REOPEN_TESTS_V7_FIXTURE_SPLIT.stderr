@@ -1,0 +1,50 @@
+error: unused import: `RecoveryClass`
+ --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:4:49
+  |
+4 | use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+  |                                                 ^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `WorkflowDigest`
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:17:55
+   |
+17 | use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+   |                                                       ^^^^^^^^^^^^^^
+
+error: unused imports: `CompiledNodeKind`, `CompiledNode`, `CompiledWorkflow`, `ResourceContract`, and `WorkflowParts`
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:24:5
+   |
+24 |     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+   |     ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+error: unused import: `node`
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:33:52
+   |
+33 |     action_grants, build_contract, build_workflow, node, scope, shard_count, strict_config,
+   |                                                    ^^^^
+
+error[E0560]: struct `CompiledNode` has no field named `output_slot`
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:35:9
+   |
+35 |         output_slot: output.map(SlotIdx::new),
+   |         ^^^^^^^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `output`, `on_error`, `error_slot`
+
+error[E0599]: no associated function or constant named `ZERO` found for struct `WorkflowDigest` in the current scope
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:46:33
+   |
+46 |         digest: WorkflowDigest::ZERO,
+   |                                 ^^^^ associated function or constant not found in `WorkflowDigest`
+
+error[E0599]: no associated function or constant named `ZERO` found for struct `ActionId` in the current scope
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:53:39
+   |
+53 |                     action: ActionId::ZERO,
+   |                                       ^^^^ associated function or constant not found in `ActionId`
+
+Some errors have detailed explanations: E0560, E0599.
+For more information about an error, try `rustc --explain E0560`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_emergency_reopen") due to 7 previous errors
