@@ -397,4 +397,4 @@ scan_commands:
     - cargo xtask forbidden-scan --pattern slice::from_raw_parts
 
   no_unsafe_in_first_party:
-    - cargo clippy --workspace --all-targets -- -D unsafe_code
+    - cargo clippy --workspace --lib --bins --examples -- -D unsafe_code

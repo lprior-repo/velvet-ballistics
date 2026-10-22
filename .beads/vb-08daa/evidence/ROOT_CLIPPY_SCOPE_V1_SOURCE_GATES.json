@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-08daa-source-only-clippy-v1",
+  "argv": [
+    "env",
+    "TEST_INTEGRITY_BASE=58a1f9580ca8beb32f80118ce08df521688a249a",
+    "moon",
+    "ci",
+    ":fmt",
+    ":source-length",
+    ":lint-src",
+    ":check",
+    "--downstream",
+    "none",
+    "--force",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 0,
+  "seconds": 60.261,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_CLIPPY_SCOPE_V1_SOURCE_GATES"
+}

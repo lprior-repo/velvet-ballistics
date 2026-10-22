@@ -1,0 +1,39 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1829628964
+INFO: Loaded 1 modules   (579 inline 8-bit counters): 579 [0x556613c92d43, 0x556613c92f86), 
+INFO: Loaded 1 PC tables (579 PCs): 579 [0x556613c92f88,0x556613c953b8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/boundary_metadata
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 29 ft: 30 corp: 1/1b exec/s: 0 rss: 42Mb
+#467	NEW    cov: 30 ft: 31 corp: 2/8b lim: 8 exec/s: 0 rss: 43Mb L: 7/7 MS: 5 ChangeBinInt-InsertByte-ChangeBinInt-InsertRepeatedBytes-InsertByte-
+#484	NEW    cov: 31 ft: 32 corp: 3/16b lim: 8 exec/s: 0 rss: 43Mb L: 8/8 MS: 2 ChangeBit-InsertByte-
+#943	NEW    cov: 32 ft: 33 corp: 4/27b lim: 11 exec/s: 0 rss: 43Mb L: 11/11 MS: 4 ChangeBit-CrossOver-CrossOver-CrossOver-
+#945	NEW    cov: 33 ft: 34 corp: 5/37b lim: 11 exec/s: 0 rss: 43Mb L: 10/11 MS: 2 ChangeBit-CopyPart-
+#1106	NEW    cov: 34 ft: 35 corp: 6/47b lim: 11 exec/s: 0 rss: 45Mb L: 10/11 MS: 1 CrossOver-
+#1445	NEW    cov: 35 ft: 36 corp: 7/60b lim: 14 exec/s: 0 rss: 45Mb L: 13/13 MS: 4 EraseBytes-InsertByte-InsertByte-InsertRepeatedBytes-
+#3060	REDUCE cov: 35 ft: 36 corp: 7/58b lim: 29 exec/s: 0 rss: 45Mb L: 6/13 MS: 5 ChangeByte-InsertByte-ChangeBinInt-CMP-EraseBytes- DE: "\377\377\377\377\377\377\377\377"-
+	NEW_FUNC[1/4]: 0x556613c2b0f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/boundary_metadata+0x15a0f0) (BuildId: 1ddbc4b25a5728b55d53feb00760e9be7a7199aa)
+	NEW_FUNC[2/4]: 0x556613c2b2e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/boundary_metadata+0x15a2e0) (BuildId: 1ddbc4b25a5728b55d53feb00760e9be7a7199aa)
+#3815	NEW    cov: 78 ft: 80 corp: 8/86b lim: 33 exec/s: 0 rss: 46Mb L: 28/28 MS: 5 ChangeBit-InsertRepeatedBytes-EraseBytes-PersAutoDict-CMP- DE: "\377\377\377\377\377\377\377\377"-"decoder-byte-ingest-boundary"-
+#10959	NEW    cov: 80 ft: 82 corp: 9/114b lim: 98 exec/s: 0 rss: 48Mb L: 28/28 MS: 4 ShuffleBytes-CMP-CopyPart-CMP- DE: "\377\377\377\377\377\377\377%"-"generated-interface-boundary"-
+#29661	REDUCE cov: 80 ft: 82 corp: 9/112b lim: 277 exec/s: 0 rss: 56Mb L: 9/28 MS: 2 EraseBytes-CMP- DE: "\377\377\377\377\377\377\377\377"-
+#29990	REDUCE cov: 80 ft: 82 corp: 9/110b lim: 277 exec/s: 0 rss: 56Mb L: 8/28 MS: 4 ChangeBit-ChangeBit-EraseBytes-PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
+#90173	NEW    cov: 84 ft: 87 corp: 10/135b lim: 868 exec/s: 0 rss: 83Mb L: 25/28 MS: 3 InsertByte-InsertRepeatedBytes-CMP- DE: "foreign-function-boundary"-
+#129492	REDUCE cov: 86 ft: 89 corp: 11/152b lim: 1250 exec/s: 0 rss: 100Mb L: 17/28 MS: 4 ChangeBit-PersAutoDict-CopyPart-CMP- DE: "\377\377\377\377\377\377\377%"-"extern-c-boundary"-
+#149981	NEW    cov: 88 ft: 91 corp: 12/170b lim: 1450 exec/s: 0 rss: 109Mb L: 18/28 MS: 4 ChangeByte-ChangeByte-CrossOver-CMP- DE: "ipc-frame-boundary"-
+#442199	REDUCE cov: 90 ft: 93 corp: 13/194b lim: 4096 exec/s: 0 rss: 235Mb L: 24/28 MS: 3 PersAutoDict-PersAutoDict-CMP- DE: "\377\377\377\377\377\377\377\377"-"\377\377\377\377\377\377\377%"-"external-binary-boundary"-
+#960512	NEW    cov: 92 ft: 95 corp: 14/229b lim: 4096 exec/s: 960512 rss: 460Mb L: 35/35 MS: 3 ChangeBit-CrossOver-CMP- DE: "unsafe-adjacent-dependency-boundary"-
+#1241747	DONE   cov: 92 ft: 95 corp: 14/229b lim: 4096 exec/s: 620873 rss: 498Mb
+###### Recommended dictionary. ######
+"\377\377\377\377\377\377\377\377" # Uses: 15286
+"decoder-byte-ingest-boundary" # Uses: 11410
+"\377\377\377\377\377\377\377%" # Uses: 14681
+"generated-interface-boundary" # Uses: 11277
+"foreign-function-boundary" # Uses: 10460
+"extern-c-boundary" # Uses: 10703
+"ipc-frame-boundary" # Uses: 10229
+"external-binary-boundary" # Uses: 6780
+"unsafe-adjacent-dependency-boundary" # Uses: 2031
+###### End of recommended dictionary. ######
+Done 1241747 runs in 2 second(s)

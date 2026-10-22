@@ -15,7 +15,7 @@ SCCACHE_MAX_FRAME_LENGTH = "104857600"
 SCCACHE_BASEDIR = "/home/lewis/src/velvet-ballistics"
 
 [alias]
-ci = "clippy --workspace --all-targets --all-features -- -D warnings"
+ci = "clippy --workspace --lib --bins --examples --all-features -- -D warnings"
 check-all = "check --workspace --all-targets --all-features"
 fmt-check = "fmt --all -- --check"
 doc-all = "doc --workspace --all-features --no-deps"

@@ -1,0 +1,3 @@
+=== compile evidence: compiled_ir_fuzz ===
+-rwxr-xr-x 2 lewis lewis 3216888 Oct 22 17:00 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/compiled_ir_fuzz
+OK: binary present
