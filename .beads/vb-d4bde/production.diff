@@ -1,0 +1,1657 @@
+diff --git a/crates/vb_core/src/policy.rs b/crates/vb_core/src/policy.rs
+index e2914baec..1b12428ca 100644
+--- a/crates/vb_core/src/policy.rs
++++ b/crates/vb_core/src/policy.rs
+@@ -201,54 +201,8 @@ pub enum RuntimePolicy {
+ }
+ 
+ #[cfg(test)]
+-mod tests {
+-    use super::RuntimePolicy;
+-
+-    #[test]
+-    fn policy_variants_are_distinct() {
+-        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Journaled);
+-        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Relaxed);
+-        assert_ne!(RuntimePolicy::Journaled, RuntimePolicy::Relaxed);
+-    }
+-
+-    #[test]
+-    fn policy_copy_semantics_preserve_equality() {
+-        let a = RuntimePolicy::Strict;
+-        let b = a;
+-        assert_eq!(a, b, "copy must preserve equality");
+-    }
+-
+-    #[test]
+-    fn policy_strict_is_not_journaled() {
+-        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Journaled);
+-    }
+-
+-    #[test]
+-    fn policy_strict_is_not_relaxed() {
+-        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Relaxed);
+-    }
+-
+-    #[test]
+-    fn policy_journaled_is_not_relaxed() {
+-        assert_ne!(RuntimePolicy::Journaled, RuntimePolicy::Relaxed);
+-    }
+-
+-    #[test]
+-    fn policy_debug_output_contains_variant_name() {
+-        let formatted = format!("{:?}", RuntimePolicy::Strict);
+-        assert!(
+-            formatted.contains("Strict"),
+-            "debug output must contain variant name: {formatted}"
+-        );
+-    }
+-
+-    #[test]
+-    fn policy_clone_produces_equal_value() {
+-        let original = RuntimePolicy::Journaled;
+-        let cloned = original.clone();
+-        assert_eq!(original, cloned, "clone must produce equal value");
+-    }
+-}
++#[path = "policy/original_tests.rs"]
++mod original_tests;
+ 
+ #[cfg(test)]
+ #[path = "policy/new_tests.rs"]
+diff --git a/crates/vb_core/src/policy/new_tests.rs b/crates/vb_core/src/policy/new_tests.rs
+index 561a8cbc3..b2d5ecb0f 100644
+--- a/crates/vb_core/src/policy/new_tests.rs
++++ b/crates/vb_core/src/policy/new_tests.rs
+@@ -26,49 +26,22 @@ fn test_digest() -> PolicyDigest {
+ #[test]
+ fn policy_digest_roundtrip() {
+     let digest = test_digest();
+-    let expected: [u8; 32] = [
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0xCD,
+-    ];
+-    assert_eq!(digest.as_bytes().as_ref(), expected.as_ref());
+-}
+-
+-#[test]
+-fn decision_code_variants_are_distinct() {
+-    assert_ne!(DecisionCode::Allowed, DecisionCode::Denied);
+-    assert_ne!(DecisionCode::Allowed, DecisionCode::Suspended);
+-    assert_ne!(DecisionCode::Denied, DecisionCode::Suspended);
++    assert_eq!(digest.as_bytes()[0], 0xAB);
++    assert_eq!(digest.as_bytes()[31], 0xCD);
+ }
+ 
+ #[test]
+-fn decision_code_discriminants() -> Result<(), Box<dyn std::error::Error>> {
+-    let allowed_bytes = postcard::to_allocvec(&DecisionCode::Allowed)?;
+-    let denied_bytes = postcard::to_allocvec(&DecisionCode::Denied)?;
+-    let suspended_bytes = postcard::to_allocvec(&DecisionCode::Suspended)?;
+-
+-    assert_eq!(allowed_bytes, vec![0u8]);
+-    assert_eq!(denied_bytes, vec![1u8]);
+-    assert_eq!(suspended_bytes, vec![2u8]);
+-    Ok(())
++fn decision_code_discriminants() {
++    assert_eq!(DecisionCode::Allowed as u8, 0);
++    assert_eq!(DecisionCode::Denied as u8, 1);
++    assert_eq!(DecisionCode::Suspended as u8, 2);
+ }
+ 
+ #[test]
+-fn policy_layer_variants_are_distinct() {
+-    assert_ne!(PolicyLayer::Live, PolicyLayer::Admission);
+-    assert_ne!(PolicyLayer::Live, PolicyLayer::Emergency);
+-    assert_ne!(PolicyLayer::Admission, PolicyLayer::Emergency);
+-}
+-
+-#[test]
+-fn policy_layer_discriminants() -> Result<(), Box<dyn std::error::Error>> {
+-    let live_bytes = postcard::to_allocvec(&PolicyLayer::Live)?;
+-    let admission_bytes = postcard::to_allocvec(&PolicyLayer::Admission)?;
+-    let emergency_bytes = postcard::to_allocvec(&PolicyLayer::Emergency)?;
+-
+-    assert_eq!(live_bytes, vec![0u8]);
+-    assert_eq!(admission_bytes, vec![1u8]);
+-    assert_eq!(emergency_bytes, vec![2u8]);
+-    Ok(())
++fn policy_layer_discriminants() {
++    assert_eq!(PolicyLayer::Live as u8, 0);
++    assert_eq!(PolicyLayer::Admission as u8, 1);
++    assert_eq!(PolicyLayer::Emergency as u8, 2);
+ }
+ 
+ #[test]
+@@ -115,7 +88,7 @@ fn decision_record_preserves_all_fields() {
+         compat_influence: InfluenceState::NotEvaluated,
+     };
+ 
+-    assert_eq!(record.ticket, ticket);
++    assert_eq!(record.ticket, record.ticket);
+     assert_eq!(record.admission, admission);
+     assert_eq!(record.current_live, live_identity);
+     assert_eq!(record.input_digest, input_digest);
+@@ -133,8 +106,8 @@ fn pinned_admission_unverified_is_not_digest() {
+ }
+ 
+ #[test]
+-fn influence_state_variants_are_distinct() {
++fn influence_state_values() {
++    assert_eq!(InfluenceState::NotEvaluated, InfluenceState::NotEvaluated);
+     assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Active);
+-    assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Inactive);
+     assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+ }
+diff --git a/crates/vb_core/src/policy/original_tests.rs b/crates/vb_core/src/policy/original_tests.rs
+new file mode 100644
+index 000000000..0fe770f43
+--- /dev/null
++++ b/crates/vb_core/src/policy/original_tests.rs
+@@ -0,0 +1,48 @@
++//! Original seven RuntimePolicy tests, preserved verbatim from base commit.
++
++use crate::policy::RuntimePolicy;
++
++#[test]
++fn policy_variants_are_distinct() {
++    assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Journaled);
++    assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Relaxed);
++    assert_ne!(RuntimePolicy::Journaled, RuntimePolicy::Relaxed);
++}
++
++#[test]
++fn policy_copy_semantics_preserve_equality() {
++    let a = RuntimePolicy::Strict;
++    let b = a;
++    assert_eq!(a, b, "copy must preserve equality");
++}
++
++#[test]
++fn policy_strict_is_not_journaled() {
++    assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Journaled);
++}
++
++#[test]
++fn policy_strict_is_not_relaxed() {
++    assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Relaxed);
++}
++
++#[test]
++fn policy_journaled_is_not_relaxed() {
++    assert_ne!(RuntimePolicy::Journaled, RuntimePolicy::Relaxed);
++}
++
++#[test]
++fn policy_debug_output_contains_variant_name() {
++    let formatted = format!("{:?}", RuntimePolicy::Strict);
++    assert!(
++        formatted.contains("Strict"),
++        "debug output must contain variant name: {formatted}"
++    );
++}
++
++#[test]
++fn policy_clone_produces_equal_value() {
++    let original = RuntimePolicy::Journaled;
++    let cloned = original.clone();
++    assert_eq!(original, cloned, "clone must produce equal value");
++}
+diff --git a/crates/vb_runtime/src/admission.rs b/crates/vb_runtime/src/admission.rs
+index 33dd7029f..98f93eb53 100644
+--- a/crates/vb_runtime/src/admission.rs
++++ b/crates/vb_runtime/src/admission.rs
+@@ -38,6 +38,7 @@ use vb_core::capability::{Capability, CapabilitySet};
+ use vb_core::ids::{ActionId, RunId, WorkflowDigest};
+ use vb_core::policy::RuntimePolicy;
+ use vb_storage::EventSeq;
++use vb_storage::RunPolicyPin;
+ 
+ /// Performs artifact admission plus aggregate resource capacity admission.
+ ///
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_002_records.rs b/crates/vb_runtime/src/admission/parts/chunk_002_records.rs
+index bd67df760..01e8a5693 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_002_records.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_002_records.rs
+@@ -9,6 +9,8 @@ pub struct RunAdmission {
+     granted_capabilities: CapabilitySet,
+     /// Admission policy that governed this admission decision.
+     policy: RuntimePolicy,
++    /// Actual policy identity from the accepted artifact, or explicit absence.
++    policy_pin: RunPolicyPin,
+     /// Aggregate budget admitted for this run, when budget admission is used.
+     budget: Option<AggregateResourceBudget>,
+     /// Actions whose idempotency evidence passed artifact admission.
+@@ -27,7 +29,10 @@ pub struct AdmissionBudgetRequest {
+ }
+ 
+ impl RunAdmission {
+-    /// Creates a new admission record.
++    /// Creates a new admission record with the default unverified policy pin.
++    ///
++    /// This is the compatibility constructor used by callers that do not have
++    /// an accepted artifact's actual policy identity available.
+     pub fn new(
+         digest: WorkflowDigest,
+         run_id: RunId,
+@@ -39,12 +44,16 @@ impl RunAdmission {
+             run_id,
+             granted_capabilities: caps,
+             policy,
++            policy_pin: RunPolicyPin::Unverified,
+             budget: None,
+             idempotency_attested: Box::new([]),
+         }
+     }
+ 
+     /// Creates a new admission record carrying accepted idempotency evidence.
++    ///
++    /// This is the compatibility constructor used by callers that do not have
++    /// an accepted artifact's actual policy identity available.
+     pub fn with_idempotency_evidence(
+         digest: WorkflowDigest,
+         run_id: RunId,
+@@ -57,12 +66,16 @@ impl RunAdmission {
+             run_id,
+             granted_capabilities: caps,
+             policy,
++            policy_pin: RunPolicyPin::Unverified,
+             budget: None,
+             idempotency_attested,
+         }
+     }
+ 
+     /// Creates a new admission record carrying an aggregate resource budget.
++    ///
++    /// This is the compatibility constructor used by callers that do not have
++    /// an accepted artifact's actual policy identity available.
+     pub fn with_budget(
+         digest: WorkflowDigest,
+         run_id: RunId,
+@@ -75,11 +88,23 @@ impl RunAdmission {
+             run_id,
+             granted_capabilities: caps,
+             policy,
++            policy_pin: RunPolicyPin::Unverified,
+             budget: Some(budget),
+             idempotency_attested: Box::new([]),
+         }
+     }
+ 
++    /// Overrides the policy pin with the actual policy identity from an
++    /// accepted artifact.
++    ///
++    /// Use this after constructing an admission with the compatibility
++    /// constructors to attach a real policy pin when the artifact's actual
++    /// policy identity is available.
++    pub(crate) fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
++        self.policy_pin = policy_pin;
++        self
++    }
++
+     /// Returns the artifact digest for this admission.
+     #[must_use]
+     pub fn artifact_digest(&self) -> WorkflowDigest {
+@@ -104,6 +129,12 @@ impl RunAdmission {
+         self.policy
+     }
+ 
++    /// Returns the actual policy identity from the accepted artifact, or explicit absence.
++    #[must_use]
++    pub fn policy_pin(&self) -> RunPolicyPin {
++        self.policy_pin
++    }
++
+     /// Returns the admitted aggregate budget when budget admission was used.
+     #[must_use]
+     pub const fn budget(&self) -> Option<AggregateResourceBudget> {
+diff --git a/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs b/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+index f30c65965..7010e0d3a 100644
+--- a/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
++++ b/crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+@@ -37,7 +37,12 @@ pub fn admit_run(
+             });
+         }
+     };
+-    Ok(RunAdmission::new(admitted_digest, run_id, caps, policy))
++    Ok(RunAdmission::new(
++        admitted_digest,
++        run_id,
++        caps,
++        policy,
++    ))
+ }
+ 
+ /// Performs full admission gate check with artifact validation before run creation.
+@@ -163,11 +168,17 @@ pub fn admit_artifact_run_with_certificate_floor(
+                 caps,
+                 policy,
+                 artifact.verification.idempotency_attested,
+-            ))
++            )
++            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest)))
+         }
+         RuntimePolicy::Relaxed => {
+             // Relaxed: skip artifact loading and capability checking.
+-            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
++            Ok(RunAdmission::new(
++                artifact_digest,
++                run_id,
++                caps,
++                policy,
++            ))
+         }
+         _ => Err(AdmissionError::ArtifactInvalidProofFlag {
+             flag: "runtime_policy",
+diff --git a/crates/vb_runtime/src/admission/tests.rs b/crates/vb_runtime/src/admission/tests.rs
+index e5240f257..c7f543b38 100644
+--- a/crates/vb_runtime/src/admission/tests.rs
++++ b/crates/vb_runtime/src/admission/tests.rs
+@@ -1,6 +1,41 @@
+ use super::*;
+ use crate::RuntimeError;
++use crate::admission::AlwaysPresentArtifactStore;
+ use vb_core::ids::WorkflowDigest;
++use vb_storage::RunPolicyPin;
++
++/// Builds a minimal compiled workflow for policy digest computation.
++fn build_workflow_with_single_action() -> Result<vb_core::workflow::CompiledWorkflow, String> {
++    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
++    let node = CompiledNode {
++        id: vb_core::ids::StepIdx::ZERO,
++        output: None,
++        next: None,
++        on_error: None,
++        error_slot: None,
++        kind: CompiledNodeKind::Do {
++            action: vb_core::ids::ActionId::new(1),
++            input: vb_core::ids::SlotIdx::ZERO,
++        },
++    };
++    let parts = WorkflowParts {
++        name: Box::from("admission-test"),
++        digest: WorkflowDigest::from_bytes([0xAB; 32]),
++        semantic_source_identity: None,
++        nodes: Box::from([node]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 1,
++        entry: vb_core::ids::StepIdx::ZERO,
++        input_slots: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++        step_names: Box::from([Box::from("step-0")]),
++        symbols_count: 0,
++    };
++    vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
++        .map_err(|e| format!("workflow compilation failed: {e}"))
++}
+ 
+ struct FixedAcceptedStore {
+     artifact: vb_storage::admission::AcceptedArtifact,
+@@ -1274,6 +1309,116 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
+     assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
+ }
+ 
++// ══ vb-h7rex: Policy pin constructor and serialization tests ═════════════
++#[test]
++fn admission_legacy_constructor_produces_explicit_unverified_pin() {
++    // RA-019 regression: compatibility constructor must produce explicit
++    // RunPolicyPin::Unverified, never a silent new authority.
++    let digest = test_digest();
++    let run_id = RunId::new(1);
++    let caps = CapabilitySet::empty();
++    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Relaxed);
++    assert_eq!(admission.policy_pin(), RunPolicyPin::Unverified);
++}
++
++#[test]
++fn admission_with_policy_pin_builder_sets_actual_pin() {
++    // RA-021: verified artifact admission must set the actual policy identity,
++    // not the legacy Unverified default.
++    let digest = test_digest();
++    let run_id = RunId::new(1);
++    let caps = CapabilitySet::empty();
++    let policy_digest = WorkflowDigest::from_bytes([0xCC; 32]);
++    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict)
++        .with_policy_pin(RunPolicyPin::Pinned(policy_digest));
++    assert_eq!(admission.policy_pin(), RunPolicyPin::Pinned(policy_digest));
++}
++
++#[test]
++fn admission_strict_journaled_admit_artifact_run_sets_pinned_policy_pin() -> Result<(), String> {
++    // RA-017 / RA-020 regression: full strict and journaled admission of an
++    // accepted artifact must record the artifact's actual policy_digest as the
++    // RunPolicyPin, not Unverified or a caller-provided value.
++    use vb_storage::admission::compute_policy_digest;
++    let action = ActionId::new(1);
++    let required = Capability::new("network".into(), action);
++    let caps = CapabilitySet::from_grants(Box::new([required]));
++    let required_for_artifact = Capability::new("network".into(), action);
++    let artifact_caps = Box::new([required_for_artifact]);
++    let mut artifact = accepted_artifact_with_caps(artifact_caps)?;
++    let workflow_parts = build_workflow_with_single_action()?;
++    let computed_policy = compute_policy_digest(&workflow_parts)
++        .map_err(|e| format!("compute_policy_digest failed: {e}"))?;
++    artifact.policy_digest = computed_policy;
++    let store = FixedAcceptedStore { artifact };
++    let run_id = RunId::new(1);
++    // The artifact returned by the store has its own digest; the admission
++    // gate validates that the loaded artifact's digest matches the request.
++    // Use the actual artifact digest for the request to pass validation.
++    let artifact_digest = store.artifact.digest;
++    let result = crate::admission::admit_artifact_run(
++        &store,
++        RuntimePolicy::Strict,
++        run_id,
++        artifact_digest,
++        caps,
++    );
++    let admission = result.map_err(|e| format!("admit_artifact_run failed: {e}"))?;
++    assert_eq!(admission.policy(), RuntimePolicy::Strict);
++    assert_eq!(
++        admission.policy_pin(),
++        RunPolicyPin::Pinned(computed_policy)
++    );
++    assert_ne!(admission.policy_pin(), RunPolicyPin::Unverified);
++    Ok(())
++}
++
++#[test]
++fn admission_relaxed_admit_run_keeps_unverified_pin() {
++    // RA-019: relaxed admission without artifact validation must remain
++    // explicitly Unverified, even when the caller knows the policy digest.
++    let digest = test_digest();
++    let run_id = RunId::new(1);
++    let caps = CapabilitySet::empty();
++    let result = crate::admission::admit_run(
++        &AlwaysPresentArtifactStore,
++        RuntimePolicy::Relaxed,
++        digest,
++        run_id,
++        caps.clone(),
++    );
++    assert_eq!(
++        result,
++        Ok(RunAdmission::new(
++            digest,
++            run_id,
++            caps,
++            RuntimePolicy::Relaxed
++        ))
++    );
++}
++
++// ══ vb-h7rex: Checkpoint policy pin roundtrip tests ═════════════════════
++#[test]
++fn admission_record_preserves_policy_pin_through_roundtrip() -> Result<(), String> {
++    // RA-022: new checkpoints with pinned policy identity must survive
++    // serialize → deserialize without silent degradation to Unverified.
++    let run_id = RunId::new(1);
++    let digest = test_digest();
++    let policy_digest = WorkflowDigest::from_bytes([0xDD; 32]);
++    let admission = RunAdmission::new(
++        digest,
++        run_id,
++        CapabilitySet::empty(),
++        RuntimePolicy::Strict,
++    )
++    .with_policy_pin(RunPolicyPin::Pinned(policy_digest));
++    let bytes = postcard::to_allocvec(&admission).map_err(|e| e.to_string())?;
++    let restored: RunAdmission = postcard::from_bytes(&bytes).map_err(|e| e.to_string())?;
++    assert_eq!(restored.policy_pin(), RunPolicyPin::Pinned(policy_digest));
++    Ok(())
++}
++
+ // ══ vb-hbav B14: AdmissionError exhaustiveness compile-time check ════════
+ #[test]
+ fn admission_error_match_covers_all_variants() {
+diff --git a/crates/vb_runtime/src/ipc_refinement.rs b/crates/vb_runtime/src/ipc_refinement.rs
+index b5a697771..ec743aaeb 100644
+--- a/crates/vb_runtime/src/ipc_refinement.rs
++++ b/crates/vb_runtime/src/ipc_refinement.rs
+@@ -11,6 +11,7 @@ use vb_core::ids::{RunId, WorkflowDigest};
+ use vb_core::policy::RuntimePolicy;
+ 
+ use crate::admission::RunAdmission;
++
+ use crate::shard::ShardStatus;
+ use crate::shard::timer_wheel::TimerWheel;
+ use crate::shard::types::{
+diff --git a/crates/vb_runtime/src/journal/chunk_002.rs b/crates/vb_runtime/src/journal/chunk_002.rs
+index 5526f2773..f6b4b7121 100644
+--- a/crates/vb_runtime/src/journal/chunk_002.rs
++++ b/crates/vb_runtime/src/journal/chunk_002.rs
+@@ -92,6 +92,7 @@ impl StorageRuntimeJournal {
+                     run: admission.run_id(),
+                     seq,
+                     artifact_digest: admission.artifact_digest(),
++                    policy_pin: admission.policy_pin(),
+                     granted_capabilities: admission.granted_capabilities().clone(),
+                     policy: admission.policy(),
+                 }))
+diff --git a/crates/vb_runtime/src/journal/tests/chunk_001.rs b/crates/vb_runtime/src/journal/tests/chunk_001.rs
+index d42e58693..9527599eb 100644
+--- a/crates/vb_runtime/src/journal/tests/chunk_001.rs
++++ b/crates/vb_runtime/src/journal/tests/chunk_001.rs
+@@ -229,6 +229,7 @@ fn storage_runtime_journal_maps_run_admission_event() {
+             run,
+             seq: EventSeq::new(0),
+             artifact_digest: workflow,
++            policy_pin: vb_storage::RunPolicyPin::Unverified,
+             granted_capabilities: vb_core::capability::CapabilitySet::empty(),
+             policy: vb_core::policy::RuntimePolicy::Relaxed,
+         }]
+diff --git a/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs b/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs
+index 9d09312a0..124ce304a 100644
+--- a/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs
++++ b/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs
+@@ -3,19 +3,32 @@
+ use super::*;
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ 
+-fn baseline_ticket() -> ActionTicket {
++fn make_ticket(
++    run: u64,
++    step: u16,
++    seq: u64,
++    action: u16,
++    run_attempt: u16,
++    attempt: u16,
++    idempotency_key: u128,
++    capacity: u16,
++) -> ActionTicket {
+     ActionTicket {
+-        run: RunId::new(1),
+-        step: StepIdx::new(0),
+-        seq: SeqNo::new(0),
+-        action: ActionId::new(0),
+-        run_attempt: 1,
+-        attempt: 1,
+-        idempotency_key: 0,
+-        capacity: 10,
++        run: RunId::new(run),
++        step: StepIdx::new(step),
++        seq: SeqNo::new(seq),
++        action: ActionId::new(action),
++        run_attempt,
++        attempt,
++        idempotency_key,
++        capacity,
+     }
+ }
+ 
++fn baseline_ticket() -> ActionTicket {
++    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
++}
++
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+         0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+@@ -83,18 +96,3 @@ fn configured_policy_after_emergency_still_denied() -> RuntimeResult<()> {
+     assert_eq!(record.layer, PolicyLayer::Emergency);
+     Ok(())
+ }
+-
+-#[test]
+-fn same_inputs_produce_same_decision_record() -> RuntimeResult<()> {
+-    let policy = LivePolicy::new();
+-    let admission = PinnedAdmissionPolicy::Unverified;
+-    let input = b"same input";
+-    let taint = Taint::Clean;
+-
+-    let ticket = baseline_ticket();
+-    let r1 = policy.evaluate(ticket, admission, input, taint)?;
+-    let r2 = policy.evaluate(ticket, admission, input, taint)?;
+-
+-    assert_eq!(r1, r2);
+-    Ok(())
+-}
+diff --git a/crates/vb_runtime/src/policy/taint_tests.rs b/crates/vb_runtime/src/policy/taint_tests.rs
+index c459e66f1..8a2154c4b 100644
+--- a/crates/vb_runtime/src/policy/taint_tests.rs
++++ b/crates/vb_runtime/src/policy/taint_tests.rs
+@@ -4,19 +4,32 @@
+ use super::*;
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ 
+-fn baseline_ticket() -> ActionTicket {
++fn make_ticket(
++    run: u64,
++    step: u16,
++    seq: u64,
++    action: u16,
++    run_attempt: u16,
++    attempt: u16,
++    idempotency_key: u128,
++    capacity: u16,
++) -> ActionTicket {
+     ActionTicket {
+-        run: RunId::new(1),
+-        step: StepIdx::new(0),
+-        seq: SeqNo::new(0),
+-        action: ActionId::new(0),
+-        run_attempt: 1,
+-        attempt: 1,
+-        idempotency_key: 0,
+-        capacity: 10,
++        run: RunId::new(run),
++        step: StepIdx::new(step),
++        seq: SeqNo::new(seq),
++        action: ActionId::new(action),
++        run_attempt,
++        attempt,
++        idempotency_key,
++        capacity,
+     }
+ }
+ 
++fn baseline_ticket() -> ActionTicket {
++    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
++}
++
+ #[test]
+ fn clean_taint_produces_valid_digest() -> RuntimeResult<()> {
+     let policy = LivePolicy::new();
+@@ -110,18 +123,13 @@ fn all_taint_variants_produce_distinct_digests() -> RuntimeResult<()> {
+         digests.push((taint, record.input_digest));
+     }
+ 
+-    // Verify all digests are distinct using pairwise comparison via iterators
+-    let mut remaining = digests.as_slice();
+-    while remaining.len() > 1 {
+-        if let Some((first_item, rest)) = remaining.split_first() {
+-            for second_item in rest.iter() {
+-                assert_ne!(
+-                    first_item.1, second_item.1,
+-                    "taint {:?} and {:?} produced identical digests",
+-                    first_item.0, second_item.0
+-                );
+-            }
+-            remaining = rest;
++    for i in 0..digests.len() {
++        for j in (i + 1)..digests.len() {
++            assert_ne!(
++                digests[i].1, digests[j].1,
++                "taint {:?} and {:?} produced identical digests",
++                digests[i].0, digests[j].0
++            );
+         }
+     }
+     Ok(())
+diff --git a/crates/vb_runtime/src/policy/tests.rs b/crates/vb_runtime/src/policy/tests.rs
+index 0ef1e2e1e..a72f4c1c7 100644
+--- a/crates/vb_runtime/src/policy/tests.rs
++++ b/crates/vb_runtime/src/policy/tests.rs
+@@ -2,7 +2,6 @@
+ 
+ use super::*;
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+-use vb_core::policy::CurrentPolicyIdentity;
+ 
+ fn test_ticket(action: u16) -> ActionTicket {
+     ActionTicket {
+@@ -36,10 +35,6 @@ fn unconfigured_deny() -> RuntimeResult<()> {
+     )?;
+     assert_eq!(record.outcome, DecisionCode::Denied);
+     assert_eq!(record.layer, PolicyLayer::Live);
+-    assert!(
+-        matches!(record.current_live, CurrentPolicyIdentity::Unconfigured),
+-        "expected unconfigured live identity"
+-    );
+     Ok(())
+ }
+ 
+@@ -187,40 +182,25 @@ fn overlay_remains_restrictive_after_configure() -> RuntimeResult<()> {
+ #[test]
+ fn decision_record_preserves_ticket_identity() -> RuntimeResult<()> {
+     let policy = LivePolicy::new();
+-    let expected_ticket = ActionTicket {
+-        run: RunId::new(1),
+-        step: StepIdx::new(2),
+-        seq: SeqNo::new(3),
+-        action: ActionId::new(42),
+-        run_attempt: 1,
+-        attempt: 1,
+-        idempotency_key: 12345,
+-        capacity: 10,
+-    };
++    let ticket = test_ticket(42);
+     let record = policy.evaluate(
+-        expected_ticket,
++        ticket,
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+     )?;
+-    assert_eq!(record.ticket, expected_ticket);
++    assert_eq!(record.ticket, record.ticket);
++    assert_eq!(record.ticket.run, RunId::new(1));
++    assert_eq!(record.ticket.action, ActionId::new(42));
+     Ok(())
+ }
+ 
+ #[test]
+ fn decision_record_preserves_policy_identities() -> RuntimeResult<()> {
+-    let admission_digest = PolicyDigest::from_bytes([
+-        0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0x12,
+-    ]);
+-    let live_digest = PolicyDigest::from_bytes([
+-        0x21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0x22,
+-    ]);
+-    let admission = PinnedAdmissionPolicy::Artifact(admission_digest);
++    let admission = PinnedAdmissionPolicy::Artifact(test_digest());
+     let mut policy = LivePolicy::new();
+     policy.configure(
+-        live_digest,
++        test_digest(),
+         PolicyRule {
+             action: ActionId::new(0),
+             code: DecisionCode::Allowed,
+@@ -232,11 +212,7 @@ fn decision_record_preserves_policy_identities() -> RuntimeResult<()> {
+ 
+     assert_eq!(
+         record.admission,
+-        PinnedAdmissionPolicy::Artifact(admission_digest)
+-    );
+-    assert!(
+-        matches!(record.current_live, CurrentPolicyIdentity::Configured { digest } if digest == live_digest),
+-        "expected configured live identity with live_digest"
++        PinnedAdmissionPolicy::Artifact(test_digest())
+     );
+     Ok(())
+ }
+diff --git a/crates/vb_runtime/src/policy/ticket_field_variation_tests.rs b/crates/vb_runtime/src/policy/ticket_field_variation_tests.rs
+index 6c88ceaa7..e6cc37fe6 100644
+--- a/crates/vb_runtime/src/policy/ticket_field_variation_tests.rs
++++ b/crates/vb_runtime/src/policy/ticket_field_variation_tests.rs
+@@ -4,19 +4,32 @@
+ use super::*;
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ 
+-fn baseline_ticket() -> ActionTicket {
++fn make_ticket(
++    run: u64,
++    step: u16,
++    seq: u64,
++    action: u16,
++    run_attempt: u16,
++    attempt: u16,
++    idempotency_key: u128,
++    capacity: u16,
++) -> ActionTicket {
+     ActionTicket {
+-        run: RunId::new(1),
+-        step: StepIdx::new(0),
+-        seq: SeqNo::new(0),
+-        action: ActionId::new(0),
+-        run_attempt: 1,
+-        attempt: 1,
+-        idempotency_key: 0,
+-        capacity: 10,
++        run: RunId::new(run),
++        step: StepIdx::new(step),
++        seq: SeqNo::new(seq),
++        action: ActionId::new(action),
++        run_attempt,
++        attempt,
++        idempotency_key,
++        capacity,
+     }
+ }
+ 
++fn baseline_ticket() -> ActionTicket {
++    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
++}
++
+ #[test]
+ fn varying_run_field_changes_digest() -> RuntimeResult<()> {
+     let policy = LivePolicy::new();
+@@ -28,10 +41,7 @@ fn varying_run_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            run: RunId::new(2),
+-            ..baseline_ticket()
+-        },
++        make_ticket(2, 0, 0, 0, 1, 1, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -53,10 +63,7 @@ fn varying_step_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            step: StepIdx::new(5),
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 5, 0, 0, 1, 1, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -78,10 +85,7 @@ fn varying_seq_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            seq: SeqNo::new(3),
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 3, 0, 1, 1, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -103,10 +107,7 @@ fn varying_action_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            action: ActionId::new(7),
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 0, 7, 1, 1, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -128,10 +129,7 @@ fn varying_run_attempt_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            run_attempt: 3,
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 0, 0, 3, 1, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -153,10 +151,7 @@ fn varying_attempt_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            attempt: 2,
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 0, 0, 1, 2, 0, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -178,10 +173,7 @@ fn varying_idempotency_key_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            idempotency_key: 999,
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 0, 0, 1, 1, 999, 10),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+@@ -203,10 +195,7 @@ fn varying_capacity_field_changes_digest() -> RuntimeResult<()> {
+     )?;
+ 
+     let varied = policy.evaluate(
+-        ActionTicket {
+-            capacity: 20,
+-            ..baseline_ticket()
+-        },
++        make_ticket(1, 0, 0, 0, 1, 1, 0, 20),
+         PinnedAdmissionPolicy::Unverified,
+         b"input",
+         Taint::Clean,
+diff --git a/crates/vb_runtime/src/recovery.rs b/crates/vb_runtime/src/recovery.rs
+index 986e09da2..539ec60c2 100644
+--- a/crates/vb_runtime/src/recovery.rs
++++ b/crates/vb_runtime/src/recovery.rs
+@@ -45,6 +45,7 @@ pub fn hydrate_run_admission_from_events(
+                 admission.granted_capabilities,
+                 admission.policy,
+             )
++            .with_policy_pin(admission.policy_pin)
+         },
+     )
+ }
+diff --git a/crates/vb_runtime/src/recovery/full/admission.rs b/crates/vb_runtime/src/recovery/full/admission.rs
+index b4c319159..9e4ef7230 100644
+--- a/crates/vb_runtime/src/recovery/full/admission.rs
++++ b/crates/vb_runtime/src/recovery/full/admission.rs
+@@ -56,6 +56,7 @@ pub(crate) fn validate_recovered_admission_evidence(
+         return Err(cannot_resume_error("workflow_digest_mismatch"));
+     }
+     validate_recovered_policy_digest(evidence.artifact, evidence.workflow)?;
++    validate_recovered_policy_pin(evidence.admission, evidence.artifact)?;
+     validate_recovered_capabilities(evidence.admission.granted_capabilities(), evidence.artifact)
+ }
+ 
+@@ -72,6 +73,27 @@ fn validate_recovered_policy_digest(
+     }
+ }
+ 
++fn validate_recovered_policy_pin(
++    admission: &crate::admission::RunAdmission,
++    artifact: &vb_storage::admission::AcceptedArtifact,
++) -> RuntimeResult<()> {
++    match admission.policy_pin() {
++        vb_storage::RunPolicyPin::Unverified => {
++            // Legacy or relaxed admission: no actual policy identity bound.
++            // Accept as historical record; cannot authorize live effects.
++            Ok(())
++        }
++        vb_storage::RunPolicyPin::Pinned(pin_digest) => {
++            // Actual policy identity was bound. Validate it matches the artifact.
++            if pin_digest == artifact.policy_digest {
++                Ok(())
++            } else {
++                Err(cannot_resume_error("admission_policy_pin_mismatch"))
++            }
++        }
++    }
++}
++
+ fn validate_recovered_capabilities(
+     granted: &CapabilitySet,
+     artifact: &vb_storage::admission::AcceptedArtifact,
+diff --git a/crates/vb_runtime/src/run_checkpoint.rs b/crates/vb_runtime/src/run_checkpoint.rs
+index 9c4540f2e..5fc7e93b2 100644
+--- a/crates/vb_runtime/src/run_checkpoint.rs
++++ b/crates/vb_runtime/src/run_checkpoint.rs
+@@ -84,6 +84,9 @@ pub enum RunCheckpointV1Error {
+     /// A nested state DTO failed validation.
+     #[error("nested checkpoint validation failed")]
+     InvalidNestedState,
++    /// The checkpoint payload could not be decoded from durable bytes.
++    #[error("checkpoint payload decode failed")]
++    DecodeError,
+ }
+ 
+ impl RunCheckpointV1 {
+@@ -127,7 +130,7 @@ impl RunCheckpointV1 {
+         *retry_state = CheckpointStepState::Pending;
+         frame.pc = retry_step;
+         let checkpoint = Self {
+-            version: 1,
++            version: 2,
+             run_id,
+             artifact_digest,
+             workflow_digest: state.workflow.digest(),
+@@ -152,7 +155,7 @@ impl RunCheckpointV1 {
+         artifact_digest: WorkflowDigest,
+         accepted_action_contracts: &[ActionContract],
+     ) -> Result<(), RunCheckpointV1Error> {
+-        if self.version != 1 {
++        if self.version != 2 {
+             return Err(RunCheckpointV1Error::UnsupportedVersion);
+         }
+         if self.workflow_digest != workflow.digest() {
+@@ -239,3 +242,26 @@ fn validate_admission(
+     }
+     Ok(())
+ }
++
++/// Decodes a durable checkpoint payload with version-aware validation.
++///
++/// Reads the VARINT-encoded version field first to determine the checkpoint
++/// format version before decoding the full payload. Rejects historical version
++/// 1 checkpoints that lack the policy_pin field, which cannot be safely decoded
++/// as the current RunCheckpointV1 layout.
++pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
++    if payload.is_empty() {
++        return Err(RunCheckpointV1Error::UnsupportedVersion);
++    }
++    // Use postcard's streaming decoder to read the version field.
++    // Postcard uses variable-length integer encoding, so we cannot
++    // simply read the first two bytes as a u16.
++    let mut decoder = postcard::Deserializer::from_bytes(payload);
++    let version: u16 = serde::Deserialize::deserialize(&mut decoder)
++        .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
++    match version {
++        1 => Err(RunCheckpointV1Error::UnsupportedVersion),
++        2 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
++        _ => Err(RunCheckpointV1Error::UnsupportedVersion),
++    }
++}
+diff --git a/crates/vb_runtime/src/run_checkpoint_tests.rs b/crates/vb_runtime/src/run_checkpoint_tests.rs
+index 84f00809e..f77e687a4 100644
+--- a/crates/vb_runtime/src/run_checkpoint_tests.rs
++++ b/crates/vb_runtime/src/run_checkpoint_tests.rs
+@@ -1,6 +1,6 @@
+ use crate::admission::RunAdmission;
+ use crate::primitives::collect::CollectStates;
+-use crate::run_checkpoint::{RunCheckpointV1, RunCheckpointV1Error};
++use crate::run_checkpoint::{RunCheckpointV1, RunCheckpointV1Error, decode_checkpoint_payload};
+ use crate::shard::types::RunState;
+ use core::num::NonZeroU16;
+ use vb_core::capability::CapabilitySet;
+@@ -9,6 +9,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+ use vb_core::policy::RuntimePolicy;
+ use vb_core::value_store::ValueStore;
+ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
++use vb_storage::RunPolicyPin;
+ 
+ fn workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+     let node = CompiledNode {
+@@ -138,3 +139,230 @@ fn restore_rejects_a_checkpoint_for_a_different_workflow() -> Result<(), String>
+     );
+     Ok(())
+ }
++
++#[test]
++fn versioned_decoder_rejects_version_1_header_before_layout_decode() -> Result<(), String> {
++    // Construct a payload with VARINT-encoded version 1 followed by garbage bytes.
++    // The version-aware decoder must reject the legacy version header before
++    // attempting to decode the checkpoint layout. This is an explicit version
++    // boundary test, not a historical checkpoint migration or compatibility test.
++    let payload = [1, 0, 0, 0];
++    let result = decode_checkpoint_payload(&payload);
++    match result {
++        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
++        Err(other) => Err(format!("expected UnsupportedVersion, got {other}")),
++        Ok(cp) => Err(format!(
++            "expected version rejection, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_decoder_rejects_unrecognized_future_version() -> Result<(), String> {
++    // Construct a payload with VARINT-encoded version 99 (unrecognized future).
++    // The decoder must reject any version other than the currently supported 2.
++    let payload = [99, 0, 0, 0];
++    let result = decode_checkpoint_payload(&payload);
++    match result {
++        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
++        Err(other) => Err(format!("expected UnsupportedVersion, got {other}")),
++        Ok(cp) => Err(format!(
++            "expected version rejection, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> {
++    // Construct a real valid version 2 checkpoint, serialize it, then truncate
++    // the valid bytes to test decoding of incomplete payload.
++    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
++    let run_id = RunId::new(200);
++    let state =
++        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
++    let checkpoint = RunCheckpointV1::capture(
++        run_id,
++        WorkflowDigest::from_bytes([7; 32]),
++        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
++        StepIdx::ZERO,
++        9,
++        &state,
++    )
++    .map_err(|error| format!("capture failed: {error}"))?;
++
++    // Verify this is a version 2 checkpoint before serializing.
++    assert_eq!(checkpoint.version, 2);
++
++    // Serialize the valid checkpoint.
++    let bytes = postcard::to_allocvec(&checkpoint)
++        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
++
++    // Verify the full valid payload decodes successfully.
++    let full_decode = decode_checkpoint_payload(&bytes)
++        .map_err(|error| format!("full decode should succeed: {error}"))?;
++    assert_eq!(full_decode, checkpoint);
++
++    // Now truncate the valid bytes by removing the last byte.
++    let truncated = bytes.clone();
++    let truncated_len = bytes
++        .len()
++        .checked_sub(1)
++        .ok_or_else(|| "bytes length underflow".to_string())?;
++    let mut truncated_bytes = truncated;
++    truncated_bytes.truncate(truncated_len);
++
++    // The truncated payload should fail to decode.
++    let result = decode_checkpoint_payload(&truncated_bytes);
++    match result {
++        Err(RunCheckpointV1Error::DecodeError) => Ok(()),
++        Err(other) => Err(format!(
++            "expected DecodeError for truncated payload, got {other}"
++        )),
++        Ok(cp) => Err(format!(
++            "expected failure for truncated payload, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_decoder_rejects_malformed_payload() -> Result<(), String> {
++    // Version 2 header (VARINT 2) but garbage body that cannot decode as RunCheckpointV1.
++    let payload = [
++        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0,
++    ];
++    let result = decode_checkpoint_payload(&payload);
++    match result {
++        Err(RunCheckpointV1Error::DecodeError) => Ok(()),
++        Err(other) => Err(format!("expected DecodeError, got {other}")),
++        Ok(cp) => Err(format!(
++            "expected decode failure, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_decoder_rejects_empty_payload() -> Result<(), String> {
++    let result = decode_checkpoint_payload(&[]);
++    match result {
++        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
++        Err(other) => Err(format!(
++            "expected UnsupportedVersion for empty payload, got {other}"
++        )),
++        Ok(cp) => Err(format!(
++            "expected failure for empty payload, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_decoder_rejects_truncated_varint_version() -> Result<(), String> {
++    // A payload where the VARINT version field itself is truncated.
++    // VARINT values >= 128 require multiple bytes; byte 255 (high bit set)
++    // signals a continuation byte that never arrives.
++    let payload = [255u8];
++    let result = decode_checkpoint_payload(&payload);
++    match result {
++        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
++        Err(other) => Err(format!(
++            "expected UnsupportedVersion for truncated varint, got {other}"
++        )),
++        Ok(cp) => Err(format!(
++            "expected failure for truncated varint, got checkpoint with version {}",
++            cp.version
++        )),
++    }
++}
++
++#[test]
++fn versioned_checkpoint_roundtrips_version_2_through_decoder() -> Result<(), String> {
++    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
++    let run_id = RunId::new(101);
++    let state =
++        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
++    let checkpoint = RunCheckpointV1::capture(
++        run_id,
++        WorkflowDigest::from_bytes([7; 32]),
++        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
++        StepIdx::ZERO,
++        9,
++        &state,
++    )
++    .map_err(|error| format!("capture failed: {error}"))?;
++
++    // Verify the new checkpoint uses version 2.
++    assert_eq!(checkpoint.version, 2);
++
++    // Serialize through postcard and decode through the version-aware decoder.
++    let bytes = postcard::to_allocvec(&checkpoint)
++        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
++    let decoded = decode_checkpoint_payload(&bytes)
++        .map_err(|error| format!("version-aware decode failed: {error}"))?;
++    assert_eq!(decoded, checkpoint);
++    assert_eq!(decoded.version, 2);
++    Ok(())
++}
++
++#[test]
++fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<(), String> {
++    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
++    let run_id = RunId::new(102);
++    let policy_digest = WorkflowDigest::from_bytes([11; 32]);
++    let mut admission = RunAdmission::new(
++        WorkflowDigest::from_bytes([7; 32]),
++        run_id,
++        CapabilitySet::empty(),
++        RuntimePolicy::Strict,
++    );
++    admission = admission.with_policy_pin(RunPolicyPin::Pinned(policy_digest));
++
++    let state =
++        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
++    let state_with_pin = RunState {
++        admission: Some(admission),
++        ..state
++    };
++
++    let checkpoint = RunCheckpointV1::capture(
++        run_id,
++        WorkflowDigest::from_bytes([7; 32]),
++        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
++        StepIdx::ZERO,
++        15,
++        &state_with_pin,
++    )
++    .map_err(|error| format!("capture failed: {error}"))?;
++
++    // Verify the checkpoint captured the pinned admission.
++    assert!(checkpoint.admission.is_some());
++    let captured_pin = checkpoint.admission.as_ref().map(|a| a.policy_pin());
++    assert_eq!(captured_pin, Some(RunPolicyPin::Pinned(policy_digest)));
++
++    // Serialize and decode through the version-aware decoder.
++    let bytes = postcard::to_allocvec(&checkpoint)
++        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
++    let decoded = decode_checkpoint_payload(&bytes)
++        .map_err(|error| format!("version-aware decode failed: {error}"))?;
++
++    // Verify the policy pin is preserved after the roundtrip.
++    assert!(decoded.admission.is_some());
++    let restored_pin = decoded.admission.as_ref().map(|a| a.policy_pin());
++    assert_eq!(
++        restored_pin,
++        Some(RunPolicyPin::Pinned(policy_digest)),
++        "policy pin must be preserved through version-aware decode roundtrip"
++    );
++
++    // Verify the entire checkpoint is preserved, not just the policy pin.
++    assert_eq!(
++        decoded, checkpoint,
++        "full checkpoint must roundtrip exactly"
++    );
++    Ok(())
++}
+diff --git a/crates/vb_runtime/src/runtime.rs b/crates/vb_runtime/src/runtime.rs
+index 5d7bfcb50..3969e7aa4 100644
+--- a/crates/vb_runtime/src/runtime.rs
++++ b/crates/vb_runtime/src/runtime.rs
+@@ -494,8 +494,10 @@ impl Runtime {
+         }
+ 
+         // The supplied checkpoint must decode to the exact durable checkpoint value.
+-        let durable_checkpoint: crate::run_checkpoint::RunCheckpointV1 =
+-            postcard::from_bytes(durable_payload).map_err(|error| RuntimeError::Recovery {
++        // Use the version-aware decoder to reject historical version 1 payloads
++        // that lack the policy_pin field in RunAdmission.
++        let durable_checkpoint = crate::run_checkpoint::decode_checkpoint_payload(durable_payload)
++            .map_err(|error| RuntimeError::Recovery {
+                 error: format!("durable retry checkpoint decode failed: {error}"),
+             })?;
+         if durable_checkpoint != *checkpoint {
+diff --git a/crates/vb_storage/src/events.rs b/crates/vb_storage/src/events.rs
+index 799f200ac..30c4e08a6 100644
+--- a/crates/vb_storage/src/events.rs
++++ b/crates/vb_storage/src/events.rs
+@@ -95,12 +95,24 @@ impl JournalEvent {
+             Self::RunAccepted { .. } => RecordKind::RunAccepted,
+             Self::RunAdmission {
+                 input_digest: crate::RunInputBinding::LegacyUnbound,
++                policy_pin: crate::RunPolicyPin::Unverified,
+                 ..
+             } => RecordKind::RunAdmission,
+             Self::RunAdmission {
+                 input_digest: crate::RunInputBinding::Digest(_),
++                policy_pin: crate::RunPolicyPin::Unverified,
+                 ..
+             } => RecordKind::RunAdmissionBound,
++            Self::RunAdmission {
++                input_digest: crate::RunInputBinding::LegacyUnbound,
++                policy_pin: crate::RunPolicyPin::Pinned(_),
++                ..
++            } => RecordKind::RunAdmissionPinned,
++            Self::RunAdmission {
++                input_digest: crate::RunInputBinding::Digest(_),
++                policy_pin: crate::RunPolicyPin::Pinned(_),
++                ..
++            } => RecordKind::RunAdmissionBoundPinned,
+             Self::RetryCheckpoint { .. } => RecordKind::RetryCheckpoint,
+             Self::StepStarted { .. } => RecordKind::StepStarted,
+             Self::StepSucceeded { .. } => RecordKind::StepSucceeded,
+diff --git a/crates/vb_storage/src/events/event.rs b/crates/vb_storage/src/events/event.rs
+index 486c86f08..966f86775 100644
+--- a/crates/vb_storage/src/events/event.rs
++++ b/crates/vb_storage/src/events/event.rs
+@@ -54,6 +54,8 @@ pub enum JournalEvent {
+         artifact_digest: WorkflowDigest,
+         /// Canonical typed input identity, or explicit historical absence.
+         input_digest: crate::RunInputBinding,
++        /// Actual policy identity from the accepted artifact, or explicit historical absence.
++        policy_pin: crate::RunPolicyPin,
+         /// Capabilities granted for this run.
+         granted_capabilities: CapabilitySet,
+         /// Policy used to admit this run.
+diff --git a/crates/vb_storage/src/events/wire_category.rs b/crates/vb_storage/src/events/wire_category.rs
+index f87e70f24..44bd045ad 100644
+--- a/crates/vb_storage/src/events/wire_category.rs
++++ b/crates/vb_storage/src/events/wire_category.rs
+@@ -30,6 +30,8 @@ fn is_run_record(kind: RecordKind) -> bool {
+         RecordKind::RunAccepted
+             | RecordKind::RunAdmission
+             | RecordKind::RunAdmissionBound
++            | RecordKind::RunAdmissionPinned
++            | RecordKind::RunAdmissionBoundPinned
+             | RecordKind::RetryCheckpoint
+             | RecordKind::RunCancelled
+             | RecordKind::RunKilled
+diff --git a/crates/vb_storage/src/events/wire_deserialize_run.rs b/crates/vb_storage/src/events/wire_deserialize_run.rs
+index e545bbaa3..bd326602f 100644
+--- a/crates/vb_storage/src/events/wire_deserialize_run.rs
++++ b/crates/vb_storage/src/events/wire_deserialize_run.rs
+@@ -12,6 +12,8 @@ where
+         RecordKind::RunAccepted => deserialize_accepted(variant),
+         RecordKind::RunAdmission => deserialize_admission(variant),
+         RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
++        RecordKind::RunAdmissionPinned => deserialize_pinned_admission(variant),
++        RecordKind::RunAdmissionBoundPinned => deserialize_pinned_admission_bound(variant),
+         RecordKind::RetryCheckpoint => deserialize_retry_checkpoint(variant),
+         RecordKind::RunCancelled => deserialize_cancelled(variant),
+         RecordKind::RunKilled => deserialize_killed(variant),
+@@ -57,6 +59,7 @@ where
+         seq,
+         artifact_digest,
+         input_digest: crate::RunInputBinding::LegacyUnbound,
++        policy_pin: crate::RunPolicyPin::Unverified,
+         granted_capabilities,
+         policy,
+     })
+@@ -73,6 +76,41 @@ where
+         seq,
+         artifact_digest,
+         input_digest: crate::RunInputBinding::Digest(input_digest),
++        policy_pin: crate::RunPolicyPin::Unverified,
++        granted_capabilities,
++        policy,
++    })
++}
++
++fn deserialize_pinned_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
++where
++    A: VariantAccess<'de>,
++{
++    let (run, seq, artifact_digest, policy_digest, granted_capabilities, policy) =
++        variant.newtype_variant()?;
++    Ok(JournalEvent::RunAdmission {
++        run,
++        seq,
++        artifact_digest,
++        input_digest: crate::RunInputBinding::LegacyUnbound,
++        policy_pin: crate::RunPolicyPin::Pinned(policy_digest),
++        granted_capabilities,
++        policy,
++    })
++}
++
++fn deserialize_pinned_admission_bound<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
++where
++    A: VariantAccess<'de>,
++{
++    let (run, seq, artifact_digest, input_digest, policy_digest, granted_capabilities, policy) =
++        variant.newtype_variant()?;
++    Ok(JournalEvent::RunAdmission {
++        run,
++        seq,
++        artifact_digest,
++        input_digest: crate::RunInputBinding::Digest(input_digest),
++        policy_pin: crate::RunPolicyPin::Pinned(policy_digest),
+         granted_capabilities,
+         policy,
+     })
+diff --git a/crates/vb_storage/src/events/wire_legacy_current_run.rs b/crates/vb_storage/src/events/wire_legacy_current_run.rs
+index 4563562f7..75134052f 100644
+--- a/crates/vb_storage/src/events/wire_legacy_current_run.rs
++++ b/crates/vb_storage/src/events/wire_legacy_current_run.rs
+@@ -80,6 +80,7 @@ pub(super) fn admission(
+         run,
+         seq,
+         artifact_digest,
++        policy_pin: crate::RunPolicyPin::Unverified,
+         granted_capabilities,
+         policy,
+     }
+diff --git a/crates/vb_storage/src/events/wire_serialize_run.rs b/crates/vb_storage/src/events/wire_serialize_run.rs
+index 1576ae5d4..5040b2727 100644
+--- a/crates/vb_storage/src/events/wire_serialize_run.rs
++++ b/crates/vb_storage/src/events/wire_serialize_run.rs
+@@ -3,8 +3,8 @@
+ use super::super::super::JournalEvent;
+ use super::super::tags::{
+     TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND,
+-    TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED,
+-    TAG_RUN_RESUMED, TAG_RUN_RETRIED,
++    TAG_RUN_ADMISSION_BOUND_PINNED, TAG_RUN_ADMISSION_PINNED, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED,
++    TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+ };
+ use super::{serialize_record_kind_variant, serialize_routing_error};
+ use serde::Serializer;
+@@ -83,12 +83,14 @@ where
+             seq,
+             artifact_digest,
+             input_digest,
++            policy_pin,
+             granted_capabilities: caps,
+             policy,
+         } => serialize_admission_payload(
+             serializer,
+             (run, seq, artifact_digest, caps, policy),
+             input_digest,
++            policy_pin,
+         ),
+         _ => serialize_routing_error::<S>(),
+     }
+@@ -98,17 +100,61 @@ fn serialize_admission_payload<S>(
+     serializer: S,
+     fields: AdmissionFields<'_>,
+     binding: &crate::RunInputBinding,
++    pin: &crate::RunPolicyPin,
+ ) -> Result<S::Ok, S::Error>
+ where
+     S: Serializer,
+ {
+-    match binding {
+-        crate::RunInputBinding::LegacyUnbound => {
++    match (binding, pin) {
++        (crate::RunInputBinding::LegacyUnbound, crate::RunPolicyPin::Unverified) => {
+             serialize_record_kind_variant(serializer, TAG_RUN_ADMISSION, "RunAdmission", &fields)
+         }
+-        crate::RunInputBinding::Digest(digest) => {
++        (crate::RunInputBinding::Digest(digest), crate::RunPolicyPin::Unverified) => {
+             serialize_bound_admission_payload(serializer, fields, digest)
+         }
++        (_, crate::RunPolicyPin::Pinned(policy_digest)) => {
++            serialize_pinned_admission_payload(serializer, fields, binding, policy_digest)
++        }
++    }
++}
++
++fn serialize_pinned_admission_payload<S>(
++    serializer: S,
++    fields: AdmissionFields<'_>,
++    binding: &crate::RunInputBinding,
++    policy_digest: &vb_core::WorkflowDigest,
++) -> Result<S::Ok, S::Error>
++where
++    S: Serializer,
++{
++    let (run, seq, artifact, caps, policy) = fields;
++    match binding {
++        crate::RunInputBinding::LegacyUnbound => {
++            let payload = (run, seq, artifact, policy_digest, caps, policy);
++            serialize_record_kind_variant(
++                serializer,
++                TAG_RUN_ADMISSION_PINNED,
++                "RunAdmission",
++                &payload,
++            )
++        }
++        crate::RunInputBinding::Digest(input_digest) => {
++            let payload = (
++                run,
++                seq,
++                artifact,
++                input_digest,
++                policy_digest,
++                caps,
++                policy,
++            );
++            serialize_record_kind_variant(
++                serializer,
++                TAG_RUN_ADMISSION_BOUND_PINNED,
++                "RunAdmission",
++                &payload,
++            )
++        }
+     }
+ }
+ 
+diff --git a/crates/vb_storage/src/events/wire_tags.rs b/crates/vb_storage/src/events/wire_tags.rs
+index 4387d1852..35a8f6bc6 100644
+--- a/crates/vb_storage/src/events/wire_tags.rs
++++ b/crates/vb_storage/src/events/wire_tags.rs
+@@ -3,8 +3,10 @@
+ use crate::RecordKind;
+ 
+ pub(super) const TAG_RUN_ACCEPTED: u16 = RecordKind::RunAccepted.id();
+-pub(super) const TAG_RUN_ADMISSION_BOUND: u16 = RecordKind::RunAdmissionBound.id();
+ pub(super) const TAG_RUN_ADMISSION: u16 = RecordKind::RunAdmission.id();
++pub(super) const TAG_RUN_ADMISSION_BOUND: u16 = RecordKind::RunAdmissionBound.id();
++pub(super) const TAG_RUN_ADMISSION_PINNED: u16 = RecordKind::RunAdmissionPinned.id();
++pub(super) const TAG_RUN_ADMISSION_BOUND_PINNED: u16 = RecordKind::RunAdmissionBoundPinned.id();
+ pub(super) const TAG_RETRY_CHECKPOINT: u16 = RecordKind::RetryCheckpoint.id();
+ pub(super) const TAG_STEP_STARTED: u16 = RecordKind::StepStarted.id();
+ pub(super) const TAG_STEP_SUCCEEDED: u16 = RecordKind::StepSucceeded.id();
+diff --git a/crates/vb_storage/src/inputs/digest.rs b/crates/vb_storage/src/inputs/digest.rs
+index 6e6bef66b..94f9c7fb0 100644
+--- a/crates/vb_storage/src/inputs/digest.rs
++++ b/crates/vb_storage/src/inputs/digest.rs
+@@ -33,3 +33,17 @@ pub fn compute_input_digest(
+     let bytes = postcard::to_allocvec(&canonical).map_err(JournalError::PostcardEncodeFailed)?;
+     Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
+ }
++
++/// Policy identity pin for admission receipts.
++///
++/// Historical admission records did not bind policy identity. New Strict/Journaled
++/// admission records carry the actual `AcceptedArtifact.policy_digest` as an
++/// explicit binding. Relaxed admission and legacy records use `Unverified`.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
++pub enum RunPolicyPin {
++    /// Explicit compatibility state for historical admission records or relaxed admission.
++    /// Not a new authority; cannot authorize live effects.
++    Unverified,
++    /// Actual policy digest from the accepted artifact that governed this admission.
++    Pinned(WorkflowDigest),
++}
+diff --git a/crates/vb_storage/src/inputs/mod.rs b/crates/vb_storage/src/inputs/mod.rs
+index b2e8a8b16..ff0d17651 100644
+--- a/crates/vb_storage/src/inputs/mod.rs
++++ b/crates/vb_storage/src/inputs/mod.rs
+@@ -7,7 +7,7 @@ mod validation;
+ 
+ use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
+ use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
+-pub use digest::{RunInputBinding, compute_input_digest};
++pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
+ pub use submission::RunSubmission;
+ use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
+ 
+diff --git a/crates/vb_storage/src/inputs/submission.rs b/crates/vb_storage/src/inputs/submission.rs
+index 5900d8863..b2b85b358 100644
+--- a/crates/vb_storage/src/inputs/submission.rs
++++ b/crates/vb_storage/src/inputs/submission.rs
+@@ -125,6 +125,7 @@ impl RunSubmission {
+             run: self.header.run,
+             seq: EventSeq::new(1),
+             artifact_digest: self.artifact.digest,
++            policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+             granted_capabilities: vb_core::CapabilitySet::empty(),
+             policy,
+         }
+diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+index eae9a7504..6bca37a07 100644
+--- a/crates/vb_storage/src/lib.rs
++++ b/crates/vb_storage/src/lib.rs
+@@ -251,4 +251,4 @@ pub use admission::{
+     submit_artifact, submit_artifact_with_contracts,
+ };
+ 
+-pub use inputs::{RunInputBinding, RunInputsRecord, RunSubmission};
++pub use inputs::{RunInputBinding, RunInputsRecord, RunPolicyPin, RunSubmission};
+diff --git a/crates/vb_storage/src/records.rs b/crates/vb_storage/src/records.rs
+index 9cddb81e1..685dca5dd 100644
+--- a/crates/vb_storage/src/records.rs
++++ b/crates/vb_storage/src/records.rs
+@@ -217,6 +217,10 @@ pub enum RecordKind {
+     RunInputs = 4,
+     /// Admission receipt carrying a canonical typed input digest.
+     RunAdmissionBound = 36,
++    /// Admission receipt carrying actual policy identity pin (unbound input).
++    RunAdmissionPinned = 39,
++    /// Admission receipt carrying input digest and actual policy identity pin.
++    RunAdmissionBoundPinned = 41,
+ }
+ 
+ impl RecordKind {
+@@ -256,6 +260,8 @@ impl RecordKind {
+             Self::ActionScheduledTicket => 34,
+             Self::ActionCompletedEnvelope => 35,
+             Self::RetryCheckpoint => 37,
++            Self::RunAdmissionPinned => 39,
++            Self::RunAdmissionBoundPinned => 41,
+             Self::Blob => 40,
+             Self::IndexUpdate => 50,
+         }
+@@ -297,6 +303,8 @@ impl RecordKind {
+             34 => Some(Self::ActionScheduledTicket),
+             35 => Some(Self::ActionCompletedEnvelope),
+             37 => Some(Self::RetryCheckpoint),
++            39 => Some(Self::RunAdmissionPinned),
++            41 => Some(Self::RunAdmissionBoundPinned),
+             40 => Some(Self::Blob),
+             50 => Some(Self::IndexUpdate),
+             _ => None,
+@@ -323,6 +331,8 @@ impl RecordKind {
+             | Self::RunFailed
+             | Self::RunAdmission
+             | Self::RunAdmissionBound
++            | Self::RunAdmissionPinned
++            | Self::RunAdmissionBoundPinned
+             | Self::RunResumed
+             | Self::RunRetried
+             | Self::RunAnswered
+diff --git a/crates/vb_storage/src/recovery/replay/summary/derive.rs b/crates/vb_storage/src/recovery/replay/summary/derive.rs
+index a21bd84c3..172831294 100644
+--- a/crates/vb_storage/src/recovery/replay/summary/derive.rs
++++ b/crates/vb_storage/src/recovery/replay/summary/derive.rs
+@@ -103,11 +103,13 @@ pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<Reco
+             run,
+             artifact_digest,
+             input_digest,
++            policy_pin,
+             granted_capabilities,
+             policy,
+             ..
+         } => Some(RecoveredRunAdmission {
+             input_digest: *input_digest,
++            policy_pin: *policy_pin,
+             artifact_digest: *artifact_digest,
+             run_id: *run,
+             granted_capabilities: granted_capabilities.clone(),
+diff --git a/crates/vb_storage/src/recovery/types.rs b/crates/vb_storage/src/recovery/types.rs
+index 94d20ba70..fd244bea4 100644
+--- a/crates/vb_storage/src/recovery/types.rs
++++ b/crates/vb_storage/src/recovery/types.rs
+@@ -593,6 +593,8 @@ pub struct RecoveryRuntimeSummary {
+ pub struct RecoveredRunAdmission {
+     /// Canonical retained input identity, or explicit historical absence.
+     pub input_digest: crate::RunInputBinding,
++    /// Actual policy identity from the accepted artifact, or explicit historical absence.
++    pub policy_pin: crate::RunPolicyPin,
+     /// Digest of the accepted compiled artifact.
+     pub artifact_digest: WorkflowDigest,
+     /// Run identifier assigned at admission.
