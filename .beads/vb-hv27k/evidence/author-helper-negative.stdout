@@ -1,0 +1,36 @@
+Validating .moon/tasks/all.yml
+Tasks: fuzz-smoke, fuzz-tsan, fuzz-regress
+
+--- fuzz-smoke ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-asan/build
+  ✓ binary path: ${bin_dir}/${fuzz_target}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- fuzz-tsan ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-asan/build
+  ✓ binary path: target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- fuzz-regress ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-asan/build
+  ✓ binary path: target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- Cross-task consistency ---
+  ✓ ASAN tasks share target dir: target/fuzz-asan/build
+  ✗ TSAN and ASAN use the same target dir
+
+  cargo fuzz list FAILED (exit 1)
+  stderr: Error: could not find a cargo project
+
+
+ERRORS:
+  - TSAN and ASAN use the same target dir (race condition)
+  - cargo fuzz list failed (exit 1): Error: could not find a cargo project
+
