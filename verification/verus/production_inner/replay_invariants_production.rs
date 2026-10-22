@@ -188,6 +188,14 @@ pub enum Taint {
     DerivedFromSecret,
 }
 
+// Local stub for crate::RunInputBinding
+// Production: crates/vb_storage/src/inputs/digest.rs
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunInputBinding {
+    LegacyUnbound,
+    Digest(WorkflowDigest),
+}
+
 pub struct DateTime<U> {
     _phantom: core::marker::PhantomData<U>,
 }
@@ -321,8 +329,17 @@ pub enum JournalEvent {
         run: RunId,
         seq: EventSeq,
         artifact_digest: WorkflowDigest,
+        input_digest: RunInputBinding,
         granted_capabilities: CapabilitySet,
         policy: RuntimePolicy,
+    },
+    RetryCheckpoint {
+        run: RunId,
+        seq: EventSeq,
+        attempt: u16,
+        step: StepIdx,
+        payload_digest: [u8; 32],
+        payload: Vec<u8>,
     },
     StepStarted {
         run: RunId,
@@ -481,7 +498,8 @@ impl JournalEvent {
     #[verifier::external]
     pub const fn attempt(&self) -> Option<u16> {
         match self {
-            Self::ActionScheduled { attempt, .. }
+            Self::RetryCheckpoint { attempt, .. }
+            | Self::ActionScheduled { attempt, .. }
             | Self::ActionCompletedEvent { attempt, .. }
             | Self::ActionFailedEvent { attempt, .. }
             | Self::SlotWrittenEvent { attempt, .. }

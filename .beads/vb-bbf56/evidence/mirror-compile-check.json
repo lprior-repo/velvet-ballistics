@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-bbf56-local5090-mirrors",
+  "argv": [
+    "cargo",
+    "check",
+    "-p",
+    "velvet_ballistics"
+  ],
+  "exit_code": 101,
+  "seconds": 0.107,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-bbf56/evidence/mirror-compile-check"
+}

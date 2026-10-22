@@ -5,7 +5,7 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the production `WorkflowError` enum
-// declaration from `crates/vb_core/src/workflow/mod.rs:321-452` with
+// declaration from `crates/vb_core/src/workflow/mod.rs:394-549` with
 // three minimal substitutions required to compile under
 // `verus --crate-type=lib` without proc-macro crate registration:
 //
@@ -34,7 +34,7 @@
 //      CompileError` at crates/vb_compile/src/mod_compile_errors/kind.rs
 //      :54 (`CompileError::Workflow(workflow_error)`) resolves identically.
 //
-// The 20-variant discriminant set is preserved EXACTLY:
+// The 23-variant discriminant set is preserved EXACTLY:
 //   1. EmptyNodes
 //   2. EntryOutOfBounds { entry: StepIdx }
 //   3. StepOutOfBounds { step: StepIdx }
@@ -55,9 +55,12 @@
 //   18. AccessorPathTooDeep { depth: usize, max: usize }
 //   19. JumpCycle { step: StepIdx, target: StepIdx }
 //   20. NestedTogether { outer: StepIdx, inner: StepIdx }
+//   21. InputSlotOutOfBounds { slot: SlotIdx, kind: InputSlotKind }
+//   22. DuplicateInputSlot { slot: SlotIdx, kind: InputSlotKind }
+//   23. NonCanonicalInputSlotOrder { prev_slot: SlotIdx, curr_slot: SlotIdx }
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/workflow/mod.rs:321-452` whenever production
+// `crates/vb_core/src/workflow/mod.rs:394-549` whenever production
 // adds, removes, or renames a `WorkflowError` variant. The mirror is
 // annotated at the top of every section with the originating
 // production line range so regeneration is mechanical. Drift between
@@ -140,10 +143,37 @@ pub enum CoreError {
 }
 
 // ---------------------------------------------------------------------------
+// Local stub for production `CompiledInputSlot` and `InputSlotKind`
+// ---------------------------------------------------------------------------
+//
+// Production `CompiledInputSlot` at workflow/mod.rs:328-333 with field `kind`
+// of type `InputSlotKind`. Production `InputSlotKind` at workflow/mod.rs:301-319.
+// New error variants reference these types via their `kind` field.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputSlotKind {
+    Null,
+    Bool,
+    I64,
+    F64,
+    Symbol,
+    List,
+    Object,
+    Blob,
+    Any,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompiledInputSlot {
+    pub slot: SlotIdx,
+    pub kind: InputSlotKind,
+}
+
+// ---------------------------------------------------------------------------
 // Verbatim copy of the production `WorkflowError` enum declaration
 // ---------------------------------------------------------------------------
 //
-// Production source: `crates/vb_core/src/workflow/mod.rs:321-452`.
+// Production source: `crates/vb_core/src/workflow/mod.rs:394-549`.
 //
 // Substitutions (documented at the top of this file):
 //   - `#[derive(Debug, Clone, Error, PartialEq, Eq)]` removed.
@@ -154,7 +184,7 @@ pub enum CoreError {
 //     auto-derive which is not used by this binding).
 
 /// Production `WorkflowError` enum at
-/// `crates/vb_core/src/workflow/mod.rs:321-452`. The 20-variant
+/// `crates/vb_core/src/workflow/mod.rs:394-549`. The 23-variant
 /// discriminant set is preserved EXACTLY (see the file header for
 /// the variant list and production line ranges).
 ///
@@ -270,5 +300,26 @@ pub enum WorkflowError {
         outer: StepIdx,
         /// The inner `TogetherStart` step reachable from the outer branch.
         inner: StepIdx,
+    },
+    /// Production: workflow/mod.rs:527-532.
+    InputSlotOutOfBounds {
+        /// The out-of-bounds input slot.
+        slot: SlotIdx,
+        /// The kind classification of the offending slot.
+        kind: InputSlotKind,
+    },
+    /// Production: workflow/mod.rs:535-540.
+    DuplicateInputSlot {
+        /// The duplicated slot index.
+        slot: SlotIdx,
+        /// The kind classification of the duplicate.
+        kind: InputSlotKind,
+    },
+    /// Production: workflow/mod.rs:543-548.
+    NonCanonicalInputSlotOrder {
+        /// The preceding slot index.
+        prev_slot: SlotIdx,
+        /// The out-of-order slot index.
+        curr_slot: SlotIdx,
     },
 }

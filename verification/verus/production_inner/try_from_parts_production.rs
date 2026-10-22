@@ -220,6 +220,32 @@ impl ResourceContract {
 }
 
 // ---------------------------------------------------------------------------
+// Local stub: `vb_core::workflow::CompiledInputSlot` and `InputSlotKind`
+// ---------------------------------------------------------------------------
+//
+// Production `CompiledInputSlot` at workflow/mod.rs:328-333 with field `kind`
+// of type `InputSlotKind`. Production `InputSlotKind` at workflow/mod.rs:301-319.
+// The mirror preserves field names and types exactly.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputSlotKind {
+    Null,
+    Bool,
+    I64,
+    F64,
+    Symbol,
+    List,
+    Object,
+    Any,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompiledInputSlot {
+    pub slot: SlotIdx,
+    pub kind: InputSlotKind,
+}
+
+// ---------------------------------------------------------------------------
 // Local stub: `vb_core::workflow::PathSegment`
 // ---------------------------------------------------------------------------
 //
@@ -294,6 +320,26 @@ pub enum ExprOp {
 }
 
 // ---------------------------------------------------------------------------
+// Local stub: `vb_core::workflow::ExprBranch` and `SlotBranch`
+// ---------------------------------------------------------------------------
+//
+// Production `ExprBranch` at workflow/mod.rs:282-287 and
+// `SlotBranch` at workflow/mod.rs:291-296. The mirror preserves
+// field names and types exactly.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExprBranch {
+    pub condition: ExprIdx,
+    pub target: StepIdx,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlotBranch {
+    pub condition: SlotIdx,
+    pub target: StepIdx,
+}
+
+// ---------------------------------------------------------------------------
 // Local stub: `vb_core::workflow::CompiledNode` and `CompiledNodeKind`
 // ---------------------------------------------------------------------------
 //
@@ -334,6 +380,7 @@ pub enum CompiledNodeKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowParts {
     pub name: Box<str>,
+    pub semantic_source_identity: Option<WorkflowDigest>,
     pub digest: WorkflowDigest,
     pub nodes: Vec<CompiledNode>,
     pub expressions: Vec<ExprProgram>,
@@ -344,6 +391,7 @@ pub struct WorkflowParts {
     pub entry: StepIdx,
     pub resource_contract: ResourceContract,
     pub step_names: Vec<Box<str>>,
+    pub input_slots: Vec<CompiledInputSlot>,
 }
 
 // ===========================================================================

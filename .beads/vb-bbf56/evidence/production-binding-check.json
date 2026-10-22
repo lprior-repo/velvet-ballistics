@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-bbf56-local5090-mirrors",
+  "argv": [
+    "bash",
+    "scripts/check-verus-production-binding.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 0.533,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-bbf56/evidence/production-binding-check"
+}

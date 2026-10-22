@@ -1,0 +1,103 @@
+
+=== verification/verus/production_inner/_exit_code_production.rs ===
+DRIFT: production identifiers in crates/velvet_ballistics/src/exit_code.rs missing from mirror:
+  - LifecycleError
+
+=== verification/verus/extern_budget_monotonic.rs (BINDING LEDGER @ line 32) ===
+DRIFT: production identifier `WorkflowError` (last segment `WorkflowError`) not found in crates/vb_core/src/workflow/mod.rs:321-321 (window 316-326)
+
+=== verification/verus/extern_budget_monotonic.rs (BINDING LEDGER @ line 35) ===
+DRIFT: production identifier `CompiledNode` (last segment `CompiledNode`) not found in crates/vb_core/src/workflow/mod.rs:563-563 (window 558-568)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 40) ===
+DRIFT: production identifier `RuntimeEvent` (last segment `RuntimeEvent`) not found in crates/vb_runtime/src/shard/types.rs:818-841 (window 813-846)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 41) ===
+DRIFT: production identifier `RuntimeEvent::is_terminal` (last segment `is_terminal`) not found in crates/vb_runtime/src/shard/types.rs:843-851 (window 838-856)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 42) ===
+DRIFT: production identifier `RuntimeEvent::is_resumable` (last segment `is_resumable`) not found in crates/vb_runtime/src/shard/types.rs:853-861 (window 848-866)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 43) ===
+DRIFT: production identifier `RuntimeState` (last segment `RuntimeState`) not found in crates/vb_runtime/src/shard/types.rs:794-808 (window 789-813)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 44) ===
+DRIFT: production identifier `RuntimeState::is_resumable` (last segment `is_resumable`) not found in crates/vb_runtime/src/shard/types.rs:810-816 (window 805-821)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 45) ===
+DRIFT: production identifier `ShardStatus` (last segment `ShardStatus`) not found in crates/vb_runtime/src/shard/types.rs:718-743 (window 713-748)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 46) ===
+DRIFT: production identifier `ShardHealth` (last segment `ShardHealth`) not found in crates/vb_runtime/src/shard/types.rs:745-753 (window 740-758)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 47) ===
+DRIFT: production identifier `MAX_COMMAND_QUEUE_CAPACITY` (last segment `MAX_COMMAND_QUEUE_CAPACITY`) not found in crates/vb_runtime/src/shard/types.rs:572-573 (window 567-578)
+
+=== verification/verus/extern_ipc_runtime_transitions.rs (BINDING LEDGER @ line 48) ===
+DRIFT: production identifier `ShardCommandQueue` (last segment `ShardCommandQueue`) not found in crates/vb_runtime/src/shard/types.rs:550-639 (window 545-644)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 83) ===
+DRIFT: production identifier `RecoveredStepEntry` (last segment `RecoveredStepEntry`) not found in crates/vb_storage/src/recovery/types.rs:792-799 (window 787-804)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 85) ===
+DRIFT: production identifier `RecoveredPendingAction` (last segment `RecoveredPendingAction`) not found in crates/vb_storage/src/recovery/types.rs:812-819 (window 807-824)
+
+=== verification/verus/extern_recovery_verification.rs (BINDING LEDGER @ line 155) ===
+DRIFT: production identifier `SummaryRecoveryBoundary::hydrate_run_frame` (last segment `hydrate_run_frame`) not found in crates/vb_runtime/src/recovery.rs:194-209 (window 189-214)
+
+=== verification/verus/extern_storage_kind_family.rs (BINDING LEDGER @ line 68) ===
+DRIFT: production identifier `next_seq` (last segment `next_seq`) not found in crates/vb_storage/src/codec/mod.rs:153-153 (window 148-158)
+
+=== verification/verus/extern_storage_kind_family.rs (BINDING LEDGER @ line 70) ===
+DRIFT: production identifier `validate_replayed_event` (last segment `validate_replayed_event`) not found in crates/vb_storage/src/codec/mod.rs:160-160 (window 155-165)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 57) ===
+DRIFT: production identifier `validate_parts` (last segment `validate_parts`) not found in crates/vb_core/src/workflow/mod.rs:753-777 (window 748-782)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 59) ===
+DRIFT: production identifier `validate_budget` (last segment `validate_budget`) not found in crates/vb_core/src/workflow/mod.rs:779-785 (window 774-790)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 61) ===
+DRIFT: production identifier `validate_resource_contract` (last segment `validate_resource_contract`) not found in crates/vb_core/src/workflow/mod.rs:834-839 (window 829-844)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 63) ===
+DRIFT: production identifier `validate_entry` (last segment `validate_entry`) not found in crates/vb_core/src/workflow/mod.rs:945-947 (window 940-952)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 71) ===
+DRIFT: production identifier `validate_reachability` (last segment `validate_reachability`) not found in crates/vb_core/src/workflow/mod.rs:768-775 (window 763-780)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 75) ===
+DRIFT: production identifier `WorkflowParts` (last segment `WorkflowParts`) not found in crates/vb_core/src/workflow/mod.rs:273-297 (window 268-302)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 81) ===
+DRIFT: production identifier `ExprProgram` (last segment `ExprProgram`) not found in crates/vb_core/src/workflow/mod.rs:454-545 (window 449-550)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 83) ===
+DRIFT: production identifier `AccessorProgram` (last segment `AccessorProgram`) not found in crates/vb_core/src/workflow/mod.rs:299-316 (window 294-321)
+
+=== verification/verus/extern_try_from_parts.rs (BINDING LEDGER @ line 85) ===
+DRIFT: production identifier `ExprBranch` (last segment `ExprBranch`) not found in crates/vb_core/src/workflow/mod.rs:254-270 (window 249-275)
+
+=== verification/verus/extern_vb_core_replay_step.rs (BINDING LEDGER @ line 39) ===
+DRIFT: production identifier `CompiledNodeKind` (last segment `CompiledNodeKind`) not found in crates/vb_core/src/workflow/mod.rs:585-585 (window 580-590)
+
+=== verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs (BINDING LEDGER @ line 92) ===
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:332-255 (file has 255 lines)
+
+=== verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs (BINDING LEDGER @ line 94) ===
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:366-255 (file has 255 lines)
+
+=== verification/verus/extern_vb_jnz9_journal_event_seq_valid.rs (BINDING LEDGER @ line 96) ===
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:514-255 (file has 255 lines)
+
+=== verification/verus/extern_vb_jpq724_events_for_run_production.rs (BINDING LEDGER @ line 111) ===
+DRIFT: production identifier `next_seq` (last segment `next_seq`) not found in crates/vb_storage/src/codec/mod.rs:153-158 (window 148-163)
+
+=== verification/verus/extern_vb_jpq724_events_for_run_production.rs (BINDING LEDGER @ line 115) ===
+DRIFT: production identifier `production_validate_replayed_event` (last segment `production_validate_replayed_event`) not found in crates/vb_storage/src/codec/mod.rs:149-167 (window 144-172)
+
+=== Summary ===
+Mirror files checked:  64
+Extern files scanned:  78
+Drift findings:        9
+Log:                   target/verus-drift/drift.log

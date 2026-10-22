@@ -1,0 +1,4 @@
+# STATUS: REJECTED
+The four-mirror patch is preserved for traceability only and MUST NOT land.
+It adds postcard_to_allocvec_stub returning vec![0] and a fake blake3 module returning first-byte data, expressly to satisfy identifier detection. This violates the production binding contract and GOD RULE 2. Added InputSlotKind variants/field types and RunInputBinding must be checked against actual production; comments claiming verbatim preservation are not evidence. The drift gate exit1 is NOT PASS: nine findings remain. A binding-gate exit0 alone is neither behavioral equivalence nor proof closure.
+Repair from the real pre-patch production and mirror contracts. Keep checker/registry requirements unchanged. Independently review every mirror delta and execute affected verifiers plus actual drift gate before acceptance.
