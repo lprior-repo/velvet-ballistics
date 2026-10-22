@@ -1,0 +1,45 @@
+
+running 40 tests
+test error::tests_conversion_refinement::admission_header_persistence_failed_passes_through_invalid_action_completion_unchanged ... ok
+test shard::helpers::tests::validate_action_completion_accepts_equal_attempt_and_capacity ... ok
+test shard::helpers::tests::advance_after_action_completion_advances_pc_to_next ... ok
+test shard::helpers::tests::validate_action_completion_accepts_matching_current_attempt ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_max_valid_attempt ... ok
+test shard::helpers::tests::validate_action_completion_accepts_running_step_with_matching_action ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_node_is_not_do ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_succeeded ... ok
+test shard::helpers::tests::validate_action_completion_rejects_wrong_action_id ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_over_capacity_and_current_zero ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_failed ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_pending ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_min_valid_attempt_capacity_one ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_capacity ... ok
+test shard::helpers::tests::validate_action_completion_rejects_unscheduled_first_attempt ... ok
+test runtime::tests::tests::do_action_completion_rejects_wrong_action_ticket ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_attempt ... ok
+test runtime::tests::tests::runtime_action_completion_preserves_frame_when_completion_envelope_append_fails ... ok
+test runtime::tests::tests::do_action_completion_writes_output_and_journals_events ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_at_edge_1_vs_2 ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_attempt_lower_than_current ... ok
+test shard::helpers::tests::validate_action_completion_returns_ok_when_all_preconditions_satisfied ... ok
+test shard::helpers::tests::validate_action_completion_rejects_attempt_beyond_max ... ok
+test shard::helpers::tests::validate_action_completion_rejects_future_attempt_when_attempt_exceeds_current ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_exceeds_capacity ... ok
+test runtime::tests::tests::scheduler_action_completion_resumes_correct_run_among_many ... ok
+test shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_missing ... ok
+test shard::helpers::tests::validate_action_completion_rejects_stale_attempt_without_state_change ... ok
+test shard::tests::vb1u88_action_completion_unknown_run_not_found ... ok
+test shard::lifecycle::tests::legacy_action_completion_journal_first ... ok
+test shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_cancelled ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_capacity_is_zero ... ok
+test shard::lifecycle::tests::action_completion_rejects_missing_and_mismatched_pending_action ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_is_zero ... ok
+test shard::lifecycle::tests::handle_action_completion_journal_first ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_lower_by_many ... ok
+test shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_finished ... ok
+test shard::lifecycle::tests::legacy_action_completion_rejects_missing_and_mismatched_pending_action ... ok
+test shard::tests::shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion ... ok
+test shard::helpers::tests::proptest_tests::prop_validate_action_completion_never_panics ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 1898 filtered out; finished in 0.00s
+

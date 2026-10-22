@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency"
+  ],
+  "exit_code": 101,
+  "seconds": 0.097,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-p51m8/evidence/local5090-baseline-run"
+}

@@ -566,9 +566,11 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         self.require_pending_action_ownership(ticket)?;
-        let preflight = {
+        let (preflight, action_abi_digest) = {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-            preflight_action_completion(state, ticket, output)?
+            let pf = preflight_action_completion(state, ticket, output)?;
+            let abi = schedule_action_abi_digest(state, ticket.action)?;
+            (pf, abi)
         };
         self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
             ticket: preflight.ticket,
@@ -577,7 +579,7 @@ impl Shard {
             encoded_len: preflight.encoded_len,
             taint: preflight.taint,
             value_digest: preflight.value_digest,
-            action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+            action_abi_digest,
         })?;
         let state = self
             .run_state_get_mut(run)

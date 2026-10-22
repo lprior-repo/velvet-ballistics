@@ -1,0 +1,4 @@
+    Checking crossbeam-queue v0.3.12
+    Checking rtrb v0.3.5
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.24s

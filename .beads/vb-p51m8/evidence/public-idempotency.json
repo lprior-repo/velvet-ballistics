@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ko29-local3090-coverage",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency"
+  ],
+  "exit_code": 101,
+  "seconds": 0.413,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-p51m8/evidence/public-idempotency",
+  "coordinator_message": "Your context is near100k. Finish exact scoped tests and handoff promptly. Use a NEW immutable evidence prefix after any test repair; never overwrite prior failing logs. Root observed current before/after stale-floor check uses len(); requirement is FULL Vec<RuntimeJournalEvent> equality, not only counts. Full equality for wrong-digest/stale and both CLI retry guards too. No more broad reads. Stop/end when actual16 tests pass; if blocked report exact current failure for fresh continuation rather than running past120k context. No weakening assertion semantics or production edits."
+}

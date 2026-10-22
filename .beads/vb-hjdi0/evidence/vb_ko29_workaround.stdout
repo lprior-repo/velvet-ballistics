@@ -1,0 +1,28 @@
+
+running 1 test
+test given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable ... FAILED
+
+failures:
+
+---- given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable stdout ----
+DEBUG: abi_digest = [106, 15, 54, 217, 255, 135, 223, 234, 51, 134, 205, 117, 195, 187, 209, 83, 103, 223, 42, 50, 37, 246, 207, 4, 70, 165, 174, 219, 131, 94, 29, 5]
+DEBUG: ticket.action = ActionId(0)
+DEBUG: journal events count = 8
+DEBUG: [0] RunAccepted { run: RunId(13), seq: EventSeq(0), workflow: WorkflowDigest([35, 134, 20, 25, 9, 203, 103, 48, 175, 116, 141, 25, 97, 69, 72, 100, 217, 41, 123, 57, 128, 91, 198, 208, 116, 5, 162, 49, 224, 214, 130, 107]) }
+DEBUG: [1] RunAdmission { run: RunId(13), seq: EventSeq(1), artifact_digest: WorkflowDigest([167, 101, 44, 35, 207, 225, 254, 92, 103, 23, 207, 148, 211, 29, 180, 197, 0, 157, 69, 255, 235, 39, 87, 78, 213, 73, 200, 24, 79, 10, 251, 112]), input_digest: LegacyUnbound, granted_capabilities: CapabilitySet { grants: [] }, policy: Strict }
+DEBUG: [2] StepStarted { run: RunId(13), seq: EventSeq(2), step: StepIdx(0), attempt: 1 }
+DEBUG: [3] ActionScheduledTicket action=ActionId(0) step=StepIdx(0) run_attempt=1 attempt=1
+DEBUG:     abi = 6a0f36d9
+DEBUG: [4] ActionCompletedEnvelope action=ActionId(0) step=StepIdx(0) run_attempt=1 attempt=1
+DEBUG:     abi = 00000000
+DEBUG: [5] StepStarted { run: RunId(13), seq: EventSeq(5), step: StepIdx(1), attempt: 1 }
+DEBUG: [6] StepSucceeded { run: RunId(13), seq: EventSeq(6), step: StepIdx(1), output: SlotIdx(0) }
+DEBUG: [7] RunFinished { run: RunId(13), seq: EventSeq(7), result: SlotIdx(1), attempt: 1 }
+Error: "action ABI digest mismatch for action ActionId(0)"
+
+
+failures:
+    given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.02s
+

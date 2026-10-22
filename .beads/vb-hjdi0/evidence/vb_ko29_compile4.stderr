@@ -1,0 +1,14 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish/crates/workspace_tests)
+error: unexpected closing delimiter: `}`
+  --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:38:1
+   |
+29 | fn action_contract_abi_digest(contract: &ActionContract) -> WorkflowDigest {
+   |                                                                            - this opening brace...
+...
+32 | }
+   | - ...matches this closing brace
+...
+38 | }
+   | ^ unexpected closing delimiter
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error
